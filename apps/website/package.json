@@ -2,6 +2,7 @@
   "name": "@candlefish-ai/website",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "Candlefish AI main website",
   "scripts": {
     "dev": "vite",
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@netlify/plugin-lighthouse": "^6.0.1",
+    "@tailwindcss/postcss": "^4.1.11",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@typescript-eslint/eslint-plugin": "^7.13.1",
