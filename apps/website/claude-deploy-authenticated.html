@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Code Deploy - Candlefish AI</title>
+    <meta name="description" content="Deploy all Claude Code AI agents with one command. Complete agent catalog and deployment tools.">
+    <link rel="icon" type="image/png" href="/logo/candlefish_highquality.png">
+    
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        :root {
+            --bg-primary: #000000;
+            --bg-secondary: #0A0A0A;
+            --text-primary: #FFFFFF;
+            --text-secondary: #AAAAAA;
+            --accent: #00CED1;
+            --accent-hover: #00A5A8;
+            --border-color: #3A3A3A;
+            --success: #059669;
+            --error: #DC2626;
+            
+            /* Category colors */
+            --cat-dev: #3B82F6;
+            --cat-frontend: #8B5CF6;
+            --cat-backend: #10B981;
+            --cat-testing: #F59E0B;
+            --cat-security: #EF4444;
+            --cat-data: #06B6D4;
+            --cat-automation: #EC4899;
+            --cat-docs: #6B7280;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        /* Auth Screen */
+        .auth-container {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: var(--bg-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
+        
+        .auth-container.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .auth-box {
+            max-width: 400px;
+            width: 100%;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .auth-logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 30px;
+            filter: drop-shadow(0 0 30px rgba(0, 206, 209, 0.3));
+        }
+        
+        .auth-title {
+            font-size: 24px;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+        
+        .auth-subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .auth-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            font-size: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .auth-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(0, 206, 209, 0.1);
+        }
+        
+        .auth-button {
+            width: 100%;
+            padding: 12px 24px;
+            background: var(--accent);
+            color: var(--bg-primary);
+            border: none;
+            font-size: 16px;
+            font-weight: 500;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .auth-button:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+        
+        .auth-error {
+            color: var(--error);
+            font-size: 14px;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        /* Main Content */
+        .main-content {
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        
+        .main-content.visible {
+            opacity: 1;
+        }
+        
+        /* Animated background */
+        .bg-particles {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            opacity: 0.05;
+            background-image: 
+                radial-gradient(circle at 20% 80%, var(--accent) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, var(--accent) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, var(--accent) 0%, transparent 50%);
+            animation: float 20s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(30px, -30px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+        }
+        
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+        
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            margin-bottom: 80px;
+        }
+        
+        .logo {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 40px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 30px rgba(0, 206, 209, 0.3));
+            animation: pulse 3s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 30px rgba(0, 206, 209, 0.3)); }
+            50% { transform: scale(1.05); filter: drop-shadow(0 0 50px rgba(0, 206, 209, 0.5)); }
+        }
+        
+        h1 {
+            font-size: 48px;
+            font-weight: 300;
+            letter-spacing: -0.02em;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, var(--text-primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            font-size: 20px;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+            line-height: 1.5;
+        }
+        
+        /* Command Box */
+        .command-box {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            padding: 20px 30px;
+            margin: 40px auto;
+            font-family: 'Berkeley Mono', 'Courier New', monospace;
+            font-size: 18px;
+            letter-spacing: 0.02em;
+            display: inline-block;
+            border-radius: 8px;
+            position: relative;
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        .command-box code {
+            color: var(--accent);
+        }
+        
+        .copy-btn {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--accent);
+            border: none;
+            color: var(--bg-primary);
+            padding: 6px 12px;
+            font-size: 14px;
+            cursor: pointer;
+            font-family: inherit;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+        
+        .copy-btn:hover {
+            background: var(--accent-hover);
+        }
+        
+        .copy-btn.copied {
+            background: var(--success);
+        }
+        
+        /* Agents Table */
+        .agents-section {
+            margin: 80px 0;
+        }
+        
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        
+        .section-header h2 {
+            font-size: 36px;
+            font-weight: 300;
+            margin-bottom: 16px;
+        }
+        
+        .section-header p {
+            color: var(--text-secondary);
+            font-size: 18px;
+        }
+        
+        .agents-grid {
+            display: grid;
+            gap: 40px;
+        }
+        
+        .agent-category {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .agent-category:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+        
+        .category-header {
+            padding: 20px 24px;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .category-title {
+            font-size: 20px;
+            font-weight: 400;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .category-badge {
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .badge-dev { background: rgba(59, 130, 246, 0.2); color: var(--cat-dev); }
+        .badge-frontend { background: rgba(139, 92, 246, 0.2); color: var(--cat-frontend); }
+        .badge-backend { background: rgba(16, 185, 129, 0.2); color: var(--cat-backend); }
+        .badge-testing { background: rgba(245, 158, 11, 0.2); color: var(--cat-testing); }
+        .badge-security { background: rgba(239, 68, 68, 0.2); color: var(--cat-security); }
+        .badge-data { background: rgba(6, 182, 212, 0.2); color: var(--cat-data); }
+        .badge-automation { background: rgba(236, 72, 153, 0.2); color: var(--cat-automation); }
+        .badge-docs { background: rgba(107, 114, 128, 0.2); color: var(--cat-docs); }
+        
+        .agents-table {
+            width: 100%;
+        }
+        
+        .agent-row {
+            display: grid;
+            grid-template-columns: 200px 1fr auto;
+            gap: 20px;
+            padding: 16px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: background 0.2s ease;
+            align-items: center;
+        }
+        
+        @media (max-width: 768px) {
+            .agent-row {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+        }
+        
+        .agent-row:hover {
+            background: rgba(0, 206, 209, 0.05);
+        }
+        
+        .agent-row:last-child {
+            border-bottom: none;
+        }
+        
+        .agent-name {
+            font-family: 'Berkeley Mono', 'Courier New', monospace;
+            color: var(--accent);
+            font-size: 14px;
+        }
+        
+        .agent-description {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        .agent-command {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .command-snippet {
+            padding: 4px 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-family: 'Berkeley Mono', 'Courier New', monospace;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .copy-command {
+            padding: 4px 8px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+        
+        .copy-command:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        
+        /* Footer */
+        footer {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            padding: 40px 20px;
+            text-align: center;
+            margin-top: 100px;
+        }
+        
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .footer-main {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+        
+        .footer-main a {
+            color: var(--accent);
+            text-decoration: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .footer-main a:hover {
+            opacity: 0.8;
+        }
+        
+        .footer-update {
+            font-size: 14px;
+            color: #6A6A6A;
+            margin-bottom: 8px;
+        }
+        
+        .footer-edit {
+            font-size: 12px;
+            color: #4A4A4A;
+        }
+        
+        /* Quick Links */
+        .quick-links {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 40px 0;
+            flex-wrap: wrap;
+        }
+        
+        .quick-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.3s ease;
+        }
+        
+        .quick-link:hover {
+            color: var(--accent);
+        }
+    </style>
+</head>
+<body>
+    <!-- Authentication Screen -->
+    <div class="auth-container" id="authScreen">
+        <div class="auth-box">
+            <img src="/logo/candlefish_highquality.png" alt="Candlefish AI" class="auth-logo">
+            <h2 class="auth-title">Access Required</h2>
+            <p class="auth-subtitle">Enter password to continue</p>
+            <input 
+                type="password" 
+                id="passwordInput" 
+                class="auth-input" 
+                placeholder="Enter password"
+                autocomplete="off"
+            >
+            <button class="auth-button" onclick="authenticate()">Access Deploy Portal</button>
+            <div class="auth-error" id="authError">Incorrect password. Please try again.</div>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <div class="bg-particles"></div>
+        
+        <div class="container">
+            <!-- Hero Section -->
+            <div class="hero">
+                <img src="/logo/candlefish_highquality.png" alt="Candlefish AI" class="logo">
+                <h1>Claude Code Deploy Portal</h1>
+                <p class="subtitle">
+                    Complete deployment suite for all Claude Code AI agents.<br>
+                    One command. Unlimited possibilities.
+                </p>
+                
+                <div class="command-box">
+                    <code id="mainCommand">npx @candlefish-ai/claude-code-deploy init</code>
+                    <button class="copy-btn" onclick="copyCommand('mainCommand', this)">Copy</button>
+                </div>
+                
+                <div class="quick-links">
+                    <a href="https://docs.anthropic.com/claude-code" class="quick-link">Documentation</a>
+                    <a href="https://github.com/candlefish-ai/claude-code-deploy" class="quick-link">GitHub</a>
+                    <a href="https://www.npmjs.com/package/@candlefish-ai/claude-code-deploy" class="quick-link">NPM Package</a>
+                    <a href="https://claude.candlefish.ai" class="quick-link">Enterprise Portal</a>
+                </div>
+            </div>
+            
+            <!-- Agents Catalog -->
+            <div class="agents-section">
+                <div class="section-header">
+                    <h2>Complete Agent Catalog</h2>
+                    <p>47 specialized AI agents ready for deployment</p>
+                </div>
+                
+                <div class="agents-grid">
+                    <!-- Development & Architecture -->
+                    <div class="agent-category">
+                        <div class="category-header">
+                            <div class="category-title">
+                                Development & Architecture
+                                <span class="category-badge badge-dev">Core</span>
+                            </div>
+                        </div>
+                        <div class="agents-table">
+                            <div class="agent-row">
+                                <div class="agent-name">backend-architect</div>
+                                <div class="agent-description">Design RESTful APIs and microservice architectures</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent backend-architect</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('backend-architect', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">system-designer</div>
+                                <div class="agent-description">Create scalable system architectures and diagrams</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent system-designer</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('system-designer', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">database-expert</div>
+                                <div class="agent-description">Optimize schemas, queries, and data models</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent database-expert</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('database-expert', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">api-specialist</div>
+                                <div class="agent-description">Build GraphQL and REST API implementations</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent api-specialist</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('api-specialist', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">code-reviewer</div>
+                                <div class="agent-description">Perform comprehensive code reviews and refactoring</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent code-reviewer</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('code-reviewer', this)">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Frontend & UI -->
+                    <div class="agent-category">
+                        <div class="category-header">
+                            <div class="category-title">
+                                Frontend & UI
+                                <span class="category-badge badge-frontend">Visual</span>
+                            </div>
+                        </div>
+                        <div class="agents-table">
+                            <div class="agent-row">
+                                <div class="agent-name">frontend-developer</div>
+                                <div class="agent-description">Build React, Vue, and Angular components</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent frontend-developer</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('frontend-developer', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">ui-designer</div>
+                                <div class="agent-description">Create beautiful, responsive user interfaces</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent ui-designer</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('ui-designer', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">css-specialist</div>
+                                <div class="agent-description">Optimize styles and implement animations</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent css-specialist</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('css-specialist', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">accessibility-expert</div>
+                                <div class="agent-description">Ensure WCAG compliance and a11y best practices</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent accessibility-expert</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('accessibility-expert', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">mobile-developer</div>
+                                <div class="agent-description">Build React Native and Flutter applications</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent mobile-developer</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('mobile-developer', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">ux-researcher</div>
+                                <div class="agent-description">Conduct user research and usability testing</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent ux-researcher</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('ux-researcher', this)">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Backend & Infrastructure -->
+                    <div class="agent-category">
+                        <div class="category-header">
+                            <div class="category-title">
+                                Backend & Infrastructure
+                                <span class="category-badge badge-backend">Systems</span>
+                            </div>
+                        </div>
+                        <div class="agents-table">
+                            <div class="agent-row">
+                                <div class="agent-name">deployment-engineer</div>
+                                <div class="agent-description">Configure CI/CD pipelines and deployments</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent deployment-engineer</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('deployment-engineer', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">devops-specialist</div>
+                                <div class="agent-description">Manage Kubernetes, Docker, and cloud infrastructure</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent devops-specialist</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('devops-specialist', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">cloud-architect</div>
+                                <div class="agent-description">Design AWS, Azure, and GCP architectures</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent cloud-architect</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('cloud-architect', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">sre-engineer</div>
+                                <div class="agent-description">Implement reliability and monitoring systems</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent sre-engineer</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('sre-engineer', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">terraform-expert</div>
+                                <div class="agent-description">Write infrastructure as code configurations</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent terraform-expert</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('terraform-expert', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">network-engineer</div>
+                                <div class="agent-description">Configure networks, VPCs, and load balancers</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent network-engineer</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('network-engineer', this)">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Testing & Quality -->
+                    <div class="agent-category">
+                        <div class="category-header">
+                            <div class="category-title">
+                                Testing & Quality
+                                <span class="category-badge badge-testing">QA</span>
+                            </div>
+                        </div>
+                        <div class="agents-table">
+                            <div class="agent-row">
+                                <div class="agent-name">test-automator</div>
+                                <div class="agent-description">Write comprehensive test suites and E2E tests</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent test-automator</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('test-automator', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">qa-engineer</div>
+                                <div class="agent-description">Design test strategies and quality processes</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent qa-engineer</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('qa-engineer', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">performance-tester</div>
+                                <div class="agent-description">Run load tests and performance benchmarks</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent performance-tester</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('performance-tester', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">bug-hunter</div>
+                                <div class="agent-description">Find and document edge cases and bugs</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent bug-hunter</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('bug-hunter', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">test-data-generator</div>
+                                <div class="agent-description">Create realistic test data and fixtures</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent test-data-generator</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('test-data-generator', this)">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Security & Compliance -->
+                    <div class="agent-category">
+                        <div class="category-header">
+                            <div class="category-title">
+                                Security & Compliance
+                                <span class="category-badge badge-security">Secure</span>
+                            </div>
+                        </div>
+                        <div class="agents-table">
+                            <div class="agent-row">
+                                <div class="agent-name">security-auditor</div>
+                                <div class="agent-description">Review code for vulnerabilities and threats</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent security-auditor</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('security-auditor', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">penetration-tester</div>
+                                <div class="agent-description">Conduct security testing and vulnerability scans</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent penetration-tester</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('penetration-tester', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">compliance-officer</div>
+                                <div class="agent-description">Ensure GDPR, HIPAA, and SOC2 compliance</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent compliance-officer</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('compliance-officer', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">encryption-specialist</div>
+                                <div class="agent-description">Implement encryption and secure data handling</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent encryption-specialist</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('encryption-specialist', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">auth-expert</div>
+                                <div class="agent-description">Build OAuth, SSO, and authentication systems</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent auth-expert</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('auth-expert', this)">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Data & Analytics -->
+                    <div class="agent-category">
+                        <div class="category-header">
+                            <div class="category-title">
+                                Data & Analytics
+                                <span class="category-badge badge-data">Data</span>
+                            </div>
+                        </div>
+                        <div class="agents-table">
+                            <div class="agent-row">
+                                <div class="agent-name">data-scientist</div>
+                                <div class="agent-description">Build ML models and data pipelines</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent data-scientist</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('data-scientist', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">analytics-engineer</div>
+                                <div class="agent-description">Create dashboards and business intelligence</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent analytics-engineer</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('analytics-engineer', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">etl-specialist</div>
+                                <div class="agent-description">Design data extraction and transformation flows</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent etl-specialist</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('etl-specialist', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">ml-engineer</div>
+                                <div class="agent-description">Deploy and optimize machine learning models</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent ml-engineer</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('ml-engineer', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">data-engineer</div>
+                                <div class="agent-description">Build data warehouses and streaming systems</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent data-engineer</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('data-engineer', this)">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Automation & Integration -->
+                    <div class="agent-category">
+                        <div class="category-header">
+                            <div class="category-title">
+                                Automation & Integration
+                                <span class="category-badge badge-automation">Auto</span>
+                            </div>
+                        </div>
+                        <div class="agents-table">
+                            <div class="agent-row">
+                                <div class="agent-name">integration-specialist</div>
+                                <div class="agent-description">Connect APIs and third-party services</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent integration-specialist</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('integration-specialist', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">workflow-automator</div>
+                                <div class="agent-description">Build automation workflows and pipelines</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent workflow-automator</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('workflow-automator', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">webhook-handler</div>
+                                <div class="agent-description">Process webhooks and event-driven flows</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent webhook-handler</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('webhook-handler', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">scraper-builder</div>
+                                <div class="agent-description">Create web scrapers and data extractors</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent scraper-builder</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('scraper-builder', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">bot-developer</div>
+                                <div class="agent-description">Build chatbots and automation bots</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent bot-developer</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('bot-developer', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">queue-architect</div>
+                                <div class="agent-description">Design message queues and job processing</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent queue-architect</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('queue-architect', this)">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Documentation & Communication -->
+                    <div class="agent-category">
+                        <div class="category-header">
+                            <div class="category-title">
+                                Documentation & Communication
+                                <span class="category-badge badge-docs">Docs</span>
+                            </div>
+                        </div>
+                        <div class="agents-table">
+                            <div class="agent-row">
+                                <div class="agent-name">doc-writer</div>
+                                <div class="agent-description">Write technical documentation and guides</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent doc-writer</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('doc-writer', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">api-documenter</div>
+                                <div class="agent-description">Generate OpenAPI and API documentation</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent api-documenter</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('api-documenter', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">readme-generator</div>
+                                <div class="agent-description">Create comprehensive README files</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent readme-generator</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('readme-generator', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">changelog-writer</div>
+                                <div class="agent-description">Maintain changelogs and release notes</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent changelog-writer</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('changelog-writer', this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="agent-row">
+                                <div class="agent-name">comment-reviewer</div>
+                                <div class="agent-description">Add helpful code comments and documentation</div>
+                                <div class="agent-command">
+                                    <span class="command-snippet">--agent comment-reviewer</span>
+                                    <button class="copy-command" onclick="copyAgentCommand('comment-reviewer', this)">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <footer>
+            <div class="footer-content">
+                <div class="footer-main">
+                    Claude Resources © 2025 Candlefish AI | 
+                    <a href="https://github.com/candlefish-ai" target="_blank">GitHub</a> | 
+                    <a href="https://candlefish.ai" target="_blank">candlefish.ai</a>
+                </div>
+                <div class="footer-update">
+                    Last updated: August 6, 2025 | Phase 3 in Progress
+                </div>
+                <div class="footer-edit">
+                    Last edit by: patrick
+                </div>
+            </div>
+        </footer>
+    </div>
+    
+    <script>
+        // Authentication
+        const CORRECT_PASSWORD = 'c@ndlef!sh';
+        
+        function authenticate() {
+            const password = document.getElementById('passwordInput').value;
+            const authScreen = document.getElementById('authScreen');
+            const mainContent = document.getElementById('mainContent');
+            const errorMsg = document.getElementById('authError');
+            
+            if (password === CORRECT_PASSWORD) {
+                // Store auth in session
+                sessionStorage.setItem('claudeDeployAuth', 'true');
+                
+                // Fade out auth screen
+                authScreen.classList.add('hidden');
+                
+                // Show main content
+                setTimeout(() => {
+                    mainContent.classList.add('visible');
+                }, 300);
+            } else {
+                // Show error
+                errorMsg.style.display = 'block';
+                document.getElementById('passwordInput').value = '';
+                
+                // Hide error after 3 seconds
+                setTimeout(() => {
+                    errorMsg.style.display = 'none';
+                }, 3000);
+            }
+        }
+        
+        // Check auth on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            const isAuthed = sessionStorage.getItem('claudeDeployAuth') === 'true';
+            
+            if (isAuthed) {
+                document.getElementById('authScreen').classList.add('hidden');
+                document.getElementById('mainContent').classList.add('visible');
+            }
+            
+            // Allow Enter key for auth
+            document.getElementById('passwordInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    authenticate();
+                }
+            });
+        });
+        
+        // Copy main command
+        function copyCommand(elementId, button) {
+            const command = document.getElementById(elementId).textContent;
+            navigator.clipboard.writeText(command).then(() => {
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                button.classList.add('copied');
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            });
+        }
+        
+        // Copy agent command
+        function copyAgentCommand(agentName, button) {
+            const command = `claude-code deploy --agent ${agentName}`;
+            navigator.clipboard.writeText(command).then(() => {
+                const originalText = button.textContent;
+                button.textContent = '✓';
+                button.style.color = 'var(--success)';
+                button.style.borderColor = 'var(--success)';
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.color = '';
+                    button.style.borderColor = '';
+                }, 1500);
+            });
+        }
+    </script>
+</body>
+</html>
