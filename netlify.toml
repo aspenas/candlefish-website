@@ -8,8 +8,8 @@
 [build]
   # Default to the website app
   base = "apps/website"
-  publish = "dist"
-  # Build command disabled for manual deployment
+  publish = "."
+  # No build needed for static HTML
 
 # SPA redirect for React Router
 [[redirects]]
