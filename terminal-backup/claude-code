@@ -1,0 +1,179 @@
+#!/bin/bash
+
+# Claude Code wrapper with extended functionality
+# Supports --thinking, --context, --model, and --aider flags
+# Auto-login to Claude Pro Max subscription ($200 tier)
+
+# Auto-login to Claude Pro Max subscription
+# Source the auto-login script to get its functions
+if [ -f "/Users/patricksmith/.local/bin/claude-auto-login" ]; then
+    source "/Users/patricksmith/.local/bin/claude-auto-login"
+    # Check and ensure login (runs in background to not block)
+    if ! is_logged_in 2>/dev/null; then
+        ( perform_login 2>/dev/null || true ) &
+    fi
+fi
+
+# Load API keys from cache if available
+if [ -f "/tmp/.mcp-kms-cache/api-keys.env" ]; then
+    source "/tmp/.mcp-kms-cache/api-keys.env"
+fi
+
+# Load API keys from AWS Secrets Manager if ANTHROPIC_API_KEY is not set
+if [ -z "$ANTHROPIC_API_KEY" ]; then
+    if [ -f "/Users/patricksmith/0l0/scripts/load-all-api-keys.sh" ]; then
+        # Save current model settings
+        SAVED_MODEL="claude-opus-4-1-20250805"
+        source "/Users/patricksmith/0l0/scripts/load-all-api-keys.sh" >/dev/null 2>&1
+        # Restore our model settings (override what load-all-api-keys might have set)
+        export CLAUDE_MODEL="$SAVED_MODEL"
+        export ANTHROPIC_MODEL="$SAVED_MODEL"
+    fi
+fi
+
+# Set subscription tier environment variables
+export CLAUDE_SUBSCRIPTION="max"
+export CLAUDE_TIER="200"
+export CLAUDE_MAX_TOKENS="400000"
+
+# Ensure we're using the correct model (override any other settings)
+export CLAUDE_MODEL="claude-opus-4-1-20250805"
+export ANTHROPIC_MODEL="claude-opus-4-1-20250805"
+
+# Default values
+MODEL="claude-opus-4-1-20250805"
+CONTEXT="${CLAUDE_MAX_CONTEXT:-200000}"
+THINKING_MODE=""
+VERBOSE=""
+EXTRA_ARGS=()
+PROMPT_PREFIX=""
+USE_AIDER=""
+AIDER_MODEL=""
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --thinking)
+            THINKING_MODE="yes"
+            shift
+            ;;
+        --context)
+            # Handle context values like "200k" or "200000"
+            CONTEXT_ARG="$2"
+            if [[ "$CONTEXT_ARG" == *k ]]; then
+                # Convert "200k" to "200000"
+                CONTEXT="${CONTEXT_ARG%k}000"
+            else
+                CONTEXT="$CONTEXT_ARG"
+            fi
+            shift 2
+            ;;
+        --model)
+            MODEL="$2"
+            shift 2
+            ;;
+        --verbose)
+            VERBOSE="--verbose"
+            shift
+            ;;
+        --aider)
+            USE_AIDER="yes"
+            shift
+            ;;
+        --gpt|--chatgpt)
+            AIDER_MODEL="gpt"
+            shift
+            ;;
+        *)
+            EXTRA_ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
+
+# Check if we should use Aider instead
+if [[ -n "$USE_AIDER" ]]; then
+    # Delegate to the dedicated claude-code-aider script
+    AIDER_CMD="/Users/patricksmith/.local/bin/claude-code-aider"
+    
+    # Build arguments for claude-code-aider
+    AIDER_ARGS=()
+    
+    # Add model selection if specified
+    if [[ -n "$AIDER_MODEL" ]]; then
+        AIDER_ARGS+=("--$AIDER_MODEL")
+    fi
+    
+    # Add thinking mode if requested
+    if [[ -n "$THINKING_MODE" ]]; then
+        # For Aider, thinking mode means using o1-preview for GPT
+        if [[ "$AIDER_MODEL" == "gpt" ]]; then
+            AIDER_ARGS+=("--model" "o1-preview")
+        fi
+    fi
+    
+    # Add remaining arguments
+    AIDER_ARGS+=("${EXTRA_ARGS[@]}")
+    
+    # Execute claude-code-aider
+    exec "$AIDER_CMD" "${AIDER_ARGS[@]}"
+fi
+
+# Set environment variables
+export ANTHROPIC_MODEL="$MODEL"
+export CLAUDE_MAX_CONTEXT="$CONTEXT"
+
+# Log usage metrics
+METRICS_DIR="$HOME/.claude/metrics"
+mkdir -p "$METRICS_DIR"
+TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
+echo "$TIMESTAMP | Model: $MODEL | Context: $CONTEXT | Thinking: ${THINKING_MODE:-no} | Args: ${EXTRA_ARGS[*]}" >> "$METRICS_DIR/usage.log"
+
+# Build the command - use the actual Claude location
+CMD="/Users/patricksmith/.claude/local/node_modules/.bin/claude"
+
+# Add model flag
+CMD="$CMD --model $MODEL"
+
+# Note: Context is set via environment variable, not CLI flag
+# The CLAUDE_MAX_CONTEXT env var is already exported above
+
+# Add verbose if requested
+if [[ -n "$VERBOSE" ]]; then
+    CMD="$CMD $VERBOSE"
+fi
+
+# If thinking mode is requested, add a prefix to the prompt
+if [[ -n "$THINKING_MODE" ]]; then
+    # If there are arguments, prepend thinking instruction
+    if [[ ${#EXTRA_ARGS[@]} -gt 0 ]]; then
+        # Check if using --print mode
+        if [[ " ${EXTRA_ARGS[@]} " =~ " -p " ]] || [[ " ${EXTRA_ARGS[@]} " =~ " --print " ]]; then
+            # Find the prompt position and prepend thinking instruction
+            NEW_ARGS=()
+            for arg in "${EXTRA_ARGS[@]}"; do
+                if [[ "$arg" != "-p" ]] && [[ "$arg" != "--print" ]] && [[ "$arg" != "--output-format" ]] && [[ ! "$arg" =~ ^- ]]; then
+                    # This is likely the prompt
+                    NEW_ARGS+=("Think step by step before answering. $arg")
+                else
+                    NEW_ARGS+=("$arg")
+                fi
+            done
+            EXTRA_ARGS=("${NEW_ARGS[@]}")
+        else
+            # Interactive mode - we'll need to handle this differently
+            echo "🤔 Using thinking mode - I'll think step by step before responding"
+        fi
+    fi
+fi
+
+# Add remaining arguments
+if [[ ${#EXTRA_ARGS[@]} -gt 0 ]]; then
+    # Properly quote arguments
+    for arg in "${EXTRA_ARGS[@]}"; do
+        CMD="$CMD \"$arg\""
+    done
+fi
+
+# Execute the command directly
+eval exec $CMD

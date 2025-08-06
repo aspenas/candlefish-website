@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# Claude Auto-Login Script for Pro Max Subscription ($200 tier)
+# This script ensures Claude Code is always logged in with the max subscription
+
+# Colors for output
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+# Configuration
+AUTH_FILE="$HOME/.config/claude-code/auth.json"
+CLAUDE_CMD="/Users/patricksmith/.claude/local/node_modules/.bin/claude"
+MAX_AGE_DAYS=25  # Re-login if token is older than 25 days
+
+# Function to check if logged in
+is_logged_in() {
+    if [ -f "$AUTH_FILE" ]; then
+        # Check if token file exists and is recent
+        if [ -n "$(find "$AUTH_FILE" -mtime -$MAX_AGE_DAYS 2>/dev/null)" ]; then
+            return 0
+        else
+            echo -e "${YELLOW}⚠ Authentication token is older than $MAX_AGE_DAYS days${NC}"
+            return 1
+        fi
+    else
+        echo -e "${YELLOW}⚠ No authentication token found${NC}"
+        return 1
+    fi
+}
+
+# Function to perform login
+perform_login() {
+    echo -e "${GREEN}🔐 Logging into Claude Pro Max subscription (\$200 tier)...${NC}"
+    
+    # Check if we're in a TTY context to avoid setRawMode errors
+    if [ -t 0 ] && [ -t 1 ]; then
+        # Try to login with proper TTY
+        if $CLAUDE_CMD /login 2>/dev/null; then
+            echo -e "${GREEN}✅ Successfully logged into Claude Pro Max!${NC}"
+            echo -e "${GREEN}📊 Subscription: Pro Max (\$200/month)${NC}"
+            echo -e "${GREEN}🚀 Model: claude-opus-4-1-20250805${NC}"
+            echo -e "${GREEN}💾 Max context: 200,000 tokens${NC}"
+            return 0
+        else
+            echo -e "${RED}❌ Login failed or was cancelled${NC}"
+            echo -e "${YELLOW}ℹ️  You can manually login later with: claude /login${NC}"
+            return 1
+        fi
+    else
+        # Non-interactive context, skip login
+        echo -e "${YELLOW}⚠ Non-interactive shell detected, skipping auto-login${NC}"
+        echo -e "${YELLOW}ℹ️  Run 'claude /login' manually when ready${NC}"
+        return 1
+    fi
+}
+
+# Main execution
+main() {
+    echo -e "${GREEN}═══════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}    Claude Pro Max Auto-Login (\$200 tier)${NC}"
+    echo -e "${GREEN}═══════════════════════════════════════════════════${NC}"
+    
+    if is_logged_in; then
+        echo -e "${GREEN}✅ Already logged in to Claude Pro Max${NC}"
+        echo -e "${GREEN}📊 Your subscription is active and ready${NC}"
+    else
+        perform_login
+    fi
+    
+    # Set environment variables for the session
+    export CLAUDE_SUBSCRIPTION="max"
+    export CLAUDE_TIER="200"
+    export CLAUDE_MAX_TOKENS="400000"
+    export CLAUDE_MODEL="claude-opus-4-1-20250805"
+    export ANTHROPIC_MODEL="claude-opus-4-1-20250805"
+    
+    echo -e "${GREEN}═══════════════════════════════════════════════════${NC}"
+}
+
+# Run if executed directly
+if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
+    main "$@"
+fi
+
+# Export function for use in other scripts
+export -f is_logged_in
+export -f perform_login
