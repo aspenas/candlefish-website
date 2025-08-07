@@ -1,0 +1,135 @@
+name: Parallel Claude Sessions
+
+on:
+  workflow_dispatch:
+    inputs:
+      sessions:
+        description: 'Number of parallel Claude sessions'
+        required: true
+        default: '3'
+        type: choice
+        options:
+          - '1'
+          - '2'
+          - '3'
+          - '4'
+          - '5'
+      task:
+        description: 'Task to execute in parallel'
+        required: true
+        default: 'test'
+        type: choice
+        options:
+          - 'test'
+          - 'lint'
+          - 'build'
+          - 'deploy'
+          - 'analyze'
+
+jobs:
+  setup-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          sessions='${{ github.event.inputs.sessions }}'
+          matrix=$(seq 1 $sessions | jq -R . | jq -s '{session: .}')
+          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+
+  parallel-claude:
+    needs: setup-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
+      max-parallel: 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          pip install -r requirements.txt || true
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Run task in session ${{ matrix.session }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SESSION_ID: ${{ matrix.session }}
+          TASK: ${{ github.event.inputs.task }}
+        run: |
+          echo "Running $TASK in session $SESSION_ID"
+          
+          case $TASK in
+            test)
+              npm test -- --shard=$SESSION_ID/${{ github.event.inputs.sessions }}
+              ;;
+            lint)
+              npm run lint -- --parallel
+              ;;
+            build)
+              npm run build -- --parallel
+              ;;
+            deploy)
+              echo "Deploy task for session $SESSION_ID"
+              ;;
+            analyze)
+              npm run analyze -- --shard=$SESSION_ID/${{ github.event.inputs.sessions }}
+              ;;
+          esac
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: session-${{ matrix.session }}-results
+          path: |
+            coverage/
+            dist/
+            reports/
+          retention-days: 7
+
+  merge-results:
+    needs: parallel-claude
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: merged-results
+
+      - name: Merge test coverage
+        run: |
+          npx nyc merge merged-results/*/coverage coverage-merged
+          npx nyc report --reporter=html --reporter=text --temp-dir=coverage-merged
+
+      - name: Upload merged coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: merged-coverage
+          path: coverage-merged/
+          retention-days: 30
