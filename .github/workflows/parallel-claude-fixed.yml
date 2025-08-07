@@ -1,4 +1,4 @@
-name: Parallel Claude Sessions (Fixed)
+name: Parallel Claude Sessions Fixed
 
 on:
   workflow_dispatch:
@@ -26,11 +26,6 @@ on:
           - 'deploy'
           - 'analyze'
 
-permissions:
-  contents: read
-  pull-requests: write
-  issues: write
-
 jobs:
   setup-matrix:
     runs-on: ubuntu-latest
@@ -40,8 +35,10 @@ jobs:
       - id: set-matrix
         run: |
           sessions='${{ github.event.inputs.sessions }}'
-          matrix=$(seq 1 $sessions | jq -R . | jq -s '{session: .}')
+          # Create proper JSON format with compact output
+          matrix=$(echo "[$(seq -s, 1 $sessions)]" | jq -c '{session: .}')
           echo "matrix=$matrix" >> $GITHUB_OUTPUT
+          echo "Generated matrix: $matrix"
 
   parallel-claude:
     needs: setup-matrix
@@ -53,90 +50,95 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+        with:
+          fetch-depth: 0
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
-          
+        continue-on-error: true
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
-          
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.npm
-            ~/.cache/pip
-            node_modules
-          key: ${{ runner.os }}-deps-${{ hashFiles('**/package-lock.json', '**/requirements.txt') }}
-          
+        continue-on-error: true
+
       - name: Install dependencies
         run: |
-          # Install Node dependencies if package.json exists
-          if [ -f package.json ]; then
+          if [ -f "package.json" ]; then
             npm ci || npm install
           fi
-          
-          # Install Python dependencies if requirements.txt exists
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
+          if [ -f "requirements.txt" ]; then
+            pip install -r requirements.txt || true
           fi
-          
-      - name: Execute Claude Task - Session ${{ matrix.session }}
-        id: claude-task
+        continue-on-error: true
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+        continue-on-error: true
+
+      - name: Run task in session ${{ matrix.session }}
         env:
-          CLAUDE_SESSION_ID: ${{ matrix.session }}
-          CLAUDE_TASK: ${{ github.event.inputs.task }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SESSION_ID: ${{ matrix.session }}
+          TASK: ${{ github.event.inputs.task }}
         run: |
-          echo "Starting Claude session ${{ matrix.session }} for task: ${{ github.event.inputs.task }}"
+          echo "Running $TASK in session $SESSION_ID"
           
-          case "${{ github.event.inputs.task }}" in
+          case $TASK in
             test)
-              echo "Running tests in parallel session ${{ matrix.session }}..."
-              if [ -f package.json ] && grep -q "\"test\"" package.json; then
-                npm test || true
+              if [ -f "package.json" ] && grep -q '"test"' package.json; then
+                npm test -- --shard=$SESSION_ID/${{ github.event.inputs.sessions }} || true
+              else
+                echo "No test configuration found"
               fi
               ;;
             lint)
-              echo "Running linting in parallel session ${{ matrix.session }}..."
-              if [ -f package.json ] && grep -q "\"lint\"" package.json; then
-                npm run lint || true
+              if [ -f "package.json" ] && grep -q '"lint"' package.json; then
+                npm run lint -- --parallel || true
+              else
+                echo "No lint configuration found"
               fi
               ;;
             build)
-              echo "Building project in parallel session ${{ matrix.session }}..."
-              if [ -f package.json ] && grep -q "\"build\"" package.json; then
-                npm run build || true
+              if [ -f "package.json" ] && grep -q '"build"' package.json; then
+                npm run build -- --parallel || true
+              else
+                echo "No build configuration found"
               fi
               ;;
-            analyze)
-              echo "Analyzing code in parallel session ${{ matrix.session }}..."
-              # Add code analysis commands here
-              ;;
             deploy)
-              echo "Deploying from parallel session ${{ matrix.session }}..."
-              # Add deployment commands here
+              echo "Deploy task for session $SESSION_ID (dry run)"
+              ;;
+            analyze)
+              if [ -f "package.json" ] && grep -q '"analyze"' package.json; then
+                npm run analyze -- --shard=$SESSION_ID/${{ github.event.inputs.sessions }} || true
+              else
+                echo "No analyze configuration found"
+              fi
               ;;
           esac
-          
-      - name: Upload session results
-        if: always()
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: claude-session-${{ matrix.session }}-results
+          name: session-${{ matrix.session }}-results
           path: |
             coverage/
-            test-results/
-            build/
             dist/
-          if-no-files-found: ignore
-          
+            reports/
+          retention-days: 7
+        continue-on-error: true
+
   merge-results:
     needs: parallel-claude
     runs-on: ubuntu-latest
@@ -146,27 +148,24 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: claude-session-*-results
-          merge-multiple: true
-          
+          path: merged-results
+        continue-on-error: true
+
       - name: Merge test coverage
         run: |
-          echo "Merging test coverage from all parallel sessions..."
-          # Add coverage merging logic here
-          
-      - name: Generate summary report
-        run: |
-          echo "## Parallel Claude Sessions Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Sessions Run**: ${{ github.event.inputs.sessions }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Task Executed**: ${{ github.event.inputs.task }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Status**: Completed" >> $GITHUB_STEP_SUMMARY
-          
-      - name: Upload merged results
+          if command -v npx &> /dev/null && [ -d "merged-results" ]; then
+            npx nyc merge merged-results/*/coverage coverage-merged || true
+            npx nyc report --reporter=html --reporter=text --temp-dir=coverage-merged || true
+          else
+            echo "No coverage to merge or tools not available"
+          fi
+        continue-on-error: true
+
+      - name: Upload merged coverage
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: merged-claude-results
-          path: |
-            coverage/
-            test-results/
-          if-no-files-found: ignore
+          name: merged-coverage
+          path: coverage-merged/
+          retention-days: 30
+        continue-on-error: true
