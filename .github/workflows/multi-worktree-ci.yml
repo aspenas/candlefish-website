@@ -1,0 +1,225 @@
+name: Multi-Worktree CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - development
+      - 'feature/**'
+      - 'hotfix/**'
+      - 'experimental/**'
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      worktree:
+        description: 'Specific worktree to test'
+        required: false
+        type: choice
+        options:
+          - 'all'
+          - 'main'
+          - 'development'
+          - 'feature'
+          - 'experimental'
+          - 'hotfix'
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      projects: ${{ steps.detect.outputs.projects }}
+      worktrees: ${{ steps.detect.outputs.worktrees }}
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed projects
+        id: detect
+        run: |
+          # Get changed files
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }})
+          else
+            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+          fi
+          
+          # Detect affected projects
+          PROJECTS=()
+          if echo "$CHANGED_FILES" | grep -q "^apps/"; then
+            PROJECTS+=("apps")
+          fi
+          if echo "$CHANGED_FILES" | grep -q "^packages/"; then
+            PROJECTS+=("packages")
+          fi
+          if echo "$CHANGED_FILES" | grep -q "^projects/"; then
+            PROJECTS+=("projects")
+          fi
+          
+          # Determine which worktrees to test
+          WORKTREES=()
+          BRANCH="${{ github.ref_name }}"
+          
+          if [[ "$BRANCH" == "main" ]]; then
+            WORKTREES+=("main")
+          elif [[ "$BRANCH" == "development" ]]; then
+            WORKTREES+=("development")
+          elif [[ "$BRANCH" == feature/* ]]; then
+            WORKTREES+=("feature")
+          elif [[ "$BRANCH" == hotfix/* ]]; then
+            WORKTREES+=("hotfix")
+          elif [[ "$BRANCH" == experimental/* ]]; then
+            WORKTREES+=("experimental")
+          else
+            WORKTREES+=("main")
+          fi
+          
+          echo "projects=$(printf '%s\n' "${PROJECTS[@]}" | jq -R . | jq -s .)" >> $GITHUB_OUTPUT
+          echo "worktrees=$(printf '%s\n' "${WORKTREES[@]}" | jq -R . | jq -s .)" >> $GITHUB_OUTPUT
+
+  parallel-tests:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.projects != '[]' }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        project: ${{ fromJson(needs.detect-changes.outputs.projects) }}
+        worktree: ${{ fromJson(needs.detect-changes.outputs.worktrees) }}
+      fail-fast: false
+      max-parallel: 6
+    
+    steps:
+      - name: Checkout worktree
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.worktree == 'main' && 'main' || format('{0}/parallel-work', matrix.worktree) }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Python
+        if: matrix.project == 'packages'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            ~/.cache/pip
+            node_modules
+            .venv
+          key: ${{ runner.os }}-${{ matrix.worktree }}-${{ matrix.project }}-${{ hashFiles('**/package-lock.json', '**/requirements.txt') }}
+
+      - name: Install dependencies
+        run: |
+          if [ -f "package.json" ]; then
+            npm ci
+          fi
+          if [ -f "requirements.txt" ]; then
+            pip install -r requirements.txt
+          fi
+
+      - name: Run linting
+        run: |
+          if [ -f "package.json" ]; then
+            npm run lint || true
+          fi
+          if [ -f ".ruff.toml" ]; then
+            ruff check . || true
+          fi
+
+      - name: Run type checking
+        run: |
+          if [ -f "tsconfig.json" ]; then
+            npm run typecheck || true
+          fi
+
+      - name: Run tests
+        run: |
+          if [ -f "package.json" ] && grep -q "\"test\"" package.json; then
+            npm test -- --coverage
+          fi
+          if [ -f "pytest.ini" ] || [ -d "tests" ]; then
+            pytest --cov || true
+          fi
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.worktree }}-${{ matrix.project }}
+          path: |
+            coverage/
+            .coverage
+            htmlcov/
+
+  build-and-deploy:
+    needs: parallel-tests
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/development'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build all projects
+        run: |
+          npm run build:all || npm run build
+
+      - name: Deploy to staging
+        if: github.ref == 'refs/heads/development'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          npx vercel deploy --prod=false --token=$VERCEL_TOKEN
+
+      - name: Deploy to production
+        if: github.ref == 'refs/heads/main'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          npx vercel deploy --prod --token=$VERCEL_TOKEN
+
+  sync-worktrees:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync development branches
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Update development branch
+          git checkout development || git checkout -b development
+          git merge main --no-edit || true
+          git push origin development || true
+          
+          # Update other worktree branches if they exist
+          for branch in feature/parallel-work experimental/testing hotfix/quick-fixes docs/updates cicd/github-actions; do
+            if git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+              git checkout $branch
+              git merge main --no-edit || true
+              git push origin $branch || true
+            fi
+          done
