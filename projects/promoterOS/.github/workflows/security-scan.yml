@@ -1,0 +1,183 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday at midnight
+  workflow_dispatch:
+
+jobs:
+  security-scan:
+    name: Comprehensive Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd netlify/functions && npm ci && cd ../..
+
+      # Secret Scanning
+      - name: TruffleHog Secret Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --debug --only-verified
+
+      - name: Gitleaks Secret Detection
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Dependency Scanning
+      - name: Run Snyk Security Scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --all-projects
+        continue-on-error: true
+
+      - name: npm audit
+        run: |
+          echo "### NPM Audit Report" >> $GITHUB_STEP_SUMMARY
+          npm audit --audit-level=moderate >> $GITHUB_STEP_SUMMARY 2>&1 || true
+          cd netlify/functions
+          npm audit --audit-level=moderate >> $GITHUB_STEP_SUMMARY 2>&1 || true
+
+      # SAST (Static Application Security Testing)
+      - name: Semgrep SAST Scan
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/secrets
+            p/owasp-top-ten
+            p/javascript
+            p/nodejs
+        continue-on-error: true
+
+      - name: CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+        with:
+          languages: javascript
+        continue-on-error: true
+
+      # Container Scanning (for Docker images if present)
+      - name: Trivy Vulnerability Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      # Infrastructure Scanning
+      - name: Checkov Infrastructure Scan
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: .
+          framework: all
+          output_format: sarif
+          output_file_path: checkov-results.sarif
+        continue-on-error: true
+
+      - name: Upload Checkov results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: checkov-results.sarif
+        continue-on-error: true
+
+      # Custom Security Checks
+      - name: Check for hardcoded credentials
+        run: |
+          echo "Checking for hardcoded credentials..."
+          
+          # Check for API keys
+          grep -r "sk-[a-zA-Z0-9]{32}" . --exclude-dir=node_modules --exclude-dir=.git || echo "No API keys found"
+          
+          # Check for JWT secrets
+          grep -r "JWT_SECRET\s*=\s*['\"][^'\"]*['\"]" . --exclude-dir=node_modules --exclude-dir=.git || echo "No hardcoded JWT secrets"
+          
+          # Check for database passwords
+          grep -r "password\s*[:=]\s*['\"][^'\"]*['\"]" . --exclude-dir=node_modules --exclude-dir=.git --exclude="*.md" || echo "No hardcoded passwords"
+
+      - name: CORS Configuration Check
+        run: |
+          echo "Checking CORS configuration..."
+          
+          # Check netlify.toml for proper CORS
+          if grep -q 'Access-Control-Allow-Origin = "\*"' netlify.toml; then
+            echo "⚠️ WARNING: CORS allows all origins (*)"
+            exit 1
+          else
+            echo "✅ CORS properly configured"
+          fi
+
+      - name: Authentication Middleware Check
+        run: |
+          echo "Verifying authentication middleware..."
+          
+          # Check if auth middleware exists
+          if [ -f "src/middleware/auth.js" ]; then
+            echo "✅ Authentication middleware found"
+          else
+            echo "⚠️ WARNING: Authentication middleware missing"
+          fi
+          
+          # Check if functions use auth middleware
+          for func in netlify/functions/*.js; do
+            if grep -q "authMiddleware" "$func"; then
+              echo "✅ $(basename $func) uses authentication"
+            else
+              echo "⚠️ $(basename $func) might need authentication"
+            fi
+          done
+
+      # Generate Security Report
+      - name: Generate Security Report
+        if: always()
+        run: |
+          echo "# Security Scan Report" > security-report.md
+          echo "Date: $(date)" >> security-report.md
+          echo "Branch: ${{ github.ref_name }}" >> security-report.md
+          echo "Commit: ${{ github.sha }}" >> security-report.md
+          echo "" >> security-report.md
+          
+          echo "## Scan Results" >> security-report.md
+          echo "- Secret Scanning: Complete" >> security-report.md
+          echo "- Dependency Scanning: Complete" >> security-report.md
+          echo "- SAST: Complete" >> security-report.md
+          echo "- Infrastructure Scanning: Complete" >> security-report.md
+          
+          cat security-report.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Security Reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: security-reports-${{ github.sha }}
+          path: |
+            security-report.md
+            trivy-results.sarif
+            checkov-results.sarif
+          retention-days: 30

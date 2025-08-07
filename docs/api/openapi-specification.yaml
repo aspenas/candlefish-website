@@ -1,0 +1,410 @@
+openapi: 3.0.3
+info:
+  title: Candlefish.ai Employee Setup Platform API
+  version: 1.0.0
+  description: |
+    API for managing employee and contractor onboarding, authentication, 
+    and configuration in the Candlefish.ai platform.
+  contact:
+    name: Candlefish.ai DevOps Team
+    email: devops@candlefish.ai
+  x-team-size: 5-20
+  x-deployment-platform: AWS Lambda with API Gateway
+
+servers:
+  - url: https://api.candlefish.ai/v1
+    description: Production API server
+  - url: https://staging-api.candlefish.ai/v1
+    description: Staging API server
+
+components:
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token issued during authentication
+
+  schemas:
+    UserRole:
+      type: string
+      enum: 
+        - employee
+        - contractor
+        - admin
+      description: User role defining access levels
+
+    AuthRequest:
+      type: object
+      required: 
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+      example:
+        email: john.doe@candlefish.ai
+        password: "SecurePassword123!"
+
+    UserProfile:
+      type: object
+      required:
+        - id
+        - email
+        - firstName
+        - lastName
+        - role
+      properties:
+        id:
+          type: string
+          description: Unique user identifier
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      example:
+        id: "usr_123456"
+        email: john.doe@candlefish.ai
+        firstName: John
+        lastName: Doe
+        role: employee
+        createdAt: "2025-08-07T10:30:15Z"
+        updatedAt: "2025-08-07T10:30:15Z"
+
+    ContractorProfile:
+      type: object
+      required:
+        - id
+        - email
+        - firstName
+        - lastName
+        - contractStartDate
+        - contractEndDate
+      properties:
+        id:
+          type: string
+          description: Unique contractor identifier
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        contractStartDate:
+          type: string
+          format: date
+        contractEndDate:
+          type: string
+          format: date
+        assignedProject:
+          type: string
+      example:
+        id: "con_789012"
+        email: jane.smith@contractor.candlefish.ai
+        firstName: Jane
+        lastName: Smith
+        contractStartDate: "2025-09-01"
+        contractEndDate: "2025-12-31"
+        assignedProject: "Employee Setup Platform"
+
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code
+        message:
+          type: string
+          description: Human-readable error description
+      example:
+        code: "UNAUTHORIZED"
+        message: "Invalid credentials or insufficient permissions"
+
+paths:
+  /auth/login:
+    post:
+      summary: Authenticate user and generate JWT
+      description: |
+        Validates user credentials and returns a JWT token for subsequent API requests.
+        Supports both employee and contractor login with role-based access.
+      operationId: userLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '200':
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: JWT authentication token
+                  user:
+                    $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: [] # No authentication required for login
+
+  /users/profile:
+    get:
+      summary: Retrieve current user's profile
+      description: Returns detailed profile information for the authenticated user
+      operationId: getUserProfile
+      security:
+        - jwtAuth: []
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: Unauthorized access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /contractors/list:
+    get:
+      summary: List active contractors
+      description: |
+        Retrieves a list of active contractors. 
+        Only accessible by admin and management roles.
+      operationId: listContractors
+      security:
+        - jwtAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: 
+              - active
+              - expired
+              - upcoming
+          description: Filter contractors by status
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 10
+            maximum: 100
+      responses:
+        '200':
+          description: Successfully retrieved contractors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  contractors:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ContractorProfile'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /secrets/access:
+    post:
+      summary: Request temporary access to AWS Secrets Manager
+      description: |
+        Generates a temporary, role-based access token for retrieving 
+        specific secrets from AWS Secrets Manager. 
+        Strictly controlled based on user role and project access.
+      operationId: requestSecretAccess
+      security:
+        - jwtAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - secretName
+                - duration
+              properties:
+                secretName:
+                  type: string
+                  description: Name of the secret to access
+                duration:
+                  type: integer
+                  description: Temporary access duration in minutes
+                  minimum: 5
+                  maximum: 60
+      responses:
+        '200':
+          description: Temporary secret access granted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tempToken:
+                    type: string
+                  expiresAt:
+                    type: string
+                    format: date-time
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /audit/logs:
+    get:
+      summary: Retrieve system audit logs
+      description: |
+        Retrieves system audit logs with filtering and pagination.
+        Only accessible by admin roles.
+      operationId: getAuditLogs
+      security:
+        - jwtAuth: []
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: eventType
+          in: query
+          schema:
+            type: string
+            enum:
+              - login
+              - logout
+              - profile_update
+              - secret_access
+              - contractor_management
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 500
+      responses:
+        '200':
+          description: Audit logs retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logs:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        eventType:
+                          type: string
+                        timestamp:
+                          type: string
+                          format: date-time
+                        userEmail:
+                          type: string
+                        details:
+                          type: object
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+tags:
+  - name: Authentication
+    description: User login and token management
+  - name: User Management
+    description: User profile and role operations
+  - name: Contractor Management
+    description: Contractor-specific operations
+  - name: Secrets Management
+    description: Secure access to AWS Secrets Manager
+  - name: Audit
+    description: System activity logging and retrieval
+
+x-rate-limits:
+  global:
+    requests-per-minute: 100
+    requests-per-hour: 1000
+  endpoints:
+    /auth/login:
+      requests-per-minute: 10
+      requests-per-hour: 50
+    /secrets/access:
+      requests-per-minute: 5
+      requests-per-hour: 20
+    /audit/logs:
+      requests-per-minute: 2
+      requests-per-hour: 10
+
+externalDocs:
+  description: Candlefish.ai Employee Setup Platform Documentation
+  url: https://docs.candlefish.ai/api

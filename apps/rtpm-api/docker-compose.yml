@@ -1,0 +1,139 @@
+version: '3.8'
+
+services:
+  # PostgreSQL with TimescaleDB
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    environment:
+      POSTGRES_DB: rtpm_db
+      POSTGRES_USER: rtpm
+      POSTGRES_PASSWORD: rtpm_password
+      TIMESCALEDB_TELEMETRY: 'off'
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rtpm -d rtpm_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Redis for caching and Celery broker
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+
+  # RTPM API
+  rtpm-api:
+    build: 
+      context: .
+      target: production
+    environment:
+      DATABASE_URL: postgresql+asyncpg://rtpm:rtpm_password@timescaledb:5432/rtpm_db
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      SECRET_KEY: your-super-secret-key-change-in-production
+      JWT_SECRET_KEY: your-jwt-secret-key-change-in-production
+      ENVIRONMENT: production
+      LOG_LEVEL: INFO
+      CORS_ORIGINS: http://localhost:3000,http://localhost:5173,https://rtpm.candlefish.ai
+    ports:
+      - "8000:8000"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    volumes:
+      - ./logs:/home/rtpm/logs
+
+  # Celery Worker
+  celery-worker:
+    build:
+      context: .
+      target: worker
+    environment:
+      DATABASE_URL: postgresql+asyncpg://rtpm:rtpm_password@timescaledb:5432/rtpm_db
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      SECRET_KEY: your-super-secret-key-change-in-production
+      ENVIRONMENT: production
+      LOG_LEVEL: INFO
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    scale: 2
+    volumes:
+      - ./logs:/home/rtpm/logs
+
+  # Celery Beat Scheduler
+  celery-beat:
+    build:
+      context: .
+      target: scheduler
+    environment:
+      DATABASE_URL: postgresql+asyncpg://rtpm:rtpm_password@timescaledb:5432/rtpm_db
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      SECRET_KEY: your-super-secret-key-change-in-production
+      ENVIRONMENT: production
+      LOG_LEVEL: INFO
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - celery_beat_data:/home/rtpm/celerybeat-schedule
+      - ./logs:/home/rtpm/logs
+
+  # Celery Flower (Task Monitoring)
+  flower:
+    build:
+      context: .
+      target: flower
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    ports:
+      - "5555:5555"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  timescale_data:
+  redis_data:
+  celery_beat_data:
+
+networks:
+  default:
+    name: rtpm-network

@@ -1,0 +1,286 @@
+name: PromoterOS Test and Deploy
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: netlify/functions/package-lock.json
+    
+    - name: Install dependencies
+      run: |
+        cd netlify/functions
+        npm ci
+    
+    - name: Run unit tests
+      run: |
+        cd netlify/functions
+        npm test -- --coverage --watchAll=false
+      env:
+        CI: true
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./netlify/functions/coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+    - name: Archive test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.node-version }}
+        path: |
+          netlify/functions/coverage/
+          netlify/functions/coverage/test-report.html
+          netlify/functions/coverage/junit.xml
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: netlify/functions/package-lock.json
+    
+    - name: Install dependencies
+      run: |
+        cd netlify/functions
+        npm ci
+    
+    - name: Run npm audit
+      run: |
+        cd netlify/functions
+        npm audit --audit-level moderate
+      continue-on-error: true
+    
+    - name: Run security tests
+      run: |
+        cd netlify/functions
+        npm test -- --testNamePattern="Security" --watchAll=false
+      env:
+        CI: true
+
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: netlify/functions/package-lock.json
+    
+    - name: Install dependencies
+      run: |
+        cd netlify/functions
+        npm ci
+    
+    - name: Install Playwright
+      run: |
+        npm install -g @playwright/test
+        playwright install
+    
+    - name: Install Netlify CLI
+      run: npm install -g netlify-cli
+      
+    - name: Start Netlify Dev Server
+      run: |
+        netlify dev --port 8888 &
+        sleep 30 # Wait for server to start
+      env:
+        NODE_ENV: development
+    
+    - name: Run E2E tests
+      run: |
+        playwright test e2e/
+      env:
+        TEST_URL: http://localhost:8888
+    
+    - name: Archive E2E results
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: e2e-results
+        path: |
+          test-results/
+          playwright-report/
+
+  performance:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: netlify/functions/package-lock.json
+    
+    - name: Install dependencies
+      run: |
+        cd netlify/functions
+        npm ci
+    
+    - name: Run performance tests
+      run: |
+        cd netlify/functions
+        npm test -- --testNamePattern="Performance" --watchAll=false --verbose
+      env:
+        CI: true
+        NODE_ENV: test
+
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: netlify/functions/package-lock.json
+    
+    - name: Install dependencies
+      run: |
+        cd netlify/functions
+        npm ci
+    
+    - name: Install ESLint
+      run: |
+        cd netlify/functions
+        npm install eslint --save-dev
+    
+    - name: Run ESLint
+      run: |
+        cd netlify/functions
+        npx eslint . --ext .js --max-warnings 10
+      continue-on-error: true
+
+  deploy:
+    name: Deploy to Netlify
+    needs: [test, security, e2e, performance]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: netlify/functions/package-lock.json
+    
+    - name: Install dependencies
+      run: |
+        cd netlify/functions
+        npm ci --production
+    
+    - name: Deploy to Netlify
+      uses: netlify/actions/deploy@master
+      with:
+        publish-dir: ./
+        production-branch: main
+        production-deploy: true
+      env:
+        NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+
+  lighthouse:
+    name: Lighthouse Performance Audit
+    needs: [deploy]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run Lighthouse CI
+      uses: treosh/lighthouse-ci-action@v9
+      with:
+        urls: |
+          https://promoteros.netlify.app
+        uploadArtifacts: true
+        temporaryPublicStorage: true
+        configPath: './lighthouserc.json'
+
+  notify:
+    name: Notify Results
+    needs: [test, security, e2e, performance, deploy]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Notify Slack
+      uses: 8398a7/action-slack@v3
+      if: always()
+      with:
+        status: ${{ job.status }}
+        custom_payload: |
+          {
+            username: 'PromoterOS CI',
+            icon_emoji: ':rocket:',
+            attachments: [{
+              color: '${{ job.status }}' === 'success' ? 'good' : '${{ job.status }}' === 'failure' ? 'danger' : 'warning',
+              fields: [{
+                title: 'Repository',
+                value: '${{ github.repository }}',
+                short: true
+              }, {
+                title: 'Branch',
+                value: '${{ github.ref_name }}',
+                short: true
+              }, {
+                title: 'Status',
+                value: '${{ job.status }}',
+                short: true
+              }]
+            }]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

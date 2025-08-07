@@ -1,0 +1,1346 @@
+{
+  "timestamp": "2025-08-07T16:48:15.031357",
+  "project_path": "/Users/patricksmith/candlefish-ai",
+  "current_workflows": [
+    {
+      "type": "github_actions",
+      "name": "Claude Batch PR Review",
+      "file": ".github/workflows/claude-batch-review.yml",
+      "triggers": [
+        null
+      ]
+    },
+    {
+      "type": "github_actions",
+      "name": "Claude PR Review Advanced",
+      "file": ".github/workflows/claude-pr-review-advanced.yml",
+      "triggers": [
+        null
+      ]
+    },
+    {
+      "type": "github_actions",
+      "name": "Deploy Production",
+      "file": ".github/workflows/deploy-production.yml",
+      "triggers": [
+        null
+      ]
+    },
+    {
+      "type": "github_actions",
+      "name": "Claude Official Auto Review",
+      "file": ".github/workflows/claude-official-review.yml",
+      "triggers": [
+        null
+      ]
+    },
+    {
+      "type": "github_actions",
+      "name": "FOGG Calendar - Comprehensive Test Suite",
+      "file": ".github/workflows/fogg-calendar-test-suite.yml",
+      "triggers": [
+        null
+      ]
+    },
+    {
+      "type": "github_actions",
+      "name": "RTPM Dashboard Tests",
+      "file": ".github/workflows/rtpm-tests.yml",
+      "triggers": [
+        null
+      ]
+    },
+    {
+      "type": "github_actions",
+      "name": "Claude Auto Review",
+      "file": ".github/workflows/claude-auto-review.yml",
+      "triggers": [
+        null
+      ]
+    },
+    {
+      "type": "github_actions",
+      "name": "Security Deployment Pipeline",
+      "file": ".github/workflows/security-deployment.yml",
+      "triggers": [
+        null
+      ]
+    },
+    {
+      "type": "github_actions",
+      "name": "Claude Agents & Commands Sync",
+      "file": ".github/workflows/claude-agents-sync.yml",
+      "triggers": [
+        null
+      ]
+    },
+    {
+      "type": "github_actions",
+      "name": "Setup Monitoring Dashboard",
+      "file": ".github/workflows/setup-monitoring.yml",
+      "triggers": [
+        null
+      ]
+    },
+    {
+      "type": "github_actions",
+      "name": "Netlify Secure Deployment",
+      "file": ".github/workflows/netlify-secure-deploy.yml",
+      "triggers": [
+        null
+      ]
+    },
+    {
+      "type": "github_actions",
+      "name": "Claude Team Setup",
+      "file": ".github/workflows/claude-team-setup.yml",
+      "triggers": [
+        null
+      ]
+    },
+    {
+      "type": "github_actions",
+      "name": "Zero-Downtime Canary Deployment",
+      "file": ".github/workflows/zero-downtime-deploy.yml",
+      "triggers": [
+        null
+      ]
+    },
+    {
+      "type": "github_actions",
+      "name": "Claude Cost Report",
+      "file": ".github/workflows/claude-cost-report.yml",
+      "triggers": [
+        null
+      ]
+    },
+    {
+      "type": "github_actions",
+      "name": "FOGG Calendar - Coverage Report",
+      "file": ".github/workflows/fogg-calendar-coverage-report.yml",
+      "triggers": [
+        null
+      ]
+    },
+    {
+      "type": "github_actions",
+      "name": "Continuous Vulnerability Scanning",
+      "file": ".github/workflows/vulnerability-scanning.yml",
+      "triggers": [
+        null
+      ]
+    },
+    {
+      "type": "github_actions",
+      "name": "Maintenance Mode Management",
+      "file": ".github/workflows/maintenance-mode.yml",
+      "triggers": [
+        null
+      ]
+    },
+    {
+      "type": "github_actions",
+      "name": "Continuous Secret Scanning",
+      "file": ".github/workflows/secret-scanning.yml",
+      "triggers": [
+        null
+      ]
+    },
+    {
+      "type": "github_actions",
+      "name": "Claude PR Review Enhanced",
+      "file": ".github/workflows/claude-pr-review-enhanced.yml",
+      "triggers": [
+        null
+      ]
+    }
+  ],
+  "manual_processes": [
+    {
+      "type": "shell_script",
+      "file": "rotate-anthropic-key.sh",
+      "purpose": "rotate anthropic key",
+      "automation_potential": "high"
+    },
+    {
+      "type": "shell_script",
+      "file": "deploy.sh",
+      "purpose": "deploy",
+      "automation_potential": "high"
+    },
+    {
+      "type": "shell_script",
+      "file": "rotate-salesforce-credentials.sh",
+      "purpose": "rotate salesforce credentials",
+      "automation_potential": "high"
+    },
+    {
+      "type": "shell_script",
+      "file": "scripts/switch-worktree.sh",
+      "purpose": "switch worktree",
+      "automation_potential": "high"
+    },
+    {
+      "type": "shell_script",
+      "file": "scripts/remove-hardcoded-passwords.sh",
+      "purpose": "remove hardcoded passwords",
+      "automation_potential": "high"
+    },
+    {
+      "type": "shell_script",
+      "file": "scripts/setup-worktrees.sh",
+      "purpose": "setup worktrees",
+      "automation_potential": "high"
+    },
+    {
+      "type": "shell_script",
+      "file": "scripts/clean-git-history.sh",
+      "purpose": "clean git history",
+      "automation_potential": "high"
+    },
+    {
+      "type": "shell_script",
+      "file": "scripts/setup-netlify-deploy-key.sh",
+      "purpose": "setup netlify deploy key",
+      "automation_potential": "high"
+    },
+    {
+      "type": "shell_script",
+      "file": "scripts/worktree-status.sh",
+      "purpose": "worktree status",
+      "automation_potential": "high"
+    },
+    {
+      "type": "shell_script",
+      "file": "scripts/migrate-secrets-to-aws.sh",
+      "purpose": "migrate secrets to aws",
+      "automation_potential": "high"
+    },
+    {
+      "type": "shell_script",
+      "file": "scripts/gpt5.sh",
+      "purpose": "gpt5",
+      "automation_potential": "high"
+    },
+    {
+      "type": "shell_script",
+      "file": "scripts/setup-claude-worktrees.sh",
+      "purpose": "setup claude worktrees",
+      "automation_potential": "high"
+    },
+    {
+      "type": "shell_script",
+      "file": "scripts/validate-openapi.sh",
+      "purpose": "validate openapi",
+      "automation_potential": "high"
+    },
+    {
+      "type": "shell_script",
+      "file": "scripts/setup-claude-org-wide.sh",
+      "purpose": "setup claude org wide",
+      "automation_potential": "high"
+    },
+    {
+      "type": "shell_script",
+      "file": "scripts/deploy-emergency.sh",
+      "purpose": "deploy emergency",
+      "automation_potential": "high"
+    },
+    {
+      "type": "shell_script",
+      "file": "scripts/deploy-production.sh",
+      "purpose": "deploy production",
+      "automation_potential": "high"
+    },
+    {
+      "type": "shell_script",
+      "file": "scripts/validate-deployment-setup.sh",
+      "purpose": "validate deployment setup",
+      "automation_potential": "high"
+    },
+    {
+      "type": "shell_script",
+      "file": "scripts/automated-deployment.sh",
+      "purpose": "automated deployment",
+      "automation_potential": "high"
+    },
+    {
+      "type": "shell_script",
+      "file": "scripts/emergency-security-patches.sh",
+      "purpose": "emergency security patches",
+      "automation_potential": "high"
+    },
+    {
+      "type": "shell_script",
+      "file": "scripts/test-api.sh",
+      "purpose": "test api",
+      "automation_potential": "high"
+    },
+    {
+      "type": "shell_script",
+      "file": "scripts/rollback-deployment.sh",
+      "purpose": "rollback deployment",
+      "automation_potential": "high"
+    },
+    {
+      "type": "shell_script",
+      "file": "scripts/setup-security-scripts.sh",
+      "purpose": "setup security scripts",
+      "automation_potential": "high"
+    },
+    {
+      "type": "shell_script",
+      "file": "scripts/setup-secret-rotation.sh",
+      "purpose": "setup secret rotation",
+      "automation_potential": "high"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/nurture-system/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/apps/website/.netlify/plugins/node_modules/progress/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/apps/website/.netlify/plugins/node_modules/callsite/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/apps/website/.netlify/plugins/node_modules/stack-trace/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/apps/website/.netlify/plugins/node_modules/cache-manager/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/apps/website/.netlify/plugins/node_modules/delayed-stream/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/apps/website/.netlify/plugins/node_modules/isarray/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/apps/website/.netlify/plugins/node_modules/lambda-local/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/apps/website/.netlify/plugins/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/apps/website/.netlify/plugins/node_modules/lmdb/dependencies/lmdb/libraries/liblmdb/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/apps/website/.netlify/plugins/node_modules/lmdb/dependencies/lmdb-data-v1/libraries/liblmdb/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/.netlify/plugins/node_modules/progress/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/.netlify/plugins/node_modules/callsite/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/.netlify/plugins/node_modules/stack-trace/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/.netlify/plugins/node_modules/cache-manager/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/.netlify/plugins/node_modules/delayed-stream/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/.netlify/plugins/node_modules/isarray/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/.netlify/plugins/node_modules/lambda-local/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/.netlify/plugins/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/.netlify/plugins/node_modules/lmdb/dependencies/lmdb/libraries/liblmdb/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/.netlify/plugins/node_modules/lmdb/dependencies/lmdb-data-v1/libraries/liblmdb/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/projects/paintbox/.netlify/plugins/node_modules/progress/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/projects/paintbox/.netlify/plugins/node_modules/callsite/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/projects/paintbox/.netlify/plugins/node_modules/stack-trace/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/projects/paintbox/.netlify/plugins/node_modules/cache-manager/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/projects/paintbox/.netlify/plugins/node_modules/delayed-stream/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/projects/paintbox/.netlify/plugins/node_modules/isarray/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/projects/paintbox/.netlify/plugins/node_modules/lambda-local/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/projects/paintbox/.netlify/plugins/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/projects/paintbox/.netlify/plugins/node_modules/lmdb/dependencies/lmdb/libraries/liblmdb/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "apps/website/projects/paintbox/.netlify/plugins/node_modules/lmdb/dependencies/lmdb-data-v1/libraries/liblmdb/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "documents/node_modules/progress/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend-production/node_modules/bintrees/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend-production/node_modules/winston-cloudwatch/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend-production/node_modules/bcrypt/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend-production/node_modules/stack-trace/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend-production/node_modules/split-ca/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend-production/node_modules/pg-types/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend-production/node_modules/delayed-stream/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend-production/node_modules/delegates/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend-production/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend-production/node_modules/lazystream/node_modules/isarray/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend-production/node_modules/cpu-features/build/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend-production/node_modules/cpu-features/deps/cpu_features/cmake/ci/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend-production/node_modules/proper-lockfile/node_modules/retry/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend-production/node_modules/ssh2/lib/protocol/crypto/build/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend/.netlify/plugins/node_modules/progress/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend/.netlify/plugins/node_modules/callsite/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend/.netlify/plugins/node_modules/stack-trace/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend/.netlify/plugins/node_modules/cache-manager/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend/.netlify/plugins/node_modules/delayed-stream/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend/.netlify/plugins/node_modules/isarray/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend/.netlify/plugins/node_modules/lambda-local/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend/.netlify/plugins/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend/.netlify/plugins/node_modules/lmdb/dependencies/lmdb/libraries/liblmdb/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend/.netlify/plugins/node_modules/lmdb/dependencies/lmdb-data-v1/libraries/liblmdb/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend/node_modules/stack-trace/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend/node_modules/pg-types/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend/node_modules/delayed-stream/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/backend/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/node_modules/finalhandler/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/node_modules/send/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/node_modules/body-parser/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/node_modules/express/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/frontend/.netlify/plugins/node_modules/progress/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/frontend/.netlify/plugins/node_modules/callsite/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/frontend/.netlify/plugins/node_modules/stack-trace/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/frontend/.netlify/plugins/node_modules/cache-manager/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/frontend/.netlify/plugins/node_modules/delayed-stream/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/frontend/.netlify/plugins/node_modules/isarray/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/frontend/.netlify/plugins/node_modules/lambda-local/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/frontend/.netlify/plugins/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/frontend/.netlify/plugins/node_modules/lmdb/dependencies/lmdb/libraries/liblmdb/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/frontend/.netlify/plugins/node_modules/lmdb/dependencies/lmdb-data-v1/libraries/liblmdb/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/frontend/node_modules/backo2/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/serverless-lean/node_modules/progress/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/serverless-lean/node_modules/promise-queue/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/serverless-lean/node_modules/delayed-stream/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "packages/tyler-setup/serverless-lean/node_modules/isarray/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": ".netlify/plugins/node_modules/callsite/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": ".netlify/plugins/node_modules/stack-trace/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": ".netlify/plugins/node_modules/cache-manager/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": ".netlify/plugins/node_modules/delayed-stream/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": ".netlify/plugins/node_modules/isarray/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": ".netlify/plugins/node_modules/lambda-local/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": ".netlify/plugins/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": ".netlify/plugins/node_modules/lmdb/dependencies/lmdb/libraries/liblmdb/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": ".netlify/plugins/node_modules/lmdb/dependencies/lmdb-data-v1/libraries/liblmdb/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "deployment/rtpm-dashboard/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "public/docs/privileged/family/.netlify/plugins/node_modules/progress/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "public/docs/privileged/family/.netlify/plugins/node_modules/callsite/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "public/docs/privileged/family/.netlify/plugins/node_modules/stack-trace/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "public/docs/privileged/family/.netlify/plugins/node_modules/cache-manager/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "public/docs/privileged/family/.netlify/plugins/node_modules/delayed-stream/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "public/docs/privileged/family/.netlify/plugins/node_modules/isarray/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "public/docs/privileged/family/.netlify/plugins/node_modules/lambda-local/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "public/docs/privileged/family/.netlify/plugins/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "public/docs/privileged/family/.netlify/plugins/node_modules/lmdb/dependencies/lmdb/libraries/liblmdb/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "public/docs/privileged/family/.netlify/plugins/node_modules/lmdb/dependencies/lmdb-data-v1/libraries/liblmdb/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/bintrees/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/progress/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/retry/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/brackets2dots/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/bcrypt/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/jake/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/stack-trace/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/pg-types/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/delayed-stream/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/lightstep-tracer/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/delegates/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/filtrex/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/json-stringify-safe/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/archiver-utils/node_modules/isarray/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/connect/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/lazystream/node_modules/isarray/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/jszip/node_modules/isarray/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/@netlify/plugin-lighthouse/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/compression/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/datadog-metrics/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/unzipper/node_modules/isarray/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/artillery-plugin-ensure/node_modules/filtrex/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/lighthouse-logger/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/unix-dgram/build/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/@react-native/dev-middleware/node_modules/send/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/@apollo/server/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/aws-sdk/node_modules/isarray/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/@sentry/profiling-node/build/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/duplexer2/node_modules/isarray/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/.pnpm/progress@2.0.3/node_modules/progress/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/.pnpm/lightstep-tracer@0.31.2/node_modules/lightstep-tracer/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/.pnpm/filtrex@0.5.4/node_modules/filtrex/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/.pnpm/stack-trace@0.0.10/node_modules/stack-trace/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/.pnpm/pg-types@2.2.0/node_modules/pg-types/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/.pnpm/json-stringify-safe@5.0.1/node_modules/json-stringify-safe/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/.pnpm/delayed-stream@1.0.0/node_modules/delayed-stream/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/.pnpm/bintrees@1.0.2/node_modules/bintrees/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/.pnpm/filtrex@2.2.3/node_modules/filtrex/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/.pnpm/unix-dgram@2.0.6/node_modules/unix-dgram/build/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/.pnpm/jake@10.9.4/node_modules/jake/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/.pnpm/retry@0.12.0/node_modules/retry/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/.pnpm/debug@2.6.9/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/.pnpm/batch@0.6.1/node_modules/batch/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/.pnpm/debug@3.1.0/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/.pnpm/isarray@1.0.0/node_modules/isarray/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "node_modules/.pnpm/svgo@1.3.2/node_modules/svgo/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/fogg/calendar/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/fogg/calendar/dashboard/node_modules/jake/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/fogg/calendar/dashboard/node_modules/delayed-stream/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/fogg/calendar/deployment-dashboard/.netlify/plugins/node_modules/progress/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/fogg/calendar/deployment-dashboard/.netlify/plugins/node_modules/callsite/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/fogg/calendar/deployment-dashboard/.netlify/plugins/node_modules/stack-trace/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/fogg/calendar/deployment-dashboard/.netlify/plugins/node_modules/cache-manager/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/fogg/calendar/deployment-dashboard/.netlify/plugins/node_modules/delayed-stream/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/fogg/calendar/deployment-dashboard/.netlify/plugins/node_modules/isarray/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/fogg/calendar/deployment-dashboard/.netlify/plugins/node_modules/lambda-local/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/fogg/calendar/deployment-dashboard/.netlify/plugins/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/fogg/calendar/deployment-dashboard/.netlify/plugins/node_modules/lmdb/dependencies/lmdb/libraries/liblmdb/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/fogg/calendar/deployment-dashboard/.netlify/plugins/node_modules/lmdb/dependencies/lmdb-data-v1/libraries/liblmdb/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/fogg/calendar/deployment-dashboard/node_modules/delayed-stream/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/fogg/calendar/deployment-dashboard/node_modules/finalhandler/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/fogg/calendar/deployment-dashboard/node_modules/send/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/fogg/calendar/deployment-dashboard/node_modules/body-parser/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/fogg/calendar/deployment-dashboard/node_modules/express/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/paintbox/deployment-ready/node_modules/progress/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/paintbox/deployment-ready/node_modules/jake/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/paintbox/deployment-ready/node_modules/stack-trace/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/paintbox/deployment-ready/node_modules/pg-types/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/paintbox/deployment-ready/node_modules/delayed-stream/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/paintbox/deployment-ready/node_modules/isarray/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/promoterOS/.netlify/plugins/node_modules/progress/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/promoterOS/.netlify/plugins/node_modules/callsite/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/promoterOS/.netlify/plugins/node_modules/stack-trace/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/promoterOS/.netlify/plugins/node_modules/cache-manager/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/promoterOS/.netlify/plugins/node_modules/delayed-stream/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/promoterOS/.netlify/plugins/node_modules/isarray/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/promoterOS/.netlify/plugins/node_modules/lambda-local/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/promoterOS/.netlify/plugins/node_modules/debug/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/promoterOS/.netlify/plugins/node_modules/lmdb/dependencies/lmdb/libraries/liblmdb/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/promoterOS/.netlify/plugins/node_modules/lmdb/dependencies/lmdb-data-v1/libraries/liblmdb/Makefile",
+      "automation_potential": "medium"
+    },
+    {
+      "type": "makefile",
+      "file": "projects/promoterOS/netlify/functions/node_modules/delayed-stream/Makefile",
+      "automation_potential": "medium"
+    }
+  ],
+  "build_process": {
+    "has_build_config": true,
+    "build_tools": [
+      "npm/yarn/pnpm",
+      "docker"
+    ],
+    "manual_steps": true,
+    "recommendations": [],
+    "build_command": "pnpm -r --filter ./apps/* run build",
+    "manual_scripts": [
+      "node_modules/react-spring/node_modules/react-native/sdks/hermes-engine/utils/build-apple-framework.sh",
+      "node_modules/react-spring/node_modules/react-native/sdks/hermes-engine/utils/build-hermes-xcode.sh",
+      "node_modules/react-spring/node_modules/react-native/sdks/hermes-engine/utils/build-mac-framework.sh",
+      "node_modules/react-spring/node_modules/react-native/sdks/hermes-engine/utils/build-hermesc-xcode.sh",
+      "node_modules/react-spring/node_modules/react-native/sdks/hermes-engine/utils/build-ios-framework.sh",
+      "node_modules/@sentry/cli/scripts/build-in-docker.sh",
+      "node_modules/.pnpm/react-native@0.80.2_@babel+core@7.28.0_@types+react@18.3.23_react@18.3.1/node_modules/react-native/sdks/hermes-engine/utils/build-apple-framework.sh",
+      "node_modules/.pnpm/react-native@0.80.2_@babel+core@7.28.0_@types+react@18.3.23_react@18.3.1/node_modules/react-native/sdks/hermes-engine/utils/build-hermes-xcode.sh",
+      "node_modules/.pnpm/react-native@0.80.2_@babel+core@7.28.0_@types+react@18.3.23_react@18.3.1/node_modules/react-native/sdks/hermes-engine/utils/build-mac-framework.sh",
+      "node_modules/.pnpm/react-native@0.80.2_@babel+core@7.28.0_@types+react@18.3.23_react@18.3.1/node_modules/react-native/sdks/hermes-engine/utils/build-hermesc-xcode.sh",
+      "node_modules/.pnpm/react-native@0.80.2_@babel+core@7.28.0_@types+react@18.3.23_react@18.3.1/node_modules/react-native/sdks/hermes-engine/utils/build-ios-framework.sh",
+      "node_modules/.pnpm/@sentry+cli@2.50.2/node_modules/@sentry/cli/scripts/build-in-docker.sh",
+      "projects/paintbox/build-minimal.sh",
+      "projects/paintbox/scripts/build-and-push.sh",
+      "projects/paintbox/scripts/build-production.sh",
+      "projects/paintbox/deployment-ready/node_modules/@sentry/cli/scripts/build-in-docker.sh"
+    ]
+  },
+  "test_process": {
+    "has_tests": true,
+    "test_frameworks": [],
+    "automated_tests": true,
+    "coverage_config": false,
+    "test_types": [
+      "__tests__"
+    ],
+    "test_scripts": [
+      "test"
+    ]
+  },
+  "deployment_process": {
+    "has_deployment_config": true,
+    "deployment_tools": [
+      "docker-compose",
+      "netlify"
+    ],
+    "manual_deployment": true,
+    "environments": [],
+    "deployment_scripts": [
+      "deploy.sh",
+      "scripts/deploy-emergency.sh",
+      "scripts/deploy-production.sh",
+      "apps/website/deploy-now.sh",
+      "apps/website/deploy-family-dashboard.sh",
+      "apps/website/deploy.sh",
+      "packages/tyler-setup/frontend/deploy-simple.sh",
+      "packages/tyler-setup/backend/deploy-complete-backend.sh",
+      "packages/tyler-setup/backend/scripts/deploy-to-netlify.sh",
+      "packages/tyler-setup/backend/scripts/deploy.sh",
+      "deployment/production/deploy-production.sh",
+      "claude-resources-repo/scripts/deploy-to-netlify.sh",
+      "projects/promoterOS/deploy-promoteros.sh",
+      "projects/paintbox/deploy-netlify.sh",
+      "projects/paintbox/deploy-cloudflare.sh",
+      "projects/paintbox/deploy-to-render-direct.sh",
+      "projects/fogg/calendar/deployment-dashboard/deploy.sh",
+      "projects/fogg/calendar/scripts/deploy.sh",
+      "projects/paintbox/deployment-ready/deploy-to-production.sh",
+      "projects/paintbox/scripts/deploy-prebuilt.sh",
+      "projects/paintbox/scripts/deploy-aws-test.sh",
+      "projects/paintbox/scripts/deploy-render-comprehensive.sh"
+    ]
+  },
+  "code_quality": {
+    "has_linting": false,
+    "has_formatting": false,
+    "linters": [],
+    "formatters": [],
+    "pre_commit": true
+  },
+  "automation_opportunities": [
+    {
+      "priority": "high",
+      "category": "build",
+      "recommendation": "Automate build process",
+      "description": "Manual build scripts detected. Convert to automated build pipeline.",
+      "tools": [
+        "npm scripts",
+        "Make",
+        "Docker"
+      ],
+      "effort": "low",
+      "impact": "medium"
+    },
+    {
+      "priority": "medium",
+      "category": "testing",
+      "recommendation": "Add test coverage reporting",
+      "description": "No coverage configuration found. Add coverage tracking and reporting.",
+      "tools": [
+        "NYC",
+        "Jest Coverage",
+        "Coverage.py"
+      ],
+      "effort": "low",
+      "impact": "medium"
+    },
+    {
+      "priority": "high",
+      "category": "deployment",
+      "recommendation": "Automate deployment process",
+      "description": "Manual deployment scripts found. Implement automated deployment pipeline.",
+      "tools": [
+        "GitHub Actions",
+        "ArgoCD",
+        "Terraform"
+      ],
+      "effort": "high",
+      "impact": "critical"
+    },
+    {
+      "priority": "high",
+      "category": "security",
+      "recommendation": "Add security scanning",
+      "description": "Implement automated security vulnerability scanning.",
+      "tools": [
+        "Snyk",
+        "Trivy",
+        "OWASP Dependency Check"
+      ],
+      "effort": "medium",
+      "impact": "high"
+    },
+    {
+      "priority": "low",
+      "category": "documentation",
+      "recommendation": "Automate documentation generation",
+      "description": "Generate API docs and architecture diagrams automatically.",
+      "tools": [
+        "TypeDoc",
+        "JSDoc",
+        "Swagger"
+      ],
+      "effort": "medium",
+      "impact": "low"
+    }
+  ],
+  "complexity_score": 9
+}

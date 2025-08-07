@@ -1,0 +1,441 @@
+service: candlefish-employee-setup-lean
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: ${opt:stage, 'prod'}
+  region: ${opt:region, 'us-east-1'}
+  memorySize: 512  # Small memory for cost savings
+  timeout: 30
+  
+  environment:
+    STAGE: ${self:provider.stage}
+    SECRETS_PREFIX: ${self:service}-${self:provider.stage}
+    ENABLE_CONTRACTOR_ACCESS: true
+    MAX_TEAM_SIZE: 20
+    
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - secretsmanager:GetSecretValue
+            - secretsmanager:CreateSecret
+            - secretsmanager:UpdateSecret
+            - secretsmanager:RotateSecret
+            - secretsmanager:ListSecrets
+          Resource: 
+            - arn:aws:secretsmanager:${self:provider.region}:*:secret:${self:service}-${self:provider.stage}/*
+        - Effect: Allow
+          Action:
+            - kms:Decrypt
+            - kms:Encrypt
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - cloudwatch:PutMetricData
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - arn:aws:dynamodb:${self:provider.region}:*:table/${self:service}-${self:provider.stage}-*
+
+functions:
+  # Health check - Always free tier
+  health:
+    handler: src/handlers/health.handler
+    events:
+      - http:
+          path: /health
+          method: get
+          cors: true
+  
+  # Authentication - Called rarely
+  auth:
+    handler: src/handlers/auth.handler
+    events:
+      - http:
+          path: /auth/login
+          method: post
+          cors: true
+      - http:
+          path: /auth/refresh
+          method: post
+          cors: true
+      - http:
+          path: /auth/logout
+          method: post
+          cors: true
+  
+  # Employee/Contractor Management
+  manageUsers:
+    handler: src/handlers/users.handler
+    events:
+      - http:
+          path: /users
+          method: get
+          cors: true
+          authorizer: authVerify
+      - http:
+          path: /users
+          method: post
+          cors: true
+          authorizer: authVerify
+      - http:
+          path: /users/{id}
+          method: get
+          cors: true
+          authorizer: authVerify
+      - http:
+          path: /users/{id}
+          method: put
+          cors: true
+          authorizer: authVerify
+      - http:
+          path: /users/{id}
+          method: delete
+          cors: true
+          authorizer: authVerify
+  
+  # Contractor Temporary Access
+  contractorAccess:
+    handler: src/handlers/contractors.handler
+    events:
+      - http:
+          path: /contractors/invite
+          method: post
+          cors: true
+          authorizer: authVerify
+      - http:
+          path: /contractors/access/{token}
+          method: get
+          cors: true
+      - http:
+          path: /contractors/revoke/{id}
+          method: post
+          cors: true
+          authorizer: authVerify
+  
+  # AWS Secrets Manager Interface
+  secrets:
+    handler: src/handlers/secrets.handler
+    reservedConcurrency: 2  # Limit concurrent executions for cost
+    events:
+      - http:
+          path: /secrets
+          method: get
+          cors: true
+          authorizer: authVerify
+      - http:
+          path: /secrets
+          method: post
+          cors: true
+          authorizer: authVerify
+      - http:
+          path: /secrets/{name}
+          method: get
+          cors: true
+          authorizer: authVerify
+      - http:
+          path: /secrets/{name}
+          method: put
+          cors: true
+          authorizer: authVerify
+      - http:
+          path: /secrets/{name}
+          method: delete
+          cors: true
+          authorizer: authVerify
+  
+  # Secret Rotation - Runs monthly
+  rotateSecrets:
+    handler: src/handlers/rotation.handler
+    events:
+      - schedule:
+          rate: rate(30 days)
+          description: Rotate secrets monthly
+  
+  # Configuration Management
+  config:
+    handler: src/handlers/config.handler
+    events:
+      - http:
+          path: /config
+          method: get
+          cors: true
+          authorizer: authVerify
+      - http:
+          path: /config
+          method: put
+          cors: true
+          authorizer: authVerify
+  
+  # Claude Integration (via stored prompts, no API calls)
+  claudeAssist:
+    handler: src/handlers/claude.handler
+    timeout: 60  # Longer timeout for complex operations
+    events:
+      - http:
+          path: /assist/onboarding
+          method: post
+          cors: true
+          authorizer: authVerify
+      - http:
+          path: /assist/setup
+          method: post
+          cors: true
+          authorizer: authVerify
+  
+  # Audit Logging
+  auditLog:
+    handler: src/handlers/audit.handler
+    events:
+      - http:
+          path: /audit
+          method: get
+          cors: true
+          authorizer: authVerify
+  
+  # Custom Authorizer
+  authVerify:
+    handler: src/handlers/authorizer.handler
+    
+  # Cleanup expired contractor access (daily)
+  cleanupContractors:
+    handler: src/handlers/cleanup.handler
+    events:
+      - schedule:
+          rate: rate(1 day)
+          description: Clean up expired contractor access
+
+resources:
+  Resources:
+    # DynamoDB Tables (Pay-per-request for cost optimization)
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${self:provider.stage}-users
+        BillingMode: PAY_PER_REQUEST  # No monthly minimum
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: email-index
+            KeySchema:
+              - AttributeName: email
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+        SSESpecification:
+          SSEEnabled: true
+    
+    ContractorsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${self:provider.stage}-contractors
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: token
+            AttributeType: S
+          - AttributeName: expiresAt
+            AttributeType: N
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: token-index
+            KeySchema:
+              - AttributeName: token
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+          - IndexName: expiry-index
+            KeySchema:
+              - AttributeName: expiresAt
+                KeyType: HASH
+            Projection:
+              ProjectionType: KEYS_ONLY
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+    
+    RefreshTokensTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${self:provider.stage}-refresh-tokens
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: token
+            AttributeType: S
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: expiresAt
+            AttributeType: N
+        KeySchema:
+          - AttributeName: token
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: userId-index
+            KeySchema:
+              - AttributeName: userId
+                KeyType: HASH
+              - AttributeName: expiresAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+        SSESpecification:
+          SSEEnabled: true
+    
+    AuditTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${self:provider.stage}-audit
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: timestamp
+            AttributeType: N
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: timestamp-index
+            KeySchema:
+              - AttributeName: timestamp
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+          - IndexName: user-index
+            KeySchema:
+              - AttributeName: userId
+                KeyType: HASH
+              - AttributeName: timestamp
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+    
+    ConfigTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${self:provider.stage}-config
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: key
+            AttributeType: S
+        KeySchema:
+          - AttributeName: key
+            KeyType: HASH
+        SSESpecification:
+          SSEEnabled: true
+    
+    # S3 Bucket for static hosting (frontend)
+    WebsiteBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:service}-${self:provider.stage}-web
+        WebsiteConfiguration:
+          IndexDocument: index.html
+          ErrorDocument: error.html
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: false  # Allow bucket policy for static website hosting
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: false  # Allow public access via bucket policy only
+        CorsConfiguration:
+          CorsRules:
+            - AllowedOrigins:
+                - '*'
+              AllowedHeaders:
+                - '*'
+              AllowedMethods:
+                - GET
+                - HEAD
+              MaxAge: 3000
+    
+    WebsiteBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: !Ref WebsiteBucket
+        PolicyDocument:
+          Statement:
+            - Sid: PublicReadGetObject
+              Effect: Allow
+              Principal: '*'
+              Action:
+                - s3:GetObject
+              Resource: !Sub '${WebsiteBucket.Arn}/*'
+    
+
+  Outputs:
+    ApiEndpoint:
+      Description: API Gateway endpoint URL
+      Value:
+        Fn::Join:
+          - ''
+          - - 'https://'
+            - Ref: ApiGatewayRestApi
+            - '.execute-api.'
+            - ${self:provider.region}
+            - '.amazonaws.com/'
+            - ${self:provider.stage}
+      Export:
+        Name: ${self:service}-${self:provider.stage}-api-endpoint
+    
+    WebsiteURL:
+      Description: S3 Website URL
+      Value: !GetAtt WebsiteBucket.WebsiteURL
+      Export:
+        Name: ${self:service}-${self:provider.stage}-website-url
+    
+    S3BucketName:
+      Description: S3 bucket for static website
+      Value: !Ref WebsiteBucket
+      Export:
+        Name: ${self:service}-${self:provider.stage}-bucket
+
+plugins:
+  - serverless-webpack
+  - serverless-offline
+  - serverless-dynamodb-local
+
+custom:
+  webpack:
+    webpackConfig: webpack.config.js
+    includeModules: true
+    packager: npm
+    excludeFiles: '**/*.test.js'
+  
+  serverless-offline:
+    httpPort: 3000
+    lambdaPort: 3001
+  
+  dynamodb:
+    stages:
+      - dev
+    start:
+      port: 8000
+      inMemory: true
+      migrate: true

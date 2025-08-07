@@ -1,0 +1,676 @@
+# System Analyzer GraphQL Schema
+# "Run all open so we can analyze status" - Comprehensive system monitoring and analysis
+
+scalar DateTime
+scalar JSON
+scalar Duration
+
+# Core System Types
+
+enum ServiceStatus {
+  HEALTHY
+  DEGRADED
+  UNHEALTHY
+  UNKNOWN
+  MAINTENANCE
+}
+
+enum ProcessStatus {
+  RUNNING
+  STOPPED
+  CRASHED
+  STARTING
+  STOPPING
+  UNKNOWN
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ResourceType {
+  CPU
+  MEMORY
+  DISK
+  NETWORK
+  DATABASE_CONNECTIONS
+  API_REQUESTS
+  CUSTOM
+}
+
+# Service Discovery and Registration
+
+type Service {
+  id: ID!
+  name: String!
+  displayName: String
+  description: String
+  version: String
+  environment: String!
+  status: ServiceStatus!
+  healthEndpoint: String
+  baseUrl: String
+  tags: [String!]!
+  
+  # Relationships
+  dependencies: [ServiceDependency!]!
+  containers: [Container!]!
+  processes: [Process!]!
+  metrics: [Metric!]!
+  alerts: [Alert!]!
+  
+  # Timestamps
+  discoveredAt: DateTime!
+  lastHealthCheck: DateTime
+  lastStatusChange: DateTime
+  uptime: Duration
+  
+  # Configuration
+  autoDiscovered: Boolean!
+  monitoringEnabled: Boolean!
+  alertingEnabled: Boolean!
+  
+  # Health Check Configuration
+  healthCheckInterval: Duration
+  healthCheckTimeout: Duration
+  healthCheckRetries: Int
+}
+
+type ServiceDependency {
+  id: ID!
+  service: Service!
+  dependsOn: Service!
+  type: DependencyType!
+  critical: Boolean!
+  healthImpact: Float # 0-1 scale
+}
+
+enum DependencyType {
+  DATABASE
+  API
+  MESSAGE_QUEUE
+  CACHE
+  FILE_STORAGE
+  AUTHENTICATION
+  EXTERNAL_SERVICE
+}
+
+# Container and Process Management
+
+type Container {
+  id: ID!
+  name: String!
+  image: String!
+  tag: String
+  status: ProcessStatus!
+  service: Service
+  
+  # Resource Usage
+  cpuUsage: Float
+  memoryUsage: Float
+  memoryLimit: Float
+  networkRx: Float
+  networkTx: Float
+  diskUsage: Float
+  
+  # Configuration
+  environment: [EnvironmentVariable!]!
+  ports: [PortMapping!]!
+  volumes: [VolumeMount!]!
+  
+  # Timestamps
+  createdAt: DateTime!
+  startedAt: DateTime
+  lastRestart: DateTime
+  
+  # Health
+  healthCheck: ContainerHealthCheck
+  restartCount: Int!
+}
+
+type Process {
+  id: ID!
+  pid: Int!
+  name: String!
+  command: String!
+  status: ProcessStatus!
+  service: Service
+  
+  # Resource Usage
+  cpuPercent: Float
+  memoryMb: Float
+  openFiles: Int
+  threads: Int
+  
+  # Process Info
+  user: String
+  startTime: DateTime!
+  parentPid: Int
+  children: [Process!]!
+  
+  # Environment
+  workingDirectory: String
+  environment: [EnvironmentVariable!]!
+}
+
+type EnvironmentVariable {
+  key: String!
+  value: String
+  masked: Boolean!
+}
+
+type PortMapping {
+  containerPort: Int!
+  hostPort: Int
+  protocol: String!
+}
+
+type VolumeMount {
+  source: String!
+  destination: String!
+  readOnly: Boolean!
+}
+
+type ContainerHealthCheck {
+  command: [String!]!
+  interval: Duration!
+  timeout: Duration!
+  retries: Int!
+  startPeriod: Duration
+}
+
+# Metrics and Monitoring
+
+type Metric {
+  id: ID!
+  service: Service!
+  name: String!
+  type: ResourceType!
+  value: Float!
+  unit: String!
+  timestamp: DateTime!
+  labels: JSON
+  
+  # Thresholds for alerting
+  warningThreshold: Float
+  criticalThreshold: Float
+}
+
+type MetricSeries {
+  service: Service!
+  name: String!
+  type: ResourceType!
+  unit: String!
+  dataPoints: [MetricDataPoint!]!
+  aggregation: AggregationType!
+  timeRange: TimeRange!
+}
+
+type MetricDataPoint {
+  timestamp: DateTime!
+  value: Float!
+  labels: JSON
+}
+
+enum AggregationType {
+  AVG
+  MIN
+  MAX
+  SUM
+  COUNT
+  P50
+  P90
+  P95
+  P99
+}
+
+type TimeRange {
+  start: DateTime!
+  end: DateTime!
+  duration: Duration!
+}
+
+# Alerting System
+
+type Alert {
+  id: ID!
+  service: Service!
+  name: String!
+  description: String!
+  severity: AlertSeverity!
+  status: AlertStatus!
+  
+  # Rule Configuration
+  rule: AlertRule!
+  
+  # Lifecycle
+  triggeredAt: DateTime!
+  resolvedAt: DateTime
+  acknowledgedAt: DateTime
+  acknowledgedBy: String
+  
+  # Notifications
+  notifications: [AlertNotification!]!
+  
+  # Related Data
+  triggerMetric: Metric
+  triggerValue: Float
+  thresholdValue: Float
+}
+
+enum AlertStatus {
+  ACTIVE
+  RESOLVED
+  ACKNOWLEDGED
+  SUPPRESSED
+}
+
+type AlertRule {
+  id: ID!
+  name: String!
+  description: String!
+  metric: String!
+  condition: AlertCondition!
+  threshold: Float!
+  duration: Duration! # How long condition must be true
+  severity: AlertSeverity!
+  enabled: Boolean!
+  
+  # Notification settings
+  notificationChannels: [String!]!
+  suppressDuration: Duration
+  
+  # Service targeting
+  services: [Service!]!
+  tags: [String!]!
+}
+
+enum AlertCondition {
+  GREATER_THAN
+  LESS_THAN
+  EQUALS
+  NOT_EQUALS
+  GREATER_THAN_OR_EQUAL
+  LESS_THAN_OR_EQUAL
+  CHANGE_RATE_POSITIVE
+  CHANGE_RATE_NEGATIVE
+}
+
+type AlertNotification {
+  id: ID!
+  alert: Alert!
+  channel: String! # slack, email, webhook, pagerduty, etc.
+  sentAt: DateTime!
+  acknowledged: Boolean!
+  response: String
+}
+
+# Analysis and Insights
+
+type SystemAnalysis {
+  id: ID!
+  timestamp: DateTime!
+  
+  # Overall Health
+  overallHealth: ServiceStatus!
+  healthScore: Float! # 0-100
+  
+  # Service Analysis
+  totalServices: Int!
+  healthyServices: Int!
+  degradedServices: Int!
+  unhealthyServices: Int!
+  
+  # Performance Insights
+  performanceInsights: [PerformanceInsight!]!
+  resourceUtilization: SystemResourceUtilization!
+  
+  # Alerts Summary
+  activeAlerts: Int!
+  alertsByService: [ServiceAlertSummary!]!
+  
+  # Recommendations
+  recommendations: [SystemRecommendation!]!
+  
+  # Trends
+  trendAnalysis: TrendAnalysis!
+}
+
+type PerformanceInsight {
+  type: InsightType!
+  severity: AlertSeverity!
+  title: String!
+  description: String!
+  service: Service
+  metric: String
+  currentValue: Float
+  expectedValue: Float
+  impact: String!
+  recommendation: String!
+}
+
+enum InsightType {
+  PERFORMANCE_DEGRADATION
+  RESOURCE_EXHAUSTION
+  ANOMALY_DETECTION
+  CAPACITY_PLANNING
+  DEPENDENCY_FAILURE
+  ERROR_RATE_SPIKE
+}
+
+type SystemResourceUtilization {
+  cpu: ResourceUtilization!
+  memory: ResourceUtilization!
+  disk: ResourceUtilization!
+  network: ResourceUtilization!
+}
+
+type ResourceUtilization {
+  current: Float!
+  average: Float!
+  peak: Float!
+  percentile95: Float!
+  trend: TrendDirection!
+}
+
+enum TrendDirection {
+  INCREASING
+  DECREASING
+  STABLE
+  VOLATILE
+}
+
+type ServiceAlertSummary {
+  service: Service!
+  activeAlerts: Int!
+  criticalAlerts: Int!
+  lastAlert: DateTime
+}
+
+type SystemRecommendation {
+  id: ID!
+  type: RecommendationType!
+  priority: AlertSeverity!
+  title: String!
+  description: String!
+  service: Service
+  estimatedImpact: String!
+  actionItems: [String!]!
+  automatable: Boolean!
+}
+
+enum RecommendationType {
+  SCALING
+  OPTIMIZATION
+  CONFIGURATION
+  SECURITY
+  MAINTENANCE
+  MONITORING
+}
+
+type TrendAnalysis {
+  timeRange: TimeRange!
+  serviceHealthTrend: TrendDirection!
+  alertFrequencyTrend: TrendDirection!
+  performanceTrend: TrendDirection!
+  availabilityTrend: Float! # Percentage
+  mttrTrend: TrendDirection! # Mean Time To Resolution
+}
+
+# Queries
+
+type Query {
+  # Service Discovery
+  services(
+    status: ServiceStatus
+    environment: String
+    tags: [String!]
+    limit: Int = 50
+    offset: Int = 0
+  ): [Service!]!
+  
+  service(id: ID!): Service
+  serviceByName(name: String!, environment: String): Service
+  
+  # System Analysis
+  systemAnalysis(timeRange: TimeRangeInput): SystemAnalysis!
+  runFullAnalysis: SystemAnalysis!
+  
+  # Metrics
+  metrics(
+    serviceId: ID
+    type: ResourceType
+    timeRange: TimeRangeInput
+    limit: Int = 100
+  ): [Metric!]!
+  
+  metricSeries(
+    serviceId: ID!
+    metricName: String!
+    timeRange: TimeRangeInput!
+    aggregation: AggregationType = AVG
+    granularity: Duration = "1m"
+  ): MetricSeries!
+  
+  # Alerts
+  alerts(
+    serviceId: ID
+    severity: AlertSeverity
+    status: AlertStatus
+    limit: Int = 50
+    offset: Int = 0
+  ): [Alert!]!
+  
+  alert(id: ID!): Alert
+  
+  # Alert Rules
+  alertRules(
+    serviceId: ID
+    enabled: Boolean
+    severity: AlertSeverity
+  ): [AlertRule!]!
+  
+  # Containers and Processes
+  containers(
+    serviceId: ID
+    status: ProcessStatus
+  ): [Container!]!
+  
+  processes(
+    serviceId: ID
+    status: ProcessStatus
+  ): [Process!]!
+  
+  # Health Checks
+  healthCheck(serviceId: ID!): ServiceHealthResult!
+  healthCheckAll: [ServiceHealthResult!]!
+}
+
+# Mutations
+
+type Mutation {
+  # Service Management
+  registerService(input: RegisterServiceInput!): Service!
+  updateService(id: ID!, input: UpdateServiceInput!): Service!
+  removeService(id: ID!): Boolean!
+  
+  # Manual Health Checks
+  triggerHealthCheck(serviceId: ID!): ServiceHealthResult!
+  triggerHealthCheckAll: [ServiceHealthResult!]!
+  
+  # Alert Management
+  acknowledgeAlert(alertId: ID!, userId: String!): Alert!
+  resolveAlert(alertId: ID!, userId: String!): Alert!
+  suppressAlert(alertId: ID!, duration: Duration!): Alert!
+  
+  # Alert Rules
+  createAlertRule(input: CreateAlertRuleInput!): AlertRule!
+  updateAlertRule(id: ID!, input: UpdateAlertRuleInput!): AlertRule!
+  deleteAlertRule(id: ID!): Boolean!
+  
+  # System Actions
+  restartService(serviceId: ID!): ServiceActionResult!
+  restartContainer(containerId: ID!): ContainerActionResult!
+  scaleService(serviceId: ID!, replicas: Int!): ServiceActionResult!
+  
+  # Analysis
+  requestSystemAnalysis: SystemAnalysis!
+}
+
+# Subscriptions
+
+type Subscription {
+  # Real-time Service Updates
+  serviceStatusChanged(serviceId: ID): ServiceStatusUpdate!
+  servicesStatusChanged(serviceIds: [ID!]): ServiceStatusUpdate!
+  
+  # Real-time Metrics
+  metricsUpdated(serviceId: ID!): Metric!
+  systemMetricsUpdated: [Metric!]!
+  
+  # Real-time Alerts
+  alertTriggered(serviceId: ID): Alert!
+  alertResolved(serviceId: ID): Alert!
+  alertsChanged: Alert!
+  
+  # System Analysis Updates
+  systemAnalysisUpdated: SystemAnalysis!
+  
+  # Container/Process Updates
+  containerStatusChanged(serviceId: ID): ContainerStatusUpdate!
+  processStatusChanged(serviceId: ID): ProcessStatusUpdate!
+}
+
+# Input Types
+
+input RegisterServiceInput {
+  name: String!
+  displayName: String
+  description: String
+  version: String
+  environment: String!
+  baseUrl: String
+  healthEndpoint: String
+  tags: [String!]!
+  dependencies: [ServiceDependencyInput!]!
+  monitoringEnabled: Boolean = true
+  alertingEnabled: Boolean = true
+  healthCheckInterval: Duration = "30s"
+  healthCheckTimeout: Duration = "10s"
+  healthCheckRetries: Int = 3
+}
+
+input UpdateServiceInput {
+  displayName: String
+  description: String
+  version: String
+  baseUrl: String
+  healthEndpoint: String
+  tags: [String!]
+  monitoringEnabled: Boolean
+  alertingEnabled: Boolean
+  healthCheckInterval: Duration
+  healthCheckTimeout: Duration
+  healthCheckRetries: Int
+}
+
+input ServiceDependencyInput {
+  dependsOnServiceId: ID!
+  type: DependencyType!
+  critical: Boolean!
+  healthImpact: Float!
+}
+
+input CreateAlertRuleInput {
+  name: String!
+  description: String
+  metric: String!
+  condition: AlertCondition!
+  threshold: Float!
+  duration: Duration!
+  severity: AlertSeverity!
+  serviceIds: [ID!]!
+  tags: [String!]
+  notificationChannels: [String!]!
+  suppressDuration: Duration
+}
+
+input UpdateAlertRuleInput {
+  name: String
+  description: String
+  metric: String
+  condition: AlertCondition
+  threshold: Float
+  duration: Duration
+  severity: AlertSeverity
+  enabled: Boolean
+  serviceIds: [ID!]
+  tags: [String!]
+  notificationChannels: [String!]
+  suppressDuration: Duration
+}
+
+input TimeRangeInput {
+  start: DateTime
+  end: DateTime
+  duration: Duration # Alternative to start/end, e.g., "1h", "24h"
+}
+
+# Response Types
+
+type ServiceHealthResult {
+  service: Service!
+  status: ServiceStatus!
+  responseTime: Duration
+  checks: [HealthCheckResult!]!
+  timestamp: DateTime!
+  error: String
+}
+
+type HealthCheckResult {
+  name: String!
+  status: ServiceStatus!
+  message: String
+  duration: Duration!
+}
+
+type ServiceStatusUpdate {
+  service: Service!
+  previousStatus: ServiceStatus!
+  currentStatus: ServiceStatus!
+  timestamp: DateTime!
+  reason: String
+}
+
+type ContainerStatusUpdate {
+  container: Container!
+  previousStatus: ProcessStatus!
+  currentStatus: ProcessStatus!
+  timestamp: DateTime!
+  reason: String
+}
+
+type ProcessStatusUpdate {
+  process: Process!
+  previousStatus: ProcessStatus!
+  currentStatus: ProcessStatus!
+  timestamp: DateTime!
+  reason: String
+}
+
+type ServiceActionResult {
+  success: Boolean!
+  message: String!
+  service: Service!
+  timestamp: DateTime!
+}
+
+type ContainerActionResult {
+  success: Boolean!
+  message: String!
+  container: Container!
+  timestamp: DateTime!
+}

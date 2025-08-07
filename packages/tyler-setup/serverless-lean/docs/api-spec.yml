@@ -1,0 +1,862 @@
+openapi: 3.0.3
+info:
+  title: Candlefish Employee Setup API
+  description: |
+    Production-ready serverless API for employee onboarding and secrets management.
+    
+    ## Authentication
+    
+    Most endpoints require JWT authentication via the `Authorization` header:
+    ```
+    Authorization: Bearer <jwt_token>
+    ```
+    
+    ## Rate Limits
+    
+    - Authentication endpoints: 5 requests per 15 minutes per IP
+    - General API endpoints: 100 requests per 15 minutes per IP  
+    - Secrets endpoints: 20 requests per 5 minutes per IP
+    
+    ## Error Responses
+    
+    All error responses follow this format:
+    ```json
+    {
+      "success": false,
+      "error": {
+        "code": "ERROR_CODE",
+        "message": "Human readable message",
+        "details": []
+      },
+      "timestamp": "2024-01-01T00:00:00.000Z",
+      "requestId": "uuid"
+    }
+    ```
+  version: 1.0.0
+  contact:
+    name: Candlefish AI Support
+    email: support@candlefish.ai
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://5x6gs2o6b6.execute-api.us-east-1.amazonaws.com/prod
+    description: Production server
+  - url: http://localhost:3000
+    description: Development server
+
+tags:
+  - name: Health
+    description: System health and monitoring
+  - name: Authentication
+    description: User authentication and authorization
+  - name: Users
+    description: User management operations
+  - name: Secrets
+    description: AWS Secrets Manager integration
+  - name: Contractors
+    description: Temporary contractor access management
+  - name: Configuration
+    description: System configuration
+  - name: Audit
+    description: Audit logging and compliance
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Get system health status
+      description: Returns basic health status or detailed system checks
+      parameters:
+        - name: detailed
+          in: query
+          description: Include detailed system checks
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: System is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate user
+      description: Login with email and password to receive JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Account disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many login attempts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh JWT token
+      description: Get new JWT token using refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshTokenResponse'
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout user
+      description: Revoke refresh token and logout
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutResponse'
+
+  /users:
+    get:
+      tags:
+        - Users
+      summary: List users
+      description: Get list of all users (admin/manager only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          description: Number of users to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of users to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersListResponse'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Users
+      summary: Create new user
+      description: Create a new user account (admin only)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{id}:
+    get:
+      tags:
+        - Users
+      summary: Get user by ID
+      description: Get specific user details
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Users
+      summary: Update user
+      description: Update user details
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Users
+      summary: Delete user
+      description: Delete user account (admin only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /secrets:
+    get:
+      tags:
+        - Secrets
+      summary: List secrets
+      description: Get list of secrets from AWS Secrets Manager
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Secrets retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecretsListResponse'
+
+    post:
+      tags:
+        - Secrets
+      summary: Create secret
+      description: Create a new secret in AWS Secrets Manager
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSecretRequest'
+      responses:
+        '201':
+          description: Secret created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateSecretResponse'
+        '409':
+          description: Secret already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /secrets/{name}:
+    get:
+      tags:
+        - Secrets
+      summary: Get secret value
+      description: Retrieve secret value from AWS Secrets Manager
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Secret name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Secret retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecretResponse'
+        '404':
+          description: Secret not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Secrets
+      summary: Update secret value
+      description: Update existing secret in AWS Secrets Manager
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Secret name
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSecretRequest'
+      responses:
+        '200':
+          description: Secret updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateSecretResponse'
+        '404':
+          description: Secret not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Secrets
+      summary: Delete secret
+      description: Delete secret from AWS Secrets Manager (admin only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Secret name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Secret deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteSecretResponse'
+        '403':
+          description: Only administrators can delete secrets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        timestamp:
+          type: string
+          format: date-time
+        version:
+          type: string
+        stage:
+          type: string
+        service:
+          type: string
+        uptime:
+          type: number
+        responseTimeMs:
+          type: number
+        memory:
+          type: object
+        checks:
+          type: object
+          properties:
+            dynamodb:
+              type: string
+            secretsManager:
+              type: string
+            memory:
+              type: object
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: admin@candlefish.ai
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: SecurePassword123!
+
+    LoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        token:
+          type: string
+          description: JWT access token
+        refreshToken:
+          type: string
+          description: Refresh token for getting new access tokens
+        expiresIn:
+          type: number
+          description: Token expiration time in seconds
+          example: 86400
+        user:
+          $ref: '#/components/schemas/User'
+
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+
+    RefreshTokenResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        token:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: number
+
+    LogoutRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          description: Refresh token to revoke
+
+    LogoutResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          type: string
+          enum: [admin, manager, employee]
+        department:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: number
+        lastLogin:
+          type: number
+
+    CreateUserRequest:
+      type: object
+      required:
+        - email
+        - name
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+        role:
+          type: string
+          enum: [admin, manager, employee]
+          default: employee
+        department:
+          type: string
+          maxLength: 50
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        role:
+          type: string
+          enum: [admin, manager, employee]
+        department:
+          type: string
+          maxLength: 50
+        isActive:
+          type: boolean
+
+    UserResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        user:
+          $ref: '#/components/schemas/User'
+
+    UsersListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        pagination:
+          type: object
+          properties:
+            limit:
+              type: number
+            offset:
+              type: number
+            total:
+              type: number
+
+    CreateSecretRequest:
+      type: object
+      required:
+        - name
+        - value
+      properties:
+        name:
+          type: string
+          pattern: '^[a-zA-Z0-9\-_\/]+$'
+          maxLength: 256
+        value:
+          oneOf:
+            - type: string
+              maxLength: 65536
+            - type: object
+        description:
+          type: string
+          maxLength: 500
+        tags:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            required:
+              - Key
+              - Value
+            properties:
+              Key:
+                type: string
+                maxLength: 128
+              Value:
+                type: string
+                maxLength: 256
+
+    UpdateSecretRequest:
+      type: object
+      required:
+        - value
+      properties:
+        value:
+          oneOf:
+            - type: string
+              maxLength: 65536
+            - type: object
+        description:
+          type: string
+          maxLength: 500
+
+    SecretResponse:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          oneOf:
+            - type: string
+            - type: object
+        version:
+          type: string
+        lastModified:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          properties:
+            description:
+              type: string
+            tags:
+              type: array
+
+    CreateSecretResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        name:
+          type: string
+        arn:
+          type: string
+        versionId:
+          type: string
+
+    UpdateSecretResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        name:
+          type: string
+        arn:
+          type: string
+        versionId:
+          type: string
+
+    DeleteSecretResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        name:
+          type: string
+        deletionDate:
+          type: string
+          format: date-time
+        recoveryWindow:
+          type: number
+
+    SecretsListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        secrets:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              description:
+                type: string
+              lastChanged:
+                type: string
+                format: date-time
+              lastAccessed:
+                type: string
+                format: date-time
+              rotationEnabled:
+                type: boolean
+        count:
+          type: number
+
+    DeleteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: BAD_REQUEST
+            message:
+              type: string
+              example: Validation failed
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                  message:
+                    type: string
+        timestamp:
+          type: string
+          format: date-time
+        requestId:
+          type: string

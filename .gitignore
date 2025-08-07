@@ -49,6 +49,40 @@ Thumbs.db
 logs/
 *.log
 
+# Databases and local data artifacts
+data/
+**/data/
+**/pg_wal/
+**/pg_xact/
+**/pg_stat/
+**/pg_stat_tmp/
+**/pg_replslot/
+**/pg_commit_ts/
+**/pg_twophase/
+**/pg_notify/
+**/pg_logical/
+**/pg_multixact/
+
+# Terraform
+**/.terraform/**
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.backup
+**/*.tfstate
+**/*.tfstate.backup
+
+# Python venvs
+**/venv/
+**/.venv/
+
+# Build artifacts
+**/dist/
+**/build/
+**/coverage/
+**/.next/
+**/.netlify/
+**/*.log
+
 # Runtime data
 pids/
 *.pid

@@ -1,0 +1,501 @@
+name: CI/CD Pipeline - Main
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: system-analyzer
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  # Security and vulnerability scanning
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: Run CodeQL Analysis
+      uses: github/codeql-action/init@v3
+      with:
+        languages: 'javascript,python'
+
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v3
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+
+  # Frontend tests and build
+  frontend-test:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run linting
+      run: npm run lint
+
+    - name: Run type checking
+      run: npm run type-check
+
+    - name: Run unit tests
+      run: npm run test:coverage
+
+    - name: Run E2E tests
+      run: npm run test:e2e
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: frontend-test-results
+        path: |
+          coverage/
+          playwright-report/
+          test-results/
+
+    - name: Build Next.js application
+      run: npm run build
+      env:
+        NODE_ENV: production
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-build
+        path: .next/
+
+  # Backend tests and build
+  backend-test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: '1.7.1'
+
+    - name: Install dependencies
+      run: poetry install
+
+    - name: Run linting
+      run: poetry run ruff check .
+
+    - name: Run type checking
+      run: poetry run mypy .
+
+    - name: Run tests
+      run: poetry run pytest --cov=. --cov-report=xml --cov-report=html
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+        REDIS_URL: redis://localhost:6379/0
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: backend-test-results
+        path: |
+          htmlcov/
+          coverage.xml
+
+  # GraphQL tests and build
+  graphql-test:
+    name: GraphQL Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run GraphQL schema validation
+      run: npm run graphql:validate
+
+    - name: Run GraphQL tests
+      run: npm run test:graphql
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+        REDIS_URL: redis://localhost:6379/1
+
+    - name: Build GraphQL server
+      run: npm run build:graphql
+
+  # Mobile app tests
+  mobile-test:
+    name: Mobile Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./mobile
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: mobile/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run linting
+      run: npm run lint
+
+    - name: Run type checking
+      run: npm run type-check
+
+    - name: Run tests
+      run: npm run test:coverage
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: mobile-test-results
+        path: mobile/coverage/
+
+  # Load and performance testing
+  performance-test:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [frontend-test, backend-test, graphql-test]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run load tests
+      run: npm run test:load:report
+
+    - name: Upload performance results
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-test-results
+        path: |
+          artillery-report.html
+          report.json
+
+  # Build and push Docker images
+  build-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    needs: [security-scan, frontend-test, backend-test, graphql-test]
+    strategy:
+      matrix:
+        service: [frontend, backend, graphql]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.service }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: docker/Dockerfile.${{ matrix.service }}
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64,linux/arm64
+
+  # Deploy to staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+    needs: [build-images]
+    environment:
+      name: staging
+      url: https://staging.system-analyzer.example.com
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Configure kubectl
+      run: |
+        aws eks update-kubeconfig --name system-analyzer-staging --region us-east-1
+
+    - name: Deploy to Kubernetes
+      run: |
+        # Update image tags in manifests
+        export IMAGE_TAG="${{ github.sha }}"
+        envsubst < k8s/frontend.yaml | kubectl apply -f -
+        envsubst < k8s/backend.yaml | kubectl apply -f -
+        envsubst < k8s/graphql.yaml | kubectl apply -f -
+
+    - name: Wait for deployment
+      run: |
+        kubectl rollout status deployment/frontend -n system-analyzer --timeout=300s
+        kubectl rollout status deployment/backend-api -n system-analyzer --timeout=300s
+        kubectl rollout status deployment/graphql-server -n system-analyzer --timeout=300s
+
+    - name: Run smoke tests
+      run: |
+        npm run test:smoke -- --env=staging
+
+  # Deploy to production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    needs: [build-images, performance-test]
+    environment:
+      name: production
+      url: https://system-analyzer.example.com
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Configure kubectl
+      run: |
+        aws eks update-kubeconfig --name system-analyzer-production --region us-east-1
+
+    - name: Run database migrations
+      run: |
+        kubectl create job db-migrate-$(date +%s) --from=cronjob/db-migrate -n system-analyzer
+        kubectl wait --for=condition=complete job -l job-name=db-migrate --timeout=300s -n system-analyzer
+
+    - name: Deploy with blue-green strategy
+      run: |
+        # Blue-green deployment script
+        ./scripts/blue-green-deploy.sh production ${{ github.sha }}
+
+    - name: Run production smoke tests
+      run: |
+        npm run test:smoke -- --env=production
+
+    - name: Notify deployment success
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        text: 'Production deployment successful! :rocket:'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+      if: success()
+
+    - name: Notify deployment failure
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        text: 'Production deployment failed! :x:'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+      if: failure()
+
+  # Mobile app build and deploy
+  mobile-build:
+    name: Build Mobile App
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: [mobile-test]
+    defaults:
+      run:
+        working-directory: ./mobile
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: mobile/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Setup Expo CLI
+      run: npm install -g @expo/cli@latest
+
+    - name: Build for Android
+      run: expo build:android --type apk --non-interactive
+      env:
+        EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+    - name: Build for iOS
+      run: expo build:ios --type archive --non-interactive
+      env:
+        EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+    - name: Upload to app stores
+      run: |
+        # Upload to Google Play Store (requires setup)
+        # expo upload:android --key path/to/service-account.json
+        
+        # Upload to App Store (requires setup)  
+        # expo upload:ios --apple-id ${{ secrets.APPLE_ID }} --password ${{ secrets.APPLE_PASSWORD }}
+        
+        echo "Mobile app builds completed"
+
+  # Cleanup old images and resources
+  cleanup:
+    name: Cleanup Resources
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: [deploy-production]
+    steps:
+    - name: Delete old container images
+      uses: actions/delete-package-versions@v4
+      with:
+        package-name: '${{ env.IMAGE_NAME }}/frontend'
+        package-type: 'container'
+        min-versions-to-keep: 10
+
+    - name: Cleanup old artifacts
+      uses: geekyeggo/delete-artifact@v4
+      with:
+        name: |
+          frontend-test-results
+          backend-test-results
+          mobile-test-results
+        failOnError: false

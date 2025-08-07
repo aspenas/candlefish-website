@@ -1,0 +1,68 @@
+{
+  "expo": {
+    "name": "System Analyzer",
+    "slug": "system-analyzer-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1f2937"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.paintbox.systemanalyzer",
+      "buildNumber": "1",
+      "infoPlist": {
+        "UIBackgroundModes": ["background-fetch", "background-processing"],
+        "BGTaskSchedulerPermittedIdentifiers": ["com.paintbox.systemanalyzer.background-sync"]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1f2937"
+      },
+      "package": "com.paintbox.systemanalyzer",
+      "versionCode": 1,
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "WAKE_LOCK"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-notifications",
+      [
+        "expo-background-fetch",
+        {
+          "backgroundFetchEnabled": true
+        }
+      ],
+      [
+        "expo-task-manager",
+        {
+          "backgroundTasks": ["background-sync"]
+        }
+      ]
+    ],
+    "notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#3b82f6"
+    },
+    "extra": {
+      "graphqlUrl": "http://localhost:4000/graphql",
+      "graphqlWsUrl": "ws://localhost:4000/graphql"
+    }
+  }
+}

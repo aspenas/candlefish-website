@@ -1,0 +1,153 @@
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.app-header {
+  background: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  padding: 1.5rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.app-header h1 {
+  color: #333;
+  font-size: 1.8rem;
+}
+
+.connection-status {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.connection-status .connected {
+  color: #4caf50;
+}
+
+.connection-status .disconnected {
+  color: #f44336;
+}
+
+.panel-nav {
+  background: white;
+  padding: 0 2rem;
+  display: flex;
+  gap: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.panel-nav button {
+  background: none;
+  border: none;
+  padding: 1rem 1.5rem;
+  cursor: pointer;
+  font-size: 1rem;
+  color: #666;
+  border-bottom: 3px solid transparent;
+  transition: all 0.3s;
+}
+
+.panel-nav button:hover {
+  color: #333;
+}
+
+.panel-nav button.active {
+  color: #667eea;
+  border-bottom-color: #667eea;
+}
+
+.main-content {
+  flex: 1;
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.metrics-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.metric-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.metric-card h3 {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+.metric-card .metric-value {
+  color: #333;
+  font-size: 2rem;
+  font-weight: bold;
+}
+
+.panel-container {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 2rem;
+}
+
+.recent-metrics {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.recent-metrics h2 {
+  color: #333;
+  margin-bottom: 1rem;
+}
+
+.metrics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.metric-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem;
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+.metric-name {
+  font-weight: 500;
+  color: #333;
+}
+
+.metric-value {
+  color: #667eea;
+  font-weight: bold;
+}
+
+.metric-time {
+  color: #999;
+  font-size: 0.85rem;
+}
+
+.app-footer {
+  background: white;
+  padding: 1rem;
+  text-align: center;
+  color: #666;
+  border-top: 1px solid #e0e0e0;
+}

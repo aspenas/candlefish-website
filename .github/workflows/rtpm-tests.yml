@@ -1,0 +1,530 @@
+name: RTPM Dashboard Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'apps/rtpm-api/**'
+      - 'deployment/rtpm-dashboard/**'
+      - '.github/workflows/rtpm-tests.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'apps/rtpm-api/**'
+      - 'deployment/rtpm-dashboard/**'
+  workflow_dispatch: # Allow manual triggering
+
+env:
+  PYTHON_VERSION: '3.12'
+  NODE_VERSION: '18'
+  COVERAGE_THRESHOLD: 80
+
+jobs:
+  # Backend Unit Tests
+  backend-tests:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: timescale/timescaledb:latest-pg14
+        env:
+          POSTGRES_DB: rtmp_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Cache Python dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install Python dependencies
+      working-directory: ./apps/rtpm-api
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest-cov pytest-asyncio pytest-mock
+
+    - name: Wait for services
+      run: |
+        sleep 10
+        # Test database connection
+        pg_isready -h localhost -p 5432 -U test_user
+        # Test Redis connection
+        redis-cli -h localhost -p 6379 ping
+
+    - name: Run backend tests with coverage
+      working-directory: ./apps/rtpm-api
+      env:
+        DATABASE_URL: postgresql://test_user:test_pass@localhost:5432/rtmp_test
+        REDIS_URL: redis://localhost:6379
+        ENVIRONMENT: test
+      run: |
+        pytest tests/ \
+          --cov=app \
+          --cov-report=xml \
+          --cov-report=html \
+          --cov-report=term-missing \
+          --cov-fail-under=${{ env.COVERAGE_THRESHOLD }} \
+          --junit-xml=junit.xml \
+          -v
+
+    # Codecov disabled until test depth improved
+
+    - name: Upload backend test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: backend-test-results
+        path: |
+          apps/rtpm-api/junit.xml
+          apps/rtpm-api/htmlcov/
+          apps/rtpm-api/coverage.xml
+
+  # Frontend Unit Tests
+  frontend-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: deployment/rtpm-dashboard/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./deployment/rtpm-dashboard
+      run: npm ci
+
+    - name: Run frontend linting
+      working-directory: ./deployment/rtpm-dashboard
+      run: npm run lint
+
+    - name: Run frontend tests with coverage
+      working-directory: ./deployment/rtpm-dashboard
+      run: |
+        npm test -- \
+          --coverage \
+          --coverageReporters=lcov,text \
+          --watchAll=false \
+          --ci
+
+    # Codecov disabled until test depth improved
+
+    - name: Upload frontend test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: frontend-test-results
+        path: |
+          deployment/rtpm-dashboard/coverage/
+
+  # Integration Tests
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: [backend-tests]
+    
+    services:
+      postgres:
+        image: timescale/timescaledb:latest-pg14
+        env:
+          POSTGRES_DB: rtmp_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install Python dependencies
+      working-directory: ./apps/rtpm-api
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio pytest-mock
+
+    - name: Run integration tests
+      working-directory: ./apps/rtpm-api
+      env:
+        DATABASE_URL: postgresql://test_user:test_pass@localhost:5432/rtmp_test
+        REDIS_URL: redis://localhost:6379
+        ENVIRONMENT: test
+      run: |
+        pytest tests/test_integration.py \
+          --junit-xml=integration-junit.xml \
+          -v
+
+    - name: Upload integration test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: integration-test-results
+        path: apps/rtpm-api/integration-junit.xml
+
+  # E2E Tests
+  e2e-tests:
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests]
+    
+    services:
+      postgres:
+        image: timescale/timescaledb:latest-pg14
+        env:
+          POSTGRES_DB: rtmp_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: deployment/rtmp-dashboard/package-lock.json
+
+    - name: Install Python dependencies
+      working-directory: ./apps/rtpm-api
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Install Node dependencies
+      working-directory: ./deployment/rtpm-dashboard
+      run: npm ci
+
+    - name: Install Playwright browsers
+      working-directory: ./deployment/rtpm-dashboard/e2e
+      run: |
+        npm ci
+        npx playwright install --with-deps
+
+    - name: Start backend server
+      working-directory: ./apps/rtpm-api
+      env:
+        DATABASE_URL: postgresql://test_user:test_pass@localhost:5432/rtmp_test
+        REDIS_URL: redis://localhost:6379
+        ENVIRONMENT: test
+        PORT: 8000
+      run: |
+        uvicorn src.main:app --host 0.0.0.0 --port 8000 &
+        sleep 10
+        # Verify backend is running
+        curl http://localhost:8000/health
+
+    - name: Start frontend server
+      working-directory: ./deployment/rtpm-dashboard
+      env:
+        VITE_API_URL: http://localhost:8000
+      run: |
+        npm run dev &
+        sleep 15
+        # Verify frontend is running
+        curl http://localhost:3000
+
+    - name: Run E2E tests
+      working-directory: ./deployment/rtpm-dashboard/e2e
+      env:
+        BASE_URL: http://localhost:3000
+        API_URL: http://localhost:8000
+      run: |
+        npx playwright test \
+          --reporter=html,junit \
+          --output-dir=test-results
+
+    - name: Upload E2E test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: e2e-test-results
+        path: |
+          deployment/rtpm-dashboard/e2e/test-results/
+          deployment/rtpm-dashboard/e2e/playwright-report/
+
+    - name: Upload E2E test videos
+      uses: actions/upload-artifact@v3
+      if: failure()
+      with:
+        name: e2e-videos
+        path: deployment/rtpm-dashboard/e2e/test-results/
+
+  # Performance Tests (optional, runs on schedule)
+  performance-tests:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: [backend-tests]
+    
+    services:
+      postgres:
+        image: timescale/timescaledb:latest-pg14
+        env:
+          POSTGRES_DB: rtmp_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      working-directory: ./apps/rtpm-api
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install locust
+
+    - name: Start backend server
+      working-directory: ./apps/rtpm-api
+      env:
+        DATABASE_URL: postgresql://test_user:test_pass@localhost:5432/rtmp_test
+        REDIS_URL: redis://localhost:6379
+        ENVIRONMENT: test
+        PORT: 8000
+      run: |
+        uvicorn src.main:app --host 0.0.0.0 --port 8000 &
+        sleep 10
+
+    - name: Run performance tests
+      working-directory: ./apps/rtmp-api
+      run: |
+        locust -f tests/performance/locustfile.py \
+          --host=http://localhost:8000 \
+          --users 50 \
+          --spawn-rate 5 \
+          --run-time 60s \
+          --html performance_report.html \
+          --csv performance_results \
+          --headless
+
+    - name: Upload performance results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: performance-test-results
+        path: |
+          apps/rtmp-api/performance_report.html
+          apps/rtmp-api/performance_results_*.csv
+
+  # Test Summary
+  test-summary:
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests, integration-tests, e2e-tests]
+    if: always()
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download all test artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Generate test summary
+      run: |
+        echo "# 🧪 RTMP Dashboard Test Results Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Job status checks
+        if [ "${{ needs.backend-tests.result }}" == "success" ]; then
+          echo "✅ Backend Unit Tests: **PASSED**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Backend Unit Tests: **FAILED**" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ needs.frontend-tests.result }}" == "success" ]; then
+          echo "✅ Frontend Unit Tests: **PASSED**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Frontend Unit Tests: **FAILED**" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ needs.integration-tests.result }}" == "success" ]; then
+          echo "✅ Integration Tests: **PASSED**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Integration Tests: **FAILED**" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ needs.e2e-tests.result }}" == "success" ]; then
+          echo "✅ E2E Tests: **PASSED**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ E2E Tests: **FAILED**" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 📊 Coverage Reports" >> $GITHUB_STEP_SUMMARY
+        echo "- Backend coverage reports available in artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "- Frontend coverage reports available in artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 🚀 Next Steps" >> $GITHUB_STEP_SUMMARY
+        echo "1. Review failed tests if any" >> $GITHUB_STEP_SUMMARY
+        echo "2. Check coverage reports" >> $GITHUB_STEP_SUMMARY
+        echo "3. Address any issues found" >> $GITHUB_STEP_SUMMARY
+
+    - name: Comment PR with test results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+          
+          const botComment = comments.find(comment => 
+            comment.user.type === 'Bot' && comment.body.includes('Test Results Summary')
+          );
+          
+          const backendStatus = '${{ needs.backend-tests.result }}' === 'success' ? '✅ PASSED' : '❌ FAILED';
+          const frontendStatus = '${{ needs.frontend-tests.result }}' === 'success' ? '✅ PASSED' : '❌ FAILED';
+          const integrationStatus = '${{ needs.integration-tests.result }}' === 'success' ? '✅ PASSED' : '❌ FAILED';
+          const e2eStatus = '${{ needs.e2e-tests.result }}' === 'success' ? '✅ PASSED' : '❌ FAILED';
+          
+          const body = `## 🧪 Test Results Summary
+          
+          | Test Suite | Status |
+          |------------|--------|
+          | Backend Unit Tests | ${backendStatus} |
+          | Frontend Unit Tests | ${frontendStatus} |
+          | Integration Tests | ${integrationStatus} |
+          | E2E Tests | ${e2eStatus} |
+          
+          **Coverage Reports**: Available in workflow artifacts
+          
+          <details>
+          <summary>📋 View Details</summary>
+          
+          ### Test Configuration
+          - Python Version: ${{ env.PYTHON_VERSION }}
+          - Node Version: ${{ env.NODE_VERSION }}
+          - Coverage Threshold: ${{ env.COVERAGE_THRESHOLD }}%
+          
+          ### Next Steps
+          - Review test artifacts for detailed results
+          - Check coverage reports for areas needing improvement
+          - Address any failing tests
+          
+          </details>
+          
+          ---
+          *This comment was automatically generated by the RTPM Dashboard test workflow.*`;
+          
+          if (botComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: body
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
+          }
+
+# Schedule performance tests (weekly)
+# Uncomment to enable scheduled performance testing
+# on:
+#   schedule:
+#     - cron: '0 2 * * 0' # Every Sunday at 2 AM UTC

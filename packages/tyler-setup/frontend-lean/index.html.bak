@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Candlefish Employee Setup</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+  <div class="min-h-screen">
+    <nav class="bg-white shadow">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+          <div class="flex items-center">
+            <h1 class="text-xl font-semibold">Candlefish Employee Setup</h1>
+          </div>
+          <div class="flex items-center space-x-4">
+            <span class="text-sm text-gray-500">Team Size: 5-20</span>
+          </div>
+        </div>
+      </div>
+    </nav>
+    
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <div class="px-4 py-6 sm:px-0">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          
+          <!-- Secrets Management -->
+          <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+              <h3 class="text-lg font-medium text-gray-900">Secrets Management</h3>
+              <p class="mt-1 text-sm text-gray-500">Manage AWS Secrets securely</p>
+              <button onclick="loadSecrets()" class="mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                View Secrets
+              </button>
+            </div>
+          </div>
+          
+          <!-- Contractor Access -->
+          <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+              <h3 class="text-lg font-medium text-gray-900">Contractor Access</h3>
+              <p class="mt-1 text-sm text-gray-500">Manage temporary access</p>
+              <button onclick="manageContractors()" class="mt-3 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                Manage Access
+              </button>
+            </div>
+          </div>
+          
+          <!-- Claude Assistant -->
+          <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+              <h3 class="text-lg font-medium text-gray-900">Claude Assistant</h3>
+              <p class="mt-1 text-sm text-gray-500">Copy prompts for Claude.ai</p>
+              <button onclick="showPrompts()" class="mt-3 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
+                Get Prompts
+              </button>
+            </div>
+          </div>
+          
+        </div>
+        
+        <!-- Dynamic Content Area -->
+        <div id="content" class="mt-8"></div>
+      </div>
+    </main>
+  </div>
+  
+  <script>
+    const API_URL = 'API_GATEWAY_URL'; // Will be replaced during deployment
+    
+    async function loadSecrets() {
+      const content = document.getElementById('content');
+      content.innerHTML = '<p>Loading secrets...</p>';
+      // Implement API call
+    }
+    
+    function manageContractors() {
+      const content = document.getElementById('content');
+      content.innerHTML = `
+        <div class="bg-white shadow rounded-lg p-6">
+          <h2 class="text-xl font-bold mb-4">Contractor Management</h2>
+          <form onsubmit="inviteContractor(event)">
+            <input type="email" placeholder="Contractor Email" class="border rounded px-3 py-2 w-full mb-2" required>
+            <input type="text" placeholder="Name" class="border rounded px-3 py-2 w-full mb-2" required>
+            <input type="number" placeholder="Access Days" value="7" class="border rounded px-3 py-2 w-full mb-2">
+            <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded">Send Invitation</button>
+          </form>
+        </div>
+      `;
+    }
+    
+    function showPrompts() {
+      const content = document.getElementById('content');
+      content.innerHTML = `
+        <div class="bg-white shadow rounded-lg p-6">
+          <h2 class="text-xl font-bold mb-4">Claude Prompts</h2>
+          <p class="text-sm text-gray-600 mb-4">Copy these prompts to Claude.ai ($200/mo subscription)</p>
+          <div class="space-y-4">
+            <div>
+              <h3 class="font-semibold">Employee Onboarding</h3>
+              <textarea class="w-full border rounded p-2 h-32" readonly>Copy optimized onboarding prompt here...</textarea>
+              <button onclick="copyToClipboard(this)" class="mt-2 text-blue-600 hover:underline">Copy to Clipboard</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    function copyToClipboard(button) {
+      const textarea = button.previousElementSibling;
+      textarea.select();
+      document.execCommand('copy');
+      button.textContent = 'Copied!';
+      setTimeout(() => button.textContent = 'Copy to Clipboard', 2000);
+    }
+    
+    async function inviteContractor(event) {
+      event.preventDefault();
+      // Implement contractor invitation
+    }
+  </script>
+</body>
+</html>

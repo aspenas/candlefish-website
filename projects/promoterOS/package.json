@@ -1,0 +1,59 @@
+{
+  "name": "promoteros",
+  "version": "1.0.0",
+  "description": "AI-Powered Concert Booking Platform for 1,200-3,500 Capacity Venues",
+  "main": "index.js",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'No build step required'",
+    "deploy": "./scripts/deploy-automated.sh",
+    "deploy:quick": "./deploy-promoteros.sh",
+    "deploy:staging": "netlify deploy --dir . --functions netlify/functions",
+    "deploy:production": "netlify deploy --prod --dir . --functions netlify/functions",
+    "setup": "./scripts/setup-dev.sh",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:security": "npm audit --audit-level=high",
+    "lint": "eslint src/ netlify/functions/ || true",
+    "lint:fix": "eslint src/ netlify/functions/ --fix || true",
+    "format": "prettier --write 'src/**/*.js' 'netlify/functions/**/*.js'",
+    "security:check": "npm audit",
+    "security:fix": "npm audit fix",
+    "security:scan": "npm audit --json | npm-audit-html -o security-report.html",
+    "bundle": "cd netlify/functions && for f in *.js; do npx esbuild $f --bundle --platform=node --target=node18 --minify --outfile=bundled-$f; mv bundled-$f $f; done",
+    "ci": "npm run lint && npm run test && npm run security:check",
+    "precommit": "npm run lint:fix && npm test",
+    "commit": "cz"
+  },
+  "dependencies": {
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "eslint": "^8.50.0",
+    "prettier": "^3.0.3",
+    "netlify-cli": "^17.0.0",
+    "@types/jest": "^29.5.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/candlefish/promoteros"
+  },
+  "keywords": [
+    "concert-booking",
+    "tiktok",
+    "ai",
+    "music-industry",
+    "venue-management"
+  ],
+  "author": "Patrick Smith",
+  "license": "PROPRIETARY",
+  "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

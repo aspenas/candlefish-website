@@ -1,0 +1,407 @@
+name: Mobile App Deployment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/mobile-deploy.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'mobile/**'
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to build for'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+        - android
+        - ios
+        - both
+      environment:
+        description: 'Build environment'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+        - preview
+        - production
+
+env:
+  NODE_VERSION: '18'
+  EXPO_CLI_VERSION: 'latest'
+
+jobs:
+  # Mobile app testing
+  mobile-test:
+    name: Mobile Tests and Validation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./mobile
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: mobile/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run ESLint
+      run: npm run lint
+
+    - name: Run TypeScript type check
+      run: npm run type-check
+
+    - name: Run unit tests
+      run: npm run test:coverage
+
+    - name: Validate Expo configuration
+      run: npx expo doctor
+
+    - name: Upload test coverage
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./mobile/coverage/lcov.info
+        flags: mobile
+        name: mobile-coverage
+
+  # EAS Build for Android
+  build-android:
+    name: Build Android App
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.event.inputs.platform == 'android' || github.event.inputs.platform == 'both'
+    needs: mobile-test
+    defaults:
+      run:
+        working-directory: ./mobile
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: mobile/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Setup Expo CLI
+      run: npm install -g @expo/cli@${{ env.EXPO_CLI_VERSION }}
+
+    - name: Setup EAS CLI
+      run: npm install -g eas-cli@latest
+
+    - name: Configure EAS credentials
+      run: |
+        echo ${{ secrets.EXPO_TOKEN }} | eas login --non-interactive
+
+    - name: Configure app version
+      run: |
+        # Update version in app.json based on git commit
+        export VERSION=$(echo ${{ github.sha }} | cut -c1-7)
+        export BUILD_NUMBER=${{ github.run_number }}
+        
+        # Use jq to update app.json
+        jq --arg version "1.0.$BUILD_NUMBER" --arg buildNumber "$BUILD_NUMBER" \
+           '.expo.version = $version | .expo.android.versionCode = ($buildNumber | tonumber)' \
+           app.json > app.json.tmp && mv app.json.tmp app.json
+
+    - name: Build Android APK (Preview)
+      if: github.event.inputs.environment == 'preview' || github.event_name != 'workflow_dispatch'
+      run: |
+        eas build --platform android --profile preview --non-interactive --wait
+
+    - name: Build Android AAB (Production)
+      if: github.event.inputs.environment == 'production'
+      run: |
+        eas build --platform android --profile production --non-interactive --wait
+
+    - name: Download build artifact
+      run: |
+        # Get the latest build URL and download it
+        BUILD_ID=$(eas build:list --platform android --limit 1 --json | jq -r '.[0].id')
+        BUILD_URL=$(eas build:view $BUILD_ID --json | jq -r '.artifacts.buildUrl')
+        
+        if [ "$BUILD_URL" != "null" ]; then
+          curl -o android-build.apk -L "$BUILD_URL"
+        fi
+
+    - name: Upload Android build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-build
+        path: mobile/android-build.apk
+        retention-days: 30
+
+  # EAS Build for iOS
+  build-ios:
+    name: Build iOS App
+    runs-on: macos-latest
+    if: github.ref == 'refs/heads/main' || github.event.inputs.platform == 'ios' || github.event.inputs.platform == 'both'
+    needs: mobile-test
+    defaults:
+      run:
+        working-directory: ./mobile
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: mobile/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Setup Expo CLI
+      run: npm install -g @expo/cli@${{ env.EXPO_CLI_VERSION }}
+
+    - name: Setup EAS CLI
+      run: npm install -g eas-cli@latest
+
+    - name: Configure EAS credentials
+      run: |
+        echo ${{ secrets.EXPO_TOKEN }} | eas login --non-interactive
+
+    - name: Configure app version
+      run: |
+        # Update version in app.json based on git commit
+        export VERSION=$(echo ${{ github.sha }} | cut -c1-7)
+        export BUILD_NUMBER=${{ github.run_number }}
+        
+        # Use jq to update app.json (install jq on macOS)
+        brew install jq
+        jq --arg version "1.0.$BUILD_NUMBER" --arg buildNumber "$BUILD_NUMBER" \
+           '.expo.version = $version | .expo.ios.buildNumber = $buildNumber' \
+           app.json > app.json.tmp && mv app.json.tmp app.json
+
+    - name: Build iOS IPA (Preview)
+      if: github.event.inputs.environment == 'preview' || github.event_name != 'workflow_dispatch'
+      run: |
+        eas build --platform ios --profile preview --non-interactive --wait
+
+    - name: Build iOS IPA (Production)
+      if: github.event.inputs.environment == 'production'
+      run: |
+        eas build --platform ios --profile production --non-interactive --wait
+
+    - name: Download build artifact
+      run: |
+        # Get the latest build URL and download it
+        BUILD_ID=$(eas build:list --platform ios --limit 1 --json | jq -r '.[0].id')
+        BUILD_URL=$(eas build:view $BUILD_ID --json | jq -r '.artifacts.buildUrl')
+        
+        if [ "$BUILD_URL" != "null" ]; then
+          curl -o ios-build.ipa -L "$BUILD_URL"
+        fi
+
+    - name: Upload iOS build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ios-build
+        path: mobile/ios-build.ipa
+        retention-days: 30
+
+  # Deploy to App Stores
+  deploy-android:
+    name: Deploy to Google Play Store
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event.inputs.environment == 'production'
+    needs: build-android
+    environment:
+      name: google-play-store
+    defaults:
+      run:
+        working-directory: ./mobile
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup EAS CLI
+      run: npm install -g eas-cli@latest
+
+    - name: Configure EAS credentials
+      run: |
+        echo ${{ secrets.EXPO_TOKEN }} | eas login --non-interactive
+
+    - name: Submit to Google Play Store (Internal Testing)
+      run: |
+        eas submit --platform android --track internal --non-interactive
+      env:
+        GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
+
+    - name: Promote to Production (Manual approval required)
+      if: github.event.inputs.environment == 'production'
+      run: |
+        # This would typically be done through Google Play Console
+        echo "Manual promotion to production required in Google Play Console"
+
+  deploy-ios:
+    name: Deploy to Apple App Store
+    runs-on: macos-latest
+    if: github.ref == 'refs/heads/main' && github.event.inputs.environment == 'production'
+    needs: build-ios
+    environment:
+      name: apple-app-store
+    defaults:
+      run:
+        working-directory: ./mobile
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup EAS CLI
+      run: npm install -g eas-cli@latest
+
+    - name: Configure EAS credentials
+      run: |
+        echo ${{ secrets.EXPO_TOKEN }} | eas login --non-interactive
+
+    - name: Submit to Apple App Store Connect
+      run: |
+        eas submit --platform ios --non-interactive
+      env:
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+
+  # Update version and create release
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event.inputs.environment == 'production'
+    needs: [build-android, build-ios]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download Android build
+      uses: actions/download-artifact@v4
+      with:
+        name: android-build
+        path: ./mobile-builds/
+
+    - name: Download iOS build
+      uses: actions/download-artifact@v4
+      with:
+        name: ios-build
+        path: ./mobile-builds/
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: mobile-v1.0.${{ github.run_number }}
+        name: Mobile Release v1.0.${{ github.run_number }}
+        body: |
+          ## System Analyzer Mobile App Release
+          
+          **Build**: ${{ github.run_number }}
+          **Commit**: ${{ github.sha }}
+          **Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          
+          ### Changes
+          - Automated build from latest main branch
+          - Contains latest features and bug fixes
+          
+          ### Files
+          - `android-build.apk` - Android APK for testing
+          - `ios-build.ipa` - iOS IPA for testing
+          
+          ### Installation
+          1. Download the appropriate file for your platform
+          2. Install using ADB (Android) or Xcode/TestFlight (iOS)
+          3. Ensure you have the latest backend services running
+        files: |
+          ./mobile-builds/android-build.apk
+          ./mobile-builds/ios-build.ipa
+        draft: false
+        prerelease: ${{ github.event.inputs.environment != 'production' }}
+
+  # Mobile app testing on device farms
+  device-testing:
+    name: Device Farm Testing
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: [build-android, build-ios]
+    strategy:
+      matrix:
+        platform: [android, ios]
+    steps:
+    - name: Download mobile build
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ matrix.platform }}-build
+        path: ./mobile-build/
+
+    - name: Run tests on AWS Device Farm
+      run: |
+        # This would integrate with AWS Device Farm or similar service
+        echo "Running automated tests on ${{ matrix.platform }} devices"
+        echo "Test results would be uploaded to artifact storage"
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      with:
+        name: device-farm-results-${{ matrix.platform }}
+        path: ./test-results/
+
+  # Notifications and reporting
+  notify-deployment:
+    name: Deployment Notifications
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [deploy-android, deploy-ios]
+    steps:
+    - name: Notify Slack on Success
+      if: success()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        text: |
+          🚀 Mobile app deployment successful!
+          
+          **Version**: 1.0.${{ github.run_number }}
+          **Platforms**: Android & iOS
+          **Environment**: ${{ github.event.inputs.environment || 'preview' }}
+        webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    - name: Notify Slack on Failure
+      if: failure()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        text: |
+          ❌ Mobile app deployment failed!
+          
+          **Version**: 1.0.${{ github.run_number }}
+          **Check logs**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    - name: Update deployment status
+      run: |
+        # Update deployment tracking system
+        curl -X POST "${{ secrets.DEPLOYMENT_WEBHOOK }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "app": "system-analyzer-mobile",
+            "version": "1.0.${{ github.run_number }}",
+            "status": "${{ job.status }}",
+            "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",
+            "platforms": ["android", "ios"],
+            "environment": "${{ github.event.inputs.environment || 'preview' }}"
+          }'

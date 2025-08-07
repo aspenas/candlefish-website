@@ -21,7 +21,13 @@ export default {
           700: '#AAAAAA',
           800: '#CACACA',
           900: '#EAEAEA',
-        }
+        },
+        background: 'var(--bg-primary)',
+        foreground: 'var(--text-primary)',
+        muted: 'var(--text-secondary)',
+        border: 'var(--border-color)',
+        accent: 'var(--accent)',
+        'accent-hover': 'var(--accent-hover)'
       },
       fontFamily: {
         'mono': ['Berkeley Mono', 'Courier New', 'monospace'],
@@ -38,6 +44,13 @@ export default {
         '4xl': 'clamp(3rem, 2.4rem + 3vw, 4.5rem)',
         '5xl': 'clamp(3.5rem, 2.8rem + 3.5vw, 5.5rem)',
         '6xl': 'clamp(4rem, 3.2rem + 4vw, 6.5rem)',
+      },
+      container: {
+        center: true,
+        padding: '1.5rem',
+        screens: {
+          '2xl': '1440px'
+        }
       },
       animation: {
         'swim': 'swim 3s ease-in-out infinite',
@@ -80,5 +93,7 @@ export default {
       }
     },
   },
-  plugins: [],
+  plugins: [
+    require('tailwindcss-animate'),
+  ],
 }

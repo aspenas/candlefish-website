@@ -1,0 +1,194 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: system-analyzer
+  labels:
+    app: system-analyzer
+data:
+  NODE_ENV: "production"
+  LOG_LEVEL: "info"
+  AWS_REGION: "us-east-1"
+  CORS_ORIGINS: "https://system-analyzer.example.com,https://app.system-analyzer.example.com"
+  GRAPHQL_PORT: "4000"
+  ENABLE_FEDERATION: "false"
+  ENABLE_SUBSCRIPTIONS: "true"
+  ENABLE_METRICS: "true"
+  PROMETHEUS_PORT: "9090"
+  HEALTH_CHECK_INTERVAL: "30"
+  REQUEST_TIMEOUT: "30000"
+  MAX_CONNECTIONS: "100"
+  RATE_LIMIT_WINDOW: "900000"
+  RATE_LIMIT_MAX: "100"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: system-analyzer
+  labels:
+    app: nginx
+data:
+  nginx.conf: |
+    user nginx;
+    worker_processes auto;
+    error_log /var/log/nginx/error.log notice;
+    pid /var/run/nginx.pid;
+
+    events {
+        worker_connections 1024;
+        use epoll;
+        multi_accept on;
+    }
+
+    http {
+        include /etc/nginx/mime.types;
+        default_type application/octet-stream;
+
+        # Logging format
+        log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                        '$status $body_bytes_sent "$http_referer" '
+                        '"$http_user_agent" "$http_x_forwarded_for" '
+                        'rt=$request_time uct="$upstream_connect_time" '
+                        'uht="$upstream_header_time" urt="$upstream_response_time"';
+
+        access_log /var/log/nginx/access.log main;
+
+        # Performance settings
+        sendfile on;
+        tcp_nopush on;
+        tcp_nodelay on;
+        keepalive_timeout 65;
+        types_hash_max_size 2048;
+        client_max_body_size 16M;
+        
+        # Gzip compression
+        gzip on;
+        gzip_vary on;
+        gzip_proxied any;
+        gzip_comp_level 6;
+        gzip_types
+            text/plain
+            text/css
+            text/xml
+            text/javascript
+            application/json
+            application/javascript
+            application/xml+rss
+            application/atom+xml
+            image/svg+xml;
+
+        # Rate limiting
+        limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+        limit_req_zone $binary_remote_addr zone=graphql:10m rate=5r/s;
+
+        # Upstream backends
+        upstream backend-api {
+            least_conn;
+            server backend-api-service:8000 max_fails=3 fail_timeout=30s;
+        }
+
+        upstream graphql-server {
+            least_conn;
+            server graphql-service:4000 max_fails=3 fail_timeout=30s;
+        }
+
+        upstream frontend {
+            least_conn;
+            server frontend-service:3000 max_fails=3 fail_timeout=30s;
+        }
+
+        # Default server for health checks
+        server {
+            listen 80 default_server;
+            server_name _;
+            
+            location /health {
+                access_log off;
+                return 200 "healthy\n";
+                add_header Content-Type text/plain;
+            }
+            
+            location / {
+                return 444;
+            }
+        }
+
+        # Main application server
+        server {
+            listen 80;
+            listen 443 ssl http2;
+            server_name system-analyzer.example.com;
+
+            # SSL configuration
+            ssl_certificate /etc/nginx/ssl/tls.crt;
+            ssl_certificate_key /etc/nginx/ssl/tls.key;
+            ssl_session_timeout 1d;
+            ssl_session_cache shared:SSL:50m;
+            ssl_session_tickets off;
+
+            # Modern configuration
+            ssl_protocols TLSv1.2 TLSv1.3;
+            ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+            ssl_prefer_server_ciphers off;
+
+            # HSTS
+            add_header Strict-Transport-Security "max-age=63072000" always;
+
+            # Security headers
+            add_header X-Frame-Options DENY;
+            add_header X-Content-Type-Options nosniff;
+            add_header X-XSS-Protection "1; mode=block";
+            add_header Referrer-Policy "strict-origin-when-cross-origin";
+
+            # Frontend routes
+            location / {
+                proxy_pass http://frontend;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_connect_timeout 30s;
+                proxy_send_timeout 30s;
+                proxy_read_timeout 30s;
+            }
+
+            # API routes with rate limiting
+            location /api/ {
+                limit_req zone=api burst=20 nodelay;
+                proxy_pass http://backend-api/;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_connect_timeout 30s;
+                proxy_send_timeout 30s;
+                proxy_read_timeout 30s;
+            }
+
+            # GraphQL routes with rate limiting
+            location /graphql {
+                limit_req zone=graphql burst=10 nodelay;
+                proxy_pass http://graphql-server;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_connect_timeout 30s;
+                proxy_send_timeout 30s;
+                proxy_read_timeout 30s;
+                
+                # WebSocket support for subscriptions
+                proxy_http_version 1.1;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection "upgrade";
+            }
+
+            # Static assets with caching
+            location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
+                expires 1y;
+                add_header Cache-Control "public, immutable";
+                proxy_pass http://frontend;
+            }
+        }
+    }

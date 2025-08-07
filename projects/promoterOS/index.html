@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PromoterOS - AI-Powered Concert Booking Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        
+        .container {
+            text-align: center;
+            max-width: 800px;
+            padding: 2rem;
+        }
+        
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+        
+        .subtitle {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+        
+        .status {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            margin-bottom: 2rem;
+        }
+        
+        .status h2 {
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .status-item:last-child {
+            border-bottom: none;
+        }
+        
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .badge.active {
+            background: #10b981;
+            color: white;
+        }
+        
+        .badge.pending {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .api-test {
+            margin-top: 2rem;
+        }
+        
+        button {
+            background: white;
+            color: #764ba2;
+            border: none;
+            padding: 0.75rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .result {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.875rem;
+            text-align: left;
+            display: none;
+        }
+        
+        .result.show {
+            display: block;
+        }
+        
+        .footer {
+            margin-top: 3rem;
+            opacity: 0.7;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 PromoterOS</h1>
+        <p class="subtitle">AI-Powered Concert Booking Platform</p>
+        
+        <div class="status">
+            <h2>System Status</h2>
+            <div class="status-item">
+                <span>API Gateway</span>
+                <span class="badge active">Active</span>
+            </div>
+            <div class="status-item">
+                <span>Authentication</span>
+                <span class="badge active">Active</span>
+            </div>
+            <div class="status-item">
+                <span>Rate Limiting</span>
+                <span class="badge active">Active</span>
+            </div>
+            <div class="status-item">
+                <span>CORS Security</span>
+                <span class="badge active">Active</span>
+            </div>
+            <div class="status-item">
+                <span>Input Validation</span>
+                <span class="badge active">Active</span>
+            </div>
+        </div>
+        
+        <div class="api-test">
+            <button onclick="testAPI()">Test API Health</button>
+            <div id="result" class="result"></div>
+        </div>
+        
+        <div class="footer">
+            <p>PromoterOS v1.0.0 | Secured with JWT Authentication</p>
+            <p>© 2025 Candlefish AI. All rights reserved.</p>
+        </div>
+    </div>
+    
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = 'Testing API...';
+            resultDiv.className = 'result show';
+            
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                resultDiv.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultDiv.textContent = 'Error: ' + error.message;
+            }
+        }
+        
+        // Test API on load
+        window.addEventListener('load', () => {
+            setTimeout(testAPI, 1000);
+        });
+    </script>
+</body>
+</html>

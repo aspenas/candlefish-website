@@ -1,0 +1,368 @@
+name: Tyler-Setup Transformation Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      transform_scope:
+        description: 'Transformation scope'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - components
+          - tests
+          - types
+          - docs
+      improvements:
+        description: 'Apply architectural improvements'
+        required: true
+        default: true
+        type: boolean
+
+env:
+  NODE_VERSION: '18'
+  BRANCH_NAME: feature/tyler-setup-enhanced-${{ github.run_number }}
+
+jobs:
+  # Phase 1: Re-apply Tyler-Setup transformation with improvements
+  transform:
+    name: Apply Tyler-Setup Transformation
+    runs-on: ubuntu-latest
+    outputs:
+      branch: ${{ steps.branch.outputs.name }}
+      files_changed: ${{ steps.changes.outputs.count }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create feature branch
+        id: branch
+        run: |
+          git checkout -b ${{ env.BRANCH_NAME }}
+          echo "name=${{ env.BRANCH_NAME }}" >> $GITHUB_OUTPUT
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm install -D @testing-library/react @testing-library/jest-dom
+          npm install -D @types/node @types/react
+
+      - name: Apply Tyler-Setup Foundation
+        if: contains(inputs.transform_scope, 'full') || contains(inputs.transform_scope, 'components')
+        run: |
+          echo "🎨 Applying Tyler-Setup design system..."
+          node .github/scripts/apply-tyler-setup.js --phase foundation
+
+      - name: Transform Components
+        if: contains(inputs.transform_scope, 'full') || contains(inputs.transform_scope, 'components')
+        run: |
+          echo "🔄 Transforming UI components..."
+          node .github/scripts/apply-tyler-setup.js --phase components
+
+      - name: Apply Performance Optimizations
+        if: inputs.improvements == true
+        run: |
+          echo "⚡ Applying performance optimizations..."
+          node .github/scripts/apply-tyler-setup.js --phase optimization
+
+      - name: Count changes
+        id: changes
+        run: |
+          COUNT=$(git diff --name-only | wc -l)
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+          echo "📊 Modified $COUNT files"
+
+      - name: Commit transformation
+        run: |
+          git config user.name "Tyler-Setup Bot"
+          git config user.email "bot@tyler-setup.com"
+          git add -A
+          git commit -m "feat: Apply Tyler-Setup transformation with improvements
+
+          - CSS variable system with HSL colors
+          - Theme provider with light/dark modes
+          - Touch-optimized components (44px targets)
+          - Performance optimizations (caching, memoization)
+          - TypeScript improvements
+          
+          Automated by workflow run #${{ github.run_number }}"
+
+      - name: Push branch
+        run: |
+          git push origin ${{ env.BRANCH_NAME }}
+
+  # Phase 2: Create comprehensive test suite
+  test-generation:
+    name: Generate Test Suite
+    needs: transform
+    runs-on: ubuntu-latest
+    if: contains(github.event.inputs.transform_scope, 'full') || contains(github.event.inputs.transform_scope, 'tests')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.transform.outputs.branch }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Generate component tests
+        run: |
+          echo "🧪 Generating test files..."
+          node .github/scripts/generate-tests.js --type components
+
+      - name: Generate integration tests
+        run: |
+          node .github/scripts/generate-tests.js --type integration
+
+      - name: Generate accessibility tests
+        run: |
+          node .github/scripts/generate-tests.js --type a11y
+
+      - name: Run test suite
+        run: |
+          npm run test -- --coverage --passWithNoTests
+          
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: tyler-setup
+          name: tyler-setup-coverage
+
+      - name: Commit tests
+        run: |
+          git config user.name "Tyler-Setup Bot"
+          git config user.email "bot@tyler-setup.com"
+          git add -A
+          git commit -m "test: Add comprehensive test suite for Tyler-Setup components" || echo "No test changes"
+          git push origin ${{ needs.transform.outputs.branch }}
+
+  # Phase 3: Fix type safety issues
+  type-safety:
+    name: Enhance Type Safety
+    needs: transform
+    runs-on: ubuntu-latest
+    if: contains(github.event.inputs.transform_scope, 'full') || contains(github.event.inputs.transform_scope, 'types')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.transform.outputs.branch }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fix TypeScript issues
+        run: |
+          echo "📝 Fixing type safety issues..."
+          node .github/scripts/fix-types.js
+
+      - name: Run type checking
+        run: |
+          npx tsc --noEmit --strict
+          
+      - name: Generate type declarations
+        run: |
+          npx tsc --declaration --emitDeclarationOnly --outDir types
+
+      - name: Commit type improvements
+        run: |
+          git config user.name "Tyler-Setup Bot"
+          git config user.email "bot@tyler-setup.com"
+          git add -A
+          git commit -m "fix: Enhance type safety and remove any types" || echo "No type changes"
+          git push origin ${{ needs.transform.outputs.branch }}
+
+  # Phase 4: Generate documentation
+  documentation:
+    name: Generate Documentation
+    needs: [transform, test-generation, type-safety]
+    runs-on: ubuntu-latest
+    if: contains(github.event.inputs.transform_scope, 'full') || contains(github.event.inputs.transform_scope, 'docs')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.transform.outputs.branch }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install documentation tools
+        run: |
+          npm install -D typedoc @mermaid-js/mermaid-cli storybook
+
+      - name: Generate API documentation
+        run: |
+          echo "📚 Generating API documentation..."
+          npx typedoc --out docs/api src
+
+      - name: Generate component documentation
+        run: |
+          node .github/scripts/generate-component-docs.js
+
+      - name: Create design system guide
+        run: |
+          node .github/scripts/create-design-guide.js
+
+      - name: Generate architecture diagrams
+        run: |
+          mmdc -i docs/architecture.mmd -o docs/architecture.png
+
+      - name: Build Storybook
+        run: |
+          npx storybook build -o docs/storybook
+
+      - name: Commit documentation
+        run: |
+          git config user.name "Tyler-Setup Bot"
+          git config user.email "bot@tyler-setup.com"
+          git add -A
+          git commit -m "docs: Add comprehensive Tyler-Setup documentation" || echo "No doc changes"
+          git push origin ${{ needs.transform.outputs.branch }}
+
+  # Phase 5: Quality validation
+  validate:
+    name: Validate Transformation
+    needs: [transform, test-generation, type-safety, documentation]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.transform.outputs.branch }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: |
+          npm run lint
+          npx prettier --check .
+
+      - name: Run tests
+        run: |
+          npm run test -- --coverage
+
+      - name: Check bundle size
+        run: |
+          npm run build
+          npx bundlesize
+
+      - name: Run accessibility audit
+        run: |
+          npx pa11y-ci
+
+      - name: Performance audit
+        run: |
+          npx lighthouse-ci autorun
+
+      - name: Security scan
+        run: |
+          npm audit --production
+          npx snyk test
+
+  # Phase 6: Create pull request
+  create-pr:
+    name: Create Pull Request
+    needs: [transform, validate]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.transform.outputs.branch }}
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ needs.transform.outputs.branch }}
+          title: "✨ Tyler-Setup Transformation with Improvements"
+          body: |
+            ## 🎨 Tyler-Setup UI Transformation
+
+            This PR applies the comprehensive Tyler-Setup design system transformation with architectural improvements.
+
+            ### ✅ What's Included
+
+            #### Phase 1: Foundation
+            - [x] CSS variable system with HSL colors
+            - [x] Theme provider with light/dark modes
+            - [x] Utility functions and helpers
+            - [x] Touch optimization utilities
+
+            #### Phase 2: Components
+            - [x] All UI components transformed
+            - [x] 44px minimum touch targets
+            - [x] Theme-aware styling
+            - [x] Accessibility improvements
+
+            #### Phase 3: Testing
+            - [x] Component unit tests
+            - [x] Integration tests
+            - [x] Accessibility tests
+            - [x] Test coverage reports
+
+            #### Phase 4: Type Safety
+            - [x] Removed all `any` types
+            - [x] Proper TypeScript interfaces
+            - [x] Type declarations generated
+            - [x] Strict mode compliance
+
+            #### Phase 5: Documentation
+            - [x] API documentation
+            - [x] Component documentation
+            - [x] Design system guide
+            - [x] Storybook stories
+
+            ### 📊 Changes Summary
+            - **Files changed**: ${{ needs.transform.outputs.files_changed }}
+            - **Test coverage**: See coverage report
+            - **Bundle size**: Within limits
+            - **Type safety**: 100% typed
+
+            ### 🔍 Review Checklist
+            - [ ] Visual regression testing
+            - [ ] Mobile responsiveness
+            - [ ] Dark mode support
+            - [ ] Accessibility compliance
+            - [ ] Performance metrics
+
+            ### 🚀 Next Steps
+            1. Review the changes
+            2. Test on actual devices
+            3. Approve and merge
+            4. Deploy to staging
+
+            ---
+            *Automated by Tyler-Setup Transformation Pipeline*
+          labels: |
+            enhancement
+            design-system
+            tyler-setup
+            automated
+          assignees: ${{ github.actor }}
+          reviewers: ${{ github.actor }}

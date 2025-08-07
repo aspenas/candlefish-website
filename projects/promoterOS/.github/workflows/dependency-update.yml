@@ -1,0 +1,70 @@
+name: Dependency Updates
+
+on:
+  schedule:
+    - cron: '0 2 * * 1'  # Every Monday at 2 AM
+  workflow_dispatch:
+
+jobs:
+  update-dependencies:
+    name: Update Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Update npm dependencies
+        run: |
+          # Update root dependencies
+          npm update
+          npm audit fix
+          
+          # Update function dependencies
+          cd netlify/functions
+          npm update
+          npm audit fix
+          cd ../..
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        if: steps.changes.outputs.has_changes == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore(deps): update dependencies'
+          title: '🔄 Update Dependencies'
+          body: |
+            ## Dependency Updates
+            
+            This PR updates npm dependencies to their latest versions.
+            
+            ### Changes
+            - Updated npm packages
+            - Fixed known vulnerabilities
+            
+            ### Checklist
+            - [ ] Tests pass
+            - [ ] No breaking changes
+            - [ ] Security scan complete
+            
+            ---
+            *This PR was automatically created by the dependency update workflow.*
+          branch: deps/update-dependencies
+          delete-branch: true
+          labels: |
+            dependencies
+            automated

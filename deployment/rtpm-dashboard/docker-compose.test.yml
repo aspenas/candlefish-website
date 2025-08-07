@@ -1,0 +1,80 @@
+# Docker Compose for RTPM Dashboard Test Services
+version: '3.8'
+
+services:
+  # TimescaleDB for testing
+  test-postgres:
+    image: timescale/timescaledb:latest-pg14
+    container_name: rtpm-test-db
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: rtpm_test
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_pass
+      POSTGRES_INITDB_ARGS: "--auth-host=md5"
+    volumes:
+      - test_postgres_data:/var/lib/postgresql/data
+      - ./database/test-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d rtpm_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - test-network
+
+  # Redis for testing
+  test-redis:
+    image: redis:7-alpine
+    container_name: rtpm-test-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - test_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - test-network
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+
+  # Mock external services for testing
+  mock-services:
+    image: mockoon/cli:latest
+    container_name: rtpm-test-mocks
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./tests/mocks/api-mock-config.json:/data/config.json:ro
+    command: ["mockoon-cli", "start", "--data", "/data/config.json"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - test-network
+    depends_on:
+      test-postgres:
+        condition: service_healthy
+      test-redis:
+        condition: service_healthy
+
+volumes:
+  test_postgres_data:
+    driver: local
+  test_redis_data:
+    driver: local
+
+networks:
+  test-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

@@ -1,0 +1,47 @@
+# Development overrides for docker-compose
+version: '3.8'
+
+services:
+  backend-api:
+    build:
+      target: development
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - DEBUG=true
+    command: ["poetry", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  graphql-server:
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - ENABLE_PLAYGROUND=true
+    command: ["npm", "run", "dev:graphql"]
+
+  frontend:
+    build:
+      target: development
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_GRAPHQL_URL=http://localhost:4000/graphql
+      - NEXT_PUBLIC_GRAPHQL_WS_URL=ws://localhost:4000/graphql
+    command: ["npm", "run", "dev"]
+
+  postgres:
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=system_analyzer_dev
+
+  redis:
+    ports:
+      - "6379:6379"

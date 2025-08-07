@@ -1,0 +1,11 @@
+{
+  "urls": [
+    "http://localhost:4173/docs/privileged/family/dashboard/index.html"
+  ],
+  "defaults": {
+    "standard": "WCAG2AA",
+    "timeout": 120000,
+    "hideElements": ".sr-only"
+  }
+}
+

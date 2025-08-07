@@ -1,0 +1,264 @@
+# CloudWatch Alarms Configuration for Production Monitoring
+# Add these to your serverless.yml resources section
+
+CloudWatchAlarms:
+  # API Gateway Error Rate Alarm
+  ApiGatewayErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: ${self:service}-${self:provider.stage}-api-error-rate
+      AlarmDescription: API Gateway error rate is too high
+      MetricName: 4XXError
+      Namespace: AWS/ApiGateway
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ApiName
+          Value: ${self:provider.stage}-${self:service}
+      AlarmActions:
+        - !Ref AlertNotificationTopic
+      TreatMissingData: notBreaching
+
+  # Lambda Error Rate Alarm
+  LambdaErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: ${self:service}-${self:provider.stage}-lambda-error-rate
+      AlarmDescription: Lambda error rate is too high
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref AlertNotificationTopic
+      TreatMissingData: notBreaching
+
+  # Lambda Duration Alarm
+  LambdaDurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: ${self:service}-${self:provider.stage}-lambda-duration
+      AlarmDescription: Lambda duration is too high
+      MetricName: Duration
+      Namespace: AWS/Lambda
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 10000
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref AlertNotificationTopic
+      TreatMissingData: notBreaching
+
+  # DynamoDB Throttling Alarm
+  DynamoDBThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: ${self:service}-${self:provider.stage}-dynamodb-throttles
+      AlarmDescription: DynamoDB requests are being throttled
+      MetricName: ThrottledRequests
+      Namespace: AWS/DynamoDB
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref AlertNotificationTopic
+      TreatMissingData: notBreaching
+
+  # Custom Metrics Alarms
+  AuthFailureRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: ${self:service}-${self:provider.stage}-auth-failure-rate
+      AlarmDescription: Authentication failure rate is too high
+      MetricName: AuditEvents
+      Namespace: CandlefishEmployeeSetup
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 20
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: Action
+          Value: LOGIN_FAILED
+        - Name: Stage
+          Value: ${self:provider.stage}
+      AlarmActions:
+        - !Ref AlertNotificationTopic
+      TreatMissingData: notBreaching
+
+  RateLimitExceededAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: ${self:service}-${self:provider.stage}-rate-limit-exceeded
+      AlarmDescription: Rate limit exceeded events are too frequent
+      MetricName: RateLimitExceeded
+      Namespace: CandlefishEmployeeSetup
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 50
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: Stage
+          Value: ${self:provider.stage}
+      AlarmActions:
+        - !Ref AlertNotificationTopic
+      TreatMissingData: notBreaching
+
+  HealthCheckFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: ${self:service}-${self:provider.stage}-health-check-failure
+      AlarmDescription: Health check is failing
+      MetricName: HealthCheckStatus
+      Namespace: CandlefishEmployeeSetup
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 0.5
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+        - Name: Stage
+          Value: ${self:provider.stage}
+      AlarmActions:
+        - !Ref AlertNotificationTopic
+      TreatMissingData: breaching
+
+  # SNS Topic for Notifications
+  AlertNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: ${self:service}-${self:provider.stage}-alerts
+      DisplayName: ${self:service} ${self:provider.stage} Alerts
+      Subscription:
+        - Protocol: email
+          Endpoint: admin@candlefish.ai
+
+  # CloudWatch Dashboard
+  MonitoringDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: ${self:service}-${self:provider.stage}-monitoring
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/ApiGateway", "Count", "ApiName", "${AWS::StackName}" ],
+                  [ ".", "4XXError", ".", "." ],
+                  [ ".", "5XXError", ".", "." ]
+                ],
+                "period": 300,
+                "stat": "Sum",
+                "region": "${AWS::Region}",
+                "title": "API Gateway Requests"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/Lambda", "Duration", "FunctionName", "${self:service}-${self:provider.stage}-auth" ],
+                  [ "...", "${self:service}-${self:provider.stage}-manageUsers" ],
+                  [ "...", "${self:service}-${self:provider.stage}-secrets" ],
+                  [ "...", "${self:service}-${self:provider.stage}-health" ]
+                ],
+                "period": 300,
+                "stat": "Average",
+                "region": "${AWS::Region}",
+                "title": "Lambda Duration"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/Lambda", "Invocations", "FunctionName", "${self:service}-${self:provider.stage}-auth" ],
+                  [ ".", "Errors", ".", "." ],
+                  [ ".", "Throttles", ".", "." ]
+                ],
+                "period": 300,
+                "stat": "Sum",
+                "region": "${AWS::Region}",
+                "title": "Lambda Metrics - Auth"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "CandlefishEmployeeSetup", "AuditEvents", "Action", "LOGIN_SUCCESS", "Stage", "${self:provider.stage}" ],
+                  [ "...", "LOGIN_FAILED", ".", "." ],
+                  [ "...", "SECRET_CREATED", ".", "." ],
+                  [ "...", "SECRET_DELETED", ".", "." ]
+                ],
+                "period": 300,
+                "stat": "Sum",
+                "region": "${AWS::Region}",
+                "title": "Audit Events"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 12,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "${self:service}-${self:provider.stage}-users" ],
+                  [ ".", "ConsumedWriteCapacityUnits", ".", "." ],
+                  [ ".", "ThrottledRequests", ".", "." ]
+                ],
+                "period": 300,
+                "stat": "Sum",
+                "region": "${AWS::Region}",
+                "title": "DynamoDB - Users Table"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 12,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "CandlefishEmployeeSetup", "HealthCheckStatus", "Stage", "${self:provider.stage}" ],
+                  [ ".", "HealthCheckResponseTime", ".", "." ]
+                ],
+                "period": 300,
+                "stat": "Average",
+                "region": "${AWS::Region}",
+                "title": "Health Check Metrics"
+              }
+            }
+          ]
+        }

@@ -1,0 +1,85 @@
+# React Native mobile app builder for CI/CD
+FROM node:18-alpine AS base
+
+# Install system dependencies
+RUN apk add --no-cache \
+    bash \
+    curl \
+    git \
+    openjdk11 \
+    android-tools \
+    python3 \
+    make \
+    g++
+
+# Install Expo CLI
+RUN npm install -g @expo/cli@latest eas-cli
+
+# Set up Android SDK (for Android builds)
+ENV ANDROID_SDK_ROOT=/opt/android-sdk
+ENV ANDROID_HOME=$ANDROID_SDK_ROOT
+ENV PATH=$PATH:$ANDROID_SDK_ROOT/tools:$ANDROID_SDK_ROOT/platform-tools
+
+# Create android SDK directory
+RUN mkdir -p $ANDROID_SDK_ROOT
+
+# Set work directory
+WORKDIR /app
+
+# Copy package files
+COPY mobile/package.json mobile/package-lock.json* ./
+RUN npm ci
+
+# Copy mobile app source
+COPY mobile/ ./
+
+# Build stage for Expo
+FROM base AS expo-builder
+
+# Set environment for builds
+ENV NODE_ENV=production
+ENV EXPO_NO_TELEMETRY=1
+
+# Create builds directory
+RUN mkdir -p /builds
+
+# Build script for Android
+RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "Building Android APK..."\n\
+expo build:android --type apk --non-interactive\n\
+echo "Build complete!"\n\
+' > /build-android.sh && chmod +x /build-android.sh
+
+# Build script for iOS
+RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "Building iOS IPA..."\n\
+expo build:ios --type archive --non-interactive\n\
+echo "Build complete!"\n\
+' > /build-ios.sh && chmod +x /build-ios.sh
+
+# Default command
+CMD ["npm", "start"]
+
+# For EAS builds (recommended)
+FROM base AS eas-builder
+
+# Install EAS CLI
+RUN npm install -g eas-cli
+
+# EAS build script
+RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "Running EAS build..."\n\
+if [ "$PLATFORM" = "android" ]; then\n\
+  eas build --platform android --non-interactive\n\
+elif [ "$PLATFORM" = "ios" ]; then\n\
+  eas build --platform ios --non-interactive\n\
+else\n\
+  eas build --platform all --non-interactive\n\
+fi\n\
+echo "EAS build complete!"\n\
+' > /eas-build.sh && chmod +x /eas-build.sh
+
+CMD ["./eas-build.sh"]

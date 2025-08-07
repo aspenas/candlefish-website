@@ -41,10 +41,10 @@
 
 # Context-specific configurations
 [context.production]
-  environment = { NODE_ENV = "production" }
+  environment = { NODE_ENV = "production", CORS_ORIGINS = "https://candlefish.ai,https://www.candlefish.ai,https://dashboard.candlefish.ai" }
 
 [context.deploy-preview]
-  environment = { NODE_ENV = "development" }
+  environment = { NODE_ENV = "development", CORS_ORIGINS = "*" }
 
 [context.branch-deploy]
-  environment = { NODE_ENV = "development" }
+  environment = { NODE_ENV = "development", CORS_ORIGINS = "*" }
