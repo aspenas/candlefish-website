@@ -1,0 +1,361 @@
+# Kubernetes Jobs and CronJobs for System Analyzer
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migrate
+  namespace: system-analyzer
+  labels:
+    app: db-migrate
+    component: database
+spec:
+  template:
+    metadata:
+      labels:
+        app: db-migrate
+        component: database
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: db-migrate
+        image: system-analyzer/backend-api:latest
+        command: ["./scripts/db-migrate.sh"]
+        args: ["up"]
+        env:
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: database-credentials
+              key: host
+        - name: DB_PORT
+          valueFrom:
+            secretKeyRef:
+              name: database-credentials
+              key: port
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              name: database-credentials
+              key: database
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: database-credentials
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: database-credentials
+              key: password
+        - name: VERBOSE
+          value: "true"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        volumeMounts:
+        - name: migration-logs
+          mountPath: /app/logs
+      volumes:
+      - name: migration-logs
+        emptyDir: {}
+      backoffLimit: 3
+      activeDeadlineSeconds: 600  # 10 minutes
+---
+# CronJob for database backups
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: db-backup
+  namespace: system-analyzer
+  labels:
+    app: db-backup
+    component: database
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: db-backup
+            component: database
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: db-backup
+            image: postgres:14
+            command: ["sh", "-c"]
+            args:
+            - |
+              set -e
+              TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+              BACKUP_FILE="backup_${TIMESTAMP}.sql"
+              
+              echo "Starting backup at $(date)"
+              
+              # Create backup
+              pg_dump "$DATABASE_URL" > "/backups/$BACKUP_FILE"
+              
+              # Compress backup
+              gzip "/backups/$BACKUP_FILE"
+              
+              echo "Backup completed: ${BACKUP_FILE}.gz"
+              
+              # Upload to S3 if configured
+              if [ -n "${AWS_S3_BUCKET:-}" ]; then
+                echo "Uploading backup to S3..."
+                aws s3 cp "/backups/${BACKUP_FILE}.gz" "s3://${AWS_S3_BUCKET}/database-backups/"
+                echo "Backup uploaded to S3"
+              fi
+              
+              # Clean up old local backups (keep last 7 days)
+              find /backups -name "backup_*.sql.gz" -mtime +7 -delete
+              
+              echo "Backup process completed successfully"
+            env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: database-credentials
+                  key: url
+            - name: AWS_S3_BUCKET
+              value: "system-analyzer-backups"
+            - name: AWS_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: AWS_REGION
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "100m"
+              limits:
+                memory: "512Mi"
+                cpu: "200m"
+            volumeMounts:
+            - name: backup-storage
+              mountPath: /backups
+          volumes:
+          - name: backup-storage
+            persistentVolumeClaim:
+              claimName: backup-storage
+          backoffLimit: 2
+          activeDeadlineSeconds: 3600  # 1 hour
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 2
+---
+# PVC for backup storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backup-storage
+  namespace: system-analyzer
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: gp2
+---
+# CronJob for log cleanup
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: log-cleanup
+  namespace: system-analyzer
+  labels:
+    app: log-cleanup
+    component: maintenance
+spec:
+  schedule: "0 3 * * 0"  # Weekly on Sunday at 3 AM
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: log-cleanup
+            component: maintenance
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: log-cleanup
+            image: busybox:latest
+            command: ["sh", "-c"]
+            args:
+            - |
+              echo "Starting log cleanup at $(date)"
+              
+              # Clean up old log files (older than 30 days)
+              find /var/log -name "*.log*" -mtime +30 -delete
+              find /var/log -name "*.gz" -mtime +30 -delete
+              
+              # Clean up old backup files (older than 90 days)
+              find /backups -name "*.gz" -mtime +90 -delete
+              
+              echo "Log cleanup completed at $(date)"
+            resources:
+              requests:
+                memory: "64Mi"
+                cpu: "50m"
+              limits:
+                memory: "128Mi"
+                cpu: "100m"
+            volumeMounts:
+            - name: log-volume
+              mountPath: /var/log
+            - name: backup-storage
+              mountPath: /backups
+          volumes:
+          - name: log-volume
+            hostPath:
+              path: /var/log
+              type: Directory
+          - name: backup-storage
+            persistentVolumeClaim:
+              claimName: backup-storage
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+---
+# CronJob for health checks and monitoring
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: health-check
+  namespace: system-analyzer
+  labels:
+    app: health-check
+    component: monitoring
+spec:
+  schedule: "*/5 * * * *"  # Every 5 minutes
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: health-check
+            component: monitoring
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: health-check
+            image: curlimages/curl:latest
+            command: ["sh", "-c"]
+            args:
+            - |
+              echo "Starting health check at $(date)"
+              
+              # Check backend API
+              if curl -f -s "http://backend-api-service:8000/health" > /dev/null; then
+                echo "✓ Backend API is healthy"
+              else
+                echo "✗ Backend API health check failed"
+                exit 1
+              fi
+              
+              # Check GraphQL server
+              if curl -f -s "http://graphql-service:4000/health" > /dev/null; then
+                echo "✓ GraphQL server is healthy"
+              else
+                echo "✗ GraphQL server health check failed"
+                exit 1
+              fi
+              
+              # Check frontend
+              if curl -f -s "http://frontend-service:3000/api/health" > /dev/null; then
+                echo "✓ Frontend is healthy"
+              else
+                echo "✗ Frontend health check failed"
+                exit 1
+              fi
+              
+              echo "All services are healthy at $(date)"
+            resources:
+              requests:
+                memory: "32Mi"
+                cpu: "50m"
+              limits:
+                memory: "64Mi"
+                cpu: "100m"
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 3
+---
+# CronJob for certificate renewal
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cert-renewal
+  namespace: system-analyzer
+  labels:
+    app: cert-renewal
+    component: security
+spec:
+  schedule: "0 0 * * 0"  # Weekly on Sunday at midnight
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: cert-renewal
+            component: security
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: cert-manager
+          containers:
+          - name: cert-renewal
+            image: jetstack/cert-manager-ctl:latest
+            command: ["sh", "-c"]
+            args:
+            - |
+              echo "Starting certificate renewal check at $(date)"
+              
+              # Check certificate status
+              cmctl status certificate system-analyzer-tls -n system-analyzer
+              
+              # Renew if needed (cert-manager does this automatically)
+              # This is mainly for monitoring and alerting
+              
+              echo "Certificate renewal check completed at $(date)"
+            resources:
+              requests:
+                memory: "64Mi"
+                cpu: "50m"
+              limits:
+                memory: "128Mi"
+                cpu: "100m"
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+---
+# ServiceAccount for certificate management
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cert-manager
+  namespace: system-analyzer
+---
+# ClusterRole for certificate operations
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cert-manager-operations
+rules:
+- apiGroups: ["cert-manager.io"]
+  resources: ["certificates", "certificaterequests", "issuers", "clusterissuers"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+# ClusterRoleBinding for certificate operations
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cert-manager-operations
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cert-manager-operations
+subjects:
+- kind: ServiceAccount
+  name: cert-manager
+  namespace: system-analyzer

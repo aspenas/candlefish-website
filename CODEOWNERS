@@ -1,0 +1,39 @@
+# CODEOWNERS for candlefish-ai
+# These owners will be automatically requested for review when PRs modify matching paths
+# Format: <pattern> <owner>
+
+# Global ownership (fallback)
+* @aspenas
+
+# Critical infrastructure
+/.github/workflows/ @aspenas
+/.github/actions/ @aspenas
+/deployment/ @aspenas
+/terraform/ @aspenas
+/k8s/ @aspenas
+/.pre-commit-config.yaml @aspenas
+/CODEOWNERS @aspenas
+/SECURITY.md @aspenas
+/POLICY.md @aspenas
+
+# Core application areas
+/apps/rtpm-api/ @aspenas
+/apps/website/ @aspenas
+/apps/nurture-system/ @aspenas
+/apps/nurture-dashboard/ @aspenas
+
+# Projects requiring review
+/projects/paintbox/ @aspenas
+/projects/promoterOS/ @aspenas
+
+# Security-sensitive files
+*.pem @aspenas
+*.key @aspenas
+*.pfx @aspenas
+**/secrets/ @aspenas
+**/credentials/ @aspenas
+.env* @aspenas
+
+# Documentation
+/docs/ @aspenas
+*.md @aspenas

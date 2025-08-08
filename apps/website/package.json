@@ -46,8 +46,7 @@
     "tailwind-merge": "^2.5.2",
     "tailwindcss-animate": "^1.0.7",
     "@types/node": "^20.14.10",
-    "@types/clsx": "^2.0.0",
-    "@types/zod": "^3.21.4",
+    
     "lucide-react": "^0.424.0",
     "@radix-ui/react-dialog": "^1.0.6",
     "@radix-ui/react-dropdown-menu": "^2.1.5",

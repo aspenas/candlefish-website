@@ -95,7 +95,11 @@ class RequestMetricsMiddleware(BaseHTTPMiddleware):
         elapsed = perf_counter() - start
         REQUEST_LATENCY.observe(elapsed)
         endpoint = request.url.path
-        REQUEST_COUNT.labels(request.method, endpoint, str(response.status_code)).inc()
+        REQUEST_COUNT.labels(
+            request.method,
+            endpoint,
+            str(response.status_code),
+        ).inc()
         return response
 
 

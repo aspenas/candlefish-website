@@ -39,6 +39,13 @@
   status = 200
   force = true
 
+# Guard privileged family documents behind auth entry and Edge validation
+[[redirects]]
+  from = "/docs/privileged/family/*"
+  to = "/docs/privileged/family/index.html"
+  status = 200
+  force = true
+
 # Context-specific configurations
 [context.production]
   environment = { NODE_ENV = "production", CORS_ORIGINS = "https://candlefish.ai,https://www.candlefish.ai,https://dashboard.candlefish.ai" }
@@ -48,3 +55,13 @@
 
 [context.branch-deploy]
   environment = { NODE_ENV = "development", CORS_ORIGINS = "*" }
+
+[[headers]]
+  for = "/docs/privileged/family/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, noarchive, nosnippet, noimageindex"
+    Cache-Control = "private, max-age=60"
+
+[[edge_functions]]
+  path = "/docs/privileged/family/*"
+  function = "validate-family-auth"

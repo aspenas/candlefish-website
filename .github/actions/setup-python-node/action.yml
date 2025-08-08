@@ -1,0 +1,67 @@
+name: 'Setup Python and Node'
+description: 'Setup Python and Node.js with caching'
+inputs:
+  python-version:
+    description: 'Python version to use'
+    required: false
+    default: '3.12'
+  node-version:
+    description: 'Node.js version to use'
+    required: false
+    default: '20'
+  setup-python:
+    description: 'Whether to setup Python'
+    required: false
+    default: 'true'
+  setup-node:
+    description: 'Whether to setup Node.js'
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Python
+      if: inputs.setup-python == 'true'
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: 'pip'
+
+    - name: Setup Node.js
+      if: inputs.setup-node == 'true'
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Setup pnpm
+      if: inputs.setup-node == 'true'
+      uses: pnpm/action-setup@v3
+      with:
+        version: 9
+
+    - name: Get pnpm store directory
+      if: inputs.setup-node == 'true'
+      id: pnpm-cache
+      shell: bash
+      run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+    - name: Cache pnpm dependencies
+      if: inputs.setup-node == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+        key: ${{ runner.os }}-pnpm-v1-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-v1-
+
+    - name: Cache Python dependencies
+      if: inputs.setup-python == 'true'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/pip
+          ~/.cache/pypoetry
+        key: ${{ runner.os }}-python-v1-${{ hashFiles('**/requirements*.txt', '**/pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-python-v1-

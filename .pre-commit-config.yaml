@@ -1,0 +1,68 @@
+---
+# Pre-commit hooks for candlefish-ai
+# Run: pre-commit install
+# Manual: pre-commit run --all-files
+
+repos:
+  # Security scanning
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+
+  # Python linting and formatting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.1
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # JavaScript/TypeScript
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.8.0
+    hooks:
+      - id: eslint
+        files: \.(js|jsx|ts|tsx)$
+        additional_dependencies:
+          - eslint@9.8.0
+          - eslint-config-prettier@9.1.0
+        exclude: ^(node_modules|dist|build)/
+
+  # YAML validation
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-json
+      - id: check-toml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-added-large-files
+        args: [--maxkb=5000]
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # Markdown
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.41.0
+    hooks:
+      - id: markdownlint
+        args: [--fix]
+
+  # Shell scripts
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+
+# Local hooks
+  - repo: local
+    hooks:
+      - id: no-direct-secrets
+        name: Block direct secrets
+        entry: '(?i)(api[_-]?key|secret|token|password|pwd|auth|credential)\s*=\s*["\'][^"\']{10,}'
+        language: pygrep
+        types: [text]
+        exclude: \.(md|txt|lock|example|sample)$

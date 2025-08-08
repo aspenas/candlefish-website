@@ -423,7 +423,7 @@ plugins:
 
 custom:
   webpack:
-    webpackConfig: webpack.config.js
+    webpackConfig: webpack.config.cjs
     includeModules: true
     packager: npm
     excludeFiles: '**/*.test.js'
