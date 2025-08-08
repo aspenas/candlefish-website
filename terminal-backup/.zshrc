@@ -10,44 +10,44 @@
 # =============================================================================
 if [[ "$TERM_PROGRAM" == "WarpTerminal" ]]; then
     # Minimal setup for Warp (it handles most things internally)
-    
+
     # Basic options
     setopt no_nomatch
     unsetopt unset
-    
+
     # Core aliases only
     alias ll='ls -la'
     alias python='python3'
     alias pip='pip3'
-    
+
     # Claude shortcuts
     alias claude='claude-code'
     alias c='claude-code'
     alias cc='claude-code'
-    
+
     # Quick Candlefish navigation
     alias cf='cd /Users/patricksmith/candlefish-ai'
     alias cfweb='cd /Users/patricksmith/candlefish-ai/apps/website'
     alias cfpaint='cd /Users/patricksmith/candlefish-ai/projects/paintbox'
     alias cffogg='cd /Users/patricksmith/candlefish-ai/projects/fogg/calendar'
-    
+
     # Git essentials
     alias gs='git status'
     alias gd='git diff'
     alias glog='git log --graph --pretty=format:"%C(yellow)%h%Creset %C(cyan)%d%Creset %s %C(green)(%cr) %C(bold blue)<%an>%Creset" --abbrev-commit --all'
-    
+
     # Simple history
     HISTFILE="$HOME/.zsh_history"
     HISTSIZE=10000
     SAVEHIST=10000
     setopt HIST_IGNORE_DUPS HIST_IGNORE_SPACE
-    
+
     # Basic completion (Warp handles most)
     autoload -Uz compinit && compinit -C
-    
+
     # Load candlefish complete setup
     [[ -f "$HOME/.config/candlefish-complete-setup.zsh" ]] && source "$HOME/.config/candlefish-complete-setup.zsh"
-    
+
     return
 fi
 

@@ -445,27 +445,27 @@ import string
 def handler(event, context):
     secret_arn = os.environ['SECRET_ARN']
     client = boto3.client('secretsmanager')
-    
+
     # Generate new secrets
     new_secrets = {
         'JWT_SECRET': generate_secret(64),
         'ENCRYPTION_KEY': generate_secret(64),
         'NEXTAUTH_SECRET': generate_secret(64),
     }
-    
+
     # Get current secret
     current_secret = client.get_secret_value(SecretId=secret_arn)
     current_data = json.loads(current_secret['SecretString'])
-    
+
     # Update with new secrets
     current_data.update(new_secrets)
-    
+
     # Update secret
     client.update_secret(
         SecretId=secret_arn,
         SecretString=json.dumps(current_data)
     )
-    
+
     return {
         'statusCode': 200,
         'body': json.dumps('Secrets rotated successfully')

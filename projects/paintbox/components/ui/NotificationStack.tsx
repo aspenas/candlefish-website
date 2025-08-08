@@ -1,18 +1,18 @@
 /**
  * Notification Stack Component
- * 
+ *
  * Displays a stack of notifications in the corner of the screen
  */
 
 'use client';
 
 import React, { useEffect } from 'react';
-import { 
-  CheckCircleIcon, 
+import {
+  CheckCircleIcon,
   ExclamationCircleIcon,
   ExclamationTriangleIcon,
   InformationCircleIcon,
-  XMarkIcon 
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 import { useDashboard } from '@/lib/context/DashboardContext';
 import { NotificationMessage } from '@/lib/types/dashboard';
@@ -86,7 +86,7 @@ export function NotificationStack() {
       <AnimatePresence>
         {notifications.map((notification) => {
           const Icon = getIcon(notification.type);
-          
+
           return (
             <motion.div
               key={notification.id}

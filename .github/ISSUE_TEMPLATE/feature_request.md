@@ -23,6 +23,6 @@ assignees: ''
 
 ## Acceptance Criteria
 <!-- Define what needs to be true for this feature to be considered complete -->
-- [ ] 
-- [ ] 
+- [ ]
+- [ ]
 - [ ]

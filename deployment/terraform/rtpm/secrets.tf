@@ -26,5 +26,3 @@ resource "aws_ssm_parameter" "rtpm_api_params" {
   type  = "SecureString"
   value = each.value
 }
-
-

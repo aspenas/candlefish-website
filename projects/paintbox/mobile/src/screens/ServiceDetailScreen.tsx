@@ -34,7 +34,7 @@ import { showMessage } from 'react-native-flash-message';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 
 // Queries and Mutations
-import { 
+import {
   GET_SERVICE_DETAIL,
   TRIGGER_HEALTH_CHECK_MOBILE,
   RESTART_SERVICE_MOBILE,
@@ -55,7 +55,7 @@ type Props = NativeStackScreenProps<DashboardStackParamList, 'ServiceDetail'>;
 export default function ServiceDetailScreen({ route, navigation }: Props) {
   const theme = useTheme();
   const { serviceId } = route.params;
-  
+
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -113,7 +113,7 @@ export default function ServiceDetailScreen({ route, navigation }: Props) {
     try {
       setActionLoading('healthCheck');
       ReactNativeHapticFeedback.trigger('impactMedium');
-      
+
       const { data } = await triggerHealthCheck({
         variables: { serviceId },
       });
@@ -152,7 +152,7 @@ export default function ServiceDetailScreen({ route, navigation }: Props) {
     try {
       setActionLoading('restart');
       ReactNativeHapticFeedback.trigger('impactHeavy');
-      
+
       const { data: result } = await restartService({
         variables: { serviceId },
       });
@@ -308,7 +308,7 @@ export default function ServiceDetailScreen({ route, navigation }: Props) {
             <Text variant="titleMedium" style={styles.sectionTitle}>
               Quick Actions
             </Text>
-            
+
             <View style={styles.actionButtons}>
               <Button
                 mode="contained"
@@ -321,7 +321,7 @@ export default function ServiceDetailScreen({ route, navigation }: Props) {
               >
                 Health Check
               </Button>
-              
+
               <Button
                 mode="contained-tonal"
                 onPress={handleRestart}
@@ -333,7 +333,7 @@ export default function ServiceDetailScreen({ route, navigation }: Props) {
               >
                 Restart
               </Button>
-              
+
               <Button
                 mode="outlined"
                 onPress={navigateToMetrics}
@@ -355,7 +355,7 @@ export default function ServiceDetailScreen({ route, navigation }: Props) {
               <Text variant="titleMedium" style={styles.sectionTitle}>
                 Active Alerts ({service.alerts.length})
               </Text>
-              
+
               {service.alerts.slice(0, 5).map((alert, index) => (
                 <React.Fragment key={alert.id}>
                   <AlertListItem alert={alert} />
@@ -383,7 +383,7 @@ export default function ServiceDetailScreen({ route, navigation }: Props) {
               <Text variant="titleMedium" style={styles.sectionTitle}>
                 Containers ({service.containers.length})
               </Text>
-              
+
               {service.containers.map((container, index) => (
                 <React.Fragment key={container.id}>
                   <ContainerCard container={container} />
@@ -401,7 +401,7 @@ export default function ServiceDetailScreen({ route, navigation }: Props) {
               <Text variant="titleMedium" style={styles.sectionTitle}>
                 Processes ({service.processes.length})
               </Text>
-              
+
               {service.processes.slice(0, 5).map((process, index) => (
                 <React.Fragment key={process.id}>
                   <ProcessCard process={process} />
@@ -410,8 +410,8 @@ export default function ServiceDetailScreen({ route, navigation }: Props) {
               ))}
 
               {service.processes.length > 5 && (
-                <Text 
-                  variant="labelMedium" 
+                <Text
+                  variant="labelMedium"
                   style={[styles.moreText, { color: theme.colors.onSurfaceVariant }]}
                 >
                   +{service.processes.length - 5} more processes
@@ -428,7 +428,7 @@ export default function ServiceDetailScreen({ route, navigation }: Props) {
               <Text variant="titleMedium" style={styles.sectionTitle}>
                 Dependencies ({service.dependencies.length})
               </Text>
-              
+
               {service.dependencies.map((dep, index) => (
                 <List.Item
                   key={dep.id}

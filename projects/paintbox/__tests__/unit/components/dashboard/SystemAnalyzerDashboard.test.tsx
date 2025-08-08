@@ -74,7 +74,7 @@ describe('SystemAnalyzerDashboard', () => {
   describe('Loading States', () => {
     it('should show loading spinner while fetching initial data', async () => {
       const loadingMocks = ApolloMockFactory.createLoadingMocks();
-      
+
       renderDashboard(loadingMocks);
 
       expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
@@ -83,7 +83,7 @@ describe('SystemAnalyzerDashboard', () => {
 
     it('should show skeleton components during data loading', async () => {
       const loadingMocks = ApolloMockFactory.createLoadingMocks();
-      
+
       renderDashboard(loadingMocks);
 
       expect(screen.getAllByTestId('skeleton')).toHaveLength(6); // Expect 6 skeleton components
@@ -231,7 +231,7 @@ describe('SystemAnalyzerDashboard', () => {
   describe('Real-time Updates', () => {
     it('should update dashboard when receiving real-time data', async () => {
       const subscriptionMocks = ApolloMockFactory.createSubscriptionMocks();
-      
+
       renderDashboard([...defaultMocks, ...subscriptionMocks]);
 
       await waitFor(() => {
@@ -259,7 +259,7 @@ describe('SystemAnalyzerDashboard', () => {
   describe('Error Handling', () => {
     it('should display error message when data fetch fails', async () => {
       const errorMocks = ApolloMockFactory.createErrorMocks();
-      
+
       renderDashboard(errorMocks);
 
       await waitFor(() => {
@@ -273,7 +273,7 @@ describe('SystemAnalyzerDashboard', () => {
 
     it('should handle retry after error', async () => {
       const errorMocks = ApolloMockFactory.createErrorMocks();
-      
+
       renderDashboard(errorMocks);
 
       await waitFor(() => {
@@ -292,13 +292,13 @@ describe('SystemAnalyzerDashboard', () => {
         ...defaultMocks.slice(0, 2), // Only include some successful mocks
         ...ApolloMockFactory.createErrorMocks().slice(0, 1), // Include one error mock
       ];
-      
+
       renderDashboard(partialErrorMocks);
 
       await waitFor(() => {
         // Should show available data
         expect(screen.getByTestId('system-health-score')).toBeInTheDocument();
-        
+
         // Should show error for failed sections
         expect(screen.getByTestId('section-error')).toBeInTheDocument();
       });
@@ -308,7 +308,7 @@ describe('SystemAnalyzerDashboard', () => {
   describe('Performance', () => {
     it('should not re-render unnecessarily', async () => {
       const renderSpy = jest.fn();
-      
+
       const TestWrapper = () => {
         renderSpy();
         return <SystemAnalyzerDashboard />;
@@ -366,10 +366,10 @@ describe('SystemAnalyzerDashboard', () => {
       });
 
       const servicesCard = screen.getByTestId('services-card');
-      
+
       // Should be focusable
       expect(servicesCard).toHaveAttribute('tabIndex', '0');
-      
+
       // Should handle Enter key
       fireEvent.keyDown(servicesCard, { key: 'Enter', code: 'Enter' });
       expect(mockPush).toHaveBeenCalledWith('/dashboard/services');
@@ -383,7 +383,7 @@ describe('SystemAnalyzerDashboard', () => {
       });
 
       const healthBadge = screen.getByTestId('health-status-badge');
-      
+
       // Should have appropriate contrast class
       expect(healthBadge).toHaveClass(/text-(white|black)/);
       expect(healthBadge).toHaveClass(/bg-(green|yellow|red)/);
@@ -431,7 +431,7 @@ describe('SystemAnalyzerDashboard', () => {
   describe('Data Refresh', () => {
     it('should auto-refresh data at specified intervals', async () => {
       jest.useFakeTimers();
-      
+
       renderDashboard();
 
       await waitFor(() => {
@@ -449,7 +449,7 @@ describe('SystemAnalyzerDashboard', () => {
 
     it('should pause auto-refresh when user is inactive', async () => {
       jest.useFakeTimers();
-      
+
       renderDashboard();
 
       await waitFor(() => {

@@ -1,0 +1,468 @@
+# Analytics and Data Types
+type DataSource @key(fields: "id") @auth(requires: USER) @tenant {
+  id: UUID!
+  name: NonEmptyString!
+  type: DataSourceType!
+  status: DataSourceStatus!
+
+  # Connection Details
+  connection: DataSourceConnection!
+  config: DataSourceConfig!
+
+  # Schema and Structure
+  schema: DataSourceSchema
+  tables: [DataTable!]! @complexity(value: 10)
+
+  # Usage and Performance
+  lastSyncAt: DateTime
+  syncStatus: SyncStatus!
+  queryCount: NonNegativeInt!
+  avgQueryTime: Decimal
+  errorRate: Decimal
+
+  # Metadata
+  description: String
+  tags: [String!]
+  createdBy: User!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+
+  # Related Objects
+  metrics: [Metric!]! @complexity(value: 5)
+  dashboards: [Dashboard!]! @complexity(value: 5)
+}
+
+type DataSourceConnection {
+  host: String
+  port: PositiveInt
+  database: String
+  username: String
+  ssl: Boolean
+  connectionString: String @auth(requires: ORG_ADMIN)
+  # Sensitive fields are filtered based on permissions
+}
+
+type DataSourceConfig {
+  refreshInterval: PositiveInt
+  timeout: PositiveInt
+  maxConnections: PositiveInt
+  enableCache: Boolean
+  cacheTimeout: PositiveInt
+  customParams: JSON
+}
+
+type DataSourceSchema {
+  version: String!
+  lastUpdated: DateTime!
+  tableCount: NonNegativeInt!
+  columnCount: NonNegativeInt!
+  relationships: [SchemaRelationship!]!
+}
+
+type SchemaRelationship {
+  fromTable: String!
+  fromColumn: String!
+  toTable: String!
+  toColumn: String!
+  type: RelationshipType!
+}
+
+type DataTable {
+  name: NonEmptyString!
+  columns: [DataColumn!]!
+  rowCount: BigInt
+  primaryKey: [String!]
+  indexes: [TableIndex!]
+  lastUpdated: DateTime
+}
+
+type DataColumn {
+  name: NonEmptyString!
+  type: DataType!
+  nullable: Boolean!
+  defaultValue: String
+  description: String
+  constraints: [ColumnConstraint!]
+}
+
+type TableIndex {
+  name: NonEmptyString!
+  columns: [String!]!
+  unique: Boolean!
+  type: IndexType!
+}
+
+type ColumnConstraint {
+  type: ConstraintType!
+  value: String
+  message: String
+}
+
+type Metric @key(fields: "id") @auth(requires: USER) @tenant {
+  id: UUID!
+  name: NonEmptyString!
+  description: String
+  type: MetricType!
+
+  # Query Definition
+  query: MetricQuery!
+  dataSource: DataSource!
+
+  # Configuration
+  aggregation: AggregationType!
+  dimensions: [Dimension!]
+  filters: [Filter!]
+
+  # Visualization
+  format: MetricFormat!
+  unit: String
+  precision: NonNegativeInt
+
+  # Performance
+  lastCalculated: DateTime
+  calculationTime: Decimal
+  cacheTimeout: PositiveInt
+
+  # Metadata
+  tags: [String!]
+  category: MetricCategory
+  isCustom: Boolean!
+  createdBy: User!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+
+  # Usage
+  usageCount: NonNegativeInt!
+  dashboards: [Dashboard!]! @complexity(value: 5)
+  alerts: [Alert!]! @complexity(value: 5)
+
+  # Historical Data
+  history: [MetricValue!]! @complexity(value: 20)
+}
+
+type MetricQuery {
+  sql: String!
+  parameters: [QueryParameter!]
+  schedule: String
+  timeout: PositiveInt
+}
+
+type QueryParameter {
+  name: NonEmptyString!
+  type: ParameterType!
+  defaultValue: String
+  required: Boolean!
+  description: String
+}
+
+type Dimension {
+  name: NonEmptyString!
+  field: String!
+  type: DimensionType!
+  displayName: String
+  format: String
+}
+
+type Filter {
+  field: NonEmptyString!
+  operator: FilterOperator!
+  value: JSON!
+  type: FilterType!
+  displayName: String
+}
+
+type MetricFormat {
+  type: FormatType!
+  pattern: String
+  prefix: String
+  suffix: String
+  locale: String
+}
+
+type MetricValue {
+  timestamp: DateTime!
+  value: Decimal!
+  dimensions: JSON
+  metadata: JSON
+}
+
+type Alert @auth(requires: USER) @tenant {
+  id: UUID!
+  name: NonEmptyString!
+  description: String
+  metric: Metric!
+
+  # Condition
+  condition: AlertCondition!
+  threshold: Decimal!
+  operator: ComparisonOperator!
+
+  # Configuration
+  frequency: Duration!
+  enabled: Boolean!
+  severity: AlertSeverity!
+
+  # Notification
+  channels: [NotificationChannel!]!
+
+  # Status
+  lastTriggered: DateTime
+  status: AlertStatus!
+
+  # Metadata
+  createdBy: User!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+
+  # History
+  history: [AlertExecution!]! @complexity(value: 10)
+}
+
+type AlertCondition {
+  type: ConditionType!
+  window: Duration!
+  aggregation: AggregationType
+  comparison: ComparisonType
+}
+
+type AlertExecution {
+  id: UUID!
+  executedAt: DateTime!
+  result: AlertResult!
+  value: Decimal
+  threshold: Decimal!
+  triggered: Boolean!
+  notificationsSent: NonNegativeInt!
+}
+
+type NotificationChannel {
+  id: UUID!
+  type: ChannelType!
+  config: JSON!
+  enabled: Boolean!
+}
+
+enum DataSourceType {
+  POSTGRESQL
+  MYSQL
+  CLICKHOUSE
+  SNOWFLAKE
+  BIGQUERY
+  REDSHIFT
+  MONGODB
+  ELASTICSEARCH
+  REST_API
+  GRAPHQL_API
+  CSV_UPLOAD
+  GOOGLE_SHEETS
+  SALESFORCE
+  HUBSPOT
+  STRIPE
+  MIXPANEL
+  AMPLITUDE
+  CUSTOM
+}
+
+enum DataSourceStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+  SYNCING
+  PENDING
+}
+
+enum SyncStatus {
+  SUCCESS
+  FAILED
+  IN_PROGRESS
+  PENDING
+  SKIPPED
+}
+
+enum RelationshipType {
+  ONE_TO_ONE
+  ONE_TO_MANY
+  MANY_TO_MANY
+}
+
+enum DataType {
+  STRING
+  INTEGER
+  DECIMAL
+  BOOLEAN
+  DATE
+  DATETIME
+  TIMESTAMP
+  JSON
+  ARRAY
+  UUID
+  TEXT
+  BINARY
+}
+
+enum IndexType {
+  BTREE
+  HASH
+  GIN
+  GIST
+}
+
+enum ConstraintType {
+  NOT_NULL
+  UNIQUE
+  PRIMARY_KEY
+  FOREIGN_KEY
+  CHECK
+  MIN_LENGTH
+  MAX_LENGTH
+  MIN_VALUE
+  MAX_VALUE
+  REGEX
+}
+
+enum MetricType {
+  COUNT
+  SUM
+  AVERAGE
+  MEDIAN
+  PERCENTILE
+  MIN
+  MAX
+  DISTINCT_COUNT
+  RATIO
+  GROWTH_RATE
+  CUSTOM
+}
+
+enum AggregationType {
+  COUNT
+  SUM
+  AVG
+  MIN
+  MAX
+  MEDIAN
+  P50
+  P90
+  P95
+  P99
+  DISTINCT
+  FIRST
+  LAST
+}
+
+enum ParameterType {
+  STRING
+  NUMBER
+  DATE
+  BOOLEAN
+  ARRAY
+}
+
+enum DimensionType {
+  STRING
+  NUMBER
+  DATE
+  BOOLEAN
+  CATEGORY
+}
+
+enum FilterOperator {
+  EQUALS
+  NOT_EQUALS
+  GREATER_THAN
+  GREATER_THAN_OR_EQUAL
+  LESS_THAN
+  LESS_THAN_OR_EQUAL
+  CONTAINS
+  NOT_CONTAINS
+  STARTS_WITH
+  ENDS_WITH
+  IN
+  NOT_IN
+  IS_NULL
+  IS_NOT_NULL
+  BETWEEN
+  REGEX
+}
+
+enum FilterType {
+  STATIC
+  DYNAMIC
+  USER_INPUT
+}
+
+enum FormatType {
+  NUMBER
+  CURRENCY
+  PERCENTAGE
+  DURATION
+  BYTES
+  CUSTOM
+}
+
+enum MetricCategory {
+  BUSINESS
+  TECHNICAL
+  FINANCIAL
+  OPERATIONAL
+  MARKETING
+  SALES
+  CUSTOMER
+  PRODUCT
+  SECURITY
+  PERFORMANCE
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AlertStatus {
+  ACTIVE
+  INACTIVE
+  PAUSED
+  ERROR
+}
+
+enum ComparisonOperator {
+  GREATER_THAN
+  LESS_THAN
+  EQUALS
+  NOT_EQUALS
+  GREATER_THAN_OR_EQUAL
+  LESS_THAN_OR_EQUAL
+}
+
+enum ConditionType {
+  THRESHOLD
+  ANOMALY
+  TREND
+  PERCENTAGE_CHANGE
+}
+
+enum ComparisonType {
+  ABSOLUTE
+  PERCENTAGE
+  PREVIOUS_PERIOD
+  SAME_PERIOD_LAST_YEAR
+}
+
+enum AlertResult {
+  TRIGGERED
+  NOT_TRIGGERED
+  ERROR
+  TIMEOUT
+}
+
+enum ChannelType {
+  EMAIL
+  SLACK
+  WEBHOOK
+  SMS
+  PUSH_NOTIFICATION
+  TEAMS
+  DISCORD
+}

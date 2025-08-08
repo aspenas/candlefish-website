@@ -62,7 +62,7 @@ trap cleanup EXIT
 # Validation functions
 validate_environment() {
     log_info "Validating environment setup..."
-    
+
     # Check required tools
     local required_tools=("aws" "docker" "terraform" "gh")
     for tool in "${required_tools[@]}"; do
@@ -71,26 +71,26 @@ validate_environment() {
             exit 1
         fi
     done
-    
+
     # Validate AWS credentials
     if ! aws sts get-caller-identity &> /dev/null; then
         log_error "AWS credentials are not configured properly"
         exit 1
     fi
-    
+
     # Validate environment parameter
     if [[ ! "$ENVIRONMENT" =~ ^(staging|production)$ ]]; then
         log_error "Invalid environment: $ENVIRONMENT. Must be 'staging' or 'production'"
         exit 1
     fi
-    
+
     log_info "Environment validation completed"
 }
 
 # Security checks
 security_checks() {
     log_info "Running security checks..."
-    
+
     # Check for exposed secrets in code
     if grep -r -n -E "(password|secret|key|token).*=.*['\"][^'\"]{8,}['\"]" \
         --exclude-dir=node_modules \
@@ -101,78 +101,78 @@ security_checks() {
         log_error "Potential exposed secrets found in code. Please review and fix."
         exit 1
     fi
-    
+
     # Verify .env files are not in repository
     if find "$PROJECT_ROOT" -name ".env*" -not -name "*.example" -not -path "*/node_modules/*" -type f | grep -q .; then
         log_warn "Found .env files in repository. These should be excluded from version control."
     fi
-    
+
     # Run dependency security audit
     log_info "Running dependency security audit..."
     cd "$PROJECT_ROOT"
     npm audit --audit-level=high
-    
+
     cd "$PROJECT_ROOT/paintbox-backend"
     npm audit --audit-level=high
-    
+
     log_info "Security checks completed"
 }
 
 # Infrastructure deployment
 deploy_infrastructure() {
     log_info "Deploying infrastructure with Terraform..."
-    
+
     cd "$PROJECT_ROOT/terraform"
-    
+
     # Initialize Terraform
     terraform init -upgrade
-    
+
     # Validate configuration
     terraform validate
-    
+
     # Plan deployment
     local plan_file="terraform-${ENVIRONMENT}-$(date +%s).tfplan"
     terraform plan \
         -var="environment=$ENVIRONMENT" \
         -var-file="environments/${ENVIRONMENT}.tfvars" \
         -out="$plan_file"
-    
+
     if [[ "$DRY_RUN" == "true" ]]; then
         log_info "Dry run completed. Plan saved to: $plan_file"
         return 0
     fi
-    
+
     # Apply changes
     log_info "Applying Terraform changes..."
     terraform apply "$plan_file"
-    
+
     # Save outputs
     terraform output -json > "../deployment-outputs-${ENVIRONMENT}.json"
-    
+
     log_info "Infrastructure deployment completed"
 }
 
 # Secrets management
 manage_secrets() {
     log_info "Managing secrets securely..."
-    
+
     local secret_name="paintbox-${ENVIRONMENT}"
-    
+
     # Check if secrets exist
     if aws secretsmanager describe-secret --secret-id "$secret_name" &> /dev/null; then
         log_info "Secrets already exist for environment: $ENVIRONMENT"
     else
         log_info "Creating new secrets for environment: $ENVIRONMENT"
-        
+
         # Generate secure secrets
         local jwt_secret
         local encryption_key
         local nextauth_secret
-        
+
         jwt_secret=$(openssl rand -hex 32)
         encryption_key=$(openssl rand -hex 32)
         nextauth_secret=$(openssl rand -hex 32)
-        
+
         # Create secret with placeholder values (real values set manually)
         aws secretsmanager create-secret \
             --name "$secret_name" \
@@ -190,21 +190,21 @@ manage_secrets() {
                 \"COMPANYCAM_WEBHOOK_SECRET\": \"REPLACE_WITH_ACTUAL_VALUE\",
                 \"ANTHROPIC_API_KEY\": \"REPLACE_WITH_ACTUAL_VALUE\"
             }"
-        
+
         log_warn "Secrets created with placeholder values. Please update them manually:"
         log_warn "aws secretsmanager update-secret --secret-id $secret_name --secret-string '{...}'"
     fi
-    
+
     log_info "Secrets management completed"
 }
 
 # Build and push Docker images
 build_and_push_images() {
     log_info "Building and pushing Docker images..."
-    
+
     local image_tag="${ENVIRONMENT}-$(git rev-parse --short HEAD)"
     local registry_url="ghcr.io/candlefish-ai/paintbox"
-    
+
     # Build frontend image
     log_info "Building frontend image..."
     docker build \
@@ -212,7 +212,7 @@ build_and_push_images() {
         -t "${registry_url}-frontend:${ENVIRONMENT}-latest" \
         -f Dockerfile \
         "$PROJECT_ROOT"
-    
+
     # Build backend image
     log_info "Building backend image..."
     docker build \
@@ -220,7 +220,7 @@ build_and_push_images() {
         -t "${registry_url}-backend:${ENVIRONMENT}-latest" \
         -f paintbox-backend/Dockerfile \
         "$PROJECT_ROOT/paintbox-backend"
-    
+
     if [[ "$DRY_RUN" == "false" ]]; then
         # Push images
         log_info "Pushing images to registry..."
@@ -229,85 +229,85 @@ build_and_push_images() {
         docker push "${registry_url}-backend:${image_tag}"
         docker push "${registry_url}-backend:${ENVIRONMENT}-latest"
     fi
-    
+
     log_info "Docker images built and pushed"
 }
 
 # Deploy to platforms
 deploy_to_platforms() {
     log_info "Deploying to platforms..."
-    
+
     # Get database and Redis URLs from Terraform outputs
     local outputs_file="$PROJECT_ROOT/deployment-outputs-${ENVIRONMENT}.json"
-    
+
     if [[ ! -f "$outputs_file" ]]; then
         log_error "Terraform outputs file not found: $outputs_file"
         exit 1
     fi
-    
+
     local database_url
     local redis_url
     database_url=$(jq -r '.database_url.value' "$outputs_file")
     redis_url=$(jq -r '.redis_url.value' "$outputs_file")
-    
+
     # Deploy frontend to Vercel
     log_info "Deploying frontend to Vercel..."
-    
+
     # Set Vercel environment variables
     vercel env add DATABASE_URL "$database_url" "$ENVIRONMENT" --force 2>/dev/null || true
     vercel env add REDIS_URL "$redis_url" "$ENVIRONMENT" --force 2>/dev/null || true
     vercel env add AWS_REGION "$AWS_REGION" "$ENVIRONMENT" --force 2>/dev/null || true
     vercel env add SECRETS_MANAGER_SECRET_NAME "paintbox-${ENVIRONMENT}" "$ENVIRONMENT" --force 2>/dev/null || true
-    
+
     if [[ "$DRY_RUN" == "false" ]]; then
         vercel --prod --yes
     fi
-    
+
     # Deploy backend to Railway
     log_info "Deploying backend to Railway..."
-    
+
     cd "$PROJECT_ROOT/paintbox-backend"
-    
+
     # Set Railway environment variables
     railway variables set DATABASE_URL="$database_url" 2>/dev/null || true
     railway variables set REDIS_URL="$redis_url" 2>/dev/null || true
     railway variables set AWS_REGION="$AWS_REGION" 2>/dev/null || true
     railway variables set SECRETS_MANAGER_SECRET_NAME="paintbox-${ENVIRONMENT}" 2>/dev/null || true
     railway variables set NODE_ENV="production" 2>/dev/null || true
-    
+
     if [[ "$DRY_RUN" == "false" ]]; then
         railway up --detach
     fi
-    
+
     log_info "Platform deployments completed"
 }
 
 # Run tests
 run_tests() {
     log_info "Running post-deployment tests..."
-    
+
     cd "$PROJECT_ROOT"
-    
+
     # Run health checks
     if [[ "$DRY_RUN" == "false" ]]; then
         npm run test:smoke
-        
+
         # Wait for services to be ready
         sleep 30
-        
+
         # Run integration tests against deployed services
         npm run test:integration:deployed
     fi
-    
+
     log_info "Tests completed"
 }
 
 # Create deployment report
 create_deployment_report() {
     log_info "Creating deployment report..."
-    
+
     local report_file="$PROJECT_ROOT/deployment-report-${ENVIRONMENT}-$(date +%Y%m%d-%H%M%S).md"
-    
+
     cat > "$report_file" << EOF
 # Deployment Report
 
@@ -353,10 +353,10 @@ EOF
 main() {
     log_info "Starting secure deployment for environment: $ENVIRONMENT"
     log_info "Dry run mode: $DRY_RUN"
-    
+
     # Create logs directory
     mkdir -p "$PROJECT_ROOT/logs"
-    
+
     # Run deployment steps
     validate_environment
     security_checks
@@ -366,7 +366,7 @@ main() {
     deploy_to_platforms
     run_tests
     create_deployment_report
-    
+
     log_info "Deployment completed successfully!"
     log_info "Log file: $LOG_FILE"
 }

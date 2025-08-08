@@ -119,7 +119,7 @@ echo "----------------------------"
 # Check if auth middleware exists
 if [ -f "lib/middleware/auth.ts" ]; then
     echo -e "${GREEN}✓${NC} Authentication middleware exists"
-    
+
     # Check for JWT configuration
     if grep -q "RS256\|ES256" lib/middleware/auth.ts; then
         echo -e "${GREEN}✓${NC} Using secure JWT algorithm"
@@ -148,7 +148,7 @@ echo "------------------------------"
 # Check if validation middleware exists
 if [ -f "lib/middleware/validation.ts" ]; then
     echo -e "${GREEN}✓${NC} Input validation middleware exists"
-    
+
     # Check for zod usage
     if grep -q "z\." lib/middleware/validation.ts; then
         echo -e "${GREEN}✓${NC} Using Zod for schema validation"
@@ -175,7 +175,7 @@ echo "--------------------------------"
 # Check if AWS Secrets Manager is configured
 if [ -f "lib/services/secrets-manager.ts" ]; then
     echo -e "${GREEN}✓${NC} AWS Secrets Manager service exists"
-    
+
     # Check for proper error handling
     if grep -q "try.*catch\|error" lib/services/secrets-manager.ts; then
         echo -e "${GREEN}✓${NC} Error handling implemented"

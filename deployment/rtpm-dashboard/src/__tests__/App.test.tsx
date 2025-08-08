@@ -175,7 +175,7 @@ describe('App Component', () => {
 
       // Mock a delayed API response
       const mockApi = require('@/services/api');
-      mockApi.deploymentAPI.healthCheck.mockImplementation(() => 
+      mockApi.deploymentAPI.healthCheck.mockImplementation(() =>
         new Promise(resolve => setTimeout(() => resolve({ status: 'healthy' }), 100))
       );
 

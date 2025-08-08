@@ -1,26 +1,26 @@
 export default {
   // Test environment
   testEnvironment: 'node',
-  
+
   // Module file extensions
   moduleFileExtensions: ['js', 'json', 'ts'],
-  
+
   // Transform files
   transform: {
     '^.+\\.(js|ts)$': 'babel-jest'
   },
-  
+
   // Test file patterns
   testMatch: [
     '**/__tests__/**/*.(js|ts)',
     '**/?(*.)+(spec|test).(js|ts)'
   ],
-  
+
   // Coverage configuration
   collectCoverage: true,
   coverageDirectory: '../coverage',
   coverageReporters: ['text', 'html', 'lcov', 'json'],
-  
+
   // Coverage thresholds for production deployment
   coverageThreshold: {
     global: {
@@ -43,23 +43,23 @@ export default {
       statements: 90
     }
   },
-  
+
   // Setup files
   setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.js'],
-  
+
   // Module paths
   moduleNameMapping: {
     '^@/(.*)$': '<rootDir>/src/$1'
   },
-  
+
   // Test timeout
   testTimeout: 10000,
-  
+
   // Clear mocks between tests
   clearMocks: true,
   resetMocks: true,
   restoreMocks: true,
-  
+
   // Ignore patterns
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],
   coveragePathIgnorePatterns: ['/node_modules/', '/dist/', '/__tests__/']

@@ -29,12 +29,12 @@ class PerformanceMonitor {
     const start = performance.now();
     const result = fn();
     const duration = performance.now() - start;
-    
+
     const metric = this.metrics.get(name) || { count: 0, totalTime: 0 };
     metric.count++;
     metric.totalTime += duration;
     this.metrics.set(name, metric);
-    
+
     return result;
   }
 
@@ -64,7 +64,7 @@ class CalculationBatcher {
     resolve: (value: any) => void;
     reject: (error: any) => void;
   }> = [];
-  
+
   private processing = false;
   private batchSize = 10;
   private batchDelay = 0; // Process immediately
@@ -78,13 +78,13 @@ class CalculationBatcher {
 
   private async processBatch() {
     if (this.processing || this.queue.length === 0) return;
-    
+
     this.processing = true;
-    
+
     // Process in batches
     while (this.queue.length > 0) {
       const batch = this.queue.splice(0, this.batchSize);
-      
+
       // Process batch in parallel
       await Promise.all(
         batch.map(async ({ calculation, resolve, reject }) => {
@@ -96,13 +96,13 @@ class CalculationBatcher {
           }
         })
       );
-      
+
       // Small delay between batches to prevent blocking
       if (this.queue.length > 0 && this.batchDelay > 0) {
         await new Promise(resolve => setTimeout(resolve, this.batchDelay));
       }
     }
-    
+
     this.processing = false;
   }
 
@@ -121,16 +121,16 @@ class CalculationBatcher {
 export class OptimizedPaintingCalculator {
   // LRU cache for calculation results
   private calculationCache: LRUCache<string, any>;
-  
+
   // Memoization for formula results
   private formulaCache: LRUCache<string, Decimal>;
-  
+
   // Performance monitor
   private monitor = new PerformanceMonitor();
-  
+
   // Calculation batcher
   private batcher = new CalculationBatcher();
-  
+
   // Progress callback
   private onProgress?: (percent: number, formula: string) => void;
 
@@ -143,12 +143,12 @@ export class OptimizedPaintingCalculator {
       max: options?.maxCacheSize || 1000,
       ttl: 1000 * 60 * 5, // 5 minute TTL
     });
-    
+
     this.formulaCache = new LRUCache({
       max: options?.maxFormulaCache || 5000,
       ttl: 1000 * 60 * 10, // 10 minute TTL
     });
-    
+
     this.onProgress = options?.onProgress;
   }
 
@@ -157,8 +157,8 @@ export class OptimizedPaintingCalculator {
    */
   async calculate(
     inputs: any,
-    options?: { 
-      useCache?: boolean; 
+    options?: {
+      useCache?: boolean;
       trackProgress?: boolean;
       batchMode?: boolean;
     }
@@ -166,10 +166,10 @@ export class OptimizedPaintingCalculator {
     const useCache = options?.useCache ?? true;
     const trackProgress = options?.trackProgress ?? false;
     const batchMode = options?.batchMode ?? false;
-    
+
     // Generate cache key
     const cacheKey = this.generateCacheKey(inputs);
-    
+
     // Check cache first
     if (useCache) {
       const cached = this.calculationCache.get(cacheKey);
@@ -177,12 +177,12 @@ export class OptimizedPaintingCalculator {
         return cached;
       }
     }
-    
+
     // Perform calculation
     const calculation = () => this.monitor.measure('total-calculation', () => {
       return this.performCalculation(inputs, trackProgress);
     });
-    
+
     // Use batcher in batch mode
     let result;
     if (batchMode) {
@@ -190,12 +190,12 @@ export class OptimizedPaintingCalculator {
     } else {
       result = calculation();
     }
-    
+
     // Cache result
     if (useCache) {
       this.calculationCache.set(cacheKey, result);
     }
-    
+
     return result;
   }
 
@@ -205,7 +205,7 @@ export class OptimizedPaintingCalculator {
   private performCalculation(inputs: any, trackProgress: boolean): any {
     const totalSteps = this.countFormulas(inputs);
     let currentStep = 0;
-    
+
     const reportProgress = (formula: string) => {
       if (trackProgress && this.onProgress) {
         currentStep++;
@@ -213,7 +213,7 @@ export class OptimizedPaintingCalculator {
         this.onProgress(percent, formula);
       }
     };
-    
+
     // Execute formulas with memoization
     return this.monitor.measure('formula-execution', () => {
       return this.executeFormulas(inputs, reportProgress);
@@ -229,7 +229,7 @@ export class OptimizedPaintingCalculator {
     reportProgress('Calculating labor costs');
     reportProgress('Calculating material costs');
     reportProgress('Applying markups');
-    
+
     return {
       labor: { total: 1500 },
       materials: { total: 800 },
@@ -258,21 +258,21 @@ export class OptimizedPaintingCalculator {
    */
   evaluateFormula(formula: string, context: any): Decimal {
     const cacheKey = `${formula}-${JSON.stringify(context)}`;
-    
+
     // Check formula cache
     const cached = this.formulaCache.get(cacheKey);
     if (cached) {
       return cached;
     }
-    
+
     // Evaluate formula
     const result = this.monitor.measure('formula-evaluation', () => {
       return this.evaluateFormulaInternal(formula, context);
     });
-    
+
     // Cache result
     this.formulaCache.set(cacheKey, result);
-    
+
     return result;
   }
 
@@ -323,10 +323,10 @@ export class OptimizedPaintingCalculator {
    * Warm up cache with common calculations
    */
   async warmUpCache(commonInputs: any[]) {
-    const promises = commonInputs.map(inputs => 
+    const promises = commonInputs.map(inputs =>
       this.calculate(inputs, { useCache: true, batchMode: true })
     );
-    
+
     await Promise.all(promises);
   }
 
@@ -363,14 +363,14 @@ export function createWorkerCalculator() {
     // Create a blob URL for the worker
     const workerCode = `
       importScripts('https://cdn.jsdelivr.net/npm/decimal.js@10/decimal.min.js');
-      
+
       self.onmessage = function(e) {
         const { id, formula, context } = e.data;
-        
+
         try {
           // Perform calculation
           const result = evaluateFormula(formula, context);
-          
+
           self.postMessage({
             id,
             result: result.toString(),
@@ -384,18 +384,18 @@ export function createWorkerCalculator() {
           });
         }
       };
-      
+
       function evaluateFormula(formula, context) {
         // Formula evaluation logic
         return new Decimal(0);
       }
     `;
-    
+
     const blob = new Blob([workerCode], { type: 'application/javascript' });
     const workerUrl = URL.createObjectURL(blob);
-    
+
     return new Worker(workerUrl);
   }
-  
+
   return null;
 }

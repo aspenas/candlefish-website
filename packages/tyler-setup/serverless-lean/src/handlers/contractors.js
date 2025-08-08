@@ -20,26 +20,26 @@ export const handler = async (event) => {
   try {
     const path = event.path;
     const method = event.httpMethod;
-    
+
     // Public endpoint for contractor access
     if (path.includes('/contractors/access/')) {
       const token = event.pathParameters.token;
       return await accessWithToken(token);
     }
-    
+
     // All other endpoints require authentication
     const user = await validateAuth(event);
     if (!user || user.role !== 'admin') {
       return response(401, { error: 'Admin access required' });
     }
-    
+
     if (path.includes('/contractors/invite')) {
       return await inviteContractor(JSON.parse(event.body), user);
     } else if (path.includes('/contractors/revoke/')) {
       const contractorId = event.pathParameters.id;
       return await revokeAccess(contractorId, user);
     }
-    
+
     return response(404, { error: 'Not found' });
   } catch (error) {
     console.error('Contractor handler error:', error);
@@ -62,21 +62,21 @@ async function inviteContractor(data, adminUser) {
       reason,
       notifyEmail = true
     } = data;
-    
+
     // Validate input
     if (!email || !name || !reason) {
       return response(400, { error: 'Email, name, and reason are required' });
     }
-    
+
     // Generate secure access token
     const accessToken = crypto.randomBytes(32).toString('hex');
     const hashedToken = crypto.createHash('sha256').update(accessToken).digest('hex');
-    
+
     // Calculate expiration
     const now = Date.now();
     const expiresAt = now + (accessDuration * 24 * 60 * 60 * 1000);
     const ttl = Math.floor(expiresAt / 1000); // DynamoDB TTL in seconds
-    
+
     // Create contractor record
     const contractor = {
       id: uuidv4(),
@@ -97,16 +97,16 @@ async function inviteContractor(data, adminUser) {
       accessCount: 0,
       lastAccess: null
     };
-    
+
     // Store in DynamoDB
     await docClient.send(new PutCommand({
       TableName: CONTRACTORS_TABLE,
       Item: contractor
     }));
-    
+
     // Create access URL
     const accessUrl = `https://${process.env.DOMAIN || 'onboarding.candlefish.ai'}/contractor-access/${accessToken}`;
-    
+
     // Send invitation email if enabled
     if (notifyEmail) {
       await sendInvitationEmail({
@@ -118,7 +118,7 @@ async function inviteContractor(data, adminUser) {
         invitedBy: adminUser.email
       });
     }
-    
+
     // Log the invitation
     await logAudit({
       action: 'CONTRACTOR_INVITED',
@@ -132,7 +132,7 @@ async function inviteContractor(data, adminUser) {
         allowedSecrets: allowedSecrets.length
       }
     });
-    
+
     return response(201, {
       success: true,
       contractorId: contractor.id,
@@ -153,7 +153,7 @@ async function accessWithToken(token) {
   try {
     // Hash the provided token
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-    
+
     // Query by token hash
     const result = await docClient.send(new QueryCommand({
       TableName: CONTRACTORS_TABLE,
@@ -163,21 +163,21 @@ async function accessWithToken(token) {
         ':token': hashedToken
       }
     }));
-    
+
     if (!result.Items || result.Items.length === 0) {
       return response(404, { error: 'Invalid or expired access token' });
     }
-    
+
     const contractor = result.Items[0];
-    
+
     // Check expiration
     if (Date.now() > contractor.expiresAt) {
-      return response(401, { 
+      return response(401, {
         error: 'Access token has expired',
         expiredAt: new Date(contractor.expiresAt).toISOString()
       });
     }
-    
+
     // Update access count and last access time
     await docClient.send(new UpdateCommand({
       TableName: CONTRACTORS_TABLE,
@@ -192,7 +192,7 @@ async function accessWithToken(token) {
         ':status': 'active'
       }
     }));
-    
+
     // Generate temporary JWT for contractor
     const jwt = await generateContractorJWT({
       id: contractor.id,
@@ -203,7 +203,7 @@ async function accessWithToken(token) {
       allowedSecrets: contractor.allowedSecrets,
       expiresAt: contractor.expiresAt
     });
-    
+
     // Log successful access
     await logAudit({
       action: 'CONTRACTOR_ACCESS',
@@ -214,7 +214,7 @@ async function accessWithToken(token) {
         accessCount: contractor.accessCount + 1
       }
     });
-    
+
     return response(200, {
       success: true,
       token: jwt,
@@ -243,13 +243,13 @@ async function revokeAccess(contractorId, adminUser) {
       TableName: CONTRACTORS_TABLE,
       Key: { id: contractorId }
     }));
-    
+
     if (!result.Item) {
       return response(404, { error: 'Contractor not found' });
     }
-    
+
     const contractor = result.Item;
-    
+
     // Update status to revoked
     await docClient.send(new UpdateCommand({
       TableName: CONTRACTORS_TABLE,
@@ -264,7 +264,7 @@ async function revokeAccess(contractorId, adminUser) {
         ':admin': adminUser.id
       }
     }));
-    
+
     // Log revocation
     await logAudit({
       action: 'CONTRACTOR_REVOKED',
@@ -277,7 +277,7 @@ async function revokeAccess(contractorId, adminUser) {
         accessCount: contractor.accessCount
       }
     });
-    
+
     return response(200, {
       success: true,
       message: `Access revoked for ${contractor.email}`,
@@ -300,7 +300,7 @@ async function revokeAccess(contractorId, adminUser) {
  */
 async function sendInvitationEmail(params) {
   const { email, name, accessUrl, expirationDays, reason, invitedBy } = params;
-  
+
   const emailBody = `
 Hello ${name},
 
@@ -326,7 +326,7 @@ If you have any questions, please contact ${invitedBy}.
 Best regards,
 Candlefish.ai Security Team
   `.trim();
-  
+
   try {
     await sesClient.send(new SendEmailCommand({
       Source: process.env.FROM_EMAIL || 'noreply@candlefish.ai',
@@ -360,10 +360,10 @@ async function generateContractorJWT(contractor) {
     ...contractor,
     // Remove exp from here as generateJwtToken handles expiration
   };
-  
+
   // Calculate expiration time
   const expiresIn = Math.floor((contractor.expiresAt - Date.now()) / 1000);
-  
+
   // This will use the JWT secret from AWS Secrets Manager
   return await generateJwtToken(payload, `${expiresIn}s`);
 }

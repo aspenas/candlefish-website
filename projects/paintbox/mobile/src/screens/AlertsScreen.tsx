@@ -27,7 +27,7 @@ import { useQuery, useMutation, useSubscription } from '@apollo/client';
 import { showMessage } from 'react-native-flash-message';
 
 // Queries and Types
-import { 
+import {
   GET_ALERTS_LIST,
   ACKNOWLEDGE_ALERT_MOBILE,
   RESOLVE_ALERT_MOBILE,
@@ -58,7 +58,7 @@ const statusFilters = [
 
 export default function AlertsScreen({ navigation }: Props) {
   const theme = useTheme();
-  
+
   const [refreshing, setRefreshing] = useState(false);
   const [severityFilter, setSeverityFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ACTIVE');
@@ -90,7 +90,7 @@ export default function AlertsScreen({ navigation }: Props) {
   // Group alerts by severity for stats
   const alertStats = useMemo(() => {
     if (!data?.alerts) return { critical: 0, high: 0, medium: 0, low: 0 };
-    
+
     return data.alerts.reduce((acc, alert) => {
       switch (alert.severity) {
         case 'CRITICAL':
@@ -124,18 +124,18 @@ export default function AlertsScreen({ navigation }: Props) {
   const handleAcknowledgeAlert = async (alertId: string) => {
     try {
       await acknowledgeAlert({
-        variables: { 
-          alertId, 
+        variables: {
+          alertId,
           userId: 'mobile-user' // In real app, get from auth context
         },
       });
-      
+
       showMessage({
         message: 'Alert Acknowledged',
         type: 'success',
         duration: 2000,
       });
-      
+
       refetch();
     } catch (error) {
       showMessage({
@@ -149,18 +149,18 @@ export default function AlertsScreen({ navigation }: Props) {
   const handleResolveAlert = async (alertId: string) => {
     try {
       await resolveAlert({
-        variables: { 
-          alertId, 
+        variables: {
+          alertId,
           userId: 'mobile-user' // In real app, get from auth context
         },
       });
-      
+
       showMessage({
         message: 'Alert Resolved',
         type: 'success',
         duration: 2000,
       });
-      
+
       refetch();
     } catch (error) {
       showMessage({
@@ -209,7 +209,7 @@ export default function AlertsScreen({ navigation }: Props) {
         <Text variant="headlineSmall" style={styles.title}>
           Alerts
         </Text>
-        
+
         {data && (
           <View style={styles.statsContainer}>
             {alertStats.critical > 0 && (
@@ -300,7 +300,7 @@ export default function AlertsScreen({ navigation }: Props) {
               No alerts found
             </Text>
             <Text variant="bodyMedium" style={[styles.emptySubtext, { color: theme.colors.onSurfaceVariant }]}>
-              {statusFilter === 'ACTIVE' 
+              {statusFilter === 'ACTIVE'
                 ? 'All systems are running smoothly'
                 : 'Try adjusting your filter criteria'
               }

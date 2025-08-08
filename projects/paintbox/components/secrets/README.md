@@ -5,11 +5,13 @@ This directory contains React components for managing and monitoring the Paintbo
 ## Components Overview
 
 ### 1. SecretsManagementDashboard
+
 **File**: `SecretsManagementDashboard.tsx`
 
 Main dashboard component providing an overview of the entire secrets management system.
 
 **Features**:
+
 - Service health status display
 - Secret rotation status tracking
 - AWS Secrets Manager connectivity status
@@ -17,6 +19,7 @@ Main dashboard component providing an overview of the entire secrets management 
 - Error handling with retry functionality
 
 **Props**:
+
 ```typescript
 interface DashboardProps {
   className?: string;
@@ -24,6 +27,7 @@ interface DashboardProps {
 ```
 
 **Usage**:
+
 ```jsx
 import { SecretsManagementDashboard } from '@/components/secrets';
 
@@ -31,11 +35,13 @@ import { SecretsManagementDashboard } from '@/components/secrets';
 ```
 
 ### 2. ServiceStatusMonitor
+
 **File**: `ServiceStatusMonitor.tsx`
 
 Real-time monitoring component for external service integrations (Salesforce, CompanyCam).
 
 **Features**:
+
 - Live service health monitoring
 - Response time tracking
 - Error alerts and notifications
@@ -44,6 +50,7 @@ Real-time monitoring component for external service integrations (Salesforce, Co
 - Alert acknowledgment system
 
 **Props**:
+
 ```typescript
 interface ServiceStatusMonitorProps {
   className?: string;
@@ -53,10 +60,11 @@ interface ServiceStatusMonitorProps {
 ```
 
 **Usage**:
+
 ```jsx
 import { ServiceStatusMonitor } from '@/components/secrets';
 
-<ServiceStatusMonitor 
+<ServiceStatusMonitor
   autoRefresh={true}
   refreshInterval={10000}
   className="monitor-container"
@@ -64,11 +72,13 @@ import { ServiceStatusMonitor } from '@/components/secrets';
 ```
 
 ### 3. AuditLogViewer
+
 **File**: `AuditLogViewer.tsx`
 
 Component for viewing and analyzing security audit events.
 
 **Features**:
+
 - Filterable audit events table
 - Search functionality
 - Date range filtering
@@ -78,6 +88,7 @@ Component for viewing and analyzing security audit events.
 - Pagination support
 
 **Props**:
+
 ```typescript
 interface AuditLogViewerProps {
   className?: string;
@@ -86,21 +97,24 @@ interface AuditLogViewerProps {
 ```
 
 **Usage**:
+
 ```jsx
 import { AuditLogViewer } from '@/components/secrets';
 
-<AuditLogViewer 
+<AuditLogViewer
   pageSize={50}
   className="audit-viewer"
 />
 ```
 
 ### 4. SecurityConfigurationPanel
+
 **File**: `SecurityConfigurationPanel.tsx`
 
 Comprehensive security configuration and migration tracking panel.
 
 **Features**:
+
 - Security checklist with status indicators
 - Environment variable validation
 - Migration progress tracking
@@ -109,6 +123,7 @@ Comprehensive security configuration and migration tracking panel.
 - Configuration validation
 
 **Props**:
+
 ```typescript
 interface SecurityConfigurationPanelProps {
   className?: string;
@@ -116,6 +131,7 @@ interface SecurityConfigurationPanelProps {
 ```
 
 **Usage**:
+
 ```jsx
 import { SecurityConfigurationPanel } from '@/components/secrets';
 
@@ -125,6 +141,7 @@ import { SecurityConfigurationPanel } from '@/components/secrets';
 ## Types
 
 ### Core Types
+
 All components use TypeScript interfaces defined in `types.ts`:
 
 ```typescript
@@ -194,16 +211,19 @@ interface SecurityCheckItem {
 The components integrate with the following API endpoints:
 
 ### Configuration
+
 - `GET /api/v1/secrets/config` - Application configuration
 - `GET /api/v1/secrets/health` - Health check endpoint
 
 ### Service Management
+
 - `POST /api/v1/secrets/token` - Request temporary access token
 - `POST /api/v1/services/salesforce/auth` - Salesforce authentication
 - `POST /api/v1/services/companycam/auth` - CompanyCam authentication
 - `GET /api/v1/services/{service}/status` - Service status check
 
 ### Audit & Security
+
 - `GET /api/v1/audit/events` - Retrieve audit events
 - `GET /api/v1/audit/events/export` - Export audit events as CSV
 - `POST /api/v1/security/check/{checkId}` - Run security check
@@ -219,6 +239,7 @@ Components use Tailwind CSS with the existing Paintbox design system:
 - **Components**: Built on existing Card and Button components
 
 ### Status Color Coding
+
 - **Green**: Healthy, current, passed, completed
 - **Yellow**: Warning, expiring, in progress
 - **Red**: Error, expired, failed
@@ -229,7 +250,7 @@ Components use Tailwind CSS with the existing Paintbox design system:
 All components implement comprehensive error handling:
 
 1. **Network Errors**: Graceful degradation with mock data
-2. **API Failures**: User-friendly error messages with retry options  
+2. **API Failures**: User-friendly error messages with retry options
 3. **Loading States**: Proper loading indicators and skeleton screens
 4. **Timeout Handling**: Configurable request timeouts
 
@@ -250,11 +271,12 @@ All components implement comprehensive error handling:
 ## Usage Examples
 
 ### Complete Admin Page
+
 ```jsx
 'use client';
 
 import React, { useState } from 'react';
-import { 
+import {
   SecretsManagementDashboard,
   ServiceStatusMonitor,
   AuditLogViewer,
@@ -286,19 +308,20 @@ export default function AdminSecretsPage() {
 ```
 
 ### Individual Component Usage
+
 ```jsx
 // Dashboard with custom refresh
 <SecretsManagementDashboard className="mb-8" />
 
 // Monitor with custom settings
-<ServiceStatusMonitor 
+<ServiceStatusMonitor
   autoRefresh={true}
   refreshInterval={15000}
   className="service-monitor"
 />
 
 // Audit viewer with large page size
-<AuditLogViewer 
+<AuditLogViewer
   pageSize={100}
   className="audit-container"
 />
@@ -318,12 +341,14 @@ export default function AdminSecretsPage() {
 ## Testing
 
 Components should be tested with:
+
 - Unit tests for component logic
 - Integration tests for API interactions
 - Visual regression tests for UI consistency
 - Accessibility tests for WCAG compliance
 
 Example test structure:
+
 ```typescript
 describe('SecretsManagementDashboard', () => {
   it('renders without errors', () => {});

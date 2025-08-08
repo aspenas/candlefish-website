@@ -23,28 +23,28 @@ describe('PromoterOS Security Tests', () => {
       for (const maliciousName of maliciousNames) {
         const event = TestDataFactory.createMockEvent('POST', '/api/artists/evaluate',
           TestDataFactory.createApiRequest('evaluate', { artist_name: maliciousName }));
-        
+
         const result = await evaluateHandler(event, TestDataFactory.createMockContext());
-        
+
         // Should still process but sanitize the input
         expect(result.statusCode).toBe(200);
-        
+
         const response = JSON.parse(result.body);
         expect(response.data.artist).toBe(maliciousName); // Should handle gracefully
-        
+
         console.log(`Handled malicious input: ${maliciousName}`);
       }
     });
 
     test('should validate venue capacity bounds', async () => {
       const invalidCapacities = [-1, 0, 999999999, '"><script>alert("xss")</script>', null, undefined];
-      
+
       for (const capacity of invalidCapacities) {
         const event = TestDataFactory.createMockEvent('POST', '/api/booking/score',
           TestDataFactory.createApiRequest('booking', { venue_capacity: capacity }));
-        
+
         const result = await bookingHandler(event, TestDataFactory.createMockContext());
-        
+
         // Should either handle gracefully or reject appropriately
         if (result.statusCode === 200) {
           const response = JSON.parse(result.body);
@@ -66,12 +66,12 @@ describe('PromoterOS Security Tests', () => {
       };
 
       const event = TestDataFactory.createMockEvent('POST', '/api/artists/evaluate', oversizedPayload);
-      
+
       const result = await evaluateHandler(event, TestDataFactory.createMockContext());
-      
+
       // Should handle gracefully without crashing
       expect([200, 400, 413]).toContain(result.statusCode);
-      
+
       if (result.statusCode === 413) {
         const response = JSON.parse(result.body);
         expect(response.error).toContain('payload');
@@ -92,13 +92,13 @@ describe('PromoterOS Security Tests', () => {
       for (const payload of xssPayloads) {
         const event = TestDataFactory.createMockEvent('POST', '/api/artists/evaluate',
           TestDataFactory.createApiRequest('evaluate', { artist_name: payload }));
-        
+
         const result = await evaluateHandler(event, TestDataFactory.createMockContext());
-        
+
         expect(result.statusCode).toBe(200);
-        
+
         const responseBody = result.body;
-        
+
         // Response should not contain executable JavaScript
         expect(responseBody).not.toMatch(/<script/i);
         expect(responseBody).not.toMatch(/javascript:/i);
@@ -112,7 +112,7 @@ describe('PromoterOS Security Tests', () => {
     test('should set appropriate CORS headers', async () => {
       const event = TestDataFactory.createMockEvent('POST', '/api/artists/evaluate');
       const result = await evaluateHandler(event, TestDataFactory.createMockContext());
-      
+
       expect(result.headers['Access-Control-Allow-Origin']).toBe('*');
       expect(result.headers['Access-Control-Allow-Methods']).toContain('POST');
       expect(result.headers['Access-Control-Allow-Headers']).toContain('Content-Type');
@@ -121,7 +121,7 @@ describe('PromoterOS Security Tests', () => {
     test('should handle OPTIONS preflight correctly', async () => {
       const event = TestDataFactory.createMockEvent('OPTIONS', '/api/artists/evaluate');
       const result = await evaluateHandler(event, TestDataFactory.createMockContext());
-      
+
       expect(result.statusCode).toBe(200);
       expect(result.body).toBe('');
       expect(result.headers['Access-Control-Allow-Origin']).toBe('*');
@@ -133,21 +133,21 @@ describe('PromoterOS Security Tests', () => {
       // Mock an internal error scenario
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'production';
-      
+
       try {
         const event = TestDataFactory.createMockEvent('POST', '/api/artists/evaluate', 'invalid json');
         const result = await evaluateHandler(event, TestDataFactory.createMockContext());
-        
+
         expect(result.statusCode).toBe(500);
-        
+
         const response = JSON.parse(result.body);
-        
+
         // Should not expose stack traces or internal paths
         expect(response.error).toBeTruthy();
         expect(response.error).not.toContain('/Users/');
         expect(response.error).not.toContain('node_modules');
         expect(response).not.toHaveProperty('stack');
-        
+
       } finally {
         process.env.NODE_ENV = originalEnv;
       }
@@ -156,16 +156,16 @@ describe('PromoterOS Security Tests', () => {
     test('should provide helpful error messages in development', async () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'development';
-      
+
       try {
         const event = TestDataFactory.createMockEvent('POST', '/api/artists/evaluate', 'invalid json');
         const result = await evaluateHandler(event, TestDataFactory.createMockContext());
-        
+
         expect(result.statusCode).toBe(500);
-        
+
         const response = JSON.parse(result.body);
         expect(response.details).toBeTruthy();
-        
+
       } finally {
         process.env.NODE_ENV = originalEnv;
       }
@@ -176,24 +176,24 @@ describe('PromoterOS Security Tests', () => {
     test('should handle rapid successive requests', async () => {
       const rapidRequests = 50;
       const promises = [];
-      
+
       for (let i = 0; i < rapidRequests; i++) {
         const event = TestDataFactory.createMockEvent('POST', '/api/artists/evaluate',
           TestDataFactory.createApiRequest('evaluate', { artist_name: `Rapid Test ${i}` }));
         promises.push(evaluateHandler(event, TestDataFactory.createMockContext()));
       }
-      
+
       const results = await Promise.all(promises);
-      
+
       // All requests should complete successfully (no rate limiting implemented yet)
       results.forEach((result, index) => {
         expect([200, 429]).toContain(result.statusCode); // 200 OK or 429 Too Many Requests
-        
+
         if (result.statusCode === 429) {
           console.log(`Request ${index} was rate limited`);
         }
       });
-      
+
       const successCount = results.filter(r => r.statusCode === 200).length;
       console.log(`${successCount}/${rapidRequests} requests succeeded`);
     });
@@ -208,9 +208,9 @@ describe('PromoterOS Security Tests', () => {
         },
         body: 'plain text body'
       };
-      
+
       const result = await evaluateHandler(event, TestDataFactory.createMockContext());
-      
+
       // Should handle gracefully
       expect([400, 415, 500]).toContain(result.statusCode);
     });
@@ -221,9 +221,9 @@ describe('PromoterOS Security Tests', () => {
         headers: {},
         body: JSON.stringify(TestDataFactory.createApiRequest('evaluate'))
       };
-      
+
       const result = await evaluateHandler(event, TestDataFactory.createMockContext());
-      
+
       // Should still work with valid JSON body
       expect([200, 400]).toContain(result.statusCode);
     });
@@ -253,14 +253,14 @@ describe('PromoterOS Security Tests', () => {
       for (const payload of maliciousPayloads) {
         const event = TestDataFactory.createMockEvent('POST', '/api/artists/evaluate', payload);
         const result = await evaluateHandler(event, TestDataFactory.createMockContext());
-        
+
         expect(result.statusCode).toBe(200);
-        
+
         const response = JSON.parse(result.body);
-        
+
         // Should not execute the injected code
         expect(response.data.artist).toBe(payload.artist_name);
-        
+
         // Response should not contain evidence of code execution
         const responseStr = JSON.stringify(response);
         expect(responseStr).not.toContain('49'); // 7*7 = 49
@@ -286,13 +286,13 @@ describe('PromoterOS Security Tests', () => {
       };
 
       const event = TestDataFactory.createMockEvent('POST', '/api/artists/evaluate', payload);
-      
+
       const startTime = process.hrtime.bigint();
       const result = await evaluateHandler(event, TestDataFactory.createMockContext());
       const endTime = process.hrtime.bigint();
-      
+
       const durationMs = Number(endTime - startTime) / 1000000;
-      
+
       // Should complete within reasonable time (not hang indefinitely)
       expect(durationMs).toBeLessThan(5000);
       expect([200, 400]).toContain(result.statusCode);
@@ -318,7 +318,7 @@ describe('PromoterOS Security Tests', () => {
       };
 
       const result = await evaluateHandler(event, TestDataFactory.createMockContext());
-      
+
       // Should handle gracefully
       expect([200, 400, 500]).toContain(result.statusCode);
     });
@@ -329,11 +329,11 @@ describe('Security Headers Validation', () => {
   test('should include security headers in responses', async () => {
     const event = TestDataFactory.createMockEvent('POST', '/api/artists/evaluate');
     const result = await evaluateHandler(event, TestDataFactory.createMockContext());
-    
+
     // Check for security-related headers
     expect(result.headers['Content-Type']).toBe('application/json');
     expect(result.headers['Access-Control-Allow-Origin']).toBe('*');
-    
+
     // Note: Additional security headers like CSP, HSTS would be handled at the CDN level
   });
 });

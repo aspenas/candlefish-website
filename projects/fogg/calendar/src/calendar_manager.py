@@ -30,8 +30,7 @@ def create_calendar(name: str, description: str = "", time_zone: str = "UTC") ->
 
     try:
         created_calendar = execute_google_api_call(
-            lambda: service.calendars().insert(body=calendar).execute(),
-            f"create_calendar({name})"
+            lambda: service.calendars().insert(body=calendar).execute(), f"create_calendar({name})"
         )
         print(f"Created calendar: {created_calendar['id']}")
         return created_calendar["id"]
@@ -64,7 +63,7 @@ def share_calendar_with_group(calendar_id: str, group_email: str, role: str = "w
     try:
         execute_google_api_call(
             lambda: service.acl().insert(calendarId=calendar_id, body=rule).execute(),
-            f"share_calendar({calendar_id}, {group_email})"
+            f"share_calendar({calendar_id}, {group_email})",
         )
         print(f"Shared calendar {calendar_id} with group {group_email} as {role}")
         return True
@@ -132,7 +131,7 @@ def create_recurring_event(
             lambda: service.events()
             .insert(calendarId=calendar_id, body=event, sendUpdates="all")
             .execute(),
-            f"create_recurring_event({calendar_id}, {summary})"
+            f"create_recurring_event({calendar_id}, {summary})",
         )
         print(f"Created recurring event: {created_event['id']}")
         return created_event["id"]
@@ -141,9 +140,7 @@ def create_recurring_event(
         raise
 
 
-def update_event_attendees(
-    calendar_id: str, event_id: str, attendee_emails: list[str]
-) -> bool:
+def update_event_attendees(calendar_id: str, event_id: str, attendee_emails: list[str]) -> bool:
     """Update attendees for an existing event.
 
     Args:
@@ -160,7 +157,7 @@ def update_event_attendees(
         # Get existing event
         event = execute_google_api_call(
             lambda: service.events().get(calendarId=calendar_id, eventId=event_id).execute(),
-            f"get_event({calendar_id}, {event_id})"
+            f"get_event({calendar_id}, {event_id})",
         )
 
         # Update attendees
@@ -168,13 +165,15 @@ def update_event_attendees(
 
         # Update event
         execute_google_api_call(
-            lambda: service.events().update(
+            lambda: service.events()
+            .update(
                 calendarId=calendar_id,
                 eventId=event_id,
                 body=event,
                 sendUpdates="all",
-            ).execute(),
-            f"update_event_attendees({calendar_id}, {event_id})"
+            )
+            .execute(),
+            f"update_event_attendees({calendar_id}, {event_id})",
         )
 
         print(f"Updated attendees for event {event_id}")
@@ -211,7 +210,7 @@ def find_recurring_event(calendar_id: str, summary_keyword: str) -> str | None:
                 q=summary_keyword,
             )
             .execute(),
-            f"find_recurring_event({calendar_id}, {summary_keyword})"
+            f"find_recurring_event({calendar_id}, {summary_keyword})",
         )
 
         events = events_result.get("items", [])
@@ -241,8 +240,7 @@ def get_or_create_fogg_calendar() -> str:
     # Search for existing FOGG calendar
     try:
         calendar_list = execute_google_api_call(
-            lambda: service.calendarList().list().execute(),
-            "get_or_create_fogg_calendar"
+            lambda: service.calendarList().list().execute(), "get_or_create_fogg_calendar"
         )
 
         for calendar in calendar_list.get("items", []):

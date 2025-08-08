@@ -41,7 +41,7 @@ export default function App() {
   const [isReady, setIsReady] = useState(false);
   const [apolloClient, setApolloClient] = useState(null);
   const colorScheme = useColorScheme();
-  
+
   // Theme configuration
   const theme = colorScheme === 'dark' ? {
     ...MD3DarkTheme,
@@ -116,7 +116,7 @@ export default function App() {
         <ApolloProvider client={apolloClient}>
           <PaperProvider theme={theme}>
             <AppNavigator />
-            <FlashMessage 
+            <FlashMessage
               position="top"
               duration={4000}
               hideStatusBar={false}

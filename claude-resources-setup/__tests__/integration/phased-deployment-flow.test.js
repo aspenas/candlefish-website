@@ -45,7 +45,7 @@ const mockServices = {
     updatePhaseStatus: jest.fn(),
     getDeploymentProgress: jest.fn()
   },
-  
+
   onboardingService: {
     startUserOnboarding: jest.fn(),
     updateUserProgress: jest.fn(),
@@ -187,11 +187,11 @@ describe('Phased Deployment Integration Flow', () => {
       mockServices.deploymentService.startPhase.mockImplementation(async (deploymentId, phaseId) => {
         const deployment = mockDatabase.deployments.get(deploymentId)
         const phase = deployment.phases.find(p => p.id === phaseId)
-        
+
         phase.status = 'in_progress'
         phase.startDate = new Date().toISOString()
         deployment.currentPhase = phaseId
-        
+
         mockDatabase.deployments.set(deploymentId, deployment)
         return phase
       })
@@ -210,12 +210,12 @@ describe('Phased Deployment Integration Flow', () => {
 
       // Act & Assert - Execute Phase 1
       console.log('Starting Phase 1: Alpha Phase')
-      
+
       // Start Phase 1
       const phase1 = await mockServices.deploymentService.startPhase(deployment.id, 'test-phase-1')
       expect(phase1.status).toBe('in_progress')
       expect(mockServices.notificationService.sendPhaseStartNotification).toHaveBeenCalledWith(
-        deployment.id, 
+        deployment.id,
         'test-phase-1'
       )
 
@@ -231,7 +231,7 @@ describe('Phased Deployment Integration Flow', () => {
 
       // Act & Assert - Execute Phase 2
       console.log('Starting Phase 2: Beta Phase')
-      
+
       // Validate Phase 1 is complete before starting Phase 2
       const updatedDeployment = mockDatabase.deployments.get(deployment.id)
       const completedPhase1 = updatedDeployment.phases.find(p => p.id === 'test-phase-1')
@@ -251,7 +251,7 @@ describe('Phased Deployment Integration Flow', () => {
 
       // Act & Assert - Execute Phase 3
       console.log('Starting Phase 3: General Availability')
-      
+
       const phase3 = await mockServices.deploymentService.startPhase(deployment.id, 'test-phase-3')
       expect(phase3.status).toBe('in_progress')
 
@@ -266,7 +266,7 @@ describe('Phased Deployment Integration Flow', () => {
       // Final validation - entire deployment should be complete
       const finalDeployment = mockDatabase.deployments.get(deployment.id)
       expect(finalDeployment.status).toBe('completed')
-      
+
       finalDeployment.phases.forEach(phase => {
         expect(phase.status).toBe('completed')
         expect(phase.metrics.completionRate).toBeGreaterThanOrEqual(phase.successCriteria.minCompletionRate)
@@ -328,7 +328,7 @@ describe('Phased Deployment Integration Flow', () => {
           const phaseOrder = ['phase-1', 'phase-2', 'phase-3']
           const currentIndex = phaseOrder.indexOf(currentPhase)
           const targetIndex = phaseOrder.indexOf(targetPhase)
-          
+
           if (targetIndex !== currentIndex + 1) {
             throw new Error('Invalid phase transition: phases must be executed in order')
           }
@@ -365,7 +365,7 @@ describe('Phased Deployment Integration Flow', () => {
         async (userId, stepId) => {
           const user = mockDatabase.users.get(userId)
           const stepIndex = user.onboardingStatus.steps.findIndex(s => s.id === stepId)
-          
+
           if (stepIndex === -1) {
             throw new Error('Step not found')
           }
@@ -402,9 +402,9 @@ describe('Phased Deployment Integration Flow', () => {
       // Complete each step
       for (const step of onboardingSteps) {
         console.log(`Completing step: ${step.name}`)
-        
+
         const updatedStatus = await mockServices.onboardingService.completeOnboardingStep(userId, step.id)
-        
+
         expect(updatedStatus.steps.find(s => s.id === step.id).status).toBe('completed')
         expect(mockServices.metricsService.recordUserProgress).toHaveBeenCalledWith(userId, step.id)
       }
@@ -414,7 +414,7 @@ describe('Phased Deployment Integration Flow', () => {
       expect(finalUser.onboardingStatus.status).toBe('completed')
       expect(finalUser.onboardingStatus.progress).toBe(100)
       expect(mockServices.notificationService.sendCompletionNotification).toHaveBeenCalledWith(
-        userId, 
+        userId,
         finalUser.onboardingStatus
       )
     })
@@ -423,7 +423,7 @@ describe('Phased Deployment Integration Flow', () => {
       // Arrange
       const userId = 'retry-test-user'
       const phaseId = 'test-phase-1'
-      
+
       const user = await simulateUserOnboarding(userId, phaseId, [
         { id: 'step-1', name: 'Account Setup', required: true },
         { id: 'step-2', name: 'Problematic Step', required: true }
@@ -463,7 +463,7 @@ describe('Phased Deployment Integration Flow', () => {
       )
 
       // Act - Start concurrent onboarding
-      const onboardingPromises = userIds.map(userId => 
+      const onboardingPromises = userIds.map(userId =>
         mockServices.onboardingService.startUserOnboarding(userId, phaseId)
       )
 
@@ -483,7 +483,7 @@ describe('Phased Deployment Integration Flow', () => {
       // Arrange
       const phaseId = 'metrics-test-phase'
       const userIds = ['metrics-user-1', 'metrics-user-2', 'metrics-user-3']
-      
+
       mockServices.metricsService.updatePhaseMetrics.mockImplementation(
         async (phaseId, userProgress) => {
           const phase = mockDatabase.phases.get(phaseId)
@@ -492,7 +492,7 @@ describe('Phased Deployment Integration Flow', () => {
           // Calculate new metrics
           const completedUsers = userProgress.filter(u => u.status === 'completed')
           const totalUsers = userProgress.length
-          
+
           phase.metrics.completionRate = Math.round((completedUsers.length / totalUsers) * 100)
           phase.metrics.avgOnboardingTime = completedUsers.reduce(
             (sum, u) => sum + (u.timeSpent || 0), 0
@@ -505,11 +505,11 @@ describe('Phased Deployment Integration Flow', () => {
 
       // Act - Simulate users completing onboarding at different rates
       const userProgress = []
-      
+
       for (let i = 0; i < userIds.length; i++) {
         const userId = userIds[i]
         const isCompleted = i < 2 // First 2 users complete, last one doesn't
-        
+
         userProgress.push({
           userId,
           status: isCompleted ? 'completed' : 'in_progress',
@@ -549,11 +549,11 @@ describe('Phased Deployment Integration Flow', () => {
         const deployment = mockDatabase.deployments.get(deploymentId)
         const phase = deployment.phases.find(p => p.id === phaseId)
         phase.status = 'in_progress'
-        
+
         // Trigger notifications
         await mockServices.notificationService.sendPhaseStartNotification(deploymentId, phaseId)
         notificationsSent++
-        
+
         return phase
       })
 
@@ -561,13 +561,13 @@ describe('Phased Deployment Integration Flow', () => {
         // Update user progress
         const user = mockDatabase.users.get(userId)
         user.onboardingStatus.progress = progress
-        
+
         // Trigger metrics update
         await mockServices.metricsService.updatePhaseMetrics('integration-phase', [
           { userId, status: progress === 100 ? 'completed' : 'in_progress' }
         ])
         phaseMetricsUpdated = true
-        
+
         return user.onboardingStatus
       })
 
@@ -576,7 +576,7 @@ describe('Phased Deployment Integration Flow', () => {
 
       // Act - Execute coordinated flow
       const phase = await mockServices.deploymentService.startPhase(deployment.id, 'integration-phase')
-      
+
       // Simulate user progress updates
       await mockServices.onboardingService.updateUserProgress('cross-user-1', 50)
       await mockServices.onboardingService.updateUserProgress('cross-user-2', 100)
@@ -598,7 +598,7 @@ describe('Phased Deployment Integration Flow', () => {
       mockServices.notificationService.sendPhaseStartNotification.mockRejectedValue(
         new Error('Notification service unavailable')
       )
-      
+
       mockServices.deploymentService.startPhase.mockImplementation(async (deploymentId, phaseId) => {
         try {
           await mockServices.notificationService.sendPhaseStartNotification(deploymentId, phaseId)
@@ -606,7 +606,7 @@ describe('Phased Deployment Integration Flow', () => {
           // Log error but continue with phase start
           console.warn('Notification failed:', error.message)
         }
-        
+
         const deployment = mockDatabase.deployments.get(deploymentId)
         const phase = deployment.phases.find(p => p.id === phaseId)
         phase.status = 'in_progress'
@@ -677,7 +677,7 @@ describe('Phased Deployment Integration Flow', () => {
         // Simulate partial update
         const deployment = mockDatabase.deployments.get(deploymentId)
         deployment.status = 'in_progress'
-        
+
         // Simulate failure after partial update
         throw new Error('Database transaction failed')
       })
@@ -708,7 +708,7 @@ describe('Phased Deployment Integration Flow', () => {
         user.onboardingStatus.completedAt = new Date().toISOString()
         mockDatabase.users.set(userId, user)
       }
-      
+
       phase.completedUsers.push(userId)
     }
 

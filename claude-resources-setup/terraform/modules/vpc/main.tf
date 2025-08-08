@@ -142,7 +142,7 @@ resource "aws_security_group" "vpc_endpoint" {
 resource "aws_vpc_endpoint" "s3" {
   vpc_id       = aws_vpc.main.id
   service_name = "com.amazonaws.${data.aws_region.current.name}.s3"
-  
+
   tags = merge(var.tags, {
     Name = "${var.environment}-s3-vpce"
   })
@@ -154,7 +154,7 @@ resource "aws_vpc_endpoint" "ecr_dkr" {
   vpc_endpoint_type   = "Interface"
   subnet_ids          = aws_subnet.private[*].id
   security_group_ids  = [aws_security_group.vpc_endpoint.id]
-  
+
   policy = jsonencode({
     Statement = [
       {

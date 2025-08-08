@@ -18,35 +18,35 @@ const commonSchemas = {
     .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
     .regex(/[0-9]/, 'Password must contain at least one number')
     .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
-  
+
   // IDs and references
   uuid: z.string().uuid('Invalid UUID format'),
   salesforceId: z.string().regex(/^[a-zA-Z0-9]{15,18}$/, 'Invalid Salesforce ID format'),
-  
+
   // Sanitized strings
   sanitizedString: z.string()
     .max(1000, 'String too long')
     .refine(val => !/<script|javascript:|data:|vbscript:/i.test(val), 'Potentially dangerous content detected'),
-  
+
   // File inputs
   filename: z.string()
     .min(1, 'Filename required')
     .max(255, 'Filename too long')
     .regex(/^[a-zA-Z0-9._-]+$/, 'Invalid filename characters'),
-  
+
   // URLs
   url: z.string().url('Invalid URL format').max(2048, 'URL too long'),
-  
+
   // Numbers and amounts
   positiveInt: z.number().int().min(1, 'Must be a positive integer'),
   currency: z.number().min(0, 'Amount cannot be negative').max(999999.99, 'Amount too large'),
-  
+
   // Dates
   isoDate: z.string().datetime('Invalid ISO date format'),
-  
+
   // IP addresses
   ipAddress: z.string().ip('Invalid IP address'),
-  
+
   // Phone numbers (basic US format)
   phoneNumber: z.string().regex(/^\+?1?[2-9]\d{2}[2-9]\d{2}\d{4}$/, 'Invalid phone number format'),
 };
@@ -177,11 +177,11 @@ function sanitizeObject(obj: any): any {
   if (typeof obj === 'string') {
     return sanitizeString(obj);
   }
-  
+
   if (Array.isArray(obj)) {
     return obj.map(sanitizeObject);
   }
-  
+
   if (obj && typeof obj === 'object') {
     const sanitized: any = {};
     for (const [key, value] of Object.entries(obj)) {
@@ -189,7 +189,7 @@ function sanitizeObject(obj: any): any {
     }
     return sanitized;
   }
-  
+
   return obj;
 }
 
@@ -198,16 +198,16 @@ function sanitizeObject(obj: any): any {
  */
 async function extractRequestData(request: NextRequest): Promise<any> {
   const contentType = request.headers.get('content-type') || '';
-  
+
   try {
     if (contentType.includes('application/json')) {
       return await request.json();
     }
-    
+
     if (contentType.includes('application/x-www-form-urlencoded')) {
       const formData = await request.formData();
       const data: Record<string, any> = {};
-      
+
       for (const [key, value] of formData.entries()) {
         if (typeof value === 'string') {
           data[key] = value;
@@ -220,21 +220,21 @@ async function extractRequestData(request: NextRequest): Promise<any> {
           };
         }
       }
-      
+
       return data;
     }
-    
+
     if (contentType.includes('multipart/form-data')) {
       const formData = await request.formData();
       const data: Record<string, any> = {};
-      
+
       for (const [key, value] of formData.entries()) {
         data[key] = value;
       }
-      
+
       return data;
     }
-    
+
     // Try to parse as text
     const text = await request.text();
     if (text) {
@@ -244,7 +244,7 @@ async function extractRequestData(request: NextRequest): Promise<any> {
         return { body: text };
       }
     }
-    
+
     return {};
   } catch (error) {
     logger.error('Failed to parse request data', {
@@ -260,18 +260,18 @@ async function extractRequestData(request: NextRequest): Promise<any> {
  */
 function formatValidationErrors(error: ZodError): any {
   const errors: Record<string, string[]> = {};
-  
+
   for (const issue of error.errors) {
     const path = issue.path.join('.');
     const field = path || 'root';
-    
+
     if (!errors[field]) {
       errors[field] = [];
     }
-    
+
     errors[field].push(issue.message);
   }
-  
+
   return {
     message: 'Validation failed',
     errors,
@@ -289,7 +289,7 @@ export async function validationMiddleware<T>(
 ): Promise<NextResponse | { data: T }> {
   const requestContext = getRequestContext(request);
   const mergedConfig = { ...defaultValidationConfig, ...config };
-  
+
   try {
     logger.middleware('validation', 'Processing input validation', requestContext);
 
@@ -301,7 +301,7 @@ export async function validationMiddleware<T>(
         contentLength: parseInt(contentLength),
         limit: mergedConfig.maxPayloadSize,
       });
-      
+
       return NextResponse.json(
         { error: 'Payload too large' },
         { status: 413 }
@@ -310,7 +310,7 @@ export async function validationMiddleware<T>(
 
     // Extract request data
     let rawData: any;
-    
+
     if (request.method === 'GET' || request.method === 'DELETE') {
       // Extract query parameters
       const url = new URL(request.url);
@@ -328,10 +328,10 @@ export async function validationMiddleware<T>(
 
     // Validate against schema
     const validationResult = schema.safeParse(data);
-    
+
     if (!validationResult.success) {
       const formattedErrors = formatValidationErrors(validationResult.error);
-      
+
       if (mergedConfig.logValidationErrors) {
         logger.security('Input validation failed', {
           ...requestContext,
@@ -419,10 +419,10 @@ export const validateApiKeyData = createValidationMiddleware(
 /**
  * Generic validation for query parameters
  */
-export const validateQueryParams = (schema: ZodSchema) => 
-  createValidationMiddleware(schema, { 
-    sanitizeStrings: true, 
-    allowExtraFields: true 
+export const validateQueryParams = (schema: ZodSchema) =>
+  createValidationMiddleware(schema, {
+    sanitizeStrings: true,
+    allowExtraFields: true
   });
 
 /**

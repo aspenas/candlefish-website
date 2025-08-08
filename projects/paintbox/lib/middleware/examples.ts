@@ -243,10 +243,10 @@ const customEstimateWorkflow = composeMiddleware(
       message: 'Custom estimate workflow rate limit exceeded',
     });
   },
-  
+
   // Authentication required
   authMiddleware,
-  
+
   // Custom validation for this workflow
   createValidationMiddleware(z.object({
     workflowType: z.enum(['quick', 'detailed', 'premium']),
@@ -330,7 +330,7 @@ export const loginExample = withMiddleware(
   async (request: NextRequest, { data }) => {
     // Simulate authentication logic
     const isValidCredentials = data.email === 'admin@paintbox.com' && data.password === 'securepassword';
-    
+
     if (!isValidCredentials) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
@@ -376,7 +376,7 @@ export const fileUploadExample = withMiddleware(
   async (request: NextRequest, { user, data }) => {
     // In real implementation, you would handle multipart/form-data
     // and validate file size, type, etc.
-    
+
     const uploadedFile = {
       id: 'file_' + Date.now(),
       type: data.documentType,

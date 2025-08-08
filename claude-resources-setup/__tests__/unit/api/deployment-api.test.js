@@ -1,10 +1,10 @@
-import { 
-  repositoryApi, 
-  syncApi, 
-  distributionApi, 
-  systemApi, 
+import {
+  repositoryApi,
+  syncApi,
+  distributionApi,
+  systemApi,
   deploymentUtils,
-  DeploymentWebSocket 
+  DeploymentWebSocket
 } from '../../../dashboard/src/lib/deployment-api'
 import { server } from '../../mocks/server'
 import { rest } from 'msw'
@@ -16,7 +16,7 @@ describe('Deployment API', () => {
     describe('getRepositories', () => {
       it('should fetch all repositories successfully', async () => {
         const repositories = await repositoryApi.getRepositories()
-        
+
         expect(repositories).toHaveLength(3)
         expect(repositories[0]).toMatchObject({
           id: 'repo-1',
@@ -53,7 +53,7 @@ describe('Deployment API', () => {
     describe('getRepository', () => {
       it('should fetch a specific repository by ID', async () => {
         const repository = await repositoryApi.getRepository('repo-1')
-        
+
         expect(repository).toMatchObject({
           id: 'repo-1',
           name: 'claude-resources-setup',
@@ -71,7 +71,7 @@ describe('Deployment API', () => {
     describe('syncRepository', () => {
       it('should trigger repository sync successfully', async () => {
         const syncOperation = await repositoryApi.syncRepository('repo-1')
-        
+
         expect(syncOperation).toMatchObject({
           repositoryId: 'repo-1',
           status: 'pending',
@@ -91,7 +91,7 @@ describe('Deployment API', () => {
     describe('setupLocalSymlinks', () => {
       it('should setup local symlinks successfully', async () => {
         const result = await repositoryApi.setupLocalSymlinks('repo-1')
-        
+
         expect(result).toMatchObject({
           success: true,
           message: expect.stringContaining('claude-resources-setup')
@@ -104,7 +104,7 @@ describe('Deployment API', () => {
     describe('getSyncOperation', () => {
       it('should fetch sync operation by ID', async () => {
         const operation = await syncApi.getSyncOperation('sync-1')
-        
+
         expect(operation).toMatchObject({
           id: 'sync-1',
           repositoryId: 'repo-1',
@@ -123,7 +123,7 @@ describe('Deployment API', () => {
     describe('getActiveSyncs', () => {
       it('should fetch only active sync operations', async () => {
         const activeSyncs = await syncApi.getActiveSyncs()
-        
+
         expect(activeSyncs).toHaveLength(1)
         expect(activeSyncs[0].status).toBe('running')
       })
@@ -132,7 +132,7 @@ describe('Deployment API', () => {
     describe('cancelSync', () => {
       it('should cancel sync operation successfully', async () => {
         const result = await syncApi.cancelSync('sync-2')
-        
+
         expect(result).toMatchObject({
           success: true,
           message: 'Sync operation cancelled'
@@ -146,7 +146,7 @@ describe('Deployment API', () => {
       it('should create distribution job successfully', async () => {
         const targetRepositories = ['repo-1', 'repo-2']
         const distributionJob = await distributionApi.distributeResources(targetRepositories)
-        
+
         expect(distributionJob).toMatchObject({
           status: 'pending',
           targetRepositories,
@@ -170,7 +170,7 @@ describe('Deployment API', () => {
     describe('getDistributionJob', () => {
       it('should fetch distribution job by ID', async () => {
         const job = await distributionApi.getDistributionJob('dist-1')
-        
+
         expect(job).toMatchObject({
           id: 'dist-1',
           status: 'completed',
@@ -182,7 +182,7 @@ describe('Deployment API', () => {
     describe('getDistributionJobs', () => {
       it('should fetch all distribution jobs', async () => {
         const jobs = await distributionApi.getDistributionJobs()
-        
+
         expect(jobs).toHaveLength(2)
         expect(jobs[0].status).toBe('completed')
         expect(jobs[1].status).toBe('running')
@@ -194,7 +194,7 @@ describe('Deployment API', () => {
     describe('getSystemStatus', () => {
       it('should fetch system status overview', async () => {
         const status = await systemApi.getSystemStatus()
-        
+
         expect(status).toMatchObject({
           overallHealth: 'healthy',
           totalRepositories: 12,
@@ -210,7 +210,7 @@ describe('Deployment API', () => {
     describe('getServiceHealth', () => {
       it('should fetch specific service health', async () => {
         const health = await systemApi.getServiceHealth('syncService')
-        
+
         expect(health).toMatchObject({
           status: 'healthy',
           lastCheck: expect.any(String),
@@ -232,7 +232,7 @@ describe('Deployment API', () => {
     describe('validateConfiguration', () => {
       it('should validate system configuration', async () => {
         const validation = await systemApi.validateConfiguration()
-        
+
         expect(validation).toMatchObject({
           valid: true,
           issues: []
@@ -289,7 +289,7 @@ describe('Deployment API', () => {
           type: 'network',
           message: 'Connection failed'
         }
-        
+
         const formatted = deploymentUtils.formatError(error)
         expect(formatted).toContain('Network connection issue')
       })
@@ -299,7 +299,7 @@ describe('Deployment API', () => {
           type: 'authentication',
           message: 'Token expired'
         }
-        
+
         const formatted = deploymentUtils.formatError(error)
         expect(formatted).toContain('Authentication failed')
       })
@@ -309,7 +309,7 @@ describe('Deployment API', () => {
           type: 'validation',
           message: 'Invalid input'
         }
-        
+
         const formatted = deploymentUtils.formatError(error)
         expect(formatted).toContain('Validation error: Invalid input')
       })
@@ -322,7 +322,7 @@ describe('Deployment API', () => {
           retryCount: 1,
           maxRetries: 3
         }
-        
+
         expect(deploymentUtils.isRetryableError(retryableError)).toBe(true)
       })
 
@@ -330,7 +330,7 @@ describe('Deployment API', () => {
         const nonRetryableError = {
           retryable: false
         }
-        
+
         expect(deploymentUtils.isRetryableError(nonRetryableError)).toBe(false)
       })
 
@@ -340,7 +340,7 @@ describe('Deployment API', () => {
           retryCount: 3,
           maxRetries: 3
         }
-        
+
         expect(deploymentUtils.isRetryableError(maxRetriesReached)).toBe(false)
       })
     })
@@ -385,7 +385,7 @@ describe('Deployment API', () => {
         })
 
         const retriedFn = deploymentUtils.withRetry(mockFn, 3)
-        
+
         await expect(retriedFn()).rejects.toThrow('Permanent failure')
         expect(mockFn).toHaveBeenCalledTimes(1)
       })
@@ -394,7 +394,7 @@ describe('Deployment API', () => {
 
   describe('DeploymentWebSocket', () => {
     let mockWebSocket
-    
+
     beforeEach(() => {
       mockWebSocket = {
         readyState: WebSocket.CONNECTING,
@@ -409,7 +409,7 @@ describe('Deployment API', () => {
     it('should establish WebSocket connection', () => {
       const onMessage = jest.fn()
       const onConnect = jest.fn()
-      
+
       const ws = new DeploymentWebSocket()
       ws.connect(onMessage, undefined, onConnect)
 
@@ -420,7 +420,7 @@ describe('Deployment API', () => {
 
     it('should handle connection success', () => {
       const onConnect = jest.fn()
-      
+
       const ws = new DeploymentWebSocket()
       ws.connect(jest.fn(), undefined, onConnect)
 
@@ -434,7 +434,7 @@ describe('Deployment API', () => {
     it('should handle incoming messages', () => {
       const onMessage = jest.fn()
       const testData = { type: 'sync_update', payload: { progress: 50 } }
-      
+
       const ws = new DeploymentWebSocket()
       ws.connect(onMessage)
 
@@ -447,7 +447,7 @@ describe('Deployment API', () => {
     it('should handle malformed messages gracefully', () => {
       const onMessage = jest.fn()
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation()
-      
+
       const ws = new DeploymentWebSocket()
       ws.connect(onMessage)
 
@@ -456,14 +456,14 @@ describe('Deployment API', () => {
 
       expect(onMessage).not.toHaveBeenCalled()
       expect(consoleSpy).toHaveBeenCalled()
-      
+
       consoleSpy.mockRestore()
     })
 
     it('should subscribe to topics', () => {
       const ws = new DeploymentWebSocket()
       ws.connect(jest.fn())
-      
+
       mockWebSocket.readyState = WebSocket.OPEN
       ws.subscribe(['sync_updates', 'deployment_status'])
 
@@ -478,7 +478,7 @@ describe('Deployment API', () => {
     it('should unsubscribe from topics', () => {
       const ws = new DeploymentWebSocket()
       ws.connect(jest.fn())
-      
+
       mockWebSocket.readyState = WebSocket.OPEN
       ws.unsubscribe(['sync_updates'])
 
@@ -493,7 +493,7 @@ describe('Deployment API', () => {
     it('should disconnect WebSocket', () => {
       const ws = new DeploymentWebSocket()
       ws.connect(jest.fn())
-      
+
       ws.disconnect()
 
       expect(mockWebSocket.close).toHaveBeenCalled()

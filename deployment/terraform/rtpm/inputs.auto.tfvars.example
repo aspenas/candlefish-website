@@ -8,5 +8,3 @@ redis_url    = "redis://host:6379/0"
 jwt_secret   = "replace-with-secret"
 secret_key   = "replace-with-secret"
 cors_origins = "https://candlefish.ai,https://www.candlefish.ai"
-
-

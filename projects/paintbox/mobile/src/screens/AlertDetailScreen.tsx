@@ -22,10 +22,10 @@ export default function AlertDetailScreen({ route }: Props) {
             <Text variant="headlineSmall">Alert Details</Text>
             <Text variant="bodyMedium">Alert ID: {alertId}</Text>
             <Text variant="bodyMedium" style={{ marginTop: 16, color: theme.colors.onSurfaceVariant }}>
-              This is a placeholder screen for alert details. In the full implementation, 
+              This is a placeholder screen for alert details. In the full implementation,
               this would show comprehensive alert information, timeline, and actions.
             </Text>
-            
+
             <View style={styles.actions}>
               <Button mode="contained" style={styles.actionButton}>
                 Acknowledge

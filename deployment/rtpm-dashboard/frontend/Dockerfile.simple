@@ -71,7 +71,7 @@ RUN cat > /usr/share/nginx/html/index.html << 'EOF'
                 API Status: <span id="api-status" class="disconnected">Connecting...</span>
             </div>
         </header>
-        
+
         <div class="panels">
             <div class="panel">
                 <h2>System Metrics</h2>
@@ -88,7 +88,7 @@ RUN cat > /usr/share/nginx/html/index.html << 'EOF'
                     <span class="metric-value">-- MB/s</span>
                 </div>
             </div>
-            
+
             <div class="panel">
                 <h2>API Performance</h2>
                 <div class="metric">
@@ -104,7 +104,7 @@ RUN cat > /usr/share/nginx/html/index.html << 'EOF'
                     <span class="metric-value">--%</span>
                 </div>
             </div>
-            
+
             <div class="panel">
                 <h2>Database Status</h2>
                 <div class="metric">
@@ -122,7 +122,7 @@ RUN cat > /usr/share/nginx/html/index.html << 'EOF'
             </div>
         </div>
     </div>
-    
+
     <script>
         // Check API connectivity
         async function checkAPI() {
@@ -141,7 +141,7 @@ RUN cat > /usr/share/nginx/html/index.html << 'EOF'
                 statusEl.className = 'disconnected';
             }
         }
-        
+
         // Check every 5 seconds
         checkAPI();
         setInterval(checkAPI, 5000);

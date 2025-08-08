@@ -93,7 +93,7 @@ export default function ContainerCard({ container }: ContainerCardProps) {
             {container.name}
           </Text>
         </View>
-        
+
         <Chip
           mode="outlined"
           compact
@@ -195,7 +195,7 @@ export default function ContainerCard({ container }: ContainerCardProps) {
             Started {formatDistanceToNow(new Date(container.startedAt), { addSuffix: true })}
           </Text>
         )}
-        
+
         {container.restartCount > 0 && (
           <Text variant="labelSmall" style={[styles.metadataText, { color: theme.colors.onSurfaceVariant }]}>
             Restarts: {container.restartCount}

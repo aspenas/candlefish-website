@@ -3,6 +3,7 @@
 ## ✅ Completed Tasks
 
 ### Logo Enhancements (Commits Ready to Push)
+
 1. **Static Site Implementation** (commit: 36d8019)
    - Replaced Next.js app with static HTML site
    - Doubled logo size from 80px to 160px initially
@@ -10,7 +11,7 @@
 
 2. **Logo Optimization** (commit: a59d26a)
    - Desktop: 48px height
-   - Mobile: 42px height  
+   - Mobile: 42px height
    - Retina display: @2x image support
    - Print CSS: 60px with color preservation
    - File size: Optimized from 2MB to 10KB (99.5% reduction)
@@ -20,6 +21,7 @@
    - Added password-protected family letter
 
 ### AWS Secrets Integration (Files Created)
+
 1. **GitHub Actions Workflows**
    - `.github/workflows/sync-aws-secrets.yml` - Automatic secret synchronization
    - `.github/workflows/deploy.yml` - CI/CD pipeline with tests and deployment
@@ -33,12 +35,14 @@
 
 ## 🚀 Ready for Deployment
 
-### What Will Happen When Network Allows:
+### What Will Happen When Network Allows
 
 1. **Push to GitHub**
+
    ```bash
    git push origin main
    ```
+
    This will push 3 commits with logo fixes
 
 2. **Netlify Auto-Deploy**
@@ -54,13 +58,15 @@
 
 1. **When Network Stabilizes:**
    - Run: `git push origin main`
-   - Monitor: https://app.netlify.com for deployment status
-   - Verify: https://candlefish.ai shows updated logo
+   - Monitor: <https://app.netlify.com> for deployment status
+   - Verify: <https://candlefish.ai> shows updated logo
 
 2. **AWS Secrets Setup (One-Time):**
+
    ```bash
    ./scripts/aws-secrets-setup.sh
    ```
+
    Then add to GitHub:
    - AWS_ACCESS_KEY_ID
    - AWS_SECRET_ACCESS_KEY
@@ -68,6 +74,7 @@
    - NETLIFY_SITE_ID
 
 3. **For Local Development:**
+
    ```bash
    source ./scripts/load-aws-secrets.sh
    npm run dev
@@ -84,9 +91,9 @@
 
 | Device | Size | File |
 |--------|------|------|
-| Desktop | 48px height | /logo/candlefish_highquality.png |
-| Mobile | 42px height | /logo/candlefish_highquality.png |
-| Retina | 48px height | /logo/candlefish_highquality@2x.png |
-| Print | 60px height | /logo/candlefish_highquality.png |
+| Desktop | 48px height | /logo/candlefish_original.png |
+| Mobile | 42px height | /logo/candlefish_original.png |
+| Retina | 48px height | /logo/candlefish_original.png |
+| Print | 60px height | /logo/candlefish_original.png |
 
 All logo changes are in `index.html` and ready for deployment.

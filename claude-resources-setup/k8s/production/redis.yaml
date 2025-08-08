@@ -22,14 +22,14 @@ data:
     # Network
     bind 0.0.0.0
     port 6379
-    
+
     # General
     daemonize no
     supervised no
     pidfile /var/run/redis_6379.pid
     loglevel notice
     logfile ""
-    
+
     # Persistence
     save 900 1
     save 300 10
@@ -39,15 +39,15 @@ data:
     rdbchecksum yes
     dbfilename dump.rdb
     dir /data
-    
+
     # Memory management
     maxmemory 1gb
     maxmemory-policy allkeys-lru
-    
+
     # Security
     protected-mode no
     requirepass REDIS_PASSWORD_PLACEHOLDER
-    
+
     # Performance
     tcp-keepalive 300
     timeout 0

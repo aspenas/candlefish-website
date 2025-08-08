@@ -101,8 +101,8 @@ class PerformanceOptimizer {
    */
   getReport() {
     const cacheTotal = this.metrics.cacheHitRate.hits + this.metrics.cacheHitRate.misses;
-    const cacheHitRate = cacheTotal > 0 
-      ? (this.metrics.cacheHitRate.hits / cacheTotal) * 100 
+    const cacheHitRate = cacheTotal > 0
+      ? (this.metrics.cacheHitRate.hits / cacheTotal) * 100
       : 0;
 
     const apiMetrics = Array.from(this.metrics.apiResponseTimes.entries()).map(([endpoint, times]) => ({
@@ -213,7 +213,7 @@ export const graphQLPerformancePlugin = {
     return {
       willSendResponse(requestContext: any) {
         const { response, request } = requestContext;
-        
+
         if (response.http) {
           // Add performance headers
           response.http.headers.set('X-Response-Time', `${Date.now() - request.startTime}ms`);
@@ -225,17 +225,17 @@ export const graphQLPerformancePlugin = {
           performanceOptimizer.trackCacheAccess(request.cacheHit);
         }
       },
-      
+
       didResolveOperation(requestContext: any) {
         const { request, document } = requestContext;
-        
+
         // Calculate query complexity
         const complexity = calculateQueryComplexity(document);
-        
+
         if (complexity > 1000) {
           throw new Error(`Query complexity ${complexity} exceeds maximum allowed complexity 1000`);
         }
-        
+
         request.complexity = complexity;
       },
     };
@@ -248,28 +248,28 @@ export const graphQLPerformancePlugin = {
 function calculateQueryComplexity(document: any): number {
   // Simplified complexity calculation
   let complexity = 0;
-  
+
   const visit = (node: any, depth = 0) => {
     if (node.kind === 'Field') {
       // Base complexity for field
       complexity += 1;
-      
+
       // Add depth multiplier
       complexity += depth * 0.5;
-      
+
       // Check for arguments (filters, pagination)
       if (node.arguments && node.arguments.length > 0) {
         complexity += node.arguments.length * 2;
       }
     }
-    
+
     if (node.selectionSet) {
       node.selectionSet.selections.forEach((selection: any) => {
         visit(selection, depth + 1);
       });
     }
   };
-  
+
   if (document.definitions) {
     document.definitions.forEach((def: any) => {
       if (def.selectionSet) {
@@ -279,7 +279,7 @@ function calculateQueryComplexity(document: any): number {
       }
     });
   }
-  
+
   return complexity;
 }
 
@@ -293,9 +293,9 @@ export class DatabaseOptimizer {
   /**
    * Execute query with caching
    */
-  async executeQuery(queryKey: string, queryFn: () => Promise<any>, options?: { 
-    cache?: boolean; 
-    timeout?: number 
+  async executeQuery(queryKey: string, queryFn: () => Promise<any>, options?: {
+    cache?: boolean;
+    timeout?: number
   }): Promise<any> {
     const startTime = performance.now();
     const shouldCache = options?.cache !== false;
@@ -358,7 +358,7 @@ export function usePerformanceTracking(componentName: string) {
   if (typeof window === 'undefined') return;
 
   const startTime = performance.now();
-  
+
   // Track mount time
   setTimeout(() => {
     const mountTime = performance.now() - startTime;
@@ -386,10 +386,10 @@ export class BundleAnalyzer {
     if (typeof window === 'undefined') return null;
 
     const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
-    
+
     const jsFiles = resources.filter(r => r.name.endsWith('.js'));
     const cssFiles = resources.filter(r => r.name.endsWith('.css'));
-    const imageFiles = resources.filter(r => 
+    const imageFiles = resources.filter(r =>
       r.name.match(/\.(png|jpg|jpeg|gif|svg|webp)$/i)
     );
 

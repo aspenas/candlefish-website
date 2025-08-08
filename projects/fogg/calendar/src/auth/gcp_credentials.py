@@ -1,8 +1,7 @@
 """GCP Credentials management with ADC and Workload Identity Federation support."""
 
 import os
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 import google.auth
 import google.auth.impersonated_credentials
@@ -26,7 +25,7 @@ class GCPCredentialsManager:
     def __init__(
         self,
         scopes: list[str] = SCOPES,
-        impersonate_email: Optional[str] = None,
+        impersonate_email: str | None = None,
         refresh_buffer_minutes: int = 5,
     ):
         """Initialize credentials manager.
@@ -39,7 +38,7 @@ class GCPCredentialsManager:
         self.scopes = scopes
         self.impersonate_email = impersonate_email
         self.refresh_buffer_minutes = refresh_buffer_minutes
-        self._credentials: Optional[auth_credentials.Credentials] = None
+        self._credentials: auth_credentials.Credentials | None = None
 
     def get_credentials(self) -> auth_credentials.Credentials:
         """Get or refresh GCP credentials.
@@ -71,7 +70,9 @@ class GCPCredentialsManager:
             Loaded credentials
         """
         # Check for WIF token first (GitHub Actions)
-        if os.getenv("ACTIONS_ID_TOKEN_REQUEST_URL") and os.getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN"):
+        if os.getenv("ACTIONS_ID_TOKEN_REQUEST_URL") and os.getenv(
+            "ACTIONS_ID_TOKEN_REQUEST_TOKEN"
+        ):
             logger.info("Detected GitHub Actions environment, using Workload Identity Federation")
             return self._load_wif_credentials()
 
@@ -116,7 +117,7 @@ class GCPCredentialsManager:
 
         req = urllib.request.Request(token_url, headers=token_header)
         with urllib.request.urlopen(req) as response:
-            token_response = json.loads(response.read())
+            json.loads(response.read())
 
         # Exchange for Google credentials
         # This assumes the WIF provider is already configured via Terraform
@@ -150,9 +151,9 @@ class GCPCredentialsManager:
 
         # Refresh if within buffer time of expiry
         buffer = timedelta(minutes=self.refresh_buffer_minutes)
-        return datetime.now(timezone.utc) >= (self._credentials.expiry - buffer)
+        return datetime.now(UTC) >= (self._credentials.expiry - buffer)
 
-    def _time_until_expiry(self) -> Optional[str]:
+    def _time_until_expiry(self) -> str | None:
         """Get human-readable time until credential expiry.
 
         Returns:
@@ -164,12 +165,12 @@ class GCPCredentialsManager:
         if not self._credentials.expiry:
             return None
 
-        delta = self._credentials.expiry - datetime.now(timezone.utc)
+        delta = self._credentials.expiry - datetime.now(UTC)
         return f"{delta.total_seconds() / 60:.1f} minutes"
 
 
 # Global instance for convenience
-_default_manager: Optional[GCPCredentialsManager] = None
+_default_manager: GCPCredentialsManager | None = None
 
 
 def get_default_credentials() -> auth_credentials.Credentials:

@@ -1,7 +1,6 @@
 """Idempotent calendar management operations."""
 
 from datetime import datetime, timedelta
-from typing import Optional
 
 from googleapiclient.errors import HttpError
 
@@ -12,7 +11,7 @@ from src.utils.api_client import execute_google_api_call
 def find_event_by_external_id(
     calendar_id: str,
     external_id: str,
-) -> Optional[str]:
+) -> str | None:
     """Find an event by external ID in extended properties.
 
     Args:
@@ -36,7 +35,7 @@ def find_event_by_external_id(
                 showDeleted=False,
             )
             .execute(),
-            f"find_event_by_external_id({calendar_id}, {external_id})"
+            f"find_event_by_external_id({calendar_id}, {external_id})",
         )
 
         events = events_result.get("items", [])
@@ -59,7 +58,7 @@ def create_event_idempotent(
     duration_minutes: int,
     external_id: str,
     attendee_emails: list[str] = None,
-    recurrence_rule: Optional[str] = None,
+    recurrence_rule: str | None = None,
 ) -> tuple[str, bool]:
     """Create an event idempotently using external ID.
 
@@ -121,10 +120,8 @@ def create_event_idempotent(
 
     try:
         created_event = execute_google_api_call(
-            lambda: service.events()
-            .insert(calendarId=calendar_id, body=event)
-            .execute(),
-            f"create_event_idempotent({calendar_id}, {summary})"
+            lambda: service.events().insert(calendarId=calendar_id, body=event).execute(),
+            f"create_event_idempotent({calendar_id}, {summary})",
         )
         print(f"Created event: {created_event['id']} with external ID: {external_id}")
         return created_event["id"], True
@@ -161,7 +158,7 @@ def update_event_idempotent(
         # Get existing event
         event = execute_google_api_call(
             lambda: service.events().get(calendarId=calendar_id, eventId=event_id).execute(),
-            f"get_event_for_update({calendar_id}, {event_id})"
+            f"get_event_for_update({calendar_id}, {event_id})",
         )
 
         # Apply updates
@@ -171,12 +168,14 @@ def update_event_idempotent(
 
         # Update event
         execute_google_api_call(
-            lambda: service.events().update(
+            lambda: service.events()
+            .update(
                 calendarId=calendar_id,
                 eventId=event_id,
                 body=event,
-            ).execute(),
-            f"update_event_idempotent({calendar_id}, {external_id})"
+            )
+            .execute(),
+            f"update_event_idempotent({calendar_id}, {external_id})",
         )
 
         print(f"Updated event {event_id} with external ID {external_id}")
@@ -210,11 +209,13 @@ def delete_event_by_external_id(
 
     try:
         execute_google_api_call(
-            lambda: service.events().delete(
+            lambda: service.events()
+            .delete(
                 calendarId=calendar_id,
                 eventId=event_id,
-            ).execute(),
-            f"delete_event_by_external_id({calendar_id}, {external_id})"
+            )
+            .execute(),
+            f"delete_event_by_external_id({calendar_id}, {external_id})",
         )
 
         print(f"Deleted event {event_id} with external ID {external_id}")

@@ -1,10 +1,11 @@
 # Railway Backend Deployment Summary
 
 ## Deployment Details
+
 - **Date**: 2025-08-04
 - **Service**: paintbox-backend
 - **Environment**: production
-- **URL**: https://paintbox-backend-production-82d8.up.railway.app
+- **URL**: <https://paintbox-backend-production-82d8.up.railway.app>
 
 ## What Was Done
 
@@ -53,19 +54,22 @@
    - Verify CORS is working with frontend domains
 
 ## Important URLs
-- **Backend API**: https://paintbox-backend-production-82d8.up.railway.app
-- **Health Check**: https://paintbox-backend-production-82d8.up.railway.app/api/v1/health
-- **Railway Dashboard**: https://railway.app/project/ec24a77a-9159-44a3-b836-f2ead267c23d
+
+- **Backend API**: <https://paintbox-backend-production-82d8.up.railway.app>
+- **Health Check**: <https://paintbox-backend-production-82d8.up.railway.app/api/v1/health>
+- **Railway Dashboard**: <https://railway.app/project/ec24a77a-9159-44a3-b836-f2ead267c23d>
 
 ## Troubleshooting
 
 If the backend shows 404 errors:
+
 1. Wait for deployment to complete (check Railway dashboard)
 2. Check logs: `railway logs`
 3. Verify the start command in package.json
 4. Ensure all environment variables are set
 
 ## Commands Reference
+
 ```bash
 # Check status
 railway status

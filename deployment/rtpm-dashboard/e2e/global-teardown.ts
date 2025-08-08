@@ -103,7 +103,7 @@ async function cleanupTestAlertRules(page: any) {
       if (!response.ok) return;
 
       const data = await response.json();
-      const testRules = data.rules?.filter((rule: any) => 
+      const testRules = data.rules?.filter((rule: any) =>
         rule.name.startsWith('E2E Test ')
       ) || [];
 
@@ -145,7 +145,7 @@ function cleanupTestFiles() {
       files.forEach(file => {
         const filePath = path.join(testResultsDir, file);
         const stats = fs.statSync(filePath);
-        
+
         if (stats.mtime.getTime() < sevenDaysAgo) {
           if (stats.isDirectory()) {
             fs.rmSync(filePath, { recursive: true, force: true });

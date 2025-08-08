@@ -37,10 +37,10 @@ export function usePerformanceMonitor(componentName: string) {
   const renderCount = useRef(0);
   const mountTime = useRef(Date.now());
   const frameDrops = useRef(0);
-  
+
   useEffect(() => {
     renderCount.current += 1;
-    
+
     // Log performance metrics in development
     if (__DEV__) {
       const renderTime = Date.now() - mountTime.current;
@@ -50,7 +50,7 @@ export function usePerformanceMonitor(componentName: string) {
         avgRenderTime: renderTime / renderCount.current,
       });
     }
-    
+
     return () => {
       // Cleanup on unmount
       if (__DEV__) {
@@ -58,7 +58,7 @@ export function usePerformanceMonitor(componentName: string) {
       }
     };
   });
-  
+
   // Track frame drops
   const trackFrameDrops = useCallback(() => {
     InteractionManager.runAfterInteractions(() => {
@@ -75,7 +75,7 @@ export function usePerformanceMonitor(componentName: string) {
       }, 0);
     });
   }, [componentName]);
-  
+
   return {
     trackFrameDrops,
     getRenderCount: () => renderCount.current,
@@ -93,14 +93,14 @@ export const OptimizedFlatList = React.memo(({
   ...props
 }: any) => {
   const [isReady, setIsReady] = React.useState(false);
-  
+
   // Defer heavy list rendering
   useEffect(() => {
     InteractionManager.runAfterInteractions(() => {
       setIsReady(true);
     });
   }, []);
-  
+
   // Memoized render function
   const memoizedRenderItem = useCallback(
     ({ item, index }: any) => {
@@ -108,7 +108,7 @@ export const OptimizedFlatList = React.memo(({
     },
     [renderItem]
   );
-  
+
   // Optimized key extractor
   const memoizedKeyExtractor = useCallback(
     (item: any, index: number) => {
@@ -116,11 +116,11 @@ export const OptimizedFlatList = React.memo(({
     },
     [keyExtractor]
   );
-  
+
   if (!isReady) {
     return null; // Or loading placeholder
   }
-  
+
   return (
     <FlatList
       data={data}
@@ -149,7 +149,7 @@ export class CachedImage extends React.PureComponent<{
   state = {
     cachedSource: null,
   };
-  
+
   async componentDidMount() {
     const { source } = this.props;
     if (source?.uri) {
@@ -157,35 +157,35 @@ export class CachedImage extends React.PureComponent<{
       this.setState({ cachedSource: { uri: cachedUri } });
     }
   }
-  
+
   async getCachedImage(uri: string) {
     try {
       // Check AsyncStorage cache
       const cacheKey = `image_cache_${uri}`;
       const cached = await AsyncStorage.getItem(cacheKey);
-      
+
       if (cached) {
         return cached;
       }
-      
+
       // Download and cache
       const response = await fetch(uri);
       const blob = await response.blob();
       const base64 = await this.blobToBase64(blob);
-      
+
       // Store in cache (with size limit check)
       const cacheSize = await this.getCacheSize();
       if (cacheSize < 50 * 1024 * 1024) { // 50MB limit
         await AsyncStorage.setItem(cacheKey, base64);
       }
-      
+
       return base64;
     } catch (error) {
       console.error('Image cache error:', error);
       return uri; // Fallback to original URI
     }
   }
-  
+
   blobToBase64(blob: Blob): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -194,26 +194,26 @@ export class CachedImage extends React.PureComponent<{
       reader.readAsDataURL(blob);
     });
   }
-  
+
   async getCacheSize(): Promise<number> {
     const keys = await AsyncStorage.getAllKeys();
     const cacheKeys = keys.filter(k => k.startsWith('image_cache_'));
     let totalSize = 0;
-    
+
     for (const key of cacheKeys) {
       const value = await AsyncStorage.getItem(key);
       if (value) {
         totalSize += value.length;
       }
     }
-    
+
     return totalSize;
   }
-  
+
   render() {
     const { source, style, onLoad, onError } = this.props;
     const { cachedSource } = this.state;
-    
+
     return (
       <Image
         source={cachedSource || source}
@@ -239,13 +239,13 @@ export function withMemoryOptimization<P extends object>(
   return React.memo((props: P) => {
     const componentRef = useRef<any>(null);
     const memoryCache = useRef(new Map());
-    
+
     // Clean up memory on unmount
     useEffect(() => {
       return () => {
         if (options.releaseOnUnmount) {
           memoryCache.current.clear();
-          
+
           // Force garbage collection if available
           if (global.gc) {
             global.gc();
@@ -253,7 +253,7 @@ export function withMemoryOptimization<P extends object>(
         }
       };
     }, []);
-    
+
     // Monitor cache size
     useEffect(() => {
       const interval = setInterval(() => {
@@ -264,10 +264,10 @@ export function withMemoryOptimization<P extends object>(
           toRemove.forEach(([key]) => memoryCache.current.delete(key));
         }
       }, 30000); // Check every 30 seconds
-      
+
       return () => clearInterval(interval);
     }, []);
-    
+
     return <Component ref={componentRef} {...props} />;
   });
 }
@@ -284,58 +284,58 @@ export function useNetworkOptimizedFetch(url: string, options: {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState(null);
   const cache = useRef(new Map());
-  
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // Check network status
       const netInfo = await NetInfo.fetch();
-      
+
       // Check cache first
       const cacheKey = `${url}_${JSON.stringify(options)}`;
       const cached = cache.current.get(cacheKey);
-      
+
       if (cached && Date.now() - cached.timestamp < (options.cacheTime || 60000)) {
         setData(cached.data);
         setLoading(false);
         return;
       }
-      
+
       // Adjust timeout based on network type
       let timeout = options.timeout || 10000;
       if (netInfo.type === 'cellular') {
         timeout *= 1.5; // Increase timeout for cellular
       }
-      
+
       // Fetch with timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
-      
+
       const response = await fetch(url, {
         ...options,
         signal: controller.signal,
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const result = await response.json();
-      
+
       // Cache the result
       cache.current.set(cacheKey, {
         data: result,
         timestamp: Date.now(),
       });
-      
+
       setData(result);
     } catch (err: any) {
       setError(err.message);
-      
+
       // Retry logic
       if (options.retryCount && options.retryCount > 0) {
         setTimeout(() => {
@@ -346,11 +346,11 @@ export function useNetworkOptimizedFetch(url: string, options: {
       setLoading(false);
     }
   }, [url, options]);
-  
+
   useEffect(() => {
     fetchData();
   }, [url]);
-  
+
   return { data, loading, error, refetch: fetchData };
 }
 
@@ -361,14 +361,14 @@ export function useOptimizedGesture() {
   const translationX = useSharedValue(0);
   const translationY = useSharedValue(0);
   const scale = useSharedValue(1);
-  
+
   const gestureHandler = useCallback((event: any) => {
     'worklet';
-    
+
     // Run on UI thread for better performance
     translationX.value = withSpring(event.translationX);
     translationY.value = withSpring(event.translationY);
-    
+
     // Throttle updates to JS thread
     if (Math.abs(event.translationX) > 10 || Math.abs(event.translationY) > 10) {
       runOnJS(() => {
@@ -376,7 +376,7 @@ export function useOptimizedGesture() {
       })();
     }
   }, []);
-  
+
   const animatedStyle = useAnimatedStyle(() => {
     return {
       transform: [
@@ -386,7 +386,7 @@ export function useOptimizedGesture() {
       ],
     };
   });
-  
+
   return {
     gestureHandler,
     animatedStyle,
@@ -408,7 +408,7 @@ export function useOptimizedGesture() {
 export function useBatteryOptimization() {
   const [batteryLevel, setBatteryLevel] = React.useState(1);
   const [isLowPowerMode, setIsLowPowerMode] = React.useState(false);
-  
+
   useEffect(() => {
     // Check battery level (iOS only for now)
     if (Platform.OS === 'ios' && NativeModules.DeviceInfo) {
@@ -418,7 +418,7 @@ export function useBatteryOptimization() {
       });
     }
   }, []);
-  
+
   return {
     batteryLevel,
     isLowPowerMode,
@@ -433,31 +433,31 @@ export function useBatteryOptimization() {
  */
 export class PerformanceReporter {
   private static metrics: Map<string, any> = new Map();
-  
+
   static startMeasure(name: string) {
     this.metrics.set(name, {
       start: Date.now(),
       name,
     });
   }
-  
+
   static endMeasure(name: string) {
     const metric = this.metrics.get(name);
     if (metric) {
       metric.duration = Date.now() - metric.start;
       metric.end = Date.now();
-      
+
       if (__DEV__) {
         console.log(`[Performance] ${name}: ${metric.duration}ms`);
       }
-      
+
       // Send to analytics in production
       if (!__DEV__) {
         this.sendToAnalytics(metric);
       }
     }
   }
-  
+
   static async sendToAnalytics(metric: any) {
     try {
       await fetch('https://api.candlefish.ai/metrics', {
@@ -477,14 +477,14 @@ export class PerformanceReporter {
       // Silently fail analytics
     }
   }
-  
+
   static getReport() {
     const report = Array.from(this.metrics.values()).map(m => ({
       name: m.name,
       duration: m.duration || 0,
       timestamp: m.end || m.start,
     }));
-    
+
     return {
       metrics: report,
       summary: {
@@ -495,7 +495,7 @@ export class PerformanceReporter {
       },
     };
   }
-  
+
   static clear() {
     this.metrics.clear();
   }

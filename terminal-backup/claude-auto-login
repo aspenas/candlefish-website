@@ -33,7 +33,7 @@ is_logged_in() {
 # Function to perform login
 perform_login() {
     echo -e "${GREEN}🔐 Logging into Claude Pro Max subscription (\$200 tier)...${NC}"
-    
+
     # Check if we're in a TTY context to avoid setRawMode errors
     if [ -t 0 ] && [ -t 1 ]; then
         # Try to login with proper TTY
@@ -61,21 +61,21 @@ main() {
     echo -e "${GREEN}═══════════════════════════════════════════════════${NC}"
     echo -e "${GREEN}    Claude Pro Max Auto-Login (\$200 tier)${NC}"
     echo -e "${GREEN}═══════════════════════════════════════════════════${NC}"
-    
+
     if is_logged_in; then
         echo -e "${GREEN}✅ Already logged in to Claude Pro Max${NC}"
         echo -e "${GREEN}📊 Your subscription is active and ready${NC}"
     else
         perform_login
     fi
-    
+
     # Set environment variables for the session
     export CLAUDE_SUBSCRIPTION="max"
     export CLAUDE_TIER="200"
     export CLAUDE_MAX_TOKENS="400000"
     export CLAUDE_MODEL="claude-opus-4-1-20250805"
     export ANTHROPIC_MODEL="claude-opus-4-1-20250805"
-    
+
     echo -e "${GREEN}═══════════════════════════════════════════════════${NC}"
 }
 

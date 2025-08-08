@@ -28,14 +28,14 @@ export default function ReviewEstimatePage() {
 
   const handleFinalize = async () => {
     setIsGenerating(true);
-    
+
     // Simulate PDF generation
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
     markStepCompleted('review');
     setIsGenerating(false);
     setShowSuccess(true);
-    
+
     // Redirect after showing success
     setTimeout(() => {
       router.push('/estimate/success');
@@ -97,8 +97,8 @@ export default function ReviewEstimatePage() {
               <div>
                 <p className="text-sm text-paintbox-text-muted">Address</p>
                 <p className="font-medium text-paintbox-text">
-                  {estimate.clientInfo?.address ? 
-                    `${estimate.clientInfo.address}, ${estimate.clientInfo.city}, ${estimate.clientInfo.state} ${estimate.clientInfo.zipCode}` 
+                  {estimate.clientInfo?.address ?
+                    `${estimate.clientInfo.address}, ${estimate.clientInfo.city}, ${estimate.clientInfo.state} ${estimate.clientInfo.zipCode}`
                     : 'Not provided'}
                 </p>
               </div>
@@ -123,7 +123,7 @@ export default function ReviewEstimatePage() {
                 </button>
               </Link>
             </div>
-            
+
             <div className="flex gap-4">
               <button className="paintbox-btn paintbox-btn-secondary">
                 <Download className="w-4 h-4" />

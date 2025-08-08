@@ -147,7 +147,7 @@ spec:
 
 ---
 apiVersion: v1
-kind: Service  
+kind: Service
 metadata:
   name: backend-service
   namespace: claude-resources

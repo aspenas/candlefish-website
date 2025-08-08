@@ -85,20 +85,20 @@ class RateLimiter {
     const now = Date.now();
     const window = this.config.windowMs;
     const limit = this.config.maxRequests;
-    
+
     const windowKey = `sliding:${key}`;
     const requestKey = `${windowKey}:${now}`;
 
     // Remove old entries (outside the window)
     const cutoff = now - window;
-    
+
     // Get current count in window
     const currentData = await this.cache.get(windowKey);
     const requests: number[] = currentData ? JSON.parse(currentData) : [];
-    
+
     // Filter out old requests
     const validRequests = requests.filter(timestamp => timestamp > cutoff);
-    
+
     const currentCount = validRequests.length;
     const remainingPoints = Math.max(0, limit - currentCount - 1);
     const isBlocked = currentCount >= limit;
@@ -137,7 +137,7 @@ class RateLimiter {
   private async tokenBucketCheck(key: string): Promise<RateLimitResult> {
     const now = Date.now();
     const bucketKey = `bucket:${key}`;
-    
+
     // Get current bucket state
     const bucketData = await this.cache.get(bucketKey);
     let bucket = bucketData ? JSON.parse(bucketData) : {
@@ -148,12 +148,12 @@ class RateLimiter {
     // Calculate tokens to add based on time passed
     const timePassed = now - bucket.lastRefill;
     const tokensToAdd = Math.floor(timePassed / this.config.windowMs * this.config.maxRequests);
-    
+
     bucket.tokens = Math.min(this.config.maxRequests, bucket.tokens + tokensToAdd);
     bucket.lastRefill = now;
 
     const hasTokens = bucket.tokens > 0;
-    
+
     if (hasTokens) {
       bucket.tokens -= 1;
     }
@@ -189,12 +189,12 @@ class RateLimiter {
     const now = Date.now();
     const window = this.config.windowMs;
     const windowStart = Math.floor(now / window) * window;
-    
+
     const windowKey = `fixed:${key}:${windowStart}`;
-    
+
     const currentCount = await this.cache.incr(windowKey, Math.ceil(window / 1000));
     const isBlocked = currentCount > this.config.maxRequests;
-    
+
     const remainingPoints = Math.max(0, this.config.maxRequests - currentCount);
     const msBeforeNext = isBlocked ? (windowStart + window) - now : 0;
 
@@ -305,12 +305,12 @@ export async function rateLimitMiddleware(
   config: Partial<RateLimitConfig> = {}
 ): Promise<NextResponse | null> {
   const requestContext = getRequestContext(request);
-  
+
   try {
     logger.middleware('rate-limit', 'Processing rate limit check', requestContext);
 
     const rateLimiter = new RateLimiter(config);
-    
+
     // Generate rate limit key
     const keyGenerator = config.keyGenerator || keyGenerators.ip;
     const key = keyGenerator(request);
@@ -338,7 +338,7 @@ export async function rateLimitMiddleware(
       });
 
       const response = NextResponse.json(
-        { 
+        {
           error: rateLimiter['config'].message,
           retryAfter: Math.ceil(result.info.msBeforeNext / 1000),
         },

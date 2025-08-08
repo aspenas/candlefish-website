@@ -24,10 +24,10 @@ import {
   CandlefishHero,
   SplitHero,
 } from "@/components/ui"
-import { 
-  Zap, 
-  Shield, 
-  Brain, 
+import {
+  Zap,
+  Shield,
+  Brain,
   Sparkles,
   ArrowRight,
   Download,
@@ -196,7 +196,7 @@ export default function ComponentShowcase() {
         {/* Cards Section */}
         <section>
           <h2 className="text-3xl font-light mb-8">Card System</h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <Card>
               <CardHeader>

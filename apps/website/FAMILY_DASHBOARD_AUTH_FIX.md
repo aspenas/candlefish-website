@@ -38,8 +38,8 @@ Changed line in `/apps/website/public/_redirects`:
 
 ### Dashboard Access
 
-- **Main URL:** https://candlefish.ai/docs/privileged/family/
-- **Dashboard:** https://candlefish.ai/docs/privileged/family/family-dashboard.html
+- **Main URL:** <https://candlefish.ai/docs/privileged/family/>
+- **Dashboard:** <https://candlefish.ai/docs/privileged/family/family-dashboard.html>
 - Authentication details are managed by Netlify environment configuration and must not be committed to the repository.
 
 ### Family Documents (8 total)
@@ -71,7 +71,7 @@ Changed line in `/apps/website/public/_redirects`:
 
 ### Post-Deployment Verification
 
-- [ ] Visit https://candlefish.ai/docs/privileged/family/
+- [ ] Visit <https://candlefish.ai/docs/privileged/family/>
 - [ ] Verify authentication prompt appears (not error page)
 - [ ] Authenticate using the configured Netlify-provisioned code
 - [ ] Confirm access to family dashboard
@@ -110,9 +110,9 @@ Changed line in `/apps/website/public/_redirects`:
 ### Netlify Configuration
 
 - **Project:** steady-cuchufli-1890bc
-- **Admin URL:** https://app.netlify.com/projects/steady-cuchufli-1890bc
-- **Deploy URL:** https://steady-cuchufli-1890bc.netlify.app
-- **Custom Domain:** https://candlefish.ai
+- **Admin URL:** <https://app.netlify.com/projects/steady-cuchufli-1890bc>
+- **Deploy URL:** <https://steady-cuchufli-1890bc.netlify.app>
+- **Custom Domain:** <https://candlefish.ai>
 
 ## Troubleshooting Guide
 

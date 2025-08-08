@@ -14,7 +14,7 @@
 [build]
   publish = "dist"
   environment = { CF_ENV = "production", NODE_ENV = "production", AWS_REGION = "us-east-1", CORS_ORIGINS = "https://candlefish.ai,https://www.candlefish.ai,https://dashboard.candlefish.ai" }
-  
+
 # TikTok verification files - serve as static files
 [[redirects]]
   from = "/tiktok*.txt"

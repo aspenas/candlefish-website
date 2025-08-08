@@ -29,7 +29,7 @@ interface MetricsOverviewCardProps {
 const getTrendColor = (trend: string, current: number, theme: any) => {
   if (current > 90) return theme.colors.error;
   if (current > 75) return theme.colors.warning || '#f59e0b';
-  
+
   switch (trend) {
     case 'INCREASING':
       return current > 60 ? theme.colors.warning || '#f59e0b' : theme.colors.primary;
@@ -65,13 +65,13 @@ const getUtilizationColor = (value: number, theme: any) => {
 export default function MetricsOverviewCard({ resourceUtilization, onPress }: MetricsOverviewCardProps) {
   const theme = useTheme();
 
-  const MetricItem = ({ 
-    icon, 
-    label, 
-    resource 
-  }: { 
-    icon: string; 
-    label: string; 
+  const MetricItem = ({
+    icon,
+    label,
+    resource
+  }: {
+    icon: string;
+    label: string;
     resource: ResourceUtilization;
   }) => {
     const trendColor = getTrendColor(resource.trend, resource.current, theme);
@@ -91,30 +91,30 @@ export default function MetricsOverviewCard({ resourceUtilization, onPress }: Me
               {label}
             </Text>
           </View>
-          
+
           <View style={styles.metricTrend}>
             <MaterialCommunityIcons
               name={trendIcon}
               size={16}
               color={trendColor}
             />
-            <Text 
-              variant="labelLarge" 
+            <Text
+              variant="labelLarge"
               style={[styles.metricValue, { color: utilizationColor }]}
             >
               {resource.current.toFixed(1)}%
             </Text>
           </View>
         </View>
-        
+
         <ProgressBar
           progress={resource.current / 100}
           color={utilizationColor}
           style={styles.progressBar}
         />
-        
-        <Text 
-          variant="labelSmall" 
+
+        <Text
+          variant="labelSmall"
           style={[styles.averageText, { color: theme.colors.onSurfaceVariant }]}
         >
           avg: {resource.average.toFixed(1)}%
@@ -153,7 +153,7 @@ export default function MetricsOverviewCard({ resourceUtilization, onPress }: Me
                 resource={resourceUtilization.memory}
               />
             </View>
-            
+
             <View style={styles.metricsRow}>
               <MetricItem
                 icon="harddisk"

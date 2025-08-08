@@ -62,7 +62,7 @@ export default function DashboardScreen({ navigation }: Props) {
     onSubscriptionData: ({ subscriptionData }) => {
       if (subscriptionData.data?.systemAnalysisUpdated) {
         const analysis = subscriptionData.data.systemAnalysisUpdated;
-        
+
         // Show notification for critical health changes
         if (analysis.overallHealth === 'UNHEALTHY') {
           showMessage({
@@ -164,7 +164,7 @@ export default function DashboardScreen({ navigation }: Props) {
             {new Date().toLocaleString()}
           </Text>
         </View>
-        
+
         <IconButton
           icon="refresh"
           size={24}
@@ -211,7 +211,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   {services.length} total services
                 </Text>
               </View>
-              
+
               <View style={styles.statusChips}>
                 {servicesByStatus.map(({ status, services, color }) => (
                   <Chip
@@ -233,7 +233,7 @@ export default function DashboardScreen({ navigation }: Props) {
             <Text variant="titleMedium" style={styles.sectionTitle}>
               Services
             </Text>
-            
+
             <FlatGrid
               itemDimension={width > 600 ? 180 : 150}
               data={services}

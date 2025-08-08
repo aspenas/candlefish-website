@@ -1,26 +1,32 @@
 # Critical Deployment Workflow Instructions for Leslie
 
 ## Overview
+
 This document provides step-by-step instructions for using the Critical Deployment Workflow Orchestrator to safely deploy the FOGG Calendar application with automated validation, testing, and rollback capabilities.
 
 ## Quick Start
 
 ### Basic Deployment (Recommended for First Time)
+
 ```bash
 cd /Users/patricksmith/candlefish-ai/projects/fogg/calendar
 ./deploy/critical-deploy.sh --dry-run
 ```
+
 This runs a safe dry-run that simulates deployment without making actual changes.
 
 ### Real Deployment to Staging
+
 ```bash
 ./deploy/critical-deploy.sh --env staging
 ```
 
 ### Production Deployment (Use with Caution)
+
 ```bash
 ./deploy/critical-deploy.sh --env production
 ```
+
 ⚠️ **WARNING**: This will prompt for confirmation before proceeding.
 
 ## Available Deployment Agents
@@ -35,32 +41,39 @@ The system includes four specialized agents that validate different aspects of t
 ## Common Deployment Scenarios
 
 ### 1. Full Deployment with All Validations (Default)
+
 ```bash
 ./deploy/critical-deploy.sh
 ```
+
 - Runs all 4 agents
 - Priority: Security → Performance → Testing → Database
 - Full validation and rollback enabled
 
 ### 2. Security-Focused Deployment
+
 ```bash
 ./deploy/critical-deploy.sh \
     --agents "security-auditor,test-automator" \
     --env staging
 ```
+
 - Only runs security and testing validations
 - Faster deployment when performance is not a concern
 
 ### 3. Database Migration Deployment
+
 ```bash
 ./deploy/critical-deploy.sh \
     --agents "database-optimizer,test-automator" \
     --priority "database>testing"
 ```
+
 - Prioritizes database changes
 - Ensures migrations are tested
 
 ### 4. Emergency Hotfix Deployment
+
 ```bash
 ./deploy/critical-deploy.sh \
     --agents "security-auditor" \
@@ -68,15 +81,18 @@ The system includes four specialized agents that validate different aspects of t
     --env production \
     --dry-run
 ```
+
 - Minimal validation for urgent fixes
 - Always test with --dry-run first!
 
 ### 5. Performance Optimization Deployment
+
 ```bash
 ./deploy/critical-deploy.sh \
     --agents "performance-engineer,database-optimizer" \
     --priority "performance>database"
 ```
+
 - Focuses on performance improvements
 - Optimizes both application and database
 
@@ -95,35 +111,44 @@ The system includes four specialized agents that validate different aspects of t
 ## Step-by-Step Deployment Process
 
 ### Step 1: Pre-Deployment Checklist
+
 Before deploying, ensure:
+
 - [ ] All code changes are committed
 - [ ] Tests pass locally: `pytest tests/`
 - [ ] No exposed secrets: `git diff | grep -i "api_key\|secret\|password"`
 - [ ] Backup exists (for production)
 
 ### Step 2: Test with Dry-Run
+
 Always test your deployment configuration first:
+
 ```bash
 ./deploy/critical-deploy.sh --dry-run --env staging
 ```
 
 Check the output for:
+
 - ✅ All agents show "PASSED" status
 - ✅ Success rate is above 95%
 - ⚠️ Review any warnings (some test failures are acceptable)
 
 ### Step 3: Deploy to Staging
+
 ```bash
 ./deploy/critical-deploy.sh --env staging
 ```
 
 Monitor the output:
+
 - Each agent will run sequentially
 - Progress is shown in real-time
 - Final summary shows overall status
 
 ### Step 4: Verify Staging Deployment
+
 After successful staging deployment:
+
 ```bash
 # Check application health
 curl https://fogg-calendar-staging.run.app/health
@@ -136,6 +161,7 @@ gcloud logging read --limit 10
 ```
 
 ### Step 5: Deploy to Production (if needed)
+
 ```bash
 # First, always dry-run
 ./deploy/critical-deploy.sh --env production --dry-run
@@ -145,15 +171,18 @@ gcloud logging read --limit 10
 ```
 
 You will see:
+
 ```
 ⚠️  WARNING: You are about to deploy to PRODUCTION!
 Are you sure you want to continue? (yes/no):
 ```
+
 Type `yes` to proceed.
 
 ## Understanding the Output
 
 ### Successful Deployment
+
 ```
 ╔══════════════════════════════════════════════════════════╗
 ║              DEPLOYMENT COMPLETED SUCCESSFULLY           ║
@@ -163,6 +192,7 @@ Type `yes` to proceed.
 ```
 
 ### Failed Deployment with Rollback
+
 ```
 ╔══════════════════════════════════════════════════════════╗
 ║                  DEPLOYMENT FAILED                       ║
@@ -174,10 +204,12 @@ Type `yes` to proceed.
 ## Deployment Reports
 
 Reports are saved in `deploy/reports/` with detailed metrics:
+
 - `latest.json` - Most recent deployment
 - `deployment_[id]_[timestamp].json` - Timestamped reports
 
 View report summary:
+
 ```bash
 # Quick status check
 cat deploy/reports/latest.json | jq '.status, .metrics_summary'
@@ -192,7 +224,9 @@ cat deploy/reports/latest.json | jq '.agent_results[] | select(.agent=="security
 ## Troubleshooting
 
 ### Issue: Deployment Fails at Security Check
+
 **Solution**: Review security warnings and fix issues:
+
 ```bash
 # Check what failed
 cat deploy/reports/latest.json | jq '.agent_results[] | select(.agent=="security-auditor") | .errors'
@@ -204,7 +238,9 @@ cat deploy/reports/latest.json | jq '.agent_results[] | select(.agent=="security
 ```
 
 ### Issue: Test Failures Block Deployment
+
 **Solution**: Some test failures are acceptable (>95% pass rate):
+
 ```bash
 # Check test results
 cat deploy/reports/latest.json | jq '.agent_results[] | select(.agent=="test-automator") | .metrics.overall'
@@ -213,7 +249,9 @@ cat deploy/reports/latest.json | jq '.agent_results[] | select(.agent=="test-aut
 ```
 
 ### Issue: Database Optimization Shows No Improvement
+
 **Solution**: This warning is informational and doesn't block deployment:
+
 ```bash
 # Database already optimized is actually good!
 # To force re-optimization:
@@ -221,7 +259,9 @@ cat deploy/reports/latest.json | jq '.agent_results[] | select(.agent=="test-aut
 ```
 
 ### Issue: Rollback Failed
+
 **Solution**: Manual intervention required:
+
 ```bash
 # Check rollback status
 cat deploy/reports/latest.json | jq '.status'
@@ -244,10 +284,11 @@ cat deploy/reports/latest.json | jq '.status'
    - Staging: Anytime
 
 3. **Monitor After Deployment**
+
    ```bash
    # Watch logs
    gcloud logging read --follow
-   
+
    # Check metrics
    curl https://fogg-calendar.run.app/metrics
    ```
@@ -263,7 +304,9 @@ cat deploy/reports/latest.json | jq '.status'
 ## Emergency Procedures
 
 ### Immediate Rollback
+
 If something goes wrong after deployment:
+
 ```bash
 # 1. Trigger manual rollback
 gcloud run services update-traffic fogg-calendar --to-revisions=PREVIOUS=100
@@ -276,7 +319,9 @@ cat deploy/reports/latest.json | jq '.errors'
 ```
 
 ### Contact for Help
+
 If you encounter issues:
+
 1. Check deployment report: `deploy/reports/latest.json`
 2. Review logs: `gcloud logging read --limit 50`
 3. Contact Patrick with:
@@ -287,7 +332,9 @@ If you encounter issues:
 ## Configuration Files
 
 ### Deployment Configurations
+
 Pre-defined configurations are in `deploy/deployment-configs.yaml`:
+
 - `critical-full` - All validations
 - `security-priority` - Security focus
 - `performance-tuning` - Performance focus
@@ -296,7 +343,9 @@ Pre-defined configurations are in `deploy/deployment-configs.yaml`:
 - `production-hotfix` - Emergency fixes
 
 ### Custom Configuration Example
+
 Create a custom deployment:
+
 ```bash
 ./deploy/critical-deploy.sh \
     --agents "security-auditor,performance-engineer,test-automator" \
@@ -309,6 +358,7 @@ Create a custom deployment:
 ## Summary
 
 The Critical Deployment Workflow Orchestrator provides:
+
 - ✅ Automated security scanning
 - ✅ Performance optimization
 - ✅ Comprehensive testing

@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Claude Code Deploy - Candlefish AI</title>
     <meta name="description" content="Deploy all Claude Code AI agents with one command. Complete agent catalog and deployment tools.">
-    <link rel="icon" type="image/png" href="/logo/candlefish_highquality.png">
-    
+    <link rel="icon" type="image/png" href="/logo/candlefish_original.png">
+
     <style>
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
         }
-        
+
         :root {
             --bg-primary: #000000;
             --bg-secondary: #0A0A0A;
@@ -24,7 +24,7 @@
             --border-color: #3A3A3A;
             --success: #059669;
             --error: #DC2626;
-            
+
             /* Category colors */
             --cat-dev: #3B82F6;
             --cat-frontend: #8B5CF6;
@@ -35,7 +35,7 @@
             --cat-automation: #EC4899;
             --cat-docs: #6B7280;
         }
-        
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background-color: var(--bg-primary);
@@ -44,7 +44,7 @@
             position: relative;
             overflow-x: hidden;
         }
-        
+
         /* Auth Screen */
         .auth-container {
             position: fixed;
@@ -58,12 +58,12 @@
             opacity: 1;
             transition: opacity 0.5s ease;
         }
-        
+
         .auth-container.hidden {
             opacity: 0;
             pointer-events: none;
         }
-        
+
         .auth-box {
             max-width: 400px;
             width: 100%;
@@ -73,26 +73,26 @@
             border-radius: 12px;
             text-align: center;
         }
-        
+
         .auth-logo {
             width: 80px;
             height: 80px;
             margin: 0 auto 30px;
             filter: drop-shadow(0 0 30px rgba(0, 206, 209, 0.3));
         }
-        
+
         .auth-title {
             font-size: 24px;
             margin-bottom: 10px;
             font-weight: 300;
         }
-        
+
         .auth-subtitle {
             color: var(--text-secondary);
             margin-bottom: 30px;
             font-size: 14px;
         }
-        
+
         .auth-input {
             width: 100%;
             padding: 12px 16px;
@@ -104,13 +104,13 @@
             margin-bottom: 20px;
             transition: all 0.3s ease;
         }
-        
+
         .auth-input:focus {
             outline: none;
             border-color: var(--accent);
             box-shadow: 0 0 0 3px rgba(0, 206, 209, 0.1);
         }
-        
+
         .auth-button {
             width: 100%;
             padding: 12px 24px;
@@ -123,48 +123,48 @@
             cursor: pointer;
             transition: all 0.3s ease;
         }
-        
+
         .auth-button:hover {
             background: var(--accent-hover);
             transform: translateY(-1px);
         }
-        
+
         .auth-error {
             color: var(--error);
             font-size: 14px;
             margin-top: 10px;
             display: none;
         }
-        
+
         /* Main Content */
         .main-content {
             opacity: 0;
             transition: opacity 0.5s ease;
         }
-        
+
         .main-content.visible {
             opacity: 1;
         }
-        
+
         /* Animated background */
         .bg-particles {
             position: fixed;
             inset: 0;
             z-index: 0;
             opacity: 0.05;
-            background-image: 
+            background-image:
                 radial-gradient(circle at 20% 80%, var(--accent) 0%, transparent 50%),
                 radial-gradient(circle at 80% 20%, var(--accent) 0%, transparent 50%),
                 radial-gradient(circle at 40% 40%, var(--accent) 0%, transparent 50%);
             animation: float 20s ease-in-out infinite;
         }
-        
+
         @keyframes float {
             0%, 100% { transform: translate(0, 0) scale(1); }
             33% { transform: translate(30px, -30px) scale(1.1); }
             66% { transform: translate(-20px, 20px) scale(0.9); }
         }
-        
+
         .container {
             position: relative;
             z-index: 1;
@@ -172,13 +172,13 @@
             margin: 0 auto;
             padding: 60px 20px;
         }
-        
+
         /* Hero Section */
         .hero {
             text-align: center;
             margin-bottom: 80px;
         }
-        
+
         .logo {
             width: 120px;
             height: 120px;
@@ -187,12 +187,12 @@
             filter: drop-shadow(0 0 30px rgba(0, 206, 209, 0.3));
             animation: pulse 3s ease-in-out infinite;
         }
-        
+
         @keyframes pulse {
             0%, 100% { transform: scale(1); filter: drop-shadow(0 0 30px rgba(0, 206, 209, 0.3)); }
             50% { transform: scale(1.05); filter: drop-shadow(0 0 50px rgba(0, 206, 209, 0.5)); }
         }
-        
+
         h1 {
             font-size: 48px;
             font-weight: 300;
@@ -203,14 +203,14 @@
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
-        
+
         .subtitle {
             font-size: 20px;
             color: var(--text-secondary);
             margin-bottom: 40px;
             line-height: 1.5;
         }
-        
+
         /* Command Box */
         .command-box {
             background: rgba(255, 255, 255, 0.05);
@@ -226,11 +226,11 @@
             max-width: 600px;
             width: 100%;
         }
-        
+
         .command-box code {
             color: var(--accent);
         }
-        
+
         .copy-btn {
             position: absolute;
             right: 20px;
@@ -246,41 +246,41 @@
             border-radius: 4px;
             transition: all 0.3s ease;
         }
-        
+
         .copy-btn:hover {
             background: var(--accent-hover);
         }
-        
+
         .copy-btn.copied {
             background: var(--success);
         }
-        
+
         /* Agents Table */
         .agents-section {
             margin: 80px 0;
         }
-        
+
         .section-header {
             text-align: center;
             margin-bottom: 60px;
         }
-        
+
         .section-header h2 {
             font-size: 36px;
             font-weight: 300;
             margin-bottom: 16px;
         }
-        
+
         .section-header p {
             color: var(--text-secondary);
             font-size: 18px;
         }
-        
+
         .agents-grid {
             display: grid;
             gap: 40px;
         }
-        
+
         .agent-category {
             background: rgba(255, 255, 255, 0.02);
             border: 1px solid var(--border-color);
@@ -288,12 +288,12 @@
             overflow: hidden;
             transition: all 0.3s ease;
         }
-        
+
         .agent-category:hover {
             border-color: var(--accent);
             transform: translateY(-2px);
         }
-        
+
         .category-header {
             padding: 20px 24px;
             background: rgba(255, 255, 255, 0.03);
@@ -302,7 +302,7 @@
             align-items: center;
             justify-content: space-between;
         }
-        
+
         .category-title {
             font-size: 20px;
             font-weight: 400;
@@ -310,7 +310,7 @@
             align-items: center;
             gap: 12px;
         }
-        
+
         .category-badge {
             padding: 4px 12px;
             font-size: 12px;
@@ -319,7 +319,7 @@
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
-        
+
         .badge-dev { background: rgba(59, 130, 246, 0.2); color: var(--cat-dev); }
         .badge-frontend { background: rgba(139, 92, 246, 0.2); color: var(--cat-frontend); }
         .badge-backend { background: rgba(16, 185, 129, 0.2); color: var(--cat-backend); }
@@ -328,11 +328,11 @@
         .badge-data { background: rgba(6, 182, 212, 0.2); color: var(--cat-data); }
         .badge-automation { background: rgba(236, 72, 153, 0.2); color: var(--cat-automation); }
         .badge-docs { background: rgba(107, 114, 128, 0.2); color: var(--cat-docs); }
-        
+
         .agents-table {
             width: 100%;
         }
-        
+
         .agent-row {
             display: grid;
             grid-template-columns: 200px 1fr auto;
@@ -342,39 +342,39 @@
             transition: background 0.2s ease;
             align-items: center;
         }
-        
+
         @media (max-width: 768px) {
             .agent-row {
                 grid-template-columns: 1fr;
                 gap: 8px;
             }
         }
-        
+
         .agent-row:hover {
             background: rgba(0, 206, 209, 0.05);
         }
-        
+
         .agent-row:last-child {
             border-bottom: none;
         }
-        
+
         .agent-name {
             font-family: 'Berkeley Mono', 'Courier New', monospace;
             color: var(--accent);
             font-size: 14px;
         }
-        
+
         .agent-description {
             color: var(--text-secondary);
             font-size: 14px;
         }
-        
+
         .agent-command {
             display: flex;
             align-items: center;
             gap: 8px;
         }
-        
+
         .command-snippet {
             padding: 4px 8px;
             background: rgba(255, 255, 255, 0.05);
@@ -384,7 +384,7 @@
             font-size: 12px;
             color: var(--text-secondary);
         }
-        
+
         .copy-command {
             padding: 4px 8px;
             background: transparent;
@@ -395,12 +395,12 @@
             font-size: 12px;
             transition: all 0.2s ease;
         }
-        
+
         .copy-command:hover {
             border-color: var(--accent);
             color: var(--accent);
         }
-        
+
         /* Footer */
         footer {
             background: var(--bg-secondary);
@@ -409,39 +409,39 @@
             text-align: center;
             margin-top: 100px;
         }
-        
+
         .footer-content {
             max-width: 1200px;
             margin: 0 auto;
         }
-        
+
         .footer-main {
             font-size: 16px;
             color: var(--text-secondary);
             margin-bottom: 16px;
         }
-        
+
         .footer-main a {
             color: var(--accent);
             text-decoration: none;
             transition: opacity 0.3s ease;
         }
-        
+
         .footer-main a:hover {
             opacity: 0.8;
         }
-        
+
         .footer-update {
             font-size: 14px;
             color: #6A6A6A;
             margin-bottom: 8px;
         }
-        
+
         .footer-edit {
             font-size: 12px;
             color: #4A4A4A;
         }
-        
+
         /* Quick Links */
         .quick-links {
             display: flex;
@@ -450,14 +450,14 @@
             margin: 40px 0;
             flex-wrap: wrap;
         }
-        
+
         .quick-link {
             color: var(--text-secondary);
             text-decoration: none;
             font-size: 14px;
             transition: color 0.3s ease;
         }
-        
+
         .quick-link:hover {
             color: var(--accent);
         }
@@ -467,13 +467,13 @@
     <!-- Authentication Screen -->
     <div class="auth-container" id="authScreen">
         <div class="auth-box">
-            <img src="/logo/candlefish_highquality.png" alt="Candlefish AI" class="auth-logo">
+            <img src="/logo/candlefish_original.png" alt="Candlefish AI" class="auth-logo">
             <h2 class="auth-title">Access Required</h2>
             <p class="auth-subtitle">Enter password to continue</p>
-            <input 
-                type="password" 
-                id="passwordInput" 
-                class="auth-input" 
+            <input
+                type="password"
+                id="passwordInput"
+                class="auth-input"
                 placeholder="Enter password"
                 autocomplete="off"
             >
@@ -481,26 +481,26 @@
             <div class="auth-error" id="authError">Incorrect password. Please try again.</div>
         </div>
     </div>
-    
+
     <!-- Main Content -->
     <div class="main-content" id="mainContent">
         <div class="bg-particles"></div>
-        
+
         <div class="container">
             <!-- Hero Section -->
             <div class="hero">
-                <img src="/logo/candlefish_highquality.png" alt="Candlefish AI" class="logo">
+                <img src="/logo/candlefish_original.png" alt="Candlefish AI" class="logo">
                 <h1>Claude Code Deploy Portal</h1>
                 <p class="subtitle">
                     Complete deployment suite for all Claude Code AI agents.<br>
                     One command. Unlimited possibilities.
                 </p>
-                
+
                 <div class="command-box">
                     <code id="mainCommand">npx @candlefish-ai/claude-code-deploy init</code>
                     <button class="copy-btn" onclick="copyCommand('mainCommand', this)">Copy</button>
                 </div>
-                
+
                 <div class="quick-links">
                     <a href="https://docs.anthropic.com/claude-code" class="quick-link">Documentation</a>
                     <a href="https://github.com/candlefish-ai/claude-code-deploy" class="quick-link">GitHub</a>
@@ -508,14 +508,14 @@
                     <a href="https://claude.candlefish.ai" class="quick-link">Enterprise Portal</a>
                 </div>
             </div>
-            
+
             <!-- Agents Catalog -->
             <div class="agents-section">
                 <div class="section-header">
                     <h2>Complete Agent Catalog</h2>
                     <p>47 specialized AI agents ready for deployment</p>
                 </div>
-                
+
                 <div class="agents-grid">
                     <!-- Development & Architecture -->
                     <div class="agent-category">
@@ -568,7 +568,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Frontend & UI -->
                     <div class="agent-category">
                         <div class="category-header">
@@ -628,7 +628,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Backend & Infrastructure -->
                     <div class="agent-category">
                         <div class="category-header">
@@ -688,7 +688,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Testing & Quality -->
                     <div class="agent-category">
                         <div class="category-header">
@@ -740,7 +740,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Security & Compliance -->
                     <div class="agent-category">
                         <div class="category-header">
@@ -792,7 +792,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Data & Analytics -->
                     <div class="agent-category">
                         <div class="category-header">
@@ -844,7 +844,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Automation & Integration -->
                     <div class="agent-category">
                         <div class="category-header">
@@ -904,7 +904,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Documentation & Communication -->
                     <div class="agent-category">
                         <div class="category-header">
@@ -959,13 +959,13 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Footer -->
         <footer>
             <div class="footer-content">
                 <div class="footer-main">
-                    Claude Resources © 2025 Candlefish AI | 
-                    <a href="https://github.com/candlefish-ai" target="_blank">GitHub</a> | 
+                    Claude Resources © 2025 Candlefish AI |
+                    <a href="https://github.com/candlefish-ai" target="_blank">GitHub</a> |
                     <a href="https://candlefish.ai" target="_blank">candlefish.ai</a>
                 </div>
                 <div class="footer-update">
@@ -977,24 +977,24 @@
             </div>
         </footer>
     </div>
-    
+
     <script>
         // Authentication
         const CORRECT_PASSWORD = 'c@ndlef!sh';
-        
+
         function authenticate() {
             const password = document.getElementById('passwordInput').value;
             const authScreen = document.getElementById('authScreen');
             const mainContent = document.getElementById('mainContent');
             const errorMsg = document.getElementById('authError');
-            
+
             if (password === CORRECT_PASSWORD) {
                 // Store auth in session
                 sessionStorage.setItem('claudeDeployAuth', 'true');
-                
+
                 // Fade out auth screen
                 authScreen.classList.add('hidden');
-                
+
                 // Show main content
                 setTimeout(() => {
                     mainContent.classList.add('visible');
@@ -1003,23 +1003,23 @@
                 // Show error
                 errorMsg.style.display = 'block';
                 document.getElementById('passwordInput').value = '';
-                
+
                 // Hide error after 3 seconds
                 setTimeout(() => {
                     errorMsg.style.display = 'none';
                 }, 3000);
             }
         }
-        
+
         // Check auth on page load
         window.addEventListener('DOMContentLoaded', () => {
             const isAuthed = sessionStorage.getItem('claudeDeployAuth') === 'true';
-            
+
             if (isAuthed) {
                 document.getElementById('authScreen').classList.add('hidden');
                 document.getElementById('mainContent').classList.add('visible');
             }
-            
+
             // Allow Enter key for auth
             document.getElementById('passwordInput').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
@@ -1027,7 +1027,7 @@
                 }
             });
         });
-        
+
         // Copy main command
         function copyCommand(elementId, button) {
             const command = document.getElementById(elementId).textContent;
@@ -1035,14 +1035,14 @@
                 const originalText = button.textContent;
                 button.textContent = 'Copied!';
                 button.classList.add('copied');
-                
+
                 setTimeout(() => {
                     button.textContent = originalText;
                     button.classList.remove('copied');
                 }, 2000);
             });
         }
-        
+
         // Copy agent command
         function copyAgentCommand(agentName, button) {
             const command = `claude-code deploy --agent ${agentName}`;
@@ -1051,7 +1051,7 @@
                 button.textContent = '✓';
                 button.style.color = 'var(--success)';
                 button.style.borderColor = 'var(--success)';
-                
+
                 setTimeout(() => {
                     button.textContent = originalText;
                     button.style.color = '';

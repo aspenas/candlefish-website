@@ -19,9 +19,9 @@ interface Filters {
   search: string;
 }
 
-export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ 
+export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({
   className,
-  pageSize = 50 
+  pageSize = 50
 }) => {
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,7 +55,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({
       });
 
       const response = await fetch(`/api/v1/audit/events?${params}`);
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch audit events: ${response.status}`);
       }
@@ -119,7 +119,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({
       });
 
       const response = await fetch(`/api/v1/audit/events/export?${params}`);
-      
+
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -136,10 +136,10 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({
     } catch (err) {
       console.error('Export error:', err);
       // Mock CSV export
-      const csvData = events.map(event => 
+      const csvData = events.map(event =>
         `${event.timestamp},${event.service},${event.action},${event.user || ''},${event.success},${event.details || event.error || ''}`
       ).join('\n');
-      
+
       const blob = new Blob([`timestamp,service,action,user,success,details\n${csvData}`], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -184,8 +184,8 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({
   const totalPages = Math.ceil(totalEvents / pageSize);
 
   const getStatusColor = (success: boolean) => {
-    return success 
-      ? 'text-green-600 bg-green-50' 
+    return success
+      ? 'text-green-600 bg-green-50'
       : 'text-red-600 bg-red-50';
   };
 
@@ -350,7 +350,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {events.map((event) => (
-                  <tr 
+                  <tr
                     key={event.id}
                     className="hover:bg-gray-50 cursor-pointer"
                     onClick={() => setSelectedEvent(event)}
@@ -417,7 +417,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({
             <div className="p-6">
               <div className="flex justify-between items-start mb-4">
                 <h3 className="text-lg font-semibold">Event Details</h3>
-                <Button 
+                <Button
                   onClick={() => setSelectedEvent(null)}
                   variant="ghost"
                   className="text-gray-500 hover:text-gray-700"
@@ -425,7 +425,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({
                   ×
                 </Button>
               </div>
-              
+
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -455,7 +455,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({
                     </span>
                   </div>
                 </div>
-                
+
                 {(selectedEvent.details || selectedEvent.error) && (
                   <div>
                     <span className="text-sm font-medium text-gray-600">

@@ -11,21 +11,21 @@ interface ValueCardProps {
   prefersReducedMotion: boolean
 }
 
-const ValueCard: React.FC<ValueCardProps> = React.memo(({ 
-  metric, 
-  label, 
-  index, 
+const ValueCard: React.FC<ValueCardProps> = React.memo(({
+  metric,
+  label,
+  index,
   inView,
-  prefersReducedMotion 
+  prefersReducedMotion
 }) => {
   const spring = useSpring({
-    from: { 
-      opacity: 0, 
+    from: {
+      opacity: 0,
       transform: 'translateY(40px) scale(0.9)',
       borderColor: 'rgba(107, 114, 128, 1)'
     },
-    to: { 
-      opacity: inView ? 1 : 0, 
+    to: {
+      opacity: inView ? 1 : 0,
       transform: inView ? 'translateY(0px) scale(1)' : 'translateY(40px) scale(0.9)',
       borderColor: 'rgba(107, 114, 128, 1)'
     },
@@ -42,8 +42,8 @@ const ValueCard: React.FC<ValueCardProps> = React.memo(({
 
   const handleMouseEnter = () => {
     if (!prefersReducedMotion) {
-      setHoverSpring({ 
-        y: -8, 
+      setHoverSpring({
+        y: -8,
         borderColor: 'rgba(0, 206, 209, 1)',
         shadowOpacity: 0.1
       })
@@ -51,15 +51,15 @@ const ValueCard: React.FC<ValueCardProps> = React.memo(({
   }
 
   const handleMouseLeave = () => {
-    setHoverSpring({ 
-      y: 0, 
+    setHoverSpring({
+      y: 0,
       borderColor: 'rgba(107, 114, 128, 1)',
       shadowOpacity: 0
     })
   }
 
   return (
-    <animated.div 
+    <animated.div
       className="bg-gray-800 border p-8 text-center cursor-pointer"
       style={{
         opacity: spring.opacity,
@@ -78,7 +78,7 @@ const ValueCard: React.FC<ValueCardProps> = React.memo(({
       role="article"
       aria-label={`${metric} ${label}`}
     >
-      <animated.div 
+      <animated.div
         className="text-5xl lg:text-6xl font-mono text-teal-400 mb-2"
         style={{
           transform: hoverSpring.y.to(y => `translateY(${y * 0.5}px)`)
@@ -110,7 +110,7 @@ const OptimizedValueProposition: React.FC = React.memo(() => {
   ]
 
   return (
-    <section 
+    <section
       ref={ref}
       className="py-20 lg:py-32 bg-black"
       aria-label="Value Proposition"

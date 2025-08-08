@@ -108,12 +108,12 @@ describe('Database Integration Tests', () => {
 
     // Create indexes for performance
     await pgClient.query(`
-      CREATE INDEX IF NOT EXISTS idx_metrics_name_timestamp 
+      CREATE INDEX IF NOT EXISTS idx_metrics_name_timestamp
       ON metrics(metric_name, timestamp DESC)
     `);
 
     await pgClient.query(`
-      CREATE INDEX IF NOT EXISTS idx_telemetry_type_timestamp 
+      CREATE INDEX IF NOT EXISTS idx_telemetry_type_timestamp
       ON telemetry_events(event_type, timestamp DESC)
     `);
   }
@@ -132,8 +132,8 @@ describe('Database Integration Tests', () => {
 
     test('should have all required tables created', async () => {
       const tables = await pgClient.query(`
-        SELECT table_name 
-        FROM information_schema.tables 
+        SELECT table_name
+        FROM information_schema.tables
         WHERE table_schema = 'public'
       `);
 
@@ -146,8 +146,8 @@ describe('Database Integration Tests', () => {
 
     test('should have proper indexes for performance', async () => {
       const indexes = await pgClient.query(`
-        SELECT indexname 
-        FROM pg_indexes 
+        SELECT indexname
+        FROM pg_indexes
         WHERE schemaname = 'public'
       `);
 
@@ -191,9 +191,9 @@ describe('Database Integration Tests', () => {
 
     test('should handle concurrent secret operations safely', async () => {
       const secretName = 'concurrent-test-secret';
-      
+
       // Simulate concurrent operations
-      const operations = Array.from({ length: 10 }, (_, i) => 
+      const operations = Array.from({ length: 10 }, (_, i) =>
         pgClient.query(`
           INSERT INTO aws_secrets (secret_name, arn, description)
           VALUES ($1, $2, $3)
@@ -327,7 +327,7 @@ describe('Database Integration Tests', () => {
 
       // All operations should complete
       expect(results).toHaveLength(concurrency);
-      
+
       // Should complete within reasonable time
       expect(endTime - startTime).toBeLessThan(2000); // 2 seconds max
 

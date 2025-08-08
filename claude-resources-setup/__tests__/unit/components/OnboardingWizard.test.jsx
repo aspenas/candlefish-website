@@ -105,7 +105,7 @@ describe('OnboardingWizard Component', () => {
       render(<OnboardingWizard teamMember={mockTeamMember} />)
 
       expect(screen.getByText('Step 1 of 4')).toBeInTheDocument()
-      
+
       // Progress bar should show 0% initially
       const progressBar = document.querySelector('[role="progressbar"]')
       expect(progressBar).toHaveAttribute('aria-valuenow', '0')
@@ -132,10 +132,10 @@ describe('OnboardingWizard Component', () => {
     it('should navigate to next step when Next is clicked', async () => {
       const user = userEvent.setup()
       const onStepComplete = jest.fn()
-      
+
       render(
-        <OnboardingWizard 
-          teamMember={mockTeamMember} 
+        <OnboardingWizard
+          teamMember={mockTeamMember}
           onStepComplete={onStepComplete}
         />
       )
@@ -244,7 +244,7 @@ describe('OnboardingWizard Component', () => {
       render(<OnboardingWizard teamMember={memberWithProgress} />)
 
       expect(screen.getByText('Step 3 of 4')).toBeInTheDocument()
-      
+
       const progressBar = document.querySelector('[role="progressbar"]')
       expect(progressBar).toHaveAttribute('aria-valuenow', '75') // 3 of 4 steps
     })
@@ -256,8 +256,8 @@ describe('OnboardingWizard Component', () => {
       const onStepComplete = jest.fn().mockResolvedValue(true)
 
       render(
-        <OnboardingWizard 
-          teamMember={mockTeamMember} 
+        <OnboardingWizard
+          teamMember={mockTeamMember}
           onStepComplete={onStepComplete}
         />
       )
@@ -280,7 +280,7 @@ describe('OnboardingWizard Component', () => {
       render(<OnboardingWizard teamMember={memberOnManualStep} />)
 
       expect(screen.getByText('Follow the SSH key setup guide')).toBeInTheDocument()
-      
+
       // Manual steps should have a "Mark as Complete" button
       expect(screen.getByText('Mark as Complete')).toBeInTheDocument()
     })
@@ -308,8 +308,8 @@ describe('OnboardingWizard Component', () => {
       )
 
       render(
-        <OnboardingWizard 
-          teamMember={mockTeamMember} 
+        <OnboardingWizard
+          teamMember={mockTeamMember}
           onStepComplete={onStepComplete}
         />
       )
@@ -331,8 +331,8 @@ describe('OnboardingWizard Component', () => {
       )
 
       render(
-        <OnboardingWizard 
-          teamMember={mockTeamMember} 
+        <OnboardingWizard
+          teamMember={mockTeamMember}
           onStepComplete={onStepComplete}
         />
       )
@@ -352,8 +352,8 @@ describe('OnboardingWizard Component', () => {
         .mockResolvedValueOnce(true)
 
       render(
-        <OnboardingWizard 
-          teamMember={mockTeamMember} 
+        <OnboardingWizard
+          teamMember={mockTeamMember}
           onStepComplete={onStepComplete}
         />
       )
@@ -374,7 +374,7 @@ describe('OnboardingWizard Component', () => {
     it('should handle skip functionality for optional steps', async () => {
       const user = userEvent.setup()
       const onStepSkip = jest.fn()
-      
+
       const memberOnOptionalStep = {
         ...mockTeamMember,
         onboardingStatus: {
@@ -384,8 +384,8 @@ describe('OnboardingWizard Component', () => {
       }
 
       render(
-        <OnboardingWizard 
-          teamMember={memberOnOptionalStep} 
+        <OnboardingWizard
+          teamMember={memberOnOptionalStep}
           onStepSkip={onStepSkip}
         />
       )
@@ -417,8 +417,8 @@ describe('OnboardingWizard Component', () => {
       const onComplete = jest.fn()
 
       render(
-        <OnboardingWizard 
-          teamMember={mockCompletedMember} 
+        <OnboardingWizard
+          teamMember={mockCompletedMember}
           onComplete={onComplete}
         />
       )
@@ -448,7 +448,7 @@ describe('OnboardingWizard Component', () => {
 
     it('should show collapsible step list on mobile', async () => {
       const user = userEvent.setup()
-      
+
       render(<OnboardingWizard teamMember={mockTeamMember} />)
 
       // On mobile, step list might be collapsible
@@ -523,8 +523,8 @@ describe('OnboardingWizard Component', () => {
       const onProgressSave = jest.fn()
 
       render(
-        <OnboardingWizard 
-          teamMember={mockTeamMember} 
+        <OnboardingWizard
+          teamMember={mockTeamMember}
           onProgressSave={onProgressSave}
         />
       )
@@ -561,8 +561,8 @@ describe('OnboardingWizard Component', () => {
       )
 
       render(
-        <OnboardingWizard 
-          teamMember={mockTeamMember} 
+        <OnboardingWizard
+          teamMember={mockTeamMember}
           stepComponent={CustomStep}
         />
       )
@@ -573,8 +573,8 @@ describe('OnboardingWizard Component', () => {
 
     it('should support custom styling', () => {
       const { container } = render(
-        <OnboardingWizard 
-          teamMember={mockTeamMember} 
+        <OnboardingWizard
+          teamMember={mockTeamMember}
           className="custom-wizard-class"
         />
       )

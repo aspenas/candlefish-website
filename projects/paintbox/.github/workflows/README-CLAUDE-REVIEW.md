@@ -5,12 +5,14 @@ This repository includes three different Claude review workflows, each with incr
 ## Workflows
 
 ### 1. `claude-auto-review.yml` - Basic Implementation
+
 - Simple Claude review using Python script
 - AWS Secrets Manager integration
 - Posts review as PR comment
 - Good for basic code review needs
 
 ### 2. `claude-pr-review-advanced.yml` - Advanced Implementation
+
 - Multiple review types (comprehensive, security, performance, quick)
 - Retry logic and error handling
 - Rich formatting with severity ratings
@@ -18,6 +20,7 @@ This repository includes three different Claude review workflows, each with incr
 - Supports manual triggers via comments
 
 ### 3. `claude-official-review.yml` - Official Anthropic Action (Recommended)
+
 - Uses official `anthropics/claude-code-action@beta`
 - Most reliable and maintained
 - Direct integration with Claude API
@@ -34,7 +37,7 @@ This repository includes three different Claude review workflows, each with incr
    - OIDC provider configured for GitHub Actions
 
 2. **Anthropic API Key**
-   - Get from: https://console.anthropic.com/account/keys
+   - Get from: <https://console.anthropic.com/account/keys>
    - Requires active Claude API subscription
 
 3. **GitHub Repository** with:
@@ -44,6 +47,7 @@ This repository includes three different Claude review workflows, each with incr
 ### Quick Setup
 
 1. **Run the setup script:**
+
    ```bash
    ./.github/scripts/setup-claude-review.sh
    ```
@@ -79,6 +83,7 @@ aws secretsmanager create-secret \
 #### 2. Create IAM Role for GitHub Actions
 
 Create a role with this trust policy:
+
 ```json
 {
   "Version": "2012-10-17",
@@ -101,6 +106,7 @@ Create a role with this trust policy:
 ```
 
 Attach this policy to the role:
+
 ```json
 {
   "Version": "2012-10-17",
@@ -118,6 +124,7 @@ Attach this policy to the role:
 #### 3. Add GitHub Secret
 
 Add the role ARN as a repository secret:
+
 - Name: `AWS_ROLE_ARN`
 - Value: `arn:aws:iam::YOUR_ACCOUNT_ID:role/github-actions-claude-review`
 
@@ -126,6 +133,7 @@ Add the role ARN as a repository secret:
 ### Automatic Reviews
 
 Reviews run automatically on:
+
 - New pull requests
 - Updates to existing PRs
 - When PRs are reopened
@@ -133,6 +141,7 @@ Reviews run automatically on:
 ### Manual Triggers
 
 Comment on any PR with:
+
 - `/claude-review` - Comprehensive review (default)
 - `/claude-review security` - Security-focused review
 - `/claude-review performance` - Performance optimization review
@@ -141,6 +150,7 @@ Comment on any PR with:
 ### Workflow Dispatch
 
 Manually trigger via GitHub Actions UI:
+
 1. Go to Actions tab
 2. Select the workflow
 3. Click "Run workflow"
@@ -151,6 +161,7 @@ Manually trigger via GitHub Actions UI:
 ### Review Types
 
 #### Comprehensive (Default)
+
 - Code quality and best practices
 - Bug detection
 - Performance analysis
@@ -159,6 +170,7 @@ Manually trigger via GitHub Actions UI:
 - Documentation
 
 #### Security Focus
+
 - Input validation
 - Authentication/authorization
 - Common vulnerabilities
@@ -166,6 +178,7 @@ Manually trigger via GitHub Actions UI:
 - Data protection
 
 #### Performance Focus
+
 - Algorithm efficiency
 - Database optimization
 - Frontend performance
@@ -173,6 +186,7 @@ Manually trigger via GitHub Actions UI:
 - Memory management
 
 #### Quick Review
+
 - Critical bugs only
 - Major security issues
 - Obvious problems
@@ -181,6 +195,7 @@ Manually trigger via GitHub Actions UI:
 ### Customization
 
 Edit the `direct_prompt` in workflows to customize:
+
 - Review focus areas
 - Severity ratings
 - Output format
@@ -208,6 +223,7 @@ Edit the `direct_prompt` in workflows to customize:
 ### Debug Commands
 
 Check AWS secret:
+
 ```bash
 aws secretsmanager get-secret-value \
   --secret-id "candlefish-ai/anthropic/api-key" \
@@ -215,6 +231,7 @@ aws secretsmanager get-secret-value \
 ```
 
 Test IAM role:
+
 ```bash
 aws sts assume-role \
   --role-arn "arn:aws:iam::YOUR_ACCOUNT_ID:role/github-actions-claude-review" \

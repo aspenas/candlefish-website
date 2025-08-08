@@ -5,7 +5,7 @@
 
 describe('PromoterOS API Integration Tests', () => {
   const baseUrl = process.env.TEST_API_URL || 'http://localhost:9999/.netlify/functions';
-  
+
   describe('Artist Evaluation Flow', () => {
     test('should handle complete artist evaluation workflow', async () => {
       // Skip if running without actual server
@@ -35,7 +35,7 @@ describe('PromoterOS API Integration Tests', () => {
       expect(response.headers.get('access-control-allow-origin')).toBe('*');
 
       const data = await response.json();
-      
+
       expect(data.success).toBe(true);
       expect(data.data.artist).toBe('Chappell Roan');
       expect(data.data.booking_analysis.score).toBeGreaterThanOrEqual(0);
@@ -63,9 +63,9 @@ describe('PromoterOS API Integration Tests', () => {
       });
 
       expect(response.status).toBe(200);
-      
+
       const data = await response.json();
-      
+
       expect(data.success).toBe(true);
       expect(data.data.booking_score.overall_score).toBeGreaterThanOrEqual(0);
       expect(data.data.booking_score.overall_score).toBeLessThanOrEqual(100);
@@ -82,11 +82,11 @@ describe('PromoterOS API Integration Tests', () => {
       }
 
       const response = await fetch(`${baseUrl}/health`);
-      
+
       expect(response.status).toBe(200);
-      
+
       const healthData = await response.json();
-      
+
       expect(healthData.status).toBe('healthy');
       expect(healthData).toHaveProperty('timestamp');
       expect(healthData).toHaveProperty('version');
@@ -111,7 +111,7 @@ describe('PromoterOS API Integration Tests', () => {
       });
 
       expect(response.status).toBe(500);
-      
+
       const errorData = await response.json();
       expect(errorData).toHaveProperty('error');
       expect(errorData).toHaveProperty('timestamp');
@@ -151,7 +151,7 @@ describe('PromoterOS API Integration Tests', () => {
       }
 
       const start = Date.now();
-      
+
       const response = await fetch(`${baseUrl}/api/booking/score`, {
         method: 'POST',
         headers: {
@@ -162,12 +162,12 @@ describe('PromoterOS API Integration Tests', () => {
           venue_capacity: 1500
         })
       });
-      
+
       const duration = Date.now() - start;
-      
+
       expect(response.status).toBe(200);
       expect(duration).toBeLessThan(5000); // Should respond within 5 seconds
-      
+
       const data = await response.json();
       expect(data.metadata.processing_time_ms).toBeLessThan(1000); // Claimed processing time
     });

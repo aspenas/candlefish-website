@@ -22,7 +22,7 @@ export const GET_ALL_SERVICES = gql`
       uptime
       monitoringEnabled
       alertingEnabled
-      
+
       # Resource usage
       containers {
         id
@@ -32,7 +32,7 @@ export const GET_ALL_SERVICES = gql`
         memoryUsage
         restartCount
       }
-      
+
       # Dependencies
       dependencies {
         id
@@ -45,7 +45,7 @@ export const GET_ALL_SERVICES = gql`
         critical
         healthImpact
       }
-      
+
       # Recent metrics
       metrics {
         id
@@ -57,7 +57,7 @@ export const GET_ALL_SERVICES = gql`
         warningThreshold
         criticalThreshold
       }
-      
+
       # Active alerts
       alerts(status: ACTIVE) {
         id
@@ -80,13 +80,13 @@ export const RUN_FULL_ANALYSIS = gql`
       timestamp
       overallHealth
       healthScore
-      
+
       # Service breakdown
       totalServices
       healthyServices
       degradedServices
       unhealthyServices
-      
+
       # Performance insights
       performanceInsights {
         type
@@ -103,7 +103,7 @@ export const RUN_FULL_ANALYSIS = gql`
         impact
         recommendation
       }
-      
+
       # Resource utilization
       resourceUtilization {
         cpu {
@@ -135,7 +135,7 @@ export const RUN_FULL_ANALYSIS = gql`
           trend
         }
       }
-      
+
       # Active alerts summary
       activeAlerts
       alertsByService {
@@ -147,7 +147,7 @@ export const RUN_FULL_ANALYSIS = gql`
         criticalAlerts
         lastAlert
       }
-      
+
       # System recommendations
       recommendations {
         id
@@ -163,7 +163,7 @@ export const RUN_FULL_ANALYSIS = gql`
         actionItems
         automatable
       }
-      
+
       # Trend analysis
       trendAnalysis {
         timeRange {
@@ -195,13 +195,13 @@ export const GET_SERVICE_DETAILS = gql`
       healthEndpoint
       baseUrl
       tags
-      
+
       # Timing information
       discoveredAt
       lastHealthCheck
       lastStatusChange
       uptime
-      
+
       # Configuration
       autoDiscovered
       monitoringEnabled
@@ -209,7 +209,7 @@ export const GET_SERVICE_DETAILS = gql`
       healthCheckInterval
       healthCheckTimeout
       healthCheckRetries
-      
+
       # Dependencies with health impact
       dependencies {
         id
@@ -223,7 +223,7 @@ export const GET_SERVICE_DETAILS = gql`
           lastHealthCheck
         }
       }
-      
+
       # Running containers
       containers {
         id
@@ -241,7 +241,7 @@ export const GET_SERVICE_DETAILS = gql`
         startedAt
         lastRestart
         restartCount
-        
+
         healthCheck {
           command
           interval
@@ -249,14 +249,14 @@ export const GET_SERVICE_DETAILS = gql`
           retries
           startPeriod
         }
-        
+
         ports {
           containerPort
           hostPort
           protocol
         }
       }
-      
+
       # Running processes
       processes {
         id
@@ -273,7 +273,7 @@ export const GET_SERVICE_DETAILS = gql`
         parentPid
         workingDirectory
       }
-      
+
       # Recent metrics
       metrics {
         id
@@ -286,7 +286,7 @@ export const GET_SERVICE_DETAILS = gql`
         warningThreshold
         criticalThreshold
       }
-      
+
       # Current alerts
       alerts {
         id
@@ -298,7 +298,7 @@ export const GET_SERVICE_DETAILS = gql`
         resolvedAt
         acknowledgedAt
         acknowledgedBy
-        
+
         rule {
           id
           name
@@ -306,10 +306,10 @@ export const GET_SERVICE_DETAILS = gql`
           threshold
           duration
         }
-        
+
         triggerValue
         thresholdValue
-        
+
         notifications {
           id
           channel
@@ -357,7 +357,7 @@ export const GET_SYSTEM_METRICS = gql`
         labels
       }
     }
-    
+
     # Memory metrics
     memorySeries: metricSeries(
       serviceId: $serviceId
@@ -379,7 +379,7 @@ export const GET_SYSTEM_METRICS = gql`
         labels
       }
     }
-    
+
     # Network metrics
     networkSeries: metricSeries(
       serviceId: $serviceId
@@ -414,14 +414,14 @@ export const GET_ACTIVE_ALERTS = gql`
       severity
       status
       triggeredAt
-      
+
       service {
         id
         name
         environment
         status
       }
-      
+
       rule {
         id
         name
@@ -432,10 +432,10 @@ export const GET_ACTIVE_ALERTS = gql`
         duration
         notificationChannels
       }
-      
+
       triggerValue
       thresholdValue
-      
+
       notifications {
         id
         channel
@@ -460,7 +460,7 @@ export const HEALTH_CHECK_ALL = gql`
       responseTime
       timestamp
       error
-      
+
       checks {
         name
         status
@@ -505,7 +505,7 @@ export const TRIGGER_HEALTH_CHECK = gql`
       responseTime
       timestamp
       error
-      
+
       checks {
         name
         status
@@ -529,12 +529,12 @@ export const CREATE_ALERT_RULE = gql`
       duration
       severity
       enabled
-      
+
       services {
         id
         name
       }
-      
+
       notificationChannels
       suppressDuration
     }
@@ -551,7 +551,7 @@ export const ACKNOWLEDGE_ALERT = gql`
       status
       acknowledgedAt
       acknowledgedBy
-      
+
       service {
         id
         name
@@ -567,7 +567,7 @@ export const RESTART_SERVICE = gql`
       success
       message
       timestamp
-      
+
       service {
         id
         name
@@ -584,7 +584,7 @@ export const SCALE_SERVICE = gql`
       success
       message
       timestamp
-      
+
       service {
         id
         name
@@ -624,19 +624,19 @@ export const SUBSCRIBE_ALERT_TRIGGERED = gql`
       severity
       status
       triggeredAt
-      
+
       service {
         id
         name
         environment
       }
-      
+
       rule {
         name
         threshold
         condition
       }
-      
+
       triggerValue
       thresholdValue
     }
@@ -677,7 +677,7 @@ export const SUBSCRIBE_SYSTEM_ANALYSIS = gql`
       degradedServices
       unhealthyServices
       activeAlerts
-      
+
       performanceInsights {
         type
         severity
@@ -793,11 +793,11 @@ export const SystemOverview: React.FC = () => {
   };
 
   const handleAcknowledgeAlert = async (alertId: string) => {
-    await acknowledgeAlert({ 
-      variables: { 
-        alertId, 
-        userId: 'current-user-id' 
-      } 
+    await acknowledgeAlert({
+      variables: {
+        alertId,
+        userId: 'current-user-id'
+      }
     });
   };
 
@@ -806,24 +806,24 @@ export const SystemOverview: React.FC = () => {
   return (
     <div className="system-overview">
       <h1>System Status Overview</h1>
-      
+
       {analysisData?.runFullAnalysis && (
         <div className="analysis-summary">
           <h2>Overall Health: {analysisData.runFullAnalysis.overallHealth}</h2>
           <p>Health Score: {analysisData.runFullAnalysis.healthScore}/100</p>
-          <p>Services: {analysisData.runFullAnalysis.healthyServices} healthy, 
-             {analysisData.runFullAnalysis.degradedServices} degraded, 
+          <p>Services: {analysisData.runFullAnalysis.healthyServices} healthy,
+             {analysisData.runFullAnalysis.degradedServices} degraded,
              {analysisData.runFullAnalysis.unhealthyServices} unhealthy</p>
         </div>
       )}
-      
+
       <div className="services-grid">
         {servicesData?.services.map(service => (
           <div key={service.id} className={`service-card ${service.status.toLowerCase()}`}>
             <h3>{service.displayName || service.name}</h3>
             <p>Status: {service.status}</p>
             <p>Environment: {service.environment}</p>
-            
+
             {service.alerts.length > 0 && (
               <div className="alerts">
                 <h4>Active Alerts ({service.alerts.length})</h4>
@@ -837,14 +837,14 @@ export const SystemOverview: React.FC = () => {
                 ))}
               </div>
             )}
-            
+
             <button onClick={() => handleHealthCheck(service.id)}>
               Check Health
             </button>
           </div>
         ))}
       </div>
-      
+
       {statusUpdate && (
         <div className="status-update">
           Service {statusUpdate.serviceStatusChanged.service.name} changed from {statusUpdate.serviceStatusChanged.previousStatus} to {statusUpdate.serviceStatusChanged.currentStatus}
@@ -860,10 +860,10 @@ export const COMPLEX_ANALYSIS_QUERY = gql`
     systemAnalysis {
       # This query has high complexity due to nested relationships
       # Cost estimate: ~200 complexity points
-      
+
       overallHealth
       healthScore
-      
+
       performanceInsights {
         service {
           dependencies {

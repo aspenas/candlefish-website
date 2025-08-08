@@ -63,9 +63,9 @@ export const setNavigationRef = (ref: NavigationContainerRef<any>) => {
 export const handleDeepLink = async (url: string) => {
   try {
     console.log('Handling deep link:', url);
-    
+
     const { hostname, path, queryParams } = Linking.parse(url);
-    
+
     if (!navigationRef) {
       // Store for later processing
       await AsyncStorage.setItem('pendingDeepLink', url);
@@ -74,7 +74,7 @@ export const handleDeepLink = async (url: string) => {
 
     // Parse the deep link
     const linkData = parseDeepLink(hostname || '', path || '', queryParams || {});
-    
+
     if (linkData) {
       await navigateFromDeepLink(linkData);
     }
@@ -86,7 +86,7 @@ export const handleDeepLink = async (url: string) => {
 // Parse deep link into structured data
 const parseDeepLink = (hostname: string, path: string, queryParams: Record<string, any>): DeepLinkData | null => {
   const pathSegments = path.split('/').filter(Boolean);
-  
+
   // Service deep links
   if (pathSegments[0] === 'service' && pathSegments[1]) {
     return {
@@ -96,7 +96,7 @@ const parseDeepLink = (hostname: string, path: string, queryParams: Record<strin
       params: queryParams,
     };
   }
-  
+
   // Alert deep links
   if (pathSegments[0] === 'alert' && pathSegments[1]) {
     return {
@@ -106,7 +106,7 @@ const parseDeepLink = (hostname: string, path: string, queryParams: Record<strin
       params: queryParams,
     };
   }
-  
+
   // Metrics deep links
   if (pathSegments[0] === 'metrics' && pathSegments[1]) {
     return {
@@ -115,7 +115,7 @@ const parseDeepLink = (hostname: string, path: string, queryParams: Record<strin
       params: queryParams,
     };
   }
-  
+
   // Dashboard deep links
   if (pathSegments[0] === 'dashboard' || pathSegments.length === 0) {
     return {
@@ -138,21 +138,21 @@ const navigateFromDeepLink = async (linkData: DeepLinkData) => {
         params: { serviceId: linkData.id },
       });
       break;
-      
+
     case 'alert':
       navigationRef.navigate('Alerts', {
         screen: 'AlertDetail',
         params: { alertId: linkData.id },
       });
       break;
-      
+
     case 'metric':
       navigationRef.navigate('Dashboard', {
         screen: 'Metrics',
         params: { serviceId: linkData.id },
       });
       break;
-      
+
     case 'dashboard':
       navigationRef.navigate('Dashboard', {
         screen: 'DashboardMain',

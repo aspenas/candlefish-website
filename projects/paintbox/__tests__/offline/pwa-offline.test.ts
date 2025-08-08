@@ -19,7 +19,7 @@ const mockServiceWorker = setupWorker(
       })
     );
   }),
-  
+
   rest.get('/api/system-analysis', (req, res, ctx) => {
     return res(
       ctx.json({
@@ -37,7 +37,7 @@ const mockServiceWorker = setupWorker(
 // Mock IndexedDB for offline storage
 const mockIndexedDB = {
   databases: new Map(),
-  
+
   open: jest.fn().mockImplementation((name: string, version?: number) => {
     return Promise.resolve({
       name,
@@ -137,7 +137,7 @@ describe('Offline Functionality Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockIndexedDB.databases.clear();
-    
+
     // Reset network status
     Object.defineProperty(navigator, 'onLine', {
       writable: true,
@@ -148,7 +148,7 @@ describe('Offline Functionality Tests', () => {
   describe('Service Worker Registration', () => {
     it('should register service worker successfully', async () => {
       const registration = await navigator.serviceWorker.register('/sw.js');
-      
+
       expect(registration).toBeDefined();
       expect(registration.scope).toBe('/');
       expect(navigator.serviceWorker.register).toHaveBeenCalledWith('/sw.js');
@@ -168,9 +168,9 @@ describe('Offline Functionality Tests', () => {
 
     it('should update service worker when available', async () => {
       const registration = await navigator.serviceWorker.register('/sw.js');
-      
+
       await registration.update();
-      
+
       expect(registration.update).toHaveBeenCalled();
     });
   });
@@ -288,7 +288,7 @@ describe('Offline Functionality Tests', () => {
 
       // Should use cached data
       expect(matchSpy).toHaveBeenCalled();
-      
+
       // Should show cached data indicator
       await waitFor(() => {
         expect(screen.getByTestId('cached-data-indicator')).toBeInTheDocument();
@@ -335,7 +335,7 @@ describe('Offline Functionality Tests', () => {
 
     it('should retrieve data from IndexedDB when offline', async () => {
       const cachedServices = ServiceFactory.createMany(3);
-      
+
       // Pre-populate IndexedDB
       mockIndexedDB.databases.set(
         'system-analyzer:services:services-cache',
@@ -385,7 +385,7 @@ describe('Offline Functionality Tests', () => {
 
       // Should clean up old data (simulate cleanup logic)
       const deleteSpy = jest.spyOn(store, 'delete');
-      
+
       // Trigger cleanup (this would normally be done by the app)
       await store.delete('old-cache');
 
@@ -457,7 +457,7 @@ describe('Offline Functionality Tests', () => {
 
       // Try to submit a form (e.g., acknowledge alert)
       const acknowledgeButton = screen.queryByTestId('acknowledge-alert-button');
-      
+
       if (acknowledgeButton) {
         fireEvent.click(acknowledgeButton);
 
@@ -486,7 +486,7 @@ describe('Offline Functionality Tests', () => {
   describe('Data Staleness Indicators', () => {
     it('should show data age when using cached data', async () => {
       const oldTimestamp = new Date(Date.now() - 60 * 60 * 1000); // 1 hour old
-      
+
       // Mock cached data with timestamp
       mockIndexedDB.databases.set(
         'system-analyzer:analysis:cache',
@@ -511,7 +511,7 @@ describe('Offline Functionality Tests', () => {
 
     it('should warn when data is very stale', async () => {
       const veryOldTimestamp = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours old
-      
+
       mockIndexedDB.databases.set(
         'system-analyzer:analysis:cache',
         {
@@ -577,7 +577,7 @@ describe('Offline Functionality Tests', () => {
       const installButton = screen.queryByTestId('app-install-button');
       if (installButton) {
         fireEvent.click(installButton);
-        
+
         // Would trigger install prompt
         expect(mockPrompt).toHaveBeenCalled;
       }

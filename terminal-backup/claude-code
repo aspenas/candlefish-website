@@ -95,15 +95,15 @@ done
 if [[ -n "$USE_AIDER" ]]; then
     # Delegate to the dedicated claude-code-aider script
     AIDER_CMD="/Users/patricksmith/.local/bin/claude-code-aider"
-    
+
     # Build arguments for claude-code-aider
     AIDER_ARGS=()
-    
+
     # Add model selection if specified
     if [[ -n "$AIDER_MODEL" ]]; then
         AIDER_ARGS+=("--$AIDER_MODEL")
     fi
-    
+
     # Add thinking mode if requested
     if [[ -n "$THINKING_MODE" ]]; then
         # For Aider, thinking mode means using o1-preview for GPT
@@ -111,10 +111,10 @@ if [[ -n "$USE_AIDER" ]]; then
             AIDER_ARGS+=("--model" "o1-preview")
         fi
     fi
-    
+
     # Add remaining arguments
     AIDER_ARGS+=("${EXTRA_ARGS[@]}")
-    
+
     # Execute claude-code-aider
     exec "$AIDER_CMD" "${AIDER_ARGS[@]}"
 fi

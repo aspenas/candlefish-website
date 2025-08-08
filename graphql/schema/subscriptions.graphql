@@ -1,0 +1,508 @@
+# Root Subscription Type for Real-time Updates
+type Subscription {
+  # Dashboard Real-time Updates
+  dashboardUpdated(dashboardId: UUID!): DashboardUpdate!
+    @auth(requires: USER) @tenant
+
+  dashboardShared(dashboardId: UUID!): DashboardShareUpdate!
+    @auth(requires: USER) @tenant
+
+  dashboardDeleted: UUID!
+    @auth(requires: USER) @tenant
+
+  # Widget Real-time Updates
+  widgetUpdated(widgetId: UUID!): WidgetUpdate!
+    @auth(requires: USER) @tenant
+
+  widgetDataChanged(widgetId: UUID!): WidgetDataUpdate!
+    @auth(requires: USER) @tenant @complexity(value: 15)
+
+  widgetPositionChanged(dashboardId: UUID!): WidgetPositionUpdate!
+    @auth(requires: USER) @tenant
+
+  # Metric Real-time Updates
+  metricCalculated(metricId: UUID!): MetricUpdate!
+    @auth(requires: USER) @tenant @complexity(value: 20)
+
+  metricThresholdBreached(metricIds: [UUID!]): MetricThresholdAlert!
+    @auth(requires: USER) @tenant @complexity(value: 25)
+
+  # Alert Real-time Updates
+  alertTriggered: AlertNotification!
+    @auth(requires: USER) @tenant @complexity(value: 10)
+
+  alertStatusChanged(alertId: UUID!): AlertStatusUpdate!
+    @auth(requires: USER) @tenant
+
+  # Data Source Real-time Updates
+  dataSourceSyncCompleted(dataSourceId: UUID!): DataSourceSyncUpdate!
+    @auth(requires: USER) @tenant @complexity(value: 10)
+
+  dataSourceStatusChanged(dataSourceId: UUID!): DataSourceStatusUpdate!
+    @auth(requires: USER) @tenant
+
+  # User Activity and Collaboration
+  userActivity(dashboardId: UUID!): UserActivityUpdate!
+    @auth(requires: USER) @tenant
+
+  dashboardCollaboration(dashboardId: UUID!): CollaborationUpdate!
+    @auth(requires: USER) @tenant
+
+  # Organization Updates
+  organizationMemberAdded: OrganizationMemberUpdate!
+    @auth(requires: ORG_ADMIN) @tenant
+
+  organizationMemberRemoved: OrganizationMemberUpdate!
+    @auth(requires: ORG_ADMIN) @tenant
+
+  organizationSettingsChanged: OrganizationSettingsUpdate!
+    @auth(requires: ORG_ADMIN) @tenant
+
+  # Notifications
+  notificationReceived: Notification!
+    @auth(requires: USER) @tenant @complexity(value: 5)
+
+  notificationRead: NotificationReadUpdate!
+    @auth(requires: USER) @tenant
+
+  # Export Updates
+  exportStatusChanged(exportId: UUID!): ExportStatusUpdate!
+    @auth(requires: USER) @tenant
+
+  exportCompleted: ExportCompletedUpdate!
+    @auth(requires: USER) @tenant
+
+  # System and Health Updates
+  systemHealth: SystemHealthUpdate!
+    @auth(requires: ORG_ADMIN) @tenant @complexity(value: 15)
+
+  systemMaintenance: SystemMaintenanceUpdate!
+    @complexity(value: 5)
+
+  systemAlert: SystemAlertUpdate!
+    @auth(requires: ORG_ADMIN) @tenant
+
+  # Live Query Results (for real-time dashboards)
+  liveQueryResult(queryId: UUID!): LiveQueryUpdate!
+    @auth(requires: USER) @tenant @complexity(value: 30) @rateLimit(max: 5, window: "1m")
+
+  # Bulk Operation Updates
+  bulkOperationProgress(operationId: UUID!): BulkOperationProgress!
+    @auth(requires: USER) @tenant @complexity(value: 10)
+}
+
+# Dashboard Subscription Types
+type DashboardUpdate {
+  dashboard: Dashboard!
+  updateType: DashboardUpdateType!
+  updatedBy: User!
+  updatedAt: DateTime!
+  changes: JSON
+}
+
+type DashboardShareUpdate {
+  dashboardId: UUID!
+  share: DashboardShare!
+  updateType: ShareUpdateType!
+  updatedBy: User!
+  updatedAt: DateTime!
+}
+
+# Widget Subscription Types
+type WidgetUpdate {
+  widget: Widget!
+  updateType: WidgetUpdateType!
+  updatedBy: User!
+  updatedAt: DateTime!
+  changes: JSON
+}
+
+type WidgetDataUpdate {
+  widgetId: UUID!
+  data: WidgetData!
+  updateType: DataUpdateType!
+  updatedAt: DateTime!
+  executionTime: Decimal!
+}
+
+type WidgetPositionUpdate {
+  dashboardId: UUID!
+  widgets: [WidgetPositionInfo!]!
+  updatedBy: User!
+  updatedAt: DateTime!
+}
+
+type WidgetPositionInfo {
+  id: UUID!
+  position: WidgetPosition!
+  size: WidgetSize!
+}
+
+# Metric Subscription Types
+type MetricUpdate {
+  metric: Metric!
+  result: MetricResult!
+  updateType: MetricUpdateType!
+  calculatedAt: DateTime!
+  executionTime: Decimal!
+}
+
+type MetricThresholdAlert {
+  metric: Metric!
+  currentValue: Decimal!
+  threshold: Decimal!
+  operator: ComparisonOperator!
+  severity: AlertSeverity!
+  triggeredAt: DateTime!
+  metadata: JSON
+}
+
+# Alert Subscription Types
+type AlertNotification {
+  alert: Alert!
+  execution: AlertExecution!
+  notification: Notification!
+  triggeredAt: DateTime!
+}
+
+type AlertStatusUpdate {
+  alertId: UUID!
+  oldStatus: AlertStatus!
+  newStatus: AlertStatus!
+  updatedBy: User
+  updatedAt: DateTime!
+  reason: String
+}
+
+# Data Source Subscription Types
+type DataSourceSyncUpdate {
+  dataSourceId: UUID!
+  syncStatus: SyncStatus!
+  startedAt: DateTime!
+  completedAt: DateTime
+  recordsProcessed: NonNegativeInt
+  errors: [String!]
+  summary: JSON
+}
+
+type DataSourceStatusUpdate {
+  dataSourceId: UUID!
+  oldStatus: DataSourceStatus!
+  newStatus: DataSourceStatus!
+  updatedAt: DateTime!
+  error: String
+  metadata: JSON
+}
+
+# User Activity Subscription Types
+type UserActivityUpdate {
+  dashboardId: UUID!
+  user: User!
+  activity: ActivityType!
+  timestamp: DateTime!
+  metadata: JSON
+}
+
+type CollaborationUpdate {
+  dashboardId: UUID!
+  user: User!
+  action: CollaborationAction!
+  timestamp: DateTime!
+  data: JSON
+}
+
+# Organization Subscription Types
+type OrganizationMemberUpdate {
+  organizationId: UUID!
+  member: OrganizationMembership!
+  updateType: MemberUpdateType!
+  updatedBy: User!
+  updatedAt: DateTime!
+}
+
+type OrganizationSettingsUpdate {
+  organizationId: UUID!
+  settings: OrganizationSettings!
+  updatedBy: User!
+  updatedAt: DateTime!
+  changes: JSON
+}
+
+# Notification Subscription Types
+type NotificationReadUpdate {
+  notificationId: UUID!
+  readBy: User!
+  readAt: DateTime!
+}
+
+# Export Subscription Types
+type ExportStatusUpdate {
+  exportId: UUID!
+  oldStatus: ExportStatus!
+  newStatus: ExportStatus!
+  updatedAt: DateTime!
+  progress: Decimal
+  error: String
+}
+
+type ExportCompletedUpdate {
+  export: Export!
+  completedAt: DateTime!
+  downloadUrl: URL
+  fileSize: BigInt!
+}
+
+# System Subscription Types
+type SystemHealthUpdate {
+  health: HealthStatus!
+  updatedAt: DateTime!
+  changes: [SystemHealthChange!]!
+}
+
+type SystemHealthChange {
+  component: String!
+  oldStatus: ServiceStatus!
+  newStatus: ServiceStatus!
+  message: String
+}
+
+type SystemMaintenanceUpdate {
+  type: MaintenanceType!
+  status: MaintenanceStatus!
+  title: NonEmptyString!
+  description: String
+  scheduledAt: DateTime!
+  estimatedDuration: Duration
+  affectedServices: [String!]!
+}
+
+type SystemAlertUpdate {
+  id: UUID!
+  level: SystemAlertLevel!
+  title: NonEmptyString!
+  message: String!
+  component: String
+  timestamp: DateTime!
+  resolved: Boolean!
+}
+
+# Live Query Subscription Types
+type LiveQueryUpdate {
+  queryId: UUID!
+  data: JSON!
+  executionTime: Decimal!
+  timestamp: DateTime!
+  rowCount: NonNegativeInt!
+  cached: Boolean!
+}
+
+# Bulk Operation Subscription Types
+type BulkOperationProgress {
+  operationId: UUID!
+  type: BulkOperationType!
+  status: BulkOperationStatus!
+  progress: Decimal!
+  processed: NonNegativeInt!
+  total: NonNegativeInt!
+  errors: [BulkOperationError!]!
+  startedAt: DateTime!
+  estimatedCompletion: DateTime
+}
+
+type BulkOperationError {
+  id: UUID!
+  error: String!
+  details: JSON
+}
+
+# Subscription Enums
+enum DashboardUpdateType {
+  CREATED
+  UPDATED
+  DELETED
+  SHARED
+  UNSHARED
+  FAVORITED
+  UNFAVORITED
+  CLONED
+}
+
+enum ShareUpdateType {
+  SHARED
+  UNSHARED
+  PERMISSION_CHANGED
+  EXPIRED
+}
+
+enum WidgetUpdateType {
+  CREATED
+  UPDATED
+  DELETED
+  MOVED
+  RESIZED
+  REFRESHED
+  CONFIG_CHANGED
+}
+
+enum DataUpdateType {
+  REFRESHED
+  CALCULATED
+  CACHED
+  ERROR
+  TIMEOUT
+}
+
+enum MetricUpdateType {
+  CALCULATED
+  UPDATED
+  ERROR
+  THRESHOLD_BREACHED
+}
+
+enum ActivityType {
+  VIEW
+  EDIT
+  FILTER_APPLIED
+  WIDGET_CLICKED
+  EXPORT_REQUESTED
+  REFRESH_TRIGGERED
+  DRILL_DOWN
+}
+
+enum CollaborationAction {
+  JOINED
+  LEFT
+  CURSOR_MOVED
+  SELECTION_CHANGED
+  EDIT_STARTED
+  EDIT_ENDED
+  COMMENT_ADDED
+}
+
+enum MemberUpdateType {
+  ADDED
+  REMOVED
+  ROLE_CHANGED
+  INVITED
+  INVITATION_ACCEPTED
+  INVITATION_EXPIRED
+}
+
+enum MaintenanceType {
+  SCHEDULED
+  EMERGENCY
+  SECURITY
+  UPGRADE
+}
+
+enum MaintenanceStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+  EXTENDED
+}
+
+enum SystemAlertLevel {
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
+
+enum BulkOperationType {
+  DASHBOARD_UPDATE
+  WIDGET_POSITION_UPDATE
+  DASHBOARD_SHARE
+  DATA_MIGRATION
+  DATA_PURGE
+  METRIC_CALCULATION
+}
+
+enum BulkOperationStatus {
+  QUEUED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELED
+  PARTIALLY_COMPLETED
+}
+
+# Subscription Input Types for Filtering
+input DashboardSubscriptionFilter {
+  dashboardIds: [UUID!]
+  updateTypes: [DashboardUpdateType!]
+  userIds: [UUID!]
+}
+
+input WidgetSubscriptionFilter {
+  widgetIds: [UUID!]
+  dashboardIds: [UUID!]
+  updateTypes: [WidgetUpdateType!]
+  userIds: [UUID!]
+}
+
+input MetricSubscriptionFilter {
+  metricIds: [UUID!]
+  updateTypes: [MetricUpdateType!]
+  categories: [MetricCategory!]
+  severityLevels: [AlertSeverity!]
+}
+
+input AlertSubscriptionFilter {
+  alertIds: [UUID!]
+  severityLevels: [AlertSeverity!]
+  metricIds: [UUID!]
+  enabled: Boolean
+}
+
+input NotificationSubscriptionFilter {
+  types: [NotificationType!]
+  categories: [NotificationCategory!]
+  priorities: [NotificationPriority!]
+  unreadOnly: Boolean
+}
+
+input SystemSubscriptionFilter {
+  components: [String!]
+  alertLevels: [SystemAlertLevel!]
+  healthOnly: Boolean
+}
+
+# Subscription Connection Types (for paginated real-time updates)
+type LiveUpdateConnection {
+  edges: [LiveUpdateEdge!]!
+  pageInfo: PageInfo!
+  subscriptionId: UUID!
+}
+
+type LiveUpdateEdge {
+  node: JSON! # Generic update payload
+  cursor: String!
+  timestamp: DateTime!
+}
+
+# Subscription Management Types
+type SubscriptionInfo {
+  id: UUID!
+  type: SubscriptionType!
+  filter: JSON
+  createdAt: DateTime!
+  lastActivity: DateTime!
+  isActive: Boolean!
+}
+
+enum SubscriptionType {
+  DASHBOARD_UPDATES
+  WIDGET_UPDATES
+  METRIC_UPDATES
+  ALERT_NOTIFICATIONS
+  DATA_SOURCE_SYNC
+  USER_ACTIVITY
+  ORGANIZATION_UPDATES
+  NOTIFICATIONS
+  EXPORTS
+  SYSTEM_HEALTH
+  LIVE_QUERIES
+  BULK_OPERATIONS
+}

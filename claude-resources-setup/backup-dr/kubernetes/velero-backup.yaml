@@ -127,22 +127,22 @@ spec:
         - -c
         - |
           set -e
-          
+
           # Get the latest backup
           BACKUP_NAME=$(velero backup get --output json | jq -r '.items | sort_by(.status.completionTimestamp) | last | .metadata.name')
-          
+
           if [ "$BACKUP_NAME" = "null" ] || [ -z "$BACKUP_NAME" ]; then
             echo "No backups found!"
             exit 1
           fi
-          
+
           echo "Restoring from backup: $BACKUP_NAME"
-          
+
           # Create restore
           velero restore create restore-$(date +%Y%m%d-%H%M%S) \
             --from-backup $BACKUP_NAME \
             --wait
-          
+
           echo "Restore completed successfully"
         env:
         - name: VELERO_NAMESPACE
@@ -165,15 +165,15 @@ data:
   pre-backup.sh: |
     #!/bin/bash
     set -e
-    
+
     echo "Starting pre-backup database consistency check"
-    
+
     # Perform checkpoint to ensure all data is written to disk
     psql -h $POSTGRES_HOST -U $POSTGRES_USER -d $POSTGRES_DB -c "CHECKPOINT;"
-    
+
     # Wait for any pending WAL writes
     sleep 5
-    
+
     echo "Pre-backup hook completed successfully"
 
 ---

@@ -40,28 +40,28 @@ success() {
 # Validation function
 validate_prerequisites() {
     log "Validating prerequisites..."
-    
+
     # Check if serverless is installed
     if ! command -v serverless &> /dev/null; then
         error "Serverless Framework is not installed. Run: npm install -g serverless"
     fi
-    
+
     # Check if AWS CLI is configured
     if ! aws sts get-caller-identity &> /dev/null; then
         error "AWS CLI is not configured. Run: aws configure"
     fi
-    
+
     # Check Node.js version
     NODE_VERSION=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
     if [ "$NODE_VERSION" -lt 18 ]; then
         error "Node.js 18+ is required. Current version: $(node --version)"
     fi
-    
+
     # Validate stage parameter
     if [[ ! "$STAGE" =~ ^(dev|staging|prod)$ ]]; then
         error "Invalid stage: $STAGE. Must be dev, staging, or prod"
     fi
-    
+
     success "Prerequisites validated successfully"
 }
 
@@ -69,13 +69,13 @@ validate_prerequisites() {
 install_dependencies() {
     log "Installing dependencies..."
     cd "$ROOT_DIR"
-    
+
     if [ -f "package-lock.json" ]; then
         npm ci
     else
         npm install
     fi
-    
+
     success "Dependencies installed successfully"
 }
 
@@ -84,14 +84,14 @@ run_tests() {
     if [ "$RUN_TESTS" = "--test" ] || [ "$STAGE" = "prod" ]; then
         log "Running tests..."
         cd "$ROOT_DIR"
-        
+
         # Run unit tests
         npm run test:ci
-        
+
         if [ $? -ne 0 ]; then
             error "Tests failed. Deployment aborted."
         fi
-        
+
         success "All tests passed"
     fi
 }
@@ -100,38 +100,38 @@ run_tests() {
 validate_serverless() {
     log "Validating serverless configuration..."
     cd "$ROOT_DIR"
-    
+
     # Check serverless.yml syntax
     serverless print --stage "$STAGE" > /dev/null
-    
+
     if [ $? -ne 0 ]; then
         error "Serverless configuration is invalid"
     fi
-    
+
     success "Serverless configuration is valid"
 }
 
 # Create JWT secret if it doesn't exist
 ensure_jwt_secret() {
     log "Ensuring JWT secret exists in AWS Secrets Manager..."
-    
+
     SECRET_NAME="candlefish-employee-setup-lean-${STAGE}/jwt-secret"
-    
+
     # Check if secret exists
     if aws secretsmanager get-secret-value --secret-id "$SECRET_NAME" &> /dev/null; then
         log "JWT secret already exists"
     else
         log "Creating new JWT secret..."
-        
+
         # Generate secure random secret
         JWT_SECRET=$(openssl rand -base64 64)
-        
+
         aws secretsmanager create-secret \
             --name "$SECRET_NAME" \
             --description "JWT secret for ${STAGE} environment" \
             --secret-string "{\"secret\":\"$JWT_SECRET\"}" \
             --tags '[{"Key":"Environment","Value":"'$STAGE'"},{"Key":"Service","Value":"candlefish-employee-setup"}]'
-        
+
         success "JWT secret created successfully"
     fi
 }
@@ -140,21 +140,21 @@ ensure_jwt_secret() {
 deploy() {
     log "Starting deployment to $STAGE environment..."
     cd "$ROOT_DIR"
-    
+
     # Set deployment timeout based on stage
     if [ "$STAGE" = "prod" ]; then
         TIMEOUT="30m"
     else
         TIMEOUT="15m"
     fi
-    
+
     # Deploy with retries
     MAX_RETRIES=3
     RETRY_COUNT=0
-    
+
     while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
         log "Deployment attempt $((RETRY_COUNT + 1))/$MAX_RETRIES..."
-        
+
         if timeout "$TIMEOUT" serverless deploy --stage "$STAGE" --verbose; then
             success "Deployment successful!"
             break
@@ -174,20 +174,20 @@ deploy() {
 validate_deployment() {
     log "Validating deployment..."
     cd "$ROOT_DIR"
-    
+
     # Get API endpoint
     API_ENDPOINT=$(serverless info --stage "$STAGE" --verbose | grep -oP 'https://[a-z0-9]+\.execute-api\.[a-z0-9-]+\.amazonaws\.com/[a-z0-9]+' | head -1)
-    
+
     if [ -z "$API_ENDPOINT" ]; then
         error "Could not determine API endpoint"
     fi
-    
+
     log "API endpoint: $API_ENDPOINT"
-    
+
     # Test health endpoint
     HEALTH_URL="${API_ENDPOINT}/health"
     HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || echo "000")
-    
+
     if [ "$HTTP_STATUS" = "200" ]; then
         success "Health check passed"
     else
@@ -199,10 +199,10 @@ validate_deployment() {
 generate_report() {
     log "Generating deployment report..."
     cd "$ROOT_DIR"
-    
+
     # Get stack info
     serverless info --stage "$STAGE" > "deployment-report-${STAGE}-$(date +%Y%m%d-%H%M%S).txt"
-    
+
     echo "
 Deployment Summary for $STAGE:
 ================================
@@ -226,7 +226,7 @@ Next steps:
 3. Test all API endpoints
 4. Update documentation
 " >> "deployment-report-${STAGE}-$(date +%Y%m%d-%H%M%S).txt"
-    
+
     success "Deployment report generated"
 }
 
@@ -238,9 +238,9 @@ main() {
 ║          Production Ready v1.0           ║
 ╚══════════════════════════════════════════╝
 "
-    
+
     log "Starting deployment process for stage: $STAGE"
-    
+
     # Exit early if validation only
     if [ "$VALIDATE_ONLY" = "--validate" ]; then
         validate_prerequisites
@@ -248,7 +248,7 @@ main() {
         success "Validation completed successfully"
         exit 0
     fi
-    
+
     # Full deployment process
     validate_prerequisites
     install_dependencies
@@ -258,7 +258,7 @@ main() {
     deploy
     validate_deployment
     generate_report
-    
+
     echo "
 ╔══════════════════════════════════════════╗
 ║            Deployment Complete!          ║
@@ -273,7 +273,7 @@ main() {
 
 🔒 Security checklist:
 - [ ] Review IAM policies
-- [ ] Configure proper CORS origins  
+- [ ] Configure proper CORS origins
 - [ ] Set up monitoring alerts
 - [ ] Test authentication flows
 - [ ] Verify rate limiting

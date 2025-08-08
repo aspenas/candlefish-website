@@ -76,11 +76,11 @@ jobs:
           REVIEW_DEPTH="standard"
           INCREMENTAL="false"
           SKIP_PATTERNS=""
-          
+
           # If triggered by comment, parse the command
           if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
             COMMENT_BODY=$(echo '${{ github.event.comment.body }}' | tr '\n' ' ')
-            
+
             # Extract review type
             if [[ "$COMMENT_BODY" =~ /claude-review[[:space:]]+([a-z]+) ]]; then
               case "${BASH_REMATCH[1]}" in
@@ -89,19 +89,19 @@ jobs:
                   ;;
               esac
             fi
-            
+
             # Check for depth modifiers
             if [[ "$COMMENT_BODY" =~ quick ]]; then
               REVIEW_DEPTH="quick"
             elif [[ "$COMMENT_BODY" =~ deep ]]; then
               REVIEW_DEPTH="deep"
             fi
-            
+
             # Check for incremental
             if [[ "$COMMENT_BODY" =~ incremental ]]; then
               INCREMENTAL="true"
             fi
-            
+
             # Extract skip patterns
             if [[ "$COMMENT_BODY" =~ skip:([^[:space:]]+) ]]; then
               SKIP_PATTERNS="${BASH_REMATCH[1]}"
@@ -112,13 +112,13 @@ jobs:
             REVIEW_DEPTH="${{ inputs.review_depth || 'standard' }}"
             INCREMENTAL="${{ inputs.incremental || 'false' }}"
           fi
-          
+
           echo "PR_NUMBER=${{ github.event.pull_request.number || github.event.issue.number || inputs.pr_number }}" >> $GITHUB_ENV
           echo "REVIEW_TYPE=$REVIEW_TYPE" >> $GITHUB_ENV
           echo "REVIEW_DEPTH=$REVIEW_DEPTH" >> $GITHUB_ENV
           echo "INCREMENTAL=$INCREMENTAL" >> $GITHUB_ENV
           echo "SKIP_PATTERNS=$SKIP_PATTERNS" >> $GITHUB_ENV
-          
+
           # Output for logging
           echo "Review configuration:"
           echo "  Type: $REVIEW_TYPE"
@@ -163,42 +163,42 @@ jobs:
           from anthropic import Anthropic
           from github import Github
           from rich.console import Console
-          
+
           # Import our modules
           from claude_cost_tracker import ClaudeCostTracker
           from claude_review_enhanced import EnhancedReviewer
-          
+
           console = Console()
-          
+
           def main():
               # Initialize clients
               secrets_client = boto3.client('secretsmanager')
               response = secrets_client.get_secret_value(SecretId=os.environ['AWS_SECRET_NAME'])
               secret = json.loads(response['SecretString'])
-              
+
               anthropic = Anthropic(api_key=secret['ANTHROPIC_API_KEY'])
               github = Github(os.environ['GITHUB_TOKEN'])
               repo = github.get_repo(os.environ['GITHUB_REPOSITORY'])
-              
+
               # Get configuration
               pr_number = int(os.environ['PR_NUMBER'])
               review_type = os.environ.get('REVIEW_TYPE', 'comprehensive')
               review_depth = os.environ.get('REVIEW_DEPTH', 'standard')
               is_incremental = os.environ.get('INCREMENTAL', 'false').lower() == 'true'
               skip_patterns = os.environ.get('SKIP_PATTERNS', '').split(',') if os.environ.get('SKIP_PATTERNS') else []
-              
+
               console.print(f"[bold]Enhanced PR Review[/bold]")
               console.print(f"PR: #{pr_number}")
               console.print(f"Type: {review_type}, Depth: {review_depth}, Incremental: {is_incremental}")
-              
+
               # Initialize enhanced reviewer
               reviewer = EnhancedReviewer(anthropic, github)
               if skip_patterns:
                   reviewer.skip_patterns.extend(skip_patterns)
-              
+
               # Get PR
               pr = repo.get_pull(pr_number)
-              
+
               # Get files to review
               if is_incremental:
                   files = reviewer.get_files_since_last_review(pr)
@@ -206,27 +206,27 @@ jobs:
               else:
                   files = list(pr.get_files())
                   console.print(f"[blue]Full review: {len(files)} total files[/blue]")
-              
+
               # Filter files
               original_count = len(files)
               files = reviewer.filter_files_by_depth(files, review_depth)
               skipped_count = original_count - len(files)
-              
+
               if skipped_count > 0:
                   console.print(f"[dim]Skipped {skipped_count} files based on patterns and depth[/dim]")
-              
+
               if not files:
                   console.print("[yellow]No files to review![/yellow]")
                   pr.create_issue_comment("🤖 No files to review based on current filters and changes.")
                   return
-              
+
               # Build prompt
               prompt = reviewer.build_enhanced_prompt(pr, files, review_type, review_depth, is_incremental)
-              
+
               # Get review
               start_time = time.time()
               console.print("[blue]Getting Claude's review...[/blue]")
-              
+
               stream = anthropic.messages.create(
                   model=os.environ.get('ANTHROPIC_MODEL', 'claude-opus-4-20250514'),
                   max_tokens=32000,
@@ -235,20 +235,20 @@ jobs:
                   system="You are an expert code reviewer. Provide specific, actionable feedback.",
                   stream=True
               )
-              
+
               # Collect response
               review_content = ""
               for event in stream:
                   if hasattr(event, 'type') and event.type == 'content_block_delta':
                       if hasattr(event.delta, 'text'):
                           review_content += event.delta.text
-              
+
               duration = time.time() - start_time
-              
+
               # Estimate tokens (rough approximation)
               input_tokens = len(prompt) // 4
               output_tokens = len(review_content) // 4
-              
+
               # Track cost
               tracker = ClaudeCostTracker()
               cost_data = tracker.track_usage(
@@ -266,7 +266,7 @@ jobs:
                       'run_id': os.environ.get('GITHUB_RUN_ID')
                   }
               )
-              
+
               # Format and post review
               metadata = {
                   'review_type': review_type,
@@ -282,10 +282,10 @@ jobs:
                   'head_sha': pr.head.sha,
                   'last_review_sha': reviewer.get_previous_review_sha(pr) if is_incremental else None
               }
-              
+
               formatted_review = reviewer.format_enhanced_review(review_content, pr_number, metadata)
               pr.create_issue_comment(formatted_review)
-              
+
               # Set commit status
               commit = repo.get_commit(pr.head.sha)
               commit.create_status(
@@ -294,13 +294,13 @@ jobs:
                   description=f"Review complete (${cost_data['total_cost']:.2f})",
                   context="claude-review/enhanced"
               )
-              
+
               console.print(f"[green]✓ Review posted successfully![/green]")
               console.print(f"Cost: ${cost_data['total_cost']:.2f}")
-              
+
               # Output summary for workflow
               print(f"::notice title=Review Complete::PR #{pr_number} reviewed. Cost: ${cost_data['total_cost']:.2f}, Files: {len(files)}/{original_count}")
-          
+
           if __name__ == '__main__':
               try:
                   main()
@@ -310,7 +310,7 @@ jobs:
                   traceback.print_exc()
                   sys.exit(1)
           EOF
-          
+
           chmod +x enhanced_review.py
 
       - name: Run enhanced review
@@ -325,27 +325,27 @@ jobs:
           import os
           from datetime import datetime
           from claude_cost_tracker import ClaudeCostTracker
-          
+
           tracker = ClaudeCostTracker()
-          
+
           # Get monthly report
           current_month = datetime.utcnow().strftime('%Y-%m')
           report = tracker.get_monthly_costs(current_month)
-          
+
           # Output to workflow summary
           summary = f"""## 💰 Claude Review Costs
-          
+
           **Month:** {current_month}
           **Total Reviews:** {report['total_reviews']}
           **Total Cost:** ${report['total_cost']:.2f}
           **Average per Review:** ${report['average_cost_per_review']:.2f}
-          
+
           ### By Repository:
           """
-          
+
           for repo, data in report.get('by_repository', {}).items():
               summary += f"- **{repo}**: {data['count']} reviews, ${data['cost']:.2f}\n"
-          
+
           # Write to step summary
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
               f.write(summary)

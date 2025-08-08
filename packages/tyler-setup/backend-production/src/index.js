@@ -51,23 +51,23 @@ const httpServer = createServer(app);
 async function initializeServices() {
   try {
     logger.info('Initializing Candlefish Employee Setup Platform v2.0');
-    
+
     // Initialize database with connection pooling
     await initializeDatabase();
     logger.info('Database connection established');
-    
+
     // Initialize Redis for caching and session management
     await initializeRedis();
     logger.info('Redis cache initialized');
-    
+
     // Initialize AWS services (Secrets Manager, KMS, CloudWatch)
     await initializeAWSServices();
     logger.info('AWS services initialized');
-    
+
     // Initialize Claude Opus 4.1 service
     await initializeClaudeService();
     logger.info('Claude AI service initialized');
-    
+
     return true;
   } catch (error) {
     logger.error('Failed to initialize services:', error);
@@ -94,7 +94,7 @@ function configureMiddleware() {
       preload: true,
     },
   }));
-  
+
   // CORS configuration
   app.use(cors({
     origin: process.env.FRONTEND_URL || 'https://onboarding.candlefish.ai',
@@ -102,24 +102,24 @@ function configureMiddleware() {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
   }));
-  
+
   // Compression
   app.use(compression());
-  
+
   // Request logging
   app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
-  
+
   // Body parsing
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-  
+
   // Custom middleware
   app.use(requestLogger);
   app.use(securityHeaders);
-  
+
   // Rate limiting
   app.use('/api/', rateLimiter);
-  
+
   // Authentication for protected routes
   app.use('/api/employees', authMiddleware);
   app.use('/api/secrets', authMiddleware);
@@ -131,7 +131,7 @@ function configureMiddleware() {
 function configureRoutes() {
   // Health check (public)
   app.use('/health', healthRouter);
-  
+
   // API routes
   app.use('/api/auth', authRouter);
   app.use('/api/employees', employeeRouter);
@@ -139,7 +139,7 @@ function configureRoutes() {
   app.use('/api/config', configRouter);
   app.use('/api/metrics', metricsRouter);
   app.use('/api/ai', aiRouter);
-  
+
   // Error handling
   app.use(errorHandler);
 }
@@ -147,13 +147,13 @@ function configureRoutes() {
 // Configure GraphQL
 async function configureGraphQL() {
   const schema = makeExecutableSchema({ typeDefs, resolvers });
-  
+
   // Create WebSocket server for subscriptions
   const wsServer = new WebSocketServer({
     server: httpServer,
     path: '/graphql',
   });
-  
+
   // Use WebSocket server for GraphQL subscriptions
   const serverCleanup = useServer(
     {
@@ -170,7 +170,7 @@ async function configureGraphQL() {
     },
     wsServer
   );
-  
+
   // Create Apollo Server
   const apolloServer = new ApolloServer({
     schema,
@@ -197,18 +197,18 @@ async function configureGraphQL() {
     formatError: (error) => {
       // Log errors for monitoring
       logger.error('GraphQL error:', error);
-      
+
       // Don't expose internal errors to clients
       if (error.extensions?.code === 'INTERNAL_SERVER_ERROR') {
         return new Error('Internal server error');
       }
-      
+
       return error;
     },
   });
-  
+
   await apolloServer.start();
-  
+
   // Apply GraphQL middleware
   app.use(
     '/graphql',
@@ -219,7 +219,7 @@ async function configureGraphQL() {
       }),
     })
   );
-  
+
   logger.info('GraphQL server configured at /graphql');
 }
 
@@ -228,14 +228,14 @@ async function startServer() {
   try {
     // Initialize all services
     await initializeServices();
-    
+
     // Configure middleware and routes
     configureMiddleware();
     configureRoutes();
-    
+
     // Configure GraphQL
     await configureGraphQL();
-    
+
     // Start listening
     const PORT = process.env.PORT || 4000;
     httpServer.listen(PORT, () => {
@@ -245,7 +245,7 @@ async function startServer() {
       logger.info(`🔌 WebSocket endpoint: ws://localhost:${PORT}/graphql`);
       logger.info(`💰 Claude Opus 4.1 configured with 2M input / 400K output tokens`);
     });
-    
+
     // Graceful shutdown
     process.on('SIGTERM', async () => {
       logger.info('SIGTERM received, shutting down gracefully');
@@ -254,7 +254,7 @@ async function startServer() {
       });
       process.exit(0);
     });
-    
+
   } catch (error) {
     logger.error('Failed to start server:', error);
     process.exit(1);

@@ -48,7 +48,7 @@ const statusFilters = [
 
 export default function ServicesScreen({ navigation }: Props) {
   const theme = useTheme();
-  
+
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -66,20 +66,20 @@ export default function ServicesScreen({ navigation }: Props) {
   // Filter services based on search query
   const filteredServices = useMemo(() => {
     if (!data?.services) return [];
-    
+
     let filtered = data.services;
-    
+
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(service => 
+      filtered = filtered.filter(service =>
         service.name.toLowerCase().includes(query) ||
         (service.displayName && service.displayName.toLowerCase().includes(query)) ||
         service.environment.toLowerCase().includes(query) ||
         service.tags.some(tag => tag.toLowerCase().includes(query))
       );
     }
-    
+
     return filtered;
   }, [data?.services, searchQuery]);
 
@@ -101,7 +101,7 @@ export default function ServicesScreen({ navigation }: Props) {
   // Stats
   const stats = useMemo(() => {
     if (!data?.services) return { total: 0, healthy: 0, degraded: 0, unhealthy: 0 };
-    
+
     return data.services.reduce((acc, service) => {
       acc.total++;
       switch (service.status) {
@@ -137,7 +137,7 @@ export default function ServicesScreen({ navigation }: Props) {
         <Text variant="headlineSmall" style={styles.title}>
           Services
         </Text>
-        
+
         {data && (
           <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
             {stats.healthy} healthy • {stats.degraded} degraded • {stats.unhealthy} unhealthy

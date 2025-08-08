@@ -1,6 +1,6 @@
 /**
  * Dashboard Header Component
- * 
+ *
  * Features:
  * - Global search
  * - Filter controls
@@ -230,7 +230,7 @@ export function DashboardHeader({ onRefresh }: DashboardHeaderProps) {
               )}
             </div>
           </div>
-          
+
           <div className="p-4 space-y-4">
             {/* Environment Filter */}
             <div>

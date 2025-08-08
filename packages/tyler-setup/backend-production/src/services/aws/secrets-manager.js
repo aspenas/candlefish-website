@@ -42,13 +42,13 @@ class SecretsManagerService {
       // Verify AWS credentials
       const identity = await stsClient.send(new GetCallerIdentityCommand({}));
       logger.info(`AWS Secrets Manager initialized for account: ${identity.Account}`);
-      
+
       // Set up automatic rotation schedules
       await this.setupRotationSchedules();
-      
+
       // Warm up cache with frequently used secrets
       await this.warmCache();
-      
+
       this.initialized = true;
       return true;
     } catch (error) {
@@ -62,7 +62,7 @@ class SecretsManagerService {
    */
   async getSecret(secretName, options = {}) {
     const startTime = Date.now();
-    
+
     try {
       // Check cache first
       if (!options.bypassCache && this.secretCache.has(secretName)) {
@@ -76,7 +76,7 @@ class SecretsManagerService {
       // Fetch from AWS Secrets Manager
       const command = new GetSecretValueCommand({ SecretId: secretName });
       const response = await secretsClient.send(command);
-      
+
       let secretValue;
       if (response.SecretString) {
         try {
@@ -120,7 +120,7 @@ class SecretsManagerService {
    */
   async createSecret(secretName, secretValue, options = {}) {
     const startTime = Date.now();
-    
+
     try {
       // Validate secret name format
       if (!this.isValidSecretName(secretName)) {
@@ -134,8 +134,8 @@ class SecretsManagerService {
       }
 
       // Convert to string if object
-      const secretString = typeof processedValue === 'object' 
-        ? JSON.stringify(processedValue) 
+      const secretString = typeof processedValue === 'object'
+        ? JSON.stringify(processedValue)
         : processedValue;
 
       // Create secret in AWS
@@ -183,7 +183,7 @@ class SecretsManagerService {
    */
   async updateSecret(secretName, secretValue, options = {}) {
     const startTime = Date.now();
-    
+
     try {
       // Encrypt sensitive fields if specified
       let processedValue = secretValue;
@@ -191,8 +191,8 @@ class SecretsManagerService {
         processedValue = await this.encryptFields(secretValue, options.encryptFields);
       }
 
-      const secretString = typeof processedValue === 'object' 
-        ? JSON.stringify(processedValue) 
+      const secretString = typeof processedValue === 'object'
+        ? JSON.stringify(processedValue)
         : processedValue;
 
       const command = new UpdateSecretCommand({
@@ -228,7 +228,7 @@ class SecretsManagerService {
    */
   async deleteSecret(secretName, options = {}) {
     const startTime = Date.now();
-    
+
     try {
       const command = new DeleteSecretCommand({
         SecretId: secretName,
@@ -299,7 +299,7 @@ class SecretsManagerService {
    */
   async rotateSecret(secretName, options = {}) {
     const startTime = Date.now();
-    
+
     try {
       const command = new RotateSecretCommand({
         SecretId: secretName,
@@ -355,19 +355,19 @@ class SecretsManagerService {
    */
   async encryptFields(data, fields) {
     const encrypted = { ...data };
-    
+
     for (const field of fields) {
       if (data[field]) {
         const command = new EncryptCommand({
           KeyId: KMS_KEY_ID,
           Plaintext: Buffer.from(JSON.stringify(data[field])),
         });
-        
+
         const response = await kmsClient.send(command);
         encrypted[field] = Buffer.from(response.CiphertextBlob).toString('base64');
       }
     }
-    
+
     return encrypted;
   }
 
@@ -376,14 +376,14 @@ class SecretsManagerService {
    */
   async applyFieldEncryption(data, fields) {
     const decrypted = { ...data };
-    
+
     for (const field of fields) {
       if (data[field] && typeof data[field] === 'string') {
         try {
           const command = new DecryptCommand({
             CiphertextBlob: Buffer.from(data[field], 'base64'),
           });
-          
+
           const response = await kmsClient.send(command);
           decrypted[field] = JSON.parse(Buffer.from(response.Plaintext).toString());
         } catch (error) {
@@ -391,7 +391,7 @@ class SecretsManagerService {
         }
       }
     }
-    
+
     return decrypted;
   }
 
@@ -400,11 +400,11 @@ class SecretsManagerService {
    */
   maskSecretValue(value) {
     if (typeof value === 'string') {
-      return value.length > 8 
+      return value.length > 8
         ? value.substring(0, 4) + '****' + value.substring(value.length - 4)
         : '********';
     }
-    
+
     if (typeof value === 'object') {
       const masked = {};
       for (const [key, val] of Object.entries(value)) {
@@ -412,7 +412,7 @@ class SecretsManagerService {
       }
       return masked;
     }
-    
+
     return '********';
   }
 
@@ -530,19 +530,19 @@ class SecretsManagerService {
    */
   getAuditLogs(secretName, options = {}) {
     let logs = this.auditLog.filter(log => log.secretName === secretName);
-    
+
     if (options.startDate) {
       logs = logs.filter(log => new Date(log.timestamp) >= new Date(options.startDate));
     }
-    
+
     if (options.endDate) {
       logs = logs.filter(log => new Date(log.timestamp) <= new Date(options.endDate));
     }
-    
+
     if (options.action) {
       logs = logs.filter(log => log.action === options.action);
     }
-    
+
     return logs;
   }
 

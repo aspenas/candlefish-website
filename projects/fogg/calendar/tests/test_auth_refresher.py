@@ -1,8 +1,7 @@
 """Tests for authentication token refresher."""
 
-import threading
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -22,7 +21,7 @@ class MockCredentials:
         """Mock refresh method."""
         self.refresh_called = True
         # Extend expiry by 1 hour
-        self.expiry = datetime.now(timezone.utc) + timedelta(hours=1)
+        self.expiry = datetime.now(UTC) + timedelta(hours=1)
 
 
 def test_token_refresher_starts_and_stops():
@@ -44,16 +43,16 @@ def test_token_refresher_starts_and_stops():
 def test_token_refresher_refreshes_expiring_token():
     """Test that refresher refreshes tokens before expiry."""
     # Create mock credentials expiring in 4 minutes
-    expiry = datetime.now(timezone.utc) + timedelta(minutes=4)
+    expiry = datetime.now(UTC) + timedelta(minutes=4)
     mock_creds = MockCredentials(expiry)
 
     manager = MagicMock(spec=GCPCredentialsManager)
     manager.get_credentials.return_value = mock_creds
 
     refresher = TokenRefresher(
-        manager, 
+        manager,
         check_interval_seconds=0.1,
-        refresh_buffer_minutes=5  # Refresh 5 min before expiry
+        refresh_buffer_minutes=5,  # Refresh 5 min before expiry
     )
 
     # Run one check
@@ -66,17 +65,13 @@ def test_token_refresher_refreshes_expiring_token():
 def test_token_refresher_skips_non_expiring_token():
     """Test that refresher skips tokens with plenty of time left."""
     # Create mock credentials expiring in 10 minutes
-    expiry = datetime.now(timezone.utc) + timedelta(minutes=10)
+    expiry = datetime.now(UTC) + timedelta(minutes=10)
     mock_creds = MockCredentials(expiry)
 
     manager = MagicMock(spec=GCPCredentialsManager)
     manager.get_credentials.return_value = mock_creds
 
-    refresher = TokenRefresher(
-        manager,
-        check_interval_seconds=0.1,
-        refresh_buffer_minutes=5
-    )
+    refresher = TokenRefresher(manager, check_interval_seconds=0.1, refresh_buffer_minutes=5)
 
     # Run one check
     refresher._check_and_refresh()
@@ -101,7 +96,7 @@ def test_token_refresher_handles_no_expiry():
 
 def test_token_refresher_handles_refresh_error():
     """Test that refresher handles errors during refresh."""
-    expiry = datetime.now(timezone.utc) + timedelta(minutes=4)
+    expiry = datetime.now(UTC) + timedelta(minutes=4)
     mock_creds = Mock()
     mock_creds.expiry = expiry
     mock_creds.refresh.side_effect = Exception("Refresh failed")
@@ -134,17 +129,13 @@ async def test_async_token_refresher_starts_and_stops():
 async def test_async_token_refresher_refreshes():
     """Test that async refresher refreshes expiring tokens."""
     # Create mock credentials expiring in 4 minutes
-    expiry = datetime.now(timezone.utc) + timedelta(minutes=4)
+    expiry = datetime.now(UTC) + timedelta(minutes=4)
     mock_creds = MockCredentials(expiry)
 
     manager = MagicMock(spec=GCPCredentialsManager)
     manager.get_credentials.return_value = mock_creds
 
-    refresher = AsyncTokenRefresher(
-        manager,
-        check_interval_seconds=0.1,
-        refresh_buffer_minutes=5
-    )
+    refresher = AsyncTokenRefresher(manager, check_interval_seconds=0.1, refresh_buffer_minutes=5)
 
     # Run one check
     await refresher._check_and_refresh()
@@ -156,9 +147,7 @@ async def test_async_token_refresher_refreshes():
 def test_gcp_credentials_manager_initialization():
     """Test GCPCredentialsManager initialization."""
     manager = GCPCredentialsManager(
-        scopes=["scope1", "scope2"],
-        impersonate_email="test@example.com",
-        refresh_buffer_minutes=10
+        scopes=["scope1", "scope2"], impersonate_email="test@example.com", refresh_buffer_minutes=10
     )
 
     assert manager.scopes == ["scope1", "scope2"]

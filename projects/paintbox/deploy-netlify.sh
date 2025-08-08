@@ -19,18 +19,18 @@ fi
 # Function to check build
 check_build() {
     echo -e "${GREEN}Testing static export build...${NC}"
-    
+
     # Clean previous builds
     rm -rf .next out
-    
+
     # Run build
     if npm run build; then
         echo -e "${GREEN}✅ Build successful!${NC}"
-        
+
         # Check if out directory was created
         if [ -d "out" ]; then
             echo -e "${GREEN}✅ Static export created in 'out' directory${NC}"
-            
+
             # Count files
             FILE_COUNT=$(find out -type f | wc -l)
             echo -e "${GREEN}📁 Generated ${FILE_COUNT} files${NC}"
@@ -48,13 +48,13 @@ check_build() {
 deploy_to_netlify() {
     echo ""
     echo -e "${GREEN}Deploying to Netlify...${NC}"
-    
+
     # Check if logged in
     if ! netlify status &> /dev/null; then
         echo -e "${YELLOW}Please login to Netlify:${NC}"
         netlify login
     fi
-    
+
     # Deploy options
     echo ""
     echo "Deployment options:"
@@ -62,7 +62,7 @@ deploy_to_netlify() {
     echo "2) Deploy draft (preview)"
     echo "3) Create new site and deploy"
     read -p "Choose option (1-3): " option
-    
+
     case $option in
         1)
             netlify deploy --prod --dir=out
@@ -107,7 +107,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     check_build
     deploy_to_netlify
     post_deployment
-    
+
     echo ""
     echo -e "${GREEN}🎉 Deployment complete!${NC}"
 else

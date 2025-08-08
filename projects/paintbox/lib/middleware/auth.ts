@@ -90,10 +90,10 @@ class AuthService {
         }
       }
     } catch (error) {
-      logger.error('Failed to initialize JWT keys', { 
-        error: error instanceof Error ? error.message : String(error) 
+      logger.error('Failed to initialize JWT keys', {
+        error: error instanceof Error ? error.message : String(error)
       });
-      
+
       // Generate new keys as fallback
       if (this.config.algorithm === 'RS256') {
         await this.generateRSAKeys();
@@ -120,8 +120,8 @@ class AuthService {
 
       logger.info('Generated new RSA key pair for JWT authentication');
     } catch (error) {
-      logger.error('Failed to generate RSA keys', { 
-        error: error instanceof Error ? error.message : String(error) 
+      logger.error('Failed to generate RSA keys', {
+        error: error instanceof Error ? error.message : String(error)
       });
       throw new Error('Cannot initialize JWT authentication without keys');
     }
@@ -131,7 +131,7 @@ class AuthService {
     try {
       const now = Math.floor(Date.now() / 1000);
       const jti = crypto.randomUUID();
-      
+
       const fullPayload: AuthenticatedUser = {
         ...payload,
         iat: now,
@@ -176,7 +176,7 @@ class AuthService {
 
       return token;
     } catch (error) {
-      logger.error('Failed to generate JWT token', { 
+      logger.error('Failed to generate JWT token', {
         error: error instanceof Error ? error.message : String(error),
         userId: payload.sub,
       });
@@ -225,7 +225,7 @@ class AuthService {
 
       return validatedPayload;
     } catch (error) {
-      logger.security('JWT token verification failed', { 
+      logger.security('JWT token verification failed', {
         error: error instanceof Error ? error.message : String(error),
         token: token.substring(0, 20) + '...', // Log only first 20 chars for security
       });
@@ -238,10 +238,10 @@ class AuthService {
       const key = `revoked_token:${jti}`;
       // Store in cache with long TTL (tokens should expire naturally)
       await this.cache.set(key, 'revoked', 86400 * 7); // 7 days
-      
+
       logger.auth('JWT token revoked', { jti });
     } catch (error) {
-      logger.error('Failed to revoke token', { 
+      logger.error('Failed to revoke token', {
         error: error instanceof Error ? error.message : String(error),
         jti,
       });
@@ -253,13 +253,13 @@ class AuthService {
     try {
       const key = `revoked_user:${userId}`;
       const timestamp = Date.now().toString();
-      
+
       // All tokens issued before this timestamp are invalid
       await this.cache.set(key, timestamp, 86400 * 7); // 7 days
-      
+
       logger.auth('All user tokens revoked', { userId });
     } catch (error) {
-      logger.error('Failed to revoke user tokens', { 
+      logger.error('Failed to revoke user tokens', {
         error: error instanceof Error ? error.message : String(error),
         userId,
       });
@@ -272,7 +272,7 @@ class AuthService {
       const tokenKey = `revoked_token:${jti}`;
       return await this.cache.exists(tokenKey);
     } catch (error) {
-      logger.error('Failed to check token revocation status', { 
+      logger.error('Failed to check token revocation status', {
         error: error instanceof Error ? error.message : String(error),
         jti,
       });
@@ -293,7 +293,7 @@ class AuthService {
       const ttl = payload.exp - Math.floor(Date.now() / 1000);
       await this.cache.set(key, JSON.stringify(metadata), ttl);
     } catch (error) {
-      logger.error('Failed to store token metadata', { 
+      logger.error('Failed to store token metadata', {
         error: error instanceof Error ? error.message : String(error),
         jti,
       });
@@ -317,7 +317,7 @@ class AuthService {
         // Remove oldest sessions if limit exceeded
         if (sessionList.length > this.config.maxConcurrentSessions) {
           const removedSessions = sessionList.splice(0, sessionList.length - this.config.maxConcurrentSessions);
-          
+
           // Revoke oldest sessions
           for (const oldSessionId of removedSessions) {
             await this.revokeSessionTokens(userId, oldSessionId);
@@ -332,7 +332,7 @@ class AuthService {
         await this.cache.set(key, JSON.stringify(sessionList), this.config.sessionTimeout);
       }
     } catch (error) {
-      logger.error('Failed to check concurrent sessions', { 
+      logger.error('Failed to check concurrent sessions', {
         error: error instanceof Error ? error.message : String(error),
         userId,
         sessionId,
@@ -345,10 +345,10 @@ class AuthService {
     try {
       const key = `revoked_session:${userId}:${sessionId}`;
       await this.cache.set(key, 'revoked', 86400 * 7); // 7 days
-      
+
       logger.auth('Session tokens revoked', { userId, sessionId });
     } catch (error) {
-      logger.error('Failed to revoke session tokens', { 
+      logger.error('Failed to revoke session tokens', {
         error: error instanceof Error ? error.message : String(error),
         userId,
         sessionId,
@@ -393,7 +393,7 @@ export async function authMiddleware(
   config?: Partial<AuthConfig>
 ): Promise<NextResponse | { user: AuthenticatedUser }> {
   const requestContext = getRequestContext(request);
-  
+
   try {
     logger.middleware('auth', 'Processing authentication', requestContext);
 

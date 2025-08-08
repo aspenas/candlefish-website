@@ -16,11 +16,13 @@ candlefish-ai/                    # Main repository (homepage-deploy branch)
 ## Worktree Commands
 
 ### List All Worktrees
+
 ```bash
 git worktree list
 ```
 
 ### Add New Worktree
+
 ```bash
 # Create worktree for existing branch
 git worktree add ../candlefish-worktrees/<name> <branch>
@@ -33,6 +35,7 @@ git worktree add -b feature/new-feature ../candlefish-worktrees/main-new-feature
 ```
 
 ### Remove Worktree
+
 ```bash
 # Remove worktree (keep branch)
 git worktree remove ../candlefish-worktrees/<name>
@@ -45,6 +48,7 @@ git worktree prune
 ```
 
 ### Move Worktree
+
 ```bash
 git worktree move <old-path> <new-path>
 ```
@@ -52,17 +56,20 @@ git worktree move <old-path> <new-path>
 ## Worktree Best Practices
 
 ### 1. Naming Convention
+
 - **Production**: `main-<purpose>`
 - **Features**: `main-feature-<name>`
 - **Fixes**: `main-hotfix-<issue>`
 - **Experiments**: `main-experimental-<test>`
 
 ### 2. Branch Strategy
+
 - Each worktree should track a specific branch
 - Avoid switching branches within a worktree
 - Use descriptive branch names matching the worktree purpose
 
 ### 3. Synchronization
+
 ```bash
 # Sync worktree with remote
 cd ../candlefish-worktrees/<name>
@@ -73,6 +80,7 @@ git pull origin <branch>
 ```
 
 ### 4. Resource Management
+
 - Remove unused worktrees promptly
 - Run `git worktree prune` weekly
 - Keep maximum 5-7 active worktrees
@@ -81,6 +89,7 @@ git pull origin <branch>
 ## Common Workflows
 
 ### Feature Development
+
 ```bash
 # 1. Create feature worktree
 git worktree add -b feature/awesome-feature \
@@ -103,6 +112,7 @@ git branch -d feature/awesome-feature
 ```
 
 ### Hotfix Workflow
+
 ```bash
 # 1. Create hotfix from main
 git worktree add -b hotfix/critical-bug \
@@ -124,6 +134,7 @@ git worktree remove ../candlefish-worktrees/main-hotfix-bug
 ```
 
 ### Parallel Development
+
 ```bash
 # Work on multiple features simultaneously
 git worktree add -b feature/api ../candlefish-worktrees/main-api main
@@ -137,12 +148,14 @@ cd ../candlefish-worktrees/main-ui   # Work on UI
 ## CI/CD Integration
 
 ### GitHub Actions Considerations
+
 - Each worktree push triggers CI for its branch
 - Use path filters to optimize builds
 - Worktree branches follow same protection rules
 - Automated sync available via `sync-worktrees` job
 
 ### Build Optimization
+
 ```yaml
 # .github/workflows/multi-worktree-ci.yml
 on:
@@ -161,6 +174,7 @@ on:
 ## Troubleshooting
 
 ### Worktree Locked
+
 ```bash
 # If worktree is locked
 git worktree unlock <path>
@@ -170,6 +184,7 @@ rm <path>/.git/worktree.lock
 ```
 
 ### Corrupted Worktree
+
 ```bash
 # Remove corrupted worktree
 git worktree remove --force <path>
@@ -180,6 +195,7 @@ git worktree add <path> <branch>
 ```
 
 ### Branch Conflicts
+
 ```bash
 # If branch exists in multiple worktrees
 git worktree list --porcelain | grep "branch refs/heads/<branch>"
@@ -191,12 +207,14 @@ git worktree remove <duplicate-path>
 ## Automation Scripts
 
 See `/bin/cf-sync.sh` for automated worktree management:
+
 - Sync all worktrees with remote
 - Prune stale worktrees
 - Update branch tracking
 - Generate status report
 
 ## Resources
+
 - [Git Worktree Documentation](https://git-scm.com/docs/git-worktree)
 - [GitHub Actions with Worktrees](https://docs.github.com/en/actions)
 - Team Wiki: Worktree Status Dashboard

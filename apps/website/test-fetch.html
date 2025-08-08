@@ -68,37 +68,37 @@
 <body>
     <div class="container">
         <h1>🔧 Chrome Fetch Error Test & Fix Verification</h1>
-        
+
         <div class="test-section">
             <h2>Test 1: Basic Health Check (No Auth)</h2>
             <button onclick="testHealth()">Test Health Endpoint</button>
             <div id="health-result"></div>
         </div>
-        
+
         <div class="test-section">
             <h2>Test 2: CORS Preflight Check</h2>
             <button onclick="testCORS()">Test CORS Configuration</button>
             <div id="cors-result"></div>
         </div>
-        
+
         <div class="test-section">
             <h2>Test 3: Authentication Flow</h2>
             <button onclick="testAuth()">Test Login → API Call</button>
             <div id="auth-result"></div>
         </div>
-        
+
         <div class="test-section">
             <h2>Test 4: All Endpoints</h2>
             <button onclick="testAllEndpoints()">Run Complete Test Suite</button>
             <div id="all-result"></div>
         </div>
-        
+
         <div class="test-section">
             <h2>Console Output:</h2>
             <pre id="console-output">Click a test button to see results...</pre>
         </div>
     </div>
-    
+
     <script>
         // Production API endpoints via Netlify Functions
         const API_BASE = '/.netlify/functions';
@@ -109,16 +109,16 @@
             output.textContent += `[${timestamp}] ${message}\n`;
             console.log(message);
         };
-        
+
         async function testHealth() {
             const resultDiv = document.getElementById('health-result');
             resultDiv.innerHTML = '<div>Testing...</div>';
             log('Testing health endpoint...');
-            
+
             try {
                 const response = await fetch(`${API_BASE}/health`);
                 const data = await response.json();
-                
+
                 if (response.ok) {
                     resultDiv.innerHTML = `<div class="success">✅ Health check passed! Main API server is running.<br>Status: ${data.status}<br>Database: ${data.database}</div>`;
                     log(`Success: Health check returned ${JSON.stringify(data)}`);
@@ -130,12 +130,12 @@
                 log(`Error: ${error.message}`, true);
             }
         }
-        
+
         async function testCORS() {
             const resultDiv = document.getElementById('cors-result');
             resultDiv.innerHTML = '<div>Testing CORS...</div>';
             log('Testing CORS configuration...');
-            
+
             try {
                 // Test simple CORS with OPTIONS request first
                 const response = await fetch(`${API_BASE}/security-status`, {
@@ -144,7 +144,7 @@
                         'Content-Type': 'application/json',
                     }
                 });
-                
+
                 // Check if we got a response (CORS would block it entirely)
                 if (response.ok) {
                     const data = await response.json();
@@ -163,12 +163,12 @@
                 }
             }
         }
-        
+
         async function testAuth() {
             const resultDiv = document.getElementById('auth-result');
             resultDiv.innerHTML = '<div>Testing authentication flow simulation...</div>';
             log('Starting authentication flow simulation...');
-            
+
             // Note: This is a simulation since we're using a test API
             resultDiv.innerHTML = `<div class="success">✅ Authentication Flow Simulation:<br>
                 ℹ️ This test API doesn't have real authentication, but we can simulate the flow:<br>
@@ -176,7 +176,7 @@
                 2. Token would be used for subsequent API calls<br>
                 3. Protected endpoints would validate the token</div>`;
             log('Auth simulation: Login would succeed and return JWT token');
-            
+
             // Instead, test the main API security check endpoint (simulates protected endpoint)
             try {
                 log('Step 2: Testing security check endpoint (simulates protected call)...');
@@ -188,7 +188,7 @@
                     }
                 });
                 const data = await response.json();
-                
+
                 if (response.ok) {
                     const serviceCount = Object.keys(data.services).length;
                     const healthyCount = Object.values(data.services).filter(s => s.healthy).length;
@@ -206,12 +206,12 @@
                 log(`Security check failed: ${error.message}`, true);
             }
         }
-        
+
         async function testAllEndpoints() {
             const resultDiv = document.getElementById('all-result');
             resultDiv.innerHTML = '<div>Running complete test suite...</div>';
             log('Starting complete test suite...');
-            
+
             const endpoints = [
                 { path: '/health', method: 'GET', auth: false },
                 { path: '/security-status', method: 'GET', auth: false },
@@ -220,27 +220,27 @@
                 { path: '/performance-pages', method: 'GET', auth: false },
                 { path: '/security-health', method: 'GET', auth: false }
             ];
-            
+
             let token = null;
-            
+
             // Skip authentication - testing main API endpoints only
             log('Testing main API endpoints (no authentication required)');
-            
+
             let passed = 0;
             let failed = 0;
-            
+
             for (const endpoint of endpoints) {
                 try {
                     const headers = { 'Content-Type': 'application/json' };
                     if (endpoint.auth && token) {
                         headers['Authorization'] = `Bearer ${token}`;
                     }
-                    
+
                     const response = await fetch(`${API_BASE}${endpoint.path}`, {
                         method: endpoint.method,
                         headers
                     });
-                    
+
                     if (response.ok) {
                         passed++;
                         log(`✅ ${endpoint.path} - SUCCESS`);
@@ -253,15 +253,15 @@
                     log(`❌ ${endpoint.path} - ERROR: ${error.message}`, true);
                 }
             }
-            
+
             resultDiv.innerHTML = `<div class="${failed === 0 ? 'success' : 'error'}">
                 Test Results: ${passed}/${endpoints.length} passed<br>
                 ${failed === 0 ? '✅ All tests passed!' : `⚠️ ${failed} tests failed`}
             </div>`;
-            
+
             log(`Test suite complete: ${passed} passed, ${failed} failed`);
         }
-        
+
         // Auto-run health check on load
         window.addEventListener('load', () => {
             setTimeout(testHealth, 500);

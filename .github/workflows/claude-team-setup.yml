@@ -19,58 +19,58 @@ on:
 jobs:
   setup-claude-resources:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Setup team member workspace
         run: |
           MEMBER="${{ github.event.inputs.team_member || github.actor }}"
           echo "🤝 Setting up Claude resources for: $MEMBER"
-          
+
           # Create setup script
           cat > setup-claude-team.sh << 'EOF'
           #!/bin/bash
           set -e
-          
+
           # Colors for output
           GREEN='\033[0;32m'
           BLUE='\033[0;34m'
           YELLOW='\033[1;33m'
           NC='\033[0m'
-          
+
           echo -e "${BLUE}Claude Team Setup Script${NC}"
           echo "========================="
-          
+
           # Function to setup directories
           setup_claude_dirs() {
               echo -e "${YELLOW}Setting up Claude directories...${NC}"
-              
+
               # Create .claude directory structure
               mkdir -p ~/.claude/{agents,commands}
-              
+
               # Copy from repository if available
               if [ -d ".claude/agents" ]; then
                   cp -r .claude/agents/* ~/.claude/agents/ 2>/dev/null || true
                   echo -e "${GREEN}✓ Agents copied${NC}"
               fi
-              
+
               if [ -d ".claude/commands" ]; then
                   cp -r .claude/commands/* ~/.claude/commands/ 2>/dev/null || true
                   echo -e "${GREEN}✓ Commands copied${NC}"
               fi
           }
-          
+
           # Function to setup git worktrees
           setup_worktrees() {
               echo -e "${YELLOW}Setting up Git worktrees...${NC}"
-              
+
               # Main repository path
               MAIN_REPO=$(pwd)
-              
+
               # Create worktree for agents
               if [ ! -d "$HOME/.claude/agents/.git" ]; then
                   cd ~/.claude
@@ -81,7 +81,7 @@ jobs:
                   git checkout .
                   echo -e "${GREEN}✓ Agents repository initialized${NC}"
               fi
-              
+
               # Create worktree for commands
               if [ ! -d "$HOME/.claude/commands/.git" ]; then
                   cd ~/.claude
@@ -92,22 +92,22 @@ jobs:
                   git checkout .
                   echo -e "${GREEN}✓ Commands repository initialized${NC}"
               fi
-              
+
               cd "$MAIN_REPO"
           }
-          
+
           # Function to verify setup
           verify_setup() {
               echo -e "${YELLOW}Verifying setup...${NC}"
-              
+
               # Check agents
               AGENT_COUNT=$(find ~/.claude/agents -name "*.md" -type f 2>/dev/null | wc -l)
               echo -e "Agents found: ${GREEN}$AGENT_COUNT${NC}"
-              
+
               # Check commands
               COMMAND_COUNT=$(find ~/.claude/commands -name "*.md" -type f 2>/dev/null | wc -l)
               echo -e "Commands found: ${GREEN}$COMMAND_COUNT${NC}"
-              
+
               # Check git status
               if [ -d "$HOME/.claude/agents/.git" ]; then
                   cd ~/.claude/agents
@@ -115,7 +115,7 @@ jobs:
                   git remote -v
                   git status --short
               fi
-              
+
               if [ -d "$HOME/.claude/commands/.git" ]; then
                   cd ~/.claude/commands
                   echo -e "\nCommands repository status:"
@@ -123,7 +123,7 @@ jobs:
                   git status --short
               fi
           }
-          
+
           # Main execution
           case "$1" in
               install)
@@ -144,28 +144,28 @@ jobs:
                   exit 1
                   ;;
           esac
-          
+
           echo -e "\n${GREEN}✅ Claude team setup complete!${NC}"
           EOF
-          
+
           chmod +x setup-claude-team.sh
-          
+
           # Run the setup
           ./setup-claude-team.sh ${{ github.event.inputs.setup_type }}
-      
+
       - name: Create team access documentation
         run: |
           cat > CLAUDE_TEAM_ACCESS.md << 'EOF'
           # Claude Agent & Command Resources - Team Access
-          
+
           ## Quick Setup for Team Members
-          
+
           ### Option 1: Automated Setup (Recommended)
           ```bash
           # Run from the candlefish-ai repository
           gh workflow run claude-team-setup.yml -f setup_type=install
           ```
-          
+
           ### Option 2: Manual Setup
           ```bash
           # Clone the repositories
@@ -174,76 +174,76 @@ jobs:
           git clone https://github.com/wshobson/agents.git
           git clone https://github.com/wshobson/commands.git
           ```
-          
+
           ### Option 3: Using Git Worktrees (Advanced)
           ```bash
           # From main repository
           git worktree add ~/.claude/agents -b claude-agents
           git worktree add ~/.claude/commands -b claude-commands
-          
+
           # Sync with upstream
           cd ~/.claude/agents
           git remote add upstream https://github.com/wshobson/agents.git
           git fetch upstream
           git merge upstream/main
           ```
-          
+
           ## Keeping Resources Updated
-          
+
           ### Automatic Updates
           The GitHub Action runs every 6 hours to sync changes. You can also trigger manually:
           ```bash
           gh workflow run claude-agents-sync.yml
           ```
-          
+
           ### Manual Updates
           ```bash
           cd ~/.claude/agents && git pull
           cd ~/.claude/commands && git pull
           ```
-          
+
           ## Team Member Access
-          
+
           - **Aaron**: Full access to agents and commands
           - **Tyler**: Full access to agents and commands
           - **Patrick**: Admin access with sync permissions
-          
+
           ## Available Resources
-          
+
           ### Agents (51 total)
           - AI & ML specialists
           - Language experts (Python, Go, Rust, etc.)
           - Infrastructure & DevOps
           - Security & Performance
           - Business & Support
-          
+
           ### Commands
           - **Tools**: Individual utility commands
           - **Workflows**: Multi-step processes
-          
+
           ## Usage in Claude Code
-          
+
           ```bash
           # Use an agent
           claude --agent python-pro "Optimize this code"
-          
+
           # Use a workflow
           claude --workflow feature-development "Add user authentication"
           ```
-          
+
           ## Troubleshooting
-          
+
           1. **Permission Denied**: Make sure you have access to the repository
           2. **Missing Agents**: Run the sync workflow or pull manually
           3. **Conflicts**: Check git status and resolve any conflicts
-          
+
           ## Support
-          
+
           Contact @patricksmith for access issues or questions.
           EOF
-          
+
           echo "📚 Documentation created: CLAUDE_TEAM_ACCESS.md"
-      
+
       - name: Generate setup summary
         run: |
           echo "## Setup Summary for ${{ github.event.inputs.team_member || github.actor }}"

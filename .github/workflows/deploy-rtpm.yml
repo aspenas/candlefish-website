@@ -74,5 +74,3 @@ jobs:
         working-directory: ./deployment/fly/rtpm-dashboard
         run: |
           flyctl deploy --remote-only --build-arg BUILDKIT_PROGRESS=plain
-
-

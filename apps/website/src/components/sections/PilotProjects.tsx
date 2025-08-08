@@ -39,7 +39,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ title, company, status, descr
     <article className="project-card bg-gray-800 border-2 border-gray-700 p-8 relative overflow-hidden transition-all duration-400 ease-out hover:border-teal-400 hover:-translate-y-2 hover:shadow-lg hover:shadow-teal-400/15 group">
       {/* Top accent line */}
       <div className="absolute top-0 left-0 w-full h-1 bg-teal-400 transform scale-x-0 origin-left transition-transform duration-800 ease-out group-hover:scale-x-100"></div>
-      
+
       <div className="flex justify-between items-start mb-6">
         <div>
           <h3 className="text-2xl font-light mb-2">{title}</h3>
@@ -49,11 +49,11 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ title, company, status, descr
           {status}
         </span>
       </div>
-      
+
       <p className="text-gray-400 mb-8 leading-relaxed">
         {description}
       </p>
-      
+
       <div className="grid grid-cols-2 gap-4">
         {metrics.map((metric, index) => (
           <ProjectMetric key={index}>
@@ -72,11 +72,11 @@ const PilotProjects: React.FC = () => {
         <div className="text-center mb-16">
           <h2 className="mb-6">Current Pilot Implementations</h2>
           <p className="text-xl text-gray-400 max-w-4xl mx-auto">
-            We're validating our modular AI approach through strategic pilot partnerships. 
+            We're validating our modular AI approach through strategic pilot partnerships.
             Each pilot proves specific patterns that become reusable solutions.
           </p>
         </div>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           <ProjectCard
             title="Enterprise Data Platform"
@@ -90,7 +90,7 @@ const PilotProjects: React.FC = () => {
               "Zero replacements"
             ]}
           />
-          
+
           <ProjectCard
             title="Family Office Digital"
             company="National QSR Chain"
@@ -103,7 +103,7 @@ const PilotProjects: React.FC = () => {
               "Real-time insights"
             ]}
           />
-          
+
           <ProjectCard
             title="PromoterOS"
             company="Music Venue Partner"
@@ -116,7 +116,7 @@ const PilotProjects: React.FC = () => {
               "Digital contracts"
             ]}
           />
-          
+
           <ProjectCard
             title="Crown Trophy Digital"
             company="Manufacturing Retailer"

@@ -1,11 +1,11 @@
 const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/HomePage-ePWmd-jY.js","assets/three-B-EYDSmC.js","assets/vendor-DGUZjIjy.js","assets/animations-CtHQOp4r.js","assets/NotFoundPage-BouVk_e_.js","assets/router-DT8i7phJ.js"])))=>i.map(i=>d[i]);
-var L=Object.defineProperty;var R=(s,i,n)=>i in s?L(s,i,{enumerable:!0,configurable:!0,writable:!0,value:n}):s[i]=n;var y=(s,i,n)=>R(s,typeof i!="symbol"?i+"":i,n);import{j as t,_,c as A}from"./three-B-EYDSmC.js";import{r as d,b as u}from"./vendor-DGUZjIjy.js";import{B as N,R as P,a as v}from"./router-DT8i7phJ.js";(function(){const i=document.createElement("link").relList;if(i&&i.supports&&i.supports("modulepreload"))return;for(const o of document.querySelectorAll('link[rel="modulepreload"]'))e(o);new MutationObserver(o=>{for(const a of o)if(a.type==="childList")for(const l of a.addedNodes)l.tagName==="LINK"&&l.rel==="modulepreload"&&e(l)}).observe(document,{childList:!0,subtree:!0});function n(o){const a={};return o.integrity&&(a.integrity=o.integrity),o.referrerPolicy&&(a.referrerPolicy=o.referrerPolicy),o.crossOrigin==="use-credentials"?a.credentials="include":o.crossOrigin==="anonymous"?a.credentials="omit":a.credentials="same-origin",a}function e(o){if(o.ep)return;o.ep=!0;const a=n(o);fetch(o.href,a)}})();class C extends d.Component{constructor(){super(...arguments);y(this,"state",{hasError:!1})}static getDerivedStateFromError(n){return{hasError:!0,error:n}}componentDidCatch(n,e){console.error("ErrorBoundary caught an error:",n,e)}render(){return this.state.hasError?t.jsx("div",{className:"min-h-screen bg-black text-white flex items-center justify-center p-8",children:t.jsxs("div",{className:"text-center max-w-md",children:[t.jsx("h1",{className:"text-4xl font-light mb-4 text-teal-400",children:"Something went wrong"}),t.jsx("p",{className:"text-gray-400 mb-6",children:"We're sorry, but something unexpected happened. Please refresh the page or try again later."}),t.jsx("button",{onClick:()=>window.location.reload(),className:"inline-flex items-center px-6 py-3 bg-teal-400 text-black font-medium hover:bg-white transition-colors duration-200",children:"Refresh Page"})]})}):this.props.children}}const z=()=>t.jsx("div",{className:"fixed inset-0 bg-black z-50 flex items-center justify-center",children:t.jsxs("div",{className:"text-center",children:[t.jsxs("picture",{children:[t.jsx("source",{srcSet:"/logo/candlefish_highquality.webp",type:"image/webp"}),t.jsx("img",{src:"/logo/candlefish_highquality.png",alt:"Candlefish AI Logo",className:"w-auto h-48 max-w-32 mb-6 mx-auto object-contain animate-pulse"})]}),t.jsx("div",{className:"text-sm text-gray-400 font-mono tracking-wider uppercase",children:"Illuminating possibilities..."})]})}),F=()=>{const s=d.useRef(null),i=d.useRef();return d.useEffect(()=>{const n=s.current;if(!n)return;const e=n.getContext("webgl")||n.getContext("experimental-webgl");if(!e||!(e instanceof WebGLRenderingContext)){console.warn("WebGL not supported, particles disabled");return}const o=()=>{n.width=window.innerWidth,n.height=window.innerHeight,e.viewport(0,0,n.width,n.height)};o(),window.addEventListener("resize",o);const a=`
+var L=Object.defineProperty;var R=(s,i,n)=>i in s?L(s,i,{enumerable:!0,configurable:!0,writable:!0,value:n}):s[i]=n;var y=(s,i,n)=>R(s,typeof i!="symbol"?i+"":i,n);import{j as t,_,c as A}from"./three-B-EYDSmC.js";import{r as d,b as u}from"./vendor-DGUZjIjy.js";import{B as N,R as P,a as v}from"./router-DT8i7phJ.js";(function(){const i=document.createElement("link").relList;if(i&&i.supports&&i.supports("modulepreload"))return;for(const o of document.querySelectorAll('link[rel="modulepreload"]'))e(o);new MutationObserver(o=>{for(const a of o)if(a.type==="childList")for(const l of a.addedNodes)l.tagName==="LINK"&&l.rel==="modulepreload"&&e(l)}).observe(document,{childList:!0,subtree:!0});function n(o){const a={};return o.integrity&&(a.integrity=o.integrity),o.referrerPolicy&&(a.referrerPolicy=o.referrerPolicy),o.crossOrigin==="use-credentials"?a.credentials="include":o.crossOrigin==="anonymous"?a.credentials="omit":a.credentials="same-origin",a}function e(o){if(o.ep)return;o.ep=!0;const a=n(o);fetch(o.href,a)}})();class C extends d.Component{constructor(){super(...arguments);y(this,"state",{hasError:!1})}static getDerivedStateFromError(n){return{hasError:!0,error:n}}componentDidCatch(n,e){console.error("ErrorBoundary caught an error:",n,e)}render(){return this.state.hasError?t.jsx("div",{className:"min-h-screen bg-black text-white flex items-center justify-center p-8",children:t.jsxs("div",{className:"text-center max-w-md",children:[t.jsx("h1",{className:"text-4xl font-light mb-4 text-teal-400",children:"Something went wrong"}),t.jsx("p",{className:"text-gray-400 mb-6",children:"We're sorry, but something unexpected happened. Please refresh the page or try again later."}),t.jsx("button",{onClick:()=>window.location.reload(),className:"inline-flex items-center px-6 py-3 bg-teal-400 text-black font-medium hover:bg-white transition-colors duration-200",children:"Refresh Page"})]})}):this.props.children}}const z=()=>t.jsx("div",{className:"fixed inset-0 bg-black z-50 flex items-center justify-center",children:t.jsxs("div",{className:"text-center",children:[t.jsxs("picture",{children:[t.jsx("source",{srcSet:"/logo/candlefish_original.png",type:"image/webp"}),t.jsx("img",{src:"/logo/candlefish_original.png",alt:"Candlefish AI Logo",className:"w-auto h-48 max-w-32 mb-6 mx-auto object-contain animate-pulse"})]}),t.jsx("div",{className:"text-sm text-gray-400 font-mono tracking-wider uppercase",children:"Illuminating possibilities..."})]})}),F=()=>{const s=d.useRef(null),i=d.useRef();return d.useEffect(()=>{const n=s.current;if(!n)return;const e=n.getContext("webgl")||n.getContext("experimental-webgl");if(!e||!(e instanceof WebGLRenderingContext)){console.warn("WebGL not supported, particles disabled");return}const o=()=>{n.width=window.innerWidth,n.height=window.innerHeight,e.viewport(0,0,n.width,n.height)};o(),window.addEventListener("resize",o);const a=`
       attribute vec2 a_position;
       attribute float a_size;
       attribute float a_opacity;
-      
+
       varying float v_opacity;
-      
+
       void main() {
         gl_Position = vec4(a_position, 0.0, 1.0);
         gl_PointSize = a_size;
@@ -13,17 +13,17 @@ var L=Object.defineProperty;var R=(s,i,n)=>i in s?L(s,i,{enumerable:!0,configura
       }
     `,l=`
       precision mediump float;
-      
+
       varying float v_opacity;
-      
+
       void main() {
         vec2 coord = gl_PointCoord - vec2(0.5);
         float distance = length(coord);
-        
+
         if (distance > 0.5) {
           discard;
         }
-        
+
         float alpha = 1.0 - smoothstep(0.0, 0.5, distance);
         gl_FragColor = vec4(0.0, 0.808, 0.82, alpha * v_opacity * 0.3);
       }

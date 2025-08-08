@@ -14,12 +14,12 @@ const NavLink: React.FC<NavLinkProps> = ({ href, children }) => {
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault()
     const target = document.querySelector(href)
-    
+
     if (target) {
       const nav = document.querySelector('.nav')
       const navHeight = nav?.getBoundingClientRect().height || 0
       const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - navHeight - 20
-      
+
       gsap.to(window, {
         scrollTo: targetPosition,
         duration: 1,
@@ -53,10 +53,10 @@ const Navigation: React.FC = () => {
   }, [])
 
   return (
-    <nav 
+    <nav
       className={`nav fixed top-0 left-0 right-0 z-50 transition-all duration-400 ease-out ${
-        isScrolled 
-          ? 'py-4 bg-black/95 backdrop-blur-md shadow-lg shadow-black/30' 
+        isScrolled
+          ? 'py-4 bg-black/95 backdrop-blur-md shadow-lg shadow-black/30'
           : 'py-6 bg-black/80 backdrop-blur-md'
       } border-b border-gray-700`}
       role="navigation"
@@ -64,16 +64,16 @@ const Navigation: React.FC = () => {
     >
       <div className="container mx-auto px-6 max-w-screen-2xl">
         <div className="flex justify-between items-center">
-          <a 
-            href="#" 
+          <a
+            href="#"
             className="flex items-center gap-4 text-white no-underline transition-opacity duration-200 hover:opacity-80"
             aria-label="Candlefish AI Home"
           >
             <picture>
-              <source srcSet="/logo/candlefish_highquality.webp" type="image/webp" />
-              <source srcSet="/logo/candlefish_highquality.png" type="image/png" />
+              <source srcSet="/logo/candlefish_original.png" type="image/webp" />
+              <source srcSet="/logo/candlefish_original.png" type="image/png" />
               <img
-                src="/logo/candlefish_highquality.png"
+                src="/logo/candlefish_original.png"
                 alt="Candlefish AI Logo"
                 className="w-12 h-12 lg:w-16 lg:h-16 object-contain"
                 width="64"
@@ -84,7 +84,7 @@ const Navigation: React.FC = () => {
               CANDLEFISH
             </span>
           </a>
-          
+
           <div className="hidden lg:flex items-center gap-8">
             <NavLink href="#what-we-do">What We Do</NavLink>
             <NavLink href="#how-it-works">How It Works</NavLink>

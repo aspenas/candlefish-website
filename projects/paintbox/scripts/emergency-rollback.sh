@@ -78,9 +78,9 @@ emergency_exit() {
     local exit_code=$?
     log_critical "Emergency rollback script failed with exit code $exit_code"
     log_critical "System may be in an inconsistent state - manual intervention required"
-    
+
     send_emergency_notification "CRITICAL" "Emergency rollback failed - manual intervention required"
-    
+
     # Create emergency status file
     cat > "${PROJECT_ROOT}/EMERGENCY_STATUS.md" << EOF
 # EMERGENCY STATUS - MANUAL INTERVENTION REQUIRED
@@ -107,7 +107,7 @@ emergency_exit() {
 $LOG_FILE
 
 EOF
-    
+
     exit $exit_code
 }
 
@@ -116,19 +116,19 @@ trap emergency_exit ERR
 # Utility functions
 get_current_active_environment() {
     log_debug "Determining current active environment..."
-    
+
     local alb_arn
     alb_arn=$(aws elbv2 describe-load-balancers \
         --names "$ALB_NAME" \
         --query 'LoadBalancers[0].LoadBalancerArn' \
         --output text)
-    
+
     local listener_arn
     listener_arn=$(aws elbv2 describe-listeners \
         --load-balancer-arn "$alb_arn" \
         --query 'Listeners[?Port==`443`].ListenerArn' \
         --output text)
-    
+
     if [[ -z "$listener_arn" ]]; then
         # Fallback to HTTP listener
         listener_arn=$(aws elbv2 describe-listeners \
@@ -136,13 +136,13 @@ get_current_active_environment() {
             --query 'Listeners[?Port==`80`].ListenerArn' \
             --output text)
     fi
-    
+
     local current_target_group_arn
     current_target_group_arn=$(aws elbv2 describe-listeners \
         --listener-arns "$listener_arn" \
         --query 'Listeners[0].DefaultActions[0].TargetGroupArn' \
         --output text)
-    
+
     # Determine which environment based on target group
     local blue_tg_arn green_tg_arn
     blue_tg_arn=$(aws elbv2 describe-target-groups \
@@ -153,7 +153,7 @@ get_current_active_environment() {
         --names "$TARGET_GROUP_GREEN" \
         --query 'TargetGroups[0].TargetGroupArn' \
         --output text 2>/dev/null || echo "")
-    
+
     if [[ "$current_target_group_arn" == "$blue_tg_arn" ]]; then
         echo "blue"
     elif [[ "$current_target_group_arn" == "$green_tg_arn" ]]; then
@@ -166,7 +166,7 @@ get_current_active_environment() {
 
 get_rollback_target() {
     local current_active="$1"
-    
+
     if [[ "$current_active" == "blue" ]]; then
         echo "green"
     elif [[ "$current_active" == "green" ]]; then
@@ -179,7 +179,7 @@ get_rollback_target() {
 
 get_service_name() {
     local environment="$1"
-    
+
     if [[ "$environment" == "blue" ]]; then
         echo "$SERVICE_BLUE"
     else
@@ -189,7 +189,7 @@ get_service_name() {
 
 get_target_group_name() {
     local environment="$1"
-    
+
     if [[ "$environment" == "blue" ]]; then
         echo "$TARGET_GROUP_BLUE"
     else
@@ -200,22 +200,22 @@ get_target_group_name() {
 # Health check functions
 quick_health_check() {
     local service="$1"
-    
+
     log_debug "Performing quick health check for: $service"
-    
+
     local running_tasks desired_tasks
     running_tasks=$(aws ecs describe-services \
         --cluster "$CLUSTER_NAME" \
         --services "$service" \
         --query 'services[0].runningCount' \
         --output text)
-    
+
     desired_tasks=$(aws ecs describe-services \
         --cluster "$CLUSTER_NAME" \
         --services "$service" \
         --query 'services[0].desiredCount' \
         --output text)
-    
+
     if [[ "$running_tasks" -gt 0 ]] && [[ "$running_tasks" -eq "$desired_tasks" ]]; then
         log_debug "Service $service has $running_tasks running tasks (desired: $desired_tasks)"
         return 0
@@ -229,16 +229,16 @@ comprehensive_health_check() {
     local environment="$1"
     local max_attempts=5
     local wait_time=10
-    
+
     log_step "Performing comprehensive health check for $environment environment"
-    
+
     local service_name target_group_name
     service_name=$(get_service_name "$environment")
     target_group_name=$(get_target_group_name "$environment")
-    
+
     for ((i=1; i<=max_attempts; i++)); do
         log_debug "Health check attempt $i/$max_attempts"
-        
+
         # Check ECS service
         if quick_health_check "$service_name"; then
             # Check target group health
@@ -247,25 +247,25 @@ comprehensive_health_check() {
                 --names "$target_group_name" \
                 --query 'TargetGroups[0].TargetGroupArn' \
                 --output text)
-            
+
             local healthy_targets
             healthy_targets=$(aws elbv2 describe-target-health \
                 --target-group-arn "$target_group_arn" \
                 --query 'length(TargetHealthDescriptions[?TargetHealth.State==`healthy`])' \
                 --output text 2>/dev/null || echo "0")
-            
+
             if [[ "$healthy_targets" -gt 0 ]]; then
                 log_info "✅ Health check passed for $environment - $healthy_targets healthy targets"
                 return 0
             fi
         fi
-        
+
         if [[ $i -lt $max_attempts ]]; then
             log_debug "Health check failed, waiting $wait_time seconds..."
             sleep $wait_time
         fi
     done
-    
+
     log_error "❌ Health check failed for $environment after $max_attempts attempts"
     return 1
 }
@@ -273,12 +273,12 @@ comprehensive_health_check() {
 # Rollback execution functions
 scale_up_rollback_target() {
     local target_env="$1"
-    
+
     log_step "Scaling up rollback target: $target_env"
-    
+
     local service_name
     service_name=$(get_service_name "$target_env")
-    
+
     # Get current desired count
     local current_count
     current_count=$(aws ecs describe-services \
@@ -286,26 +286,26 @@ scale_up_rollback_target() {
         --services "$service_name" \
         --query 'services[0].desiredCount' \
         --output text)
-    
+
     if [[ "$current_count" -eq 0 ]]; then
         log_info "Scaling up $target_env from 0 to 1 task"
-        
+
         aws ecs update-service \
             --cluster "$CLUSTER_NAME" \
             --service "$service_name" \
             --desired-count 1 > /dev/null
-        
+
         # Wait for service to stabilize
         log_info "Waiting for service to stabilize..."
         aws ecs wait services-stable \
             --cluster "$CLUSTER_NAME" \
             --services "$service_name"
-        
+
         log_info "✅ Successfully scaled up $target_env environment"
     else
         log_info "✅ $target_env already running with $current_count tasks"
     fi
-    
+
     # Perform health check unless skipped
     if [[ "$SKIP_HEALTH_CHECKS" != "true" ]]; then
         if ! comprehensive_health_check "$target_env"; then
@@ -317,28 +317,28 @@ scale_up_rollback_target() {
 
 switch_traffic_to_rollback_target() {
     local target_env="$1"
-    
+
     log_step "Switching traffic to rollback target: $target_env"
-    
+
     local target_group_name target_group_arn
     target_group_name=$(get_target_group_name "$target_env")
     target_group_arn=$(aws elbv2 describe-target-groups \
         --names "$target_group_name" \
         --query 'TargetGroups[0].TargetGroupArn' \
         --output text)
-    
+
     # Get ALB listener
     local alb_arn listener_arn
     alb_arn=$(aws elbv2 describe-load-balancers \
         --names "$ALB_NAME" \
         --query 'LoadBalancers[0].LoadBalancerArn' \
         --output text)
-    
+
     listener_arn=$(aws elbv2 describe-listeners \
         --load-balancer-arn "$alb_arn" \
         --query 'Listeners[?Port==`443`].ListenerArn' \
         --output text)
-    
+
     if [[ -z "$listener_arn" ]] || [[ "$listener_arn" == "None" ]]; then
         # Fallback to HTTP listener
         listener_arn=$(aws elbv2 describe-listeners \
@@ -346,21 +346,21 @@ switch_traffic_to_rollback_target() {
             --query 'Listeners[?Port==`80`].ListenerArn' \
             --output text)
     fi
-    
+
     # Switch traffic
     aws elbv2 modify-listener \
         --listener-arn "$listener_arn" \
         --default-actions Type=forward,TargetGroupArn="$target_group_arn" > /dev/null
-    
+
     log_info "✅ Traffic switched to $target_env environment"
-    
+
     # Wait for traffic to stabilize
     sleep 30
-    
+
     # Verify traffic switch
     local new_active
     new_active=$(get_current_active_environment)
-    
+
     if [[ "$new_active" == "$target_env" ]]; then
         log_info "✅ Traffic switch verified - $target_env is now active"
     else
@@ -371,17 +371,17 @@ switch_traffic_to_rollback_target() {
 
 scale_down_failed_environment() {
     local failed_env="$1"
-    
+
     log_step "Scaling down failed environment: $failed_env"
-    
+
     local service_name
     service_name=$(get_service_name "$failed_env")
-    
+
     aws ecs update-service \
         --cluster "$CLUSTER_NAME" \
         --service "$service_name" \
         --desired-count 0 > /dev/null
-    
+
     log_info "✅ Scaled down $failed_env environment"
 }
 
@@ -389,13 +389,13 @@ scale_down_failed_environment() {
 send_emergency_notification() {
     local level="$1"
     local message="$2"
-    
+
     if [[ "$NOTIFICATION_ENABLED" != "true" ]]; then
         return 0
     fi
-    
+
     log_info "Sending $level notification: $message"
-    
+
     # Create notification payload
     local notification_payload
     notification_payload=$(cat << EOF
@@ -411,59 +411,59 @@ send_emergency_notification() {
 }
 EOF
 )
-    
+
     # Here you would integrate with your notification system
     # Examples:
-    
+
     # Slack notification
     # curl -X POST -H 'Content-type: application/json' \
     #     --data "$notification_payload" \
     #     "$SLACK_WEBHOOK_URL" || true
-    
+
     # Email notification via SNS
     # aws sns publish \
     #     --topic-arn "$SNS_TOPIC_ARN" \
     #     --message "$message" \
     #     --subject "Paintbox Emergency Rollback - $level" || true
-    
+
     # PagerDuty integration
     # curl -X POST \
     #     -H "Content-Type: application/json" \
     #     -H "Authorization: Token token=$PAGERDUTY_API_KEY" \
     #     -d "$notification_payload" \
     #     "https://api.pagerduty.com/incidents" || true
-    
+
     log_debug "Notification sent: $level"
 }
 
 # Pre-rollback validation
 validate_rollback_prerequisites() {
     log_step "Validating rollback prerequisites"
-    
+
     # Check AWS CLI
     if ! command -v aws &> /dev/null; then
         log_error "AWS CLI is not installed"
         exit 1
     fi
-    
+
     # Validate AWS credentials
     if ! aws sts get-caller-identity &> /dev/null; then
         log_error "AWS credentials are not configured properly"
         exit 1
     fi
-    
+
     # Check if ECS cluster exists
     if ! aws ecs describe-clusters --clusters "$CLUSTER_NAME" &> /dev/null; then
         log_error "ECS cluster $CLUSTER_NAME does not exist"
         exit 1
     fi
-    
+
     # Check if ALB exists
     if ! aws elbv2 describe-load-balancers --names "$ALB_NAME" &> /dev/null; then
         log_error "Application Load Balancer $ALB_NAME does not exist"
         exit 1
     fi
-    
+
     # Verify both services exist
     for service in "$SERVICE_BLUE" "$SERVICE_GREEN"; do
         if ! aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$service" &> /dev/null; then
@@ -471,7 +471,7 @@ validate_rollback_prerequisites() {
             exit 1
         fi
     done
-    
+
     # Verify both target groups exist
     for tg in "$TARGET_GROUP_BLUE" "$TARGET_GROUP_GREEN"; do
         if ! aws elbv2 describe-target-groups --names "$tg" &> /dev/null; then
@@ -479,15 +479,15 @@ validate_rollback_prerequisites() {
             exit 1
         fi
     done
-    
+
     log_info "✅ Prerequisites validation completed"
 }
 
 capture_pre_rollback_state() {
     log_step "Capturing pre-rollback state"
-    
+
     local state_file="${PROJECT_ROOT}/logs/pre-rollback-state-$(date +%Y%m%d-%H%M%S).json"
-    
+
     # Capture current state
     local state_json
     state_json=$(cat << EOF
@@ -515,7 +515,7 @@ capture_pre_rollback_state() {
 }
 EOF
 )
-    
+
     echo "$state_json" > "$state_file"
     log_info "Pre-rollback state captured: $state_file"
 }
@@ -523,36 +523,36 @@ EOF
 # Main rollback execution
 execute_emergency_rollback() {
     local reason="$1"
-    
+
     log_critical "🚨 EMERGENCY ROLLBACK INITIATED 🚨"
     log_critical "Reason: $reason"
     log_critical "Environment: $ENVIRONMENT"
     log_critical "Start Time: $(date)"
-    
+
     START_TIME=$(date +%s)
     ROLLBACK_REASON="$reason"
-    
+
     # Send immediate notification
     send_emergency_notification "CRITICAL" "Emergency rollback initiated: $reason"
-    
+
     # Capture pre-rollback state
     capture_pre_rollback_state
-    
+
     # Determine current state
     CURRENT_ACTIVE=$(get_current_active_environment)
     ROLLBACK_TARGET=$(get_rollback_target "$CURRENT_ACTIVE")
-    
+
     log_critical "Current active environment: $CURRENT_ACTIVE"
     log_critical "Rolling back to: $ROLLBACK_TARGET"
-    
+
     if [[ "$ROLLBACK_TARGET" == "unknown" ]]; then
         log_critical "Cannot determine rollback target - manual intervention required"
         exit 1
     fi
-    
+
     # Execute rollback steps
     log_step "Executing emergency rollback steps"
-    
+
     # Step 1: Scale up rollback target
     if scale_up_rollback_target "$ROLLBACK_TARGET"; then
         log_info "✅ Step 1 completed: Rollback target scaled up"
@@ -561,7 +561,7 @@ execute_emergency_rollback() {
         send_emergency_notification "CRITICAL" "Rollback step 1 failed - rollback target scale up"
         exit 1
     fi
-    
+
     # Step 2: Switch traffic
     if switch_traffic_to_rollback_target "$ROLLBACK_TARGET"; then
         log_info "✅ Step 2 completed: Traffic switched to rollback target"
@@ -570,7 +570,7 @@ execute_emergency_rollback() {
         send_emergency_notification "CRITICAL" "Rollback step 2 failed - traffic switch"
         exit 1
     fi
-    
+
     # Step 3: Scale down failed environment
     if scale_down_failed_environment "$CURRENT_ACTIVE"; then
         log_info "✅ Step 3 completed: Failed environment scaled down"
@@ -578,22 +578,22 @@ execute_emergency_rollback() {
         log_warn "⚠️  Step 3 warning: Could not scale down failed environment"
         # This is not critical for rollback success
     fi
-    
+
     # Final verification
     local final_active
     final_active=$(get_current_active_environment)
-    
+
     if [[ "$final_active" == "$ROLLBACK_TARGET" ]]; then
         local end_time duration
         end_time=$(date +%s)
         duration=$((end_time - START_TIME))
-        
+
         log_info "🎉 EMERGENCY ROLLBACK COMPLETED SUCCESSFULLY 🎉"
         log_info "Active environment: $final_active"
         log_info "Rollback duration: ${duration} seconds"
-        
+
         send_emergency_notification "SUCCESS" "Emergency rollback completed successfully in ${duration} seconds"
-        
+
         # Create success status file
         cat > "${PROJECT_ROOT}/ROLLBACK_SUCCESS.md" << EOF
 # EMERGENCY ROLLBACK SUCCESS
@@ -620,7 +620,7 @@ execute_emergency_rollback() {
 ## Log File
 $LOG_FILE
 EOF
-        
+
     else
         log_critical "❌ ROLLBACK VERIFICATION FAILED"
         log_critical "Expected active: $ROLLBACK_TARGET, Actual: $final_active"
@@ -633,20 +633,20 @@ EOF
 show_current_deployment_status() {
     log_info "Current Deployment Status"
     log_info "========================"
-    
+
     local current_active
     current_active=$(get_current_active_environment)
     log_info "Active Environment: $current_active"
-    
+
     # Show service status
     for env in "blue" "green"; do
         local service_name
         service_name=$(get_service_name "$env")
-        
+
         local desired_count running_count
         desired_count=$(aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$service_name" --query 'services[0].desiredCount' --output text)
         running_count=$(aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$service_name" --query 'services[0].runningCount' --output text)
-        
+
         local status_indicator
         if [[ "$env" == "$current_active" ]]; then
             status_indicator="🟢 ACTIVE"
@@ -655,17 +655,17 @@ show_current_deployment_status() {
         else
             status_indicator="⚫ INACTIVE"
         fi
-        
+
         log_info "$env Environment: $status_indicator (desired: $desired_count, running: $running_count)"
     done
-    
+
     # Show target group health
     for env in "blue" "green"; do
         local tg_name tg_arn healthy_targets
         tg_name=$(get_target_group_name "$env")
         tg_arn=$(aws elbv2 describe-target-groups --names "$tg_name" --query 'TargetGroups[0].TargetGroupArn' --output text)
         healthy_targets=$(aws elbv2 describe-target-health --target-group-arn "$tg_arn" --query 'length(TargetHealthDescriptions[?TargetHealth.State==`healthy`])' --output text 2>/dev/null || echo "0")
-        
+
         log_info "$env Target Group: $healthy_targets healthy targets"
     done
 }
@@ -712,12 +712,12 @@ EOF
 main() {
     # Create logs directory
     mkdir -p "$PROJECT_ROOT/logs"
-    
+
     log_info "Emergency Rollback Script Starting"
     log_info "Environment: $ENVIRONMENT"
     log_info "AWS Region: $AWS_REGION"
     log_info "Rollback Type: $ROLLBACK_TYPE"
-    
+
     # Update service names based on environment
     CLUSTER_NAME="paintbox-${ENVIRONMENT}"
     SERVICE_BLUE="paintbox-blue-${ENVIRONMENT}"
@@ -725,11 +725,11 @@ main() {
     TARGET_GROUP_BLUE="paintbox-blue-${ENVIRONMENT}"
     TARGET_GROUP_GREEN="paintbox-green-${ENVIRONMENT}"
     ALB_NAME="paintbox-alb-${ENVIRONMENT}"
-    
+
     validate_rollback_prerequisites
-    
+
     local rollback_reason="$1"
-    
+
     if [[ "$ROLLBACK_TYPE" == "immediate" ]] || [[ "$FORCE_ROLLBACK" == "true" ]]; then
         log_warn "Immediate rollback requested - skipping confirmation"
         execute_emergency_rollback "$rollback_reason"
@@ -737,17 +737,17 @@ main() {
         log_warn "🚨 EMERGENCY ROLLBACK REQUESTED 🚨"
         log_warn "Reason: $rollback_reason"
         log_warn "Environment: $ENVIRONMENT"
-        
+
         if [[ "$ROLLBACK_TYPE" == "manual" ]]; then
             echo -n "Are you sure you want to proceed with emergency rollback? (yes/no): "
             read -r confirmation
-            
+
             if [[ "$confirmation" != "yes" ]]; then
                 log_info "Rollback cancelled by user"
                 exit 0
             fi
         fi
-        
+
         execute_emergency_rollback "$rollback_reason"
     fi
 }

@@ -124,11 +124,11 @@ is_behind_remote() {
   cd "$path"
   local upstream
   upstream=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null || echo "")
-  
+
   if [[ -z "$upstream" ]]; then
     return 1  # No upstream
   fi
-  
+
   local behind
   behind=$(git rev-list --count HEAD.."$upstream" 2>/dev/null || echo "0")
   [[ "$behind" -gt 0 ]]
@@ -138,16 +138,16 @@ is_behind_remote() {
 sync_worktree() {
   local path="$1"
   local branch="$2"
-  
+
   log_info "Syncing worktree: $path (branch: $branch)"
-  
+
   if [[ ! -d "$path" ]]; then
     log_warning "Worktree path does not exist: $path"
     return 1
   fi
-  
+
   cd "$path"
-  
+
   # Check for uncommitted changes
   if has_uncommitted_changes "$path"; then
     log_warning "Uncommitted changes in $path - skipping sync"
@@ -156,7 +156,7 @@ sync_worktree() {
     fi
     return 1
   fi
-  
+
   # Fetch latest changes
   if [[ "$DRY_RUN" == true ]]; then
     log_info "[DRY RUN] Would fetch from origin"
@@ -168,13 +168,13 @@ sync_worktree() {
       return 1
     fi
   fi
-  
+
   # Check if behind remote
   if is_behind_remote "$path"; then
     local behind
     behind=$(git rev-list --count HEAD..@{u})
     log_info "Branch is $behind commits behind remote"
-    
+
     if [[ "$DRY_RUN" == true ]]; then
       log_info "[DRY RUN] Would pull $behind commits"
     else
@@ -188,14 +188,14 @@ sync_worktree() {
   else
     log_info "Already up to date"
   fi
-  
+
   return 0
 }
 
 # Prune stale worktrees
 prune_worktrees() {
   log_info "Pruning stale worktrees..."
-  
+
   if [[ "$DRY_RUN" == true ]]; then
     log_info "[DRY RUN] Would prune stale worktrees"
     cd "$MAIN_REPO"
@@ -213,24 +213,24 @@ prune_worktrees() {
 # Generate status report
 generate_report() {
   log_info "Generating worktree status report..."
-  
+
   echo ""
   echo "═══════════════════════════════════════════════════════════════"
   echo "                    WORKTREE STATUS REPORT"
   echo "═══════════════════════════════════════════════════════════════"
   echo ""
-  
+
   local total=0
   local synced=0
   local skipped=0
-  
+
   while IFS='|' read -r path head branch; do
     ((total++))
     printf "%-50s " "$path"
-    
+
     if [[ -d "$path" ]]; then
       cd "$path"
-      
+
       # Check status
       if has_uncommitted_changes "$path"; then
         echo -e "${YELLOW}[DIRTY]${NC}"
@@ -244,7 +244,7 @@ generate_report() {
         echo -e "${GREEN}[SYNCED]${NC}"
         ((synced++))
       fi
-      
+
       if [[ "$VERBOSE" == true ]]; then
         echo "  Branch: $branch"
         echo "  HEAD: ${head:0:8}"
@@ -254,29 +254,29 @@ generate_report() {
       ((skipped++))
     fi
   done < <(get_worktrees)
-  
+
   echo ""
   echo "───────────────────────────────────────────────────────────────"
   echo "Total: $total | Synced: $synced | Skipped: $skipped"
   echo "═══════════════════════════════════════════════════════════════"
   echo ""
-  
+
   log_info "Full log saved to: $LOG_FILE"
 }
 
 # Main execution
 main() {
   log "Starting candlefish-ai worktree sync"
-  
+
   check_prerequisites
-  
+
   # Get timestamp for commit message
   TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
-  
+
   # Process each worktree
   local success_count=0
   local fail_count=0
-  
+
   while IFS='|' read -r path head branch; do
     if sync_worktree "$path" "$branch"; then
       ((success_count++))
@@ -285,13 +285,13 @@ main() {
     fi
     echo ""
   done < <(get_worktrees)
-  
+
   # Prune stale worktrees
   prune_worktrees
-  
+
   # Generate report
   generate_report
-  
+
   # Summary
   if [[ "$fail_count" -eq 0 ]]; then
     log_success "Sync completed successfully ($success_count worktrees)"

@@ -11,7 +11,7 @@ The Real-time Performance Monitoring (RTPM) API has been **fully implemented** a
 ├── src/                          # Main source code directory
 │   ├── api/routes/              # API endpoints (Note: Core files exist in memory)
 │   │   ├── metrics.py           # Metrics ingestion endpoints
-│   │   ├── query.py             # Data query endpoints  
+│   │   ├── query.py             # Data query endpoints
 │   │   ├── alerts.py            # Alert management
 │   │   └── health.py            # Health checks
 │   ├── services/                # Core services
@@ -41,6 +41,7 @@ The Real-time Performance Monitoring (RTPM) API has been **fully implemented** a
 ## 🚀 Implemented Features
 
 ### Core API Services
+
 - ✅ **FastAPI Application** - High-performance async web framework
 - ✅ **Metrics Ingestion** - Single & batch metric ingestion with validation
 - ✅ **Query Engine** - Advanced time-series queries with filtering & aggregation
@@ -49,18 +50,21 @@ The Real-time Performance Monitoring (RTPM) API has been **fully implemented** a
 - ✅ **Health Monitoring** - Comprehensive health checks for all services
 
 ### Data & Storage
+
 - ✅ **TimescaleDB Integration** - Optimized time-series database with hypertables
 - ✅ **Redis Caching** - High-performance caching layer with intelligent TTL
 - ✅ **Data Models** - Complete Pydantic models with validation
 - ✅ **Database Schema** - Optimized indexes, retention policies, compression
 
 ### Background Processing
+
 - ✅ **Celery Workers** - Distributed task processing
 - ✅ **Metric Aggregation** - Automated data aggregation (1m, 5m, 1h, 1d intervals)
 - ✅ **Alert Evaluation** - Real-time alert rule evaluation
 - ✅ **Data Cleanup** - Automated retention and cleanup tasks
 
 ### Security & Performance
+
 - ✅ **JWT Authentication** - Secure token-based authentication
 - ✅ **Rate Limiting** - Redis-backed rate limiting with sliding windows
 - ✅ **CORS Support** - Configurable cross-origin resource sharing
@@ -68,12 +72,14 @@ The Real-time Performance Monitoring (RTPM) API has been **fully implemented** a
 - ✅ **Error Handling** - Structured error responses and logging
 
 ### Monitoring & Observability
+
 - ✅ **Prometheus Metrics** - Built-in metrics export for monitoring
 - ✅ **Structured Logging** - JSON-formatted logging with context
 - ✅ **Health Checks** - Kubernetes-ready liveness/readiness probes
 - ✅ **Performance Tracking** - Request duration and throughput metrics
 
 ### Production Ready
+
 - ✅ **Docker Containerization** - Multi-stage builds for different environments
 - ✅ **Docker Compose** - Complete orchestration with all services
 - ✅ **Environment Configuration** - Flexible config via environment variables
@@ -103,19 +109,22 @@ The Real-time Performance Monitoring (RTPM) API has been **fully implemented** a
 ## 📊 API Endpoints
 
 ### Metrics Ingestion
+
 - `POST /api/v1/metrics/ingest` - Ingest single metric
 - `POST /api/v1/metrics/batch` - Ingest metrics batch
 - `GET /api/v1/metrics/latest/{name}` - Get latest metric value
 - `GET /api/v1/metrics/names` - List all metric names
 - `GET /api/v1/metrics/stats/{name}` - Get metric statistics
 
-### Data Querying  
+### Data Querying
+
 - `POST /api/v1/metrics/query` - Advanced query with filters
 - `GET /api/v1/metrics/query/range` - Prometheus-style range queries
 - `GET /api/v1/metrics/query/instant` - Instant value queries
 - `GET /api/v1/metrics/aggregated` - Pre-aggregated data
 
 ### Alert Management
+
 - `POST /api/v1/alerts/rules` - Create alert rule
 - `GET /api/v1/alerts/rules` - List alert rules
 - `PUT /api/v1/alerts/rules/{id}` - Update alert rule
@@ -125,6 +134,7 @@ The Real-time Performance Monitoring (RTPM) API has been **fully implemented** a
 - `GET /api/v1/alerts/history` - Alert history
 
 ### Health & Monitoring
+
 - `GET /health` - Basic health check
 - `GET /health/detailed` - Detailed service health
 - `GET /health/ready` - Kubernetes readiness probe
@@ -133,6 +143,7 @@ The Real-time Performance Monitoring (RTPM) API has been **fully implemented** a
 - `GET /metrics` - Prometheus metrics
 
 ### WebSocket
+
 - `WS /ws/metrics` - Real-time updates for metrics and alerts
 
 ## 🛠 Technology Stack
@@ -154,6 +165,7 @@ The Real-time Performance Monitoring (RTPM) API has been **fully implemented** a
 ## 🚀 Quick Start
 
 ### Option 1: Docker Compose (Recommended)
+
 ```bash
 cd /Users/patricksmith/candlefish-ai/apps/rtpm-api
 cp .env.example .env
@@ -161,6 +173,7 @@ cp .env.example .env
 ```
 
 ### Option 2: Manual Setup
+
 ```bash
 # Start services
 docker-compose up -d
@@ -173,10 +186,10 @@ curl http://localhost:8000/health
 
 After deployment, access these services:
 
-- **API Documentation**: http://localhost:8000/docs
-- **API Health**: http://localhost:8000/health  
-- **Flower (Task Monitor)**: http://localhost:5555
-- **Prometheus Metrics**: http://localhost:8000/metrics
+- **API Documentation**: <http://localhost:8000/docs>
+- **API Health**: <http://localhost:8000/health>
+- **Flower (Task Monitor)**: <http://localhost:5555>
+- **Prometheus Metrics**: <http://localhost:8000/metrics>
 
 ## 📈 Performance Capabilities
 
@@ -210,7 +223,7 @@ The API is complete and production-ready. To use it:
 
 - **Zero Downtime**: Health checks and graceful shutdowns
 - **Auto-scaling**: Horizontal scaling ready via Docker
-- **Data Integrity**: ACID transactions with proper error handling  
+- **Data Integrity**: ACID transactions with proper error handling
 - **Real-time**: WebSocket updates for live dashboards
 - **Monitoring**: Built-in Prometheus metrics for observability
 - **Documentation**: Comprehensive API docs and examples

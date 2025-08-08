@@ -45,20 +45,20 @@ wait_for_service() {
     local health_check=$2
     local max_attempts=${3:-30}
     local attempt=1
-    
+
     log "Waiting for $service_name to be ready..."
-    
+
     while [ $attempt -le $max_attempts ]; do
         if eval $health_check &>/dev/null; then
             log "$service_name is ready!"
             return 0
         fi
-        
+
         log "Attempt $attempt/$max_attempts: $service_name not ready yet..."
         sleep 2
         attempt=$((attempt + 1))
     done
-    
+
     error "$service_name failed to start within expected time"
     return 1
 }
@@ -66,48 +66,48 @@ wait_for_service() {
 # Start services
 start_services() {
     log "Starting RTPM API services..."
-    
+
     # Pull latest images
     log "Pulling Docker images..."
     docker-compose pull
-    
+
     # Build custom images
     log "Building RTPM API images..."
     docker-compose build
-    
+
     # Start infrastructure services first
     log "Starting infrastructure services..."
     docker-compose up -d timescaledb redis
-    
+
     # Wait for infrastructure to be ready
     wait_for_service "TimescaleDB" "docker-compose exec -T timescaledb pg_isready -U rtpm -d rtpm_db"
     wait_for_service "Redis" "docker-compose exec -T redis redis-cli ping"
-    
+
     # Start application services
     log "Starting application services..."
     docker-compose up -d rtpm-api celery-worker celery-beat
-    
+
     # Wait for API to be ready
     wait_for_service "RTPM API" "curl -sf http://localhost:8000/health"
-    
+
     # Start monitoring services
     log "Starting monitoring services..."
     docker-compose up -d flower nginx
-    
+
     log "All services started successfully!"
-    
+
     # Display service status
     echo
     log "Service Status:"
     docker-compose ps
-    
+
     echo
     log "Service URLs:"
     echo "  • API Documentation: http://localhost:8000/docs"
     echo "  • API Health Check: http://localhost:8000/health"
     echo "  • Flower (Task Monitor): http://localhost:5555"
     echo "  • Prometheus Metrics: http://localhost:8000/metrics"
-    
+
     echo
     log "To view logs: docker-compose logs -f [service-name]"
     log "To stop services: docker-compose down"
@@ -116,14 +116,14 @@ start_services() {
 # Development mode
 start_development() {
     log "Starting RTPM API in development mode..."
-    
+
     # Create .env from example if it doesn't exist
     if [ ! -f .env ]; then
         log "Creating .env from template..."
         cp .env.example .env
         warn "Please review and update .env file with your settings"
     fi
-    
+
     # Start with development overrides
     docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 }
@@ -131,18 +131,18 @@ start_development() {
 # Production mode
 start_production() {
     log "Starting RTPM API in production mode..."
-    
+
     # Check environment variables
     if [ -z "$SECRET_KEY" ]; then
         error "SECRET_KEY environment variable is not set"
         exit 1
     fi
-    
+
     if [ -z "$JWT_SECRET_KEY" ]; then
         error "JWT_SECRET_KEY environment variable is not set"
         exit 1
     fi
-    
+
     # Start production services
     start_services
 }
@@ -181,13 +181,13 @@ show_logs() {
 # Health check
 health_check() {
     log "Performing health check..."
-    
+
     # Check if services are running
     if ! docker-compose ps | grep -q "Up"; then
         error "No services are running"
         exit 1
     fi
-    
+
     # Check API health
     if curl -sf http://localhost:8000/health/detailed &>/dev/null; then
         log "API health check passed"
@@ -195,7 +195,7 @@ health_check() {
         error "API health check failed"
         exit 1
     fi
-    
+
     # Check database
     if docker-compose exec -T timescaledb pg_isready -U rtpm -d rtpm_db &>/dev/null; then
         log "Database health check passed"
@@ -203,15 +203,15 @@ health_check() {
         error "Database health check failed"
         exit 1
     fi
-    
+
     # Check Redis
     if docker-compose exec -T redis redis-cli ping &>/dev/null; then
         log "Redis health check passed"
     else
-        error "Redis health check failed" 
+        error "Redis health check failed"
         exit 1
     fi
-    
+
     log "All health checks passed!"
 }
 

@@ -30,7 +30,7 @@ __tests__/
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - npm or yarn
 - Git
 
@@ -73,12 +73,14 @@ CLEANUP_TEST_DATA=true
 ## 📋 Test Commands
 
 ### Run All Tests
+
 ```bash
 npm run test:all        # Run all test suites
 npm run test:ci         # Run tests in CI mode
 ```
 
 ### Unit Tests
+
 ```bash
 npm run test:unit       # Run unit tests
 npm run test:watch      # Run unit tests in watch mode
@@ -86,11 +88,13 @@ npm run test:coverage   # Generate coverage report
 ```
 
 ### Integration Tests
+
 ```bash
 npm run test:integration  # Run integration tests
 ```
 
 ### End-to-End Tests
+
 ```bash
 npm run test:e2e        # Run E2E tests
 npx playwright test     # Run E2E tests directly
@@ -98,11 +102,13 @@ npx playwright test --ui  # Run E2E tests with UI
 ```
 
 ### Performance Tests
+
 ```bash
 npm run test:performance  # Run performance tests
 ```
 
 ### Debugging
+
 ```bash
 npm run test:debug      # Debug tests with Node inspector
 npx playwright test --debug  # Debug E2E tests
@@ -113,6 +119,7 @@ npx playwright test --debug  # Debug E2E tests
 The test suite covers:
 
 ### Backend API Endpoints
+
 - ✅ `POST /repositories/{repo-id}/sync` - Repository synchronization
 - ✅ `GET /sync/{sync-id}` - Sync operation status
 - ✅ `POST /distribute` - Resource distribution
@@ -120,6 +127,7 @@ The test suite covers:
 - ✅ `POST /local/setup/{repo-id}` - Local symlink setup
 
 ### Frontend Components
+
 - ✅ **DeploymentDashboard** - Main dashboard with system overview
 - ✅ **SyncProgressIndicator** - Real-time sync progress display
 - ✅ **DeploymentActions** - Quick action buttons and execution
@@ -127,17 +135,20 @@ The test suite covers:
 - ✅ **OnboardingWizard** - Team member onboarding flow
 
 ### GitHub Actions Workflows
+
 - ✅ **claude-org-setup.yml** - Organization-wide setup
 - ✅ **claude-team-setup.yml** - Team member onboarding
 - ✅ **claude-agents-sync.yml** - Automated resource synchronization
 
 ### End-to-End Flows
+
 - ✅ **Complete Deployment Flow** - From setup to production
 - ✅ **Team Onboarding** - Member invitation to active status
 - ✅ **Error Recovery** - Handling and recovering from failures
 - ✅ **Real-time Updates** - WebSocket communication testing
 
 ### Performance Testing
+
 - ✅ **Bulk Operations** - Large-scale repository management
 - ✅ **Concurrent Syncs** - Multiple simultaneous operations
 - ✅ **Memory Usage** - Memory leak detection and optimization
@@ -155,18 +166,21 @@ The test suite covers:
 ## 🔧 Test Configuration
 
 ### Jest Configuration
+
 - **Environment**: jsdom for components, node for API tests
 - **Setup**: MSW for API mocking, React Testing Library
 - **Coverage**: Lines, functions, branches, statements
 - **Timeout**: 30 seconds for async operations
 
 ### Playwright Configuration
+
 - **Browsers**: Chromium, Firefox, WebKit
 - **Mobile**: iOS Safari, Android Chrome
 - **Reporters**: HTML, JSON, JUnit for CI/CD integration
 - **Artifacts**: Screenshots, videos, traces on failure
 
 ### Mock Service Worker (MSW)
+
 - **API Mocking**: Consistent test data across all tests
 - **Error Scenarios**: Network failures, timeouts, rate limits
 - **Real-time Updates**: WebSocket message simulation
@@ -174,6 +188,7 @@ The test suite covers:
 ## 🐛 Debugging Tests
 
 ### Unit Test Debugging
+
 ```bash
 # Debug specific test file
 npm run test:debug -- --testPathPattern=DeploymentDashboard
@@ -183,6 +198,7 @@ npm run test:debug -- --testPathPattern=DeploymentDashboard
 ```
 
 ### E2E Test Debugging
+
 ```bash
 # Run with headed browser
 npx playwright test --headed
@@ -195,6 +211,7 @@ npx playwright test --trace on
 ```
 
 ### Mock API Debugging
+
 ```bash
 # Enable MSW logging
 MSW_LOGGING=true npm run test
@@ -206,6 +223,7 @@ npm run test -- --verbose
 ## 🚦 CI/CD Integration
 
 ### GitHub Actions Integration
+
 ```yaml
 name: Test Suite
 on: [push, pull_request]
@@ -219,12 +237,12 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-      
+
       - run: npm ci
       - run: npm run test:ci
       - run: npx playwright install --with-deps
       - run: npm run test:e2e
-      
+
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -233,6 +251,7 @@ jobs:
 ```
 
 ### Coverage Reporting
+
 - **HTML Reports**: Generated in `coverage/` directory
 - **LCOV**: For SonarQube, Codecov integration
 - **JSON**: For custom reporting tools
@@ -240,6 +259,7 @@ jobs:
 ## 📝 Writing Tests
 
 ### Unit Test Example
+
 ```javascript
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -249,41 +269,43 @@ describe('MyComponent', () => {
   it('should handle user interaction', async () => {
     const user = userEvent.setup()
     const onAction = jest.fn()
-    
+
     render(<MyComponent onAction={onAction} />)
-    
+
     await user.click(screen.getByRole('button'))
-    
+
     expect(onAction).toHaveBeenCalledTimes(1)
   })
 })
 ```
 
 ### E2E Test Example
+
 ```javascript
 import { test, expect } from '@playwright/test'
 
 test('deployment flow', async ({ page }) => {
   await page.goto('/')
-  
+
   await expect(page.locator('h1')).toContainText('Claude Resources')
-  
+
   await page.click('button:has-text("Sync All")')
-  
+
   await expect(page.locator('.progress-bar')).toBeVisible()
 })
 ```
 
 ### Performance Test Example
+
 ```javascript
 describe('Bulk Operations Performance', () => {
   it('should handle 1000 repositories efficiently', async () => {
     const startTime = performance.now()
-    
+
     const result = await processRepositories(mockRepos1000)
-    
+
     const executionTime = performance.now() - startTime
-    
+
     expect(result).toHaveLength(1000)
     expect(executionTime).toBeLessThan(1000) // < 1 second
   })
@@ -293,12 +315,14 @@ describe('Bulk Operations Performance', () => {
 ## 🔍 Test Data Management
 
 ### Mock Data
+
 - **Repositories**: Various states (synced, syncing, error)
 - **Team Members**: Different roles and onboarding stages
 - **Sync Operations**: Active, completed, failed operations
 - **System Status**: Healthy, degraded, critical states
 
 ### Test Utilities
+
 - **Factory Functions**: Generate test data dynamically
 - **Cleanup Helpers**: Reset state between tests
 - **Assertion Helpers**: Custom matchers for domain objects
@@ -317,6 +341,7 @@ describe('Bulk Operations Performance', () => {
 ### Common Issues
 
 #### Tests Timing Out
+
 ```bash
 # Increase timeout for specific tests
 jest.setTimeout(60000)
@@ -326,6 +351,7 @@ test.setTimeout(60000)
 ```
 
 #### MSW Not Working
+
 ```bash
 # Check MSW setup in jest.setup.js
 # Ensure handlers are properly configured
@@ -333,6 +359,7 @@ test.setTimeout(60000)
 ```
 
 #### E2E Tests Flaky
+
 ```bash
 # Use waitFor assertions
 await expect(page.locator('text=Loading')).not.toBeVisible()
@@ -342,6 +369,7 @@ await page.waitForLoadState('networkidle')
 ```
 
 #### Coverage Too Low
+
 ```bash
 # Check untested files
 npm run test:coverage -- --verbose
@@ -353,12 +381,14 @@ npm run test:coverage -- --verbose
 ## 🤝 Contributing
 
 ### Before Submitting Tests
+
 1. Run full test suite: `npm run test:all`
 2. Check coverage: `npm run test:coverage`
 3. Lint tests: `npm run lint`
 4. Validate workflows: `npm run validate:workflows`
 
 ### Test Guidelines
+
 - **Arrange-Act-Assert**: Clear test structure
 - **Descriptive Names**: Test names should describe behavior
 - **Single Responsibility**: One assertion per test when possible
@@ -376,7 +406,8 @@ npm run test:coverage -- --verbose
 ## 📞 Support
 
 For questions about the test suite:
-- 📧 Email: dev-team@candlefish.ai
+
+- 📧 Email: <dev-team@candlefish.ai>
 - 💬 Slack: #claude-resources-testing
 - 📝 Issues: GitHub Issues
 

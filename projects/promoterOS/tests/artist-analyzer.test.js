@@ -15,9 +15,9 @@ describe('ArtistAnalyzer', () => {
 
     test('should return valid analysis for known artist', async () => {
       const result = await handler(mockEvent, mockContext);
-      
+
       expect(result.statusCode).toBe(200);
-      
+
       const response = JSON.parse(result.body);
       expect(response.success).toBe(true);
       expect(response.data).toHaveProperty('artist');
@@ -25,13 +25,13 @@ describe('ArtistAnalyzer', () => {
       expect(response.data).toHaveProperty('booking_analysis');
       expect(response.data).toHaveProperty('market_fit');
       expect(response.data).toHaveProperty('pricing_suggestion');
-      
+
       // Validate booking analysis structure
       expect(response.data.booking_analysis).toHaveProperty('score');
       expect(response.data.booking_analysis).toHaveProperty('recommendation');
       expect(response.data.booking_analysis).toHaveProperty('expected_attendance');
       expect(response.data.booking_analysis).toHaveProperty('risk_level');
-      
+
       // Validate score ranges
       expect(response.data.booking_analysis.score).toBeGreaterThanOrEqual(0);
       expect(response.data.booking_analysis.score).toBeLessThanOrEqual(100);
@@ -40,7 +40,7 @@ describe('ArtistAnalyzer', () => {
     test('should handle OPTIONS request for CORS', async () => {
       const optionsEvent = { ...mockEvent, httpMethod: 'OPTIONS' };
       const result = await handler(optionsEvent, mockContext);
-      
+
       expect(result.statusCode).toBe(200);
       expect(result.headers['Access-Control-Allow-Origin']).toBe('*');
       expect(result.headers['Access-Control-Allow-Methods']).toContain('POST');
@@ -49,7 +49,7 @@ describe('ArtistAnalyzer', () => {
     test('should reject GET requests', async () => {
       const getEvent = { ...mockEvent, httpMethod: 'GET' };
       const result = await handler(getEvent, mockContext);
-      
+
       expect(result.statusCode).toBe(405);
     });
 
@@ -58,9 +58,9 @@ describe('ArtistAnalyzer', () => {
         ...mockEvent,
         body: JSON.stringify({ context: { venue_capacity: 2500 } })
       };
-      
+
       const result = await handler(invalidEvent, mockContext);
-      
+
       expect(result.statusCode).toBe(400);
       const response = JSON.parse(result.body);
       expect(response.error).toBe('artist_name is required');
@@ -69,7 +69,7 @@ describe('ArtistAnalyzer', () => {
     test('should handle malformed JSON gracefully', async () => {
       const invalidEvent = { ...mockEvent, body: 'invalid json' };
       const result = await handler(invalidEvent, mockContext);
-      
+
       expect(result.statusCode).toBe(500);
     });
 
@@ -78,12 +78,12 @@ describe('ArtistAnalyzer', () => {
         ...mockEvent,
         body: JSON.stringify({ artist_name: 'Unknown Artist Test' })
       };
-      
+
       const result = await handler(unknownArtistEvent, mockContext);
-      
+
       expect(result.statusCode).toBe(200);
       const response = JSON.parse(result.body);
-      
+
       // Should still return valid structure
       expect(response.data.streaming_metrics.spotify_monthly).toBeGreaterThan(0);
       expect(response.data.booking_analysis.score).toBeGreaterThanOrEqual(0);
@@ -94,9 +94,9 @@ describe('ArtistAnalyzer', () => {
   describe('Scoring Algorithm Tests', () => {
     // Mock the ArtistAnalyzer class to test individual methods
     const ArtistAnalyzer = require('../api/artists/evaluate');
-    
+
     let analyzer;
-    
+
     beforeEach(() => {
       // We need to access the class directly, not through the handler
       // This would require refactoring the original file to export the class
@@ -141,7 +141,7 @@ describe('ArtistAnalyzer', () => {
       };
 
       const score = analyzer.calculateBookingScore(highPerformanceData);
-      
+
       expect(score).toBeGreaterThan(70);
       expect(score).toBeLessThanOrEqual(100);
     });
@@ -158,7 +158,7 @@ describe('ArtistAnalyzer', () => {
       };
 
       const score = analyzer.calculateBookingScore(lowPerformanceData);
-      
+
       expect(score).toBeLessThan(50);
       expect(score).toBeGreaterThanOrEqual(0);
     });

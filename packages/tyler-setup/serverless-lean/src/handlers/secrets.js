@@ -21,7 +21,7 @@ export const handler = async (event) => {
 
     const httpMethod = event.httpMethod;
     const secretName = event.pathParameters?.name;
-    
+
     // Check contractor permissions
     if (user.type === 'contractor') {
       // Contractors can only read specific allowed secrets
@@ -43,16 +43,16 @@ export const handler = async (event) => {
         } else {
           return await listSecrets(user);
         }
-      
+
       case 'POST':
         return await createSecret(event.body, user);
-      
+
       case 'PUT':
         return await updateSecret(secretName, event.body, user);
-      
+
       case 'DELETE':
         return await deleteSecret(secretName, user);
-      
+
       default:
         return response(405, { error: 'Method not allowed' });
     }
@@ -68,13 +68,13 @@ export const handler = async (event) => {
 async function getSecret(secretName, user) {
   try {
     const fullSecretName = `${process.env.SECRETS_PREFIX}/${secretName}`;
-    
+
     const command = new GetSecretValueCommand({
       SecretId: fullSecretName
     });
-    
+
     const result = await secretsClient.send(command);
-    
+
     // Parse secret value
     let secretValue;
     try {
@@ -82,7 +82,7 @@ async function getSecret(secretName, user) {
     } catch {
       secretValue = result.SecretString;
     }
-    
+
     // Log access
     await logAudit({
       action: 'SECRET_RETRIEVED',
@@ -90,12 +90,12 @@ async function getSecret(secretName, user) {
       resource: secretName,
       userType: user.type
     });
-    
+
     // Mask sensitive values for contractors
     if (user.type === 'contractor') {
       secretValue = maskSensitiveData(secretValue);
     }
-    
+
     return response(200, {
       name: secretName,
       value: secretValue,
@@ -128,9 +128,9 @@ async function listSecrets(user) {
         }
       ]
     });
-    
+
     const result = await secretsClient.send(command);
-    
+
     // Filter secrets based on user permissions
     let secrets = result.SecretList.map(secret => ({
       name: secret.Name.replace(`${process.env.SECRETS_PREFIX}/`, ''),
@@ -140,18 +140,18 @@ async function listSecrets(user) {
       tags: secret.Tags,
       rotationEnabled: secret.RotationEnabled
     }));
-    
+
     // Contractors see limited list
     if (user.type === 'contractor') {
       secrets = secrets.filter(s => isContractorAllowedSecret(s.name, user));
     }
-    
+
     await logAudit({
       action: 'SECRETS_LISTED',
       userId: user.id,
       count: secrets.length
     });
-    
+
     return response(200, {
       secrets,
       count: secrets.length
@@ -168,13 +168,13 @@ async function createSecret(body, user) {
   try {
     const data = JSON.parse(body);
     const { name, value, description, tags } = data;
-    
+
     if (!name || !value) {
       return response(400, { error: 'Name and value are required' });
     }
-    
+
     const fullSecretName = `${process.env.SECRETS_PREFIX}/${name}`;
-    
+
     const command = new CreateSecretCommand({
       Name: fullSecretName,
       SecretString: typeof value === 'object' ? JSON.stringify(value) : value,
@@ -185,16 +185,16 @@ async function createSecret(body, user) {
         ...(tags || [])
       ]
     });
-    
+
     const result = await secretsClient.send(command);
-    
+
     await logAudit({
       action: 'SECRET_CREATED',
       userId: user.id,
       resource: name,
       details: { description }
     });
-    
+
     return response(201, {
       success: true,
       name,
@@ -216,27 +216,27 @@ async function updateSecret(secretName, body, user) {
   try {
     const data = JSON.parse(body);
     const { value, description } = data;
-    
+
     if (!value) {
       return response(400, { error: 'Value is required' });
     }
-    
+
     const fullSecretName = `${process.env.SECRETS_PREFIX}/${secretName}`;
-    
+
     const command = new UpdateSecretCommand({
       SecretId: fullSecretName,
       SecretString: typeof value === 'object' ? JSON.stringify(value) : value,
       Description: description
     });
-    
+
     const result = await secretsClient.send(command);
-    
+
     await logAudit({
       action: 'SECRET_UPDATED',
       userId: user.id,
       resource: secretName
     });
-    
+
     return response(200, {
       success: true,
       name: secretName,
@@ -260,23 +260,23 @@ async function deleteSecret(secretName, user) {
     if (user.role !== 'admin') {
       return response(403, { error: 'Only administrators can delete secrets' });
     }
-    
+
     const fullSecretName = `${process.env.SECRETS_PREFIX}/${secretName}`;
-    
+
     const command = new DeleteSecretCommand({
       SecretId: fullSecretName,
       RecoveryWindowInDays: 7  // 7-day recovery window
     });
-    
+
     const result = await secretsClient.send(command);
-    
+
     await logAudit({
       action: 'SECRET_DELETED',
       userId: user.id,
       resource: secretName,
       details: { recoveryWindow: 7 }
     });
-    
+
     return response(200, {
       success: true,
       name: secretName,
@@ -301,12 +301,12 @@ function isContractorAllowedSecret(secretName, contractor) {
     'public/',   // Public keys
     'docs/',     // Documentation links
   ];
-  
+
   // Check contractor-specific permissions
   if (contractor.allowedSecrets && contractor.allowedSecrets.includes(secretName)) {
     return true;
   }
-  
+
   // Check prefix-based permissions
   return allowedPrefixes.some(prefix => secretName.startsWith(prefix));
 }
@@ -322,7 +322,7 @@ function maskSensitiveData(value) {
     }
     return '********';
   }
-  
+
   if (typeof value === 'object') {
     const masked = {};
     for (const [key, val] of Object.entries(value)) {
@@ -335,6 +335,6 @@ function maskSensitiveData(value) {
     }
     return masked;
   }
-  
+
   return '********';
 }

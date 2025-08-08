@@ -9,7 +9,7 @@ interface FeatureProps {
 
 const Feature: React.FC<FeatureProps> = ({ icon, title, description, delay = 0 }) => {
   return (
-    <div 
+    <div
       className="feature opacity-0 transform translate-y-10"
       data-animate
       style={{
@@ -23,11 +23,11 @@ const Feature: React.FC<FeatureProps> = ({ icon, title, description, delay = 0 }
           {icon}
         </div>
       </div>
-      
+
       <h3 className="text-2xl mb-4 font-light">
         {title}
       </h3>
-      
+
       <p className="text-gray-400 leading-relaxed">
         {description}
       </p>
@@ -42,11 +42,11 @@ const WhatWeDo: React.FC = () => {
         <div className="text-center mb-16">
           <h2 className="mb-8">What is Candlefish AI?</h2>
           <p className="text-xl text-gray-400 max-w-4xl mx-auto leading-relaxed">
-            We make your business systems smarter and faster using AI. Think of us as translators 
+            We make your business systems smarter and faster using AI. Think of us as translators
             between cutting-edge AI technology and your daily operations.
           </p>
         </div>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-16">
           <div className="group">
             <Feature
@@ -60,7 +60,7 @@ const WhatWeDo: React.FC = () => {
               delay={100}
             />
           </div>
-          
+
           <div className="group">
             <Feature
               icon={
@@ -74,7 +74,7 @@ const WhatWeDo: React.FC = () => {
               delay={200}
             />
           </div>
-          
+
           <div className="group">
             <Feature
               icon={
@@ -90,7 +90,7 @@ const WhatWeDo: React.FC = () => {
           </div>
         </div>
       </div>
-      
+
     </section>
   )
 }

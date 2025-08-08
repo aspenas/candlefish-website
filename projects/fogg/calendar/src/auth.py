@@ -1,7 +1,5 @@
 """Google API Authentication Module - Legacy wrapper for backward compatibility."""
 
-from typing import Optional
-
 from google.auth import credentials as auth_credentials
 from googleapiclient.discovery import Resource, build
 
@@ -14,10 +12,10 @@ SCOPES = [
 ]
 
 # Global credentials manager
-_credentials_manager: Optional[GCPCredentialsManager] = None
+_credentials_manager: GCPCredentialsManager | None = None
 
 
-def get_credentials(impersonate_email: Optional[str] = None) -> auth_credentials.Credentials:
+def get_credentials(impersonate_email: str | None = None) -> auth_credentials.Credentials:
     """Get Google API credentials from environment or ADC.
 
     Args:
@@ -29,8 +27,7 @@ def get_credentials(impersonate_email: Optional[str] = None) -> auth_credentials
     global _credentials_manager
     if _credentials_manager is None or _credentials_manager.impersonate_email != impersonate_email:
         _credentials_manager = GCPCredentialsManager(
-            scopes=SCOPES,
-            impersonate_email=impersonate_email
+            scopes=SCOPES, impersonate_email=impersonate_email
         )
     return _credentials_manager.get_credentials()
 

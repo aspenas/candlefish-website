@@ -51,9 +51,9 @@ exports.handler = async (event, context) => {
 
   try {
     // Extract client information
-    const clientIP = event.headers['x-forwarded-for'] || 
-                    event.headers['x-real-ip'] || 
-                    event.headers['client-ip'] || 
+    const clientIP = event.headers['x-forwarded-for'] ||
+                    event.headers['x-real-ip'] ||
+                    event.headers['client-ip'] ||
                     'unknown';
 
     // Simulate security check with mock services
@@ -82,7 +82,7 @@ exports.handler = async (event, context) => {
 
     const healthyCount = Object.values(services).filter(s => s.healthy).length;
     const totalCount = Object.keys(services).length;
-    
+
     const response = {
       overall_status: healthyCount === totalCount ? 'healthy' : 'degraded',
       services: services,
@@ -106,7 +106,7 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         error: 'Security check failed',
         request_id: context.awsRequestId
       })

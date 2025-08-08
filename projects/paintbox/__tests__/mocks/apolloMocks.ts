@@ -4,7 +4,7 @@
  */
 
 import { MockedResponse } from '@apollo/client/testing';
-import { 
+import {
   ServiceFactory,
   MetricFactory,
   AlertFactory,

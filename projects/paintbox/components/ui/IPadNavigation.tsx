@@ -188,7 +188,7 @@ export function IPadNavigation({
               >
                 {step.completed && index !== currentStep ? '✓' : index + 1}
               </div>
-              
+
               {/* Step label */}
               <div className="flex-1">
                 <div className="font-medium">{step.label}</div>
@@ -196,7 +196,7 @@ export function IPadNavigation({
                   <div className="text-xs opacity-75">Completed</div>
                 )}
               </div>
-              
+
               {/* Step icon if provided */}
               {step.icon && <div className="opacity-75">{step.icon}</div>}
             </button>

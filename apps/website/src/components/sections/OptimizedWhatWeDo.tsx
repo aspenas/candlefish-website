@@ -12,21 +12,21 @@ interface FeatureProps {
   prefersReducedMotion: boolean
 }
 
-const Feature: React.FC<FeatureProps> = React.memo(({ 
-  icon, 
-  title, 
-  description, 
+const Feature: React.FC<FeatureProps> = React.memo(({
+  icon,
+  title,
+  description,
   index,
   inView,
-  prefersReducedMotion 
+  prefersReducedMotion
 }) => {
   const spring = useSpring({
-    from: { 
-      opacity: 0, 
+    from: {
+      opacity: 0,
       transform: 'translateY(50px)',
     },
-    to: { 
-      opacity: inView ? 1 : 0, 
+    to: {
+      opacity: inView ? 1 : 0,
       transform: inView ? 'translateY(0px)' : 'translateY(50px)',
     },
     delay: prefersReducedMotion ? 0 : 100 + (index * 100),
@@ -42,7 +42,7 @@ const Feature: React.FC<FeatureProps> = React.memo(({
 
   const handleMouseEnter = useCallback(() => {
     if (!prefersReducedMotion) {
-      setIconSpring({ 
+      setIconSpring({
         rotate: 360,
         scale: 1.1,
         y: -8
@@ -51,7 +51,7 @@ const Feature: React.FC<FeatureProps> = React.memo(({
   }, [setIconSpring, prefersReducedMotion])
 
   const handleMouseLeave = useCallback(() => {
-    setIconSpring({ 
+    setIconSpring({
       rotate: 0,
       scale: 1,
       y: 0
@@ -59,7 +59,7 @@ const Feature: React.FC<FeatureProps> = React.memo(({
   }, [setIconSpring])
 
   return (
-    <animated.div 
+    <animated.div
       className="text-center group cursor-pointer"
       style={{
         opacity: spring.opacity,
@@ -74,7 +74,7 @@ const Feature: React.FC<FeatureProps> = React.memo(({
       role="article"
       aria-label={`${title}: ${description}`}
     >
-      <animated.div 
+      <animated.div
         className="w-20 h-20 mb-6 mx-auto flex items-center justify-center bg-gray-800 border border-gray-700 relative overflow-hidden"
         style={{
           transform: iconSpring.y.to(y => `translateY(${y}px)`),
@@ -85,14 +85,14 @@ const Feature: React.FC<FeatureProps> = React.memo(({
         }}
       >
         {/* Rotating border effect */}
-        <animated.div 
+        <animated.div
           className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-400"
           style={{
             background: 'conic-gradient(from 0deg, transparent, #00CED1, transparent)',
             transform: iconSpring.rotate.to(r => `rotate(${r}deg)`),
           }}
         />
-        <animated.div 
+        <animated.div
           className="relative z-10 text-teal-400"
           style={{
             transform: iconSpring.scale.to(s => `scale(${s})`),
@@ -101,11 +101,11 @@ const Feature: React.FC<FeatureProps> = React.memo(({
           {icon}
         </animated.div>
       </animated.div>
-      
+
       <h3 className="text-2xl mb-4 font-light">
         {title}
       </h3>
-      
+
       <p className="text-gray-400 leading-relaxed">
         {description}
       </p>
@@ -124,9 +124,9 @@ const OptimizedWhatWeDo: React.FC = React.memo(() => {
 
   const titleSpring = useSpring({
     from: { opacity: 0, transform: 'translateY(30px)' },
-    to: { 
-      opacity: inView ? 1 : 0, 
-      transform: inView ? 'translateY(0px)' : 'translateY(30px)' 
+    to: {
+      opacity: inView ? 1 : 0,
+      transform: inView ? 'translateY(0px)' : 'translateY(30px)'
     },
     config: config.gentle
   })
@@ -164,24 +164,24 @@ const OptimizedWhatWeDo: React.FC = React.memo(() => {
   ]
 
   return (
-    <section 
+    <section
       ref={ref}
-      className="py-20 lg:py-32 bg-gray-900" 
+      className="py-20 lg:py-32 bg-gray-900"
       id="what-we-do"
       aria-label="What We Do"
     >
       <div className="container mx-auto px-6 max-w-6xl">
-        <animated.div 
+        <animated.div
           className="text-center mb-16"
           style={titleSpring}
         >
           <h2 className="text-4xl md:text-5xl font-light mb-8">What is Candlefish AI?</h2>
           <p className="text-xl text-gray-400 max-w-4xl mx-auto leading-relaxed">
-            We make your business systems smarter and faster using AI. Think of us as translators 
+            We make your business systems smarter and faster using AI. Think of us as translators
             between cutting-edge AI technology and your daily operations.
           </p>
         </animated.div>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-16">
           {features.map((feature, index) => (
             <Feature

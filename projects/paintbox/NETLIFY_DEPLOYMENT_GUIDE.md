@@ -47,6 +47,7 @@ netlify deploy --prod
 In Netlify Dashboard → Site Settings → Environment Variables, add:
 
 ### Public Variables (Safe for Frontend)
+
 ```
 NEXT_PUBLIC_ENVIRONMENT=production
 NEXT_PUBLIC_API_URL=https://your-backend-api.railway.app
@@ -55,6 +56,7 @@ NEXT_PUBLIC_SALESFORCE_ENABLED=true
 ```
 
 ### Build-Time Variables
+
 ```
 NODE_VERSION=20
 NEXT_TELEMETRY_DISABLED=1
@@ -65,17 +67,20 @@ NEXT_TELEMETRY_DISABLED=1
 Since Netlify can't run the full Next.js API routes, deploy the backend separately:
 
 ### Option 1: Railway (Recommended)
+
 1. Create new project on [Railway](https://railway.app)
 2. Deploy the API server code
 3. Configure environment variables
 4. Get the deployment URL
 
 ### Option 2: Fly.io
+
 1. Install Fly CLI: `brew install flyctl`
 2. Deploy: `fly launch`
 3. Configure: `fly secrets set`
 
 ### Option 3: Heroku
+
 1. Create app: `heroku create paintbox-api`
 2. Deploy: `git push heroku main`
 3. Configure: `heroku config:set`
@@ -85,6 +90,7 @@ Since Netlify can't run the full Next.js API routes, deploy the backend separate
 After backend deployment, update the API URL:
 
 1. In Netlify Dashboard → Environment Variables:
+
    ```
    NEXT_PUBLIC_API_URL=https://your-actual-backend-url.railway.app
    ```
@@ -100,6 +106,7 @@ After backend deployment, update the API URL:
 ## Environment Variables Reference
 
 ### Required for Backend API
+
 ```env
 # Database
 DATABASE_URL=postgresql://...
@@ -125,6 +132,7 @@ ENCRYPTION_KEY=...
 ```
 
 ### Optional Services
+
 ```env
 # Monitoring
 SENTRY_DSN=...
@@ -169,6 +177,6 @@ echo "⚠️  Remember to deploy backend API separately"
 
 ## Support
 
-- Netlify Docs: https://docs.netlify.com
-- Next.js Static Export: https://nextjs.org/docs/app/building-your-application/deploying/static-exports
-- Railway Docs: https://docs.railway.app
+- Netlify Docs: <https://docs.netlify.com>
+- Next.js Static Export: <https://nextjs.org/docs/app/building-your-application/deploying/static-exports>
+- Railway Docs: <https://docs.railway.app>

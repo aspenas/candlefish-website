@@ -36,7 +36,7 @@ describe('Secret Retrieval Performance Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     secretsManager = new SecretsManager()
-    
+
     // Default mock response
     mockSend.mockResolvedValue({
       SecretString: JSON.stringify({
@@ -55,9 +55,9 @@ describe('Secret Retrieval Performance Tests', () => {
   describe('Single Secret Retrieval Performance', () => {
     it('should retrieve a single secret within performance threshold', async () => {
       const startTime = performance.now()
-      
+
       const result = await secretsManager.getSecret('test/performance/secret')
-      
+
       const endTime = performance.now()
       const duration = endTime - startTime
 
@@ -69,7 +69,7 @@ describe('Secret Retrieval Performance Tests', () => {
       // Prime the cache
       mockRedis.get.mockResolvedValueOnce(null) // Cache miss
       mockRedis.set.mockResolvedValueOnce('OK')
-      
+
       const startTime1 = performance.now()
       await secretsManager.getSecretCached('test/cached/secret', 300)
       const endTime1 = performance.now()
@@ -80,7 +80,7 @@ describe('Secret Retrieval Performance Tests', () => {
         data: { api_key: 'cached-key' },
         timestamp: Date.now()
       }))
-      
+
       const startTime2 = performance.now()
       await secretsManager.getSecretCached('test/cached/secret', 300)
       const endTime2 = performance.now()
@@ -92,7 +92,7 @@ describe('Secret Retrieval Performance Tests', () => {
 
     it('should maintain performance under simulated network latency', async () => {
       // Simulate network delay
-      mockSend.mockImplementation(() => 
+      mockSend.mockImplementation(() =>
         new Promise(resolve => {
           setTimeout(() => {
             resolve({
@@ -117,27 +117,27 @@ describe('Secret Retrieval Performance Tests', () => {
   describe('Concurrent Secret Retrieval Performance', () => {
     it('should handle moderate concurrent load efficiently', async () => {
       const concurrentRequests = 10
-      const secretNames = Array.from({ length: concurrentRequests }, (_, i) => 
+      const secretNames = Array.from({ length: concurrentRequests }, (_, i) =>
         `test/concurrent/secret-${i}`
       )
 
       const startTime = performance.now()
-      
-      const promises = secretNames.map(name => 
+
+      const promises = secretNames.map(name =>
         secretsManager.getSecret(name)
       )
-      
+
       const results = await Promise.all(promises)
-      
+
       const endTime = performance.now()
       const totalDuration = endTime - startTime
 
       expect(results).toHaveLength(concurrentRequests)
       expect(results.every(result => result.api_key === 'test-api-key')).toBe(true)
-      
+
       // Should complete all requests within reasonable time
       expect(totalDuration).toBeLessThan(2000) // 2 seconds for 10 concurrent requests
-      
+
       // Average time per request should be reasonable
       const avgDuration = totalDuration / concurrentRequests
       expect(avgDuration).toBeLessThan(200) // Average under 200ms per request
@@ -145,33 +145,33 @@ describe('Secret Retrieval Performance Tests', () => {
 
     it('should handle high concurrent load with connection pooling', async () => {
       const highConcurrentRequests = 50
-      const secretNames = Array.from({ length: highConcurrentRequests }, (_, i) => 
+      const secretNames = Array.from({ length: highConcurrentRequests }, (_, i) =>
         `test/high-load/secret-${i}`
       )
 
       const startTime = performance.now()
-      
-      const promises = secretNames.map(name => 
+
+      const promises = secretNames.map(name =>
         secretsManager.getSecret(name)
       )
-      
+
       const results = await Promise.all(promises)
-      
+
       const endTime = performance.now()
       const totalDuration = endTime - startTime
 
       expect(results).toHaveLength(highConcurrentRequests)
-      
+
       // Should handle high load without timing out
       expect(totalDuration).toBeLessThan(10000) // 10 seconds for 50 concurrent requests
-      
+
       // Should not overwhelm the connection pool
       expect(mockSend).toHaveBeenCalledTimes(highConcurrentRequests)
     })
 
     it('should implement backpressure for extreme load', async () => {
       const extremeLoad = 100
-      const secretNames = Array.from({ length: extremeLoad }, (_, i) => 
+      const secretNames = Array.from({ length: extremeLoad }, (_, i) =>
         `test/extreme-load/secret-${i}`
       )
 
@@ -192,13 +192,13 @@ describe('Secret Retrieval Performance Tests', () => {
       })
 
       const startTime = performance.now()
-      
-      const promises = secretNames.map(name => 
+
+      const promises = secretNames.map(name =>
         secretsManager.getSecretWithBackoff(name, 3, 100)
       )
-      
+
       const results = await Promise.allSettled(promises)
-      
+
       const endTime = performance.now()
       const totalDuration = endTime - startTime
 
@@ -206,10 +206,10 @@ describe('Secret Retrieval Performance Tests', () => {
       const failed = results.filter(r => r.status === 'rejected')
 
       console.log(`Extreme load test: ${successful.length} succeeded, ${failed.length} failed in ${totalDuration}ms`)
-      
+
       // Should have some successful requests despite throttling
       expect(successful.length).toBeGreaterThan(10)
-      
+
       // Should complete within reasonable time even with retries
       expect(totalDuration).toBeLessThan(30000) // 30 seconds max
     })
@@ -222,7 +222,7 @@ describe('Secret Retrieval Performance Tests', () => {
 
       // Measure uncached performance
       mockRedis.get.mockResolvedValue(null) // Always cache miss
-      
+
       const uncachedTimes = []
       for (let i = 0; i < iterations; i++) {
         const startTime = performance.now()
@@ -238,7 +238,7 @@ describe('Secret Retrieval Performance Tests', () => {
         data: { api_key: 'cached-key' },
         timestamp: Date.now()
       }))
-      
+
       const cachedTimes = []
       for (let i = 0; i < iterations; i++) {
         const startTime = performance.now()
@@ -283,23 +283,23 @@ describe('Secret Retrieval Performance Tests', () => {
       })
 
       const startTime = performance.now()
-      
-      const promises = Array.from({ length: concurrentRequests }, () => 
+
+      const promises = Array.from({ length: concurrentRequests }, () =>
         secretsManager.getSecretWithCacheStampedeProtection(secretName, 300)
       )
-      
+
       const results = await Promise.all(promises)
-      
+
       const endTime = performance.now()
       const totalDuration = endTime - startTime
 
       expect(results).toHaveLength(concurrentRequests)
       expect(results.every(result => result.key === 'value')).toBe(true)
-      
+
       // Should have made far fewer AWS calls than concurrent requests
       // due to stampede protection
       expect(awsCallCount).toBeLessThan(concurrentRequests / 2)
-      
+
       console.log(`Cache stampede test: ${concurrentRequests} requests, ${awsCallCount} AWS calls in ${totalDuration}ms`)
     })
   })
@@ -307,11 +307,11 @@ describe('Secret Retrieval Performance Tests', () => {
   describe('Memory and Resource Performance', () => {
     it('should not leak memory during repeated secret retrievals', async () => {
       const initialMemory = process.memoryUsage()
-      
+
       const iterations = 100
       for (let i = 0; i < iterations; i++) {
         await secretsManager.getSecret(`test/memory/secret-${i}`)
-        
+
         // Force garbage collection periodically
         if (i % 20 === 0 && global.gc) {
           global.gc()
@@ -319,13 +319,13 @@ describe('Secret Retrieval Performance Tests', () => {
       }
 
       const finalMemory = process.memoryUsage()
-      
+
       // Memory usage should not grow excessively
       const heapGrowth = finalMemory.heapUsed - initialMemory.heapUsed
       const heapGrowthMB = heapGrowth / (1024 * 1024)
-      
+
       console.log(`Memory growth: ${heapGrowthMB.toFixed(2)}MB over ${iterations} iterations`)
-      
+
       // Should not grow more than 50MB for 100 iterations
       expect(heapGrowthMB).toBeLessThan(50)
     })
@@ -342,19 +342,19 @@ describe('Secret Retrieval Performance Tests', () => {
       })
 
       const startTime = performance.now()
-      
-      const promises = Array.from({ length: totalRequests }, (_, i) => 
+
+      const promises = Array.from({ length: totalRequests }, (_, i) =>
         secretsManager.getSecretWithPooling(`test/pool/secret-${i}`, poolSize)
       )
-      
+
       await Promise.all(promises)
-      
+
       const endTime = performance.now()
       const totalDuration = endTime - startTime
 
       // Should reuse connections from pool
       expect(connectionCount).toBeLessThanOrEqual(poolSize)
-      
+
       console.log(`Connection pool test: ${totalRequests} requests, ${connectionCount} connections created in ${totalDuration}ms`)
     })
   })
@@ -377,21 +377,21 @@ describe('Secret Retrieval Performance Tests', () => {
       })
 
       const startTime = performance.now()
-      
+
       const result = await secretsManager.getSecretWithRetry('test/retry/secret', 3, 50)
-      
+
       const endTime = performance.now()
       const duration = endTime - startTime
 
       expect(result).toHaveProperty('key', 'value')
       expect(callCount).toBe(2) // One failure, one success
-      
+
       // Should complete quickly with minimal retry delay
       expect(duration).toBeLessThan(200) // Under 200ms including retry
     })
 
     it('should timeout gracefully on slow responses', async () => {
-      mockSend.mockImplementation(() => 
+      mockSend.mockImplementation(() =>
         new Promise((resolve) => {
           // Never resolve - simulate hanging request
           setTimeout(() => {
@@ -404,14 +404,14 @@ describe('Secret Retrieval Performance Tests', () => {
       )
 
       const startTime = performance.now()
-      
+
       try {
         await secretsManager.getSecretWithTimeout('test/timeout/secret', 1000) // 1 second timeout
         fail('Should have timed out')
       } catch (error) {
         const endTime = performance.now()
         const duration = endTime - startTime
-        
+
         expect(error.message).toMatch(/timeout/i)
         expect(duration).toBeLessThan(1500) // Should timeout around 1 second
         expect(duration).toBeGreaterThan(900) // But close to the timeout value
@@ -421,28 +421,28 @@ describe('Secret Retrieval Performance Tests', () => {
 
   describe('Batch Operations Performance', () => {
     it('should efficiently retrieve multiple secrets in batch', async () => {
-      const secretNames = Array.from({ length: 10 }, (_, i) => 
+      const secretNames = Array.from({ length: 10 }, (_, i) =>
         `test/batch/secret-${i}`
       )
 
       const startTime = performance.now()
-      
+
       const results = await secretsManager.getSecretsInBatch(secretNames, 5) // Batch size 5
-      
+
       const endTime = performance.now()
       const duration = endTime - startTime
 
       expect(Object.keys(results)).toHaveLength(10)
       expect(Object.values(results).every(secret => secret.api_key === 'test-api-key')).toBe(true)
-      
+
       // Batch operation should be faster than individual calls
       expect(duration).toBeLessThan(1000) // Under 1 second for 10 secrets
-      
+
       console.log(`Batch retrieval: 10 secrets in ${duration.toFixed(2)}ms`)
     })
 
     it('should optimize batch size for best performance', async () => {
-      const secretNames = Array.from({ length: 20 }, (_, i) => 
+      const secretNames = Array.from({ length: 20 }, (_, i) =>
         `test/batch-optimization/secret-${i}`
       )
 
@@ -451,23 +451,23 @@ describe('Secret Retrieval Performance Tests', () => {
 
       for (const batchSize of batchSizes) {
         const startTime = performance.now()
-        
+
         await secretsManager.getSecretsInBatch(secretNames, batchSize)
-        
+
         const endTime = performance.now()
         const duration = endTime - startTime
-        
+
         results.push({ batchSize, duration })
         console.log(`Batch size ${batchSize}: ${duration.toFixed(2)}ms`)
       }
 
       // Find optimal batch size (usually medium batch sizes perform best)
-      const optimal = results.reduce((best, current) => 
+      const optimal = results.reduce((best, current) =>
         current.duration < best.duration ? current : best
       )
 
       console.log(`Optimal batch size: ${optimal.batchSize} (${optimal.duration.toFixed(2)}ms)`)
-      
+
       // Optimal should be better than batch size 1
       const singleBatch = results.find(r => r.batchSize === 1)
       expect(optimal.duration).toBeLessThan(singleBatch!.duration)
@@ -543,19 +543,19 @@ describe('Secret Retrieval Performance Tests', () => {
 
       for (const phase of phases) {
         const startTime = performance.now()
-        
-        const promises = Array.from({ length: phase.requests }, (_, i) => 
+
+        const promises = Array.from({ length: phase.requests }, (_, i) =>
           secretsManager.getSecret(`test/traffic-spike/${phase.name}-${i}`)
         )
-        
+
         const phaseResults = await Promise.allSettled(promises)
-        
+
         const endTime = performance.now()
         const duration = endTime - startTime
-        
+
         const successful = phaseResults.filter(r => r.status === 'fulfilled').length
         const failed = phaseResults.filter(r => r.status === 'rejected').length
-        
+
         results.push({
           phase: phase.name,
           requests: phase.requests,
@@ -564,14 +564,14 @@ describe('Secret Retrieval Performance Tests', () => {
           duration,
           avgTime: duration / phase.requests
         })
-        
+
         console.log(`${phase.name} phase: ${successful}/${phase.requests} successful in ${duration.toFixed(2)}ms`)
       }
 
       // Should handle spike without complete failure
       const spikePhase = results.find(r => r.phase === 'spike')!
       expect(spikePhase.successful).toBeGreaterThan(spikePhase.requests * 0.7) // 70% success during spike
-      
+
       // Should recover after spike
       const cooldownPhase = results.find(r => r.phase === 'cooldown')!
       expect(cooldownPhase.successful).toBeGreaterThan(cooldownPhase.requests * 0.9) // 90% success after spike

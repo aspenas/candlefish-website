@@ -70,7 +70,7 @@ class SimpleLogger {
 
   private writeLog(level: string, message: string, context?: LogContext): void {
     const formattedLog = this.formatLog(level, message, context);
-    
+
     if (level === 'ERROR') {
       console.error(formattedLog);
     } else if (level === 'WARN') {
@@ -185,8 +185,8 @@ export function getRequestContext(req: any): LogContext {
   const context: LogContext = {};
 
   if (req.headers) {
-    context.ip = req.headers['x-forwarded-for'] || 
-                 req.headers['x-real-ip'] || 
+    context.ip = req.headers['x-forwarded-for'] ||
+                 req.headers['x-real-ip'] ||
                  req.connection?.remoteAddress ||
                  req.socket?.remoteAddress;
     context.userAgent = req.headers['user-agent'];

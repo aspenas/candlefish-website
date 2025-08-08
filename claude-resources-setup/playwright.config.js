@@ -27,31 +27,31 @@ export default defineConfig({
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
-    
+
     /* Take screenshot on failure */
     screenshot: 'only-on-failure',
-    
+
     /* Record video on failure */
     video: 'retain-on-failure',
-    
+
     /* Global timeout for each action */
     actionTimeout: 60000, // Extended for phased deployment scenarios
-    
+
     /* Global timeout for navigation */
     navigationTimeout: 60000, // Extended for complex onboarding flows
-    
+
     /* Extra HTTP headers for authentication in tests */
     extraHTTPHeaders: {
       'X-Test-Environment': 'playwright',
       'X-Test-Suite': 'phased-deployment'
     },
-    
+
     /* Storage state for authenticated tests */
     storageState: process.env.STORAGE_STATE_PATH,
-    
+
     /* Ignore HTTPS errors in test environment */
     ignoreHTTPSErrors: true,
-    
+
     /* User agent for tests */
     userAgent: 'Claude-Resources-E2E-Tests/1.0',
   },
@@ -80,7 +80,7 @@ export default defineConfig({
     // Phased deployment specific tests
     {
       name: 'phased-deployment-admin',
-      use: { 
+      use: {
         ...devices['Desktop Chrome'],
         storageState: '.auth/admin-user.json',
         baseURL: process.env.ADMIN_DASHBOARD_URL || 'http://localhost:5173/admin'
@@ -91,7 +91,7 @@ export default defineConfig({
 
     {
       name: 'phased-deployment-user',
-      use: { 
+      use: {
         ...devices['Desktop Chrome'],
         storageState: '.auth/test-user.json'
       },
@@ -102,7 +102,7 @@ export default defineConfig({
     // Performance testing project
     {
       name: 'performance-tests',
-      use: { 
+      use: {
         ...devices['Desktop Chrome'],
         // Disable video/screenshots for performance tests
         video: 'off',
@@ -128,7 +128,7 @@ export default defineConfig({
     },
 
     {
-      name: 'setup-user-auth', 
+      name: 'setup-user-auth',
       testMatch: ['**/auth-setup-user.spec.js'],
       teardown: 'cleanup-user-auth'
     },
@@ -185,12 +185,12 @@ export default defineConfig({
   expect: {
     /* Maximum timeout for assertions */
     timeout: 15000, // Extended for complex onboarding flows
-    
+
     /* Threshold for screenshot comparisons */
     threshold: 0.3,
-    
+
     /* Enable/disable animations during testing */
-    toHaveScreenshot: { 
+    toHaveScreenshot: {
       animations: 'disabled',
       caret: 'hide',
       mode: 'css' // Use CSS to disable animations
@@ -214,13 +214,13 @@ export default defineConfig({
 
   /* Test timeouts */
   timeout: 60000, // 1 minute default timeout
-  
+
   /* Global test configuration */
   globalTimeout: 300000, // 5 minutes for entire test suite
-  
+
   /* Maximum failures before stopping */
   maxFailures: process.env.CI ? 5 : undefined,
-  
+
   /* Test directories */
   testIgnore: [
     '**/node_modules/**',

@@ -41,6 +41,7 @@ jq --version         # jq >= 1.6
 ### AWS Permissions
 
 Required IAM permissions for deployment:
+
 - ECS full access
 - ALB management
 - RDS management
@@ -140,6 +141,7 @@ tail -f logs/blue-green-deploy-*.log
 ### Deployment Phases
 
 #### Phase 1: Pre-deployment Validation (2-3 minutes)
+
 - AWS credentials and permissions
 - Infrastructure health checks
 - Database connectivity
@@ -147,18 +149,21 @@ tail -f logs/blue-green-deploy-*.log
 - Secrets Manager access
 
 #### Phase 2: Target Environment Deployment (5-8 minutes)
+
 - Update ECS task definition with new image
 - Scale up target environment
 - Health checks with retries
 - Target group registration
 
 #### Phase 3: Traffic Switch (1-2 minutes)
+
 - ALB listener rule update
 - Traffic validation
 - Response time monitoring
 - Error rate monitoring
 
 #### Phase 4: Monitoring Window (10 minutes)
+
 - Automated monitoring for:
   - Error rate > 10%
   - Response time > 5 seconds
@@ -167,6 +172,7 @@ tail -f logs/blue-green-deploy-*.log
 - Automatic rollback if issues detected
 
 #### Phase 5: Cleanup (1-2 minutes)
+
 - Scale down old environment
 - Final health verification
 - Deployment success notification
@@ -219,6 +225,7 @@ kubectl logs -f deployment/paintbox-migration-job
 ### Redis Configuration
 
 Redis is configured with:
+
 - TLS encryption in transit
 - Auth token authentication
 - At-rest encryption with KMS
@@ -264,6 +271,7 @@ curl -f https://api-staging.paintbox.app/health
 ### Automatic Rollback Triggers
 
 The deployment system automatically triggers rollback when:
+
 - Error rate exceeds 10% for 5 minutes
 - Response time exceeds 5 seconds for 5 minutes
 - Health check failures exceed 3 in a row
@@ -471,8 +479,8 @@ All deployment operations create detailed log files:
 
 ### Support Contacts
 
-- **DevOps Team**: devops@candlefish.ai
-- **Security Team**: security@candlefish.ai
+- **DevOps Team**: <devops@candlefish.ai>
+- **Security Team**: <security@candlefish.ai>
 - **Emergency Escalation**: +1-555-EMERGENCY
 
 ## Best Practices
@@ -505,6 +513,7 @@ All deployment operations create detailed log files:
 ### Audit Trail
 
 All deployment activities are logged to:
+
 - CloudTrail (AWS API calls)
 - CloudWatch Logs (Application logs)
 - ECS Events (Container orchestration)
@@ -526,7 +535,7 @@ All deployment activities are logged to:
 
 ---
 
-**Version**: 1.0  
-**Last Updated**: January 2025  
-**Maintainer**: DevOps Team  
+**Version**: 1.0
+**Last Updated**: January 2025
+**Maintainer**: DevOps Team
 **Review Cycle**: Monthly

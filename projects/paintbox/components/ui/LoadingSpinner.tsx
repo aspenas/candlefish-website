@@ -1,6 +1,6 @@
 /**
  * Loading Spinner Component
- * 
+ *
  * Reusable loading spinner with different sizes and optional message
  * Updated with Tyler-Setup design patterns and CSS variables
  */
@@ -17,9 +17,9 @@ interface LoadingSpinnerProps {
   variant?: 'default' | 'primary' | 'secondary';
 }
 
-export function LoadingSpinner({ 
-  size = 'md', 
-  message, 
+export function LoadingSpinner({
+  size = 'md',
+  message,
   className,
   variant = 'primary'
 }: LoadingSpinnerProps) {

@@ -24,17 +24,17 @@ jobs:
     permissions:
       contents: write
       actions: write
-      
+
     steps:
       - name: Setup GitHub CLI
         run: |
           echo "${{ secrets.ORG_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}" | gh auth login --with-token
-      
+
       - name: Get organization repositories
         id: get-repos
         run: |
           ORG_NAME="candlefish"  # Update with your org name
-          
+
           if [ "${{ github.event.inputs.target_repos }}" = "all" ]; then
             # Get all org repositories
             REPOS=$(gh repo list $ORG_NAME --limit 100 --json name,isPrivate,isArchived \
@@ -43,16 +43,16 @@ jobs:
             # Use specified repositories
             REPOS="${{ github.event.inputs.target_repos }}"
           fi
-          
+
           echo "repos<<EOF" >> $GITHUB_OUTPUT
           echo "$REPOS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-      
+
       - name: Create organization Claude resources repository
         run: |
           ORG_NAME="candlefish"
           CLAUDE_REPO="claude-resources"
-          
+
           # Check if repository exists
           if ! gh repo view "$ORG_NAME/$CLAUDE_REPO" &>/dev/null; then
             echo "Creating $CLAUDE_REPO repository..."
@@ -60,9 +60,9 @@ jobs:
               --private \
               --description "Shared Claude agents and commands for all Candlefish projects" \
               --clone
-            
+
             cd "$CLAUDE_REPO"
-            
+
             # Initialize with README
             cat > README.md << 'EOF'
 # Candlefish Claude Resources
@@ -79,12 +79,12 @@ Centralized Claude agents and commands for all Candlefish projects.
 This repository is automatically synced to all Candlefish projects.
 See individual project `.claude/` directories for local access.
 EOF
-            
+
             git add README.md
             git commit -m "Initial commit"
             git push origin main
           fi
-      
+
       - name: Setup reusable workflow
         run: |
           # Create reusable workflow in organization repository
@@ -110,19 +110,19 @@ jobs:
           repository: candlefish/claude-resources
           path: claude-resources
           token: ${{ secrets.token }}
-      
+
       - uses: actions/checkout@v4
         with:
           path: target-repo
           token: ${{ secrets.token }}
-      
+
       - name: Sync Claude resources
         run: |
           # Copy resources to target repository
           mkdir -p target-repo/.claude
           cp -r claude-resources/agents target-repo/.claude/
           cp -r claude-resources/commands target-repo/.claude/
-          
+
           # Create symlink script for local development
           cat > target-repo/.claude/setup-local.sh << 'SCRIPT'
 #!/bin/bash
@@ -144,9 +144,9 @@ ln -sfn "$CLAUDE_ORG_REPO/commands" "$CLAUDE_LOCAL/commands"
 
 echo "✅ Claude resources linked from organization repository"
 SCRIPT
-          
+
           chmod +x target-repo/.claude/setup-local.sh
-          
+
           # Commit changes
           cd target-repo
           git config user.name "Claude Sync Bot"
@@ -155,21 +155,21 @@ SCRIPT
           git commit -m "🤖 Sync Claude resources from organization" || echo "No changes"
           git push
 EOF
-      
+
       - name: Deploy to all repositories
         run: |
           ORG_NAME="candlefish"
-          
+
           # For each repository
           for repo in ${{ steps.get-repos.outputs.repos }}; do
             echo "Setting up Claude sync for $repo..."
-            
+
             # Add workflow to repository
             gh workflow run claude-sync-reusable.yml \
               --repo "$ORG_NAME/$repo" \
               -f sync_type=both \
               2>/dev/null || echo "Workflow not found, creating..."
-            
+
             # Create workflow file if it doesn't exist
             cat > claude-sync.yml << 'EOF'
 name: Sync Claude Resources
@@ -191,7 +191,7 @@ jobs:
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
 EOF
-            
+
             # Commit workflow to repository
             gh workflow run deploy-workflow.yml \
               --repo "$ORG_NAME/$repo" \

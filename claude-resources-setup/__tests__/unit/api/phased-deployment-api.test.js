@@ -75,7 +75,7 @@ describe('Phased Deployment API Endpoints', () => {
       // Arrange
       const mockDeployment = {
         ...mockDeployments[0],
-        phases: mockPhases.map(phase => 
+        phases: mockPhases.map(phase =>
           phase.id === 'phase-1' ? { ...phase, status: 'in_progress' } : phase
         )
       }

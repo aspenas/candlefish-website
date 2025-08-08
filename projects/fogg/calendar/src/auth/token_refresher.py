@@ -2,10 +2,8 @@
 
 import asyncio
 import threading
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
-from google.auth import credentials as auth_credentials
 from google.auth.transport.requests import Request
 from structlog import get_logger
 
@@ -34,7 +32,7 @@ class TokenRefresher:
         self.check_interval_seconds = check_interval_seconds
         self.refresh_buffer_minutes = refresh_buffer_minutes
         self._stop_event = threading.Event()
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
 
     def start(self):
         """Start the background refresh thread."""
@@ -74,7 +72,7 @@ class TokenRefresher:
                 return  # No expiry, no need to refresh
 
             # Calculate time until expiry
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             time_until_expiry = creds.expiry - now
 
             # Log status
@@ -115,7 +113,7 @@ class AsyncTokenRefresher:
         self.credentials_manager = credentials_manager
         self.check_interval_seconds = check_interval_seconds
         self.refresh_buffer_minutes = refresh_buffer_minutes
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
 
     async def start(self):
         """Start the background refresh task."""
@@ -161,7 +159,7 @@ class AsyncTokenRefresher:
             if not hasattr(creds, "expiry") or not creds.expiry:
                 return
 
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             time_until_expiry = creds.expiry - now
 
             buffer = timedelta(minutes=self.refresh_buffer_minutes)

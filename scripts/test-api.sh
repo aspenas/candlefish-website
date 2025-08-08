@@ -16,10 +16,10 @@ NC='\033[0m' # No Color
 run_test() {
     local description="$1"
     local command="$2"
-    
+
     echo -e "\n=== Testing: $description ==="
     eval "$command"
-    
+
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✓ Test Passed${NC}"
     else

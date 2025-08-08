@@ -28,10 +28,10 @@ test.describe('Security API Endpoints', () => {
 
       for (const endpoint of protectedEndpoints) {
         const response = await apiContext.get(endpoint)
-        
+
         // Should return 401 Unauthorized without proper auth
         expect(response.status()).toBe(401)
-        
+
         const body = await response.json()
         expect(body).toHaveProperty('error')
         expect(body.error).toMatch(/unauthorized|authentication.*required/i)
@@ -55,7 +55,7 @@ test.describe('Security API Endpoints', () => {
         })
 
         expect(response.status()).toBe(401)
-        
+
         const body = await response.json()
         expect(body.error).toMatch(/invalid.*token|unauthorized/i)
       }
@@ -64,7 +64,7 @@ test.describe('Security API Endpoints', () => {
     test('should validate JWT token structure and expiration', async () => {
       // Test with malformed JWT
       const malformedJWT = 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.malformed'
-      
+
       const response = await apiContext.get('/api/v1/secrets/config', {
         headers: {
           'Authorization': malformedJWT
@@ -72,7 +72,7 @@ test.describe('Security API Endpoints', () => {
       })
 
       expect(response.status()).toBe(401)
-      
+
       const body = await response.json()
       expect(body.error).toMatch(/invalid.*token|malformed.*jwt/i)
     })
@@ -111,7 +111,7 @@ test.describe('Security API Endpoints', () => {
       }
 
       const responses = await Promise.all(requests)
-      
+
       // Should have some rate limited responses
       const rateLimitedResponses = responses.filter(r => r.status() === 429)
       expect(rateLimitedResponses.length).toBeGreaterThan(0)
@@ -132,7 +132,7 @@ test.describe('Security API Endpoints', () => {
 
       for (const { path, expectedLimit } of endpoints) {
         const requests = []
-        
+
         for (let i = 0; i < expectedLimit + 10; i++) {
           if (path === '/api/v1/secrets/token') {
             requests.push(apiContext.post(path, {
@@ -151,7 +151,7 @@ test.describe('Security API Endpoints', () => {
 
         const responses = await Promise.all(requests)
         const rateLimited = responses.filter(r => r.status() === 429)
-        
+
         expect(rateLimited.length).toBeGreaterThan(0)
         console.log(`${path}: ${rateLimited.length} rate limited out of ${responses.length}`)
       }
@@ -159,7 +159,7 @@ test.describe('Security API Endpoints', () => {
 
     test('should reset rate limits after time window', async () => {
       const endpoint = '/api/v1/secrets/config'
-      
+
       // Exhaust rate limit
       const rapidRequests = []
       for (let i = 0; i < 15; i++) {
@@ -167,7 +167,7 @@ test.describe('Security API Endpoints', () => {
           headers: { 'Authorization': 'Bearer test-token' }
         }))
       }
-      
+
       const rapidResponses = await Promise.all(rapidRequests)
       const rateLimited = rapidResponses.filter(r => r.status() === 429)
       expect(rateLimited.length).toBeGreaterThan(0)
@@ -177,7 +177,7 @@ test.describe('Security API Endpoints', () => {
       const resetResponse = await apiContext.get(endpoint, {
         headers: { 'Authorization': 'Bearer test-token' }
       })
-      
+
       // Should still be rate limited immediately after
       expect(resetResponse.status()).toBe(429)
     })
@@ -189,24 +189,24 @@ test.describe('Security API Endpoints', () => {
         // SQL Injection attempts
         { clientId: "'; DROP TABLE users; --", clientSecret: 'test', scope: 'read' },
         { clientId: "' OR '1'='1", clientSecret: 'test', scope: 'read' },
-        
+
         // XSS attempts
         { clientId: '<script>alert("xss")</script>', clientSecret: 'test', scope: 'read' },
         { clientId: 'javascript:alert("xss")', clientSecret: 'test', scope: 'read' },
-        
+
         // Command injection
         { clientId: '$(rm -rf /)', clientSecret: 'test', scope: 'read' },
         { clientId: '`whoami`', clientSecret: 'test', scope: 'read' },
-        
+
         // JSON injection
         { clientId: 'test", "admin": true, "fake": "', clientSecret: 'test', scope: 'read' },
-        
+
         // NoSQL injection
         { clientId: { '$gt': '' }, clientSecret: 'test', scope: 'read' },
-        
+
         // Path traversal
         { clientId: '../../../etc/passwd', clientSecret: 'test', scope: 'read' },
-        
+
         // LDAP injection
         { clientId: 'test*)(uid=*))(|(uid=*', clientSecret: 'test', scope: 'read' }
       ]
@@ -218,10 +218,10 @@ test.describe('Security API Endpoints', () => {
 
         // Should reject malicious payloads
         expect([400, 401, 403]).toContain(response.status())
-        
+
         const body = await response.json()
         expect(body).toHaveProperty('error')
-        
+
         // Should not echo back the malicious input
         const responseText = JSON.stringify(body)
         expect(responseText).not.toContain('<script>')
@@ -246,7 +246,7 @@ test.describe('Security API Endpoints', () => {
 
         // Should either reject or sanitize malicious queries
         expect([200, 400, 403]).toContain(response.status())
-        
+
         if (response.status() === 200) {
           const body = await response.json()
           // Should have proper response structure, not SQL injection results
@@ -289,7 +289,7 @@ test.describe('Security API Endpoints', () => {
         'https://app.paintbox.com',
         'https://admin.paintbox.com'
       ]
-      
+
       const blockedOrigins = [
         'https://evil.com',
         'http://localhost:3001',
@@ -333,10 +333,10 @@ test.describe('Security API Endpoints', () => {
       expect(headers['x-frame-options']).toBe('DENY')
       expect(headers['x-xss-protection']).toBe('1; mode=block')
       expect(headers['referrer-policy']).toBe('strict-origin-when-cross-origin')
-      
+
       // CSP header
       expect(headers['content-security-policy']).toContain("default-src 'self'")
-      
+
       // HSTS header (for HTTPS)
       if (response.url().startsWith('https://')) {
         expect(headers['strict-transport-security']).toBeDefined()
@@ -354,7 +354,7 @@ test.describe('Security API Endpoints', () => {
       })
 
       expect(preflightResponse.status()).toBe(200)
-      
+
       const headers = preflightResponse.headers()
       expect(headers['access-control-allow-methods']).toContain('GET')
       expect(headers['access-control-allow-headers']).toContain('Authorization')
@@ -379,7 +379,7 @@ test.describe('Security API Endpoints', () => {
         })
 
         const body = await response.text()
-        
+
         // Should not expose stack traces, file paths, or internal details
         expect(body).not.toMatch(/at.*\(.*\.js:\d+:\d+\)/) // Stack trace
         expect(body).not.toMatch(/\/usr\/.*|\/var\/.*|C:\\/) // File paths
@@ -391,7 +391,7 @@ test.describe('Security API Endpoints', () => {
     test('should sanitize error messages', async () => {
       // Test with malicious input that might be echoed in errors
       const maliciousInput = '<script>alert("xss")</script>'
-      
+
       const response = await apiContext.post('/api/v1/secrets/token', {
         data: {
           clientId: maliciousInput,
@@ -401,13 +401,13 @@ test.describe('Security API Endpoints', () => {
       })
 
       expect(response.status()).toBe(400)
-      
+
       const body = await response.json()
       const responseText = JSON.stringify(body)
-      
+
       // Should not echo back unescaped malicious input
       expect(responseText).not.toContain('<script>alert("xss")</script>')
-      
+
       // If input is referenced, it should be sanitized
       if (responseText.includes('script')) {
         expect(responseText).toMatch(/&lt;script&gt;|\\u003cscript\\u003e/)
@@ -416,7 +416,7 @@ test.describe('Security API Endpoints', () => {
 
     test('should implement proper HTTP status codes', async () => {
       const testCases = [
-        { 
+        {
           url: '/api/v1/secrets/config',
           method: 'GET',
           headers: {},
@@ -474,7 +474,7 @@ test.describe('Security API Endpoints', () => {
       if (response.status() === 200) {
         const body = await response.json()
         const logContent = JSON.stringify(body)
-        
+
         // Should not contain the actual secret values
         expect(logContent).not.toContain('super-secret-value-123')
       }

@@ -2,20 +2,22 @@
 
 ## 📊 Current Status: READY FOR DEPLOYMENT
 
-**Created**: August 4, 2025  
-**Location**: `/Users/patricksmith/candlefish-ai/claude-resources-setup`  
+**Created**: August 4, 2025
+**Location**: `/Users/patricksmith/candlefish-ai/claude-resources-setup`
 **Purpose**: Organization-wide Claude agent and command sharing system
 
 ## ✅ Completed Components
 
 ### Core System
+
 - [x] GitHub Actions workflows for upstream sync
-- [x] Reusable workflows for project distribution  
+- [x] Reusable workflows for project distribution
 - [x] Local setup scripts with Git worktree support
 - [x] Comprehensive documentation
 - [x] Architectural decision records
 
 ### Extended Features (Implemented for Future Use)
+
 - [x] Backend API design (FastAPI + PostgreSQL)
 - [x] Frontend dashboard (React + TypeScript)
 - [x] Comprehensive test suite (Unit, Integration, E2E)
@@ -99,16 +101,19 @@ kubectl apply -f monitoring/
 ## 👥 Team Actions
 
 ### For Aaron & Tyler (Reviewers)
+
 1. Accept repository invitation as reviewers
 2. Review first sync PR from upstream
 3. Set up notifications for PR reviews
 
 ### For All Team Members
+
 1. Run the setup script (one-time)
 2. Pull claude-resources repo periodically
 3. Report any issues to Patrick
 
 ### For Patrick (Maintainer)
+
 1. Monitor sync workflow runs
 2. Address any sync failures
 3. Coordinate with team on custom additions
@@ -124,8 +129,8 @@ kubectl apply -f monitoring/
 ## 🔗 Quick Links
 
 - **Repository**: `https://github.com/candlefish/claude-resources` (after creation)
-- **Upstream Agents**: https://github.com/wshobson/agents
-- **Upstream Commands**: https://github.com/wshobson/commands
+- **Upstream Agents**: <https://github.com/wshobson/agents>
+- **Upstream Commands**: <https://github.com/wshobson/commands>
 - **Issues**: Create in claude-resources repository
 
 ## 📞 Support

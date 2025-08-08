@@ -109,7 +109,7 @@ export default function ServiceStatusBadge({
           color={statusConfig.color}
         />
       )}
-      
+
       {showText && (
         <Text
           variant={sizeConfig.textVariant}

@@ -1,6 +1,6 @@
 /**
  * System Analyzer Dashboard Page
- * 
+ *
  * Main page component that sets up the Apollo provider and dashboard context
  */
 
@@ -19,7 +19,7 @@ export default function SystemAnalyzerPage() {
       <DashboardProvider>
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
           <SystemAnalyzerDashboard />
-          
+
           {/* Toast Notifications */}
           <Toaster
             position="top-right"

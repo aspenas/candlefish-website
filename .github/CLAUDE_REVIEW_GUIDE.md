@@ -28,18 +28,21 @@ You can combine multiple options:
 ## Review Depths Explained
 
 ### Quick Review
+
 - **Max files**: 20
 - **Focus**: Critical bugs, security issues, syntax errors
 - **Skips**: Tests and documentation
 - **Use when**: You need a fast sanity check
 
 ### Standard Review (Default)
+
 - **Max files**: 50
 - **Focus**: Bugs, security, performance, best practices
 - **Includes**: Source code and tests
 - **Use when**: Regular PR reviews
 
 ### Deep Review
+
 - **Max files**: 200
 - **Focus**: Everything including architecture and design
 - **Includes**: All files including documentation
@@ -50,6 +53,7 @@ You can combine multiple options:
 ### Viewing Costs
 
 Each review shows:
+
 - Input/output token counts
 - Estimated cost
 - Review duration
@@ -72,11 +76,13 @@ Each review shows:
 ### File Filtering
 
 Skip files by pattern:
+
 ```
 /claude-review skip:*.generated.ts,dist/*,*.min.js
 ```
 
 Default skip patterns include:
+
 - Lock files (`*.lock`, `package-lock.json`)
 - Minified files (`*.min.js`, `*.min.css`)
 - Build outputs (`dist/*`, `build/*`)
@@ -86,6 +92,7 @@ Default skip patterns include:
 ### Incremental Reviews
 
 When a PR is updated after a review:
+
 ```
 /claude-review incremental
 ```
@@ -102,6 +109,7 @@ Review multiple PRs efficiently:
 4. Run workflow
 
 The system will:
+
 - Review PRs concurrently (respecting rate limits)
 - Skip recently reviewed PRs
 - Generate a cost summary
@@ -110,6 +118,7 @@ The system will:
 ## Review Types
 
 ### Comprehensive (Default)
+
 - Code quality and best practices
 - Bug detection
 - Security analysis
@@ -118,6 +127,7 @@ The system will:
 - Documentation needs
 
 ### Security
+
 - Input validation
 - Authentication/authorization
 - Data exposure
@@ -125,6 +135,7 @@ The system will:
 - Dependency security
 
 ### Performance
+
 - Algorithm efficiency
 - Database optimization
 - Memory management
@@ -132,6 +143,7 @@ The system will:
 - Bundle size impact
 
 ### Architecture
+
 - Design patterns
 - SOLID principles
 - Code organization
@@ -141,11 +153,13 @@ The system will:
 ## Workflow Triggers
 
 ### Automatic
+
 - New PR opened (comprehensive review)
 - PR marked ready for review
 - PR synchronized (if significant changes)
 
 ### Manual
+
 - PR comments with `/claude-review`
 - GitHub Actions workflow dispatch
 - Batch review workflow
@@ -161,11 +175,13 @@ The system will:
 ## Monitoring & Limits
 
 ### Rate Limits (Tier 4)
+
 - **Input**: 2M tokens/minute
 - **Output**: 400K tokens/minute
 - **Per request**: 32K output tokens max
 
 ### Monitoring
+
 - Cost tracking in DynamoDB
 - Daily cost reports
 - Per-PR cost attribution
@@ -174,16 +190,19 @@ The system will:
 ## Troubleshooting
 
 ### Review not triggering?
+
 - Check PR is not in draft mode
 - Ensure comment contains `/claude-review`
 - Verify GitHub Actions are enabled
 
 ### Review incomplete?
+
 - Check if file count exceeds depth limit
 - Large files may be truncated
 - Use deep review for comprehensive analysis
 
 ### High costs?
+
 - Use incremental reviews
 - Apply file filters
 - Use appropriate review depth
@@ -192,21 +211,25 @@ The system will:
 ## Examples
 
 ### Quick security check for hotfix
+
 ```
 /claude-review quick security
 ```
 
 ### Deep review for new feature
+
 ```
 /claude-review deep incremental
 ```
 
 ### Skip all test files
+
 ```
 /claude-review skip:*.test.js,*.spec.ts,__tests__/*
 ```
 
 ### Architecture review for refactoring
+
 ```
 /claude-review architecture deep
 ```

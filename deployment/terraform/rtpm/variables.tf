@@ -15,5 +15,3 @@ variable "domain" {
   description = "Root domain"
   default     = "candlefish.ai"
 }
-
-

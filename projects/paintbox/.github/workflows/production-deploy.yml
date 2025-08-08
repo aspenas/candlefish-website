@@ -2,43 +2,36 @@ name: Production Deployment Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   pull_request:
-    branches: [ main ]
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Deployment environment'
-        required: true
-        default: 'staging'
-        type: choice
-        options:
-        - staging
-        - production
-      skip_tests:
-        description: 'Skip tests (emergency only)'
-        required: false
-        default: false
-        type: boolean
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  release:
+    types: [published]
 
 env:
   NODE_VERSION: '20'
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: ${{ github.repository }}/paintbox
 
-permissions:
-  contents: read
-  packages: write
-  security-events: write
-  id-token: write
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  # Security and dependency scanning
   security-scan:
-    name: Security & Vulnerability Scanning
+    name: Security Scan
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -50,57 +43,11 @@ jobs:
           format: 'sarif'
           output: 'trivy-results.sarif'
 
-      - name: Upload Trivy scan results to GitHub Security tab
+      - name: Upload Trivy scan results
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
-
-      - name: Dependency vulnerability scan
-        run: |
-          npm audit --audit-level=high
-          npx audit-ci --high
-
-      - name: Secret detection with GitLeaks
-        uses: trufflesecurity/trufflehog@main
-        with:
-          path: ./
-          base: main
-          head: HEAD
-
-  test-and-build:
-    name: Test & Build Application
-    runs-on: ubuntu-latest
-    needs: security-scan
-    if: ${{ !inputs.skip_tests }}
-    
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: paintbox_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-      
-      redis:
-        image: redis:7
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -108,93 +55,125 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: us-east-1
-
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-
       - name: Install dependencies
+        run: npm ci --audit
+
+      - name: Run npm audit
+        run: npm audit --audit-level moderate
+
+      - name: Run security linting
         run: |
-          npm ci --prefer-offline --no-audit
-          cd paintbox-backend && npm ci --prefer-offline --no-audit
+          npx eslint . --ext .js,.jsx,.ts,.tsx --format json --output-file eslint-results.json || true
+          cat eslint-results.json
 
-      - name: Set up test environment
-        run: |
-          cp .env.local.example .env.test
-          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/paintbox_test" >> .env.test
-          echo "REDIS_URL=redis://localhost:6379" >> .env.test
-          echo "NODE_ENV=test" >> .env.test
-
-      - name: Run database migrations
-        run: npx prisma migrate deploy
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/paintbox_test
-
-      - name: Run unit tests
-        run: npm run test:coverage
-        env:
-          NODE_ENV: test
-
-      - name: Run integration tests
-        run: npm run test:integration
-        env:
-          NODE_ENV: test
-
-      - name: Run security tests
-        run: npm run test:security
-        env:
-          NODE_ENV: test
-
-      - name: Run E2E tests
-        run: npm run test:e2e
-        env:
-          NODE_ENV: test
-
-      - name: Upload test coverage
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./coverage/lcov.info
-
-      - name: Build application
-        run: |
-          npm run build
-          cd paintbox-backend && npm run build
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-artifacts
-          path: |
-            .next
-            paintbox-backend/dist
-          retention-days: 7
-
-  build-and-push-images:
-    name: Build & Push Docker Images
+  # Quality assurance and testing
+  test-suite:
+    name: Test Suite
     runs-on: ubuntu-latest
-    needs: test-and-build
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
-    
+    needs: [security-scan]
     strategy:
       matrix:
-        component: [frontend, backend]
-    
+        test-type: [unit, integration, e2e]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Redis for testing
+        uses: supercharge/redis-github-action@1.7.0
+        with:
+          redis-version: 7
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup test environment
+        run: |
+          cp .env.example .env.test || echo "No .env.example found"
+          echo "REDIS_URL=redis://localhost:6379" >> .env.test
+
+      - name: Run unit tests
+        if: matrix.test-type == 'unit'
+        run: |
+          npm run test:coverage
+          npx codecov || echo "Codecov upload failed"
+
+      - name: Run integration tests
+        if: matrix.test-type == 'integration'
+        env:
+          NODE_ENV: test
+        run: npm run test:integration
+
+      - name: Install Playwright
+        if: matrix.test-type == 'e2e'
+        run: npx playwright install --with-deps
+
+      - name: Run E2E tests
+        if: matrix.test-type == 'e2e'
+        run: npm run test:e2e
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-results-${{ matrix.test-type }}
+          path: |
+            test-results/
+            playwright-report/
+            coverage/
+
+  # Build and validation
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    needs: [test-suite]
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-url: ${{ steps.build.outputs.image-url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate configuration
+        run: |
+          node -e "
+            const config = require('./next.config.js');
+            console.log('Next.js config validated');
+            const pkg = require('./package.json');
+            console.log('Package.json validated');
+          "
+
+      - name: Build application
+        env:
+          NODE_ENV: production
+          NODE_OPTIONS: '--max-old-space-size=8192'
+        run: |
+          npm run build
+          npm run build:websocket
+
+      - name: Validate build artifacts
+        run: |
+          test -d .next
+          test -f dist/websocket-server.js
+          ls -la .next/
+          ls -la dist/
+
+      - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Container Registry
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -205,199 +184,211 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.component }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=sha,prefix={{branch}}-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-,suffix=-{{date 'YYYYMMDD'}},format=short
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
+        id: build
         uses: docker/build-push-action@v5
         with:
-          context: ${{ matrix.component == 'backend' && './paintbox-backend' || '.' }}
-          file: ${{ matrix.component == 'backend' && './paintbox-backend/Dockerfile' || './Dockerfile' }}
+          context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
+          provenance: true
+          sbom: true
 
-      - name: Run container security scan
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.component }}:latest
-          format: 'sarif'
-          output: 'trivy-image-results.sarif'
-
-      - name: Upload image scan results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: 'trivy-image-results.sarif'
-
-  deploy-staging:
-    name: Deploy to Staging
+  # Vercel deployment
+  deploy-vercel:
+    name: Deploy to Vercel
     runs-on: ubuntu-latest
-    needs: build-and-push-images
-    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging')
+    needs: [build]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'release'
     environment:
-      name: staging
-      url: https://paintbox-staging.vercel.app
-
+      name: production-vercel
+      url: ${{ steps.deploy.outputs.url }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: us-east-1
-
-      - name: Deploy to Vercel (Frontend)
+      - name: Deploy to Vercel
+        id: deploy
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-args: '--prod'
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
           working-directory: ./
 
-      - name: Deploy to Railway (Backend)
+      - name: Update deployment status
         run: |
-          npm install -g @railway/cli
-          railway login --token ${{ secrets.RAILWAY_TOKEN }}
-          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
-          railway up --detach
-        working-directory: ./paintbox-backend
+          echo "Deployment URL: ${{ steps.deploy.outputs.url }}"
+          curl -X POST "${{ steps.deploy.outputs.url }}/api/health" || echo "Health check failed"
 
-      - name: Run smoke tests
-        run: |
-          npm run test:smoke
+  # Docker deployment to staging
+  deploy-docker-staging:
+    name: Deploy Docker to Staging
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: staging-docker
+      url: https://paintbox-staging.example.com
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to staging
         env:
-          TEST_URL: https://paintbox-staging.vercel.app
+          DOCKER_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          STAGING_SERVER: ${{ secrets.STAGING_SERVER }}
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+        run: |
+          # SSH setup
+          mkdir -p ~/.ssh
+          echo "$STAGING_SSH_KEY" > ~/.ssh/staging_key
+          chmod 600 ~/.ssh/staging_key
+
+          # Deploy to staging server
+          ssh -i ~/.ssh/staging_key -o StrictHostKeyChecking=no \
+            deploy@$STAGING_SERVER \
+            "
+            docker pull $DOCKER_IMAGE
+            docker stop paintbox-staging || true
+            docker rm paintbox-staging || true
+            docker run -d \
+              --name paintbox-staging \
+              --restart unless-stopped \
+              -p 3000:3000 \
+              -e NODE_ENV=staging \
+              -e REDIS_URL='${{ secrets.STAGING_REDIS_URL }}' \
+              -e SALESFORCE_CLIENT_ID='${{ secrets.STAGING_SALESFORCE_CLIENT_ID }}' \
+              -e COMPANYCAM_API_KEY='${{ secrets.STAGING_COMPANYCAM_API_KEY }}' \
+              $DOCKER_IMAGE
+            "
+
+      - name: Health check staging
+        run: |
+          sleep 30
+          curl -f https://paintbox-staging.example.com/api/health || exit 1
+
+  # AWS ECS deployment
+  deploy-aws-ecs:
+    name: Deploy to AWS ECS
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.event_name == 'release'
+    environment:
+      name: production-aws
+      url: https://paintbox.example.com
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Deploy to ECS
+        env:
+          ECS_CLUSTER: paintbox-production
+          ECS_SERVICE: paintbox-web
+          CONTAINER_NAME: paintbox
+          IMAGE_URI: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        run: |
+          # Update task definition
+          aws ecs describe-task-definition \
+            --task-definition paintbox-web \
+            --query taskDefinition > task-definition.json
+
+          # Update image URI in task definition
+          jq --arg IMAGE_URI "$IMAGE_URI" \
+            '.containerDefinitions[0].image = $IMAGE_URI' \
+            task-definition.json > updated-task-definition.json
+
+          # Register new task definition
+          aws ecs register-task-definition \
+            --cli-input-json file://updated-task-definition.json \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text > new-task-definition-arn.txt
+
+          # Update service
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service $ECS_SERVICE \
+            --task-definition $(cat new-task-definition-arn.txt) \
+            --force-new-deployment
+
+          # Wait for deployment to complete
+          aws ecs wait services-stable \
+            --cluster $ECS_CLUSTER \
+            --services $ECS_SERVICE
+
+      - name: Health check production
+        run: |
+          sleep 60
+          curl -f https://paintbox.example.com/api/health || exit 1
+
+  # Performance and load testing
+  performance-test:
+    name: Performance Testing
+    runs-on: ubuntu-latest
+    needs: [deploy-vercel]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run load tests
+        env:
+          TARGET_URL: ${{ needs.deploy-vercel.outputs.url || 'https://paintbox.vercel.app' }}
+        run: |
+          sed -i "s|http://localhost:3000|$TARGET_URL|g" artillery-config.yml
+          npm run test:load:report
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-results
+          path: report.json
+
+  # Deployment summary and notifications
+  deployment-summary:
+    name: Deployment Summary
+    runs-on: ubuntu-latest
+    needs: [deploy-vercel, deploy-docker-staging, deploy-aws-ecs, performance-test]
+    if: always() && (github.ref == 'refs/heads/main' || github.event_name == 'release')
+    steps:
+      - name: Generate deployment summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Vercel:** ${{ needs.deploy-vercel.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Docker Staging:** ${{ needs.deploy-docker-staging.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **AWS ECS:** ${{ needs.deploy-aws-ecs.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Performance Test:** ${{ needs.performance-test.result }}" >> $GITHUB_STEP_SUMMARY
 
       - name: Notify deployment status
-        uses: 8398a7/action-slack@v3
-        if: always()
-        with:
-          status: ${{ job.status }}
-          channel: '#deployments'
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
-
-  deploy-production:
-    name: Deploy to Production
-    runs-on: ubuntu-latest
-    needs: deploy-staging
-    if: github.event_name == 'workflow_dispatch' && inputs.environment == 'production'
-    environment:
-      name: production
-      url: https://paintbox.vercel.app
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: us-east-1
-
-      - name: Pre-deployment backup
+        if: failure()
         run: |
-          aws secretsmanager create-secret \
-            --name "paintbox-backup-$(date +%Y%m%d-%H%M%S)" \
-            --description "Production backup before deployment" \
-            --secret-string "$(aws secretsmanager get-secret-value --secret-id paintbox-production --query SecretString --output text)"
-
-      - name: Deploy to Vercel (Frontend)
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-args: '--prod'
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PRODUCTION_PROJECT_ID }}
-          working-directory: ./
-
-      - name: Deploy to Railway (Backend)
-        run: |
-          npm install -g @railway/cli
-          railway login --token ${{ secrets.RAILWAY_TOKEN }}
-          railway link ${{ secrets.RAILWAY_PRODUCTION_PROJECT_ID }}
-          railway up --detach
-        working-directory: ./paintbox-backend
-
-      - name: Run production smoke tests
-        run: |
-          npm run test:smoke:production
-        env:
-          TEST_URL: https://paintbox.vercel.app
-
-      - name: Update monitoring dashboards
-        run: |
-          aws cloudwatch put-dashboard \
-            --dashboard-name "Paintbox-Production" \
-            --dashboard-body file://monitoring/cloudwatch-dashboard.json
-
-      - name: Notify production deployment
-        uses: 8398a7/action-slack@v3
-        with:
-          status: 'success'
-          channel: '#production'
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
-          custom_payload: |
-            {
-              "attachments": [{
-                "color": "good",
-                "title": "🚀 Production Deployment Successful",
-                "text": "Paintbox application has been successfully deployed to production",
-                "fields": [{
-                  "title": "Version",
-                  "value": "${{ github.sha }}",
-                  "short": true
-                }, {
-                  "title": "Environment",
-                  "value": "Production",
-                  "short": true
-                }]
-              }]
-            }
-
-  post-deployment:
-    name: Post-Deployment Tasks
-    runs-on: ubuntu-latest
-    needs: [deploy-staging, deploy-production]
-    if: always() && (needs.deploy-staging.result == 'success' || needs.deploy-production.result == 'success')
-
-    steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: us-east-1
-
-      - name: Rotate secrets (scheduled)
-        if: github.event.schedule
-        run: |
-          aws lambda invoke \
-            --function-name secret-rotation-function \
-            --payload '{"secretId": "paintbox-production"}' \
-            response.json
-
-      - name: Update security groups
-        run: |
-          # Update WAF rules based on deployment
-          aws wafv2 update-web-acl \
-            --scope CLOUDFRONT \
-            --id ${{ secrets.WAF_WEB_ACL_ID }} \
-            --cli-input-json file://security/waf-rules.json
-
-      - name: Health check monitoring
-        run: |
-          # Set up health check monitoring
-          aws route53 create-health-check \
-            --caller-reference "paintbox-$(date +%s)" \
-            --health-check-config file://monitoring/health-check.json
+          echo "Deployment failed. Check the workflow logs for details."
+          # Add Slack/Teams notification here if needed

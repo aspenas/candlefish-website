@@ -1,6 +1,6 @@
 /**
  * Recommendations List Component
- * 
+ *
  * Displays system recommendations with priority indicators and action items
  */
 
@@ -8,7 +8,7 @@
 
 import React, { useState } from 'react';
 import { SystemRecommendation, AlertSeverity, RecommendationType } from '@/lib/types/dashboard';
-import { 
+import {
   ArrowsPointingOutIcon,
   WrenchScrewdriverIcon,
   Cog6ToothIcon,
@@ -27,16 +27,16 @@ interface RecommendationsListProps {
   showAll?: boolean;
 }
 
-export function RecommendationsList({ 
-  recommendations, 
+export function RecommendationsList({
+  recommendations,
   maxItems = 10,
-  showAll = false 
+  showAll = false
 }: RecommendationsListProps) {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [showAllItems, setShowAllItems] = useState(showAll);
 
-  const displayedRecommendations = showAllItems 
-    ? recommendations 
+  const displayedRecommendations = showAllItems
+    ? recommendations
     : recommendations.slice(0, maxItems);
 
   const toggleExpanded = (id: string) => {
@@ -251,8 +251,8 @@ export function RecommendationsList({
             onClick={() => setShowAllItems(!showAllItems)}
             className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
           >
-            {showAllItems 
-              ? `Show less` 
+            {showAllItems
+              ? `Show less`
               : `Show ${recommendations.length - maxItems} more recommendations`
             }
           </button>

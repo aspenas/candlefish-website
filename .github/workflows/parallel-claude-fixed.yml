@@ -46,7 +46,7 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
       max-parallel: 5
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -92,7 +92,7 @@ jobs:
           TASK: ${{ github.event.inputs.task }}
         run: |
           echo "Running $TASK in session $SESSION_ID"
-          
+
           case $TASK in
             test)
               if [ -f "package.json" ] && grep -q '"test"' package.json; then
@@ -143,7 +143,7 @@ jobs:
     needs: parallel-claude
     runs-on: ubuntu-latest
     if: always()
-    
+
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4

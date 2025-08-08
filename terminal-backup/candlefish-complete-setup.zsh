@@ -129,7 +129,7 @@ export GITHUB_DEFAULT_BRANCH="main"
 if [[ "$TERM_PROGRAM" != "WarpTerminal" ]]; then
     # Simple prompt with candlefish
     PROMPT='🐠 %F{cyan}%~%f %F{yellow}❯%f '
-    
+
     # Git branch in right prompt
     autoload -Uz vcs_info
     precmd() { vcs_info }
@@ -145,12 +145,12 @@ fi
 init_candlefish() {
     # Ensure GitHub is authenticated
     setup_github_auth 2>/dev/null
-    
+
     # Ensure Claude is logged in
     if [ -f "/Users/patricksmith/.local/bin/claude-auto-login" ]; then
         /Users/patricksmith/.local/bin/claude-auto-login 2>/dev/null &
     fi
-    
+
     # Load AWS credentials if available
     if [ -f "/Users/patricksmith/0l0/scripts/load-all-api-keys.sh" ]; then
         source "/Users/patricksmith/0l0/scripts/load-all-api-keys.sh" >/dev/null 2>&1
@@ -158,7 +158,7 @@ init_candlefish() {
         export CLAUDE_MODEL="claude-opus-4-1-20250805"
         export ANTHROPIC_MODEL="claude-opus-4-1-20250805"
     fi
-    
+
     # Set up git config if needed
     if [ -z "$(git config --global user.email)" ]; then
         git config --global user.email "patrick@candlefish.ai"

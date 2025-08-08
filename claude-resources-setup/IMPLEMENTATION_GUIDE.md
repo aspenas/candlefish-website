@@ -5,6 +5,7 @@ This guide provides step-by-step instructions for setting up the Candlefish orga
 ## 📋 Overview
 
 The system consists of:
+
 1. **Central Repository**: `candlefish/claude-resources` containing all agents and commands
 2. **Auto-sync Workflow**: Updates from upstream every 6 hours
 3. **Distribution Workflow**: Syncs to all Candlefish projects
@@ -15,6 +16,7 @@ The system consists of:
 ### Step 1: Create the Central Repository
 
 1. Create the `candlefish/claude-resources` repository on GitHub:
+
 ```bash
 gh repo create candlefish/claude-resources \
   --private \
@@ -23,6 +25,7 @@ gh repo create candlefish/claude-resources \
 ```
 
 2. Copy the prepared files:
+
 ```bash
 # Copy all files from claude-resources-setup
 cp -r claude-resources-setup/* claude-resources/
@@ -30,6 +33,7 @@ cd claude-resources
 ```
 
 3. Initial commit and push:
+
 ```bash
 git add .
 git commit -m "Initial setup of Claude resources repository"
@@ -39,13 +43,15 @@ git push origin main
 ### Step 2: Run Initial Sync
 
 Trigger the first sync from upstream:
+
 ```bash
 gh workflow run sync-upstream.yml
 ```
 
 This will:
-- Clone agents from https://github.com/wshobson/agents
-- Clone commands from https://github.com/wshobson/commands
+
+- Clone agents from <https://github.com/wshobson/agents>
+- Clone commands from <https://github.com/wshobson/commands>
 - Create a PR with all resources for review
 
 ### Step 3: Setup Distribution to Projects
@@ -109,7 +115,9 @@ In the `candlefish/claude-resources` repository settings:
 ### Customization Options
 
 #### Custom Agents/Commands
+
 Add to appropriate directories:
+
 ```
 .claude/
 ├── agents/
@@ -121,7 +129,9 @@ Add to appropriate directories:
 ```
 
 #### Sync Frequency
+
 Edit `.github/workflows/sync-upstream.yml`:
+
 ```yaml
 schedule:
   - cron: '0 */6 * * *'  # Change to desired frequency
@@ -130,6 +140,7 @@ schedule:
 ## 🔍 Monitoring
 
 ### Check Sync Status
+
 ```bash
 # View recent sync runs
 gh run list --workflow=sync-upstream.yml --repo=candlefish/claude-resources
@@ -139,6 +150,7 @@ gh pr list --repo=candlefish/claude-resources --label=claude-resources
 ```
 
 ### Verify Distribution
+
 ```bash
 # Check if a project has Claude resources
 gh api repos/candlefish/{project-name}/contents/.claude
@@ -147,16 +159,19 @@ gh api repos/candlefish/{project-name}/contents/.claude
 ## 🚨 Troubleshooting
 
 ### Sync Workflow Fails
+
 1. Check upstream repository availability
 2. Verify GitHub Actions permissions
 3. Check for merge conflicts in existing PRs
 
 ### Distribution Issues
+
 1. Ensure projects have workflow permissions
 2. Check for .claude directory conflicts
 3. Verify team member access to repositories
 
 ### Local Setup Problems
+
 1. Team member should have Git installed
 2. Ensure ~/code/candlefish directory is accessible
 3. Check for existing ~/.claude conflicts
@@ -179,16 +194,19 @@ gh api repos/candlefish/{project-name}/contents/.claude
 ## 📝 Maintenance
 
 ### Weekly Tasks
+
 - Review pending sync PRs
 - Check for failed workflows
 - Monitor team feedback
 
 ### Monthly Tasks
+
 - Review custom additions
 - Update documentation
 - Check upstream changes
 
 ### Quarterly Tasks
+
 - Audit resource usage
 - Optimize sync performance
 - Plan new features

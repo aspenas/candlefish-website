@@ -46,7 +46,7 @@ describe('Login Component', () => {
       const form = screen.getByTestId('login-form');
       expect(form).toHaveAttribute('role', 'form');
       expect(form).toHaveAttribute('aria-labelledby', 'login-heading');
-      
+
       const heading = screen.getByTestId('login-heading');
       expect(heading).toHaveTextContent('Sign In');
     });
@@ -118,7 +118,7 @@ describe('Login Component', () => {
 
     it('handles form submission with valid credentials', async () => {
       const user = userEvent.setup();
-      
+
       // Mock successful login
       apiMock.setApiResponse('login', {
         access_token: mockAuthToken,
@@ -147,7 +147,7 @@ describe('Login Component', () => {
 
     it('can submit form with Enter key', async () => {
       const user = userEvent.setup();
-      
+
       apiMock.setApiResponse('login', {
         access_token: mockAuthToken,
         token_type: 'bearer'
@@ -233,11 +233,11 @@ describe('Login Component', () => {
       render(<Login onLogin={mockOnLogin} />);
 
       const usernameInput = screen.getByLabelText(/username/i);
-      
+
       // Trigger validation error
       await user.type(usernameInput, 'a');
       await user.tab();
-      
+
       expect(screen.getByText(/username must be at least 3 characters/i)).toBeInTheDocument();
 
       // Fix the error
@@ -251,10 +251,10 @@ describe('Login Component', () => {
   describe('Loading States', () => {
     it('shows loading state during authentication', async () => {
       const user = userEvent.setup();
-      
+
       // Mock delayed login response
-      apiMock.setApiResponse('login', 
-        new Promise(resolve => 
+      apiMock.setApiResponse('login',
+        new Promise(resolve =>
           setTimeout(() => resolve({ access_token: mockAuthToken }), 100)
         )
       );
@@ -282,9 +282,9 @@ describe('Login Component', () => {
 
     it('disables form during loading', async () => {
       const user = userEvent.setup();
-      
-      apiMock.setApiResponse('login', 
-        new Promise(resolve => 
+
+      apiMock.setApiResponse('login',
+        new Promise(resolve =>
           setTimeout(() => resolve({ access_token: mockAuthToken }), 100)
         )
       );
@@ -309,7 +309,7 @@ describe('Login Component', () => {
   describe('Error Handling', () => {
     it('displays error for invalid credentials', async () => {
       const user = userEvent.setup();
-      
+
       // Mock login error
       apiMock.setApiError('login', {
         response: {
@@ -341,7 +341,7 @@ describe('Login Component', () => {
 
     it('displays network error messages', async () => {
       const user = userEvent.setup();
-      
+
       apiMock.setApiError('login', {
         code: 'NETWORK_ERROR',
         message: 'Network Error'
@@ -364,7 +364,7 @@ describe('Login Component', () => {
 
     it('displays server error messages', async () => {
       const user = userEvent.setup();
-      
+
       apiMock.setApiError('login', {
         response: {
           status: 500,
@@ -389,7 +389,7 @@ describe('Login Component', () => {
 
     it('allows retry after error', async () => {
       const user = userEvent.setup();
-      
+
       // First attempt fails
       apiMock.setApiError('login', {
         response: { status: 401, data: { error: 'Invalid credentials' } }
@@ -411,7 +411,7 @@ describe('Login Component', () => {
 
       // Fix credentials and try again
       apiMock.setApiResponse('login', { access_token: mockAuthToken });
-      
+
       await user.clear(passwordInput);
       await user.type(passwordInput, 'correctpassword');
       await user.click(submitButton);
@@ -423,7 +423,7 @@ describe('Login Component', () => {
 
     it('clears errors when user types', async () => {
       const user = userEvent.setup();
-      
+
       apiMock.setApiError('login', {
         response: { status: 401, data: { error: 'Invalid credentials' } }
       });
@@ -444,7 +444,7 @@ describe('Login Component', () => {
 
       // Start typing - error should clear
       await user.type(usernameInput, 'x');
-      
+
       expect(screen.queryByTestId('login-error')).not.toBeInTheDocument();
     });
   });
@@ -463,7 +463,7 @@ describe('Login Component', () => {
 
       // Input should be sanitized or validated
       expect(usernameInput).toHaveValue('<script>alert("xss")</script>');
-      
+
       // Form validation should catch this
       const submitButton = screen.getByRole('button', { name: /sign in/i });
       await user.click(submitButton);
@@ -476,7 +476,7 @@ describe('Login Component', () => {
 
     it('implements rate limiting feedback', async () => {
       const user = userEvent.setup();
-      
+
       // Mock rate limit error
       apiMock.setApiError('login', {
         response: {
@@ -534,7 +534,7 @@ describe('Login Component', () => {
 
     it('announces errors to screen readers', async () => {
       const user = userEvent.setup();
-      
+
       apiMock.setApiError('login', {
         response: { status: 401, data: { error: 'Invalid credentials' } }
       });
@@ -561,7 +561,7 @@ describe('Login Component', () => {
       render(<Login onLogin={mockOnLogin} />);
 
       const usernameInput = screen.getByLabelText(/username/i);
-      
+
       // Focus should be on username field on initial render
       expect(usernameInput).toHaveFocus();
 

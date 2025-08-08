@@ -60,7 +60,7 @@ const metricTypes = [
 export default function MetricsScreen({ route, navigation }: Props) {
   const theme = useTheme();
   const { serviceId } = route.params;
-  
+
   const [selectedTimeRange, setSelectedTimeRange] = useState('6h');
   const [selectedMetric, setSelectedMetric] = useState('cpu');
   const [refreshing, setRefreshing] = useState(false);
@@ -70,7 +70,7 @@ export default function MetricsScreen({ route, navigation }: Props) {
     const range = timeRanges.find(r => r.value === selectedTimeRange);
     const now = new Date();
     const start = subHours(now, range?.hours || 6);
-    
+
     return {
       start: start.toISOString(),
       end: now.toISOString(),
@@ -151,7 +151,7 @@ export default function MetricsScreen({ route, navigation }: Props) {
     if (serviceId === 'system' && systemData?.systemAnalysis) {
       const analysis = systemData.systemAnalysis;
       const resource = analysis.resourceUtilization[selectedMetric];
-      
+
       // Mock time series data for system metrics
       const mockDataPoints = Array.from({ length: 12 }, (_, i) => ({
         timestamp: subHours(new Date(), 11 - i).toISOString(),
@@ -172,11 +172,11 @@ export default function MetricsScreen({ route, navigation }: Props) {
         }],
       };
     }
-    
+
     if (metricsData?.metricSeries) {
       const series = metricsData.metricSeries;
       const points = series.dataPoints.slice(-20); // Show last 20 points
-      
+
       return {
         labels: points.map((point, i) => {
           if (i % 4 === 0) { // Show every 4th label
@@ -208,13 +208,13 @@ export default function MetricsScreen({ route, navigation }: Props) {
         unit: '%',
       };
     }
-    
+
     if (metricsData?.metricSeries) {
       const series = metricsData.metricSeries;
       const latest = series.dataPoints[series.dataPoints.length - 1];
       const values = series.dataPoints.map(p => p.value);
       const average = values.reduce((a, b) => a + b, 0) / values.length;
-      
+
       return {
         current: latest?.value || 0,
         average,
@@ -257,7 +257,7 @@ export default function MetricsScreen({ route, navigation }: Props) {
           <Text variant="headlineSmall" style={styles.title}>
             {serviceId === 'system' ? 'System Metrics' : 'Service Metrics'}
           </Text>
-          
+
           {serviceId !== 'system' && metricsData?.metricSeries?.service && (
             <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
               {metricsData.metricSeries.service.displayName || metricsData.metricSeries.service.name}
@@ -324,7 +324,7 @@ export default function MetricsScreen({ route, navigation }: Props) {
               <Text variant="titleMedium" style={styles.chartTitle}>
                 {selectedMetric.toUpperCase()} Usage - {selectedTimeRange}
               </Text>
-              
+
               <View style={styles.chartContainer}>
                 <LineChart
                   data={chartData}
@@ -352,7 +352,7 @@ export default function MetricsScreen({ route, navigation }: Props) {
               <Text variant="titleMedium" style={styles.summaryTitle}>
                 System Health Summary
               </Text>
-              
+
               <View style={styles.healthGrid}>
                 <View style={styles.healthItem}>
                   <Text variant="labelMedium">Health Score</Text>
@@ -360,14 +360,14 @@ export default function MetricsScreen({ route, navigation }: Props) {
                     {systemData.systemAnalysis.healthScore}%
                   </Text>
                 </View>
-                
+
                 <View style={styles.healthItem}>
                   <Text variant="labelMedium">Services</Text>
                   <Text variant="headlineSmall">
                     {systemData.systemAnalysis.healthyServices}/{systemData.systemAnalysis.totalServices}
                   </Text>
                 </View>
-                
+
                 <View style={styles.healthItem}>
                   <Text variant="labelMedium">Active Alerts</Text>
                   <Text variant="headlineSmall" style={{ color: theme.colors.error }}>

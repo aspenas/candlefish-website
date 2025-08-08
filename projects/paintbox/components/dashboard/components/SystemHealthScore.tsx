@@ -1,6 +1,6 @@
 /**
  * System Health Score Component
- * 
+ *
  * Displays the overall system health score with visual indicators and breakdown
  */
 
@@ -8,7 +8,7 @@
 
 import React from 'react';
 import { SystemAnalysis, ServiceStatus, AlertSeverity } from '@/lib/types/dashboard';
-import { 
+import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
   XCircleIcon,
@@ -159,7 +159,7 @@ export function SystemHealthScore({ analysis }: SystemHealthScoreProps) {
               </div>
             </div>
           </div>
-          
+
           {/* Trend indicator */}
           <div className="mt-4 text-center">
             <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -176,7 +176,7 @@ export function SystemHealthScore({ analysis }: SystemHealthScoreProps) {
           <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Service Status
           </h3>
-          
+
           <div className="space-y-3">
             {healthyServices > 0 && (
               <div className="flex items-center justify-between">
@@ -241,19 +241,19 @@ export function SystemHealthScore({ analysis }: SystemHealthScoreProps) {
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
               <div className="flex h-2 rounded-full overflow-hidden">
                 {healthyServices > 0 && (
-                  <div 
+                  <div
                     className="bg-green-500 transition-all duration-1000"
                     style={{ width: `${healthyPercent}%` }}
                   />
                 )}
                 {degradedServices > 0 && (
-                  <div 
+                  <div
                     className="bg-yellow-500 transition-all duration-1000"
                     style={{ width: `${degradedPercent}%` }}
                   />
                 )}
                 {unhealthyServices > 0 && (
-                  <div 
+                  <div
                     className="bg-red-500 transition-all duration-1000"
                     style={{ width: `${unhealthyPercent}%` }}
                   />
@@ -271,7 +271,7 @@ export function SystemHealthScore({ analysis }: SystemHealthScoreProps) {
           <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Key Metrics
           </h3>
-          
+
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600 dark:text-gray-400">

@@ -17,13 +17,13 @@ export function debounce<T extends (...args: any[]) => any>(
   wait: number
 ): (...args: Parameters<T>) => void {
   let timeout: NodeJS.Timeout | null = null
-  
+
   return function executedFunction(...args: Parameters<T>) {
     const later = () => {
       timeout = null
       func(...args)
     }
-    
+
     if (timeout) {
       clearTimeout(timeout)
     }
@@ -39,7 +39,7 @@ export function throttle<T extends (...args: any[]) => any>(
   limit: number
 ): (...args: Parameters<T>) => void {
   let inThrottle: boolean = false
-  
+
   return function executedFunction(...args: Parameters<T>) {
     if (!inThrottle) {
       func(...args)
@@ -56,7 +56,7 @@ export function throttle<T extends (...args: any[]) => any>(
  */
 export function isTouchDevice(): boolean {
   if (typeof window === 'undefined') return false
-  
+
   return (
     'ontouchstart' in window ||
     navigator.maxTouchPoints > 0 ||
@@ -69,11 +69,11 @@ export function isTouchDevice(): boolean {
  */
 export function isIPad(): boolean {
   if (typeof window === 'undefined') return false
-  
+
   const userAgent = navigator.userAgent.toLowerCase()
   const isIPadUA = /ipad/.test(userAgent)
   const isIPadPro = /macintosh/.test(userAgent) && isTouchDevice()
-  
+
   return isIPadUA || isIPadPro
 }
 
@@ -84,7 +84,7 @@ export function getViewport() {
   if (typeof window === 'undefined') {
     return { width: 0, height: 0 }
   }
-  
+
   return {
     width: Math.max(
       document.documentElement.clientWidth || 0,
@@ -106,18 +106,18 @@ export function ipadClasses(
   mobile?: string
 ): string {
   const classes = [base]
-  
+
   if (desktop) {
     classes.push(`lg:${desktop}`)
   }
-  
+
   if (mobile) {
     classes.push(`max-lg:${mobile}`)
   }
-  
+
   // Always ensure touch targets are at least 44px
   classes.push('min-h-[44px]', 'min-w-[44px]')
-  
+
   return classes.join(' ')
 }
 
@@ -141,14 +141,14 @@ export function responsiveText(
   lg?: 'sm' | 'base' | 'lg' | 'xl' | '2xl'
 ): string {
   const classes = [`text-${base}`]
-  
+
   if (md) {
     classes.push(`md:text-${md}`)
   }
-  
+
   if (lg) {
     classes.push(`lg:text-${lg}`)
   }
-  
+
   return classes.join(' ')
 }

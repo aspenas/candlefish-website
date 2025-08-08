@@ -1,11 +1,13 @@
 # Claude Resources Production Deployment Guide
 
 ## Overview
+
 This guide provides comprehensive instructions for deploying the Claude Resources deployment system to production with enterprise-grade infrastructure, security, monitoring, and disaster recovery capabilities.
 
 ## Architecture Overview
 
 ### System Components
+
 - **Frontend**: React application served via nginx
 - **Backend**: FastAPI application with WebSocket support
 - **Database**: PostgreSQL with automated backups
@@ -17,6 +19,7 @@ This guide provides comprehensive instructions for deploying the Claude Resource
 - **Secret Management**: AWS Secrets Manager + External Secrets Operator
 
 ### Infrastructure Stack
+
 - **Cloud Provider**: AWS
 - **Infrastructure as Code**: Terraform
 - **Container Registry**: GitHub Container Registry
@@ -27,6 +30,7 @@ This guide provides comprehensive instructions for deploying the Claude Resource
 ## Prerequisites
 
 ### Required Tools
+
 ```bash
 # Install required CLI tools
 brew install terraform kubectl helm aws-cli
@@ -43,16 +47,18 @@ aws --version         # >= 2.0
 ```
 
 ### AWS Account Setup
+
 1. **Create AWS Account** with appropriate billing setup
 2. **Configure IAM roles** for EKS, Secrets Manager, S3, etc.
 3. **Create S3 buckets** for Terraform state and backups
 4. **Set up Route53 hosted zone** for your domain
 
 ### Domain Configuration
+
 1. **Purchase domain** (e.g., candlefish.ai)
 2. **Configure Route53** as DNS provider
 3. **Request SSL certificate** via ACM
-4. **Set up subdomains**: 
+4. **Set up subdomains**:
    - claude-resources.candlefish.ai (main app)
    - api.claude-resources.candlefish.ai (API)
    - grafana.claude-resources.candlefish.ai (monitoring)
@@ -60,6 +66,7 @@ aws --version         # >= 2.0
 ## Step 1: Infrastructure Deployment
 
 ### 1.1 Configure Terraform Backend
+
 ```bash
 # Create S3 bucket for Terraform state
 aws s3 mb s3://candlefish-terraform-state --region us-west-2
@@ -74,6 +81,7 @@ aws dynamodb create-table \
 ```
 
 ### 1.2 Deploy Infrastructure
+
 ```bash
 cd terraform/
 
@@ -94,6 +102,7 @@ aws eks update-kubeconfig --region us-west-2 --name claude-resources-prod
 ```
 
 ### 1.3 Install Core Components
+
 ```bash
 # Install AWS Load Balancer Controller
 helm repo add eks https://aws.github.io/eks-charts
@@ -134,6 +143,7 @@ helm install ingress-nginx ingress-nginx/ingress-nginx \
 ## Step 2: Secret Management Setup
 
 ### 2.1 Create AWS Secrets
+
 ```bash
 # Database secrets
 aws secretsmanager create-secret \
@@ -171,6 +181,7 @@ aws secretsmanager create-secret \
 ```
 
 ### 2.2 Deploy Secrets Configuration
+
 ```bash
 # Apply External Secrets configuration
 kubectl apply -f security/secrets/external-secrets-operator.yaml
@@ -183,6 +194,7 @@ kubectl get secrets -n claude-resources
 ## Step 3: Application Deployment
 
 ### 3.1 Deploy Core Infrastructure
+
 ```bash
 # Create namespace and RBAC
 kubectl apply -f k8s/base/namespace.yaml
@@ -198,6 +210,7 @@ kubectl wait --for=condition=ready pod -l app=redis -n claude-resources --timeou
 ```
 
 ### 3.2 Deploy Applications
+
 ```bash
 # Apply configuration
 kubectl apply -f k8s/base/configmap.yaml
@@ -215,6 +228,7 @@ kubectl rollout status deployment/frontend-production -n claude-resources
 ```
 
 ### 3.3 Configure Load Balancing
+
 ```bash
 # Apply load balancer controller
 kubectl apply -f load-balancing/ingress/aws-load-balancer-controller.yaml
@@ -227,6 +241,7 @@ kubectl apply -f load-balancing/autoscaling/vertical-pod-autoscaler.yaml
 ## Step 4: Security Configuration
 
 ### 4.1 Apply Security Policies
+
 ```bash
 # Apply Pod Security Policies
 kubectl apply -f security/policies/pod-security-policy.yaml
@@ -240,6 +255,7 @@ kubectl get networkpolicies -n claude-resources
 ```
 
 ### 4.2 Configure WAF and Shield
+
 ```bash
 # WAF rules are applied via Terraform
 # Verify WAF is attached to ALB
@@ -252,6 +268,7 @@ aws shield subscribe-to-proactive-engagement --region us-west-2
 ## Step 5: Monitoring Setup
 
 ### 5.1 Deploy Monitoring Stack
+
 ```bash
 # Create monitoring namespace
 kubectl create namespace monitoring
@@ -273,6 +290,7 @@ kubectl wait --for=condition=ready pod -l app=grafana -n monitoring --timeout=30
 ```
 
 ### 5.2 Configure Alerting
+
 ```bash
 # Update Slack webhook URL in AlertManager config
 kubectl patch configmap alertmanager-config -n monitoring --patch '{
@@ -288,6 +306,7 @@ kubectl rollout restart deployment/alertmanager -n monitoring
 ## Step 6: Backup Configuration
 
 ### 6.1 Configure Database Backups
+
 ```bash
 # Deploy backup CronJob
 kubectl apply -f backup-dr/database/postgres-backup.yaml
@@ -300,6 +319,7 @@ aws s3 ls s3://candlefish-claude-resources-backups/database/
 ```
 
 ### 6.2 Configure Cluster Backups
+
 ```bash
 # Deploy Velero backup schedules
 kubectl apply -f backup-dr/kubernetes/velero-backup.yaml
@@ -314,6 +334,7 @@ velero backup describe initial-backup
 ## Step 7: CI/CD Pipeline Setup
 
 ### 7.1 Configure GitHub Actions
+
 ```bash
 # Set up GitHub repository secrets
 gh secret set AWS_ACCESS_KEY_ID --body "YOUR_ACCESS_KEY"
@@ -330,6 +351,7 @@ gh secret set SLACK_WEBHOOK_URL --body "YOUR_SLACK_WEBHOOK"
 ```
 
 ### 7.2 Deploy GitHub Actions Workflows
+
 ```bash
 # Workflows are already in .github/workflows/
 # Push to main branch to trigger first deployment
@@ -341,6 +363,7 @@ git push origin main
 ## Step 8: Testing and Validation
 
 ### 8.1 Smoke Tests
+
 ```bash
 # Test application endpoints
 curl -k https://claude-resources.candlefish.ai/health
@@ -354,6 +377,7 @@ curl -k https://grafana.claude-resources.candlefish.ai/api/health
 ```
 
 ### 8.2 Load Testing
+
 ```bash
 # Install k6 for load testing
 brew install k6
@@ -363,6 +387,7 @@ k6 run tests/performance/load-test.js --vus 10 --duration 30s
 ```
 
 ### 8.3 Disaster Recovery Testing
+
 ```bash
 # Test database backup/restore
 kubectl create job --from=cronjob/postgres-backup test-backup -n claude-resources
@@ -375,6 +400,7 @@ velero restore create dr-test-restore --from-backup dr-test
 ## Step 9: Go-Live Checklist
 
 ### Pre-Launch
+
 - [ ] Infrastructure deployed and tested
 - [ ] All secrets properly configured
 - [ ] Security policies applied
@@ -386,6 +412,7 @@ velero restore create dr-test-restore --from-backup dr-test
 - [ ] CI/CD pipeline tested
 
 ### Launch
+
 - [ ] Final smoke tests pass
 - [ ] Monitoring dashboards show healthy status
 - [ ] Alert channels configured
@@ -394,6 +421,7 @@ velero restore create dr-test-restore --from-backup dr-test
 - [ ] Team notified of go-live
 
 ### Post-Launch
+
 - [ ] Monitor for 24 hours
 - [ ] Validate backup procedures
 - [ ] Review performance metrics
@@ -403,18 +431,21 @@ velero restore create dr-test-restore --from-backup dr-test
 ## Step 10: Operations and Maintenance
 
 ### Daily Operations
+
 - Monitor Grafana dashboards
 - Review alert status
 - Check backup completion
 - Validate security scans
 
 ### Weekly Operations
+
 - Review resource utilization
 - Update dependencies
 - Test disaster recovery procedures
 - Review and update documentation
 
 ### Monthly Operations
+
 - Security audit and updates
 - Performance optimization review
 - Cost optimization analysis
@@ -425,6 +456,7 @@ velero restore create dr-test-restore --from-backup dr-test
 ### Common Issues
 
 #### Pods Not Starting
+
 ```bash
 # Check pod status
 kubectl get pods -n claude-resources
@@ -437,6 +469,7 @@ kubectl logs POD_NAME -n claude-resources
 ```
 
 #### Database Connection Issues
+
 ```bash
 # Test database connectivity
 kubectl exec -it deployment/backend-production -n claude-resources -- psql $DATABASE_URL -c "SELECT 1"
@@ -446,6 +479,7 @@ kubectl get secret claude-resources-secrets -n claude-resources -o yaml
 ```
 
 #### LoadBalancer Issues
+
 ```bash
 # Check ALB status
 kubectl describe ingress claude-resources-alb -n claude-resources
@@ -455,6 +489,7 @@ kubectl logs -n kube-system deployment/aws-load-balancer-controller
 ```
 
 #### Monitoring Issues
+
 ```bash
 # Check Prometheus targets
 kubectl port-forward -n monitoring svc/prometheus 9090:9090
@@ -468,18 +503,21 @@ kubectl port-forward -n monitoring svc/grafana 3000:3000
 ## Security Considerations
 
 ### Network Security
+
 - All traffic encrypted in transit (TLS 1.2+)
 - Network policies restrict pod-to-pod communication
 - WAF protects against common attacks
 - Private subnets for database and cache
 
 ### Data Security
+
 - Database encryption at rest
 - Secrets managed via AWS Secrets Manager
 - Regular security scanning in CI/CD
 - Pod Security Standards enforced
 
 ### Access Control
+
 - RBAC configured for least privilege
 - Service accounts for automated processes
 - MFA required for admin access
@@ -488,12 +526,14 @@ kubectl port-forward -n monitoring svc/grafana 3000:3000
 ## Cost Optimization
 
 ### Right-Sizing
+
 - VPA automatically adjusts resource requests
 - HPA scales based on actual demand
 - Cluster Autoscaler manages node scaling
 - Regular cost reviews and optimization
 
 ### Storage Optimization
+
 - Lifecycle policies for S3 backups
 - Efficient storage classes for different data types
 - Compression for backup files
@@ -501,10 +541,10 @@ kubectl port-forward -n monitoring svc/grafana 3000:3000
 
 ## Contact Information
 
-- **Operations Team**: ops@candlefish.ai
-- **Security Team**: security@candlefish.ai
+- **Operations Team**: <ops@candlefish.ai>
+- **Security Team**: <security@candlefish.ai>
 - **On-Call**: +1-555-0123
-- **Emergency Escalation**: cto@candlefish.ai
+- **Emergency Escalation**: <cto@candlefish.ai>
 
 ## Additional Resources
 

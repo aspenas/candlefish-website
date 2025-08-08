@@ -9,8 +9,9 @@ The React modernization of Candlefish.ai shows excellent potential for meeting p
 ### Bundle Size Breakdown
 
 #### Dashboard App (React)
+
 - **Base React Bundle**: ~45KB gzipped
-- **React Router**: ~12KB gzipped  
+- **React Router**: ~12KB gzipped
 - **React Spring**: ~25KB gzipped
 - **Chart Libraries**: ~60KB gzipped (Chart.js + Recharts)
 - **AWS Amplify**: ~85KB gzipped
@@ -18,6 +19,7 @@ The React modernization of Candlefish.ai shows excellent potential for meeting p
 - **Total Estimate**: ~185KB gzipped ✅
 
 #### Main Site (Static HTML)
+
 - **HTML + Inline CSS**: ~20KB gzipped
 - **GSAP Bundle**: ~35KB gzipped
 - **Total**: ~55KB gzipped ✅
@@ -38,6 +40,7 @@ The React modernization of Candlefish.ai shows excellent potential for meeting p
 ### 1. Bundle Size Optimization
 
 #### Code Splitting Implementation
+
 ```typescript
 // vite.config.ts
 export default defineConfig({
@@ -67,14 +70,15 @@ export default defineConfig({
 ```
 
 #### Lazy Loading Routes
+
 ```typescript
 // App.tsx
 import { lazy, Suspense } from 'react'
 
-const Dashboard = lazy(() => 
+const Dashboard = lazy(() =>
   import(/* webpackChunkName: "dashboard" */ './pages/Dashboard')
 )
-const CostAnalysis = lazy(() => 
+const CostAnalysis = lazy(() =>
   import(/* webpackChunkName: "cost-analysis" */ './pages/CostAnalysis')
 )
 ```
@@ -91,63 +95,63 @@ const USE_INSTANCING = true
 export default function WebGLParticles() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [isLowPerf, setIsLowPerf] = useState(false)
-  
+
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    
+
     // Detect performance tier
     const fps = detectFPS()
     if (fps < 50) {
       setIsLowPerf(true)
       return // Skip WebGL on low-end devices
     }
-    
+
     const gl = canvas.getContext('webgl2', {
       alpha: true,
       antialias: false,
       powerPreference: 'high-performance',
       preserveDrawingBuffer: false
     })
-    
+
     if (!gl) return
-    
+
     // Use instanced rendering for particles
     if (USE_INSTANCING && gl.drawArraysInstanced) {
       // Implement instanced particle rendering
       // This reduces draw calls from 30 to 1
     }
-    
+
     // Optimize render loop
     let then = 0
     const targetFPS = 60
     const fpsInterval = 1000 / targetFPS
-    
+
     function render(now: number) {
       const elapsed = now - then
-      
+
       if (elapsed > fpsInterval) {
         then = now - (elapsed % fpsInterval)
-        
+
         // Render particles
         gl.clear(gl.COLOR_BUFFER_BIT)
         // ... rendering code
       }
-      
+
       requestAnimationFrame(render)
     }
-    
+
     requestAnimationFrame(render)
   }, [])
-  
+
   if (isLowPerf) {
     // Fallback to CSS animation
     return <div className="particles-css-fallback" />
   }
-  
+
   return (
-    <canvas 
-      ref={canvasRef} 
+    <canvas
+      ref={canvasRef}
       className="fixed inset-0 -z-10 pointer-events-none"
       style={{ willChange: 'transform' }}
     />
@@ -169,19 +173,19 @@ interface OptimizedImageProps {
   priority?: boolean
 }
 
-export function OptimizedImage({ 
-  src, 
-  alt, 
-  width, 
-  height, 
-  priority = false 
+export function OptimizedImage({
+  src,
+  alt,
+  width,
+  height,
+  priority = false
 }: OptimizedImageProps) {
   const [isInView, setIsInView] = useState(priority)
   const imgRef = useRef<HTMLDivElement>(null)
-  
+
   useEffect(() => {
     if (priority || !imgRef.current) return
-    
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -191,19 +195,19 @@ export function OptimizedImage({
       },
       { rootMargin: '50px' }
     )
-    
+
     observer.observe(imgRef.current)
-    
+
     return () => observer.disconnect()
   }, [priority])
-  
+
   return (
     <div ref={imgRef} style={{ width, height }}>
       {isInView ? (
         <picture>
-          <source 
-            srcSet={`${src}.webp`} 
-            type="image/webp" 
+          <source
+            srcSet={`${src}.webp`}
+            type="image/webp"
           />
           <img
             src={src}
@@ -215,8 +219,8 @@ export function OptimizedImage({
           />
         </picture>
       ) : (
-        <div 
-          className="bg-gray-200 animate-pulse" 
+        <div
+          className="bg-gray-200 animate-pulse"
           style={{ width, height }}
         />
       )}
@@ -237,25 +241,25 @@ export function useAnimationPerformance(
 ) {
   const frameCount = useRef(0)
   const lastTime = useRef(performance.now())
-  
+
   useEffect(() => {
     let animationId: number
-    
+
     function measureFPS() {
       frameCount.current++
       const currentTime = performance.now()
-      
+
       if (currentTime >= lastTime.current + 1000) {
         const fps = Math.round(
-          (frameCount.current * 1000) / 
+          (frameCount.current * 1000) /
           (currentTime - lastTime.current)
         )
-        
+
         if (fps < targetFPS * 0.9) {
           console.warn(
             `Animation "${animationName}" running at ${fps}fps`
           )
-          
+
           // Report to analytics
           if (window.gtag) {
             window.gtag('event', 'animation_performance', {
@@ -265,16 +269,16 @@ export function useAnimationPerformance(
             })
           }
         }
-        
+
         frameCount.current = 0
         lastTime.current = currentTime
       }
-      
+
       animationId = requestAnimationFrame(measureFPS)
     }
-    
+
     animationId = requestAnimationFrame(measureFPS)
-    
+
     return () => cancelAnimationFrame(animationId)
   }, [animationName, targetFPS])
 }
@@ -289,18 +293,18 @@ import { useReducedMotion } from '@/hooks/useReducedMotion'
 
 export function AnimatedHero() {
   const prefersReducedMotion = useReducedMotion()
-  
+
   const fadeIn = useSpring({
-    from: { 
-      opacity: 0, 
-      transform: 'translateY(40px)' 
+    from: {
+      opacity: 0,
+      transform: 'translateY(40px)'
     },
-    to: { 
-      opacity: 1, 
-      transform: 'translateY(0px)' 
+    to: {
+      opacity: 1,
+      transform: 'translateY(0px)'
     },
-    config: prefersReducedMotion 
-      ? { duration: 0 } 
+    config: prefersReducedMotion
+      ? { duration: 0 }
       : config.gentle,
     // Optimize for GPU
     immediate: prefersReducedMotion,
@@ -311,9 +315,9 @@ export function AnimatedHero() {
       }
     }
   })
-  
+
   return (
-    <animated.div 
+    <animated.div
       style={{
         ...fadeIn,
         willChange: 'transform, opacity'
@@ -329,16 +333,17 @@ export function AnimatedHero() {
 ## Memory Usage Optimization
 
 ### 1. Component Memoization
+
 ```typescript
 // components/ExpensiveChart.tsx
 import { memo, useMemo } from 'react'
 
 export const ExpensiveChart = memo(({ data, options }) => {
-  const processedData = useMemo(() => 
-    processChartData(data), 
+  const processedData = useMemo(() =>
+    processChartData(data),
     [data]
   )
-  
+
   return <Recharts data={processedData} {...options} />
 }, (prevProps, nextProps) => {
   // Custom comparison for re-render optimization
@@ -350,6 +355,7 @@ export const ExpensiveChart = memo(({ data, options }) => {
 ```
 
 ### 2. Event Handler Optimization
+
 ```typescript
 // hooks/useOptimizedHandlers.ts
 import { useCallback, useRef } from 'react'
@@ -360,10 +366,10 @@ export function useThrottledCallback(
 ) {
   const timeoutRef = useRef<NodeJS.Timeout>()
   const lastRun = useRef(Date.now())
-  
+
   return useCallback((...args) => {
     const now = Date.now()
-    
+
     if (now - lastRun.current >= delay) {
       callback(...args)
       lastRun.current = now
@@ -381,6 +387,7 @@ export function useThrottledCallback(
 ## Caching Strategies
 
 ### 1. Service Worker Implementation
+
 ```javascript
 // service-worker.js
 const CACHE_NAME = 'candlefish-v1'
@@ -388,7 +395,7 @@ const urlsToCache = [
   '/',
   '/static/css/main.css',
   '/static/js/bundle.js',
-  '/logo/candlefish_highquality.webp'
+  '/logo/candlefish_original.png'
 ]
 
 self.addEventListener('install', event => {
@@ -406,24 +413,24 @@ self.addEventListener('fetch', event => {
         if (response) {
           return response
         }
-        
+
         // Clone the request
         const fetchRequest = event.request.clone()
-        
+
         return fetch(fetchRequest).then(response => {
           // Check if valid response
           if (!response || response.status !== 200) {
             return response
           }
-          
+
           // Clone the response
           const responseToCache = response.clone()
-          
+
           caches.open(CACHE_NAME)
             .then(cache => {
               cache.put(event.request, responseToCache)
             })
-          
+
           return response
         })
       })
@@ -432,6 +439,7 @@ self.addEventListener('fetch', event => {
 ```
 
 ### 2. React Query for Data Caching
+
 ```typescript
 // hooks/useOptimizedData.ts
 import { useQuery } from '@tanstack/react-query'
@@ -451,6 +459,7 @@ export function useRepositoryData() {
 ## Performance Testing Tools
 
 ### 1. Custom Performance Monitor
+
 ```typescript
 // components/PerformanceMonitor.tsx
 import { useEffect, useState } from 'react'
@@ -463,49 +472,49 @@ interface PerformanceMetrics {
 
 export function PerformanceMonitor() {
   const [metrics, setMetrics] = useState<PerformanceMetrics>()
-  
+
   useEffect(() => {
     // FPS monitoring
     let frameCount = 0
     let lastTime = performance.now()
-    
+
     function updateMetrics() {
       frameCount++
       const currentTime = performance.now()
-      
+
       if (currentTime >= lastTime + 1000) {
         const fps = Math.round(
           (frameCount * 1000) / (currentTime - lastTime)
         )
-        
+
         // Memory usage (if available)
         const memory = (performance as any).memory
           ? Math.round(
-              (performance as any).memory.usedJSHeapSize / 
+              (performance as any).memory.usedJSHeapSize /
               1048576
             )
           : 0
-        
+
         // Load time
         const loadTime = Math.round(
-          performance.timing.loadEventEnd - 
+          performance.timing.loadEventEnd -
           performance.timing.navigationStart
         )
-        
+
         setMetrics({ fps, memory, loadTime })
-        
+
         frameCount = 0
         lastTime = currentTime
       }
-      
+
       requestAnimationFrame(updateMetrics)
     }
-    
+
     requestAnimationFrame(updateMetrics)
   }, [])
-  
+
   if (!metrics) return null
-  
+
   return (
     <div className="fixed bottom-4 right-4 bg-black/80 text-white p-4 rounded-lg text-xs font-mono">
       <div>FPS: {metrics.fps}</div>
@@ -519,24 +528,28 @@ export function PerformanceMonitor() {
 ## Implementation Checklist
 
 ### Phase 1: Foundation (Week 1)
+
 - [ ] Set up Vite bundle optimization
 - [ ] Implement code splitting for routes
 - [ ] Add performance monitoring components
 - [ ] Create optimized image component
 
 ### Phase 2: Animation (Week 2)
+
 - [ ] Optimize WebGL particle system
 - [ ] Add FPS monitoring to animations
 - [ ] Implement reduced motion support
 - [ ] Add GPU acceleration hints
 
 ### Phase 3: Loading (Week 3)
+
 - [ ] Implement service worker
 - [ ] Add lazy loading for images
 - [ ] Set up React Query for data caching
 - [ ] Optimize initial bundle size
 
 ### Phase 4: Testing (Week 4)
+
 - [ ] Run Lighthouse audits
 - [ ] Performance testing on low-end devices
 - [ ] Memory leak detection

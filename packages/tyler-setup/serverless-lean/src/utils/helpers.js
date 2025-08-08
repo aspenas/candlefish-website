@@ -16,7 +16,7 @@ const requestCounts = new Map();
  */
 export const response = (statusCode, body, additionalHeaders = {}) => {
   // Determine allowed origins based on environment
-  const allowedOrigins = process.env.STAGE === 'prod' 
+  const allowedOrigins = process.env.STAGE === 'prod'
     ? ['http://candlefish-employee-setup-lean-prod-web.s3-website-us-east-1.amazonaws.com', 'https://candlefish.ai']
     : ['http://localhost:3000', 'http://127.0.0.1:3000'];
 
@@ -78,18 +78,18 @@ export const validateAuth = async (event) => {
   try {
     const authHeader = event.headers.Authorization || event.headers.authorization;
     const token = authHeader?.replace('Bearer ', '');
-    
+
     if (!token) {
       return null;
     }
-    
+
     const decoded = await verifyJwtToken(token);
-    
+
     // Check if token is expired
     if (decoded.exp && decoded.exp * 1000 < Date.now()) {
       throw new Error('Token expired');
     }
-    
+
     return decoded;
   } catch (error) {
     console.error('Auth validation error:', error.message);
@@ -110,12 +110,12 @@ export const checkRateLimit = (identifier, limit) => {
   const now = Date.now();
   const windowMs = limit.windowMs || 15 * 60 * 1000; // 15 minutes default
   const maxRequests = limit.max || 100;
-  
+
   // Clean old entries
   const cutoff = now - windowMs;
   const current = requestCounts.get(identifier) || [];
   const validRequests = current.filter(timestamp => timestamp > cutoff);
-  
+
   if (validRequests.length >= maxRequests) {
     putMetric('RateLimitExceeded', 1, [
       { Name: 'Identifier', Value: identifier },
@@ -123,11 +123,11 @@ export const checkRateLimit = (identifier, limit) => {
     ]);
     return false;
   }
-  
+
   // Add current request
   validRequests.push(now);
   requestCounts.set(identifier, validRequests);
-  
+
   return true;
 };
 
@@ -256,11 +256,11 @@ const isImportantAuditEvent = (action) => {
 export const validateRequestSize = (event, maxSizeKB = 100) => {
   const body = event.body || '';
   const sizeKB = Buffer.byteLength(body, 'utf8') / 1024;
-  
+
   if (sizeKB > maxSizeKB) {
     throw new ValidationError(`Request size too large: ${sizeKB.toFixed(2)}KB (max: ${maxSizeKB}KB)`);
   }
-  
+
   return true;
 };
 
@@ -268,7 +268,7 @@ export const validateRequestSize = (event, maxSizeKB = 100) => {
  * Extract client IP for rate limiting and logging
  */
 export const getClientIP = (event) => {
-  return event.requestContext?.identity?.sourceIp || 
-         event.headers?.['X-Forwarded-For']?.split(',')[0]?.trim() || 
+  return event.requestContext?.identity?.sourceIp ||
+         event.headers?.['X-Forwarded-For']?.split(',')[0]?.trim() ||
          'unknown';
 };

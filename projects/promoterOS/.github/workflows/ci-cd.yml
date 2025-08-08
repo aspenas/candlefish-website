@@ -115,10 +115,10 @@ jobs:
           # Test API endpoints locally
           npx netlify dev --offline &
           sleep 10
-          
+
           # Health check
           curl -f http://localhost:8888/api/health || echo "Health check needs implementation"
-          
+
           # Kill the dev server
           pkill -f "netlify dev" || true
 
@@ -163,10 +163,10 @@ jobs:
         run: |
           # Bundle functions for better cold start performance
           cd netlify/functions
-          
+
           # Install esbuild for bundling
           npm install --save-dev esbuild
-          
+
           # Bundle each function (if esbuild is available)
           for func in *.js; do
             if [ -f "$func" ]; then
@@ -175,7 +175,7 @@ jobs:
               mv "bundled-$func" "$func"
             fi
           done
-          
+
           cd ../..
 
       - name: Deploy to Netlify
@@ -241,7 +241,7 @@ jobs:
             "/api/health"
             "/api/artists/Chappell%20Roan/social-metrics"
           )
-          
+
           for endpoint in "${endpoints[@]}"; do
             echo "Testing $endpoint..."
             curl -f -s "https://promoteros.candlefish.ai$endpoint" > /dev/null || echo "⚠️ $endpoint needs attention"
@@ -253,10 +253,10 @@ jobs:
           start_time=$(date +%s%N)
           curl -s https://promoteros.candlefish.ai > /dev/null
           end_time=$(date +%s%N)
-          
+
           response_time=$(( ($end_time - $start_time) / 1000000 ))
           echo "Response time: ${response_time}ms"
-          
+
           if [ $response_time -gt 3000 ]; then
             echo "⚠️ Response time is slow (>3s)"
           else

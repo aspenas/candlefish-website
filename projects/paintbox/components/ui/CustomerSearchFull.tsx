@@ -42,7 +42,7 @@ export const CustomerSearch: React.FC<CustomerSearchProps> = ({
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [error, setError] = useState<string | null>(null);
   const [isServiceReady, setIsServiceReady] = useState(false);
-  
+
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debouncedQuery = useDebounce(query, 300);
@@ -58,7 +58,7 @@ export const CustomerSearch: React.FC<CustomerSearchProps> = ({
         setError('Salesforce connection unavailable');
       }
     };
-    
+
     initService();
   }, []);
 
@@ -87,7 +87,7 @@ export const CustomerSearch: React.FC<CustomerSearchProps> = ({
   const performSearch = async (searchQuery: string) => {
     setIsSearching(true);
     setError(null);
-    
+
     try {
       // Search both contacts and accounts in parallel
       const [contacts, accounts] = await Promise.all([
@@ -143,7 +143,7 @@ export const CustomerSearch: React.FC<CustomerSearchProps> = ({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setSelectedIndex(prev => 
+        setSelectedIndex(prev =>
           prev < results.length - 1 ? prev + 1 : prev
         );
         break;
@@ -174,11 +174,11 @@ export const CustomerSearch: React.FC<CustomerSearchProps> = ({
 
   const highlightMatch = (text: string, query: string) => {
     if (!query) return text;
-    
+
     const parts = text.split(new RegExp(`(${query})`, 'gi'));
-    return parts.map((part, index) => 
-      part.toLowerCase() === query.toLowerCase() ? 
-        <span key={index} className="font-semibold text-paintbox-primary">{part}</span> : 
+    return parts.map((part, index) =>
+      part.toLowerCase() === query.toLowerCase() ?
+        <span key={index} className="font-semibold text-paintbox-primary">{part}</span> :
         part
     );
   };
@@ -251,8 +251,8 @@ export const CustomerSearch: React.FC<CustomerSearchProps> = ({
                         </p>
                         <span className={cn(
                           "text-xs px-2 py-0.5 rounded-full",
-                          customer.type === 'contact' 
-                            ? "bg-blue-100 text-blue-700" 
+                          customer.type === 'contact'
+                            ? "bg-blue-100 text-blue-700"
                             : "bg-purple-100 text-purple-700"
                         )}>
                           {customer.type}
@@ -275,7 +275,7 @@ export const CustomerSearch: React.FC<CustomerSearchProps> = ({
                   </div>
                 </button>
               ))}
-              
+
               {query.length > 0 && (
                 <button
                   onClick={onCreateNew}

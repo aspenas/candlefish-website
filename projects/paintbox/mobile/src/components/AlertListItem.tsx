@@ -122,14 +122,14 @@ export default function AlertListItem({ alert, onPress }: AlertListItemProps) {
             color={severityConfig.color}
           />
         </View>
-        
+
         <View style={styles.alertInfo}>
           <Text variant="labelLarge" numberOfLines={1} style={styles.alertName}>
             {alert.name}
           </Text>
-          <Text 
-            variant="labelSmall" 
-            numberOfLines={1} 
+          <Text
+            variant="labelSmall"
+            numberOfLines={1}
             style={[styles.serviceName, { color: theme.colors.onSurfaceVariant }]}
           >
             {alert.service.displayName || alert.service.name}
@@ -147,9 +147,9 @@ export default function AlertListItem({ alert, onPress }: AlertListItemProps) {
 
       {/* Alert Description */}
       {alert.description && (
-        <Text 
-          variant="labelSmall" 
-          numberOfLines={2} 
+        <Text
+          variant="labelSmall"
+          numberOfLines={2}
           style={[styles.description, { color: theme.colors.onSurfaceVariant }]}
         >
           {alert.description}
@@ -169,8 +169,8 @@ export default function AlertListItem({ alert, onPress }: AlertListItemProps) {
         )}
 
         <View style={styles.severityChip}>
-          <Text 
-            variant="labelSmall" 
+          <Text
+            variant="labelSmall"
             style={[styles.severityText, { color: severityConfig.color }]}
           >
             {severityConfig.text}

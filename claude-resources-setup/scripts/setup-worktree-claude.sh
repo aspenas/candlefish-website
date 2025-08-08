@@ -22,7 +22,7 @@ echo "=================================================="
 find_worktrees() {
     local repo_path="$1"
     cd "$repo_path"
-    
+
     # Get all worktrees for this repository
     if git worktree list &>/dev/null; then
         git worktree list --porcelain | grep "^worktree " | cut -d' ' -f2
@@ -32,12 +32,12 @@ find_worktrees() {
 # Function to setup claude in a worktree
 setup_worktree_claude() {
     local worktree_path="$1"
-    
+
     if [ ! -d "$worktree_path" ]; then
         echo -e "${RED}✗ Worktree not found: $worktree_path${NC}"
         return 1
     fi
-    
+
     # Check if .claude already exists
     if [ -e "$worktree_path/.claude" ]; then
         if [ -L "$worktree_path/.claude" ]; then
@@ -49,7 +49,7 @@ setup_worktree_claude() {
             mv "$worktree_path/.claude" "$worktree_path/.claude.backup.$(date +%Y%m%d-%H%M%S)"
         fi
     fi
-    
+
     # Create symlink
     ln -s "$CLAUDE_HOME" "$worktree_path/.claude"
     echo -e "${GREEN}✓ Linked Claude resources in: $worktree_path${NC}"
@@ -58,24 +58,24 @@ setup_worktree_claude() {
 # Function to find all Candlefish projects
 find_candlefish_projects() {
     echo -e "\n${YELLOW}Searching for Candlefish projects...${NC}"
-    
+
     local projects=()
-    
+
     # Find all git repositories in Candlefish directory
     while IFS= read -r -d '' git_dir; do
         local repo_path=$(dirname "$git_dir")
         projects+=("$repo_path")
     done < <(find "$CANDLEFISH_DIR" -name ".git" -type d -print0 2>/dev/null)
-    
+
     echo -e "${BLUE}Found ${#projects[@]} Candlefish projects${NC}"
-    
+
     # Process each project
     for project in "${projects[@]}"; do
         echo -e "\n${YELLOW}Processing: $(basename "$project")${NC}"
-        
+
         # Setup main repository
         setup_worktree_claude "$project"
-        
+
         # Find and setup worktrees
         local worktrees=($(find_worktrees "$project"))
         if [ ${#worktrees[@]} -gt 0 ]; then
@@ -92,17 +92,17 @@ find_candlefish_projects() {
 # Function to setup specific project
 setup_specific_project() {
     local project_path="$1"
-    
+
     if [ ! -d "$project_path/.git" ]; then
         echo -e "${RED}Error: Not a git repository: $project_path${NC}"
         exit 1
     fi
-    
+
     echo -e "${YELLOW}Setting up Claude resources for: $project_path${NC}"
-    
+
     # Setup main repository
     setup_worktree_claude "$project_path"
-    
+
     # Find and setup worktrees
     local worktrees=($(find_worktrees "$project_path"))
     if [ ${#worktrees[@]} -gt 1 ]; then
@@ -123,7 +123,7 @@ verify_claude_home() {
         echo "  curl -sSL https://raw.githubusercontent.com/candlefish/claude-resources/main/scripts/setup-local.sh | bash"
         exit 1
     fi
-    
+
     if [ ! -L "$CLAUDE_HOME" ]; then
         echo -e "${YELLOW}Warning: ~/.claude is not a symlink to organization resources${NC}"
         echo "This might cause synchronization issues."
@@ -138,7 +138,7 @@ verify_claude_home() {
 # Function to create worktree integration hook
 create_worktree_hook() {
     local hook_script="$CANDLEFISH_DIR/claude-worktree-hook.sh"
-    
+
     cat > "$hook_script" << 'HOOK_SCRIPT'
 #!/bin/bash
 # Git worktree post-checkout hook for Claude resources
@@ -152,7 +152,7 @@ if [ -d "$CLAUDE_HOME" ] && [ ! -e "$WORKTREE_PATH/.claude" ]; then
     echo "✓ Claude resources linked in new worktree"
 fi
 HOOK_SCRIPT
-    
+
     chmod +x "$hook_script"
     echo -e "${GREEN}✓ Created worktree hook script: $hook_script${NC}"
     echo -e "${BLUE}To use this hook in a repository:${NC}"
@@ -166,9 +166,9 @@ show_menu() {
     echo "2. Setup Claude for a specific project and its worktrees"
     echo "3. Create worktree integration hook"
     echo "4. Exit"
-    
+
     read -p "Enter choice (1-4): " choice
-    
+
     case $choice in
         1)
             find_candlefish_projects
@@ -194,14 +194,14 @@ show_menu() {
 # Main execution
 main() {
     verify_claude_home
-    
+
     # If argument provided, assume it's a project path
     if [ $# -eq 1 ]; then
         setup_specific_project "$1"
     else
         show_menu
     fi
-    
+
     echo -e "\n${GREEN}✅ Worktree integration complete!${NC}"
 }
 

@@ -1,0 +1,839 @@
+# Root Query Type with Pagination and Filtering
+type Query {
+  # User Queries
+  me: User @auth(requires: USER)
+  user(id: UUID!): User @auth(requires: ORG_ADMIN) @tenant
+  users(
+    filter: UserFilter
+    sort: [UserSort!]
+    pagination: PaginationInput
+  ): UserConnection! @auth(requires: ORG_ADMIN) @tenant @complexity(value: 10)
+
+  # Organization Queries
+  organization(id: UUID!): Organization @auth(requires: USER) @tenant
+  organizations(
+    filter: OrganizationFilter
+    sort: [OrganizationSort!]
+    pagination: PaginationInput
+  ): OrganizationConnection! @auth(requires: SUPER_ADMIN) @complexity(value: 15)
+
+  # Dashboard Queries
+  dashboard(id: UUID!): Dashboard @auth(requires: USER) @tenant
+  dashboards(
+    filter: DashboardFilter
+    sort: [DashboardSort!]
+    pagination: PaginationInput
+  ): DashboardConnection! @auth(requires: USER) @tenant @complexity(value: 20)
+
+  myDashboards(
+    filter: DashboardFilter
+    sort: [DashboardSort!]
+    pagination: PaginationInput
+  ): DashboardConnection! @auth(requires: USER) @tenant @complexity(value: 15)
+
+  publicDashboards(
+    filter: PublicDashboardFilter
+    sort: [DashboardSort!]
+    pagination: PaginationInput
+  ): DashboardConnection! @complexity(value: 10)
+
+  # Widget Queries
+  widget(id: UUID!): Widget @auth(requires: USER) @tenant
+  widgets(
+    filter: WidgetFilter
+    sort: [WidgetSort!]
+    pagination: PaginationInput
+  ): WidgetConnection! @auth(requires: USER) @tenant @complexity(value: 15)
+
+  # Data Source Queries
+  dataSource(id: UUID!): DataSource @auth(requires: USER) @tenant
+  dataSources(
+    filter: DataSourceFilter
+    sort: [DataSourceSort!]
+    pagination: PaginationInput
+  ): DataSourceConnection! @auth(requires: USER) @tenant @complexity(value: 20)
+
+  # Test data source connection
+  testDataSourceConnection(input: DataSourceConnectionInput!): DataSourceConnectionTest!
+    @auth(requires: USER) @complexity(value: 25) @rateLimit(max: 10, window: "1m")
+
+  # Metric Queries
+  metric(id: UUID!): Metric @auth(requires: USER) @tenant
+  metrics(
+    filter: MetricFilter
+    sort: [MetricSort!]
+    pagination: PaginationInput
+  ): MetricConnection! @auth(requires: USER) @tenant @complexity(value: 20)
+
+  # Execute metric query
+  executeMetric(
+    id: UUID!
+    parameters: JSON
+    timeRange: TimeRangeInput
+    filters: [FilterInput!]
+  ): MetricResult! @auth(requires: USER) @tenant @complexity(value: 30)
+
+  # Alert Queries
+  alert(id: UUID!): Alert @auth(requires: USER) @tenant
+  alerts(
+    filter: AlertFilter
+    sort: [AlertSort!]
+    pagination: PaginationInput
+  ): AlertConnection! @auth(requires: USER) @tenant @complexity(value: 15)
+
+  # Notification Queries
+  notifications(
+    filter: NotificationFilter
+    sort: [NotificationSort!]
+    pagination: PaginationInput
+  ): NotificationConnection! @auth(requires: USER) @tenant @complexity(value: 10)
+
+  unreadNotificationCount: NonNegativeInt! @auth(requires: USER) @tenant
+
+  # Analytics Queries
+  analyticsOverview(timeRange: TimeRangeInput): AnalyticsOverview!
+    @auth(requires: USER) @tenant @complexity(value: 25)
+
+  usageAnalytics(
+    timeRange: TimeRangeInput
+    granularity: TimeGranularity = DAY
+  ): UsageAnalytics! @auth(requires: ORG_ADMIN) @tenant @complexity(value: 20)
+
+  performanceMetrics(
+    timeRange: TimeRangeInput
+    resources: [ResourceType!]
+  ): PerformanceMetrics! @auth(requires: ORG_ADMIN) @tenant @complexity(value: 25)
+
+  # Export Queries
+  export(id: UUID!): Export @auth(requires: USER) @tenant
+  exports(
+    filter: ExportFilter
+    sort: [ExportSort!]
+    pagination: PaginationInput
+  ): ExportConnection! @auth(requires: USER) @tenant @complexity(value: 10)
+
+  # Search and Discovery
+  search(
+    query: NonEmptyString!
+    types: [SearchableType!]
+    filters: JSON
+    pagination: PaginationInput
+  ): SearchResults! @auth(requires: USER) @tenant @complexity(value: 20)
+
+  suggestions(
+    input: NonEmptyString!
+    type: SuggestionType!
+    limit: PositiveInt = 10
+  ): [Suggestion!]! @auth(requires: USER) @tenant @complexity(value: 5)
+
+  # Activity and Audit
+  activityLog(
+    filter: ActivityLogFilter
+    sort: [ActivityLogSort!]
+    pagination: PaginationInput
+  ): ActivityLogConnection! @auth(requires: USER) @tenant @complexity(value: 15)
+
+  auditLog(
+    filter: AuditLogFilter
+    sort: [AuditLogSort!]
+    pagination: PaginationInput
+  ): AuditLogConnection! @auth(requires: ORG_ADMIN) @tenant @complexity(value: 20)
+
+  # System and Health
+  health: HealthStatus! @auth(requires: USER) @complexity(value: 5)
+  version: SystemVersion! @complexity(value: 1)
+
+  # Configuration
+  organizationSettings: OrganizationSettings! @auth(requires: ORG_ADMIN) @tenant
+  userPreferences: UserPreferences! @auth(requires: USER) @tenant
+}
+
+# Pagination Types
+input PaginationInput {
+  first: PositiveInt
+  after: String
+  last: PositiveInt
+  before: String
+  offset: NonNegativeInt
+  limit: PositiveInt
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+  totalCount: NonNegativeInt
+}
+
+# Connection Types
+type UserConnection {
+  edges: [UserEdge!]!
+  pageInfo: PageInfo!
+  totalCount: NonNegativeInt!
+}
+
+type UserEdge {
+  node: User!
+  cursor: String!
+}
+
+type OrganizationConnection {
+  edges: [OrganizationEdge!]!
+  pageInfo: PageInfo!
+  totalCount: NonNegativeInt!
+}
+
+type OrganizationEdge {
+  node: Organization!
+  cursor: String!
+}
+
+type DashboardConnection {
+  edges: [DashboardEdge!]!
+  pageInfo: PageInfo!
+  totalCount: NonNegativeInt!
+}
+
+type DashboardEdge {
+  node: Dashboard!
+  cursor: String!
+}
+
+type WidgetConnection {
+  edges: [WidgetEdge!]!
+  pageInfo: PageInfo!
+  totalCount: NonNegativeInt!
+}
+
+type WidgetEdge {
+  node: Widget!
+  cursor: String!
+}
+
+type DataSourceConnection {
+  edges: [DataSourceEdge!]!
+  pageInfo: PageInfo!
+  totalCount: NonNegativeInt!
+}
+
+type DataSourceEdge {
+  node: DataSource!
+  cursor: String!
+}
+
+type MetricConnection {
+  edges: [MetricEdge!]!
+  pageInfo: PageInfo!
+  totalCount: NonNegativeInt!
+}
+
+type MetricEdge {
+  node: Metric!
+  cursor: String!
+}
+
+type AlertConnection {
+  edges: [AlertEdge!]!
+  pageInfo: PageInfo!
+  totalCount: NonNegativeInt!
+}
+
+type AlertEdge {
+  node: Alert!
+  cursor: String!
+}
+
+type NotificationConnection {
+  edges: [NotificationEdge!]!
+  pageInfo: PageInfo!
+  totalCount: NonNegativeInt!
+}
+
+type NotificationEdge {
+  node: Notification!
+  cursor: String!
+}
+
+type ExportConnection {
+  edges: [ExportEdge!]!
+  pageInfo: PageInfo!
+  totalCount: NonNegativeInt!
+}
+
+type ExportEdge {
+  node: Export!
+  cursor: String!
+}
+
+type ActivityLogConnection {
+  edges: [ActivityLogEdge!]!
+  pageInfo: PageInfo!
+  totalCount: NonNegativeInt!
+}
+
+type ActivityLogEdge {
+  node: ActivityLog!
+  cursor: String!
+}
+
+type AuditLogConnection {
+  edges: [AuditLogEdge!]!
+  pageInfo: PageInfo!
+  totalCount: NonNegativeInt!
+}
+
+type AuditLogEdge {
+  node: AuditLog!
+  cursor: String!
+}
+
+# Filter Input Types
+input UserFilter {
+  id: UUIDFilter
+  email: StringFilter
+  firstName: StringFilter
+  lastName: StringFilter
+  role: EnumFilter
+  status: EnumFilter
+  createdAt: DateTimeFilter
+  lastLoginAt: DateTimeFilter
+  organizationId: UUIDFilter
+}
+
+input OrganizationFilter {
+  id: UUIDFilter
+  name: StringFilter
+  slug: StringFilter
+  industry: EnumFilter
+  size: EnumFilter
+  status: EnumFilter
+  createdAt: DateTimeFilter
+}
+
+input DashboardFilter {
+  id: UUIDFilter
+  name: StringFilter
+  description: StringFilter
+  visibility: EnumFilter
+  category: EnumFilter
+  tags: StringArrayFilter
+  createdBy: UUIDFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+  isFavorite: BooleanFilter
+  isTemplate: BooleanFilter
+}
+
+input PublicDashboardFilter {
+  name: StringFilter
+  description: StringFilter
+  category: EnumFilter
+  tags: StringArrayFilter
+  createdAt: DateTimeFilter
+}
+
+input WidgetFilter {
+  id: UUIDFilter
+  name: StringFilter
+  type: EnumFilter
+  dashboardId: UUIDFilter
+  createdBy: UUIDFilter
+  createdAt: DateTimeFilter
+  status: EnumFilter
+}
+
+input DataSourceFilter {
+  id: UUIDFilter
+  name: StringFilter
+  type: EnumFilter
+  status: EnumFilter
+  createdBy: UUIDFilter
+  createdAt: DateTimeFilter
+  syncStatus: EnumFilter
+}
+
+input MetricFilter {
+  id: UUIDFilter
+  name: StringFilter
+  type: EnumFilter
+  category: EnumFilter
+  tags: StringArrayFilter
+  dataSourceId: UUIDFilter
+  createdBy: UUIDFilter
+  createdAt: DateTimeFilter
+  isCustom: BooleanFilter
+}
+
+input AlertFilter {
+  id: UUIDFilter
+  name: StringFilter
+  severity: EnumFilter
+  status: EnumFilter
+  enabled: BooleanFilter
+  metricId: UUIDFilter
+  createdBy: UUIDFilter
+  createdAt: DateTimeFilter
+  lastTriggered: DateTimeFilter
+}
+
+input NotificationFilter {
+  id: UUIDFilter
+  type: EnumFilter
+  priority: EnumFilter
+  category: EnumFilter
+  read: BooleanFilter
+  createdAt: DateTimeFilter
+  expiresAt: DateTimeFilter
+}
+
+input ExportFilter {
+  id: UUIDFilter
+  format: EnumFilter
+  status: EnumFilter
+  dashboardId: UUIDFilter
+  requestedBy: UUIDFilter
+  requestedAt: DateTimeFilter
+  completedAt: DateTimeFilter
+}
+
+input ActivityLogFilter {
+  id: UUIDFilter
+  action: EnumFilter
+  resource: StringFilter
+  userId: UUIDFilter
+  createdAt: DateTimeFilter
+  ipAddress: StringFilter
+}
+
+input AuditLogFilter {
+  id: UUIDFilter
+  action: EnumFilter
+  resource: EnumFilter
+  userId: UUIDFilter
+  createdAt: DateTimeFilter
+  ipAddress: StringFilter
+}
+
+# Filter Field Types
+input StringFilter {
+  equals: String
+  not: String
+  in: [String!]
+  notIn: [String!]
+  contains: String
+  notContains: String
+  startsWith: String
+  endsWith: String
+  regex: String
+}
+
+input UUIDFilter {
+  equals: UUID
+  not: UUID
+  in: [UUID!]
+  notIn: [UUID!]
+}
+
+input DateTimeFilter {
+  equals: DateTime
+  not: DateTime
+  in: [DateTime!]
+  notIn: [DateTime!]
+  lt: DateTime
+  lte: DateTime
+  gt: DateTime
+  gte: DateTime
+  between: DateTimeRange
+}
+
+input DateTimeRange {
+  start: DateTime!
+  end: DateTime!
+}
+
+input EnumFilter {
+  equals: String
+  not: String
+  in: [String!]
+  notIn: [String!]
+}
+
+input BooleanFilter {
+  equals: Boolean
+}
+
+input StringArrayFilter {
+  contains: String
+  containsAll: [String!]
+  containsAny: [String!]
+  isEmpty: Boolean
+}
+
+# Sort Input Types
+input UserSort {
+  field: UserSortField!
+  direction: SortDirection!
+}
+
+input OrganizationSort {
+  field: OrganizationSortField!
+  direction: SortDirection!
+}
+
+input DashboardSort {
+  field: DashboardSortField!
+  direction: SortDirection!
+}
+
+input WidgetSort {
+  field: WidgetSortField!
+  direction: SortDirection!
+}
+
+input DataSourceSort {
+  field: DataSourceSortField!
+  direction: SortDirection!
+}
+
+input MetricSort {
+  field: MetricSortField!
+  direction: SortDirection!
+}
+
+input AlertSort {
+  field: AlertSortField!
+  direction: SortDirection!
+}
+
+input NotificationSort {
+  field: NotificationSortField!
+  direction: SortDirection!
+}
+
+input ExportSort {
+  field: ExportSortField!
+  direction: SortDirection!
+}
+
+input ActivityLogSort {
+  field: ActivityLogSortField!
+  direction: SortDirection!
+}
+
+input AuditLogSort {
+  field: AuditLogSortField!
+  direction: SortDirection!
+}
+
+enum SortDirection {
+  ASC
+  DESC
+}
+
+enum UserSortField {
+  ID
+  EMAIL
+  FIRST_NAME
+  LAST_NAME
+  ROLE
+  STATUS
+  CREATED_AT
+  LAST_LOGIN_AT
+}
+
+enum OrganizationSortField {
+  ID
+  NAME
+  SLUG
+  INDUSTRY
+  SIZE
+  STATUS
+  CREATED_AT
+  UPDATED_AT
+}
+
+enum DashboardSortField {
+  ID
+  NAME
+  VISIBILITY
+  CATEGORY
+  CREATED_AT
+  UPDATED_AT
+  LAST_VIEWED
+  VIEW_COUNT
+}
+
+enum WidgetSortField {
+  ID
+  NAME
+  TYPE
+  CREATED_AT
+  UPDATED_AT
+  LAST_UPDATED
+}
+
+enum DataSourceSortField {
+  ID
+  NAME
+  TYPE
+  STATUS
+  CREATED_AT
+  UPDATED_AT
+  LAST_SYNC_AT
+}
+
+enum MetricSortField {
+  ID
+  NAME
+  TYPE
+  CATEGORY
+  CREATED_AT
+  UPDATED_AT
+  LAST_CALCULATED
+  USAGE_COUNT
+}
+
+enum AlertSortField {
+  ID
+  NAME
+  SEVERITY
+  STATUS
+  CREATED_AT
+  LAST_TRIGGERED
+}
+
+enum NotificationSortField {
+  ID
+  TYPE
+  PRIORITY
+  CATEGORY
+  CREATED_AT
+  READ_AT
+}
+
+enum ExportSortField {
+  ID
+  FORMAT
+  STATUS
+  REQUESTED_AT
+  COMPLETED_AT
+}
+
+enum ActivityLogSortField {
+  ID
+  ACTION
+  CREATED_AT
+}
+
+enum AuditLogSortField {
+  ID
+  ACTION
+  RESOURCE
+  CREATED_AT
+}
+
+# Utility Input Types
+input TimeRangeInput {
+  start: DateTime!
+  end: DateTime!
+  preset: TimeRange
+}
+
+input FilterInput {
+  field: NonEmptyString!
+  operator: FilterOperator!
+  value: JSON!
+}
+
+input DataSourceConnectionInput {
+  type: DataSourceType!
+  host: String
+  port: PositiveInt
+  database: String
+  username: String
+  password: String
+  connectionString: String
+  ssl: Boolean
+  config: JSON
+}
+
+# Result Types
+type DataSourceConnectionTest {
+  success: Boolean!
+  message: String!
+  latency: Decimal
+  version: String
+  error: String
+  details: JSON
+}
+
+type MetricResult {
+  data: [DataPoint!]!
+  summary: DataSummary!
+  executionTime: Decimal!
+  cached: Boolean!
+  cacheExpiry: DateTime
+}
+
+type AnalyticsOverview {
+  dashboardCount: NonNegativeInt!
+  widgetCount: NonNegativeInt!
+  dataSourceCount: NonNegativeInt!
+  metricCount: NonNegativeInt!
+  alertCount: NonNegativeInt!
+  activeUserCount: NonNegativeInt!
+  topDashboards: [Dashboard!]!
+  recentActivity: [ActivityLog!]!
+  systemHealth: HealthStatus!
+}
+
+type UsageAnalytics {
+  period: DateTimeRange!
+  userActivity: [UsageDataPoint!]!
+  dashboardViews: [UsageDataPoint!]!
+  queryExecutions: [UsageDataPoint!]!
+  dataVolume: [UsageDataPoint!]!
+  apiCalls: [UsageDataPoint!]!
+}
+
+type UsageDataPoint {
+  timestamp: DateTime!
+  value: Decimal!
+  label: String
+}
+
+type PerformanceMetrics {
+  period: DateTimeRange!
+  avgResponseTime: Decimal!
+  errorRate: Decimal!
+  throughput: Decimal!
+  uptime: Decimal!
+  resourceUtilization: ResourceUtilization!
+  slowQueries: [SlowQuery!]!
+}
+
+type ResourceUtilization {
+  cpu: Decimal!
+  memory: Decimal!
+  disk: Decimal!
+  network: Decimal!
+}
+
+type SlowQuery {
+  query: String!
+  avgExecutionTime: Decimal!
+  executionCount: NonNegativeInt!
+  maxExecutionTime: Decimal!
+  lastExecuted: DateTime!
+}
+
+# Search Types
+type SearchResults {
+  dashboards: [Dashboard!]!
+  widgets: [Widget!]!
+  metrics: [Metric!]!
+  dataSources: [DataSource!]!
+  totalCount: NonNegativeInt!
+  suggestions: [String!]!
+}
+
+type Suggestion {
+  text: NonEmptyString!
+  type: SuggestionType!
+  category: String
+  score: Decimal!
+  metadata: JSON
+}
+
+# System Types
+type HealthStatus {
+  status: SystemStatus!
+  timestamp: DateTime!
+  version: String!
+  uptime: Duration!
+  services: [ServiceHealth!]!
+  database: DatabaseHealth!
+  cache: CacheHealth!
+}
+
+type ServiceHealth {
+  name: NonEmptyString!
+  status: ServiceStatus!
+  responseTime: Decimal
+  error: String
+  lastCheck: DateTime!
+}
+
+type DatabaseHealth {
+  status: ServiceStatus!
+  connectionCount: NonNegativeInt!
+  avgQueryTime: Decimal!
+  slowQueryCount: NonNegativeInt!
+}
+
+type CacheHealth {
+  status: ServiceStatus!
+  hitRate: Decimal!
+  memoryUsage: Decimal!
+  keyCount: NonNegativeInt!
+}
+
+type SystemVersion {
+  api: String!
+  client: String!
+  database: String!
+  buildDate: DateTime!
+  commitHash: String!
+}
+
+enum TimeGranularity {
+  MINUTE
+  HOUR
+  DAY
+  WEEK
+  MONTH
+  QUARTER
+  YEAR
+}
+
+enum ResourceType {
+  CPU
+  MEMORY
+  DISK
+  NETWORK
+  DATABASE
+  CACHE
+}
+
+enum SearchableType {
+  DASHBOARD
+  WIDGET
+  METRIC
+  DATA_SOURCE
+  ALERT
+  USER
+}
+
+enum SuggestionType {
+  METRIC_NAME
+  DASHBOARD_NAME
+  FIELD_NAME
+  TAG
+  FILTER_VALUE
+  SQL_KEYWORD
+}
+
+enum SystemStatus {
+  HEALTHY
+  DEGRADED
+  DOWN
+  MAINTENANCE
+}
+
+enum ServiceStatus {
+  UP
+  DOWN
+  DEGRADED
+  UNKNOWN
+}

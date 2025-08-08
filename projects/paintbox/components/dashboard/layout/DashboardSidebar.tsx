@@ -1,6 +1,6 @@
 /**
  * Dashboard Sidebar Component
- * 
+ *
  * Features:
  * - Navigation menu
  * - Real-time status indicators
@@ -11,7 +11,7 @@
 'use client';
 
 import React from 'react';
-import { 
+import {
   HomeIcon,
   ServerIcon,
   ExclamationTriangleIcon,
@@ -72,7 +72,7 @@ export function DashboardSidebar({ collapsed, onRefresh }: DashboardSidebarProps
       name: 'Overview',
       icon: HomeIcon,
       badge: systemAnalysis?.healthScore ? Math.round(systemAnalysis.healthScore) : null,
-      badgeColor: systemAnalysis?.healthScore 
+      badgeColor: systemAnalysis?.healthScore
         ? systemAnalysis.healthScore >= 90 ? 'green'
         : systemAnalysis.healthScore >= 70 ? 'yellow'
         : 'red'
@@ -83,8 +83,8 @@ export function DashboardSidebar({ collapsed, onRefresh }: DashboardSidebarProps
       name: 'Services',
       icon: ServerIcon,
       badge: serviceCounts.total,
-      badgeColor: serviceCounts.unhealthy > 0 ? 'red' 
-        : serviceCounts.degraded > 0 ? 'yellow' 
+      badgeColor: serviceCounts.unhealthy > 0 ? 'red'
+        : serviceCounts.degraded > 0 ? 'yellow'
         : 'green',
     },
     {
@@ -92,8 +92,8 @@ export function DashboardSidebar({ collapsed, onRefresh }: DashboardSidebarProps
       name: 'Alerts',
       icon: ExclamationTriangleIcon,
       badge: alertCounts.total,
-      badgeColor: alertCounts.critical > 0 ? 'red' 
-        : alertCounts.high > 0 ? 'yellow' 
+      badgeColor: alertCounts.critical > 0 ? 'red'
+        : alertCounts.high > 0 ? 'yellow'
         : alertCounts.total > 0 ? 'blue'
         : 'gray',
     },
@@ -131,7 +131,7 @@ export function DashboardSidebar({ collapsed, onRefresh }: DashboardSidebarProps
   };
 
   return (
-    <div 
+    <div
       className={cn(
         'flex flex-col h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300',
         collapsed ? 'w-16' : 'w-64'
@@ -188,15 +188,15 @@ export function DashboardSidebar({ collapsed, onRefresh }: DashboardSidebarProps
               <div className="flex items-center space-x-3">
                 <Icon className={cn(
                   'w-5 h-5 flex-shrink-0',
-                  isActive 
-                    ? 'text-blue-600 dark:text-blue-400' 
+                  isActive
+                    ? 'text-blue-600 dark:text-blue-400'
                     : 'text-gray-500 dark:text-gray-400'
                 )} />
                 {!collapsed && (
                   <span className="font-medium">{item.name}</span>
                 )}
               </div>
-              
+
               {!collapsed && item.badge !== null && (
                 <span className={cn(
                   'px-2 py-1 text-xs font-medium rounded-full',

@@ -65,10 +65,10 @@ describe('DashboardScreen', () => {
   const renderScreen = (mocks = defaultMocks, props = {}) => {
     return render(
       <MockedProvider mocks={mocks} addTypename={false}>
-        <DashboardScreen 
-          navigation={mockNavigation} 
-          route={mockRoute} 
-          {...props} 
+        <DashboardScreen
+          navigation={mockNavigation}
+          route={mockRoute}
+          {...props}
         />
       </MockedProvider>
     );
@@ -76,7 +76,7 @@ describe('DashboardScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Setup default NetInfo state
     (NetInfo.fetch as jest.Mock).mockResolvedValue({
       isConnected: true,
@@ -220,7 +220,7 @@ describe('DashboardScreen', () => {
       });
 
       const scrollView = getByTestId('dashboard-scroll-view');
-      
+
       // Simulate pull-to-refresh
       fireEvent(scrollView, 'refresh');
 
@@ -381,7 +381,7 @@ describe('DashboardScreen', () => {
       await waitFor(() => {
         // Should show available data
         expect(getByTestId('health-score-card')).toBeTruthy();
-        
+
         // Should show error for missing sections
         expect(getByTestId('partial-error-indicator')).toBeTruthy();
       });
@@ -458,8 +458,8 @@ describe('DashboardScreen', () => {
   describe('Performance', () => {
     it('should use FlatList for efficient rendering of large service lists', async () => {
       const manyServices = ServiceFactory.createMany(100);
-      const { getByTestId } = renderScreen(defaultMocks, { 
-        initialServices: manyServices 
+      const { getByTestId } = renderScreen(defaultMocks, {
+        initialServices: manyServices
       });
 
       await waitFor(() => {

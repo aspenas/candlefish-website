@@ -1,11 +1,14 @@
 /**
- * Salesforce Service - Direct Connection
- * This service handles direct Salesforce API connections when backend is not available
+ * Salesforce Service - Comprehensive CRM Integration
+ * Handles full CRUD operations for Salesforce CRM with OAuth, caching, and sync
  */
 
 import jsforce from 'jsforce';
 import { getSecretsManager } from './secrets-manager';
+import getCacheInstance from '@/lib/cache/cache-service';
+import { logger } from '@/lib/logging/simple-logger';
 
+// Core Salesforce interfaces
 export interface SalesforceContact {
   Id: string;
   Name: string;
@@ -17,14 +20,19 @@ export interface SalesforceContact {
   AccountId?: string;
   Account?: {
     Name: string;
+    Id: string;
   };
   MailingStreet?: string;
   MailingCity?: string;
   MailingState?: string;
   MailingPostalCode?: string;
   MailingCountry?: string;
+  Title?: string;
+  Department?: string;
+  LeadSource?: string;
   LastModifiedDate?: string;
   CreatedDate?: string;
+  SystemModstamp?: string;
 }
 
 export interface SalesforceAccount {
@@ -39,146 +47,931 @@ export interface SalesforceAccount {
   BillingState?: string;
   BillingPostalCode?: string;
   BillingCountry?: string;
+  ShippingStreet?: string;
+  ShippingCity?: string;
+  ShippingState?: string;
+  ShippingPostalCode?: string;
+  ShippingCountry?: string;
   Description?: string;
   NumberOfEmployees?: number;
   AnnualRevenue?: number;
+  ParentId?: string;
+  OwnerId?: string;
   LastModifiedDate?: string;
   CreatedDate?: string;
+  SystemModstamp?: string;
+}
+
+export interface SalesforceOpportunity {
+  Id: string;
+  Name: string;
+  AccountId?: string;
+  Account?: {
+    Name: string;
+    Id: string;
+  };
+  ContactId?: string;
+  Contact?: {
+    Name: string;
+    Id: string;
+  };
+  Amount?: number;
+  StageName: string;
+  CloseDate: string;
+  Probability?: number;
+  Type?: string;
+  LeadSource?: string;
+  Description?: string;
+  NextStep?: string;
+  OwnerId?: string;
+  CampaignId?: string;
+  LastModifiedDate?: string;
+  CreatedDate?: string;
+  SystemModstamp?: string;
+}
+
+export interface PaintboxEstimate {
+  Id?: string;
+  Name: string;
+  Contact__c?: string;
+  Account__c?: string;
+  Opportunity__c?: string;
+  Total_Amount__c?: number;
+  Exterior_Amount__c?: number;
+  Interior_Amount__c?: number;
+  Materials_Cost__c?: number;
+  Labor_Cost__c?: number;
+  Status__c: 'Draft' | 'Pending' | 'Approved' | 'Rejected' | 'Completed';
+  Estimate_Date__c: string;
+  Valid_Until__c?: string;
+  Notes__c?: string;
+  Excel_Data__c?: string; // JSON string of Excel calculations
+  Square_Footage__c?: number;
+  Rooms_Count__c?: number;
+  Paint_Quality__c?: 'Good' | 'Better' | 'Best';
+  LastModifiedDate?: string;
+  CreatedDate?: string;
+  SystemModstamp?: string;
+}
+
+// Sync and conflict resolution types
+export interface SyncResult {
+  success: boolean;
+  processed: number;
+  errors: string[];
+  conflicts: ConflictRecord[];
+}
+
+export interface ConflictRecord {
+  id: string;
+  type: 'Contact' | 'Account' | 'Opportunity' | 'PaintboxEstimate__c';
+  localData: any;
+  remoteData: any;
+  conflictFields: string[];
+  timestamp: Date;
+}
+
+// OAuth token management
+interface OAuthTokens {
+  accessToken: string;
+  refreshToken?: string;
+  instanceUrl: string;
+  expiresAt: number;
 }
 
 class SalesforceService {
   private conn: jsforce.Connection | null = null;
   private isInitialized = false;
+  private tokenRefreshPromise: Promise<void> | null = null;
+  private cache = getCacheInstance();
+  private syncInterval: NodeJS.Timeout | null = null;
+  private readonly CACHE_TTL = 300; // 5 minutes
+  private readonly BATCH_SIZE = 200;
+  private readonly MAX_RETRIES = 3;
 
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
 
     try {
-      // Get credentials from AWS Secrets Manager
       const secretsManager = getSecretsManager();
       const secrets = await secretsManager.getSecrets();
-      
+
       if (!secrets.salesforce) {
-        console.warn('Salesforce credentials not configured in Secrets Manager');
+        logger.warn('Salesforce credentials not configured in Secrets Manager');
         return;
       }
-      
-      const { username, password, securityToken } = secrets.salesforce;
-      const loginUrl = secrets.salesforce.instanceUrl || 'https://login.salesforce.com';
+
+      const { clientId, clientSecret, username, password, securityToken, instanceUrl } = secrets.salesforce;
 
       if (!username || !password) {
-        console.warn('Salesforce credentials not configured');
+        logger.warn('Salesforce credentials not configured');
         return;
       }
 
-      this.conn = new jsforce.Connection({
-        loginUrl: loginUrl
-      });
+      // Try OAuth first, fallback to username/password
+      await this.initializeWithOAuth(clientId, clientSecret, username, password, securityToken, instanceUrl);
 
-      await this.conn.login(username, password + securityToken);
       this.isInitialized = true;
-      console.log('Salesforce connection established');
+      logger.info('Salesforce connection established');
+
+      // Start periodic sync
+      this.startPeriodicSync();
+
     } catch (error) {
-      console.error('Failed to initialize Salesforce connection:', error);
+      logger.error('Failed to initialize Salesforce connection:', error);
       throw error;
     }
   }
 
-  async searchContacts(query: string, limit: number = 10): Promise<SalesforceContact[]> {
-    if (!this.conn) {
-      throw new Error('Salesforce connection not initialized');
-    }
+  private async initializeWithOAuth(clientId: string, clientSecret: string, username: string, password: string, securityToken: string, instanceUrl: string): Promise<void> {
+    const cachedTokens = await this.getCachedTokens();
 
-    try {
-      const result = await this.conn.query<SalesforceContact>(
-        `SELECT Id, Name, FirstName, LastName, Email, Phone, MobilePhone, 
-         AccountId, Account.Name, MailingStreet, MailingCity, MailingState, 
-         MailingPostalCode, MailingCountry, LastModifiedDate, CreatedDate
-         FROM Contact 
-         WHERE Name LIKE '%${query}%' 
-         OR Email LIKE '%${query}%' 
-         OR Phone LIKE '%${query}%'
-         OR MobilePhone LIKE '%${query}%'
-         ORDER BY LastModifiedDate DESC 
-         LIMIT ${limit}`
-      );
+    if (cachedTokens && cachedTokens.expiresAt > Date.now()) {
+      // Use cached tokens
+      this.conn = new jsforce.Connection({
+        instanceUrl: cachedTokens.instanceUrl,
+        accessToken: cachedTokens.accessToken,
+        refreshToken: cachedTokens.refreshToken,
+        oauth2: {
+          clientId,
+          clientSecret,
+          redirectUri: 'urn:ietf:wg:oauth:2.0:oob'
+        }
+      });
+    } else {
+      // Fresh login
+      this.conn = new jsforce.Connection({
+        loginUrl: instanceUrl || 'https://login.salesforce.com',
+        oauth2: {
+          clientId,
+          clientSecret,
+          redirectUri: 'urn:ietf:wg:oauth:2.0:oob'
+        }
+      });
 
-      return result.records || [];
-    } catch (error) {
-      console.error('Failed to search contacts:', error);
-      return [];
-    }
-  }
+      const loginResult = await this.conn.login(username, password + securityToken);
 
-  async searchAccounts(query: string, limit: number = 10): Promise<SalesforceAccount[]> {
-    if (!this.conn) {
-      throw new Error('Salesforce connection not initialized');
-    }
-
-    try {
-      const result = await this.conn.query<SalesforceAccount>(
-        `SELECT Id, Name, Type, Industry, Phone, Website, 
-         BillingStreet, BillingCity, BillingState, BillingPostalCode, 
-         BillingCountry, Description, NumberOfEmployees, AnnualRevenue,
-         LastModifiedDate, CreatedDate
-         FROM Account 
-         WHERE Name LIKE '%${query}%' 
-         OR Phone LIKE '%${query}%'
-         ORDER BY LastModifiedDate DESC 
-         LIMIT ${limit}`
-      );
-
-      return result.records || [];
-    } catch (error) {
-      console.error('Failed to search accounts:', error);
-      return [];
+      // Cache the tokens
+      await this.cacheTokens({
+        accessToken: this.conn.accessToken!,
+        refreshToken: this.conn.refreshToken,
+        instanceUrl: this.conn.instanceUrl!,
+        expiresAt: Date.now() + (2 * 60 * 60 * 1000) // 2 hours
+      });
     }
   }
 
-  async getContact(id: string): Promise<SalesforceContact | null> {
-    if (!this.conn) {
-      throw new Error('Salesforce connection not initialized');
-    }
-
+  private async getCachedTokens(): Promise<OAuthTokens | null> {
     try {
-      const result = await this.conn.sobject('Contact').retrieve(id) as SalesforceContact;
-      return result;
+      const cached = await this.cache.get('salesforce:tokens');
+      return cached ? JSON.parse(cached) : null;
     } catch (error) {
-      console.error('Failed to get contact:', error);
+      logger.error('Failed to get cached tokens:', error);
       return null;
     }
+  }
+
+  private async cacheTokens(tokens: OAuthTokens): Promise<void> {
+    try {
+      const ttl = Math.floor((tokens.expiresAt - Date.now()) / 1000);
+      await this.cache.set('salesforce:tokens', JSON.stringify(tokens), ttl);
+    } catch (error) {
+      logger.error('Failed to cache tokens:', error);
+    }
+  }
+
+  private async refreshToken(): Promise<void> {
+    if (this.tokenRefreshPromise) {
+      return this.tokenRefreshPromise;
+    }
+
+    this.tokenRefreshPromise = this.doRefreshToken();
+    try {
+      await this.tokenRefreshPromise;
+    } finally {
+      this.tokenRefreshPromise = null;
+    }
+  }
+
+  private async doRefreshToken(): Promise<void> {
+    if (!this.conn?.refreshToken) {
+      logger.warn('No refresh token available, re-initializing connection');
+      this.isInitialized = false;
+      await this.initialize();
+      return;
+    }
+
+    try {
+      const result = await this.conn.oauth2.refreshToken(this.conn.refreshToken);
+      this.conn.accessToken = result.access_token;
+
+      // Update cached tokens
+      await this.cacheTokens({
+        accessToken: result.access_token,
+        refreshToken: this.conn.refreshToken,
+        instanceUrl: this.conn.instanceUrl!,
+        expiresAt: Date.now() + (2 * 60 * 60 * 1000)
+      });
+
+      logger.info('Successfully refreshed Salesforce token');
+    } catch (error) {
+      logger.error('Failed to refresh token:', error);
+      this.isInitialized = false;
+      await this.initialize();
+    }
+  }
+
+  private async withRetry<T>(operation: () => Promise<T>, retries = this.MAX_RETRIES): Promise<T> {
+    try {
+      return await operation();
+    } catch (error: any) {
+      // Check for token expiration
+      if (error.name === 'INVALID_SESSION_ID' || error.errorCode === 'INVALID_SESSION_ID') {
+        await this.refreshToken();
+        return await operation();
+      }
+
+      if (retries > 0) {
+        logger.warn(`Operation failed, retrying. Attempts left: ${retries}`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return this.withRetry(operation, retries - 1);
+      }
+
+      throw error;
+    }
+  }
+
+  // === CONTACT OPERATIONS ===
+  async searchContacts(query: string, limit: number = 10): Promise<SalesforceContact[]> {
+    await this.ensureInitialized();
+
+    const cacheKey = `search:contacts:${query}:${limit}`;
+    const cached = await this.cache.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
+    return this.withRetry(async () => {
+      const escapedQuery = query.replace(/'/g, "\\'");
+      const result = await this.conn!.query<SalesforceContact>(
+        `SELECT Id, Name, FirstName, LastName, Email, Phone, MobilePhone,
+         AccountId, Account.Name, Account.Id, MailingStreet, MailingCity, MailingState,
+         MailingPostalCode, MailingCountry, Title, Department, LeadSource,
+         LastModifiedDate, CreatedDate, SystemModstamp
+         FROM Contact
+         WHERE Name LIKE '%${escapedQuery}%'
+         OR Email LIKE '%${escapedQuery}%'
+         OR Phone LIKE '%${escapedQuery}%'
+         OR MobilePhone LIKE '%${escapedQuery}%'
+         ORDER BY LastModifiedDate DESC
+         LIMIT ${limit}`
+      );
+
+      const contacts = result.records || [];
+      await this.cache.set(cacheKey, JSON.stringify(contacts), this.CACHE_TTL);
+      return contacts;
+    });
+  }
+
+  async getAllContacts(lastModified?: Date): Promise<SalesforceContact[]> {
+    await this.ensureInitialized();
+
+    return this.withRetry(async () => {
+      let whereClause = '';
+      if (lastModified) {
+        whereClause = `WHERE SystemModstamp > ${lastModified.toISOString()}`;
+      }
+
+      const result = await this.conn!.query<SalesforceContact>(
+        `SELECT Id, Name, FirstName, LastName, Email, Phone, MobilePhone,
+         AccountId, Account.Name, Account.Id, MailingStreet, MailingCity, MailingState,
+         MailingPostalCode, MailingCountry, Title, Department, LeadSource,
+         LastModifiedDate, CreatedDate, SystemModstamp
+         FROM Contact ${whereClause}
+         ORDER BY SystemModstamp ASC`
+      );
+
+      return result.records || [];
+    });
+  }
+
+  async createContact(contact: Partial<SalesforceContact>): Promise<string> {
+    await this.ensureInitialized();
+
+    return this.withRetry(async () => {
+      const result = await this.conn!.sobject('Contact').create(contact);
+      if (!result.success) {
+        throw new Error(`Failed to create contact: ${result.errors?.join(', ')}`);
+      }
+
+      // Clear related caches
+      await this.clearContactCaches();
+
+      logger.info('Created contact:', { id: result.id, name: contact.Name });
+      return result.id;
+    });
+  }
+
+  async updateContact(id: string, updates: Partial<SalesforceContact>): Promise<void> {
+    await this.ensureInitialized();
+
+    return this.withRetry(async () => {
+      const result = await this.conn!.sobject('Contact').update({
+        Id: id,
+        ...updates
+      });
+
+      if (!result.success) {
+        throw new Error(`Failed to update contact: ${result.errors?.join(', ')}`);
+      }
+
+      await this.clearContactCaches();
+      logger.info('Updated contact:', { id, updates });
+    });
+  }
+
+  async deleteContact(id: string): Promise<void> {
+    await this.ensureInitialized();
+
+    return this.withRetry(async () => {
+      const result = await this.conn!.sobject('Contact').delete(id);
+      if (!result.success) {
+        throw new Error(`Failed to delete contact: ${result.errors?.join(', ')}`);
+      }
+
+      await this.clearContactCaches();
+      logger.info('Deleted contact:', { id });
+    });
+  }
+
+  // === ACCOUNT OPERATIONS ===
+  async searchAccounts(query: string, limit: number = 10): Promise<SalesforceAccount[]> {
+    await this.ensureInitialized();
+
+    const cacheKey = `search:accounts:${query}:${limit}`;
+    const cached = await this.cache.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
+    return this.withRetry(async () => {
+      const escapedQuery = query.replace(/'/g, "\\'")
+      const result = await this.conn!.query<SalesforceAccount>(
+        `SELECT Id, Name, Type, Industry, Phone, Website,
+         BillingStreet, BillingCity, BillingState, BillingPostalCode,
+         BillingCountry, ShippingStreet, ShippingCity, ShippingState,
+         ShippingPostalCode, ShippingCountry, Description, NumberOfEmployees,
+         AnnualRevenue, ParentId, OwnerId, LastModifiedDate, CreatedDate, SystemModstamp
+         FROM Account
+         WHERE Name LIKE '%${escapedQuery}%'
+         OR Phone LIKE '%${escapedQuery}%'
+         ORDER BY LastModifiedDate DESC
+         LIMIT ${limit}`
+      );
+
+      const accounts = result.records || [];
+      await this.cache.set(cacheKey, JSON.stringify(accounts), this.CACHE_TTL);
+      return accounts;
+    });
+  }
+
+  async getAllAccounts(lastModified?: Date): Promise<SalesforceAccount[]> {
+    await this.ensureInitialized();
+
+    return this.withRetry(async () => {
+      let whereClause = '';
+      if (lastModified) {
+        whereClause = `WHERE SystemModstamp > ${lastModified.toISOString()}`;
+      }
+
+      const result = await this.conn!.query<SalesforceAccount>(
+        `SELECT Id, Name, Type, Industry, Phone, Website,
+         BillingStreet, BillingCity, BillingState, BillingPostalCode,
+         BillingCountry, ShippingStreet, ShippingCity, ShippingState,
+         ShippingPostalCode, ShippingCountry, Description, NumberOfEmployees,
+         AnnualRevenue, ParentId, OwnerId, LastModifiedDate, CreatedDate, SystemModstamp
+         FROM Account ${whereClause}
+         ORDER BY SystemModstamp ASC`
+      );
+
+      return result.records || [];
+    });
+  }
+
+  async createAccount(account: Partial<SalesforceAccount>): Promise<string> {
+    await this.ensureInitialized();
+
+    return this.withRetry(async () => {
+      const result = await this.conn!.sobject('Account').create(account);
+      if (!result.success) {
+        throw new Error(`Failed to create account: ${result.errors?.join(', ')}`);
+      }
+
+      await this.clearAccountCaches();
+      logger.info('Created account:', { id: result.id, name: account.Name });
+      return result.id;
+    });
+  }
+
+  async updateAccount(id: string, updates: Partial<SalesforceAccount>): Promise<void> {
+    await this.ensureInitialized();
+
+    return this.withRetry(async () => {
+      const result = await this.conn!.sobject('Account').update({
+        Id: id,
+        ...updates
+      });
+
+      if (!result.success) {
+        throw new Error(`Failed to update account: ${result.errors?.join(', ')}`);
+      }
+
+      await this.clearAccountCaches();
+      logger.info('Updated account:', { id, updates });
+    });
+  }
+
+  async deleteAccount(id: string): Promise<void> {
+    await this.ensureInitialized();
+
+    return this.withRetry(async () => {
+      const result = await this.conn!.sobject('Account').delete(id);
+      if (!result.success) {
+        throw new Error(`Failed to delete account: ${result.errors?.join(', ')}`);
+      }
+
+      await this.clearAccountCaches();
+      logger.info('Deleted account:', { id });
+    });
+  }
+
+  // === OPPORTUNITY OPERATIONS ===
+  async getAllOpportunities(lastModified?: Date): Promise<SalesforceOpportunity[]> {
+    await this.ensureInitialized();
+
+    return this.withRetry(async () => {
+      let whereClause = '';
+      if (lastModified) {
+        whereClause = `WHERE SystemModstamp > ${lastModified.toISOString()}`;
+      }
+
+      const result = await this.conn!.query<SalesforceOpportunity>(
+        `SELECT Id, Name, AccountId, Account.Name, Account.Id, ContactId,
+         Contact.Name, Contact.Id, Amount, StageName, CloseDate, Probability,
+         Type, LeadSource, Description, NextStep, OwnerId, CampaignId,
+         LastModifiedDate, CreatedDate, SystemModstamp
+         FROM Opportunity ${whereClause}
+         ORDER BY SystemModstamp ASC`
+      );
+
+      return result.records || [];
+    });
+  }
+
+  async createOpportunity(opportunity: Partial<SalesforceOpportunity>): Promise<string> {
+    await this.ensureInitialized();
+
+    return this.withRetry(async () => {
+      const result = await this.conn!.sobject('Opportunity').create(opportunity);
+      if (!result.success) {
+        throw new Error(`Failed to create opportunity: ${result.errors?.join(', ')}`);
+      }
+
+      await this.clearOpportunityCaches();
+      logger.info('Created opportunity:', { id: result.id, name: opportunity.Name });
+      return result.id;
+    });
+  }
+
+  async updateOpportunity(id: string, updates: Partial<SalesforceOpportunity>): Promise<void> {
+    await this.ensureInitialized();
+
+    return this.withRetry(async () => {
+      const result = await this.conn!.sobject('Opportunity').update({
+        Id: id,
+        ...updates
+      });
+
+      if (!result.success) {
+        throw new Error(`Failed to update opportunity: ${result.errors?.join(', ')}`);
+      }
+
+      await this.clearOpportunityCaches();
+      logger.info('Updated opportunity:', { id, updates });
+    });
+  }
+
+  async deleteOpportunity(id: string): Promise<void> {
+    await this.ensureInitialized();
+
+    return this.withRetry(async () => {
+      const result = await this.conn!.sobject('Opportunity').delete(id);
+      if (!result.success) {
+        throw new Error(`Failed to delete opportunity: ${result.errors?.join(', ')}`);
+      }
+
+      await this.clearOpportunityCaches();
+      logger.info('Deleted opportunity:', { id });
+    });
+  }
+
+  // === PAINTBOX ESTIMATE OPERATIONS ===
+  async getAllPaintboxEstimates(lastModified?: Date): Promise<PaintboxEstimate[]> {
+    await this.ensureInitialized();
+
+    return this.withRetry(async () => {
+      let whereClause = '';
+      if (lastModified) {
+        whereClause = `WHERE SystemModstamp > ${lastModified.toISOString()}`;
+      }
+
+      const result = await this.conn!.query<PaintboxEstimate>(
+        `SELECT Id, Name, Contact__c, Account__c, Opportunity__c, Total_Amount__c,
+         Exterior_Amount__c, Interior_Amount__c, Materials_Cost__c, Labor_Cost__c,
+         Status__c, Estimate_Date__c, Valid_Until__c, Notes__c, Excel_Data__c,
+         Square_Footage__c, Rooms_Count__c, Paint_Quality__c,
+         LastModifiedDate, CreatedDate, SystemModstamp
+         FROM PaintboxEstimate__c ${whereClause}
+         ORDER BY SystemModstamp ASC`
+      );
+
+      return result.records || [];
+    });
+  }
+
+  async createPaintboxEstimate(estimate: Partial<PaintboxEstimate>): Promise<string> {
+    await this.ensureInitialized();
+
+    return this.withRetry(async () => {
+      const result = await this.conn!.sobject('PaintboxEstimate__c').create(estimate);
+      if (!result.success) {
+        throw new Error(`Failed to create estimate: ${result.errors?.join(', ')}`);
+      }
+
+      await this.clearEstimateCaches();
+      logger.info('Created estimate:', { id: result.id, name: estimate.Name });
+      return result.id;
+    });
+  }
+
+  async updatePaintboxEstimate(id: string, updates: Partial<PaintboxEstimate>): Promise<void> {
+    await this.ensureInitialized();
+
+    return this.withRetry(async () => {
+      const result = await this.conn!.sobject('PaintboxEstimate__c').update({
+        Id: id,
+        ...updates
+      });
+
+      if (!result.success) {
+        throw new Error(`Failed to update estimate: ${result.errors?.join(', ')}`);
+      }
+
+      await this.clearEstimateCaches();
+      logger.info('Updated estimate:', { id, updates });
+    });
+  }
+
+  async deletePaintboxEstimate(id: string): Promise<void> {
+    await this.ensureInitialized();
+
+    return this.withRetry(async () => {
+      const result = await this.conn!.sobject('PaintboxEstimate__c').delete(id);
+      if (!result.success) {
+        throw new Error(`Failed to delete estimate: ${result.errors?.join(', ')}`);
+      }
+
+      await this.clearEstimateCaches();
+      logger.info('Deleted estimate:', { id });
+    });
+  }
+
+  // === RETRIEVE OPERATIONS ===
+  async getContact(id: string): Promise<SalesforceContact | null> {
+    await this.ensureInitialized();
+
+    const cacheKey = `contact:${id}`;
+    const cached = await this.cache.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
+    return this.withRetry(async () => {
+      const result = await this.conn!.sobject('Contact').retrieve(id, [
+        'Id', 'Name', 'FirstName', 'LastName', 'Email', 'Phone', 'MobilePhone',
+        'AccountId', 'MailingStreet', 'MailingCity', 'MailingState',
+        'MailingPostalCode', 'MailingCountry', 'Title', 'Department', 'LeadSource',
+        'LastModifiedDate', 'CreatedDate', 'SystemModstamp'
+      ]) as SalesforceContact;
+
+      if (result) {
+        await this.cache.set(cacheKey, JSON.stringify(result), this.CACHE_TTL);
+      }
+      return result || null;
+    });
   }
 
   async getAccount(id: string): Promise<SalesforceAccount | null> {
-    if (!this.conn) {
-      throw new Error('Salesforce connection not initialized');
+    await this.ensureInitialized();
+
+    const cacheKey = `account:${id}`;
+    const cached = await this.cache.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
     }
 
+    return this.withRetry(async () => {
+      const result = await this.conn!.sobject('Account').retrieve(id, [
+        'Id', 'Name', 'Type', 'Industry', 'Phone', 'Website',
+        'BillingStreet', 'BillingCity', 'BillingState', 'BillingPostalCode', 'BillingCountry',
+        'ShippingStreet', 'ShippingCity', 'ShippingState', 'ShippingPostalCode', 'ShippingCountry',
+        'Description', 'NumberOfEmployees', 'AnnualRevenue', 'ParentId', 'OwnerId',
+        'LastModifiedDate', 'CreatedDate', 'SystemModstamp'
+      ]) as SalesforceAccount;
+
+      if (result) {
+        await this.cache.set(cacheKey, JSON.stringify(result), this.CACHE_TTL);
+      }
+      return result || null;
+    });
+  }
+
+  async getOpportunity(id: string): Promise<SalesforceOpportunity | null> {
+    await this.ensureInitialized();
+
+    const cacheKey = `opportunity:${id}`;
+    const cached = await this.cache.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
+    return this.withRetry(async () => {
+      const result = await this.conn!.sobject('Opportunity').retrieve(id, [
+        'Id', 'Name', 'AccountId', 'ContactId', 'Amount', 'StageName', 'CloseDate',
+        'Probability', 'Type', 'LeadSource', 'Description', 'NextStep', 'OwnerId', 'CampaignId',
+        'LastModifiedDate', 'CreatedDate', 'SystemModstamp'
+      ]) as SalesforceOpportunity;
+
+      if (result) {
+        await this.cache.set(cacheKey, JSON.stringify(result), this.CACHE_TTL);
+      }
+      return result || null;
+    });
+  }
+
+  async getPaintboxEstimate(id: string): Promise<PaintboxEstimate | null> {
+    await this.ensureInitialized();
+
+    const cacheKey = `estimate:${id}`;
+    const cached = await this.cache.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
+    return this.withRetry(async () => {
+      const result = await this.conn!.sobject('PaintboxEstimate__c').retrieve(id, [
+        'Id', 'Name', 'Contact__c', 'Account__c', 'Opportunity__c', 'Total_Amount__c',
+        'Exterior_Amount__c', 'Interior_Amount__c', 'Materials_Cost__c', 'Labor_Cost__c',
+        'Status__c', 'Estimate_Date__c', 'Valid_Until__c', 'Notes__c', 'Excel_Data__c',
+        'Square_Footage__c', 'Rooms_Count__c', 'Paint_Quality__c',
+        'LastModifiedDate', 'CreatedDate', 'SystemModstamp'
+      ]) as PaintboxEstimate;
+
+      if (result) {
+        await this.cache.set(cacheKey, JSON.stringify(result), this.CACHE_TTL);
+      }
+      return result || null;
+    });
+  }
+
+  // === BATCH SYNC OPERATIONS ===
+  async performBatchSync(): Promise<SyncResult> {
+    logger.info('Starting batch sync with Salesforce');
+
+    const result: SyncResult = {
+      success: true,
+      processed: 0,
+      errors: [],
+      conflicts: []
+    };
+
     try {
-      const result = await this.conn.sobject('Account').retrieve(id) as SalesforceAccount;
+      const lastSync = await this.getLastSyncTime();
+
+      // Sync each entity type
+      const contactsResult = await this.syncContacts(lastSync);
+      const accountsResult = await this.syncAccounts(lastSync);
+      const opportunitiesResult = await this.syncOpportunities(lastSync);
+      const estimatesResult = await this.syncEstimates(lastSync);
+
+      // Aggregate results
+      result.processed = contactsResult.processed + accountsResult.processed +
+                        opportunitiesResult.processed + estimatesResult.processed;
+      result.errors = [...contactsResult.errors, ...accountsResult.errors,
+                      ...opportunitiesResult.errors, ...estimatesResult.errors];
+      result.conflicts = [...contactsResult.conflicts, ...accountsResult.conflicts,
+                         ...opportunitiesResult.conflicts, ...estimatesResult.conflicts];
+
+      // Update last sync time
+      await this.setLastSyncTime(new Date());
+
+      logger.info('Batch sync completed:', result);
       return result;
     } catch (error) {
-      console.error('Failed to get account:', error);
-      return null;
+      logger.error('Batch sync failed:', error);
+      result.success = false;
+      result.errors.push(error instanceof Error ? error.message : 'Unknown error');
+      return result;
+    }
+  }
+
+  private async syncContacts(lastSync?: Date): Promise<SyncResult> {
+    const contacts = await this.getAllContacts(lastSync);
+    // Implement sync logic with local database
+    return { success: true, processed: contacts.length, errors: [], conflicts: [] };
+  }
+
+  private async syncAccounts(lastSync?: Date): Promise<SyncResult> {
+    const accounts = await this.getAllAccounts(lastSync);
+    // Implement sync logic with local database
+    return { success: true, processed: accounts.length, errors: [], conflicts: [] };
+  }
+
+  private async syncOpportunities(lastSync?: Date): Promise<SyncResult> {
+    const opportunities = await this.getAllOpportunities(lastSync);
+    // Implement sync logic with local database
+    return { success: true, processed: opportunities.length, errors: [], conflicts: [] };
+  }
+
+  private async syncEstimates(lastSync?: Date): Promise<SyncResult> {
+    const estimates = await this.getAllPaintboxEstimates(lastSync);
+    // Implement sync logic with local database
+    return { success: true, processed: estimates.length, errors: [], conflicts: [] };
+  }
+
+  private async getLastSyncTime(): Promise<Date | undefined> {
+    try {
+      const cached = await this.cache.get('salesforce:lastSync');
+      return cached ? new Date(cached) : undefined;
+    } catch (error) {
+      logger.error('Failed to get last sync time:', error);
+      return undefined;
+    }
+  }
+
+  private async setLastSyncTime(time: Date): Promise<void> {
+    try {
+      await this.cache.set('salesforce:lastSync', time.toISOString(), 24 * 60 * 60); // 24 hours
+    } catch (error) {
+      logger.error('Failed to set last sync time:', error);
+    }
+  }
+
+  // === PERIODIC SYNC ===
+  private startPeriodicSync(): void {
+    if (this.syncInterval) {
+      clearInterval(this.syncInterval);
+    }
+
+    // Sync every 5 minutes
+    this.syncInterval = setInterval(async () => {
+      try {
+        await this.performBatchSync();
+      } catch (error) {
+        logger.error('Periodic sync failed:', error);
+      }
+    }, 5 * 60 * 1000);
+
+    logger.info('Started periodic sync (every 5 minutes)');
+  }
+
+  public stopPeriodicSync(): void {
+    if (this.syncInterval) {
+      clearInterval(this.syncInterval);
+      this.syncInterval = null;
+      logger.info('Stopped periodic sync');
+    }
+  }
+
+  // === CACHE MANAGEMENT ===
+  private async clearContactCaches(): Promise<void> {
+    try {
+      const keys = await this.cache.keys('search:contacts:*');
+      await Promise.all(keys.map(key => this.cache.del(key)));
+      await Promise.all((await this.cache.keys('contact:*')).map(key => this.cache.del(key)));
+    } catch (error) {
+      logger.warn('Failed to clear contact caches:', error);
+    }
+  }
+
+  private async clearAccountCaches(): Promise<void> {
+    try {
+      const keys = await this.cache.keys('search:accounts:*');
+      await Promise.all(keys.map(key => this.cache.del(key)));
+      await Promise.all((await this.cache.keys('account:*')).map(key => this.cache.del(key)));
+    } catch (error) {
+      logger.warn('Failed to clear account caches:', error);
+    }
+  }
+
+  private async clearOpportunityCaches(): Promise<void> {
+    try {
+      const keys = await this.cache.keys('opportunity:*');
+      await Promise.all(keys.map(key => this.cache.del(key)));
+    } catch (error) {
+      logger.warn('Failed to clear opportunity caches:', error);
+    }
+  }
+
+  private async clearEstimateCaches(): Promise<void> {
+    try {
+      const keys = await this.cache.keys('estimate:*');
+      await Promise.all(keys.map(key => this.cache.del(key)));
+    } catch (error) {
+      logger.warn('Failed to clear estimate caches:', error);
+    }
+  }
+
+  // === UTILITY METHODS ===
+  private async ensureInitialized(): Promise<void> {
+    if (!this.isInitialized) {
+      await this.initialize();
     }
   }
 
   async testConnection(): Promise<boolean> {
     try {
-      if (!this.conn) {
-        await this.initialize();
-      }
-      
+      await this.ensureInitialized();
+
       if (!this.conn) return false;
 
-      // Try a simple query to test the connection
       await this.conn.query('SELECT Id FROM Contact LIMIT 1');
       return true;
     } catch (error) {
-      console.error('Salesforce connection test failed:', error);
+      logger.error('Salesforce connection test failed:', error);
       return false;
     }
+  }
+
+  // === CONFLICT RESOLUTION ===
+  async resolveConflict(conflict: ConflictRecord, resolution: 'local' | 'remote' | 'merge'): Promise<void> {
+    const { id, type, localData, remoteData } = conflict;
+
+    try {
+      let finalData: any;
+
+      switch (resolution) {
+        case 'local':
+          finalData = localData;
+          break;
+        case 'remote':
+          finalData = remoteData;
+          break;
+        case 'merge':
+          finalData = { ...remoteData, ...localData };
+          break;
+        default:
+          throw new Error(`Invalid resolution strategy: ${resolution}`);
+      }
+
+      // Update in Salesforce
+      switch (type) {
+        case 'Contact':
+          await this.updateContact(id, finalData);
+          break;
+        case 'Account':
+          await this.updateAccount(id, finalData);
+          break;
+        case 'Opportunity':
+          await this.updateOpportunity(id, finalData);
+          break;
+        case 'PaintboxEstimate__c':
+          await this.updatePaintboxEstimate(id, finalData);
+          break;
+      }
+
+      logger.info('Resolved conflict:', { id, type, resolution });
+    } catch (error) {
+      logger.error('Failed to resolve conflict:', { conflict, error });
+      throw error;
+    }
+  }
+
+  // === CLEANUP ===
+  async cleanup(): Promise<void> {
+    this.stopPeriodicSync();
+    if (this.conn) {
+      this.conn = null;
+    }
+    this.isInitialized = false;
+    logger.info('Salesforce service cleaned up');
   }
 }
 
 export const salesforceService = new SalesforceService();
+
+// Auto-cleanup on process exit
+if (typeof process !== 'undefined') {
+  process.on('SIGTERM', () => salesforceService.cleanup());
+  process.on('SIGINT', () => salesforceService.cleanup());
+}

@@ -24,7 +24,7 @@ jobs:
           # Update root dependencies
           npm update
           npm audit fix
-          
+
           # Update function dependencies
           cd netlify/functions
           npm update
@@ -49,18 +49,18 @@ jobs:
           title: '🔄 Update Dependencies'
           body: |
             ## Dependency Updates
-            
+
             This PR updates npm dependencies to their latest versions.
-            
+
             ### Changes
             - Updated npm packages
             - Fixed known vulnerabilities
-            
+
             ### Checklist
             - [ ] Tests pass
             - [ ] No breaking changes
             - [ ] Security scan complete
-            
+
             ---
             *This PR was automatically created by the dependency update workflow.*
           branch: deps/update-dependencies

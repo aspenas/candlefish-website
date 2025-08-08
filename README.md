@@ -4,23 +4,26 @@ A Next.js 14 application with **Vercel AI SDK** and **Anthropic** integration.
 
 ## Setup
 
-1. Install dependencies  
+1. Install dependencies
+
    ```bash
    npm install
    ```
 
-2. Copy the env template and add your **Anthropic API key**  
+2. Copy the env template and add your **Anthropic API key**
+
    ```bash
    cp .env.local.example .env.local
    # edit .env.local
    ```
 
-3. Run the dev server  
+3. Run the dev server
+
    ```bash
    npm run dev
    ```
 
-4. Open http://localhost:3000
+4. Open <http://localhost:3000>
 
 ---
 
@@ -28,12 +31,14 @@ A Next.js 14 application with **Vercel AI SDK** and **Anthropic** integration.
 
 ### `POST /api/generate-meta`
 
-**Request**  
+**Request**
+
 ```json
 { "industry": "Healthcare" }
 ```
 
-**Response**  
+**Response**
+
 ```json
 {
   "title": "Candlefish AI - Healthcare AI Solutions",

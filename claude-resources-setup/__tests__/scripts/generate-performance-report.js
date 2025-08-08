@@ -44,10 +44,10 @@ class PerformanceReportGenerator {
       await this.loadTestResults()
       await this.analyzeResults()
       await this.generateReports()
-      
+
       console.log('✅ Performance report generated successfully')
       console.log(`📁 Reports saved to: ${REPORT_CONFIG.outputDir}`)
-      
+
       return this.summary
     } catch (error) {
       console.error('❌ Error generating performance report:', error.message)
@@ -68,7 +68,7 @@ class PerformanceReportGenerator {
     for (const file of resultFiles) {
       const filePath = path.join(REPORT_CONFIG.inputDir, file)
       const content = fs.readFileSync(filePath, 'utf8')
-      
+
       try {
         const result = JSON.parse(content)
         this.results.push({
@@ -97,7 +97,7 @@ class PerformanceReportGenerator {
       if (result.summary) {
         totalRequests += result.summary.totalRequests || 0
         totalErrors += (result.summary.totalRequests || 0) - (result.summary.successfulRequests || 0)
-        
+
         if (result.responseTime) {
           totalResponseTime += result.responseTime.avg || 0
         }
@@ -232,13 +232,13 @@ class PerformanceReportGenerator {
 
     // Generate JSON report
     await this.generateJSONReport()
-    
+
     // Generate HTML report
     await this.generateHTMLReport()
-    
+
     // Generate summary report
     await this.generateSummaryReport()
-    
+
     // Generate CSV report for further analysis
     await this.generateCSVReport()
   }
@@ -475,11 +475,11 @@ Issues Found: ${this.summary.issues.length}
 - Low Severity: ${this.summary.issues.filter(i => i.severity === 'low').length}
 
 ${this.summary.issues.length > 0 ? 'Top Issues:' : 'No issues found!'}
-${this.summary.issues.slice(0, 5).map(issue => 
+${this.summary.issues.slice(0, 5).map(issue =>
   `- ${issue.type}: ${issue.message} (${issue.testFile})`
 ).join('\n')}
 
-Recommendation: ${this.summary.passedTests === this.summary.totalTests ? 
+Recommendation: ${this.summary.passedTests === this.summary.totalTests ?
   'All tests passed! System performance is within acceptable limits.' :
   'Review failed tests and address performance issues before deployment.'}
 `
@@ -491,7 +491,7 @@ Recommendation: ${this.summary.passedTests === this.summary.totalTests ?
 
   async generateCSVReport() {
     const headers = ['Test File', 'Status', 'Avg Response Time (ms)', 'P95 Response Time (ms)', 'Throughput (req/s)', 'Error Rate (%)', 'Peak Memory (MB)', 'Issues']
-    
+
     const rows = this.results.map(result => [
       result.file,
       this.isTestPassing(result) ? 'PASS' : 'FAIL',
@@ -504,7 +504,7 @@ Recommendation: ${this.summary.passedTests === this.summary.totalTests ?
     ])
 
     const csv = [headers, ...rows].map(row => row.join(',')).join('\n')
-    
+
     const filePath = path.join(REPORT_CONFIG.outputDir, 'performance-data.csv')
     fs.writeFileSync(filePath, csv)
     console.log(`📊 CSV report: ${filePath}`)
@@ -522,7 +522,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.log(`❌ Error Rate: ${Math.round(summary.overallErrorRate)}%`)
     console.log(`💾 Peak Memory: ${Math.round(summary.maxMemoryUsage / 1024 / 1024)}MB`)
     console.log(`⚠️  Issues Found: ${summary.issues.length}`)
-    
+
     if (summary.issues.length > 0) {
       console.log('\n🔍 Top Issues:')
       summary.issues.slice(0, 3).forEach(issue => {

@@ -1,9 +1,7 @@
 """OpenTelemetry metrics configuration for Cloud Monitoring."""
 
 import os
-from typing import Dict, Optional
 
-from google.cloud.monitoring_v3 import MetricServiceClient
 from opentelemetry import metrics
 from opentelemetry.exporter.cloud_monitoring import CloudMonitoringMetricsExporter
 from opentelemetry.instrumentation.grpc import GrpcInstrumentorClient
@@ -22,7 +20,7 @@ class MetricsManager:
     def __init__(
         self,
         service_name: str = "fogg-calendar",
-        project_id: Optional[str] = None,
+        project_id: str | None = None,
         export_interval_seconds: int = 60,
     ):
         """Initialize metrics manager.
@@ -35,8 +33,8 @@ class MetricsManager:
         self.service_name = service_name
         self.project_id = project_id or os.getenv("GOOGLE_CLOUD_PROJECT")
         self.export_interval_seconds = export_interval_seconds
-        self._meter: Optional[metrics.Meter] = None
-        self._instruments: Dict[str, metrics.Instrument] = {}
+        self._meter: metrics.Meter | None = None
+        self._instruments: dict[str, metrics.Instrument] = {}
 
     def setup_metrics(self) -> None:
         """Configure OpenTelemetry metrics with Cloud Monitoring exporter."""
@@ -150,10 +148,10 @@ class MetricsManager:
         try:
             # Instrument gRPC client calls
             GrpcInstrumentorClient().instrument()
-            
+
             # Instrument HTTP requests
             RequestsInstrumentor().instrument()
-            
+
             logger.info("Instrumented external libraries")
         except Exception as e:
             logger.error("Failed to instrument libraries", error=str(e))
@@ -196,7 +194,7 @@ class MetricsManager:
         self,
         tool_name: str,
         success: bool = True,
-        duration_ms: Optional[float] = None,
+        duration_ms: float | None = None,
     ) -> None:
         """Record an MCP tool invocation.
 
@@ -226,7 +224,7 @@ class MetricsManager:
     def record_calendar_operation(
         self,
         operation_type: str,
-        calendar_id: Optional[str] = None,
+        calendar_id: str | None = None,
         success: bool = True,
     ) -> None:
         """Record a calendar operation.
@@ -244,9 +242,8 @@ class MetricsManager:
             if calendar_id:
                 # Hash calendar ID for privacy
                 import hashlib
-                attrs["calendar_hash"] = hashlib.md5(
-                    calendar_id.encode()
-                ).hexdigest()[:8]
+
+                attrs["calendar_hash"] = hashlib.md5(calendar_id.encode()).hexdigest()[:8]
 
             self._instruments["calendar_operations"].add(1, attributes=attrs)
 
@@ -299,7 +296,7 @@ class MetricsManager:
 
 
 # Global metrics manager instance
-_metrics_manager: Optional[MetricsManager] = None
+_metrics_manager: MetricsManager | None = None
 
 
 def get_metrics_manager() -> MetricsManager:

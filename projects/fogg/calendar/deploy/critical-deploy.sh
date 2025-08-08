@@ -172,11 +172,11 @@ if eval $CMD; then
     print_color $GREEN "╔══════════════════════════════════════════════════════════╗"
     print_color $GREEN "║              DEPLOYMENT COMPLETED SUCCESSFULLY           ║"
     print_color $GREEN "╚══════════════════════════════════════════════════════════╝"
-    
+
     # Show report location
     echo ""
     print_color $BLUE "📊 Deployment report: $(dirname "$0")/reports/latest.json"
-    
+
     # If not dry run, show next steps
     if [[ -z "$DRY_RUN" ]]; then
         echo ""
@@ -192,16 +192,16 @@ else
     print_color $RED "╔══════════════════════════════════════════════════════════╗"
     print_color $RED "║                  DEPLOYMENT FAILED                       ║"
     print_color $RED "╚══════════════════════════════════════════════════════════╝"
-    
+
     echo ""
     print_color $YELLOW "Check the deployment report for details:"
     print_color $YELLOW "  $(dirname "$0")/reports/latest.json"
-    
+
     if [[ "$ROLLBACK" == "enabled" ]]; then
         print_color $GREEN "✓ Rollback was performed automatically"
     else
         print_color $YELLOW "⚠️  Rollback was disabled - manual intervention may be required"
     fi
-    
+
     exit $EXIT_CODE
 fi

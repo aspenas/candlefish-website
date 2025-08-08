@@ -7,12 +7,13 @@ Comprehensive test suite for the "run all open so we can analyze status" system 
 This test suite implements a complete testing strategy following the test pyramid approach:
 
 - **Unit Tests**: Many focused tests for individual components and functions
-- **Integration Tests**: Fewer tests for component interactions and API integrations  
+- **Integration Tests**: Fewer tests for component interactions and API integrations
 - **End-to-End Tests**: Minimal but critical user journey tests
 
 ## 🏗️ Test Architecture
 
 ### Test Structure
+
 ```
 __tests__/
 ├── factories/               # Mock data factories
@@ -46,6 +47,7 @@ __tests__/
 ```
 
 ### Mobile App Tests
+
 ```
 mobile/__tests__/
 ├── screens/               # React Native screen tests
@@ -61,47 +63,55 @@ mobile/__tests__/
 ### 1. Unit Tests
 
 #### Backend Services (`__tests__/unit/services/`)
+
 - **Discovery Service**: Service registration, auto-discovery, health checking
 - **Monitoring Service**: Container and process monitoring, metrics collection
 - **Analysis Service**: System analysis, performance insights, recommendations
 - **Alert Service**: Alert rule management, notification processing
 
 **Key Test Files:**
+
 - `discovery-service.test.ts` - Service discovery and management
 - `monitoring-service.test.ts` - System monitoring functionality
 - `analysis-service.test.ts` - System analysis and insights
 - `alert-service.test.ts` - Alert processing and notifications
 
 #### GraphQL API (`__tests__/unit/graphql/`)
+
 - **Schema Validation**: Type checking, field resolution
 - **Resolver Testing**: Query, mutation, and subscription resolvers
 - **Authorization**: Role-based access control, authentication
 - **DataLoader**: Efficient data fetching and caching
 
 **Key Test Files:**
+
 - `resolvers.test.ts` - GraphQL resolver functionality
 - `schema.test.ts` - Schema validation and type checking
 - `subscriptions.test.ts` - Real-time subscription handling
 
 #### React Components (`__tests__/unit/components/`)
+
 - **Dashboard Components**: System overview, metrics display, real-time updates
 - **Service Management**: Service grid, filtering, sorting, actions
 - **Alert Management**: Alert lists, acknowledgment, rule management
 - **UI Components**: Shared components, form validation, accessibility
 
 **Key Test Files:**
+
 - `SystemAnalyzerDashboard.test.tsx` - Main dashboard functionality
 - `ServiceGrid.test.tsx` - Service display and management
 - `AlertList.test.tsx` - Alert handling and display
 - `MetricChart.test.tsx` - Data visualization components
 
 #### React Native (`mobile/__tests__/screens/`)
+
 - **Mobile Screens**: Dashboard, services, alerts, settings
 - **Offline Support**: Data caching, background sync, network detection
 - **Navigation**: Screen transitions, deep linking, state management
 - **Device Features**: Push notifications, haptic feedback, biometrics
 
 **Key Test Files:**
+
 - `DashboardScreen.test.tsx` - Mobile dashboard functionality
 - `ServicesScreen.test.tsx` - Mobile service management
 - `AlertsScreen.test.tsx` - Mobile alert handling
@@ -109,6 +119,7 @@ mobile/__tests__/
 ### 2. Integration Tests
 
 #### Full System Integration (`__tests__/integration/`)
+
 - **Service Discovery**: End-to-end service registration and monitoring
 - **Real-time Monitoring**: WebSocket connections, metric streaming
 - **Alert Processing**: Rule evaluation, notification delivery
@@ -116,6 +127,7 @@ mobile/__tests__/
 - **Error Handling**: Graceful degradation, recovery scenarios
 
 **Key Test Files:**
+
 - `full-system.test.ts` - Complete system integration
 - `api-frontend-communication.test.js` - API-UI communication
 - `graphql-subscriptions.test.ts` - Real-time data flow
@@ -123,6 +135,7 @@ mobile/__tests__/
 ### 3. End-to-End Tests
 
 #### User Workflows (`__tests__/e2e/`)
+
 - **Dashboard Navigation**: Complete user journeys
 - **Service Management**: Service registration, monitoring, actions
 - **Alert Management**: Alert handling, acknowledgment, resolution
@@ -130,6 +143,7 @@ mobile/__tests__/
 - **Responsive Design**: Multi-device testing, accessibility
 
 **Key Test Files:**
+
 - `system-analyzer-workflow.spec.ts` - Complete user workflows
 - `mobile-app-workflow.spec.ts` - Mobile app user journeys
 - `accessibility.spec.ts` - Accessibility compliance
@@ -137,6 +151,7 @@ mobile/__tests__/
 ### 4. Performance Tests
 
 #### Load and Performance (`__tests__/performance/`)
+
 - **System Analysis**: Performance under load
 - **Metric Ingestion**: High-volume data processing
 - **WebSocket Connections**: Concurrent connection handling
@@ -144,6 +159,7 @@ mobile/__tests__/
 - **Memory Usage**: Memory leak detection
 
 **Key Test Files:**
+
 - `system-load.test.ts` - System performance under load
 - `metric-ingestion.test.ts` - High-volume data handling
 - `websocket-performance.test.ts` - Real-time connection performance
@@ -151,6 +167,7 @@ mobile/__tests__/
 ### 5. Security Tests
 
 #### Security Validation (`__tests__/security/`)
+
 - **Authentication**: Login, token validation, session management
 - **Authorization**: Role-based access, permission enforcement
 - **Input Validation**: SQL injection, XSS prevention
@@ -160,6 +177,7 @@ mobile/__tests__/
 ### 6. Offline Tests
 
 #### PWA and Offline (`__tests__/offline/`)
+
 - **Service Worker**: Registration, caching strategies
 - **Data Persistence**: IndexedDB storage, cache management
 - **Background Sync**: Offline action queuing, sync on reconnect
@@ -171,6 +189,7 @@ mobile/__tests__/
 ### Jest Configurations
 
 #### Main Configuration (`jest.config.js`)
+
 ```javascript
 module.exports = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
@@ -187,12 +206,14 @@ module.exports = {
 ```
 
 #### GraphQL Configuration (`__tests__/jest.graphql.config.js`)
+
 - Node environment for GraphQL testing
 - GraphQL schema transformation
 - Database and service mocking
 - Performance monitoring
 
 #### Mobile Configuration (`mobile/jest.config.js`)
+
 - React Native preset with Expo
 - Metro bundler compatibility
 - Device API mocking
@@ -201,6 +222,7 @@ module.exports = {
 ### Mock Factories
 
 #### System Analyzer Factory (`__tests__/factories/systemAnalyzerFactory.ts`)
+
 Generates realistic test data:
 
 ```typescript
@@ -218,6 +240,7 @@ const fullSystem = SystemMockFactory.createCompleteSystem(50);
 ```
 
 #### Apollo Mocks (`__tests__/mocks/apolloMocks.ts`)
+
 GraphQL operation mocks:
 
 ```typescript
@@ -325,6 +348,7 @@ The GitHub Actions workflow (`.github/workflows/test-suite.yml`) provides:
 ### Coverage Output
 
 Coverage reports are generated in multiple formats:
+
 - **HTML Report**: `coverage/lcov-report/index.html`
 - **LCOV Data**: `coverage/lcov.info`
 - **JSON Summary**: `coverage/coverage-summary.json`
@@ -372,15 +396,16 @@ SystemMockFactory.createLoadTestScenario(100) // High-load scenario
 ### Testing Best Practices
 
 #### Test Structure (AAA Pattern)
+
 ```typescript
 describe('Component', () => {
   it('should behave correctly', () => {
     // Arrange: Set up test conditions
     const mockData = ServiceFactory.create();
-    
+
     // Act: Execute the behavior
     const result = processService(mockData);
-    
+
     // Assert: Verify the outcome
     expect(result.status).toBe('processed');
   });
@@ -388,6 +413,7 @@ describe('Component', () => {
 ```
 
 #### Mock Management
+
 ```typescript
 beforeEach(() => {
   jest.clearAllMocks();
@@ -418,6 +444,7 @@ node --inspect-brk node_modules/.bin/jest --runInBand
 ### Test Performance
 
 Tests include performance monitoring to ensure:
+
 - **Fast Feedback**: Unit tests complete in <10s
 - **Reasonable Integration**: Integration tests complete in <60s
 - **Acceptable E2E**: E2E tests complete in <300s
@@ -465,6 +492,7 @@ expect(() => processInput('<script>')).toThrow('Invalid input');
 ### Browser Compatibility
 
 E2E tests run across multiple browsers:
+
 - **Chromium**: Primary testing browser
 - **Firefox**: Cross-browser compatibility
 - **WebKit**: Safari compatibility
@@ -473,6 +501,7 @@ E2E tests run across multiple browsers:
 ### Device Testing
 
 Mobile tests simulate various devices:
+
 - **Phones**: iOS and Android phone sizes
 - **Tablets**: iPad and Android tablet sizes
 - **Desktop**: Various desktop resolutions
@@ -483,6 +512,7 @@ Mobile tests simulate various devices:
 ### Error Scenarios
 
 Tests cover various error conditions:
+
 - **Network Failures**: Offline, timeout, server errors
 - **Data Corruption**: Invalid responses, malformed data
 - **Resource Exhaustion**: Memory limits, storage quotas
@@ -492,6 +522,7 @@ Tests cover various error conditions:
 ### Recovery Testing
 
 Tests verify system recovery:
+
 - **Graceful Degradation**: Fallback to cached data
 - **Automatic Retry**: Retry failed operations
 - **User Notification**: Clear error messages
@@ -507,12 +538,12 @@ describe('ServiceDiscovery', () => {
     it('should store service information', () => {
       // Test implementation
     });
-    
+
     it('should emit service registered event', () => {
       // Test implementation
     });
   });
-  
+
   describe('when service registration fails', () => {
     it('should throw appropriate error', () => {
       // Test implementation
@@ -546,6 +577,7 @@ The CI/CD pipeline automatically:
 ### Quality Gates
 
 Tests must pass these quality gates:
+
 - **All Tests Pass**: No failing tests allowed
 - **Coverage Threshold**: Minimum 80% code coverage
 - **Performance**: Performance tests within thresholds

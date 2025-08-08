@@ -26,13 +26,13 @@ export const useSecretsAPI = (): UseSecretsAPIReturn => {
   const fetchConfig = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await fetch('/api/v1/secrets/config');
       if (!response.ok) {
         throw new Error(`Failed to fetch config: ${response.status}`);
       }
-      
+
       const configData = await response.json();
       setConfig(configData);
     } catch (err) {
@@ -44,13 +44,13 @@ export const useSecretsAPI = (): UseSecretsAPIReturn => {
 
   const getServiceStatus = useCallback(async (service: string): Promise<ServiceStatus> => {
     setError(null);
-    
+
     try {
       const response = await fetch(`/api/v1/services/${service}/status`);
       if (!response.ok) {
         throw new Error(`Failed to get ${service} status: ${response.status}`);
       }
-      
+
       return await response.json();
     } catch (err) {
       handleError(err);
@@ -67,15 +67,15 @@ export const useSecretsAPI = (): UseSecretsAPIReturn => {
   const getAuditEvents = useCallback(async (params: Record<string, string> = {}) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const searchParams = new URLSearchParams(params);
       const response = await fetch(`/api/v1/audit/events?${searchParams}`);
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch audit events: ${response.status}`);
       }
-      
+
       return await response.json();
     } catch (err) {
       handleError(err);
@@ -100,7 +100,7 @@ export const useSecretsAPI = (): UseSecretsAPIReturn => {
 
   const requestToken = useCallback(async (service: string) => {
     setError(null);
-    
+
     try {
       const response = await fetch('/api/v1/secrets/token', {
         method: 'POST',
@@ -109,11 +109,11 @@ export const useSecretsAPI = (): UseSecretsAPIReturn => {
         },
         body: JSON.stringify({ service }),
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to request token: ${response.status}`);
       }
-      
+
       return await response.json();
     } catch (err) {
       handleError(err);
@@ -123,13 +123,13 @@ export const useSecretsAPI = (): UseSecretsAPIReturn => {
 
   const checkHealth = useCallback(async () => {
     setError(null);
-    
+
     try {
       const response = await fetch('/api/v1/secrets/health');
       if (!response.ok) {
         throw new Error(`Health check failed: ${response.status}`);
       }
-      
+
       return await response.json();
     } catch (err) {
       handleError(err);

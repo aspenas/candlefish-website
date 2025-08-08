@@ -43,7 +43,7 @@ This comprehensive test suite provides complete coverage for the Real-time Perfo
 # Backend requirements
 pip install pytest pytest-cov pytest-asyncio pytest-mock locust
 
-# Frontend requirements  
+# Frontend requirements
 npm install
 
 # E2E requirements
@@ -134,12 +134,14 @@ e2e/
 ### Backend Configuration
 
 **pytest.ini** - Main pytest configuration:
+
 - Coverage thresholds: 80%
 - Test markers for categorization
 - Environment variable setup
 - Async test support
 
 **conftest.py** - Test fixtures:
+
 - Database session management
 - Redis mock setup
 - Authentication helpers
@@ -148,12 +150,14 @@ e2e/
 ### Frontend Configuration
 
 **jest.config.js** - Jest configuration:
+
 - TypeScript support with ts-jest
 - jsdom environment for DOM testing
 - Coverage reporting and thresholds
 - Module path mapping
 
 **setup.ts** - Test environment setup:
+
 - jsdom extensions
 - Custom matchers
 - Global test utilities
@@ -161,6 +165,7 @@ e2e/
 ### E2E Configuration
 
 **playwright.config.ts** - Playwright configuration:
+
 - Multi-browser testing (Chrome, Firefox, Safari)
 - Mobile device testing
 - Screenshot and video capture
@@ -209,16 +214,19 @@ export const createMockMetric = (overrides?: Partial<Metric>): Metric => ({
 The performance test suite includes:
 
 1. **Normal Load Testing**:
+
    ```bash
    locust -f locustfile.py --host=http://localhost:8000 --users 50 --spawn-rate 5 --run-time 300s
    ```
 
 2. **Stress Testing**:
+
    ```bash
    locust -f locustfile.py --host=http://localhost:8000 --users 200 --spawn-rate 10 --run-time 300s StressTestUser
    ```
 
 3. **High-Volume Metrics Ingestion**:
+
    ```bash
    locust -f locustfile.py --host=http://localhost:8000 --users 20 --spawn-rate 2 --run-time 600s HighVolumeMetricsUser
    ```
@@ -226,6 +234,7 @@ The performance test suite includes:
 ### Performance Criteria
 
 The test suite validates:
+
 - **Throughput**: > 1,000 metrics/second
 - **Response Time**: Average < 500ms, 95th percentile < 1000ms
 - **Error Rate**: < 1% under normal load
@@ -267,21 +276,25 @@ The CI pipeline (`/.github/workflows/rtpm-tests.yml`) includes:
 ### Setting Up Test Environment
 
 1. **Install Dependencies**:
+
    ```bash
    make install
    ```
 
 2. **Start Test Services**:
+
    ```bash
    make services
    ```
 
 3. **Run Tests**:
+
    ```bash
    make test-all
    ```
 
 4. **Generate Coverage Report**:
+
    ```bash
    make coverage
    ```
@@ -320,7 +333,7 @@ npx playwright test --debug
 ### Adding New Tests
 
 1. **Backend**: Add to appropriate test file in `/apps/rtpm-api/tests/`
-2. **Frontend**: Add to `/src/__tests__/` with `.test.tsx` extension  
+2. **Frontend**: Add to `/src/__tests__/` with `.test.tsx` extension
 3. **E2E**: Add to `/e2e/tests/` with `.spec.ts` extension
 4. **Update Coverage**: Ensure new code is covered
 
@@ -329,6 +342,7 @@ npx playwright test --debug
 ### Common Issues
 
 1. **Database Connection Errors**:
+
    ```bash
    # Restart test database
    make services-stop
@@ -340,6 +354,7 @@ npx playwright test --debug
    - Kill conflicting processes or change ports in config
 
 3. **Browser Issues (E2E)**:
+
    ```bash
    # Reinstall browsers
    cd e2e
@@ -347,6 +362,7 @@ npx playwright test --debug
    ```
 
 4. **Permission Errors**:
+
    ```bash
    # Make test runner executable
    chmod +x test-runner.sh

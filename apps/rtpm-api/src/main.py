@@ -22,6 +22,7 @@ from prometheus_client import (
     CONTENT_TYPE_LATEST,
 )
 from time import perf_counter
+
 # Note: Response is imported lazily where needed to avoid unused import warnings
 import boto3
 from botocore.exceptions import ClientError
@@ -34,24 +35,18 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="RTPM Dashboard API",
     description="Real-time Performance Monitoring Dashboard API",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # Configure CORS (env-driven)
 allowed_origins_env = os.getenv("CORS_ORIGINS", "").strip()
 cf_env = os.getenv("CF_ENV")
 if allowed_origins_env:
-    allowed_origins = [
-        o.strip() for o in allowed_origins_env.split(",") if o.strip()
-    ]
+    allowed_origins = [o.strip() for o in allowed_origins_env.split(",") if o.strip()]
 else:
     # Default: strict in production, wildcard in non-prod
     node_env = (
-        cf_env
-        or os.getenv("NODE_ENV")
-        or os.getenv("ENV")
-        or os.getenv("PY_ENV")
-        or "development"
+        cf_env or os.getenv("NODE_ENV") or os.getenv("ENV") or os.getenv("PY_ENV") or "development"
     )
     if node_env == "production":
         allowed_origins = [
@@ -104,6 +99,7 @@ class RequestMetricsMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(RequestMetricsMiddleware)
+
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
@@ -168,6 +164,7 @@ class ConnectionManager:
                 # Ignore send errors for disconnected clients
                 pass
 
+
 manager = ConnectionManager()
 
 # Health check endpoint
@@ -180,8 +177,9 @@ async def health_check():
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
         "service": "rtpm-api",
-        "version": "1.0.0"
+        "version": "1.0.0",
     }
+
 
 # Metrics endpoint
 
@@ -192,6 +190,7 @@ async def get_metrics():
     from starlette.responses import Response
 
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
 
 # Root endpoint
 
@@ -206,9 +205,10 @@ async def root():
             "health": "/health",
             "metrics": "/metrics",
             "api_docs": "/docs",
-            "websocket": "/ws/metrics"
-        }
+            "websocket": "/ws/metrics",
+        },
     }
+
 
 # API endpoints
 
@@ -218,12 +218,8 @@ async def get_status():
     """Get system status"""
     return {
         "status": "operational",
-        "services": {
-            "api": "healthy",
-            "database": "healthy",
-            "cache": "healthy"
-        },
-        "timestamp": datetime.utcnow().isoformat()
+        "services": {"api": "healthy", "database": "healthy", "cache": "healthy"},
+        "timestamp": datetime.utcnow().isoformat(),
     }
 
 
@@ -236,20 +232,20 @@ async def get_current_metrics():
                 "name": "cpu_usage",
                 "value": random.uniform(20, 80),
                 "unit": "percent",
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
             },
             {
                 "name": "memory_usage",
                 "value": random.uniform(30, 70),
                 "unit": "percent",
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
             },
             {
                 "name": "response_time",
                 "value": random.uniform(50, 200),
                 "unit": "ms",
-                "timestamp": datetime.utcnow().isoformat()
-            }
+                "timestamp": datetime.utcnow().isoformat(),
+            },
         ]
     }
 
@@ -260,18 +256,16 @@ async def ingest_metric(request: Request):
     data = await request.json()
     # In production, this would save to database
     logger.info("Ingested metric: %s", data)
-    
+
     # Broadcast to WebSocket clients
-    await manager.broadcast(json.dumps({
-        "type": "metric",
-        "payload": data
-    }))
-    
+    await manager.broadcast(json.dumps({"type": "metric", "payload": data}))
+
     return {
         "status": "success",
         "message": "Metric ingested",
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
     }
+
 
 # WebSocket endpoint for real-time metrics
 
@@ -280,22 +274,24 @@ async def ingest_metric(request: Request):
 async def websocket_metrics(websocket: WebSocket):
     """WebSocket endpoint for real-time metrics"""
     await manager.connect(websocket)
-    
+
     try:
         # Send initial connection message
-        await websocket.send_text(json.dumps({
-            "type": "connection",
-            "status": "connected",
-            "timestamp": datetime.utcnow().isoformat()
-        }))
-        
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "type": "connection",
+                    "status": "connected",
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+            )
+        )
+
         # Keep connection alive and send periodic metrics
         while True:
             # Wait for any message from client (keepalive)
             try:
-                data = await asyncio.wait_for(
-                    websocket.receive_text(), timeout=5.0
-                )
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
                 logger.info("Received WebSocket message: %s", data)
             except asyncio.TimeoutError:
                 # Send a metric update
@@ -311,11 +307,11 @@ async def websocket_metrics(websocket: WebSocket):
                             ]
                         ),
                         "value": random.uniform(20, 80),
-                        "timestamp": datetime.utcnow().isoformat()
-                    }
+                        "timestamp": datetime.utcnow().isoformat(),
+                    },
                 }
                 await websocket.send_text(json.dumps(metric))
-                
+
     except WebSocketDisconnect:
         manager.disconnect(websocket)
         logger.info("WebSocket client disconnected")
@@ -323,23 +319,19 @@ async def websocket_metrics(websocket: WebSocket):
         logger.error("WebSocket error: %s", e)
         manager.disconnect(websocket)
 
+
 # Error handlers
 
 
 @app.exception_handler(404)
 async def not_found_handler(request: Request, exc):
-    return JSONResponse(
-        status_code=404,
-        content={"error": "Not found", "path": str(request.url)}
-    )
+    return JSONResponse(status_code=404, content={"error": "Not found", "path": str(request.url)})
 
 
 @app.exception_handler(500)
 async def internal_error_handler(request: Request, exc):
-    return JSONResponse(
-        status_code=500,
-        content={"error": "Internal server error"}
-    )
+    return JSONResponse(status_code=500, content={"error": "Internal server error"})
+
 
 # Startup event
 
@@ -375,6 +367,7 @@ async def startup_event():
     logger.info("Redis: Connected")
     logger.info("Ready to accept connections")
 
+
 # Shutdown event
 
 
@@ -383,6 +376,7 @@ async def shutdown_event():
     logger.info("RTPM API shutting down...")
     logger.info("Closing database connections...")
     logger.info("Shutdown complete")
+
 
 if __name__ == "__main__":
     import uvicorn

@@ -68,7 +68,7 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         status: 'unhealthy',
         error: 'Internal server error'
       })

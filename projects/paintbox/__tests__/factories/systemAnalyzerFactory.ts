@@ -102,7 +102,7 @@ export class ServiceFactory {
     const name = faker.system.fileName().replace(/\.[^/.]+$/, '');
     const environment = faker.helpers.arrayElement(['production', 'staging', 'development']);
     const status = faker.helpers.arrayElement<ServiceStatus>(['HEALTHY', 'DEGRADED', 'UNHEALTHY', 'UNKNOWN', 'MAINTENANCE']);
-    
+
     return {
       id: faker.string.uuid(),
       name,
@@ -152,7 +152,7 @@ export class ContainerFactory {
   static create(overrides: Partial<MockContainer> = {}): MockContainer {
     const name = faker.system.fileName().replace(/\.[^/.]+$/, '');
     const status = faker.helpers.arrayElement<ProcessStatus>(['RUNNING', 'STOPPED', 'CRASHED', 'STARTING', 'STOPPING', 'UNKNOWN']);
-    
+
     return {
       id: faker.string.uuid(),
       name,
@@ -194,7 +194,7 @@ export class MetricFactory {
     const type = faker.helpers.arrayElement<ResourceType>(['CPU', 'MEMORY', 'DISK', 'NETWORK', 'DATABASE_CONNECTIONS', 'API_REQUESTS']);
     const value = this.generateValueForType(type);
     const unit = this.getUnitForType(type);
-    
+
     return {
       id: faker.string.uuid(),
       serviceId: faker.string.uuid(),
@@ -220,7 +220,7 @@ export class MetricFactory {
   static createTimeSeries(serviceId: string, metricName: string, hours: number = 24): MockMetric[] {
     const metrics: MockMetric[] = [];
     const now = new Date();
-    
+
     for (let i = hours; i >= 0; i--) {
       const timestamp = new Date(now.getTime() - (i * 60 * 60 * 1000));
       metrics.push(this.create({
@@ -229,7 +229,7 @@ export class MetricFactory {
         timestamp,
       }));
     }
-    
+
     return metrics;
   }
 
@@ -277,7 +277,7 @@ export class AlertFactory {
   static create(overrides: Partial<MockAlert> = {}): MockAlert {
     const severity = faker.helpers.arrayElement<AlertSeverity>(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
     const status = faker.helpers.arrayElement<AlertStatus>(['ACTIVE', 'RESOLVED', 'ACKNOWLEDGED', 'SUPPRESSED']);
-    
+
     return {
       id: faker.string.uuid(),
       serviceId: faker.string.uuid(),
@@ -304,19 +304,19 @@ export class AlertFactory {
   }
 
   static createCritical(overrides: Partial<MockAlert> = {}): MockAlert {
-    return this.create({ 
-      severity: 'CRITICAL', 
+    return this.create({
+      severity: 'CRITICAL',
       status: 'ACTIVE',
       triggerValue: faker.number.float({ min: 95, max: 100, fractionDigits: 2 }),
-      ...overrides 
+      ...overrides
     });
   }
 
   static createResolved(overrides: Partial<MockAlert> = {}): MockAlert {
-    return this.create({ 
-      status: 'RESOLVED', 
+    return this.create({
+      status: 'RESOLVED',
       resolvedAt: faker.date.recent({ days: 1 }),
-      ...overrides 
+      ...overrides
     });
   }
 }
@@ -330,11 +330,11 @@ export class SystemAnalysisFactory {
     const healthyServices = faker.number.int({ min: Math.floor(totalServices * 0.6), max: totalServices });
     const degradedServices = faker.number.int({ min: 0, max: Math.floor((totalServices - healthyServices) * 0.7) });
     const unhealthyServices = totalServices - healthyServices - degradedServices;
-    
+
     const healthScore = Math.round((healthyServices / totalServices) * 100);
-    const overallHealth: ServiceStatus = healthScore >= 90 ? 'HEALTHY' : 
+    const overallHealth: ServiceStatus = healthScore >= 90 ? 'HEALTHY' :
                                         healthScore >= 70 ? 'DEGRADED' : 'UNHEALTHY';
-    
+
     return {
       id: faker.string.uuid(),
       timestamp: new Date(),
@@ -431,7 +431,7 @@ export class SystemMockFactory {
 
   static createLoadTestScenario(serviceCount: number = 100) {
     const system = this.createCompleteSystem(serviceCount);
-    
+
     // Add high load metrics
     system.services.forEach(service => {
       const loadMetrics = [

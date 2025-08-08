@@ -54,11 +54,11 @@ describe('ServiceStatusMonitor', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     // Default mock responses
     mockFetch.mockImplementation((url) => {
       const urlStr = url.toString()
-      
+
       if (urlStr.includes('salesforce/status')) {
         return Promise.resolve({
           ok: true,
@@ -75,7 +75,7 @@ describe('ServiceStatusMonitor', () => {
           })
         } as Response)
       }
-      
+
       if (urlStr.includes('companycam/status')) {
         return Promise.resolve({
           ok: true,
@@ -88,7 +88,7 @@ describe('ServiceStatusMonitor', () => {
           })
         } as Response)
       }
-      
+
       return Promise.reject(new Error('Unknown endpoint'))
     })
   })
@@ -100,14 +100,14 @@ describe('ServiceStatusMonitor', () => {
   describe('Initial Rendering', () => {
     it('should render service status monitor with loading state', () => {
       render(<ServiceStatusMonitor {...defaultProps} />)
-      
+
       expect(screen.getByText('Service Status Monitor')).toBeInTheDocument()
       expect(screen.getByText('Loading service status...')).toBeInTheDocument()
     })
 
     it('should load and display service statuses', async () => {
       render(<ServiceStatusMonitor {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Salesforce')).toBeInTheDocument()
       })
@@ -118,7 +118,7 @@ describe('ServiceStatusMonitor', () => {
 
     it('should display service details and metrics', async () => {
       render(<ServiceStatusMonitor {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Salesforce')).toBeInTheDocument()
       })
@@ -126,7 +126,7 @@ describe('ServiceStatusMonitor', () => {
       // Check for latency information
       expect(screen.getByText('120ms')).toBeInTheDocument()
       expect(screen.getByText('200ms')).toBeInTheDocument()
-      
+
       // Check for last check timestamps
       expect(screen.getAllByText(/Last check:/)).toHaveLength(2)
     })
@@ -135,7 +135,7 @@ describe('ServiceStatusMonitor', () => {
   describe('Real-time Updates', () => {
     it('should establish WebSocket connection for real-time updates', async () => {
       render(<ServiceStatusMonitor {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Real-time monitoring active')).toBeInTheDocument()
       })
@@ -143,14 +143,14 @@ describe('ServiceStatusMonitor', () => {
 
     it('should handle real-time status updates via WebSocket', async () => {
       render(<ServiceStatusMonitor {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Salesforce')).toBeInTheDocument()
       })
 
       // Simulate WebSocket message with status update
       const websocket = (global.WebSocket as any).mock.instances[0]
-      
+
       const updateMessage = {
         type: 'service_status_update',
         service: 'salesforce',
@@ -189,7 +189,7 @@ describe('ServiceStatusMonitor', () => {
       global.WebSocket = FailingWebSocket as any
 
       render(<ServiceStatusMonitor {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Real-time monitoring unavailable')).toBeInTheDocument()
       })
@@ -197,9 +197,9 @@ describe('ServiceStatusMonitor', () => {
 
     it('should reconnect WebSocket after connection loss', async () => {
       jest.useFakeTimers()
-      
+
       render(<ServiceStatusMonitor {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Real-time monitoring active')).toBeInTheDocument()
       })
@@ -227,7 +227,7 @@ describe('ServiceStatusMonitor', () => {
     it('should display different status types with appropriate styling', async () => {
       mockFetch.mockImplementation((url) => {
         const urlStr = url.toString()
-        
+
         if (urlStr.includes('salesforce/status')) {
           return Promise.resolve({
             ok: true,
@@ -239,7 +239,7 @@ describe('ServiceStatusMonitor', () => {
             })
           } as Response)
         }
-        
+
         if (urlStr.includes('companycam/status')) {
           return Promise.resolve({
             ok: true,
@@ -251,12 +251,12 @@ describe('ServiceStatusMonitor', () => {
             })
           } as Response)
         }
-        
+
         return Promise.reject(new Error('Unknown endpoint'))
       })
 
       render(<ServiceStatusMonitor {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Salesforce')).toBeInTheDocument()
       })
@@ -265,7 +265,7 @@ describe('ServiceStatusMonitor', () => {
       const errorStatus = screen.getByText(/error/i)
       expect(errorStatus.closest('span')).toHaveClass(expect.stringMatching(/red/))
 
-      // Check warning status styling  
+      // Check warning status styling
       const warningStatus = screen.getByText(/warning/i)
       expect(warningStatus.closest('span')).toHaveClass(expect.stringMatching(/yellow/))
     })
@@ -289,7 +289,7 @@ describe('ServiceStatusMonitor', () => {
       })
 
       render(<ServiceStatusMonitor {...defaultProps} services={['salesforce']} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('99.95%')).toBeInTheDocument()
       })
@@ -313,7 +313,7 @@ describe('ServiceStatusMonitor', () => {
       })
 
       render(<ServiceStatusMonitor {...defaultProps} services={['salesforce']} showHistory={true} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Status History')).toBeInTheDocument()
       })
@@ -327,13 +327,13 @@ describe('ServiceStatusMonitor', () => {
   describe('Manual Refresh', () => {
     it('should refresh service status when refresh button is clicked', async () => {
       render(<ServiceStatusMonitor {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Salesforce')).toBeInTheDocument()
       })
 
       const initialCallCount = mockFetch.mock.calls.length
-      
+
       const refreshButton = screen.getByRole('button', { name: /refresh/i })
       fireEvent.click(refreshButton)
 
@@ -344,7 +344,7 @@ describe('ServiceStatusMonitor', () => {
 
     it('should disable refresh button during refresh', async () => {
       render(<ServiceStatusMonitor {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Salesforce')).toBeInTheDocument()
       })
@@ -359,18 +359,18 @@ describe('ServiceStatusMonitor', () => {
   describe('Auto-refresh', () => {
     it('should auto-refresh at specified intervals', async () => {
       jest.useFakeTimers()
-      
+
       render(<ServiceStatusMonitor {...defaultProps} refreshInterval={1000} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Salesforce')).toBeInTheDocument()
       })
 
       const initialCallCount = mockFetch.mock.calls.length
-      
+
       // Fast-forward time
       jest.advanceTimersByTime(1000)
-      
+
       await waitFor(() => {
         expect(mockFetch.mock.calls.length).toBeGreaterThan(initialCallCount)
       })
@@ -380,7 +380,7 @@ describe('ServiceStatusMonitor', () => {
 
     it('should pause auto-refresh when component is not visible', async () => {
       jest.useFakeTimers()
-      
+
       // Mock Intersection Observer
       const mockIntersectionObserver = jest.fn()
       mockIntersectionObserver.mockReturnValue({
@@ -391,7 +391,7 @@ describe('ServiceStatusMonitor', () => {
       global.IntersectionObserver = mockIntersectionObserver
 
       render(<ServiceStatusMonitor {...defaultProps} refreshInterval={1000} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Salesforce')).toBeInTheDocument()
       })
@@ -401,10 +401,10 @@ describe('ServiceStatusMonitor', () => {
       observerCallback([{ isIntersecting: false }])
 
       const callCountBeforePause = mockFetch.mock.calls.length
-      
+
       // Fast-forward time - should not refresh while invisible
       jest.advanceTimersByTime(5000)
-      
+
       expect(mockFetch.mock.calls.length).toBe(callCountBeforePause)
 
       jest.useRealTimers()
@@ -421,7 +421,7 @@ describe('ServiceStatusMonitor', () => {
             statusText: 'Service Unavailable'
           } as Response)
         }
-        
+
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({
@@ -433,7 +433,7 @@ describe('ServiceStatusMonitor', () => {
       })
 
       render(<ServiceStatusMonitor {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Service Unavailable')).toBeInTheDocument()
       })
@@ -450,14 +450,14 @@ describe('ServiceStatusMonitor', () => {
       })
 
       render(<ServiceStatusMonitor {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText(/network.*timeout/i)).toBeInTheDocument()
       })
     })
 
     it('should handle malformed JSON responses', async () => {
-      mockFetch.mockImplementation(() => 
+      mockFetch.mockImplementation(() =>
         Promise.resolve({
           ok: true,
           json: () => Promise.reject(new Error('Unexpected token'))
@@ -465,7 +465,7 @@ describe('ServiceStatusMonitor', () => {
       )
 
       render(<ServiceStatusMonitor {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText(/invalid.*response/i)).toBeInTheDocument()
       })
@@ -474,7 +474,7 @@ describe('ServiceStatusMonitor', () => {
 
   describe('Security Features', () => {
     it('should not display sensitive information in status messages', async () => {
-      mockFetch.mockImplementation(() => 
+      mockFetch.mockImplementation(() =>
         Promise.resolve({
           ok: true,
           json: () => Promise.resolve({
@@ -488,30 +488,30 @@ describe('ServiceStatusMonitor', () => {
       )
 
       render(<ServiceStatusMonitor {...defaultProps} services={['salesforce']} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Salesforce')).toBeInTheDocument()
       })
 
       const componentText = document.body.textContent || ''
-      
+
       // Should not contain sensitive information
       expect(componentText).not.toContain('sk-1234567890abcdef')
       expect(componentText).not.toContain('secretpassword123')
-      
+
       // Should show sanitized error message
       expect(screen.getByText(/authentication.*failed/i)).toBeInTheDocument()
     })
 
     it('should validate WebSocket messages to prevent XSS', async () => {
       render(<ServiceStatusMonitor {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Real-time monitoring active')).toBeInTheDocument()
       })
 
       const websocket = (global.WebSocket as any).mock.instances[0]
-      
+
       // Send malicious payload
       const maliciousMessage = {
         type: 'service_status_update',
@@ -527,7 +527,7 @@ describe('ServiceStatusMonitor', () => {
       await waitFor(() => {
         // Should not execute scripts
         expect(document.querySelector('script')).toBeNull()
-        
+
         // Should escape the content
         expect(screen.getByText(/script/)).toBeInTheDocument()
       })
@@ -537,13 +537,13 @@ describe('ServiceStatusMonitor', () => {
   describe('Performance', () => {
     it('should throttle rapid status updates', async () => {
       render(<ServiceStatusMonitor {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Real-time monitoring active')).toBeInTheDocument()
       })
 
       const websocket = (global.WebSocket as any).mock.instances[0]
-      
+
       // Send rapid updates
       for (let i = 0; i < 10; i++) {
         websocket.onmessage(new MessageEvent('message', {
@@ -564,9 +564,9 @@ describe('ServiceStatusMonitor', () => {
 
     it('should limit the number of concurrent API requests', async () => {
       const services = Array.from({ length: 20 }, (_, i) => `service-${i}`)
-      
+
       render(<ServiceStatusMonitor services={services} refreshInterval={5000} enableRealTime={false} />)
-      
+
       // Should limit concurrent requests to prevent overwhelming the server
       await waitFor(() => {
         expect(mockFetch.mock.calls.length).toBeLessThanOrEqual(5)
@@ -577,7 +577,7 @@ describe('ServiceStatusMonitor', () => {
   describe('Accessibility', () => {
     it('should have proper ARIA labels for screen readers', async () => {
       render(<ServiceStatusMonitor {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Salesforce')).toBeInTheDocument()
       })
@@ -585,7 +585,7 @@ describe('ServiceStatusMonitor', () => {
       // Check for proper ARIA labels
       expect(screen.getByRole('region', { name: /service.*status/i })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /refresh/i })).toBeInTheDocument()
-      
+
       // Status indicators should have proper labels
       const statusIndicators = screen.getAllByRole('status')
       expect(statusIndicators.length).toBeGreaterThan(0)
@@ -594,14 +594,14 @@ describe('ServiceStatusMonitor', () => {
     it('should be keyboard navigable', async () => {
       const user = userEvent.setup()
       render(<ServiceStatusMonitor {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Salesforce')).toBeInTheDocument()
       })
 
       // Tab through interactive elements
       const refreshButton = screen.getByRole('button', { name: /refresh/i })
-      
+
       await user.tab()
       expect(refreshButton).toHaveFocus()
 
@@ -612,13 +612,13 @@ describe('ServiceStatusMonitor', () => {
 
     it('should announce status changes to screen readers', async () => {
       render(<ServiceStatusMonitor {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Real-time monitoring active')).toBeInTheDocument()
       })
 
       const websocket = (global.WebSocket as any).mock.instances[0]
-      
+
       // Send status change
       websocket.onmessage(new MessageEvent('message', {
         data: JSON.stringify({

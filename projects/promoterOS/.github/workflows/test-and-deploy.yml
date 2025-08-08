@@ -10,34 +10,34 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
-    
+
     strategy:
       matrix:
         node-version: [18.x, 20.x]
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
         cache-dependency-path: netlify/functions/package-lock.json
-    
+
     - name: Install dependencies
       run: |
         cd netlify/functions
         npm ci
-    
+
     - name: Run unit tests
       run: |
         cd netlify/functions
         npm test -- --coverage --watchAll=false
       env:
         CI: true
-    
+
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
@@ -59,29 +59,29 @@ jobs:
   security:
     name: Security Scan
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Use Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20.x'
         cache: 'npm'
         cache-dependency-path: netlify/functions/package-lock.json
-    
+
     - name: Install dependencies
       run: |
         cd netlify/functions
         npm ci
-    
+
     - name: Run npm audit
       run: |
         cd netlify/functions
         npm audit --audit-level moderate
       continue-on-error: true
-    
+
     - name: Run security tests
       run: |
         cd netlify/functions
@@ -92,44 +92,44 @@ jobs:
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Use Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20.x'
         cache: 'npm'
         cache-dependency-path: netlify/functions/package-lock.json
-    
+
     - name: Install dependencies
       run: |
         cd netlify/functions
         npm ci
-    
+
     - name: Install Playwright
       run: |
         npm install -g @playwright/test
         playwright install
-    
+
     - name: Install Netlify CLI
       run: npm install -g netlify-cli
-      
+
     - name: Start Netlify Dev Server
       run: |
         netlify dev --port 8888 &
         sleep 30 # Wait for server to start
       env:
         NODE_ENV: development
-    
+
     - name: Run E2E tests
       run: |
         playwright test e2e/
       env:
         TEST_URL: http://localhost:8888
-    
+
     - name: Archive E2E results
       uses: actions/upload-artifact@v4
       if: failure()
@@ -142,23 +142,23 @@ jobs:
   performance:
     name: Performance Tests
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Use Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20.x'
         cache: 'npm'
         cache-dependency-path: netlify/functions/package-lock.json
-    
+
     - name: Install dependencies
       run: |
         cd netlify/functions
         npm ci
-    
+
     - name: Run performance tests
       run: |
         cd netlify/functions
@@ -170,28 +170,28 @@ jobs:
   lint:
     name: Code Quality
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Use Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20.x'
         cache: 'npm'
         cache-dependency-path: netlify/functions/package-lock.json
-    
+
     - name: Install dependencies
       run: |
         cd netlify/functions
         npm ci
-    
+
     - name: Install ESLint
       run: |
         cd netlify/functions
         npm install eslint --save-dev
-    
+
     - name: Run ESLint
       run: |
         cd netlify/functions
@@ -203,23 +203,23 @@ jobs:
     needs: [test, security, e2e, performance]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Use Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20.x'
         cache: 'npm'
         cache-dependency-path: netlify/functions/package-lock.json
-    
+
     - name: Install dependencies
       run: |
         cd netlify/functions
         npm ci --production
-    
+
     - name: Deploy to Netlify
       uses: netlify/actions/deploy@master
       with:
@@ -235,11 +235,11 @@ jobs:
     needs: [deploy]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Run Lighthouse CI
       uses: treosh/lighthouse-ci-action@v9
       with:
@@ -254,7 +254,7 @@ jobs:
     needs: [test, security, e2e, performance, deploy]
     runs-on: ubuntu-latest
     if: always()
-    
+
     steps:
     - name: Notify Slack
       uses: 8398a7/action-slack@v3

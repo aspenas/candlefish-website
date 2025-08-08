@@ -1,6 +1,6 @@
 /**
  * Services View Component
- * 
+ *
  * Detailed view of all services with filtering and management capabilities
  */
 
@@ -45,7 +45,7 @@ export function ServicesView() {
         </div>
       </div>
 
-      <ServiceGrid 
+      <ServiceGrid
         services={services}
         showAll={true}
         onServiceClick={selectService}

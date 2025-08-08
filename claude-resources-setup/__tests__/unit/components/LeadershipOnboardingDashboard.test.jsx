@@ -9,7 +9,7 @@ import '@testing-library/jest-dom'
 import { mockUsers, mockPhases, mockMetrics } from '../../mocks/data.js'
 
 // Mock the LeadershipOnboardingDashboard component
-const LeadershipOnboardingDashboard = ({ 
+const LeadershipOnboardingDashboard = ({
   teamMembers = [],
   phases = [],
   metrics = {},
@@ -34,7 +34,7 @@ const LeadershipOnboardingDashboard = ({
 
     // Filter by status
     if (filterStatus !== 'all') {
-      filtered = filtered.filter(member => 
+      filtered = filtered.filter(member =>
         member.onboardingStatus?.status === filterStatus
       )
     }
@@ -42,7 +42,7 @@ const LeadershipOnboardingDashboard = ({
     // Sort members
     filtered.sort((a, b) => {
       let aValue, bValue
-      
+
       switch (sortBy) {
         case 'name':
           aValue = a.username
@@ -91,7 +91,7 @@ const LeadershipOnboardingDashboard = ({
       newSelected.add(memberId)
     }
     setSelectedMembers(newSelected)
-    
+
     if (onMemberSelect) {
       onMemberSelect(memberId, newSelected.has(memberId))
     }
@@ -194,7 +194,7 @@ const LeadershipOnboardingDashboard = ({
                 </div>
                 <div className="dept-progress">
                   <div className="progress-bar">
-                    <div 
+                    <div
                       className={`progress-fill ${getProgressColor(data.rate)}`}
                       style={{ width: `${data.rate}%` }}
                     />
@@ -324,7 +324,7 @@ const LeadershipOnboardingDashboard = ({
 
       <div className="team-members-list">
         {filteredMembers.map(member => (
-          <div 
+          <div
             key={member.id}
             className={`member-card ${member.onboardingStatus?.status || 'pending'} ${
               selectedMembers.has(member.id) ? 'selected' : ''
@@ -339,7 +339,7 @@ const LeadershipOnboardingDashboard = ({
                 data-testid={`member-checkbox-${member.id}`}
                 className="member-checkbox"
               />
-              
+
               <div className="member-info">
                 <div className="member-name">
                   <span className="role-icon">{getRoleIcon(member.role)}</span>
@@ -353,7 +353,7 @@ const LeadershipOnboardingDashboard = ({
               </div>
 
               <div className="member-status">
-                <span 
+                <span
                   className={`status-badge ${member.onboardingStatus?.status || 'pending'}`}
                   data-testid={`member-status-${member.id}`}
                 >
@@ -368,15 +368,15 @@ const LeadershipOnboardingDashboard = ({
                   Progress: {member.onboardingStatus?.progress || 0}%
                 </span>
                 <span className="current-step">
-                  {member.onboardingStatus?.currentStep ? 
-                    `Step ${member.onboardingStatus.currentStep}` : 
+                  {member.onboardingStatus?.currentStep ?
+                    `Step ${member.onboardingStatus.currentStep}` :
                     'Not started'
                   }
                 </span>
               </div>
-              
+
               <div className="progress-bar">
-                <div 
+                <div
                   className={`progress-fill ${getProgressColor(member.onboardingStatus?.progress || 0)}`}
                   style={{ width: `${member.onboardingStatus?.progress || 0}%` }}
                   data-testid={`member-progress-${member.id}`}
@@ -388,13 +388,13 @@ const LeadershipOnboardingDashboard = ({
               <div className="member-steps">
                 <div className="steps-grid">
                   {member.onboardingStatus.steps.map(step => (
-                    <div 
+                    <div
                       key={step.id}
                       className={`step-item ${step.status}`}
                       data-testid={`step-${step.id}-${member.id}`}
                     >
                       <span className="step-indicator">
-                        {step.status === 'completed' ? '✓' : 
+                        {step.status === 'completed' ? '✓' :
                          step.status === 'in_progress' ? '⏳' : '○'}
                       </span>
                       <span className="step-name">{step.name}</span>
@@ -412,7 +412,7 @@ const LeadershipOnboardingDashboard = ({
               >
                 View Details
               </button>
-              
+
               {member.onboardingStatus?.status === 'in_progress' && (
                 <button
                   onClick={() => handleBulkAction('send_reminder', [member.id])}
@@ -460,7 +460,7 @@ describe('LeadershipOnboardingDashboard', () => {
   describe('Overview Mode', () => {
     it('should render overview dashboard with key metrics', () => {
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={mockUsers}
           phases={mockPhases}
           metrics={mockMetrics}
@@ -475,7 +475,7 @@ describe('LeadershipOnboardingDashboard', () => {
 
     it('should display correct metric values', () => {
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={mockUsers}
           phases={mockPhases}
           metrics={mockMetrics}
@@ -491,7 +491,7 @@ describe('LeadershipOnboardingDashboard', () => {
 
     it('should show department breakdown with progress bars', () => {
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={mockUsers}
           phases={mockPhases}
           metrics={mockMetrics}
@@ -506,7 +506,7 @@ describe('LeadershipOnboardingDashboard', () => {
 
     it('should display phase overview cards', () => {
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={mockUsers}
           phases={mockPhases}
           metrics={mockMetrics}
@@ -523,7 +523,7 @@ describe('LeadershipOnboardingDashboard', () => {
       const user = userEvent.setup()
 
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={mockUsers}
           phases={mockPhases}
           metrics={mockMetrics}
@@ -542,7 +542,7 @@ describe('LeadershipOnboardingDashboard', () => {
   describe('Detailed Mode', () => {
     it('should render detailed dashboard with team member list', () => {
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={mockUsers}
           phases={mockPhases}
           metrics={mockMetrics}
@@ -556,7 +556,7 @@ describe('LeadershipOnboardingDashboard', () => {
 
     it('should display team members with correct information', () => {
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={mockUsers}
           viewMode="detailed"
         />
@@ -571,7 +571,7 @@ describe('LeadershipOnboardingDashboard', () => {
 
     it('should show correct role icons', () => {
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={mockUsers}
           viewMode="detailed"
         />
@@ -584,7 +584,7 @@ describe('LeadershipOnboardingDashboard', () => {
 
     it('should display member progress with correct colors', () => {
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={mockUsers}
           viewMode="detailed"
         />
@@ -593,9 +593,9 @@ describe('LeadershipOnboardingDashboard', () => {
       mockUsers.forEach(member => {
         const progressBar = screen.getByTestId(`member-progress-${member.id}`)
         const progress = member.onboardingStatus?.progress || 0
-        
+
         expect(progressBar).toHaveStyle({ width: `${progress}%` })
-        
+
         if (progress >= 80) {
           expect(progressBar).toHaveClass('success')
         } else if (progress >= 50) {
@@ -608,10 +608,10 @@ describe('LeadershipOnboardingDashboard', () => {
 
     it('should show member steps with correct indicators', () => {
       const memberWithSteps = mockUsers.find(u => u.onboardingStatus?.steps)
-      
+
       if (memberWithSteps) {
         render(
-          <LeadershipOnboardingDashboard 
+          <LeadershipOnboardingDashboard
             teamMembers={[memberWithSteps]}
             viewMode="detailed"
           />
@@ -620,7 +620,7 @@ describe('LeadershipOnboardingDashboard', () => {
         memberWithSteps.onboardingStatus.steps.forEach(step => {
           const stepElement = screen.getByTestId(`step-${step.id}-${memberWithSteps.id}`)
           expect(stepElement).toBeInTheDocument()
-          
+
           if (step.status === 'completed') {
             expect(stepElement).toHaveTextContent('✓')
           } else if (step.status === 'in_progress') {
@@ -638,7 +638,7 @@ describe('LeadershipOnboardingDashboard', () => {
       const user = userEvent.setup()
 
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={mockUsers}
           viewMode="detailed"
         />
@@ -658,7 +658,7 @@ describe('LeadershipOnboardingDashboard', () => {
       const user = userEvent.setup()
 
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={mockUsers}
           viewMode="detailed"
         />
@@ -675,7 +675,7 @@ describe('LeadershipOnboardingDashboard', () => {
       const user = userEvent.setup()
 
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={mockUsers}
           viewMode="detailed"
         />
@@ -698,7 +698,7 @@ describe('LeadershipOnboardingDashboard', () => {
       const completedUsers = mockUsers.filter(u => u.onboardingStatus?.status !== 'pending')
 
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={completedUsers}
           viewMode="detailed"
         />
@@ -717,7 +717,7 @@ describe('LeadershipOnboardingDashboard', () => {
       const user = userEvent.setup()
 
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={mockUsers}
           viewMode="detailed"
           onMemberSelect={mockOnMemberSelect}
@@ -726,7 +726,7 @@ describe('LeadershipOnboardingDashboard', () => {
 
       const firstMember = mockUsers[0]
       const checkbox = screen.getByTestId(`member-checkbox-${firstMember.id}`)
-      
+
       await user.click(checkbox)
       expect(mockOnMemberSelect).toHaveBeenCalledWith(firstMember.id, true)
     })
@@ -735,7 +735,7 @@ describe('LeadershipOnboardingDashboard', () => {
       const user = userEvent.setup()
 
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={mockUsers}
           viewMode="detailed"
         />
@@ -758,7 +758,7 @@ describe('LeadershipOnboardingDashboard', () => {
       const user = userEvent.setup()
 
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={mockUsers}
           viewMode="detailed"
           onBulkAction={mockOnBulkAction}
@@ -778,7 +778,7 @@ describe('LeadershipOnboardingDashboard', () => {
       const user = userEvent.setup()
 
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={mockUsers}
           viewMode="detailed"
           onBulkAction={mockOnBulkAction}
@@ -800,7 +800,7 @@ describe('LeadershipOnboardingDashboard', () => {
       const user = userEvent.setup()
 
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={mockUsers}
           viewMode="detailed"
           onMemberSelect={mockOnMemberSelect}
@@ -810,7 +810,7 @@ describe('LeadershipOnboardingDashboard', () => {
 
       const firstMember = mockUsers[0]
       const viewDetailsButton = screen.getByTestId(`view-details-${firstMember.id}`)
-      
+
       await user.click(viewDetailsButton)
       expect(mockOnMemberSelect).toHaveBeenCalledWith(firstMember.id, true)
 
@@ -827,7 +827,7 @@ describe('LeadershipOnboardingDashboard', () => {
   describe('Department Filtering', () => {
     it('should filter members by department', () => {
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={mockUsers}
           viewMode="detailed"
           department="Engineering"
@@ -842,7 +842,7 @@ describe('LeadershipOnboardingDashboard', () => {
 
     it('should show all members when department is "all"', () => {
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={mockUsers}
           viewMode="detailed"
           department="all"
@@ -875,7 +875,7 @@ describe('LeadershipOnboardingDashboard', () => {
       ]
 
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={testMembers}
           viewMode="detailed"
         />
@@ -890,7 +890,7 @@ describe('LeadershipOnboardingDashboard', () => {
   describe('Error Handling and Edge Cases', () => {
     it('should handle empty team members list', () => {
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={[]}
           viewMode="detailed"
         />
@@ -911,7 +911,7 @@ describe('LeadershipOnboardingDashboard', () => {
       }]
 
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={membersWithoutStatus}
           viewMode="detailed"
         />
@@ -924,7 +924,7 @@ describe('LeadershipOnboardingDashboard', () => {
 
     it('should handle missing metrics gracefully', () => {
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={mockUsers}
           phases={mockPhases}
           metrics={{}} // Empty metrics
@@ -941,7 +941,7 @@ describe('LeadershipOnboardingDashboard', () => {
   describe('Accessibility', () => {
     it('should have proper form labels and ARIA attributes', () => {
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={mockUsers}
           viewMode="detailed"
         />
@@ -952,7 +952,7 @@ describe('LeadershipOnboardingDashboard', () => {
 
       expect(statusFilter).toBeInTheDocument()
       expect(sortSelect).toBeInTheDocument()
-      
+
       // Checkboxes should be properly labeled
       mockUsers.forEach(member => {
         const checkbox = screen.getByTestId(`member-checkbox-${member.id}`)
@@ -964,14 +964,14 @@ describe('LeadershipOnboardingDashboard', () => {
       const user = userEvent.setup()
 
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={mockUsers}
           viewMode="detailed"
         />
       )
 
       const firstCheckbox = screen.getByTestId(`member-checkbox-${mockUsers[0].id}`)
-      
+
       // Should be focusable
       firstCheckbox.focus()
       expect(firstCheckbox).toHaveFocus()
@@ -999,7 +999,7 @@ describe('LeadershipOnboardingDashboard', () => {
       const startTime = performance.now()
 
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={manyMembers}
           viewMode="detailed"
         />
@@ -1027,14 +1027,14 @@ describe('LeadershipOnboardingDashboard', () => {
       }))
 
       render(
-        <LeadershipOnboardingDashboard 
+        <LeadershipOnboardingDashboard
           teamMembers={manyMembers}
           viewMode="detailed"
         />
       )
 
       const statusFilter = screen.getByTestId('status-filter')
-      
+
       // Filter changes should be fast
       const startTime = performance.now()
       await user.selectOptions(statusFilter, 'completed')

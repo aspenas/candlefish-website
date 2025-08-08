@@ -1,92 +1,92 @@
 // System Analyzer Types
 // Matches the GraphQL schema for type safety
 
-export type ServiceStatus = 
-  | 'HEALTHY' 
-  | 'DEGRADED' 
-  | 'UNHEALTHY' 
-  | 'UNKNOWN' 
+export type ServiceStatus =
+  | 'HEALTHY'
+  | 'DEGRADED'
+  | 'UNHEALTHY'
+  | 'UNKNOWN'
   | 'MAINTENANCE';
 
-export type ProcessStatus = 
-  | 'RUNNING' 
-  | 'STOPPED' 
-  | 'CRASHED' 
-  | 'STARTING' 
-  | 'STOPPING' 
+export type ProcessStatus =
+  | 'RUNNING'
+  | 'STOPPED'
+  | 'CRASHED'
+  | 'STARTING'
+  | 'STOPPING'
   | 'UNKNOWN';
 
-export type AlertSeverity = 
-  | 'LOW' 
-  | 'MEDIUM' 
-  | 'HIGH' 
+export type AlertSeverity =
+  | 'LOW'
+  | 'MEDIUM'
+  | 'HIGH'
   | 'CRITICAL';
 
-export type ResourceType = 
-  | 'CPU' 
-  | 'MEMORY' 
-  | 'DISK' 
-  | 'NETWORK' 
-  | 'DATABASE_CONNECTIONS' 
-  | 'API_REQUESTS' 
+export type ResourceType =
+  | 'CPU'
+  | 'MEMORY'
+  | 'DISK'
+  | 'NETWORK'
+  | 'DATABASE_CONNECTIONS'
+  | 'API_REQUESTS'
   | 'CUSTOM';
 
-export type DependencyType = 
-  | 'DATABASE' 
-  | 'API' 
-  | 'MESSAGE_QUEUE' 
-  | 'CACHE' 
-  | 'FILE_STORAGE' 
-  | 'AUTHENTICATION' 
+export type DependencyType =
+  | 'DATABASE'
+  | 'API'
+  | 'MESSAGE_QUEUE'
+  | 'CACHE'
+  | 'FILE_STORAGE'
+  | 'AUTHENTICATION'
   | 'EXTERNAL_SERVICE';
 
-export type AlertStatus = 
-  | 'ACTIVE' 
-  | 'RESOLVED' 
-  | 'ACKNOWLEDGED' 
+export type AlertStatus =
+  | 'ACTIVE'
+  | 'RESOLVED'
+  | 'ACKNOWLEDGED'
   | 'SUPPRESSED';
 
-export type AlertCondition = 
-  | 'GREATER_THAN' 
-  | 'LESS_THAN' 
-  | 'EQUALS' 
-  | 'NOT_EQUALS' 
-  | 'GREATER_THAN_OR_EQUAL' 
-  | 'LESS_THAN_OR_EQUAL' 
-  | 'CHANGE_RATE_POSITIVE' 
+export type AlertCondition =
+  | 'GREATER_THAN'
+  | 'LESS_THAN'
+  | 'EQUALS'
+  | 'NOT_EQUALS'
+  | 'GREATER_THAN_OR_EQUAL'
+  | 'LESS_THAN_OR_EQUAL'
+  | 'CHANGE_RATE_POSITIVE'
   | 'CHANGE_RATE_NEGATIVE';
 
-export type AggregationType = 
-  | 'AVG' 
-  | 'MIN' 
-  | 'MAX' 
-  | 'SUM' 
-  | 'COUNT' 
-  | 'P50' 
-  | 'P90' 
-  | 'P95' 
+export type AggregationType =
+  | 'AVG'
+  | 'MIN'
+  | 'MAX'
+  | 'SUM'
+  | 'COUNT'
+  | 'P50'
+  | 'P90'
+  | 'P95'
   | 'P99';
 
-export type InsightType = 
-  | 'PERFORMANCE_DEGRADATION' 
-  | 'RESOURCE_EXHAUSTION' 
-  | 'ANOMALY_DETECTION' 
-  | 'CAPACITY_PLANNING' 
-  | 'DEPENDENCY_FAILURE' 
+export type InsightType =
+  | 'PERFORMANCE_DEGRADATION'
+  | 'RESOURCE_EXHAUSTION'
+  | 'ANOMALY_DETECTION'
+  | 'CAPACITY_PLANNING'
+  | 'DEPENDENCY_FAILURE'
   | 'ERROR_RATE_SPIKE';
 
-export type TrendDirection = 
-  | 'INCREASING' 
-  | 'DECREASING' 
-  | 'STABLE' 
+export type TrendDirection =
+  | 'INCREASING'
+  | 'DECREASING'
+  | 'STABLE'
   | 'VOLATILE';
 
-export type RecommendationType = 
-  | 'SCALING' 
-  | 'OPTIMIZATION' 
-  | 'CONFIGURATION' 
-  | 'SECURITY' 
-  | 'MAINTENANCE' 
+export type RecommendationType =
+  | 'SCALING'
+  | 'OPTIMIZATION'
+  | 'CONFIGURATION'
+  | 'SECURITY'
+  | 'MAINTENANCE'
   | 'MONITORING';
 
 // Core interfaces
@@ -101,25 +101,25 @@ export interface Service {
   healthEndpoint?: string;
   baseUrl?: string;
   tags: string[];
-  
+
   // Relationships
   dependencies: ServiceDependency[];
   containers: Container[];
   processes: Process[];
   metrics: Metric[];
   alerts: Alert[];
-  
+
   // Timestamps
   discoveredAt: Date;
   lastHealthCheck?: Date;
   lastStatusChange?: Date;
   uptime?: number; // in milliseconds
-  
+
   // Configuration
   autoDiscovered: boolean;
   monitoringEnabled: boolean;
   alertingEnabled: boolean;
-  
+
   // Health Check Configuration
   healthCheckInterval?: number; // in milliseconds
   healthCheckTimeout?: number; // in milliseconds
@@ -145,7 +145,7 @@ export interface Container {
   status: ProcessStatus;
   serviceId?: string;
   service?: Service;
-  
+
   // Resource Usage
   cpuUsage?: number;
   memoryUsage?: number;
@@ -153,17 +153,17 @@ export interface Container {
   networkRx?: number;
   networkTx?: number;
   diskUsage?: number;
-  
+
   // Configuration
   environment: EnvironmentVariable[];
   ports: PortMapping[];
   volumes: VolumeMount[];
-  
+
   // Timestamps
   createdAt: Date;
   startedAt?: Date;
   lastRestart?: Date;
-  
+
   // Health
   healthCheck?: ContainerHealthCheck;
   restartCount: number;
@@ -177,19 +177,19 @@ export interface Process {
   status: ProcessStatus;
   serviceId?: string;
   service?: Service;
-  
+
   // Resource Usage
   cpuPercent?: number;
   memoryMb?: number;
   openFiles?: number;
   threads?: number;
-  
+
   // Process Info
   user?: string;
   startTime: Date;
   parentPid?: number;
   children: Process[];
-  
+
   // Environment
   workingDirectory?: string;
   environment: EnvironmentVariable[];
@@ -231,7 +231,7 @@ export interface Metric {
   unit: string;
   timestamp: Date;
   labels?: Record<string, any>;
-  
+
   // Thresholds for alerting
   warningThreshold?: number;
   criticalThreshold?: number;
@@ -268,20 +268,20 @@ export interface Alert {
   description: string;
   severity: AlertSeverity;
   status: AlertStatus;
-  
+
   // Rule Configuration
   ruleId: string;
   rule: AlertRule;
-  
+
   // Lifecycle
   triggeredAt: Date;
   resolvedAt?: Date;
   acknowledgedAt?: Date;
   acknowledgedBy?: string;
-  
+
   // Notifications
   notifications: AlertNotification[];
-  
+
   // Related Data
   triggerMetricId?: string;
   triggerMetric?: Metric;
@@ -299,11 +299,11 @@ export interface AlertRule {
   duration: number; // How long condition must be true (in milliseconds)
   severity: AlertSeverity;
   enabled: boolean;
-  
+
   // Notification settings
   notificationChannels: string[];
   suppressDuration?: number; // in milliseconds
-  
+
   // Service targeting
   serviceIds: string[];
   services: Service[];
@@ -323,28 +323,28 @@ export interface AlertNotification {
 export interface SystemAnalysis {
   id: string;
   timestamp: Date;
-  
+
   // Overall Health
   overallHealth: ServiceStatus;
   healthScore: number; // 0-100
-  
+
   // Service Analysis
   totalServices: number;
   healthyServices: number;
   degradedServices: number;
   unhealthyServices: number;
-  
+
   // Performance Insights
   performanceInsights: PerformanceInsight[];
   resourceUtilization: SystemResourceUtilization;
-  
+
   // Alerts Summary
   activeAlerts: number;
   alertsByService: ServiceAlertSummary[];
-  
+
   // Recommendations
   recommendations: SystemRecommendation[];
-  
+
   // Trends
   trendAnalysis: TrendAnalysis;
 }

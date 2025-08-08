@@ -40,10 +40,10 @@ describe('/api/v1/secrets/config', () => {
   it('should return application configuration successfully', async () => {
     // Mock rate limiter to allow request
     mockRateLimiter.check.mockResolvedValue({ allowed: true, remaining: 99 })
-    
+
     // Import the handler after mocks are set up
     const { GET } = await import('../../app/api/v1/secrets/config/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/secrets/config', {
       method: 'GET',
     })
@@ -63,14 +63,14 @@ describe('/api/v1/secrets/config', () => {
 
   it('should apply rate limiting', async () => {
     // Mock rate limiter to deny request
-    mockRateLimiter.check.mockResolvedValue({ 
-      allowed: false, 
-      remaining: 0, 
-      resetTime: Date.now() + 60000 
+    mockRateLimiter.check.mockResolvedValue({
+      allowed: false,
+      remaining: 0,
+      resetTime: Date.now() + 60000
     })
 
     const { GET } = await import('../../app/api/v1/secrets/config/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/secrets/config', {
       method: 'GET',
     })
@@ -85,7 +85,7 @@ describe('/api/v1/secrets/config', () => {
     mockRateLimiter.check.mockResolvedValue({ allowed: true, remaining: 99 })
 
     const { GET } = await import('../../app/api/v1/secrets/config/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/secrets/config', {
       method: 'GET',
       headers: {
@@ -102,7 +102,7 @@ describe('/api/v1/secrets/config', () => {
     mockRateLimiter.check.mockResolvedValue({ allowed: true, remaining: 99 })
 
     const { GET } = await import('../../app/api/v1/secrets/config/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/secrets/config', {
       method: 'GET',
       headers: {
@@ -120,7 +120,7 @@ describe('/api/v1/secrets/config', () => {
     mockRateLimiter.check.mockResolvedValue({ allowed: true, remaining: 99 })
 
     const { GET } = await import('../../app/api/v1/secrets/config/route')
-    
+
     // Test SQL injection attempts
     for (const payload of global.securityTestHelpers.sqlInjectionPayloads) {
       const request = new NextRequest(`http://localhost:3000/api/v1/secrets/config?filter=${encodeURIComponent(payload)}`, {
@@ -128,10 +128,10 @@ describe('/api/v1/secrets/config', () => {
       })
 
       const response = await GET(request)
-      
+
       // Should either reject malicious input or sanitize it
       expect([200, 400, 403]).toContain(response.status)
-      
+
       if (response.status === 200) {
         const data = await response.json()
         // Ensure no SQL injection occurred by checking response structure
@@ -151,7 +151,7 @@ describe('/api/v1/secrets/token', () => {
     mockRateLimiter.check.mockResolvedValue({ allowed: true, remaining: 99 })
 
     const { POST } = await import('../../app/api/v1/secrets/token/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/secrets/token', {
       method: 'POST',
       headers: {
@@ -177,7 +177,7 @@ describe('/api/v1/secrets/token', () => {
     mockRateLimiter.check.mockResolvedValue({ allowed: true, remaining: 99 })
 
     const { POST } = await import('../../app/api/v1/secrets/token/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/secrets/token', {
       method: 'POST',
       headers: {
@@ -199,7 +199,7 @@ describe('/api/v1/secrets/token', () => {
     mockRateLimiter.check.mockResolvedValue({ allowed: true, remaining: 99 })
 
     const { POST } = await import('../../app/api/v1/secrets/token/route')
-    
+
     // Test various malicious payloads
     const maliciousPayloads = [
       // SQL injection in clientId
@@ -222,7 +222,7 @@ describe('/api/v1/secrets/token', () => {
       })
 
       const response = await POST(request)
-      
+
       // Should reject malicious input
       expect([400, 401, 403]).toContain(response.status)
     }
@@ -232,14 +232,14 @@ describe('/api/v1/secrets/token', () => {
     // First request should succeed
     mockRateLimiter.check.mockResolvedValueOnce({ allowed: true, remaining: 0 })
     // Second request should be rate limited
-    mockRateLimiter.check.mockResolvedValueOnce({ 
-      allowed: false, 
-      remaining: 0, 
-      resetTime: Date.now() + 60000 
+    mockRateLimiter.check.mockResolvedValueOnce({
+      allowed: false,
+      remaining: 0,
+      resetTime: Date.now() + 60000
     })
 
     const { POST } = await import('../../app/api/v1/secrets/token/route')
-    
+
     const validRequest = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -253,7 +253,7 @@ describe('/api/v1/secrets/token', () => {
     // First request
     const request1 = new NextRequest('http://localhost:3000/api/v1/secrets/token', validRequest)
     const response1 = await POST(request1)
-    
+
     // Second request should be rate limited
     const request2 = new NextRequest('http://localhost:3000/api/v1/secrets/token', validRequest)
     const response2 = await POST(request2)
@@ -269,14 +269,14 @@ describe('/api/v1/secrets/health', () => {
 
   it('should return health status of secrets service', async () => {
     mockRateLimiter.check.mockResolvedValue({ allowed: true, remaining: 99 })
-    
+
     // Mock AWS Secrets Manager health check
     mockSend.mockResolvedValue({
       SecretList: []
     })
 
     const { GET } = await import('../../app/api/v1/secrets/health/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/secrets/health', {
       method: 'GET',
     })
@@ -293,12 +293,12 @@ describe('/api/v1/secrets/health', () => {
 
   it('should handle AWS connection failures gracefully', async () => {
     mockRateLimiter.check.mockResolvedValue({ allowed: true, remaining: 99 })
-    
+
     // Mock AWS failure
     mockSend.mockRejectedValue(new Error('AWS connection failed'))
 
     const { GET } = await import('../../app/api/v1/secrets/health/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/secrets/health', {
       method: 'GET',
     })
@@ -316,7 +316,7 @@ describe('/api/v1/secrets/health', () => {
     mockSend.mockResolvedValue({ SecretList: [] })
 
     const { GET } = await import('../../app/api/v1/secrets/health/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/secrets/health', {
       method: 'GET',
     })
@@ -336,7 +336,7 @@ describe('Security Headers and CORS', () => {
     mockRateLimiter.check.mockResolvedValue({ allowed: true, remaining: 99 })
 
     const { GET } = await import('../../app/api/v1/secrets/config/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/secrets/config', {
       method: 'GET',
     })
@@ -353,7 +353,7 @@ describe('Security Headers and CORS', () => {
 
   it('should handle CORS preflight requests correctly', async () => {
     const { OPTIONS } = await import('../../app/api/v1/secrets/config/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/secrets/config', {
       method: 'OPTIONS',
       headers: {

@@ -38,7 +38,7 @@ services:
 
   # RTPM API
   rtpm-api:
-    build: 
+    build:
       context: .
       target: production
     environment:

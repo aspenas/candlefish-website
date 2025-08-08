@@ -63,7 +63,7 @@ function verifyToken(token) {
  */
 function extractToken(headers) {
   const authHeader = headers.authorization || headers.Authorization;
-  
+
   if (!authHeader) {
     return null;
   }
@@ -101,7 +101,7 @@ async function authMiddleware(event, context, handler) {
 
   try {
     const token = extractToken(event.headers);
-    
+
     if (!token) {
       return {
         statusCode: 401,
@@ -129,7 +129,7 @@ async function authMiddleware(event, context, handler) {
 
   } catch (error) {
     console.error('Authentication error:', error.message);
-    
+
     return {
       statusCode: 401,
       headers: {
@@ -164,7 +164,7 @@ function requireRole(allowedRoles) {
           })
         };
       }
-      
+
       // User has required role, proceed to handler
       return handler(authedEvent, context);
     });
@@ -182,7 +182,7 @@ function requireRole(allowedRoles) {
  */
 async function publicEndpoint(event, context, handler) {
   const token = extractToken(event.headers);
-  
+
   if (token) {
     try {
       const decoded = verifyToken(token);

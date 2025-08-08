@@ -38,14 +38,14 @@ describe('API Client', () => {
     it('handles token refresh on 401 response', async () => {
       const expiredToken = 'expired-token';
       const newToken = 'refreshed-token';
-      
+
       localStorage.setItem('authToken', expiredToken);
-      
+
       // Mock 401 response followed by successful refresh
       apiMock.setApiError('getDeploymentStatus', {
         response: { status: 401, data: { error: 'Token expired' } }
       });
-      
+
       apiMock.setApiResponse('refreshToken', {
         access_token: newToken,
         token_type: 'bearer'
@@ -63,13 +63,13 @@ describe('API Client', () => {
 
     it('redirects to login on persistent 401', async () => {
       const originalLocation = window.location;
-      
+
       // Mock window.location
       delete (window as any).location;
       window.location = { ...originalLocation, href: '' };
 
       localStorage.setItem('authToken', 'invalid-token');
-      
+
       apiMock.setApiError('getDeploymentStatus', {
         response: { status: 401, data: { error: 'Invalid token' } }
       });
@@ -82,7 +82,7 @@ describe('API Client', () => {
 
       // Should clear token and redirect
       expect(localStorage.getItem('authToken')).toBeNull();
-      
+
       // Restore original location
       window.location = originalLocation;
     });
@@ -91,7 +91,7 @@ describe('API Client', () => {
   describe('Request Handling', () => {
     it('sets correct content-type headers', async () => {
       const data = { test: 'data' };
-      
+
       await deploymentAPI.scaleDeployment('test-app', 'default', 3);
 
       const lastCall = apiMock.getLastApiCall();
@@ -297,7 +297,7 @@ describe('API Client', () => {
 
       for (const { error, expectedMessage } of errorCases) {
         apiMock.setApiError('healthCheck', error);
-        
+
         await expect(deploymentAPI.healthCheck()).rejects.toThrow(expectedMessage);
       }
     });
@@ -307,7 +307,7 @@ describe('API Client', () => {
     it('retries failed requests with exponential backoff', async () => {
       let attempt = 0;
       const mockAxios = require('axios');
-      
+
       mockAxios.get.mockImplementation(() => {
         attempt++;
         if (attempt < 3) {
@@ -325,7 +325,7 @@ describe('API Client', () => {
     it('limits retry attempts', async () => {
       let attempt = 0;
       const mockAxios = require('axios');
-      
+
       mockAxios.get.mockImplementation(() => {
         attempt++;
         return Promise.reject(new Error('Persistent error'));
@@ -340,7 +340,7 @@ describe('API Client', () => {
     it('does not retry on non-retryable errors', async () => {
       let attempt = 0;
       const mockAxios = require('axios');
-      
+
       mockAxios.get.mockImplementation(() => {
         attempt++;
         const error = new Error('Client error');
@@ -360,13 +360,13 @@ describe('API Client', () => {
       // Mock long-running request
       const mockAxios = require('axios');
       let cancelled = false;
-      
+
       mockAxios.get.mockImplementation(() => {
         return new Promise((resolve, reject) => {
           const timeout = setTimeout(() => {
             resolve({ data: { status: 'healthy' } });
           }, 1000);
-          
+
           // Mock cancellation
           return {
             then: (onResolve: any) => {
@@ -381,7 +381,7 @@ describe('API Client', () => {
       });
 
       const requestPromise = deploymentAPI.healthCheck();
-      
+
       // Cancel request
       setTimeout(() => {
         cancelled = true;
@@ -413,27 +413,27 @@ describe('API Client', () => {
 
       // Make request with cache bypass
       await deploymentAPI.healthCheck();
-      
+
       // Change mock response
       const newResponse = { status: 'degraded' };
       apiMock.setApiResponse('healthCheck', newResponse);
-      
+
       // Make another request - should get new response if cache bypassed
       const result = await deploymentAPI.healthCheck();
-      
+
       expect(result).toEqual(newResponse);
     });
 
     it('invalidates cache on write operations', async () => {
       // Get initial data
       await deploymentAPI.getKubernetesDeployments();
-      
+
       // Perform write operation
       await deploymentAPI.scaleDeployment('test-app', 'default', 5);
-      
+
       // Subsequent read should fetch fresh data
       await deploymentAPI.getKubernetesDeployments();
-      
+
       // Verify cache was invalidated (implementation dependent)
     });
   });

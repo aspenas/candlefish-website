@@ -175,7 +175,7 @@ describe('GraphQL Resolvers', () => {
     describe('service', () => {
       it('should resolve service by ID using DataLoader', async () => {
         const mockService = ServiceFactory.createHealthy();
-        
+
         // Mock DataLoader behavior
         mockDiscoveryService.getServicesByIds.mockResolvedValue([mockService]);
 
@@ -876,7 +876,7 @@ describe('GraphQL Resolvers', () => {
     it('should handle missing services in batch requests', async () => {
       const services = [ServiceFactory.createHealthy(), null, ServiceFactory.createHealthy()];
       const serviceIds = ['service-1', 'non-existent', 'service-3'];
-      
+
       mockDiscoveryService.getServicesByIds.mockResolvedValue([services[0], services[2]]);
 
       const promises = serviceIds.map(id =>

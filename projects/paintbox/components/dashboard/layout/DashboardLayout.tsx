@@ -1,6 +1,6 @@
 /**
  * Dashboard Layout Component
- * 
+ *
  * Provides the main layout structure for the system analyzer dashboard
  * with responsive design and flexible content areas.
  */
@@ -17,11 +17,11 @@ interface DashboardLayoutProps {
   className?: string;
 }
 
-export function DashboardLayout({ 
-  children, 
-  sidebar, 
-  header, 
-  className 
+export function DashboardLayout({
+  children,
+  sidebar,
+  header,
+  className
 }: DashboardLayoutProps) {
   return (
     <div className={cn('flex h-screen overflow-hidden', className)}>

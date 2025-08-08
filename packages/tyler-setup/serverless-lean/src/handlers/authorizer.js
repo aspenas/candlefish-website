@@ -4,30 +4,30 @@ import { logAudit } from '../utils/helpers.js';
 export const handler = async (event) => {
   try {
     const token = event.authorizationToken?.replace('Bearer ', '');
-    
+
     if (!token) {
       console.error('No authorization token provided');
       throw new Error('Unauthorized');
     }
-    
+
     // Verify JWT token using secure method
     const decoded = await verifyJwtToken(token);
-    
+
     // Check token expiration (additional check)
     if (decoded.exp && decoded.exp * 1000 < Date.now()) {
       console.error('Token expired:', new Date(decoded.exp * 1000));
       throw new Error('Token expired');
     }
-    
+
     // Validate required claims
     if (!decoded.id || !decoded.email || !decoded.role) {
       console.error('Invalid token claims:', decoded);
       throw new Error('Invalid token');
     }
-    
+
     // Generate policy based on user role
     const policy = generatePolicy(decoded, event.methodArn);
-    
+
     // Log successful authorization for audit
     await logAudit({
       action: 'AUTH_SUCCESS',
@@ -35,7 +35,7 @@ export const handler = async (event) => {
       resource: event.methodArn,
       ip: event.requestContext?.identity?.sourceIp,
     });
-    
+
     return {
       principalId: decoded.id,
       policyDocument: policy,
@@ -49,7 +49,7 @@ export const handler = async (event) => {
     };
   } catch (error) {
     console.error('Authorization error:', error.message);
-    
+
     // Log failed authorization attempts
     try {
       await logAudit({
@@ -61,7 +61,7 @@ export const handler = async (event) => {
     } catch (auditError) {
       console.error('Failed to log audit:', auditError);
     }
-    
+
     throw new Error('Unauthorized');
   }
 };
@@ -74,10 +74,10 @@ function generatePolicy(user, methodArn) {
     Version: '2012-10-17',
     Statement: [],
   };
-  
+
   // Base permissions for all authenticated users
   const baseResource = methodArn.split('/').slice(0, 4).join('/') + '/*';
-  
+
   // Role-based access control
   switch (user.role) {
     case 'admin':
@@ -88,7 +88,7 @@ function generatePolicy(user, methodArn) {
         Resource: baseResource,
       });
       break;
-      
+
     case 'manager':
       // Managers have access to most endpoints except sensitive admin operations
       policy.Statement.push(
@@ -107,7 +107,7 @@ function generatePolicy(user, methodArn) {
         }
       );
       break;
-      
+
     case 'employee':
       // Employees have limited access
       const allowedPaths = [
@@ -116,14 +116,14 @@ function generatePolicy(user, methodArn) {
         'secrets', // Read-only secrets
         'audit', // Own audit logs
       ];
-      
+
       policy.Statement.push({
         Action: 'execute-api:Invoke',
         Effect: 'Allow',
         Resource: allowedPaths.map(path => baseResource.replace('*', path)),
       });
       break;
-      
+
     default:
       // Unknown role - deny access
       policy.Statement.push({
@@ -132,6 +132,6 @@ function generatePolicy(user, methodArn) {
         Resource: baseResource,
       });
   }
-  
+
   return policy;
 }

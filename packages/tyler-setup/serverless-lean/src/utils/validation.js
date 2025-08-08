@@ -194,7 +194,7 @@ export const validateBody = (data, schema) => {
     stripUnknown: true,
     convert: true
   });
-  
+
   if (error) {
     const details = error.details.map(detail => ({
       field: detail.path.join('.'),
@@ -202,7 +202,7 @@ export const validateBody = (data, schema) => {
     }));
     throw new ValidationError('Validation failed', details);
   }
-  
+
   return value;
 };
 
@@ -211,14 +211,14 @@ export const validateBody = (data, schema) => {
  */
 export const validateParam = (value, schema, paramName) => {
   const { error, value: validatedValue } = schema.validate(value);
-  
+
   if (error) {
     throw new ValidationError(`Invalid ${paramName}`, [{
       field: paramName,
       message: error.details[0].message
     }]);
   }
-  
+
   return validatedValue;
 };
 
@@ -238,7 +238,7 @@ export class ValidationError extends Error {
  */
 export const sanitizeString = (str) => {
   if (typeof str !== 'string') return str;
-  
+
   return str
     .replace(/[<>]/g, '') // Remove < and >
     .replace(/javascript:/gi, '') // Remove javascript: protocol
@@ -251,11 +251,11 @@ export const sanitizeString = (str) => {
  */
 export const sanitizeObject = (obj) => {
   if (typeof obj !== 'object' || obj === null) return obj;
-  
+
   if (Array.isArray(obj)) {
     return obj.map(sanitizeObject);
   }
-  
+
   const sanitized = {};
   for (const [key, value] of Object.entries(obj)) {
     if (typeof value === 'string') {
@@ -266,6 +266,6 @@ export const sanitizeObject = (obj) => {
       sanitized[key] = value;
     }
   }
-  
+
   return sanitized;
 };

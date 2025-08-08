@@ -21,17 +21,17 @@ export class DiscoveryService extends EventEmitter {
     if (this.initialized) return;
 
     console.log('🔍 Initializing Discovery Service...');
-    
+
     try {
       // Load existing services from persistent storage
       await this.loadPersistedServices();
-      
+
       // Start auto-discovery
       await this.startAutoDiscovery();
-      
+
       // Start health checking
       this.startHealthChecking();
-      
+
       this.initialized = true;
       console.log(`✅ Discovery Service initialized with ${this.services.size} services`);
     } catch (error) {
@@ -44,7 +44,7 @@ export class DiscoveryService extends EventEmitter {
     if (this.discoveryInterval) {
       clearInterval(this.discoveryInterval);
     }
-    
+
     if (this.healthCheckInterval) {
       clearInterval(this.healthCheckInterval);
     }
@@ -57,7 +57,7 @@ export class DiscoveryService extends EventEmitter {
     try {
       // Check Docker connection
       await this.docker.ping();
-      
+
       return {
         status: 'healthy',
         details: {
@@ -91,7 +91,7 @@ export class DiscoveryService extends EventEmitter {
     }
 
     if (tags && tags.length > 0) {
-      filteredServices = filteredServices.filter(s => 
+      filteredServices = filteredServices.filter(s =>
         tags.some(tag => s.tags.includes(tag))
       );
     }
@@ -110,7 +110,7 @@ export class DiscoveryService extends EventEmitter {
 
   async getServiceByName(name: string, environment?: string): Promise<Service | null> {
     const services = Array.from(this.services.values());
-    return services.find(s => 
+    return services.find(s =>
       s.name === name && (!environment || s.environment === environment)
     ) || null;
   }
@@ -233,11 +233,11 @@ export class DiscoveryService extends EventEmitter {
   private async discoverDockerServices(): Promise<void> {
     try {
       const containers = await this.docker.listContainers({ all: true });
-      
+
       for (const containerInfo of containers) {
         const serviceName = this.extractServiceName(containerInfo);
         const environment = this.extractEnvironment(containerInfo);
-        
+
         if (!serviceName) continue;
 
         // Check if service already exists
@@ -271,7 +271,7 @@ export class DiscoveryService extends EventEmitter {
 
           this.services.set(service.id, service);
           this.emit('serviceDiscovered', service);
-          
+
           console.log(`🔍 Auto-discovered Docker service: ${serviceName}`);
         }
       }
@@ -283,7 +283,7 @@ export class DiscoveryService extends EventEmitter {
   private async discoverProcessServices(): Promise<void> {
     try {
       const { execSync } = require('child_process');
-      
+
       // Get running processes
       const psOutput = execSync('ps aux', { encoding: 'utf8' });
       const lines = psOutput.split('\n').slice(1);
@@ -294,7 +294,7 @@ export class DiscoveryService extends EventEmitter {
 
         const command = parts.slice(10).join(' ');
         const serviceName = this.extractServiceNameFromCommand(command);
-        
+
         if (!serviceName) continue;
 
         // Check if service already exists
@@ -323,7 +323,7 @@ export class DiscoveryService extends EventEmitter {
 
           this.services.set(service.id, service);
           this.emit('serviceDiscovered', service);
-          
+
           console.log(`🔍 Auto-discovered process service: ${serviceName}`);
         }
       }
@@ -335,7 +335,7 @@ export class DiscoveryService extends EventEmitter {
   private async discoverNetworkServices(): Promise<void> {
     // Discover services by scanning common ports
     const commonPorts = [80, 443, 3000, 4000, 5000, 8000, 8080, 9000];
-    
+
     for (const port of commonPorts) {
       try {
         const response = await axios.get(`http://localhost:${port}/health`, {
@@ -345,7 +345,7 @@ export class DiscoveryService extends EventEmitter {
 
         if (response.status < 500) {
           const serviceName = `http-service-${port}`;
-          
+
           const existingService = Array.from(this.services.values())
             .find(s => s.name === serviceName);
 
@@ -373,7 +373,7 @@ export class DiscoveryService extends EventEmitter {
 
             this.services.set(service.id, service);
             this.emit('serviceDiscovered', service);
-            
+
             console.log(`🔍 Auto-discovered HTTP service on port ${port}`);
           }
         }
@@ -410,13 +410,13 @@ export class DiscoveryService extends EventEmitter {
           }
         );
 
-        newStatus = response.status < 300 ? 'HEALTHY' : 
+        newStatus = response.status < 300 ? 'HEALTHY' :
                    response.status < 400 ? 'DEGRADED' : 'UNHEALTHY';
       } else {
         // Basic connectivity check
         try {
           if (service.baseUrl) {
-            await axios.get(service.baseUrl, { 
+            await axios.get(service.baseUrl, {
               timeout: 5000,
               validateStatus: () => true,
             });
@@ -453,7 +453,7 @@ export class DiscoveryService extends EventEmitter {
 
     } catch (error) {
       console.error(`Health check failed for ${service.name}:`, error);
-      
+
       const updatedService = {
         ...service,
         status: 'UNHEALTHY' as ServiceStatus,
@@ -469,21 +469,21 @@ export class DiscoveryService extends EventEmitter {
   private extractServiceName(containerInfo: any): string | null {
     // Try to extract service name from labels
     const labels = containerInfo.Labels || {};
-    
+
     if (labels['com.docker.compose.service']) {
       return labels['com.docker.compose.service'];
     }
-    
+
     if (labels['service.name']) {
       return labels['service.name'];
     }
-    
+
     // Extract from container name
     const name = containerInfo.Names[0]?.replace('/', '') || '';
     if (name.includes('_')) {
       return name.split('_')[0];
     }
-    
+
     return name || null;
   }
 
@@ -495,15 +495,15 @@ export class DiscoveryService extends EventEmitter {
   private extractTags(containerInfo: any): string[] {
     const labels = containerInfo.Labels || {};
     const tags = ['docker', 'auto-discovered'];
-    
+
     if (labels['com.docker.compose.service']) {
       tags.push('compose');
     }
-    
+
     if (containerInfo.State === 'running') {
       tags.push('running');
     }
-    
+
     return tags;
   }
 
@@ -535,7 +535,7 @@ export class DiscoveryService extends EventEmitter {
       const servicesFile = path.join(process.cwd(), 'data', 'services.json');
       const data = await fs.readFile(servicesFile, 'utf8');
       const services = JSON.parse(data);
-      
+
       for (const service of services) {
         // Convert date strings back to Date objects
         service.discoveredAt = new Date(service.discoveredAt);
@@ -545,10 +545,10 @@ export class DiscoveryService extends EventEmitter {
         if (service.lastStatusChange) {
           service.lastStatusChange = new Date(service.lastStatusChange);
         }
-        
+
         this.services.set(service.id, service);
       }
-      
+
       console.log(`📁 Loaded ${services.length} persisted services`);
     } catch (error) {
       // File doesn't exist or is invalid - start with empty services
@@ -560,10 +560,10 @@ export class DiscoveryService extends EventEmitter {
     try {
       const servicesDir = path.join(process.cwd(), 'data');
       await fs.mkdir(servicesDir, { recursive: true });
-      
+
       const servicesFile = path.join(servicesDir, 'services.json');
       const services = Array.from(this.services.values());
-      
+
       await fs.writeFile(servicesFile, JSON.stringify(services, null, 2));
       console.log(`💾 Persisted ${services.length} services`);
     } catch (error) {

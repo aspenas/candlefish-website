@@ -1,6 +1,6 @@
 /**
  * Overview Dashboard View
- * 
+ *
  * Main dashboard view showing system-wide metrics and status
  */
 
@@ -9,16 +9,16 @@
 import React from 'react';
 import { useDashboard } from '@/lib/context/DashboardContext';
 import { ServiceStatus, AlertSeverity } from '@/lib/types/dashboard';
-import { 
-  ServerIcon, 
+import {
+  ServerIcon,
   ExclamationTriangleIcon,
   ChartBarIcon,
   ClockIcon,
-  TrendingUpIcon,
-  TrendingDownIcon,
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
   MinusIcon,
 } from '@heroicons/react/24/outline';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/cn';
 
 // Components
 import { DashboardCard } from '../components/DashboardCard';
@@ -54,9 +54,9 @@ export function OverviewDashboard() {
   const getTrendIcon = (trend: string) => {
     switch (trend) {
       case 'INCREASING':
-        return TrendingUpIcon;
+        return ArrowTrendingUpIcon;
       case 'DECREASING':
-        return TrendingDownIcon;
+        return ArrowTrendingDownIcon;
       default:
         return MinusIcon;
     }
@@ -91,7 +91,7 @@ export function OverviewDashboard() {
       change: systemAnalysis?.trendAnalysis?.serviceHealthTrend === 'INCREASING' ? 5 : -2,
       changeType: systemAnalysis?.trendAnalysis?.serviceHealthTrend === 'INCREASING' ? 'increase' as const : 'decrease' as const,
       icon: ChartBarIcon,
-      color: systemAnalysis && systemAnalysis.healthScore >= 90 ? 'green' as const : 
+      color: systemAnalysis && systemAnalysis.healthScore >= 90 ? 'green' as const :
              systemAnalysis && systemAnalysis.healthScore >= 70 ? 'yellow' as const : 'red' as const,
       subtitle: systemAnalysis?.overallHealth.toLowerCase() || 'unknown',
     },
@@ -141,7 +141,7 @@ export function OverviewDashboard() {
             <SystemHealthScore analysis={systemAnalysis} />
           </div>
           <div>
-            <RecommendationsList 
+            <RecommendationsList
               recommendations={systemAnalysis.recommendations}
               maxItems={5}
             />
@@ -168,7 +168,7 @@ export function OverviewDashboard() {
             ]}
             color="blue"
           />
-          
+
           <MetricChart
             title="Memory Usage"
             value={systemAnalysis.resourceUtilization.memory.current}
@@ -185,7 +185,7 @@ export function OverviewDashboard() {
             ]}
             color="green"
           />
-          
+
           <MetricChart
             title="Disk Usage"
             value={systemAnalysis.resourceUtilization.disk.current}
@@ -202,7 +202,7 @@ export function OverviewDashboard() {
             ]}
             color="purple"
           />
-          
+
           <MetricChart
             title="Network I/O"
             value={systemAnalysis.resourceUtilization.network.current}
@@ -228,18 +228,18 @@ export function OverviewDashboard() {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
             Services Overview
           </h2>
-          <ServiceGrid 
-            services={services.slice(0, 8)} 
+          <ServiceGrid
+            services={services.slice(0, 8)}
             showAll={false}
             onViewAll={() => {/* TODO: Navigate to services view */}}
           />
         </div>
-        
+
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
             Recent Alerts
           </h2>
-          <AlertList 
+          <AlertList
             alerts={alerts.slice(0, 8)}
             showAll={false}
             onViewAll={() => {/* TODO: Navigate to alerts view */}}

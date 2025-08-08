@@ -73,7 +73,7 @@ export function ThemeProvider({
     if (!mounted || theme !== 'system') return
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    
+
     const handleChange = (e: MediaQueryListEvent) => {
       const newTheme = e.matches ? 'dark' : 'light'
       setResolvedTheme(newTheme)
@@ -182,11 +182,11 @@ export function ThemeScript({ storageKey = 'paintbox-theme' }: { storageKey?: st
         const stored = localStorage.getItem('${storageKey}');
         const theme = stored || 'system';
         let resolved = theme;
-        
+
         if (theme === 'system') {
           resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
-        
+
         document.documentElement.classList.add(resolved);
         document.documentElement.style.colorScheme = resolved;
       } catch (e) {}

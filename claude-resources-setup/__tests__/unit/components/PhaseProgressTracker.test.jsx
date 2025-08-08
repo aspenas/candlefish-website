@@ -9,8 +9,8 @@ import '@testing-library/jest-dom'
 import { mockPhases, mockUsers } from '../../mocks/data.js'
 
 // Mock the PhaseProgressTracker component
-const PhaseProgressTracker = ({ 
-  phase, 
+const PhaseProgressTracker = ({
+  phase,
   users = [],
   onUserClick,
   onRefresh,
@@ -47,7 +47,7 @@ const PhaseProgressTracker = ({
 
   const getProgressColor = (rate) => {
     if (rate >= 90) return 'success'
-    if (rate >= 70) return 'warning' 
+    if (rate >= 70) return 'warning'
     return 'danger'
   }
 
@@ -56,9 +56,9 @@ const PhaseProgressTracker = ({
     const now = new Date()
     const end = new Date(phase.endDate)
     const diff = end - now
-    
+
     if (diff <= 0) return 'Overdue'
-    
+
     const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
     return `${days} day${days === 1 ? '' : 's'} remaining`
   }
@@ -72,21 +72,21 @@ const PhaseProgressTracker = ({
   }
 
   return (
-    <div 
-      data-testid="phase-progress-tracker" 
+    <div
+      data-testid="phase-progress-tracker"
       className={`progress-tracker ${phase.status}`}
     >
       <div className="tracker-header">
         <div className="phase-info">
           <h3 data-testid="phase-name">{phase.name}</h3>
-          <span 
+          <span
             className={`status-badge ${phase.status}`}
             data-testid="phase-status"
           >
             {phase.status.replace('_', ' ').toUpperCase()}
           </span>
         </div>
-        
+
         <div className="tracker-actions">
           <button
             onClick={handleRefresh}
@@ -97,7 +97,7 @@ const PhaseProgressTracker = ({
           >
             {isRefreshing ? '⟳' : '↻'} Refresh
           </button>
-          
+
           {autoRefresh && (
             <div className="auto-refresh-indicator" data-testid="auto-refresh-indicator">
               🔄 Auto-refresh enabled
@@ -114,21 +114,21 @@ const PhaseProgressTracker = ({
             </div>
             <div className="metric-label">Completion Rate</div>
           </div>
-          
+
           <div className="metric-card">
             <div className="metric-value" data-testid="user-count">
               {phase.completedUsers.length}/{phase.targetUsers.length}
             </div>
             <div className="metric-label">Users Completed</div>
           </div>
-          
+
           <div className="metric-card">
             <div className="metric-value" data-testid="avg-time">
               {phase.metrics.avgOnboardingTime}d
             </div>
             <div className="metric-label">Avg Time</div>
           </div>
-          
+
           <div className="metric-card">
             <div className="metric-value" data-testid="satisfaction-score">
               {phase.metrics.userSatisfaction}/5
@@ -139,7 +139,7 @@ const PhaseProgressTracker = ({
 
         <div className="progress-bar-container">
           <div className="progress-bar">
-            <div 
+            <div
               className={`progress-fill ${getProgressColor(phase.metrics.completionRate)}`}
               style={{ width: `${phase.metrics.completionRate}%` }}
               data-testid="progress-fill"
@@ -158,7 +158,7 @@ const PhaseProgressTracker = ({
             <h4>Success Criteria</h4>
             <div className="criteria-grid">
               <div className={`criteria-item ${
-                phase.metrics.completionRate >= phase.successCriteria.minCompletionRate 
+                phase.metrics.completionRate >= phase.successCriteria.minCompletionRate
                   ? 'met' : 'not-met'
               }`}>
                 <span className="criteria-label">Min Completion Rate</span>
@@ -169,9 +169,9 @@ const PhaseProgressTracker = ({
                   {phase.metrics.completionRate >= phase.successCriteria.minCompletionRate ? '✓' : '✗'}
                 </span>
               </div>
-              
+
               <div className={`criteria-item ${
-                phase.metrics.errorRate <= phase.successCriteria.maxErrorRate 
+                phase.metrics.errorRate <= phase.successCriteria.maxErrorRate
                   ? 'met' : 'not-met'
               }`}>
                 <span className="criteria-label">Max Error Rate</span>
@@ -182,9 +182,9 @@ const PhaseProgressTracker = ({
                   {phase.metrics.errorRate <= phase.successCriteria.maxErrorRate ? '✓' : '✗'}
                 </span>
               </div>
-              
+
               <div className={`criteria-item ${
-                phase.metrics.avgOnboardingTime <= phase.successCriteria.targetDuration 
+                phase.metrics.avgOnboardingTime <= phase.successCriteria.targetDuration
                   ? 'met' : 'not-met'
               }`}>
                 <span className="criteria-label">Target Duration</span>
@@ -205,9 +205,9 @@ const PhaseProgressTracker = ({
                 const user = users.find(u => u.id === userId)
                 const isCompleted = phase.completedUsers.includes(userId)
                 const userProgress = user?.onboardingStatus
-                
+
                 return (
-                  <div 
+                  <div
                     key={userId}
                     className={`user-progress-item ${isCompleted ? 'completed' : 'in-progress'}`}
                     onClick={() => onUserClick && onUserClick(userId)}
@@ -221,7 +221,7 @@ const PhaseProgressTracker = ({
                         {isCompleted ? 'Completed' : userProgress?.status || 'Pending'}
                       </span>
                     </div>
-                    
+
                     <div className="user-metrics">
                       {userProgress && (
                         <>
@@ -234,7 +234,7 @@ const PhaseProgressTracker = ({
                         </>
                       )}
                     </div>
-                    
+
                     <div className="user-indicator">
                       {isCompleted ? '✓' : userProgress?.status === 'in_progress' ? '⏳' : '⏸'}
                     </div>
@@ -250,7 +250,7 @@ const PhaseProgressTracker = ({
         <div className="last-updated" data-testid="last-updated">
           Last updated: {lastUpdated.toLocaleTimeString()}
         </div>
-        
+
         {phase.status === 'in_progress' && (
           <div className="phase-timeline">
             <span>Started: {new Date(phase.startDate).toLocaleDateString()}</span>
@@ -280,7 +280,7 @@ describe('PhaseProgressTracker', () => {
       const phase = mockPhases[1] // In-progress phase
 
       render(
-        <PhaseProgressTracker 
+        <PhaseProgressTracker
           phase={phase}
           users={mockUsers}
         />
@@ -295,7 +295,7 @@ describe('PhaseProgressTracker', () => {
       const phase = mockPhases[1]
 
       render(
-        <PhaseProgressTracker 
+        <PhaseProgressTracker
           phase={phase}
           users={mockUsers}
         />
@@ -318,7 +318,7 @@ describe('PhaseProgressTracker', () => {
       const phase = mockPhases[1] // 40% completion
 
       render(
-        <PhaseProgressTracker 
+        <PhaseProgressTracker
           phase={phase}
           users={mockUsers}
         />
@@ -336,7 +336,7 @@ describe('PhaseProgressTracker', () => {
       }
 
       render(
-        <PhaseProgressTracker 
+        <PhaseProgressTracker
           phase={futurePhase}
           users={mockUsers}
         />
@@ -352,7 +352,7 @@ describe('PhaseProgressTracker', () => {
       }
 
       render(
-        <PhaseProgressTracker 
+        <PhaseProgressTracker
           phase={overduePhase}
           users={mockUsers}
         />
@@ -367,7 +367,7 @@ describe('PhaseProgressTracker', () => {
       const phase = mockPhases[1]
 
       render(
-        <PhaseProgressTracker 
+        <PhaseProgressTracker
           phase={phase}
           users={mockUsers}
           showDetailed={true}
@@ -383,7 +383,7 @@ describe('PhaseProgressTracker', () => {
       const phase = mockPhases[0] // Completed phase with good metrics
 
       render(
-        <PhaseProgressTracker 
+        <PhaseProgressTracker
           phase={phase}
           users={mockUsers}
           showDetailed={true}
@@ -407,7 +407,7 @@ describe('PhaseProgressTracker', () => {
       }
 
       render(
-        <PhaseProgressTracker 
+        <PhaseProgressTracker
           phase={failingPhase}
           users={mockUsers}
           showDetailed={true}
@@ -423,7 +423,7 @@ describe('PhaseProgressTracker', () => {
       const phase = mockPhases[1]
 
       render(
-        <PhaseProgressTracker 
+        <PhaseProgressTracker
           phase={phase}
           users={mockUsers}
           showDetailed={true}
@@ -447,7 +447,7 @@ describe('PhaseProgressTracker', () => {
       const phase = mockPhases[1]
 
       render(
-        <PhaseProgressTracker 
+        <PhaseProgressTracker
           phase={phase}
           users={mockUsers}
           showDetailed={true}
@@ -465,7 +465,7 @@ describe('PhaseProgressTracker', () => {
       const phase = mockPhases[1]
 
       render(
-        <PhaseProgressTracker 
+        <PhaseProgressTracker
           phase={phase}
           users={mockUsers}
           showDetailed={true}
@@ -488,7 +488,7 @@ describe('PhaseProgressTracker', () => {
       mockOnRefresh.mockResolvedValue()
 
       render(
-        <PhaseProgressTracker 
+        <PhaseProgressTracker
           phase={mockPhases[1]}
           onRefresh={mockOnRefresh}
         />
@@ -509,14 +509,14 @@ describe('PhaseProgressTracker', () => {
       mockOnRefresh.mockReturnValue(refreshPromise)
 
       render(
-        <PhaseProgressTracker 
+        <PhaseProgressTracker
           phase={mockPhases[1]}
           onRefresh={mockOnRefresh}
         />
       )
 
       const refreshButton = screen.getByTestId('refresh-button')
-      
+
       // Start refresh
       await user.click(refreshButton)
       expect(refreshButton).toBeDisabled()
@@ -532,7 +532,7 @@ describe('PhaseProgressTracker', () => {
 
     it('should show auto-refresh indicator when enabled', () => {
       render(
-        <PhaseProgressTracker 
+        <PhaseProgressTracker
           phase={mockPhases[1]}
           autoRefresh={true}
           onRefresh={mockOnRefresh}
@@ -547,7 +547,7 @@ describe('PhaseProgressTracker', () => {
       mockOnRefresh.mockResolvedValue()
 
       render(
-        <PhaseProgressTracker 
+        <PhaseProgressTracker
           phase={mockPhases[1]}
           autoRefresh={true}
           refreshInterval={5000}
@@ -575,7 +575,7 @@ describe('PhaseProgressTracker', () => {
       mockOnRefresh.mockResolvedValue()
 
       const { container } = render(
-        <PhaseProgressTracker 
+        <PhaseProgressTracker
           phase={mockPhases[1]}
           onRefresh={mockOnRefresh}
         />
@@ -585,7 +585,7 @@ describe('PhaseProgressTracker', () => {
 
       // Wait a moment and refresh
       jest.advanceTimersByTime(1000)
-      
+
       const refreshButton = screen.getByTestId('refresh-button')
       await user.click(refreshButton)
 
@@ -652,7 +652,7 @@ describe('PhaseProgressTracker', () => {
   describe('Accessibility', () => {
     it('should have proper ARIA labels on interactive elements', () => {
       render(
-        <PhaseProgressTracker 
+        <PhaseProgressTracker
           phase={mockPhases[1]}
           onRefresh={mockOnRefresh}
         />
@@ -664,7 +664,7 @@ describe('PhaseProgressTracker', () => {
 
     it('should make user items keyboard accessible when clickable', () => {
       render(
-        <PhaseProgressTracker 
+        <PhaseProgressTracker
           phase={mockPhases[1]}
           users={mockUsers}
           showDetailed={true}
@@ -682,7 +682,7 @@ describe('PhaseProgressTracker', () => {
 
     it('should not make user items focusable when not clickable', () => {
       render(
-        <PhaseProgressTracker 
+        <PhaseProgressTracker
           phase={mockPhases[1]}
           users={mockUsers}
           showDetailed={true}
@@ -702,7 +702,7 @@ describe('PhaseProgressTracker', () => {
       const phase = mockPhases[1]
 
       render(
-        <PhaseProgressTracker 
+        <PhaseProgressTracker
           phase={phase}
           users={[]} // No user data
           showDetailed={true}
@@ -722,17 +722,17 @@ describe('PhaseProgressTracker', () => {
       mockOnRefresh.mockRejectedValue(new Error('Refresh failed'))
 
       render(
-        <PhaseProgressTracker 
+        <PhaseProgressTracker
           phase={mockPhases[1]}
           onRefresh={mockOnRefresh}
         />
       )
 
       const refreshButton = screen.getByTestId('refresh-button')
-      
+
       // Should not crash when refresh fails
       await user.click(refreshButton)
-      
+
       expect(mockOnRefresh).toHaveBeenCalled()
       expect(refreshButton).not.toBeDisabled() // Should re-enable after failure
     })
@@ -776,7 +776,7 @@ describe('PhaseProgressTracker', () => {
       const startTime = performance.now()
 
       render(
-        <PhaseProgressTracker 
+        <PhaseProgressTracker
           phase={phaseWithManyUsers}
           users={manyUsers}
           showDetailed={true}
@@ -792,7 +792,7 @@ describe('PhaseProgressTracker', () => {
 
     it('should cleanup auto-refresh interval on unmount', () => {
       const { unmount } = render(
-        <PhaseProgressTracker 
+        <PhaseProgressTracker
           phase={mockPhases[1]}
           autoRefresh={true}
           refreshInterval={1000}

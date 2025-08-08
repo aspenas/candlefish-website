@@ -20,10 +20,10 @@ interface StatusAlert {
   acknowledged: boolean;
 }
 
-export const ServiceStatusMonitor: React.FC<ServiceStatusMonitorProps> = ({ 
+export const ServiceStatusMonitor: React.FC<ServiceStatusMonitorProps> = ({
   className,
   autoRefresh = true,
-  refreshInterval = 10000 
+  refreshInterval = 10000
 }) => {
   const [services, setServices] = useState<ServiceStatus[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,7 +76,7 @@ export const ServiceStatusMonitor: React.FC<ServiceStatusMonitorProps> = ({
       });
 
       const newServices = await Promise.all(servicePromises);
-      
+
       // Check for status changes and create alerts
       const previousServices = previousServicesRef.current;
       if (previousServices.length > 0) {
@@ -86,7 +86,7 @@ export const ServiceStatusMonitor: React.FC<ServiceStatusMonitorProps> = ({
             const alert: StatusAlert = {
               id: `${newService.service}-${Date.now()}`,
               service: newService.service,
-              type: newService.status === 'healthy' ? 'info' : 
+              type: newService.status === 'healthy' ? 'info' :
                     newService.status === 'warning' ? 'warning' : 'error',
               message: `Status changed from ${prevService.status} to ${newService.status}`,
               timestamp: new Date(),
@@ -108,7 +108,7 @@ export const ServiceStatusMonitor: React.FC<ServiceStatusMonitorProps> = ({
   };
 
   const acknowledgeAlert = (alertId: string) => {
-    setAlerts(prev => prev.map(alert => 
+    setAlerts(prev => prev.map(alert =>
       alert.id === alertId ? { ...alert, acknowledged: true } : alert
     ));
   };
@@ -119,7 +119,7 @@ export const ServiceStatusMonitor: React.FC<ServiceStatusMonitorProps> = ({
 
   useEffect(() => {
     fetchServiceStatuses();
-    
+
     if (autoRefresh) {
       intervalRef.current = setInterval(fetchServiceStatuses, refreshInterval);
     }
@@ -162,7 +162,7 @@ export const ServiceStatusMonitor: React.FC<ServiceStatusMonitorProps> = ({
     const time = new Date(timestamp);
     const diffMs = now.getTime() - time.getTime();
     const diffMins = Math.floor(diffMs / 60000);
-    
+
     if (diffMins < 1) return 'Just now';
     if (diffMins < 60) return `${diffMins}m ago`;
     const diffHours = Math.floor(diffMins / 60);
@@ -220,7 +220,7 @@ export const ServiceStatusMonitor: React.FC<ServiceStatusMonitorProps> = ({
           </h3>
           <div className="space-y-2">
             {unacknowledgedAlerts.slice(0, 5).map((alert) => (
-              <div 
+              <div
                 key={alert.id}
                 className={`p-3 rounded-lg border ${getAlertColor(alert.type)}`}
               >
@@ -234,7 +234,7 @@ export const ServiceStatusMonitor: React.FC<ServiceStatusMonitorProps> = ({
                     </div>
                     <p className="text-sm mt-1">{alert.message}</p>
                   </div>
-                  <Button 
+                  <Button
                     onClick={() => acknowledgeAlert(alert.id)}
                     variant="ghost"
                     className="text-xs py-1 px-2"

@@ -42,8 +42,8 @@ export default function ErrorState({
         </Text>
 
         {/* Error Description */}
-        <Text 
-          variant="bodyMedium" 
+        <Text
+          variant="bodyMedium"
           style={[styles.description, { color: theme.colors.onSurfaceVariant }]}
         >
           {description}

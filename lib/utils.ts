@@ -112,7 +112,7 @@ export function oklchToRgb(l: number, c: number, h: number): string {
  */
 export function supportsOklch(): boolean {
   if (typeof window === "undefined") return false
-  
+
   const div = document.createElement("div")
   div.style.color = "oklch(50% 0.2 180)"
   return div.style.color !== ""

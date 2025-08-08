@@ -8,7 +8,7 @@ interface ValueCardProps {
 
 const ValueCard: React.FC<ValueCardProps> = ({ metric, label, delay = 0 }) => {
   return (
-    <div 
+    <div
       className="value-card bg-gray-800 border border-gray-700 p-8 text-center transition-all duration-400 ease-out hover:border-teal-400 hover:-translate-y-2 hover:shadow-lg hover:shadow-teal-400/10 opacity-0 transform translate-y-8"
       data-animate
       style={{
@@ -52,7 +52,7 @@ const ValueProposition: React.FC = () => {
           />
         </div>
       </div>
-      
+
     </section>
   )
 }

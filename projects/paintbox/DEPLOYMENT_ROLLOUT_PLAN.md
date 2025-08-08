@@ -107,6 +107,7 @@ This document outlines the comprehensive deployment strategy for the "System Ana
 **Tasks**:
 
 1. **AWS Infrastructure Deployment**
+
    ```bash
    # Deploy Terraform infrastructure
    cd infrastructure/terraform
@@ -116,31 +117,34 @@ This document outlines the comprehensive deployment strategy for the "System Ana
    ```
 
 2. **Kubernetes Cluster Setup**
+
    ```bash
    # Configure kubectl
    aws eks update-kubeconfig --name system-analyzer-production --region us-east-1
-   
+
    # Verify cluster access
    kubectl cluster-info
    kubectl get nodes
    ```
 
 3. **Core Services Installation**
+
    ```bash
    # Install External Secrets Operator
    helm repo add external-secrets https://charts.external-secrets.io
    helm install external-secrets external-secrets/external-secrets -n external-secrets-system --create-namespace
-   
+
    # Install cert-manager
    helm repo add jetstack https://charts.jetstack.io
    helm install cert-manager jetstack/cert-manager -n cert-manager --create-namespace --set installCRDs=true
-   
+
    # Install NGINX Ingress Controller
    helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
    helm install ingress-nginx ingress-nginx/ingress-nginx -n ingress-nginx --create-namespace
    ```
 
 **Acceptance Criteria**:
+
 - [ ] All AWS resources provisioned
 - [ ] Kubernetes cluster accessible
 - [ ] Core operators installed and running
@@ -156,17 +160,19 @@ This document outlines the comprehensive deployment strategy for the "System Ana
 **Tasks**:
 
 1. **Database Deployment**
+
    ```bash
    # Deploy database components
    kubectl apply -f k8s/namespace.yaml
    kubectl apply -f k8s/secrets.yaml
    kubectl apply -f k8s/database.yaml
-   
+
    # Wait for database to be ready
    kubectl wait --for=condition=ready pod -l app=postgres -n system-analyzer --timeout=300s
    ```
 
 2. **Database Migration**
+
    ```bash
    # Run initial migrations
    kubectl apply -f k8s/jobs.yaml
@@ -174,15 +180,17 @@ This document outlines the comprehensive deployment strategy for the "System Ana
    ```
 
 3. **Backup System Setup**
+
    ```bash
    # Verify backup CronJob
    kubectl get cronjobs -n system-analyzer
-   
+
    # Test backup manually
    kubectl create job db-backup-test --from=cronjob/db-backup -n system-analyzer
    ```
 
 **Acceptance Criteria**:
+
 - [ ] PostgreSQL with TimescaleDB running
 - [ ] Redis cache operational
 - [ ] Database schema migrated
@@ -198,17 +206,19 @@ This document outlines the comprehensive deployment strategy for the "System Ana
 **Tasks**:
 
 1. **Backend API Deployment**
+
    ```bash
    # Deploy backend services
    kubectl apply -f k8s/backend.yaml
    kubectl apply -f k8s/graphql.yaml
-   
+
    # Wait for services to be ready
    kubectl wait --for=condition=available deployment/backend-api -n system-analyzer --timeout=300s
    kubectl wait --for=condition=available deployment/graphql-server -n system-analyzer --timeout=300s
    ```
 
 2. **Service Verification**
+
    ```bash
    # Check service health
    kubectl exec -it deployment/backend-api -n system-analyzer -- curl localhost:8000/health
@@ -216,6 +226,7 @@ This document outlines the comprehensive deployment strategy for the "System Ana
    ```
 
 3. **Auto-scaling Configuration**
+
    ```bash
    # Verify HPA is active
    kubectl get hpa -n system-analyzer
@@ -223,6 +234,7 @@ This document outlines the comprehensive deployment strategy for the "System Ana
    ```
 
 **Acceptance Criteria**:
+
 - [ ] Backend API responding to health checks
 - [ ] GraphQL server operational
 - [ ] Auto-scaling policies active
@@ -238,34 +250,38 @@ This document outlines the comprehensive deployment strategy for the "System Ana
 **Tasks**:
 
 1. **Frontend Deployment**
+
    ```bash
    # Deploy frontend
    kubectl apply -f k8s/frontend.yaml
-   
+
    # Wait for frontend to be ready
    kubectl wait --for=condition=available deployment/frontend -n system-analyzer --timeout=300s
    ```
 
 2. **Ingress and Load Balancer Setup**
+
    ```bash
    # Deploy ingress resources
    kubectl apply -f k8s/ingress.yaml
-   
+
    # Check ingress status
    kubectl get ingress -n system-analyzer
    kubectl describe ingress system-analyzer-ingress -n system-analyzer
    ```
 
 3. **DNS Configuration**
+
    ```bash
    # Get load balancer address
    kubectl get service ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
-   
+
    # Update DNS records (manual step in Route 53)
    # Point system-analyzer.example.com to load balancer
    ```
 
 **Acceptance Criteria**:
+
 - [ ] Frontend application accessible
 - [ ] HTTPS/SSL working correctly
 - [ ] Load balancing active
@@ -281,39 +297,43 @@ This document outlines the comprehensive deployment strategy for the "System Ana
 **Tasks**:
 
 1. **Monitoring Stack Deployment**
+
    ```bash
    # Deploy monitoring components
    kubectl apply -f k8s/monitoring.yaml
-   
+
    # Wait for monitoring services
    kubectl wait --for=condition=available deployment/prometheus -n monitoring --timeout=300s
    kubectl wait --for=condition=available deployment/grafana -n monitoring --timeout=300s
    ```
 
 2. **Dashboard Configuration**
+
    ```bash
    # Import Grafana dashboards
    kubectl create configmap grafana-dashboards \
      --from-file=monitoring/grafana/dashboards/ \
      -n monitoring
-   
+
    # Restart Grafana to load dashboards
    kubectl rollout restart deployment/grafana -n monitoring
    ```
 
 3. **Alert Configuration**
+
    ```bash
    # Configure alerting rules
    kubectl create configmap prometheus-rules \
      --from-file=monitoring/prometheus/rules/ \
      -n monitoring
-   
+
    # Reload Prometheus configuration
    kubectl exec -it deployment/prometheus -n monitoring -- \
      curl -X POST http://localhost:9090/-/reload
    ```
 
 **Acceptance Criteria**:
+
 - [ ] Prometheus collecting metrics
 - [ ] Grafana dashboards operational
 - [ ] AlertManager configured
@@ -329,6 +349,7 @@ This document outlines the comprehensive deployment strategy for the "System Ana
 **Tasks**:
 
 1. **Mobile App Build**
+
    ```bash
    # Trigger mobile build pipeline
    gh workflow run mobile-deploy.yml \
@@ -344,12 +365,14 @@ This document outlines the comprehensive deployment strategy for the "System Ana
    - Submit for Play Store review
 
 3. **Beta Testing Distribution**
+
    ```bash
    # Distribute via TestFlight and Google Play Internal Testing
    # Verify app functionality with test users
    ```
 
 **Acceptance Criteria**:
+
 - [ ] iOS and Android apps built successfully
 - [ ] Apps submitted to app stores
 - [ ] Beta testing initiated
@@ -365,20 +388,22 @@ This document outlines the comprehensive deployment strategy for the "System Ana
 **Tasks**:
 
 1. **Load Testing**
+
    ```bash
    # Run comprehensive load tests
    npm run test:load:report
-   
+
    # Monitor system during load test
    kubectl top nodes
    kubectl top pods -n system-analyzer
    ```
 
 2. **Performance Analysis**
+
    ```bash
    # Check application metrics
    curl -s http://prometheus-service.monitoring:9090/api/v1/query?query=rate(http_requests_total[5m])
-   
+
    # Review response times
    curl -s http://prometheus-service.monitoring:9090/api/v1/query?query=histogram_quantile(0.95,rate(http_request_duration_seconds_bucket[5m]))
    ```
@@ -390,6 +415,7 @@ This document outlines the comprehensive deployment strategy for the "System Ana
    - Fine-tune caching strategies
 
 **Acceptance Criteria**:
+
 - [ ] System handles expected load
 - [ ] Response times within SLA (<500ms P95)
 - [ ] Error rates acceptable (<0.1%)
@@ -405,10 +431,11 @@ This document outlines the comprehensive deployment strategy for the "System Ana
 **Tasks**:
 
 1. **Security Scan Execution**
+
    ```bash
    # Run security pipeline
    gh workflow run security-scan.yml --ref main
-   
+
    # Review security scan results
    gh run list --workflow=security-scan.yml
    ```
@@ -426,6 +453,7 @@ This document outlines the comprehensive deployment strategy for the "System Ana
    - Validate secrets management
 
 **Acceptance Criteria**:
+
 - [ ] No critical security vulnerabilities
 - [ ] SSL/TLS properly configured
 - [ ] Authentication working correctly
@@ -441,10 +469,11 @@ This document outlines the comprehensive deployment strategy for the "System Ana
 **Tasks**:
 
 1. **Final Verification**
+
    ```bash
    # Run smoke tests
    npm run test:smoke -- --env=production
-   
+
    # Verify all services
    kubectl get pods -n system-analyzer
    kubectl get services -n system-analyzer
@@ -462,6 +491,7 @@ This document outlines the comprehensive deployment strategy for the "System Ana
    - Monitor performance metrics
 
 **Acceptance Criteria**:
+
 - [ ] All systems green
 - [ ] User traffic flowing normally
 - [ ] No critical alerts
@@ -475,6 +505,7 @@ This document outlines the comprehensive deployment strategy for the "System Ana
 If critical issues are detected during or after deployment:
 
 1. **Immediate Actions** (5 minutes)
+
    ```bash
    # Revert to previous version
    kubectl rollout undo deployment/backend-api -n system-analyzer
@@ -483,12 +514,14 @@ If critical issues are detected during or after deployment:
    ```
 
 2. **Database Rollback** (if needed - 15 minutes)
+
    ```bash
    # Restore from backup
    ./scripts/db-migrate.sh down PREVIOUS_VERSION
    ```
 
 3. **DNS Rollback** (2 minutes)
+
    ```bash
    # Point DNS back to previous environment
    # Update Route 53 records
@@ -637,6 +670,6 @@ This deployment rollout plan provides a comprehensive approach to launching the 
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: August 2025  
+**Document Version**: 1.0
+**Last Updated**: August 2025
 **Next Review Date**: September 2025

@@ -20,7 +20,7 @@ export const SecretsManagementDashboard: React.FC<DashboardProps> = ({ className
   const fetchDashboardData = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // Fetch app configuration
       const configResponse = await fetch('/api/v1/secrets/config');
@@ -31,7 +31,7 @@ export const SecretsManagementDashboard: React.FC<DashboardProps> = ({ className
       // Fetch service statuses
       const servicesData: ServiceStatus[] = [];
       const serviceNames = ['salesforce', 'companycam'];
-      
+
       for (const service of serviceNames) {
         try {
           const response = await fetch(`/api/v1/services/${service}/status`);
@@ -55,9 +55,9 @@ export const SecretsManagementDashboard: React.FC<DashboardProps> = ({ className
           });
         }
       }
-      
+
       setServices(servicesData);
-      
+
       // Mock secrets data - in real implementation, this would come from backend
       setSecrets([
         {
@@ -75,7 +75,7 @@ export const SecretsManagementDashboard: React.FC<DashboardProps> = ({ className
           status: 'current'
         }
       ]);
-      
+
       setLastRefresh(new Date());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
@@ -154,9 +154,9 @@ export const SecretsManagementDashboard: React.FC<DashboardProps> = ({ className
             <h3 className="text-lg font-semibold text-red-800">Dashboard Error</h3>
           </div>
           <p className="text-red-700 mt-2">{error}</p>
-          <Button 
-            onClick={fetchDashboardData} 
-            variant="outline" 
+          <Button
+            onClick={fetchDashboardData}
+            variant="outline"
             className="mt-4"
           >
             Retry

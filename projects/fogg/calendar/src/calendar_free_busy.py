@@ -1,7 +1,6 @@
 """Free/busy calendar operations."""
 
 from datetime import datetime
-from typing import Dict, List
 
 from src.auth import build_calendar_service
 from src.utils.api_client import execute_google_api_call
@@ -9,10 +8,10 @@ from src.utils.api_client import execute_google_api_call
 
 def get_free_busy(
     calendar_id: str,
-    emails: List[str],
+    emails: list[str],
     time_min: datetime,
     time_max: datetime,
-) -> Dict[str, List[Dict]]:
+) -> dict[str, list[dict]]:
     """Get free/busy information for calendars.
 
     Args:
@@ -36,7 +35,7 @@ def get_free_busy(
     try:
         freebusy_result = execute_google_api_call(
             lambda: service.freebusy().query(body=body).execute(),
-            f"get_free_busy({len(emails)} emails)"
+            f"get_free_busy({len(emails)} emails)",
         )
 
         # Process results
@@ -46,10 +45,12 @@ def get_free_busy(
         for email, calendar_data in calendars.items():
             busy_periods = []
             for busy in calendar_data.get("busy", []):
-                busy_periods.append({
-                    "start": busy["start"],
-                    "end": busy["end"],
-                })
+                busy_periods.append(
+                    {
+                        "start": busy["start"],
+                        "end": busy["end"],
+                    }
+                )
             result[email] = busy_periods
 
         return result

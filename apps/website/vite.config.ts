@@ -18,9 +18,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
-          router: ['react-router-dom'],
-          animations: ['gsap'],
-          three: ['three', '@react-three/fiber', '@react-three/drei']
+          router: ['react-router-dom']
         }
       }
     },

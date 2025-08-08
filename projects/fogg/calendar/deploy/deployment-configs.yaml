@@ -22,7 +22,7 @@ configurations:
     parallel_execution: false
     max_retries: 3
     timeout_seconds: 600
-    
+
   # Security-focused deployment
   security-priority:
     name: "Security Priority Deployment"
@@ -42,7 +42,7 @@ configurations:
       vulnerability_threshold: critical
       secrets_scan_depth: deep
       permission_audit_level: strict
-      
+
   # Performance optimization deployment
   performance-tuning:
     name: "Performance Tuning Deployment"
@@ -64,7 +64,7 @@ configurations:
       baseline_capture_duration: 60
       optimization_aggressive: true
       cache_optimization: enabled
-      
+
   # Quick validation deployment
   quick-validation:
     name: "Quick Validation Deployment"
@@ -82,7 +82,7 @@ configurations:
       test_suites:
         - smoke_tests
         - critical_paths
-      
+
   # Database migration deployment
   database-migration:
     name: "Database Migration Deployment"
@@ -104,7 +104,7 @@ configurations:
       backup_before_migration: true
       validate_constraints: strict
       optimize_after_migration: true
-      
+
   # Production hotfix deployment
   production-hotfix:
     name: "Production Hotfix Deployment"
@@ -141,7 +141,7 @@ agent_configs:
       - "*.test.py"
       - "*_test.py"
       - "test_*.py"
-      
+
   performance-engineer:
     metrics:
       - response_time
@@ -154,7 +154,7 @@ agent_configs:
       throughput_rps: 500
       cpu_percent: 70
       memory_percent: 80
-      
+
   test-automator:
     test_suites:
       unit_tests:
@@ -170,7 +170,7 @@ agent_configs:
         command: "locust -f tests/load/locustfile.py"
         required: false
     coverage_threshold: 80
-    
+
   database-optimizer:
     optimization_tasks:
       - analyze_slow_queries
@@ -189,7 +189,7 @@ environments:
     aggressive_optimization: true
     detailed_logging: true
     skip_manual_approval: true
-    
+
   production:
     max_parallel_agents: 2
     aggressive_optimization: false
@@ -208,7 +208,7 @@ rollback_strategies:
     description: "Rollback immediately on first failure"
     max_attempts: 1
     wait_between_attempts: 0
-    
+
   gradual:
     description: "Attempt recovery before rollback"
     max_attempts: 3
@@ -217,12 +217,12 @@ rollback_strategies:
       - restart_services
       - clear_cache
       - reset_connections
-      
+
   checkpoint:
     description: "Rollback to last successful checkpoint"
     checkpoint_retention: 5
     verify_checkpoint: true
-    
+
 # Notification settings
 notifications:
   channels:
@@ -234,13 +234,13 @@ notifications:
         - deployment_completed
         - deployment_failed
         - rollback_initiated
-    
+
     email:
       smtp_server: "smtp.gmail.com"
       smtp_port: 587
       from_address: "deployments@company.com"
       enabled: false
-      
+
     pagerduty:
       api_key: "${PAGERDUTY_API_KEY}"
       enabled: false
@@ -254,25 +254,25 @@ validation_rules:
     - name: "Check disk space"
       command: "df -h | grep -E '^/dev/' | awk '{if ($5+0 > 80) exit 1}'"
       required: true
-      
+
     - name: "Verify database connectivity"
       command: "python3 -c 'import psycopg2; psycopg2.connect(...)'"
       required: true
-      
+
     - name: "Check API keys"
       command: "test -n \"$API_KEY\""
       required: true
-      
+
   post_deployment:
     - name: "Health check"
       command: "curl -f http://localhost:8000/health"
       required: true
       retries: 5
-      
+
     - name: "Smoke test"
       command: "pytest tests/smoke/"
       required: true
-      
+
     - name: "Verify metrics"
       command: "python3 scripts/verify_metrics.py"
       required: false

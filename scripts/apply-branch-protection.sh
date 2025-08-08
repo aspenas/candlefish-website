@@ -226,7 +226,7 @@ create_labels() {
 
   for label_spec in "${labels[@]}"; do
     IFS=':' read -r name color <<< "$label_spec"
-    
+
     if [[ "$DRY_RUN" == "true" ]]; then
       log_info "[DRY RUN] Would create label: $name (color: #$color)"
     else
@@ -243,7 +243,7 @@ create_labels() {
 show_protection_status() {
   log_info "Current branch protection status:"
   echo ""
-  
+
   # Check main branch
   if gh api "/repos/$REPO/branches/main/protection" 2>/dev/null | jq -e . >/dev/null; then
     echo "main branch:"
@@ -257,9 +257,9 @@ show_protection_status() {
   else
     log_warning "main branch is not protected"
   fi
-  
+
   echo ""
-  
+
   # Check development branch
   if gh api "/repos/$REPO/branches/development/protection" 2>/dev/null | jq -e . >/dev/null; then
     echo "development branch:"
@@ -301,7 +301,7 @@ main() {
 
   echo ""
   echo "═══════════════════════════════════════════════════════════════"
-  
+
   if [[ "$DRY_RUN" == "true" ]]; then
     log_info "DRY RUN complete. Run without --dry-run to apply changes."
   else
@@ -309,7 +309,7 @@ main() {
     echo ""
     log_info "To view current protection status, run: $0 --status"
   fi
-  
+
   echo "═══════════════════════════════════════════════════════════════"
 }
 

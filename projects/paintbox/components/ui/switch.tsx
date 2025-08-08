@@ -35,8 +35,8 @@ export const Switch = forwardRef<ElementRef<'button'>, SwitchProps>(
           "focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2",
           "focus-visible:ring-offset-[hsl(var(--background))]",
           // State styles
-          checked 
-            ? "bg-[hsl(var(--primary))]" 
+          checked
+            ? "bg-[hsl(var(--primary))]"
             : "bg-[hsl(var(--input))]",
           // Disabled styles
           "disabled:cursor-not-allowed disabled:opacity-50",

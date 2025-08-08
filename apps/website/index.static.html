@@ -1,0 +1,1804 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Candlefish AI - Illuminating the Path to AI Transformation</title>
+    <meta name="description" content="Enterprise AI consulting through discrete, composable modules. Transform slow processes into competitive advantages with production-ready implementations.">
+    <meta property="og:title" content="Candlefish AI - Modular AI Consulting">
+    <meta property="og:description" content="We turn your slowest business processes into your fastest competitive advantages.">
+    <meta property="og:image" content="https://candlefish.ai/logo/candlefish_original.png">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="keywords" content="AI consulting, business automation, enterprise AI, digital transformation, AI implementation, business process optimization">
+    <meta name="author" content="Candlefish AI LLC">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://candlefish.ai">
+    <link rel="icon" type="image/png" href="https://candlefish.ai/logo/candlefish_original.png">
+    <link rel="shortcut icon" type="image/png" href="https://candlefish.ai/logo/candlefish_original.png">
+
+    <!-- Preconnect to external resources -->
+    <link rel="preconnect" href="https://unpkg.com">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://www.googletagmanager.com">
+    <link rel="preconnect" href="https://www.google-analytics.com">
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-XXXXXXXXXX');
+    </script>
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Candlefish AI LLC",
+        "description": "Enterprise AI consulting through discrete, composable modules",
+        "url": "https://candlefish.ai",
+        "logo": "https://candlefish.ai/logo/candlefish_original.png",
+        "contactPoint": {
+            "@type": "ContactPoint",
+            "email": "hello@candlefish.ai",
+            "contactType": "sales",
+            "availableLanguage": "English"
+        },
+        "address": [
+            {
+                "@type": "PostalAddress",
+                "addressLocality": "Portsmouth",
+                "addressRegion": "NH",
+                "addressCountry": "USA"
+            },
+            {
+                "@type": "PostalAddress",
+                "addressLocality": "Denver",
+                "addressRegion": "CO",
+                "addressCountry": "USA"
+            }
+        ],
+        "sameAs": [
+            "https://linkedin.com/company/candlefish-ai",
+            "https://github.com/candlefish-ai"
+        ]
+    }
+    </script>
+
+    <style>
+        /* CSS Reset & Base */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            /* Design Tokens */
+            --grid: 8px;
+            --section-padding: calc(var(--grid) * 20);
+            --container-max: 1440px;
+
+            /* Color Schemes */
+            --color-black: #000000;
+            --color-white: #FFFFFF;
+            --color-teal: #00CED1;
+            --color-teal-dark: #00A5A8;
+            --color-teal-glow: rgba(0, 206, 209, 0.4);
+            --color-gray-100: #0A0A0A;
+            --color-gray-200: #1A1A1A;
+            --color-gray-300: #2A2A2A;
+            --color-gray-400: #3A3A3A;
+            --color-gray-500: #6A6A6A;
+            --color-gray-600: #8A8A8A;
+            --color-gray-700: #AAAAAA;
+            --color-gray-800: #CACACA;
+            --color-gray-900: #EAEAEA;
+
+            /* Status Colors */
+            --color-success: #059669;
+            --color-warning: #FF6347;
+            --color-info: #3B82F6;
+
+            /* Typography Scale */
+            --font-mono: 'Berkeley Mono', 'Courier New', monospace;
+            --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+            --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+            --text-sm: clamp(0.875rem, 0.8rem + 0.375vw, 1rem);
+            --text-base: clamp(1rem, 0.925rem + 0.375vw, 1.125rem);
+            --text-lg: clamp(1.25rem, 1.1rem + 0.75vw, 1.5rem);
+            --text-xl: clamp(1.5rem, 1.3rem + 1vw, 1.875rem);
+            --text-2xl: clamp(2rem, 1.7rem + 1.5vw, 2.5rem);
+            --text-3xl: clamp(2.5rem, 2rem + 2.5vw, 3.5rem);
+            --text-4xl: clamp(3rem, 2.4rem + 3vw, 4.5rem);
+            --text-5xl: clamp(3.5rem, 2.8rem + 3.5vw, 5.5rem);
+            --text-6xl: clamp(4rem, 3.2rem + 4vw, 6.5rem);
+
+            /* Animation Tokens */
+            --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+            --ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
+            --ease-elastic: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            --duration-fast: 200ms;
+            --duration-base: 400ms;
+            --duration-slow: 800ms;
+            --duration-slower: 1200ms;
+        }
+
+        /* Theme Colors */
+        [data-theme="dark"] {
+            --bg-primary: var(--color-black);
+            --bg-secondary: var(--color-gray-100);
+            --bg-tertiary: var(--color-gray-200);
+            --text-primary: var(--color-white);
+            --text-secondary: var(--color-gray-700);
+            --text-tertiary: var(--color-gray-600);
+            --border-color: var(--color-gray-400);
+            --accent: var(--color-teal);
+            --accent-hover: var(--color-teal-dark);
+        }
+
+        /* Base Styles */
+        html {
+            font-size: 16px;
+            scroll-behavior: smooth;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: geometricPrecision;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            font-size: var(--text-base);
+            line-height: 1.6;
+            color: var(--text-primary);
+            background-color: var(--bg-primary);
+            overflow-x: hidden;
+            position: relative;
+            padding-top: 100px; /* Space for fixed nav */
+        }
+
+        /* WebGL Canvas Background */
+        #particles-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.1;
+            pointer-events: none;
+        }
+
+        /* Loading State */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-primary);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity var(--duration-base) var(--ease-out);
+        }
+
+        .loading-overlay.loaded {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-container {
+            text-align: center;
+        }
+
+        .loading-logo {
+            width: auto;
+            height: 200px;
+            max-width: 133px; /* Maintain 2:3 aspect ratio */
+            margin-bottom: calc(var(--grid) * 3);
+            animation: pulse 2s var(--ease-in-out) infinite;
+            object-fit: contain;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        .loading-text {
+            font-family: var(--font-mono);
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        /* Typography */
+        h1, h2, h3, h4, h5, h6 {
+            font-weight: 400;
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+        }
+
+        h1 { font-size: var(--text-6xl); }
+        h2 { font-size: var(--text-5xl); }
+        h3 { font-size: var(--text-3xl); }
+        h4 { font-size: var(--text-2xl); }
+        h5 { font-size: var(--text-xl); }
+        h6 { font-size: var(--text-lg); }
+
+        .text-accent { color: var(--accent); }
+        .text-secondary { color: var(--text-secondary); }
+
+        /* Gradient Text Effect */
+        .gradient-text {
+            background: linear-gradient(135deg, var(--accent), var(--color-white));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: inline-block;
+        }
+
+        /* Layout Components */
+        .section {
+            padding: var(--section-padding) 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .section--hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+
+        .section--dark {
+            background-color: var(--bg-primary);
+        }
+
+        .section--light {
+            background-color: var(--bg-secondary);
+        }
+
+        .container {
+            width: 100%;
+            max-width: var(--container-max);
+            margin: 0 auto;
+            padding: 0 calc(var(--grid) * 3);
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: calc(var(--grid) * 3) 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            transition: all var(--duration-base) var(--ease-out);
+        }
+
+        .nav.scrolled {
+            padding: calc(var(--grid) * 2) 0;
+            background: rgba(0, 0, 0, 0.95);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .nav__container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav__logo {
+            display: flex;
+            align-items: center;
+            gap: calc(var(--grid) * 2);
+            text-decoration: none;
+            color: var(--text-primary);
+            transition: opacity var(--duration-fast) var(--ease-out);
+        }
+
+        .nav__logo:hover {
+            opacity: 0.8;
+        }
+
+        .nav__logo-image {
+            width: 200px;
+            height: 200px;
+            object-fit: contain;
+        }
+
+        .nav__logo-text {
+            font-size: var(--text-2xl);
+            font-weight: 400;
+            letter-spacing: 0.05em;
+        }
+
+        .nav__menu {
+            display: flex;
+            gap: calc(var(--grid) * 4);
+            align-items: center;
+        }
+
+        .nav__link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: var(--text-sm);
+            font-family: var(--font-mono);
+            letter-spacing: 0.05em;
+            transition: color var(--duration-fast) var(--ease-out);
+            position: relative;
+        }
+
+        .nav__link::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--accent);
+            transition: width var(--duration-fast) var(--ease-out);
+        }
+
+        .nav__link:hover {
+            color: var(--text-primary);
+        }
+
+        .nav__link:hover::after {
+            width: 100%;
+        }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            position: relative;
+            padding-top: calc(var(--grid) * 8);
+        }
+
+        .hero__badge {
+            display: inline-block;
+            background: var(--accent);
+            color: var(--color-black);
+            padding: calc(var(--grid) * 1) calc(var(--grid) * 3);
+            font-size: var(--text-sm);
+            font-family: var(--font-mono);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-bottom: calc(var(--grid) * 4);
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.8s var(--ease-out) 0.2s forwards;
+        }
+
+        .hero__title {
+            margin-bottom: calc(var(--grid) * 4);
+            opacity: 0;
+            transform: translateY(40px);
+            animation: fadeInUp 1s var(--ease-out) 0.4s forwards;
+            max-width: 1000px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero__subtitle {
+            font-size: var(--text-2xl);
+            color: var(--text-secondary);
+            margin-bottom: calc(var(--grid) * 6);
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            opacity: 0;
+            transform: translateY(40px);
+            animation: fadeInUp 1s var(--ease-out) 0.6s forwards;
+            line-height: 1.4;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Parallax Layers */
+        .parallax-container {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .parallax-layer {
+            position: absolute;
+            width: 120%;
+            height: 120%;
+            left: -10%;
+            top: -10%;
+        }
+
+        /* Lottie Animation Container */
+        .hero__animation {
+            width: 100%;
+            max-width: 600px;
+            height: 400px;
+            margin: 0 auto calc(var(--grid) * 8);
+            opacity: 0;
+            transform: scale(0.9);
+            animation: fadeInScale 1.2s var(--ease-out) 0.8s forwards;
+            position: relative;
+        }
+
+        @keyframes fadeInScale {
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Custom AI Animation */
+        .ai-animation {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .ai-brain {
+            position: relative;
+            width: 300px;
+            height: 300px;
+        }
+
+        .neural-node {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 20px var(--color-teal-glow);
+            animation: pulse-node 2s ease-in-out infinite;
+        }
+
+        .neural-node:nth-child(1) {
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            animation-delay: 0s;
+        }
+
+        .neural-node:nth-child(2) {
+            top: 50%;
+            left: 20%;
+            transform: translateY(-50%);
+            animation-delay: 0.4s;
+        }
+
+        .neural-node:nth-child(3) {
+            top: 50%;
+            right: 20%;
+            transform: translateY(-50%);
+            animation-delay: 0.8s;
+        }
+
+        .neural-node:nth-child(4) {
+            bottom: 30%;
+            left: 30%;
+            animation-delay: 1.2s;
+        }
+
+        .neural-node:nth-child(5) {
+            bottom: 30%;
+            right: 30%;
+            animation-delay: 1.6s;
+        }
+
+        .neural-connection {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            opacity: 0.6;
+            animation: pulse-connection 3s ease-in-out infinite;
+        }
+
+        .neural-connection:nth-child(6) {
+            top: 35%;
+            left: 30%;
+            width: 40%;
+            transform: rotate(15deg);
+            animation-delay: 0.5s;
+        }
+
+        .neural-connection:nth-child(7) {
+            top: 55%;
+            left: 25%;
+            width: 50%;
+            transform: rotate(-20deg);
+            animation-delay: 1s;
+        }
+
+        .neural-connection:nth-child(8) {
+            bottom: 40%;
+            left: 35%;
+            width: 30%;
+            transform: rotate(45deg);
+            animation-delay: 1.5s;
+        }
+
+        @keyframes pulse-node {
+            0%, 100% {
+                transform: scale(1) translateX(-50%);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.3) translateX(-50%);
+                opacity: 0.8;
+            }
+        }
+
+        .neural-node:nth-child(2) {
+            animation-name: pulse-node-left;
+        }
+
+        .neural-node:nth-child(3) {
+            animation-name: pulse-node-right;
+        }
+
+        @keyframes pulse-node-left {
+            0%, 100% {
+                transform: scale(1) translateY(-50%);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.3) translateY(-50%);
+                opacity: 0.8;
+            }
+        }
+
+        @keyframes pulse-node-right {
+            0%, 100% {
+                transform: scale(1) translateY(-50%);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.3) translateY(-50%);
+                opacity: 0.8;
+            }
+        }
+
+        @keyframes pulse-connection {
+            0%, 100% {
+                opacity: 0.3;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.8;
+                transform: scale(1.1);
+            }
+        }
+
+        /* Glow Effect */
+        .glow-effect {
+            position: absolute;
+            inset: -50%;
+            background: radial-gradient(circle, var(--color-teal-glow) 0%, transparent 70%);
+            filter: blur(100px);
+            opacity: 0.5;
+            animation: glow 4s var(--ease-in-out) infinite alternate;
+        }
+
+        @keyframes glow {
+            0% { transform: scale(0.9); opacity: 0.3; }
+            100% { transform: scale(1.1); opacity: 0.6; }
+        }
+
+        /* Buttons */
+        .button {
+            display: inline-flex;
+            align-items: center;
+            gap: calc(var(--grid) * 1.5);
+            padding: calc(var(--grid) * 2) calc(var(--grid) * 4);
+            background: var(--accent);
+            color: var(--color-black);
+            text-decoration: none;
+            font-size: var(--text-base);
+            font-weight: 500;
+            border: 2px solid var(--accent);
+            border-radius: 0;
+            cursor: pointer;
+            transition: all var(--duration-fast) var(--ease-out);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: var(--color-white);
+            transition: left var(--duration-base) var(--ease-out);
+        }
+
+        .button:hover {
+            color: var(--color-black);
+            border-color: var(--color-white);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 206, 209, 0.3);
+        }
+
+        .button:hover::before {
+            left: 0;
+        }
+
+        .button__text {
+            position: relative;
+            z-index: 1;
+        }
+
+        .button__icon {
+            position: relative;
+            z-index: 1;
+            width: 20px;
+            height: 20px;
+            transition: transform var(--duration-fast) var(--ease-out);
+        }
+
+        .button:hover .button__icon {
+            transform: translateX(4px);
+        }
+
+        /* Value Proposition Cards */
+        .value-cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: calc(var(--grid) * 3);
+            margin-top: calc(var(--grid) * 10);
+        }
+
+        @media (max-width: 1024px) {
+            .value-cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .value-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .value-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            padding: calc(var(--grid) * 4);
+            text-align: center;
+            transition: all var(--duration-base) var(--ease-out);
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        .value-card.animate {
+            animation: fadeInUp 0.8s var(--ease-out) forwards;
+        }
+
+        .value-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 206, 209, 0.1);
+        }
+
+        .value-card__metric {
+            font-size: var(--text-4xl);
+            font-family: var(--font-mono);
+            color: var(--accent);
+            margin-bottom: calc(var(--grid) * 1);
+        }
+
+        .value-card__label {
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        /* Feature Sections with Scroll Animations */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: calc(var(--grid) * 6);
+            margin-top: calc(var(--grid) * 8);
+        }
+
+        .feature {
+            opacity: 0;
+            transform: translateY(40px);
+        }
+
+        .feature.animate {
+            animation: fadeInUp 0.8s var(--ease-out) forwards;
+        }
+
+        .feature:nth-child(1) { animation-delay: 0.1s; }
+        .feature:nth-child(2) { animation-delay: 0.2s; }
+        .feature:nth-child(3) { animation-delay: 0.3s; }
+
+        .feature__icon {
+            width: 80px;
+            height: 80px;
+            margin-bottom: calc(var(--grid) * 3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+            transition: all var(--duration-base) var(--ease-out);
+        }
+
+        .feature__icon::before {
+            content: '';
+            position: absolute;
+            inset: -50%;
+            background: conic-gradient(from 0deg, transparent, var(--accent), transparent);
+            animation: rotate 4s linear infinite;
+            opacity: 0;
+            transition: opacity var(--duration-base);
+        }
+
+        .feature:hover .feature__icon {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 206, 209, 0.2);
+        }
+
+        .feature:hover .feature__icon::before {
+            opacity: 0.3;
+        }
+
+        @keyframes rotate {
+            to { transform: rotate(360deg); }
+        }
+
+        .feature__title {
+            font-size: var(--text-2xl);
+            margin-bottom: calc(var(--grid) * 2);
+        }
+
+        .feature__description {
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+
+        /* Pilot Projects Showcase */
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: calc(var(--grid) * 6);
+            margin-top: calc(var(--grid) * 8);
+        }
+
+        @media (max-width: 1024px) {
+            .projects-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .project-card {
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border-color);
+            padding: calc(var(--grid) * 6);
+            position: relative;
+            overflow: hidden;
+            transition: all var(--duration-base) var(--ease-out);
+        }
+
+        .project-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--accent);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform var(--duration-slow) var(--ease-out);
+        }
+
+        .project-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 206, 209, 0.15);
+        }
+
+        .project-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .project-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: calc(var(--grid) * 4);
+        }
+
+        .project-title {
+            font-size: var(--text-2xl);
+            margin-bottom: calc(var(--grid) * 1);
+        }
+
+        .project-status {
+            font-family: var(--font-mono);
+            font-size: var(--text-xs);
+            padding: calc(var(--grid) * 0.5) calc(var(--grid) * 2);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .project-status.active {
+            color: var(--color-success);
+            border-color: var(--color-success);
+        }
+
+        .project-status.development {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .project-status.planning {
+            color: var(--color-warning);
+            border-color: var(--color-warning);
+        }
+
+        .project-description {
+            color: var(--text-secondary);
+            margin-bottom: calc(var(--grid) * 4);
+            line-height: 1.8;
+        }
+
+        .project-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: calc(var(--grid) * 2);
+        }
+
+        .project-metric {
+            display: flex;
+            align-items: center;
+            gap: calc(var(--grid) * 1);
+            font-size: var(--text-sm);
+        }
+
+        .project-metric__icon {
+            color: var(--accent);
+        }
+
+        /* Process Visualization */
+        .process-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: calc(var(--grid) * 4);
+            margin: calc(var(--grid) * 10) 0;
+            padding: calc(var(--grid) * 6);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            overflow-x: auto;
+        }
+
+        .process-step {
+            flex-shrink: 0;
+            padding: calc(var(--grid) * 3) calc(var(--grid) * 4);
+            background: var(--bg-primary);
+            border: 2px solid var(--border-color);
+            font-family: var(--font-mono);
+            font-size: var(--text-sm);
+            text-align: center;
+            min-width: 150px;
+            transition: all var(--duration-base) var(--ease-out);
+            position: relative;
+        }
+
+        .process-step.active {
+            border-color: var(--accent);
+            color: var(--accent);
+            box-shadow: 0 0 20px rgba(0, 206, 209, 0.3);
+        }
+
+        .process-arrow {
+            color: var(--text-secondary);
+            font-size: var(--text-xl);
+        }
+
+        /* Technical Architecture */
+        .tech-stack {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: calc(var(--grid) * 3);
+            margin-top: calc(var(--grid) * 6);
+        }
+
+        .tech-item {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            padding: calc(var(--grid) * 3);
+            text-align: center;
+            transition: all var(--duration-base) var(--ease-out);
+        }
+
+        .tech-item:hover {
+            border-color: var(--accent);
+            transform: translateY(-3px);
+        }
+
+        .tech-item__name {
+            font-family: var(--font-mono);
+            font-size: var(--text-sm);
+            color: var(--accent);
+            margin-bottom: calc(var(--grid) * 1);
+        }
+
+        .tech-item__desc {
+            font-size: var(--text-xs);
+            color: var(--text-secondary);
+        }
+
+        /* Contact Section */
+        .contact-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: calc(var(--grid) * 8);
+            margin-top: calc(var(--grid) * 8);
+        }
+
+        @media (max-width: 768px) {
+            .contact-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .contact-info {
+            background: var(--bg-tertiary);
+            padding: calc(var(--grid) * 6);
+            border: 1px solid var(--border-color);
+        }
+
+        .contact-info h3 {
+            margin-bottom: calc(var(--grid) * 4);
+        }
+
+        .contact-details {
+            display: flex;
+            flex-direction: column;
+            gap: calc(var(--grid) * 3);
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: calc(var(--grid) * 2);
+            font-size: var(--text-base);
+        }
+
+        .contact-item__icon {
+            color: var(--accent);
+            width: 24px;
+            height: 24px;
+        }
+
+        /* CTA Section */
+        .cta {
+            text-align: center;
+            padding: calc(var(--grid) * 10) 0;
+            background: var(--bg-tertiary);
+            border-top: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            margin: calc(var(--grid) * 10) 0;
+        }
+
+        .cta__title {
+            font-size: var(--text-4xl);
+            margin-bottom: calc(var(--grid) * 3);
+        }
+
+        .cta__subtitle {
+            font-size: var(--text-xl);
+            color: var(--text-secondary);
+            margin-bottom: calc(var(--grid) * 6);
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--bg-secondary);
+            padding: calc(var(--grid) * 8) 0 calc(var(--grid) * 4);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .footer__content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .footer__text {
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            :root {
+                --section-padding: calc(var(--grid) * 12);
+            }
+
+            .container {
+                padding: 0 calc(var(--grid) * 2);
+            }
+
+            .nav__menu {
+                display: none;
+            }
+
+            .hero__title {
+                font-size: var(--text-5xl);
+            }
+
+            .hero__animation {
+                height: 300px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            :root {
+                --section-padding: calc(var(--grid) * 8);
+            }
+
+            body {
+                padding-top: 140px; /* More space on mobile for fixed nav */
+            }
+
+            .nav__container {
+                padding: 0 calc(var(--grid) * 1); /* Less padding on mobile */
+            }
+
+            .nav__logo {
+                justify-content: flex-start; /* Align logo and text to left on mobile */
+            }
+
+            .nav__logo-image {
+                width: 80px; /* Smaller logo on mobile */
+                height: 80px;
+                margin-right: calc(var(--grid) * 1);
+            }
+
+            .nav__logo-text {
+                font-size: var(--text-xl); /* Smaller text on mobile */
+            }
+
+            .nav__menu {
+                display: none; /* Hide menu on mobile */
+            }
+
+            .hero {
+                padding-top: calc(var(--grid) * 10); /* More padding for validation badge */
+            }
+
+            .hero__title {
+                font-size: var(--text-4xl);
+            }
+
+            .hero__subtitle {
+                font-size: var(--text-xl);
+            }
+
+            .features {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Utility Classes */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .text-center { text-align: center; }
+        .mt-8 { margin-top: calc(var(--grid) * 8); }
+        .mb-8 { margin-bottom: calc(var(--grid) * 8); }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay">
+        <div class="loading-container">
+            <picture>
+                <source srcset="https://candlefish.ai/logo/candlefish_original.png" type="image/webp">
+                <img src="https://candlefish.ai/logo/candlefish_original.png"
+                     alt="Candlefish AI Logo"
+                     class="loading-logo">
+            </picture>
+            <div class="loading-text">Illuminating possibilities...</div>
+        </div>
+    </div>
+
+    <!-- WebGL Particle Background -->
+    <canvas id="particles-canvas"></canvas>
+
+    <!-- Navigation -->
+    <nav class="nav" role="navigation" aria-label="Main navigation">
+        <div class="container">
+            <div class="nav__container">
+                <a href="#" class="nav__logo" aria-label="Candlefish AI Home">
+                    <picture>
+                        <source srcset="https://candlefish.ai/logo/candlefish_original.png" type="image/webp">
+                        <source srcset="https://candlefish.ai/logo/candlefish_original.png" type="image/png">
+                        <img src="https://candlefish.ai/logo/candlefish_original.png"
+                             alt="Candlefish AI Logo"
+                             class="nav__logo-image"
+                             width="200"
+                             height="200">
+                    </picture>
+                    <span class="nav__logo-text">CANDLEFISH</span>
+                </a>
+
+                <div class="nav__menu">
+                    <a href="#what-we-do" class="nav__link">What We Do</a>
+                    <a href="#how-it-works" class="nav__link">How It Works</a>
+                    <a href="#pilots" class="nav__link">Active Pilots</a>
+                    <a href="#contact" class="nav__link">Contact</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section with Parallax -->
+    <section class="section section--hero section--dark">
+        <div class="parallax-container">
+            <div class="parallax-layer parallax-layer--1" data-speed="0.5">
+                <svg width="100%" height="100%" opacity="0.1">
+                    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="var(--color-gray-400)" stroke-width="1"/>
+                    </pattern>
+                    <rect width="100%" height="100%" fill="url(#grid)" />
+                </svg>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="hero">
+                <div class="hero__badge">VALIDATION PHASE</div>
+
+                <h1 class="hero__title">
+                    Illuminating the path to
+                    <span class="gradient-text">AI transformation</span>
+                </h1>
+
+                <p class="hero__subtitle">
+                    We turn your slowest business processes into your fastest competitive advantages
+                    through discrete, composable AI modules.
+                </p>
+
+                <!-- AI Animation -->
+                <div class="hero__animation">
+                    <div class="glow-effect"></div>
+                    <div class="ai-animation">
+                        <div class="ai-brain">
+                            <div class="neural-node"></div>
+                            <div class="neural-node"></div>
+                            <div class="neural-node"></div>
+                            <div class="neural-node"></div>
+                            <div class="neural-node"></div>
+                            <div class="neural-connection"></div>
+                            <div class="neural-connection"></div>
+                            <div class="neural-connection"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hero__cta">
+                    <a href="#contact" class="button">
+                        <span class="button__text">Explore Partnership</span>
+                        <svg class="button__icon" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- What We Do Section -->
+    <section class="section section--light" id="what-we-do">
+        <div class="container">
+            <div class="text-center mb-8">
+                <h2>What is Candlefish AI?</h2>
+                <p class="text-secondary text-xl mt-4" style="max-width: 800px; margin-left: auto; margin-right: auto;">
+                    We make your business systems smarter and faster using AI. Think of us as translators
+                    between cutting-edge AI technology and your daily operations.
+                </p>
+            </div>
+
+            <div class="features">
+                <div class="feature" data-animate>
+                    <div class="feature__icon">
+                        <svg width="40" height="40" viewBox="0 0 40 40" fill="currentColor">
+                            <path d="M20 5L5 15v10l15 10 15-10V15L20 5z" stroke="var(--accent)" fill="none" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <h3 class="feature__title">Excel Automation</h3>
+                    <p class="feature__description">
+                        Transform manual spreadsheet workflows that take hours into automated
+                        AI systems that complete in minutes with zero errors.
+                    </p>
+                </div>
+
+                <div class="feature" data-animate>
+                    <div class="feature__icon">
+                        <svg width="40" height="40" viewBox="0 0 40 40" fill="currentColor">
+                            <circle cx="20" cy="20" r="15" stroke="var(--accent)" fill="none" stroke-width="2"/>
+                            <path d="M20 10v10l7 7" stroke="var(--accent)" stroke-width="2" fill="none"/>
+                        </svg>
+                    </div>
+                    <h3 class="feature__title">System Integration</h3>
+                    <p class="feature__description">
+                        Connect your disconnected systems with intelligent AI bridges.
+                        No rip-and-replace, just smart connections that make everything work together.
+                    </p>
+                </div>
+
+                <div class="feature" data-animate>
+                    <div class="feature__icon">
+                        <svg width="40" height="40" viewBox="0 0 40 40" fill="currentColor">
+                            <rect x="10" y="10" width="20" height="20" stroke="var(--accent)" fill="none" stroke-width="2"/>
+                            <path d="M15 20l3 3 7-7" stroke="var(--accent)" stroke-width="2" fill="none"/>
+                        </svg>
+                    </div>
+                    <h3 class="feature__title">AI Implementation</h3>
+                    <p class="feature__description">
+                        Production-ready AI solutions built with enterprise-grade AI platforms.
+                        We analyze years of data in seconds for truly intelligent implementations.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="section section--dark" id="how-it-works">
+        <div class="container">
+            <div class="text-center mb-8">
+                <h2>The Candlefish Method</h2>
+                <p class="text-secondary text-xl mt-4">
+                    We deliver working software in weeks, not months. Every solution includes
+                    the "why" along with the "how."
+                </p>
+            </div>
+
+            <div class="process-flow">
+                <div class="process-step active">
+                    <div>Identify</div>
+                    <div style="font-size: var(--text-xs); color: var(--text-secondary); margin-top: 4px;">
+                        Biggest Pain Point
+                    </div>
+                </div>
+                <div class="process-arrow">→</div>
+                <div class="process-step">
+                    <div>Build</div>
+                    <div style="font-size: var(--text-xs); color: var(--text-secondary); margin-top: 4px;">
+                        Working Prototype
+                    </div>
+                </div>
+                <div class="process-arrow">→</div>
+                <div class="process-step">
+                    <div>Deploy</div>
+                    <div style="font-size: var(--text-xs); color: var(--text-secondary); margin-top: 4px;">
+                        To Production
+                    </div>
+                </div>
+                <div class="process-arrow">→</div>
+                <div class="process-step">
+                    <div>Measure</div>
+                    <div style="font-size: var(--text-xs); color: var(--text-secondary); margin-top: 4px;">
+                        Real Results
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pilot Projects -->
+    <section class="section section--light" id="pilots">
+        <div class="container">
+            <div class="text-center mb-8">
+                <h2>Current Pilot Implementations</h2>
+                <p class="text-secondary text-xl mt-4">
+                    We're validating our modular AI approach through strategic pilot partnerships.
+                    Each pilot proves specific patterns that become reusable solutions.
+                </p>
+            </div>
+
+            <div class="projects-grid">
+                <article class="project-card">
+                    <div class="project-header">
+                        <div>
+                            <h3 class="project-title">Enterprise Data Platform</h3>
+                            <p style="font-size: var(--text-sm); color: var(--text-secondary);">
+                                Mid-Size Colorado Company
+                            </p>
+                        </div>
+                        <span class="project-status active">ACTIVE</span>
+                    </div>
+
+                    <p class="project-description">
+                        Excel-based workflows processing 100K+ rows transformed into a cloud-native
+                        calculation engine with AI optimization. Real-time processing with intelligent
+                        data validation.
+                    </p>
+
+                    <div class="project-metrics">
+                        <div class="project-metric">
+                            <span class="project-metric__icon">▸</span>
+                            <span>90% faster processing</span>
+                        </div>
+                        <div class="project-metric">
+                            <span class="project-metric__icon">▸</span>
+                            <span>99.8% accuracy</span>
+                        </div>
+                        <div class="project-metric">
+                            <span class="project-metric__icon">▸</span>
+                            <span>Scales to 1000+ users</span>
+                        </div>
+                        <div class="project-metric">
+                            <span class="project-metric__icon">▸</span>
+                            <span>Zero replacements</span>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="project-card">
+                    <div class="project-header">
+                        <div>
+                            <h3 class="project-title">Family Office Digital</h3>
+                            <p style="font-size: var(--text-sm); color: var(--text-secondary);">
+                                National QSR Chain
+                            </p>
+                        </div>
+                        <span class="project-status development">DEVELOPMENT</span>
+                    </div>
+
+                    <p class="project-description">
+                        AI-powered operational intelligence platform connecting disconnected systems
+                        across multiple business units. Real-time data integration with predictive
+                        analytics.
+                    </p>
+
+                    <div class="project-metrics">
+                        <div class="project-metric">
+                            <span class="project-metric__icon">▸</span>
+                            <span>Unified dashboard</span>
+                        </div>
+                        <div class="project-metric">
+                            <span class="project-metric__icon">▸</span>
+                            <span>Demand forecasting</span>
+                        </div>
+                        <div class="project-metric">
+                            <span class="project-metric__icon">▸</span>
+                            <span>Automated compliance</span>
+                        </div>
+                        <div class="project-metric">
+                            <span class="project-metric__icon">▸</span>
+                            <span>Real-time insights</span>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="project-card">
+                    <div class="project-header">
+                        <div>
+                            <h3 class="project-title">PromoterOS</h3>
+                            <p style="font-size: var(--text-sm); color: var(--text-secondary);">
+                                Music Venue Partner
+                            </p>
+                        </div>
+                        <span class="project-status active">ACTIVE</span>
+                    </div>
+
+                    <p class="project-description">
+                        AI platform for automated artist booking workflows. Integrates with
+                        Spotify/TikTok for demand analysis and data-driven pricing optimization.
+                    </p>
+
+                    <div class="project-metrics">
+                        <div class="project-metric">
+                            <span class="project-metric__icon">▸</span>
+                            <span>Automated offers</span>
+                        </div>
+                        <div class="project-metric">
+                            <span class="project-metric__icon">▸</span>
+                            <span>Smart pricing</span>
+                        </div>
+                        <div class="project-metric">
+                            <span class="project-metric__icon">▸</span>
+                            <span>Conflict prevention</span>
+                        </div>
+                        <div class="project-metric">
+                            <span class="project-metric__icon">▸</span>
+                            <span>Digital contracts</span>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="project-card">
+                    <div class="project-header">
+                        <div>
+                            <h3 class="project-title">Crown Trophy Digital</h3>
+                            <p style="font-size: var(--text-sm); color: var(--text-secondary);">
+                                Manufacturing Retailer
+                            </p>
+                        </div>
+                        <span class="project-status planning">PLANNING</span>
+                    </div>
+
+                    <p class="project-description">
+                        Unified platform design connecting 100+ franchise locations. AI-powered
+                        production optimization with real-time inventory synchronization.
+                    </p>
+
+                    <div class="project-metrics">
+                        <div class="project-metric">
+                            <span class="project-metric__icon">▸</span>
+                            <span>Multi-location sync</span>
+                        </div>
+                        <div class="project-metric">
+                            <span class="project-metric__icon">▸</span>
+                            <span>Production queue AI</span>
+                        </div>
+                        <div class="project-metric">
+                            <span class="project-metric__icon">▸</span>
+                            <span>Franchise analytics</span>
+                        </div>
+                        <div class="project-metric">
+                            <span class="project-metric__icon">▸</span>
+                            <span>B2B portal</span>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <div class="cta">
+        <div class="container">
+            <h2 class="cta__title">Ready to transform your business?</h2>
+            <p class="cta__subtitle">
+                We're selectively partnering with organizations that can benefit from
+                and contribute to our modular AI approach.
+            </p>
+            <a href="#contact" class="button">
+                <span class="button__text">Start a Conversation</span>
+                <svg class="button__icon" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"/>
+                </svg>
+            </a>
+        </div>
+    </div>
+
+    <!-- Contact Section -->
+    <section class="section section--light" id="contact">
+        <div class="container">
+            <div class="text-center mb-8">
+                <h2>Strategic Partnership Opportunities</h2>
+                <p class="text-secondary text-xl mt-4">
+                    Ideal pilot partners have scale requirements, technical complexity,
+                    performance needs, and an innovation mindset.
+                </p>
+            </div>
+
+            <div class="contact-grid">
+                <div class="contact-info">
+                    <h3 style="font-size: var(--text-3xl); margin-bottom: calc(var(--grid) * 6);">Let's Connect</h3>
+                    <div class="contact-details">
+                        <div class="contact-item" style="margin-bottom: calc(var(--grid) * 4);">
+                            <svg class="contact-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                            </svg>
+                            <a href="mailto:hello@candlefish.ai" style="font-size: var(--text-lg); font-weight: 500;">hello@candlefish.ai</a>
+                        </div>
+
+                        <div style="margin-bottom: calc(var(--grid) * 4);">
+                            <h4 style="font-size: var(--text-base); color: var(--text-secondary); margin-bottom: calc(var(--grid) * 2); text-transform: uppercase; letter-spacing: 0.1em;">Our Locations</h4>
+                            <div style="display: grid; gap: calc(var(--grid) * 3);">
+                                <div class="contact-item">
+                                    <svg class="contact-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                        <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    </svg>
+                                    <div>
+                                        <div style="font-size: var(--text-lg); font-weight: 500; color: var(--text-primary);">Portsmouth, NH</div>
+                                        <div style="font-size: var(--text-sm); color: var(--text-secondary);">East Coast Operations</div>
+                                    </div>
+                                </div>
+                                <div class="contact-item">
+                                    <svg class="contact-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                        <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    </svg>
+                                    <div>
+                                        <div style="font-size: var(--text-lg); font-weight: 500; color: var(--text-primary);">Denver, CO</div>
+                                        <div style="font-size: var(--text-sm); color: var(--text-secondary);">Mountain West Hub</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="contact-info">
+                    <h3>Our Process</h3>
+                    <p style="line-height: 1.8; color: var(--text-secondary);">
+                        Initial technical discussion → Opportunity assessment → Pilot proposal
+                        → Implementation partnership. We work with a limited number of partners
+                        to ensure quality and focus.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer__content">
+                <p class="footer__text">
+                    © 2025 Candlefish AI LLC. Illuminating the path to AI transformation.
+                </p>
+                <div style="margin-top: calc(var(--grid) * 2); font-size: var(--text-sm);">
+                    <a href="/privacy" style="color: var(--text-secondary); margin-right: calc(var(--grid) * 3);">Privacy Policy</a>
+                    <a href="/terms" style="color: var(--text-secondary);">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- GSAP for Advanced Animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollToPlugin.min.js"></script>
+
+    <script>
+        // Page Load Animation
+        window.addEventListener('load', () => {
+            const loadingOverlay = document.querySelector('.loading-overlay');
+            setTimeout(() => {
+                loadingOverlay.classList.add('loaded');
+                initializeAnimations();
+                initializeParticles();
+            }, 1000);
+        });
+
+        // WebGL Particle System
+        function initializeParticles() {
+            const canvas = document.getElementById('particles-canvas');
+            if (!canvas) {
+                console.warn('Particles canvas not found');
+                return;
+            }
+
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (!gl) {
+                console.warn('WebGL not supported, particles disabled');
+                return;
+            }
+
+            // Resize canvas
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                gl.viewport(0, 0, canvas.width, canvas.height);
+            }
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            // Shader sources
+            const vertexShaderSource = `
+                attribute vec2 a_position;
+                attribute float a_size;
+                attribute float a_opacity;
+
+                varying float v_opacity;
+
+                void main() {
+                    gl_Position = vec4(a_position, 0.0, 1.0);
+                    gl_PointSize = a_size;
+                    v_opacity = a_opacity;
+                }
+            `;
+
+            const fragmentShaderSource = `
+                precision mediump float;
+
+                varying float v_opacity;
+
+                void main() {
+                    vec2 coord = gl_PointCoord - vec2(0.5);
+                    float distance = length(coord);
+
+                    if (distance > 0.5) {
+                        discard;
+                    }
+
+                    float alpha = 1.0 - smoothstep(0.0, 0.5, distance);
+                    gl_FragColor = vec4(0.0, 0.808, 0.82, alpha * v_opacity * 0.3);
+                }
+            `;
+
+            // Create shaders
+            function createShader(gl, type, source) {
+                const shader = gl.createShader(type);
+                gl.shaderSource(shader, source);
+                gl.compileShader(shader);
+                return shader;
+            }
+
+            const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+            const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+
+            // Create program
+            const program = gl.createProgram();
+            gl.attachShader(program, vertexShader);
+            gl.attachShader(program, fragmentShader);
+            gl.linkProgram(program);
+
+            // Get attribute locations
+            const positionLocation = gl.getAttribLocation(program, 'a_position');
+            const sizeLocation = gl.getAttribLocation(program, 'a_size');
+            const opacityLocation = gl.getAttribLocation(program, 'a_opacity');
+
+            // Create particles
+            const particleCount = 30;
+            const particles = [];
+
+            for (let i = 0; i < particleCount; i++) {
+                particles.push({
+                    x: Math.random() * 2 - 1,
+                    y: Math.random() * 2 - 1,
+                    vx: (Math.random() - 0.5) * 0.0005,
+                    vy: (Math.random() - 0.5) * 0.0005,
+                    size: Math.random() * 8 + 4,
+                    opacity: Math.random() * 0.3 + 0.1
+                });
+            }
+
+            // Animation loop
+            function animate() {
+                if (!gl || gl.isContextLost()) return;
+
+                gl.clearColor(0, 0, 0, 0);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+
+                gl.useProgram(program);
+
+                particles.forEach(particle => {
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+
+                    if (particle.x > 1) particle.x = -1;
+                    if (particle.x < -1) particle.x = 1;
+                    if (particle.y > 1) particle.y = -1;
+                    if (particle.y < -1) particle.y = 1;
+
+                    gl.vertexAttrib2f(positionLocation, particle.x, particle.y);
+                    gl.vertexAttrib1f(sizeLocation, particle.size);
+                    gl.vertexAttrib1f(opacityLocation, particle.opacity);
+
+                    gl.drawArrays(gl.POINTS, 0, 1);
+                });
+
+                requestAnimationFrame(animate);
+            }
+
+            gl.enable(gl.BLEND);
+            gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+            animate();
+        }
+
+        // Initialize animations
+        function initializeAnimations() {
+            // Navigation scroll effect
+            const nav = document.querySelector('.nav');
+            window.addEventListener('scroll', () => {
+                if (window.pageYOffset > 100) {
+                    nav.classList.add('scrolled');
+                } else {
+                    nav.classList.remove('scrolled');
+                }
+            });
+
+            // GSAP ScrollTrigger animations
+            gsap.registerPlugin(ScrollTrigger);
+
+            // Parallax effect
+            gsap.utils.toArray('.parallax-layer').forEach(layer => {
+                const speed = layer.dataset.speed || 0.5;
+
+                gsap.to(layer, {
+                    yPercent: -100 * speed,
+                    ease: "none",
+                    scrollTrigger: {
+                        trigger: ".section--hero",
+                        start: "top top",
+                        end: "bottom top",
+                        scrub: true
+                    }
+                });
+            });
+
+            // Animate elements on scroll
+            const animateElements = document.querySelectorAll('[data-animate]');
+            animateElements.forEach(el => {
+                ScrollTrigger.create({
+                    trigger: el,
+                    start: "top 80%",
+                    onEnter: () => el.classList.add('animate')
+                });
+            });
+
+            // Process steps animation
+            const processSteps = document.querySelectorAll('.process-step');
+            let currentStep = 0;
+
+            setInterval(() => {
+                processSteps.forEach(step => step.classList.remove('active'));
+                currentStep = (currentStep + 1) % processSteps.length;
+                processSteps[currentStep].classList.add('active');
+            }, 2000);
+
+            // Smooth scroll for anchor links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const target = document.querySelector(anchor.getAttribute('href'));
+                    if (target) {
+                        const navHeight = nav.offsetHeight;
+                        const targetPosition = target.offsetTop - navHeight - 20;
+
+                        gsap.to(window, {
+                            scrollTo: targetPosition,
+                            duration: 1,
+                            ease: "power2.inOut"
+                        });
+                    }
+                });
+            });
+        }
+    </script>
+</body>
+</html>

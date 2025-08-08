@@ -7,6 +7,7 @@ PromoterOS now has comprehensive workflow automation for development, testing, s
 ## 📋 Quick Start
 
 ### Initial Setup
+
 ```bash
 # 1. Clone the repository
 git clone <repository-url>
@@ -23,6 +24,7 @@ npm run dev
 ```
 
 ### Deploy to Production
+
 ```bash
 # Automated deployment with all checks
 npm run deploy
@@ -36,11 +38,13 @@ npm run deploy:quick
 ### 1. CI/CD Pipeline (`ci-cd.yml`)
 
 **Triggers:**
+
 - Push to `main` or `develop`
 - Pull requests to `main`
 - Manual workflow dispatch
 
 **Steps:**
+
 1. **Security & Quality Checks**
    - ESLint code analysis
    - Secret scanning with TruffleHog
@@ -65,12 +69,14 @@ npm run deploy:quick
 ### 2. Security Scanning (`security-scan.yml`)
 
 **Triggers:**
+
 - Push to main branches
 - Pull requests
 - Weekly schedule (Sundays)
 - Manual dispatch
 
 **Security Checks:**
+
 - Secret detection (TruffleHog, Gitleaks)
 - Dependency vulnerabilities (Snyk, npm audit)
 - SAST with Semgrep and CodeQL
@@ -80,10 +86,12 @@ npm run deploy:quick
 ### 3. Dependency Updates (`dependency-update.yml`)
 
 **Triggers:**
+
 - Weekly schedule (Mondays at 2 AM)
 - Manual dispatch
 
 **Actions:**
+
 - Updates npm dependencies
 - Fixes known vulnerabilities
 - Creates automated PR with changes
@@ -99,6 +107,7 @@ npm run setup
 ```
 
 **What it does:**
+
 - Checks prerequisites (Node.js, npm, git)
 - Installs all dependencies
 - Sets up environment variables
@@ -117,6 +126,7 @@ npm run deploy
 ```
 
 **Deployment steps:**
+
 1. Pre-deployment checks (git status, branch)
 2. Install/update dependencies
 3. Apply security middleware
@@ -182,6 +192,7 @@ npm run security:scan
 ## 🧪 Testing Automation
 
 ### Test Structure
+
 ```
 tests/
 ├── unit/           # Unit tests
@@ -190,6 +201,7 @@ tests/
 ```
 
 ### Running Tests
+
 ```bash
 # Run all tests
 npm test
@@ -207,11 +219,13 @@ npm run test:security
 ## 📊 Monitoring & Alerts
 
 ### Health Checks
+
 - Automated health checks in CI/CD
 - Post-deployment verification
 - API endpoint monitoring
 
 ### Performance Monitoring
+
 - Response time tracking
 - Cold start optimization
 - Bundle size analysis
@@ -219,18 +233,22 @@ npm run test:security
 ## 🚦 Git Workflow
 
 ### Branch Strategy
+
 - `main` - Production branch
 - `develop` - Development branch
 - `feature/*` - Feature branches
 - `hotfix/*` - Emergency fixes
 
 ### Commit Convention
+
 Use conventional commits:
+
 ```bash
 npm run commit
 ```
 
 Types:
+
 - `feat:` New feature
 - `fix:` Bug fix
 - `docs:` Documentation
@@ -242,11 +260,13 @@ Types:
 ## 🔄 Continuous Improvement
 
 ### Weekly Tasks (Automated)
+
 - Dependency updates (Mondays)
 - Security scans (Sundays)
 - Performance reports
 
 ### Manual Reviews
+
 - Monthly security audit
 - Quarterly dependency review
 - Performance optimization
@@ -254,6 +274,7 @@ Types:
 ## 📈 Deployment Metrics
 
 After each deployment, check:
+
 - Deployment report in project root
 - GitHub Actions summary
 - Netlify deployment logs
@@ -264,6 +285,7 @@ After each deployment, check:
 ### Common Issues
 
 **1. Deployment fails**
+
 ```bash
 # Check logs
 cat deployment-report-*.md
@@ -276,6 +298,7 @@ npm run deploy:production
 ```
 
 **2. Tests failing**
+
 ```bash
 # Run tests locally
 npm test
@@ -285,6 +308,7 @@ npm test -- --testNamePattern="test-name"
 ```
 
 **3. Security vulnerabilities**
+
 ```bash
 # Audit and fix
 npm audit fix --force
@@ -303,16 +327,19 @@ npm ls package-name
 ## 🎯 Best Practices
 
 1. **Always run tests before deployment**
+
    ```bash
    npm run ci
    ```
 
 2. **Use conventional commits**
+
    ```bash
    npm run commit
    ```
 
 3. **Keep dependencies updated**
+
    ```bash
    npm update
    npm audit fix
@@ -330,6 +357,7 @@ npm ls package-name
 ## 📞 Support
 
 For issues or questions:
+
 1. Check deployment reports
 2. Review GitHub Actions logs
 3. Check this documentation

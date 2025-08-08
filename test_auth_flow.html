@@ -6,7 +6,7 @@
 <body>
     <h1>Testing Authentication Flow</h1>
     <div id="results"></div>
-    
+
     <script>
         function log(message, isError = false) {
             const div = document.createElement('div');
@@ -14,49 +14,49 @@
             div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
             document.getElementById('results').appendChild(div);
         }
-        
+
         async function testAuthFlow() {
             log('🚀 Starting authentication flow test...');
-            
+
             try {
                 // Test 1: Check main family dashboard URL returns 200 (not 401)
                 log('📋 Test 1: Checking main family dashboard URL...');
                 const response = await fetch('http://localhost:8001/docs/privileged/family/', {
                     method: 'HEAD'
                 });
-                
+
                 if (response.status === 200) {
                     log('✅ SUCCESS: Family dashboard URL returns 200 status (authentication page served correctly)');
                 } else {
                     log(`❌ FAILED: Expected 200, got ${response.status}`, true);
                     return;
                 }
-                
+
                 // Test 2: Check family-dashboard.html also returns authentication page
                 log('📋 Test 2: Checking direct family-dashboard.html access...');
                 const dashResponse = await fetch('http://localhost:8001/docs/privileged/family/family-dashboard.html', {
                     method: 'HEAD'
                 });
-                
+
                 if (dashResponse.status === 200) {
                     log('✅ SUCCESS: family-dashboard.html also returns 200 status (redirects to auth correctly)');
                 } else {
                     log(`❌ FAILED: Expected 200, got ${dashResponse.status}`, true);
                     return;
                 }
-                
+
                 // Test 3: Check content is the authentication page, not error page
                 log('📋 Test 3: Verifying authentication page content is served...');
                 const contentResponse = await fetch('http://localhost:8001/docs/privileged/family/');
                 const content = await contentResponse.text();
-                
+
                 if (content.includes('Executive Document Access') && content.includes('Enter authorization code')) {
                     log('✅ SUCCESS: Authentication page content is served correctly');
                 } else {
                     log('❌ FAILED: Authentication page content not found', true);
                     return;
                 }
-                
+
                 // Test 4: Test session storage functionality (simulation)
                 log('📋 Test 4: Testing session storage logic...');
                 if (typeof(Storage) !== "undefined") {
@@ -71,15 +71,15 @@
                 } else {
                     log('⚠️ WARNING: LocalStorage not supported in this test');
                 }
-                
+
                 log('🎉 ALL TESTS PASSED! Authentication flow is working correctly.');
                 log('📝 Summary: Users will now see the authentication page instead of "Page not found" error.');
-                
+
             } catch (error) {
                 log(`❌ TEST ERROR: ${error.message}`, true);
             }
         }
-        
+
         // Run the test
         testAuthFlow();
     </script>

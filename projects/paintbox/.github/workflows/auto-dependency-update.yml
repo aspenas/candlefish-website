@@ -1,0 +1,56 @@
+name: 🔄 Auto Dependency Updates
+
+on:
+  schedule:
+    - cron: '0 3 * * 1' # Weekly on Monday at 3am
+  workflow_dispatch:
+
+jobs:
+  update-dependencies:
+    name: Update Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Update NPM Dependencies
+        run: |
+          npx npm-check-updates -u
+          npm install
+          npm audit fix || true
+
+      - name: Update Python Dependencies
+        if: hashFiles('requirements.txt')
+        run: |
+          pip install pip-upgrader
+          pip-upgrade requirements.txt
+          pip install -r requirements.txt
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore(deps): update dependencies'
+          title: '🔄 Automated Dependency Updates'
+          body: |
+            ## 🤖 Automated Dependency Update
+
+            This PR updates all dependencies to their latest versions.
+
+            ### Changes:
+            - Updated NPM packages
+            - Updated Python packages
+            - Fixed security vulnerabilities
+
+            ### Checklist:
+            - [ ] Tests pass
+            - [ ] No breaking changes
+            - [ ] Security scan clean
+          branch: deps/auto-update
+          delete-branch: true

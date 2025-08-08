@@ -1,6 +1,7 @@
 # 🎨 Paintbox is Ready for Netlify! ✅
 
 ## Status
+
 - ✅ Static export configured
 - ✅ Build successful (3 pages exported)
 - ✅ netlify.toml configured
@@ -10,11 +11,13 @@
 ## Quick Deploy
 
 ### Option 1: Using the Script (Recommended)
+
 ```bash
 ./deploy-netlify.sh
 ```
 
 ### Option 2: Manual Deploy
+
 ```bash
 # Install Netlify CLI
 npm install -g netlify-cli
@@ -27,7 +30,8 @@ netlify deploy --prod --dir=out
 ```
 
 ### Option 3: GitHub Integration
-1. Go to https://app.netlify.com
+
+1. Go to <https://app.netlify.com>
 2. "Add new site" → "Import an existing project"
 3. Connect GitHub repo: `aspenas/candlefish-ai`
 4. Settings:
@@ -49,12 +53,14 @@ NODE_VERSION=20
 ## Important Notes
 
 ### What Works on Netlify
+
 - ✅ Static pages (Home, About, etc.)
 - ✅ Client-side routing
 - ✅ Static assets (images, CSS, JS)
 - ✅ Environment variables at build time
 
 ### What Needs Separate Backend
+
 - ❌ API routes → Deploy to Railway/Heroku
 - ❌ Database operations → Use external service
 - ❌ WebSocket connections → Not supported
@@ -63,14 +69,15 @@ NODE_VERSION=20
 ## Next Steps
 
 1. **Deploy Frontend**:
+
    ```bash
    ./deploy-netlify.sh
    ```
 
 2. **Deploy Backend API** (Required for full functionality):
-   - Railway: https://railway.app
-   - Fly.io: https://fly.io
-   - Heroku: https://heroku.com
+   - Railway: <https://railway.app>
+   - Fly.io: <https://fly.io>
+   - Heroku: <https://heroku.com>
 
 3. **Update API URL**:
    After backend deployment, update `NEXT_PUBLIC_API_URL` in Netlify
@@ -95,6 +102,7 @@ npx serve out
 ## Alternative: Vercel (Recommended)
 
 If you want full Next.js features without a separate backend:
+
 ```bash
 npm i -g vercel
 vercel

@@ -5,6 +5,7 @@ This document provides comprehensive instructions for deploying the Real-time Pe
 ## 🏗️ Architecture Overview
 
 The RTPM system consists of:
+
 - **FastAPI Backend** (Python 3.11+)
 - **React Frontend** (TypeScript + Vite)
 - **PostgreSQL Database** (Primary data store)
@@ -17,6 +18,7 @@ The RTPM system consists of:
 ## 📋 Prerequisites
 
 ### System Requirements
+
 - Docker 20.10+
 - Docker Compose 2.0+
 - Kubernetes 1.25+ (for production)
@@ -26,6 +28,7 @@ The RTPM system consists of:
 - 20GB disk space minimum
 
 ### Required Tools
+
 ```bash
 # Install Docker
 curl -fsSL https://get.docker.com -o get-docker.sh
@@ -42,6 +45,7 @@ curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 ## 🚀 Quick Start
 
 ### Local Development
+
 ```bash
 # Clone repository
 git clone <your-repo>
@@ -61,6 +65,7 @@ cp .env.example .env
 ```
 
 ### Production Deployment
+
 ```bash
 # Configure environment
 cp .env.example .env.production
@@ -121,6 +126,7 @@ candlefish-ai/
 Key environment variables that must be configured:
 
 #### Required for Production
+
 ```bash
 # Database
 POSTGRES_PASSWORD=your-secure-password
@@ -139,6 +145,7 @@ API_URL=https://api.rtpm.yourdomain.com
 ```
 
 #### Optional but Recommended
+
 ```bash
 # Monitoring
 SENTRY_DSN=your-sentry-dsn
@@ -156,6 +163,7 @@ EKS_CLUSTER_NAME=rtpm-cluster
 ### Secrets Management
 
 #### Kubernetes Secrets
+
 Create secrets before deployment:
 
 ```bash
@@ -195,6 +203,7 @@ The `deploy.sh` script handles complete deployment orchestration:
 ```
 
 Script features:
+
 - ✅ Pre-deployment validation
 - ✅ Database backup (production)
 - ✅ Health checks
@@ -311,6 +320,7 @@ SECRET_KEY_B64
 ### Metrics Collection
 
 The system collects metrics from:
+
 - API endpoints (request/response metrics)
 - Database performance
 - Redis operations
@@ -321,6 +331,7 @@ The system collects metrics from:
 ### Dashboards
 
 Pre-configured Grafana dashboards:
+
 - **RTPM Overview**: System health and key metrics
 - **API Performance**: Request latency, error rates
 - **Database Metrics**: Connections, query performance
@@ -332,12 +343,14 @@ Access Grafana at: `https://monitoring.rtpm.yourdomain.com`
 ### Alerting
 
 AlertManager routes alerts to:
+
 - **Critical alerts**: Slack + PagerDuty + Email
 - **Warning alerts**: Slack only
 - **Infrastructure alerts**: Infrastructure team
 - **Database alerts**: Database team
 
 Alert categories:
+
 - API downtime or high error rates
 - Database connection issues
 - High resource utilization
@@ -357,6 +370,7 @@ Alert categories:
 ### Kubernetes Probes
 
 All deployments include:
+
 - **Liveness probes**: Restart unhealthy containers
 - **Readiness probes**: Route traffic only to ready pods
 - **Startup probes**: Handle slow-starting applications
@@ -364,6 +378,7 @@ All deployments include:
 ### Monitoring URLs
 
 After deployment, access monitoring at:
+
 - **Grafana**: `https://monitoring.rtpm.yourdomain.com/grafana`
 - **Prometheus**: `https://monitoring.rtpm.yourdomain.com/prometheus`
 - **AlertManager**: `https://monitoring.rtpm.yourdomain.com/alertmanager`
@@ -374,11 +389,13 @@ After deployment, access monitoring at:
 ### Database Backups
 
 Automated backups are created:
+
 - Before each production deployment
 - Daily at 2 AM UTC
 - Retained for 30 days
 
 Manual backup:
+
 ```bash
 # Create backup
 ./deploy.sh production backup
@@ -391,6 +408,7 @@ kubectl exec deployment/postgres-deployment -n rtmp-production -- \
 ### Disaster Recovery
 
 1. **Database Recovery**
+
    ```bash
    # Restore from latest backup
    kubectl apply -f deployment/k8s/postgres-deployment.yaml
@@ -398,10 +416,11 @@ kubectl exec deployment/postgres-deployment -n rtmp-production -- \
    ```
 
 2. **Complete System Recovery**
+
    ```bash
    # Redeploy entire system
    ./deploy.sh production rolling false true
-   
+
    # Verify health
    curl -f https://rtpm.yourdomain.com/health
    ```
@@ -411,6 +430,7 @@ kubectl exec deployment/postgres-deployment -n rtmp-production -- \
 ### Common Issues
 
 #### 1. Pods Not Starting
+
 ```bash
 # Check pod status
 kubectl get pods -n rtpm-production
@@ -423,6 +443,7 @@ kubectl describe pod <pod-name> -n rtpm-production
 ```
 
 #### 2. Database Connection Issues
+
 ```bash
 # Check database pod
 kubectl get pods -l component=database -n rtpm-production
@@ -436,6 +457,7 @@ kubectl logs -f deployment/postgres-deployment -n rtpm-production
 ```
 
 #### 3. Service Discovery Issues
+
 ```bash
 # Check services
 kubectl get svc -n rtpm-production
@@ -446,6 +468,7 @@ kubectl exec -it deployment/rtpm-api-deployment -n rtpm-production -- \
 ```
 
 #### 4. Ingress/Load Balancer Issues
+
 ```bash
 # Check ingress status
 kubectl get ingress -n rtpm-production
@@ -457,6 +480,7 @@ kubectl logs -f deployment/aws-load-balancer-controller -n kube-system
 ### Performance Tuning
 
 #### API Performance
+
 ```bash
 # Increase workers
 kubectl patch deployment rtpm-api-deployment -n rtpm-production -p \
@@ -467,6 +491,7 @@ kubectl scale deployment rtpm-api-deployment --replicas=5 -n rtmp-production
 ```
 
 #### Database Performance
+
 ```bash
 # Monitor slow queries
 kubectl exec deployment/postgres-deployment -n rtpm-production -- \
@@ -485,11 +510,13 @@ print(get_pool_status())
 ### Horizontal Pod Autoscaler (HPA)
 
 HPA is configured for:
+
 - API pods: Scale 3-10 based on CPU (70%) and memory (80%)
 - Frontend pods: Scale 2-6 based on CPU (70%)
 - Celery workers: Scale 3-10 based on CPU and queue length
 
 ### Manual Scaling
+
 ```bash
 # Scale API
 kubectl scale deployment rtpm-api-deployment --replicas=8 -n rtpm-production
@@ -501,6 +528,7 @@ kubectl scale deployment celery-worker-deployment --replicas=6 -n rtpm-productio
 ### Cluster Autoscaling
 
 For AWS EKS:
+
 ```bash
 # Enable cluster autoscaler
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/autoscaler/master/cluster-autoscaler/cloudprovider/aws/examples/cluster-autoscaler-autodiscover.yaml
@@ -512,12 +540,14 @@ kubectl -n kube-system edit deployment.apps/cluster-autoscaler
 ## 🔐 Security Considerations
 
 ### Network Security
+
 - All internal communication encrypted
 - Network policies restrict pod-to-pod communication
 - Ingress terminates SSL/TLS
 - No direct database access from outside cluster
 
 ### Container Security
+
 - Non-root containers
 - Read-only root filesystems where possible
 - Dropped capabilities
@@ -525,12 +555,14 @@ kubectl -n kube-system edit deployment.apps/cluster-autoscaler
 - Regular vulnerability scanning
 
 ### Secret Management
+
 - Kubernetes secrets for sensitive data
 - Secrets mounted as environment variables
 - Regular secret rotation
 - External secret management (AWS Secrets Manager, etc.)
 
 ### Access Control
+
 - RBAC for Kubernetes access
 - Service accounts with minimal permissions
 - Regular access reviews
@@ -539,6 +571,7 @@ kubectl -n kube-system edit deployment.apps/cluster-autoscaler
 ## 📞 Support & Maintenance
 
 ### Log Access
+
 ```bash
 # API logs
 kubectl logs -f deployment/rtpm-api-deployment -n rtpm-production
@@ -556,6 +589,7 @@ kubectl logs -l app=rtpm -n rtpm-production --tail=100
 ### Maintenance Tasks
 
 #### Monthly Tasks
+
 - Review and rotate secrets
 - Update dependencies
 - Check resource utilization
@@ -563,6 +597,7 @@ kubectl logs -l app=rtpm -n rtpm-production --tail=100
 - Test backup and recovery procedures
 
 #### Quarterly Tasks
+
 - Security vulnerability assessment
 - Performance optimization review
 - Cost optimization review
@@ -571,8 +606,8 @@ kubectl logs -l app=rtpm -n rtpm-production --tail=100
 
 ### Contact Information
 
-- **Development Team**: dev@rtmp.yourdomain.com
-- **Operations Team**: ops@rtpm.yourdomain.com
+- **Development Team**: <dev@rtmp.yourdomain.com>
+- **Operations Team**: <ops@rtpm.yourdomain.com>
 - **Emergency Escalation**: +1-555-RTPM-OPS
 
 ### Useful Commands

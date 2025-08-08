@@ -1,0 +1,74 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: RS256 Public Key Service for Candlefish
+
+Parameters:
+  Env:
+    Type: String
+    Default: production
+  AwsRegion:
+    Type: String
+    Default: us-east-1
+
+Resources:
+  PublicKeyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs20.x
+      Handler: index.publicKey
+      CodeUri: .
+      Timeout: 5
+      MemorySize: 128
+      Environment:
+        Variables:
+          CF_ENV: !Ref Env
+          NODE_ENV: production
+          JWT_SECRET_NAME: !Sub candlefish-jwt-keys-${Env}
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !Sub arn:aws:secretsmanager:${AwsRegion}:${AWS::AccountId}:secret:candlefish-jwt-keys-${Env}-*
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /.well-known/jwks/public
+            Method: get
+
+  IssueTokenFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs20.x
+      Handler: index.issueToken
+      CodeUri: .
+      Timeout: 5
+      MemorySize: 128
+      Environment:
+        Variables:
+          CF_ENV: !Ref Env
+          NODE_ENV: production
+          JWT_SECRET_NAME: !Sub candlefish-jwt-keys-${Env}
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !Sub arn:aws:secretsmanager:${AwsRegion}:${AWS::AccountId}:secret:candlefish-jwt-keys-${Env}-*
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /token/issue
+            Method: post
+
+Outputs:
+  PublicKeyUrl:
+    Value: !Sub https://${ServerlessRestApi}.execute-api.${AwsRegion}.amazonaws.com/Prod/.well-known/jwks/public
+    Description: Public URL to fetch current RS256 public key
+  IssueTokenUrl:
+    Value: !Sub https://${ServerlessRestApi}.execute-api.${AwsRegion}.amazonaws.com/Prod/token/issue
+    Description: URL to issue RS256 JWTs

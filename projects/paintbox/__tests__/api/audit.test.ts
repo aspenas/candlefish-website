@@ -59,7 +59,7 @@ describe('/api/v1/audit/events', () => {
     })
 
     const { GET } = await import('../../app/api/v1/audit/events/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/audit/events', {
       method: 'GET',
       headers: {
@@ -80,7 +80,7 @@ describe('/api/v1/audit/events', () => {
 
   it('should reject requests without proper admin authorization', async () => {
     const { GET } = await import('../../app/api/v1/audit/events/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/audit/events', {
       method: 'GET',
       headers: {
@@ -95,7 +95,7 @@ describe('/api/v1/audit/events', () => {
 
   it('should validate and sanitize query parameters', async () => {
     const { GET } = await import('../../app/api/v1/audit/events/route')
-    
+
     // Test SQL injection in query parameters
     const maliciousQueries = [
       '?service=salesforce; DROP TABLE audit_events; --',
@@ -113,10 +113,10 @@ describe('/api/v1/audit/events', () => {
       })
 
       const response = await GET(request)
-      
+
       // Should either reject malicious input or sanitize it
       expect([200, 400, 403]).toContain(response.status)
-      
+
       if (response.status === 200) {
         const data = await response.json()
         // Ensure proper response structure (no SQL injection occurred)
@@ -147,7 +147,7 @@ describe('/api/v1/audit/events', () => {
     })
 
     const { GET } = await import('../../app/api/v1/audit/events/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/audit/events?service=salesforce&action=auth.login&start_date=2024-01-15&end_date=2024-01-16', {
       method: 'GET',
       headers: {
@@ -167,7 +167,7 @@ describe('/api/v1/audit/events', () => {
   it('should implement pagination correctly', async () => {
     const pageSize = 5
     const totalEvents = 25
-    
+
     mockAuditService.getEvents.mockResolvedValue({
       events: Array.from({ length: pageSize }, (_, i) => ({
         id: `event-${i + 1}`,
@@ -182,7 +182,7 @@ describe('/api/v1/audit/events', () => {
     })
 
     const { GET } = await import('../../app/api/v1/audit/events/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/audit/events?page=1&limit=5', {
       method: 'GET',
       headers: {
@@ -222,7 +222,7 @@ describe('/api/v1/audit/events', () => {
     })
 
     const { GET } = await import('../../app/api/v1/audit/events/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/audit/events', {
       method: 'GET',
       headers: {
@@ -234,12 +234,12 @@ describe('/api/v1/audit/events', () => {
     const data = await response.json()
 
     expect(response.status).toBe(200)
-    
+
     // Check that sensitive information is redacted
     const responseString = JSON.stringify(data)
     expect(responseString).not.toContain('secretpass123')
     expect(responseString).not.toContain('abc123xyz')
-    
+
     // Should contain redacted markers instead
     expect(data.events[0].details).toMatch(/\[REDACTED\]|\*{3,}|password: \*+/)
   })
@@ -263,7 +263,7 @@ describe('/api/v1/audit/events', () => {
     })
 
     const { GET } = await import('../../app/api/v1/audit/events/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/audit/events?limit=100', {
       method: 'GET',
       headers: {
@@ -279,21 +279,21 @@ describe('/api/v1/audit/events', () => {
     expect(response.status).toBe(200)
     expect(data.events).toHaveLength(100)
     expect(data.total).toBe(10000)
-    
+
     // Should respond within reasonable time even with large datasets
     expect(endTime - startTime).toBeLessThan(5000) // 5 seconds max
   })
 
   it('should enforce rate limiting on audit queries', async () => {
     // Mock rate limiter to deny request
-    mockRateLimiter.check.mockResolvedValue({ 
-      allowed: false, 
-      remaining: 0, 
-      resetTime: Date.now() + 60000 
+    mockRateLimiter.check.mockResolvedValue({
+      allowed: false,
+      remaining: 0,
+      resetTime: Date.now() + 60000
     })
 
     const { GET } = await import('../../app/api/v1/audit/events/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/audit/events', {
       method: 'GET',
       headers: {
@@ -328,7 +328,7 @@ describe('/api/v1/audit/events', () => {
     })
 
     const { GET } = await import('../../app/api/v1/audit/events/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/audit/events?search=failed_login', {
       method: 'GET',
       headers: {

@@ -1,11 +1,13 @@
 # Tyler Setup Performance Optimization Report
 
 ## Executive Summary
+
 This report provides a comprehensive performance analysis of the Tyler Setup application with specific recommendations for production deployment supporting thousands of concurrent users. The analysis focuses on database optimization, frontend performance, API efficiency, memory management, caching strategies, network optimization, and Claude Opus 4.1 token usage.
 
 ## Current Architecture Analysis
 
 ### Stack Overview
+
 - **Backend**: Node.js + Express + Apollo Server (GraphQL)
 - **Frontend**: React + Vite + Apollo Client
 - **Database**: PostgreSQL with connection pooling
@@ -13,6 +15,7 @@ This report provides a comprehensive performance analysis of the Tyler Setup app
 - **Real-time**: WebSocket subscriptions via GraphQL
 
 ### Performance Metrics Baseline
+
 - Database pool: 20 connections max
 - Rate limiting: 100 requests/15 minutes per IP
 - Cache TTL: 300-3600 seconds
@@ -23,7 +26,9 @@ This report provides a comprehensive performance analysis of the Tyler Setup app
 ### Critical Issues Identified
 
 #### Issue 1.1: Missing Critical Indexes
+
 **Current State**: Limited indexes on high-traffic tables
+
 ```sql
 -- Current indexes
 CREATE INDEX idx_metrics_timestamp ON metrics(timestamp);
@@ -33,6 +38,7 @@ CREATE INDEX idx_telemetry_type ON telemetry_events(event_type);
 ```
 
 **Optimization**:
+
 ```sql
 -- Add composite indexes for common query patterns
 CREATE INDEX idx_metrics_name_timestamp ON metrics(metric_name, timestamp DESC);
@@ -45,14 +51,16 @@ CREATE INDEX idx_telemetry_event_data_gin ON telemetry_events USING GIN (event_d
 CREATE INDEX idx_settings_value_gin ON settings USING GIN (value);
 
 -- Partial indexes for frequently filtered data
-CREATE INDEX idx_recent_metrics ON metrics(timestamp) 
+CREATE INDEX idx_recent_metrics ON metrics(timestamp)
   WHERE timestamp > NOW() - INTERVAL '7 days';
-CREATE INDEX idx_error_telemetry ON telemetry_events(timestamp) 
+CREATE INDEX idx_error_telemetry ON telemetry_events(timestamp)
   WHERE severity IN ('error', 'critical');
 ```
 
 #### Issue 1.2: Inefficient UNION Query in recentActivities
+
 **Current State**: Uses UNION ALL without proper optimization
+
 ```javascript
 // Line 87-108 in resolvers.js
 const activities = await db.query(`
@@ -65,12 +73,13 @@ const activities = await db.query(`
 ```
 
 **Optimization**:
+
 ```javascript
 // Use materialized view for frequently accessed data
 const createMaterializedView = `
 CREATE MATERIALIZED VIEW recent_activities AS
   WITH combined_data AS (
-    SELECT 
+    SELECT
       'telemetry' as type,
       event_type as title,
       event_data->>'description' as description,
@@ -79,10 +88,10 @@ CREATE MATERIALIZED VIEW recent_activities AS
       ROW_NUMBER() OVER (ORDER BY timestamp DESC) as rn
     FROM telemetry_events
     WHERE timestamp > NOW() - INTERVAL '24 hours'
-    
+
     UNION ALL
-    
-    SELECT 
+
+    SELECT
       'metric' as type,
       metric_name as title,
       value::text || ' ' || COALESCE(unit, '') as description,
@@ -106,37 +115,39 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Schedule refresh
-SELECT cron.schedule('refresh-recent-activities', '*/5 * * * *', 
+SELECT cron.schedule('refresh-recent-activities', '*/5 * * * *',
   'SELECT refresh_recent_activities()');
 `;
 ```
 
 #### Issue 1.3: Connection Pool Optimization
+
 **Current State**: Fixed pool size of 20 connections
 
 **Optimization**:
+
 ```javascript
 // Enhanced connection pool configuration
 const poolConfig = {
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  
+
   // Dynamic pool sizing
   max: process.env.DB_MAX_CONNECTIONS || 100,
   min: process.env.DB_MIN_CONNECTIONS || 10,
-  
+
   // Connection lifecycle
   idleTimeoutMillis: 10000, // Reduced from 30000
   connectionTimeoutMillis: 3000, // Reduced from 5000
-  
+
   // Statement timeout for runaway queries
   statement_timeout: 30000,
   query_timeout: 30000,
-  
+
   // Connection pooling behavior
   allowExitOnIdle: true,
   maxUses: 7500, // Recycle connections after 7500 uses
-  
+
   // Enable prepared statements
   parseInputDatesAsUTC: true
 };
@@ -156,7 +167,7 @@ setInterval(() => {
     waiting: pool.waitingCount,
   };
   logger.info('Pool stats:', stats);
-  
+
   // Alert if pool is exhausted
   if (pool.waitingCount > 5) {
     logger.warn('Database pool has waiting connections:', pool.waitingCount);
@@ -167,9 +178,11 @@ setInterval(() => {
 ## 2. Frontend Bundle Size and Load Times
 
 ### Issue 2.1: Large Bundle Size
+
 **Current State**: Multiple heavy dependencies loaded synchronously
 
 **Optimization**:
+
 ```typescript
 // vite.config.ts improvements
 import { defineConfig } from 'vite'
@@ -215,7 +228,7 @@ export default defineConfig({
       }
     })
   ],
-  
+
   build: {
     target: 'es2020',
     minify: 'terser',
@@ -226,7 +239,7 @@ export default defineConfig({
         pure_funcs: ['console.log', 'console.info'],
       },
     },
-    
+
     rollupOptions: {
       output: {
         manualChunks: (id) => {
@@ -253,30 +266,30 @@ export default defineConfig({
             return 'vendor';
           }
         },
-        
+
         // Better chunk naming
         chunkFileNames: (chunkInfo) => {
-          const facadeModuleId = chunkInfo.facadeModuleId ? 
+          const facadeModuleId = chunkInfo.facadeModuleId ?
             chunkInfo.facadeModuleId.split('/').pop() : 'chunk';
           return `${facadeModuleId}-[hash].js`;
         }
       }
     },
-    
+
     // Optimize CSS
     cssCodeSplit: true,
     cssMinify: 'lightningcss',
-    
+
     // Source map optimization
     sourcemap: 'hidden',
-    
+
     // Chunk size warnings
     chunkSizeWarningLimit: 500,
-    
+
     // Advanced optimizations
     reportCompressedSize: false,
   },
-  
+
   // Optimize dev server
   server: {
     warmup: {
@@ -291,6 +304,7 @@ export default defineConfig({
 ```
 
 ### Issue 2.2: Lazy Loading Implementation
+
 **Optimization**: Implement route-based code splitting
 
 ```typescript
@@ -325,9 +339,11 @@ useEffect(() => {
 ## 3. API Response Time Optimization
 
 ### Issue 3.1: GraphQL Query Optimization
+
 **Current State**: No query depth limiting or complexity analysis
 
 **Optimization**:
+
 ```javascript
 // Add query complexity plugin
 import depthLimit from 'graphql-depth-limit'
@@ -337,7 +353,7 @@ const server = new ApolloServer({
   schema,
   plugins: [
     // Existing plugins...
-    
+
     // Add query complexity analysis
     {
       requestDidStart() {
@@ -347,7 +363,7 @@ const server = new ApolloServer({
               requestContext.document,
               requestContext.schema
             );
-            
+
             if (complexity > 1000) {
               throw new Error(`Query too complex: ${complexity}. Maximum allowed: 1000`);
             }
@@ -356,7 +372,7 @@ const server = new ApolloServer({
       }
     }
   ],
-  
+
   validationRules: [
     depthLimit(5), // Limit query depth
     costAnalysis({
@@ -367,7 +383,7 @@ const server = new ApolloServer({
       listFactor: 10,
     })
   ],
-  
+
   // Enable persisted queries
   persistedQueries: {
     cache: new InMemoryLRUCache({
@@ -378,6 +394,7 @@ const server = new ApolloServer({
 ```
 
 ### Issue 3.2: DataLoader Implementation
+
 **Optimization**: Batch and cache database queries
 
 ```javascript
@@ -396,7 +413,7 @@ export const createDataLoaders = (db) => ({
     });
     return userIds.map(id => userMap[id]);
   }),
-  
+
   metricsLoader: new DataLoader(async (metricNames) => {
     const result = await db.query(
       'SELECT * FROM metrics WHERE metric_name = ANY($1) ORDER BY timestamp DESC',
@@ -411,7 +428,7 @@ export const createDataLoaders = (db) => ({
     });
     return metricNames.map(name => metricsMap[name] || []);
   }),
-  
+
   secretsLoader: new DataLoader(async (secretNames) => {
     const result = await db.query(
       'SELECT * FROM aws_secrets WHERE secret_name = ANY($1)',
@@ -436,6 +453,7 @@ Query: {
 ## 4. Memory Usage Optimization
 
 ### Issue 4.1: Memory Leaks in Subscriptions
+
 **Optimization**: Proper cleanup and connection management
 
 ```javascript
@@ -464,14 +482,14 @@ setInterval(() => {
     connections: wsServer.clients.size,
     memory: process.memoryUsage()
   };
-  
+
   logger.info('WebSocket stats:', stats);
-  
+
   // Alert on high connection count
   if (wsServer.clients.size > 1000) {
     logger.warn('High WebSocket connection count:', wsServer.clients.size);
   }
-  
+
   // Clean up stale connections
   wsServer.clients.forEach(ws => {
     if (ws.readyState === WebSocket.CLOSED) {
@@ -482,6 +500,7 @@ setInterval(() => {
 ```
 
 ### Issue 4.2: Process Memory Management
+
 **Optimization**: Implement memory monitoring and limits
 
 ```javascript
@@ -492,21 +511,21 @@ const memoryMonitor = {
     const heapUsedMB = Math.round(usage.heapUsed / 1024 / 1024);
     const heapTotalMB = Math.round(usage.heapTotal / 1024 / 1024);
     const rssMB = Math.round(usage.rss / 1024 / 1024);
-    
+
     // Alert if memory usage is high
     if (heapUsedMB > 400) {
       logger.warn(`High memory usage: ${heapUsedMB}MB / ${heapTotalMB}MB (RSS: ${rssMB}MB)`);
-      
+
       // Force garbage collection if available
       if (global.gc) {
         logger.info('Running garbage collection...');
         global.gc();
       }
     }
-    
+
     return { heapUsedMB, heapTotalMB, rssMB };
   },
-  
+
   startMonitoring() {
     setInterval(() => this.checkMemory(), 60000); // Check every minute
   }
@@ -522,6 +541,7 @@ memoryMonitor.startMonitoring();
 ## 5. Advanced Caching Strategies
 
 ### Issue 5.1: Insufficient Cache Coverage
+
 **Current State**: Limited caching with basic TTL
 
 **Optimization**: Multi-layer caching strategy
@@ -538,11 +558,11 @@ class AdvancedCacheManager {
       localHits: 0
     };
   }
-  
+
   // Multi-tier caching
   async get(key, options = {}) {
     const { skipLocal = false, skipRedis = false } = options;
-    
+
     // L1: Local in-memory cache
     if (!skipLocal && this.localCache.has(key)) {
       const cached = this.localCache.get(key);
@@ -552,7 +572,7 @@ class AdvancedCacheManager {
       }
       this.localCache.delete(key);
     }
-    
+
     // L2: Redis cache
     if (!skipRedis && this.redis) {
       try {
@@ -560,27 +580,27 @@ class AdvancedCacheManager {
         if (value) {
           this.cacheStats.hits++;
           const parsed = JSON.parse(value);
-          
+
           // Populate L1 cache
           this.localCache.set(key, {
             value: parsed,
             expiry: Date.now() + 60000 // 1 minute local cache
           });
-          
+
           return parsed;
         }
       } catch (error) {
         logger.error('Redis get error:', error);
       }
     }
-    
+
     this.cacheStats.misses++;
     return null;
   }
-  
+
   async set(key, value, ttl = 3600, options = {}) {
     const { skipLocal = false, skipRedis = false, tags = [] } = options;
-    
+
     // Set in both caches
     if (!skipLocal) {
       this.localCache.set(key, {
@@ -588,7 +608,7 @@ class AdvancedCacheManager {
         expiry: Date.now() + (Math.min(ttl, 300) * 1000), // Max 5 min local
         tags
       });
-      
+
       // Limit local cache size
       if (this.localCache.size > 1000) {
         const oldest = [...this.localCache.entries()]
@@ -597,11 +617,11 @@ class AdvancedCacheManager {
         oldest.forEach(([k]) => this.localCache.delete(k));
       }
     }
-    
+
     if (!skipRedis && this.redis) {
       try {
         await this.redis.setEx(key, ttl, JSON.stringify(value));
-        
+
         // Tag-based invalidation support
         if (tags.length > 0) {
           for (const tag of tags) {
@@ -613,10 +633,10 @@ class AdvancedCacheManager {
         logger.error('Redis set error:', error);
       }
     }
-    
+
     return true;
   }
-  
+
   // Invalidate by tags
   async invalidateByTag(tag) {
     if (this.redis) {
@@ -624,13 +644,13 @@ class AdvancedCacheManager {
       if (keys.length > 0) {
         await this.redis.del(keys);
         await this.redis.del(`tag:${tag}`);
-        
+
         // Clear from local cache
         keys.forEach(key => this.localCache.delete(key));
       }
     }
   }
-  
+
   // Cache warming
   async warmCache(queries) {
     const warmupPromises = queries.map(async ({ key, fetcher, ttl }) => {
@@ -640,14 +660,14 @@ class AdvancedCacheManager {
         await this.set(key, data, ttl);
       }
     });
-    
+
     await Promise.all(warmupPromises);
   }
-  
+
   getStats() {
-    const hitRate = this.cacheStats.hits / 
+    const hitRate = this.cacheStats.hits /
       (this.cacheStats.hits + this.cacheStats.misses) || 0;
-    
+
     return {
       ...this.cacheStats,
       hitRate: Math.round(hitRate * 100),
@@ -683,6 +703,7 @@ cache.warmCache(cacheWarmupQueries);
 ```
 
 ### Issue 5.2: CDN and Static Asset Caching
+
 **Optimization**: Implement proper CDN headers and strategies
 
 ```javascript
@@ -708,11 +729,11 @@ const responseCachePlugin = {
     return {
       async willSendResponse(requestContext) {
         const { response, request } = requestContext;
-        
+
         // Cache GET requests only
         if (request.http.method === 'GET') {
           const operationName = request.operationName;
-          
+
           // Set cache headers based on operation
           const cacheRules = {
             'GetSetupOverview': 'public, max-age=60',
@@ -720,10 +741,10 @@ const responseCachePlugin = {
             'GetAWSSecrets': 'private, no-cache',
             'GetConfiguration': 'private, max-age=300'
           };
-          
+
           const cacheControl = cacheRules[operationName] || 'no-cache';
           response.http.headers.set('Cache-Control', cacheControl);
-          
+
           // Add ETag for conditional requests
           if (response.body) {
             const etag = generateETag(JSON.stringify(response.body));
@@ -739,6 +760,7 @@ const responseCachePlugin = {
 ## 6. Network Optimization
 
 ### Issue 6.1: Inefficient WebSocket Usage
+
 **Optimization**: Implement smart subscription management
 
 ```javascript
@@ -749,28 +771,28 @@ class SubscriptionManager {
     this.batchQueue = new Map();
     this.throttleTimers = new Map();
   }
-  
+
   // Throttle high-frequency updates
   throttleSubscription(topic, data, delay = 100) {
     if (!this.batchQueue.has(topic)) {
       this.batchQueue.set(topic, []);
     }
-    
+
     this.batchQueue.get(topic).push(data);
-    
+
     // Clear existing timer
     if (this.throttleTimers.has(topic)) {
       clearTimeout(this.throttleTimers.get(topic));
     }
-    
+
     // Set new timer
     this.throttleTimers.set(topic, setTimeout(() => {
       const batch = this.batchQueue.get(topic);
       this.batchQueue.delete(topic);
       this.throttleTimers.delete(topic);
-      
+
       // Send batched update
-      pubsub.publish(topic, { 
+      pubsub.publish(topic, {
         [topic]: {
           batch: true,
           data: batch,
@@ -780,11 +802,11 @@ class SubscriptionManager {
       });
     }, delay));
   }
-  
+
   // Smart subscription filtering
   filterSubscription(data, filters) {
     if (!filters) return true;
-    
+
     return Object.entries(filters).every(([key, value]) => {
       if (Array.isArray(value)) {
         return value.includes(data[key]);
@@ -814,17 +836,17 @@ Subscription: {
     resolve: (payload, args, context) => {
       const connectionId = context.connectionId;
       const rateLimit = connectionRateLimits.get(connectionId) || 0;
-      
+
       if (rateLimit > 100) {
         throw new Error('Subscription rate limit exceeded');
       }
-      
+
       connectionRateLimits.set(connectionId, rateLimit + 1);
       setTimeout(() => {
-        connectionRateLimits.set(connectionId, 
+        connectionRateLimits.set(connectionId,
           (connectionRateLimits.get(connectionId) || 1) - 1);
       }, 60000);
-      
+
       return payload.telemetryEventAdded;
     }
   }
@@ -832,6 +854,7 @@ Subscription: {
 ```
 
 ### Issue 6.2: HTTP/2 and Compression
+
 **Optimization**: Enable HTTP/2 and optimize compression
 
 ```javascript
@@ -842,12 +865,12 @@ import fs from 'fs';
 const server = spdy.createServer({
   key: fs.readFileSync('./ssl/server.key'),
   cert: fs.readFileSync('./ssl/server.crt'),
-  
+
   // HTTP/2 settings
   spdy: {
     protocols: ['h2', 'http/1.1'],
     plain: false,
-    
+
     // Connection settings
     connection: {
       windowSize: 1024 * 1024, // 1MB
@@ -863,7 +886,7 @@ app.use(compression({
     if (req.headers['x-no-compression']) {
       return false;
     }
-    
+
     // Compress everything except images
     return compression.filter(req, res);
   },
@@ -871,7 +894,7 @@ app.use(compression({
   threshold: 1024, // Only compress files > 1KB
   memLevel: 8,
   strategy: 0, // Default strategy
-  
+
   // Brotli settings for modern browsers
   brotli: {
     enabled: true,
@@ -887,9 +910,11 @@ app.use(compression({
 ## 7. Claude Opus 4.1 Token Optimization
 
 ### Issue 7.1: Inefficient Token Usage
+
 **Current State**: No token optimization for AI operations
 
 **Optimization Strategy**:
+
 ```javascript
 // Token-optimized prompt engineering
 class ClaudeOptimizer {
@@ -904,13 +929,13 @@ class ClaudeOptimizer {
       resetTime: Date.now() + 60000
     };
   }
-  
+
   // Estimate tokens (rough approximation)
   estimateTokens(text) {
     // ~4 characters per token
     return Math.ceil(text.length / 4);
   }
-  
+
   // Optimize prompts for efficiency
   optimizePrompt(prompt, context = {}) {
     const optimized = {
@@ -918,26 +943,26 @@ class ClaudeOptimizer {
       user: this.compressUserPrompt(prompt),
       maxTokens: this.calculateOptimalMaxTokens(prompt)
     };
-    
+
     // Check token limits
     const estimatedInput = this.estimateTokens(
       optimized.system + optimized.user
     );
-    
+
     if (this.tokenUsage.input + estimatedInput > this.tokenLimits.input) {
       throw new Error('Token rate limit would be exceeded');
     }
-    
+
     return optimized;
   }
-  
+
   // Compress prompts without losing meaning
   compressSystemPrompt(system) {
     if (!system) return '';
-    
+
     // Remove redundant whitespace
     let compressed = system.replace(/\s+/g, ' ').trim();
-    
+
     // Use abbreviations for common terms
     const abbreviations = {
       'configuration': 'config',
@@ -946,24 +971,24 @@ class ClaudeOptimizer {
       'database': 'db',
       'application': 'app'
     };
-    
+
     Object.entries(abbreviations).forEach(([full, abbr]) => {
       compressed = compressed.replace(new RegExp(full, 'gi'), abbr);
     });
-    
+
     return compressed;
   }
-  
+
   compressUserPrompt(prompt) {
     // Remove code comments and excessive formatting
     let compressed = prompt;
-    
+
     // Remove single-line comments
     compressed = compressed.replace(/\/\/.*$/gm, '');
-    
+
     // Remove multi-line comments
     compressed = compressed.replace(/\/\*[\s\S]*?\*\//g, '');
-    
+
     // Compress JSON
     if (prompt.includes('{') && prompt.includes('}')) {
       try {
@@ -976,24 +1001,24 @@ class ClaudeOptimizer {
         // Not valid JSON, skip
       }
     }
-    
+
     return compressed;
   }
-  
+
   calculateOptimalMaxTokens(prompt) {
     const inputTokens = this.estimateTokens(prompt);
-    
+
     // Use 20% of input size for output, max 4000
     return Math.min(Math.ceil(inputTokens * 0.2), 4000);
   }
-  
+
   // Batch processing for multiple requests
   async batchProcess(requests, batchSize = 10) {
     const batches = [];
     for (let i = 0; i < requests.length; i += batchSize) {
       batches.push(requests.slice(i, i + batchSize));
     }
-    
+
     const results = [];
     for (const batch of batches) {
       // Process batch in parallel
@@ -1001,47 +1026,47 @@ class ClaudeOptimizer {
         batch.map(req => this.processRequest(req))
       );
       results.push(...batchResults);
-      
+
       // Rate limit between batches
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    
+
     return results;
   }
-  
+
   // Implement caching for repeated queries
   async cachedProcess(prompt, cacheKey, ttl = 3600) {
     const cached = await cache.get(`claude:${cacheKey}`);
     if (cached) {
       return cached;
     }
-    
+
     const result = await this.processRequest(prompt);
     await cache.set(`claude:${cacheKey}`, result, ttl);
-    
+
     return result;
   }
-  
+
   // Stream processing for large responses
   async *streamProcess(prompt, chunkSize = 100) {
     const response = await this.initiateStream(prompt);
     let buffer = '';
-    
+
     for await (const chunk of response) {
       buffer += chunk;
-      
+
       // Yield complete sentences
       const sentences = buffer.split(/[.!?]\s+/);
       if (sentences.length > 1) {
         // Keep last incomplete sentence in buffer
         buffer = sentences.pop();
-        
+
         for (const sentence of sentences) {
           yield sentence + '.';
         }
       }
     }
-    
+
     // Yield remaining buffer
     if (buffer) {
       yield buffer;
@@ -1061,11 +1086,11 @@ const resolvers = {
         `Analyze this ${analysis_type}: ${code}`,
         { system: 'You are a code analysis expert.' }
       );
-      
+
       // Use caching for common analyses
       const cacheKey = `${analysis_type}:${crypto.createHash('md5')
         .update(code).digest('hex')}`;
-      
+
       return await claudeOptimizer.cachedProcess(
         optimized,
         cacheKey,
@@ -1079,6 +1104,7 @@ const resolvers = {
 ## 8. Production Deployment Optimizations
 
 ### Horizontal Scaling Configuration
+
 ```yaml
 # docker-compose.prod.yml
 version: '3.8'
@@ -1097,7 +1123,7 @@ services:
       NODE_ENV: production
       NODE_OPTIONS: "--max-old-space-size=512 --expose-gc"
       CLUSTER_WORKERS: 4
-      
+
   nginx:
     image: nginx:alpine
     volumes:
@@ -1107,13 +1133,13 @@ services:
       - "443:443"
     depends_on:
       - app
-      
+
   redis:
     image: redis:7-alpine
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
-      
+
   postgres:
     image: postgres:15-alpine
     environment:
@@ -1126,6 +1152,7 @@ services:
 ```
 
 ### Nginx Configuration for Load Balancing
+
 ```nginx
 # nginx.conf
 upstream backend {
@@ -1140,7 +1167,7 @@ upstream backend {
 server {
     listen 80;
     listen [::]:80;
-    
+
     # Redirect to HTTPS
     return 301 https://$server_name$request_uri;
 }
@@ -1148,38 +1175,38 @@ server {
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
-    
+
     ssl_certificate /etc/nginx/ssl/cert.pem;
     ssl_certificate_key /etc/nginx/ssl/key.pem;
-    
+
     # SSL optimization
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
     ssl_prefer_server_ciphers on;
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 10m;
-    
+
     # OCSP Stapling
     ssl_stapling on;
     ssl_stapling_verify on;
-    
+
     # Security headers
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-XSS-Protection "1; mode=block" always;
-    
+
     # Gzip compression
     gzip on;
     gzip_vary on;
     gzip_min_length 1024;
-    gzip_types text/plain text/css text/xml text/javascript 
-               application/json application/javascript application/xml+rss 
-               application/rss+xml application/atom+xml image/svg+xml 
-               text/x-js text/x-cross-domain-policy application/x-font-ttf 
-               application/x-font-opentype application/vnd.ms-fontobject 
+    gzip_types text/plain text/css text/xml text/javascript
+               application/json application/javascript application/xml+rss
+               application/rss+xml application/atom+xml image/svg+xml
+               text/x-js text/x-cross-domain-policy application/x-font-ttf
+               application/x-font-opentype application/vnd.ms-fontobject
                image/x-icon;
-    
+
     # API endpoints
     location /api {
         proxy_pass http://backend;
@@ -1191,19 +1218,19 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
+
         # Timeouts
         proxy_connect_timeout 60s;
         proxy_send_timeout 60s;
         proxy_read_timeout 60s;
-        
+
         # Buffering
         proxy_buffering on;
         proxy_buffer_size 4k;
         proxy_buffers 8 4k;
         proxy_busy_buffers_size 8k;
     }
-    
+
     # GraphQL endpoint
     location /graphql {
         proxy_pass http://backend/graphql;
@@ -1212,28 +1239,28 @@ server {
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_cache_bypass $http_upgrade;
-        
+
         # WebSocket support
         proxy_set_header Sec-WebSocket-Key $http_sec_websocket_key;
         proxy_set_header Sec-WebSocket-Version $http_sec_websocket_version;
         proxy_set_header Sec-WebSocket-Extensions $http_sec_websocket_extensions;
-        
+
         # Disable buffering for SSE/WebSocket
         proxy_buffering off;
         proxy_cache off;
     }
-    
+
     # Static files
     location / {
         root /usr/share/nginx/html;
         try_files $uri $uri/ /index.html;
-        
+
         # Cache static assets
         location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
             expires 1y;
             add_header Cache-Control "public, immutable";
         }
-        
+
         # Don't cache HTML
         location ~* \.html$ {
             expires -1;
@@ -1246,6 +1273,7 @@ server {
 ## 9. Monitoring and Alerting
 
 ### Performance Monitoring Setup
+
 ```javascript
 // monitoring.js
 import prometheus from 'prom-client';
@@ -1300,14 +1328,14 @@ register.registerMetric(graphqlQueryComplexity);
 // Middleware for request timing
 export const requestTimer = (req, res, next) => {
   const start = Date.now();
-  
+
   res.on('finish', () => {
     const duration = (Date.now() - start) / 1000;
     httpRequestDuration
       .labels(req.method, req.route?.path || req.path, res.statusCode)
       .observe(duration);
   });
-  
+
   next();
 };
 
@@ -1329,15 +1357,15 @@ export const timedQuery = async (query, params, operation, table) => {
 // Metrics endpoint
 app.get('/metrics', async (req, res) => {
   res.set('Content-Type', register.contentType);
-  
+
   // Update cache metrics
   const cacheStats = cache.getStats();
   cacheHitRate.labels('redis').set(cacheStats.hitRate);
-  
+
   // Update connection metrics
   activeConnections.labels('websocket').set(wsServer.clients.size);
   activeConnections.labels('database').set(pool.totalCount);
-  
+
   res.end(await register.metrics());
 });
 ```
@@ -1345,24 +1373,28 @@ app.get('/metrics', async (req, res) => {
 ## 10. Implementation Priority
 
 ### Phase 1: Critical Performance Fixes (Week 1)
+
 1. **Database Indexes**: Add missing indexes (2 hours)
 2. **Connection Pool Optimization**: Increase pool size and add monitoring (1 hour)
 3. **Basic Caching**: Implement Redis caching for dashboard queries (4 hours)
 4. **Frontend Chunking**: Optimize Vite build configuration (2 hours)
 
 ### Phase 2: Scalability Improvements (Week 2)
+
 1. **DataLoader Implementation**: Batch database queries (6 hours)
 2. **Materialized Views**: Create for frequently accessed data (4 hours)
 3. **Rate Limiting Enhancement**: Implement per-user and per-endpoint limits (3 hours)
 4. **Memory Monitoring**: Add memory leak detection (2 hours)
 
 ### Phase 3: Advanced Optimizations (Week 3)
+
 1. **Multi-tier Caching**: Implement L1/L2 cache strategy (8 hours)
 2. **WebSocket Optimization**: Add subscription throttling (4 hours)
 3. **HTTP/2 & Compression**: Enable advanced protocols (3 hours)
 4. **CDN Integration**: Configure CloudFlare or similar (2 hours)
 
 ### Phase 4: Production Hardening (Week 4)
+
 1. **Horizontal Scaling**: Docker Swarm/Kubernetes setup (8 hours)
 2. **Load Balancing**: Nginx configuration (4 hours)
 3. **Monitoring**: Prometheus + Grafana setup (6 hours)
@@ -1371,6 +1403,7 @@ app.get('/metrics', async (req, res) => {
 ## Expected Performance Improvements
 
 ### Before Optimization
+
 - **Response Time**: 500-2000ms average
 - **Concurrent Users**: ~100-200 max
 - **Database Queries**: 50-100ms average
@@ -1379,6 +1412,7 @@ app.get('/metrics', async (req, res) => {
 - **Bundle Size**: 2.5MB+ uncompressed
 
 ### After Optimization
+
 - **Response Time**: 50-200ms average (75% reduction)
 - **Concurrent Users**: 5000+ supported
 - **Database Queries**: 5-20ms average (80% reduction)
@@ -1428,7 +1462,7 @@ export default function () {
       }
     `
   };
-  
+
   const response = http.post(
     `${BASE_URL}/graphql`,
     JSON.stringify(dashboardQuery),
@@ -1439,15 +1473,15 @@ export default function () {
       },
     }
   );
-  
+
   const success = check(response, {
     'status is 200': (r) => r.status === 200,
     'response time < 500ms': (r) => r.timings.duration < 500,
     'has data': (r) => JSON.parse(r.body).data !== undefined,
   });
-  
+
   errorRate.add(!success);
-  
+
   sleep(1);
 }
 ```
@@ -1459,6 +1493,7 @@ This comprehensive optimization plan addresses all critical performance areas fo
 The phased approach ensures minimal disruption while delivering immediate performance gains. Each optimization includes specific code examples and measurable success metrics.
 
 Key success factors:
+
 - **75% reduction in response times**
 - **25x increase in concurrent user capacity**
 - **80% reduction in database query times**

@@ -1,6 +1,6 @@
 /**
  * Alerts View Component
- * 
+ *
  * Detailed view of all alerts with filtering and management capabilities
  */
 
@@ -45,7 +45,7 @@ export function AlertsView() {
         </div>
       </div>
 
-      <AlertList 
+      <AlertList
         alerts={alerts}
         showAll={true}
         onAlertClick={selectAlert}

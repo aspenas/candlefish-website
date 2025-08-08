@@ -43,7 +43,7 @@ describe('Bulk Operations Performance Tests', () => {
     it('should handle large repository lists efficiently', async () => {
       const repositoryCount = 1000
       const mockRepos = createMockRepositories(repositoryCount)
-      
+
       // Mock API response
       deploymentAPIClient.repositories.getRepositories = jest.fn()
         .mockResolvedValue(mockRepos)
@@ -53,7 +53,7 @@ describe('Bulk Operations Performance Tests', () => {
       const endTime = performance.now()
 
       const executionTime = endTime - startTime
-      
+
       expect(repositories).toHaveLength(repositoryCount)
       expect(executionTime).toBeLessThan(100) // Should complete within 100ms
     })
@@ -61,7 +61,7 @@ describe('Bulk Operations Performance Tests', () => {
     it('should efficiently process bulk sync operations', async () => {
       const operationCount = 500
       const mockOperations = createMockSyncOperations(operationCount)
-      
+
       deploymentAPIClient.sync.getActiveSyncs = jest.fn()
         .mockResolvedValue(mockOperations.filter(op => op.status === 'running'))
 
@@ -70,7 +70,7 @@ describe('Bulk Operations Performance Tests', () => {
       const endTime = performance.now()
 
       const executionTime = endTime - startTime
-      
+
       expect(activeSyncs.length).toBeGreaterThan(0)
       expect(executionTime).toBeLessThan(50) // Should complete within 50ms
     })
@@ -78,7 +78,7 @@ describe('Bulk Operations Performance Tests', () => {
     it('should handle batch repository sync requests', async () => {
       const batchSize = 50
       const repositoryIds = Array.from({ length: batchSize }, (_, i) => `repo-${i}`)
-      
+
       // Mock individual sync requests
       const mockSyncOperation = {
         id: 'batch-sync',
@@ -93,17 +93,17 @@ describe('Bulk Operations Performance Tests', () => {
         .mockResolvedValue(mockSyncOperation)
 
       const startTime = performance.now()
-      
+
       // Simulate batch sync - parallel execution
-      const syncPromises = repositoryIds.map(repoId => 
+      const syncPromises = repositoryIds.map(repoId =>
         deploymentAPIClient.repositories.syncRepository(repoId)
       )
-      
+
       const results = await Promise.all(syncPromises)
       const endTime = performance.now()
 
       const executionTime = endTime - startTime
-      
+
       expect(results).toHaveLength(batchSize)
       expect(executionTime).toBeLessThan(1000) // Batch should complete within 1 second
       expect(deploymentAPIClient.repositories.syncRepository).toHaveBeenCalledTimes(batchSize)
@@ -111,7 +111,7 @@ describe('Bulk Operations Performance Tests', () => {
 
     it('should efficiently handle bulk distribution operations', async () => {
       const targetRepositories = Array.from({ length: 100 }, (_, i) => `repo-${i}`)
-      
+
       const mockDistributionJob = {
         id: 'bulk-dist-123',
         status: 'pending',
@@ -132,7 +132,7 @@ describe('Bulk Operations Performance Tests', () => {
       const endTime = performance.now()
 
       const executionTime = endTime - startTime
-      
+
       expect(distributionJob.targetRepositories).toHaveLength(100)
       expect(distributionJob.results).toHaveLength(100)
       expect(executionTime).toBeLessThan(200) // Should complete within 200ms
@@ -142,37 +142,37 @@ describe('Bulk Operations Performance Tests', () => {
   describe('Memory Usage Tests', () => {
     it('should not cause memory leaks with large datasets', async () => {
       const initialMemory = process.memoryUsage()
-      
+
       // Process large amounts of data
       for (let i = 0; i < 10; i++) {
         const largeDataset = createMockRepositories(1000)
-        
+
         // Simulate processing
         const processed = largeDataset.map(repo => ({
           ...repo,
           processed: true,
           timestamp: Date.now()
         }))
-        
+
         // Clear references
         processed.length = 0
       }
-      
+
       // Force garbage collection if available
       if (global.gc) {
         global.gc()
       }
-      
+
       const finalMemory = process.memoryUsage()
       const memoryIncrease = finalMemory.heapUsed - initialMemory.heapUsed
-      
+
       // Memory increase should be reasonable (less than 50MB)
       expect(memoryIncrease).toBeLessThan(50 * 1024 * 1024)
     })
 
     it('should efficiently handle large log datasets', async () => {
       const startMemory = process.memoryUsage().heapUsed
-      
+
       // Create large log dataset
       const largeLogs = Array.from({ length: 10000 }, (_, i) => ({
         timestamp: new Date().toISOString(),
@@ -196,7 +196,7 @@ describe('Bulk Operations Performance Tests', () => {
 
       const endMemory = process.memoryUsage().heapUsed
       const memoryUsed = endMemory - startMemory
-      
+
       expect(processedLogs).toHaveLength(100)
       expect(memoryUsed).toBeLessThan(20 * 1024 * 1024) // Less than 20MB
     })
@@ -213,24 +213,24 @@ describe('Bulk Operations Performance Tests', () => {
       }
 
       deploymentAPIClient.repositories.getRepository = jest.fn()
-        .mockImplementation((id) => 
-          new Promise(resolve => 
+        .mockImplementation((id) =>
+          new Promise(resolve =>
             setTimeout(() => resolve({ ...mockRepo, id }), Math.random() * 100)
           )
         )
 
       const startTime = performance.now()
-      
+
       // Execute concurrent requests
       const promises = Array.from({ length: concurrentRequests }, (_, i) =>
         deploymentAPIClient.repositories.getRepository(`repo-${i}`)
       )
-      
+
       const results = await Promise.all(promises)
       const endTime = performance.now()
 
       const executionTime = endTime - startTime
-      
+
       expect(results).toHaveLength(concurrentRequests)
       expect(executionTime).toBeLessThan(500) // All requests should complete within 500ms
       expect(deploymentAPIClient.repositories.getRepository).toHaveBeenCalledTimes(concurrentRequests)
@@ -239,7 +239,7 @@ describe('Bulk Operations Performance Tests', () => {
     it('should handle concurrent sync operations without race conditions', async () => {
       const concurrentSyncs = 10
       let syncCounter = 0
-      
+
       deploymentAPIClient.repositories.syncRepository = jest.fn()
         .mockImplementation(() => {
           syncCounter++
@@ -252,20 +252,20 @@ describe('Bulk Operations Performance Tests', () => {
         })
 
       const startTime = performance.now()
-      
+
       // Execute concurrent syncs
       const syncPromises = Array.from({ length: concurrentSyncs }, (_, i) =>
         deploymentAPIClient.repositories.syncRepository(`repo-${i}`)
       )
-      
+
       const results = await Promise.all(syncPromises)
       const endTime = performance.now()
 
       const executionTime = endTime - startTime
-      
+
       expect(results).toHaveLength(concurrentSyncs)
       expect(executionTime).toBeLessThan(200)
-      
+
       // Each sync should have unique ID (no race conditions)
       const syncIds = results.map(r => r.id)
       const uniqueIds = new Set(syncIds)
@@ -277,7 +277,7 @@ describe('Bulk Operations Performance Tests', () => {
     it('should respect rate limits and implement backoff', async () => {
       const requestCount = 100
       let rateLimitHit = false
-      
+
       deploymentAPIClient.repositories.getRepositories = jest.fn()
         .mockImplementation(() => {
           if (Math.random() < 0.1) { // 10% chance of rate limit
@@ -291,7 +291,7 @@ describe('Bulk Operations Performance Tests', () => {
         })
 
       const startTime = performance.now()
-      
+
       // Execute many requests with retry logic
       const results = []
       for (let i = 0; i < requestCount; i++) {
@@ -306,10 +306,10 @@ describe('Bulk Operations Performance Tests', () => {
           results.push(null)
         }
       }
-      
+
       const endTime = performance.now()
       const executionTime = endTime - startTime
-      
+
       // Should complete within reasonable time even with retries
       expect(executionTime).toBeLessThan(10000) // 10 seconds max
       expect(results.length).toBe(requestCount)
@@ -317,7 +317,7 @@ describe('Bulk Operations Performance Tests', () => {
 
     it('should implement exponential backoff correctly', async () => {
       const retryDelays = []
-      
+
       // Mock the delay function to capture timing
       const originalGetRetryDelay = deploymentUtils.getRetryDelay
       deploymentUtils.getRetryDelay = jest.fn().mockImplementation((retryCount) => {
@@ -332,15 +332,15 @@ describe('Bulk Operations Performance Tests', () => {
         .mockResolvedValueOnce('success')
 
       const retriedFunction = deploymentUtils.withRetry(failingFunction, 3)
-      
+
       const startTime = performance.now()
       const result = await retriedFunction()
       const endTime = performance.now()
-      
+
       expect(result).toBe('success')
       expect(retryDelays).toEqual([1000, 2000]) // Exponential backoff: 1s, 2s
       expect(endTime - startTime).toBeGreaterThan(3000) // At least 3 seconds due to delays
-      
+
       // Restore original function
       deploymentUtils.getRetryDelay = originalGetRetryDelay
     })
@@ -349,9 +349,9 @@ describe('Bulk Operations Performance Tests', () => {
   describe('Data Processing Performance', () => {
     it('should efficiently filter and sort large repository lists', async () => {
       const largeRepoList = createMockRepositories(5000)
-      
+
       const startTime = performance.now()
-      
+
       // Simulate complex filtering and sorting operations
       const processedRepos = largeRepoList
         .filter(repo => repo.hasClaudeResources)
@@ -367,18 +367,18 @@ describe('Bulk Operations Performance Tests', () => {
           displayName: `${repo.organization}/${repo.name}`,
           lastSyncFormatted: repo.lastSync ? new Date(repo.lastSync).toLocaleDateString() : 'Never'
         }))
-      
+
       const endTime = performance.now()
       const executionTime = endTime - startTime
-      
+
       expect(processedRepos.length).toBeGreaterThan(0)
       expect(executionTime).toBeLessThan(100) // Should process within 100ms
-      
+
       // Verify sorting
       for (let i = 1; i < processedRepos.length; i++) {
         const prev = processedRepos[i - 1]
         const curr = processedRepos[i]
-        
+
         if (prev.organization === curr.organization) {
           expect(prev.name.localeCompare(curr.name)).toBeLessThanOrEqual(0)
         } else {
@@ -389,9 +389,9 @@ describe('Bulk Operations Performance Tests', () => {
 
     it('should efficiently aggregate sync statistics', async () => {
       const largeSyncList = createMockSyncOperations(10000)
-      
+
       const startTime = performance.now()
-      
+
       // Calculate comprehensive statistics
       const stats = {
         totalOperations: largeSyncList.length,
@@ -403,17 +403,17 @@ describe('Bulk Operations Performance Tests', () => {
         completedOperations: largeSyncList.filter(op => op.status === 'completed'),
         failedOperations: largeSyncList.filter(op => op.status === 'failed'),
         averageLogEntries: largeSyncList.reduce((sum, op) => sum + op.logs.length, 0) / largeSyncList.length,
-        oldestOperation: largeSyncList.reduce((oldest, op) => 
+        oldestOperation: largeSyncList.reduce((oldest, op) =>
           new Date(op.startTime) < new Date(oldest.startTime) ? op : oldest
         ),
-        newestOperation: largeSyncList.reduce((newest, op) => 
+        newestOperation: largeSyncList.reduce((newest, op) =>
           new Date(op.startTime) > new Date(newest.startTime) ? op : newest
         )
       }
-      
+
       const endTime = performance.now()
       const executionTime = endTime - startTime
-      
+
       expect(stats.totalOperations).toBe(10000)
       expect(stats.byStatus).toHaveProperty('completed')
       expect(stats.byStatus).toHaveProperty('running')
@@ -428,15 +428,15 @@ describe('Bulk Operations Performance Tests', () => {
       const messageCount = 1000
       const messages = []
       let processedCount = 0
-      
+
       // Mock WebSocket message handler
       const handleMessage = (data) => {
         processedCount++
         messages.push(data)
       }
-      
+
       const startTime = performance.now()
-      
+
       // Simulate rapid message processing
       for (let i = 0; i < messageCount; i++) {
         const mockMessage = {
@@ -447,13 +447,13 @@ describe('Bulk Operations Performance Tests', () => {
             currentStep: 'Processing files'
           }
         }
-        
+
         handleMessage(mockMessage)
       }
-      
+
       const endTime = performance.now()
       const executionTime = endTime - startTime
-      
+
       expect(processedCount).toBe(messageCount)
       expect(messages).toHaveLength(messageCount)
       expect(executionTime).toBeLessThan(100) // Should process within 100ms
@@ -463,9 +463,9 @@ describe('Bulk Operations Performance Tests', () => {
       const updateCount = 5000
       const operationCount = 100
       const latestUpdates = new Map()
-      
+
       const startTime = performance.now()
-      
+
       // Simulate many updates for same operations (deduplication scenario)
       for (let i = 0; i < updateCount; i++) {
         const operationId = `sync-${i % operationCount}`
@@ -474,20 +474,20 @@ describe('Bulk Operations Performance Tests', () => {
           progress: Math.floor(Math.random() * 100),
           timestamp: Date.now() + i // Each update is newer
         }
-        
+
         // Keep only latest update per operation
         const existing = latestUpdates.get(operationId)
         if (!existing || update.timestamp > existing.timestamp) {
           latestUpdates.set(operationId, update)
         }
       }
-      
+
       const endTime = performance.now()
       const executionTime = endTime - startTime
-      
+
       expect(latestUpdates.size).toBe(operationCount)
       expect(executionTime).toBeLessThan(50) // Should deduplicate within 50ms
-      
+
       // Verify we have the latest updates
       for (const [operationId, update] of latestUpdates) {
         expect(update.operationId).toBe(operationId)
@@ -500,20 +500,20 @@ describe('Bulk Operations Performance Tests', () => {
     it('should efficiently cache and retrieve large datasets', async () => {
       const cache = new Map()
       const largeDataset = createMockRepositories(1000)
-      
+
       // Cache write performance
       const writeStartTime = performance.now()
       cache.set('repositories', largeDataset)
       const writeEndTime = performance.now()
-      
+
       // Cache read performance
       const readStartTime = performance.now()
       const cachedData = cache.get('repositories')
       const readEndTime = performance.now()
-      
+
       const writeTime = writeEndTime - writeStartTime
       const readTime = readEndTime - readStartTime
-      
+
       expect(cachedData).toHaveLength(1000)
       expect(writeTime).toBeLessThan(10) // Writing should be very fast
       expect(readTime).toBeLessThan(1) // Reading should be extremely fast
@@ -522,27 +522,27 @@ describe('Bulk Operations Performance Tests', () => {
     it('should handle cache invalidation efficiently', async () => {
       const cache = new Map()
       const cacheKeys = Array.from({ length: 1000 }, (_, i) => `key-${i}`)
-      
+
       // Populate cache
       cacheKeys.forEach(key => {
         cache.set(key, { data: `data-${key}`, timestamp: Date.now() })
       })
-      
+
       const startTime = performance.now()
-      
+
       // Simulate cache invalidation (remove stale entries)
       const now = Date.now()
       const staleThreshold = 5 * 60 * 1000 // 5 minutes
-      
+
       for (const [key, value] of cache) {
         if (now - value.timestamp > staleThreshold) {
           cache.delete(key)
         }
       }
-      
+
       const endTime = performance.now()
       const executionTime = endTime - startTime
-      
+
       expect(executionTime).toBeLessThan(10) // Cache invalidation should be fast
     })
   })

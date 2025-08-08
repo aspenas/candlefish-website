@@ -41,6 +41,7 @@ A high-performance, production-ready API for real-time metrics ingestion, storag
 ### Using Docker Compose (Recommended)
 
 1. **Clone and Setup**:
+
    ```bash
    git clone <repository>
    cd rtpm-api
@@ -49,28 +50,32 @@ A high-performance, production-ready API for real-time metrics ingestion, storag
    ```
 
 2. **Start Services**:
+
    ```bash
    docker-compose up -d
    ```
 
 3. **Verify Installation**:
+
    ```bash
    curl http://localhost:8000/health
    ```
 
 4. **Access Services**:
-   - API Documentation: http://localhost:8000/docs
-   - Flower (Task Monitor): http://localhost:5555
-   - API Health: http://localhost:8000/health
+   - API Documentation: <http://localhost:8000/docs>
+   - Flower (Task Monitor): <http://localhost:5555>
+   - API Health: <http://localhost:8000/health>
 
 ### Manual Installation
 
 1. **Install Dependencies**:
+
    ```bash
    pip install -r requirements.txt
    ```
 
 2. **Setup Database**:
+
    ```bash
    # Install TimescaleDB
    # Run init.sql to create schema
@@ -78,18 +83,20 @@ A high-performance, production-ready API for real-time metrics ingestion, storag
    ```
 
 3. **Start Redis**:
+
    ```bash
    redis-server
    ```
 
 4. **Run Services**:
+
    ```bash
    # API Server
    python -m uvicorn src.main:app --reload
-   
+
    # Celery Worker
    celery worker -A src.workers.aggregation.celery_app --loglevel=info
-   
+
    # Celery Beat
    celery beat -A src.workers.aggregation.celery_app --loglevel=info
    ```
@@ -97,23 +104,27 @@ A high-performance, production-ready API for real-time metrics ingestion, storag
 ## API Endpoints
 
 ### Metrics Ingestion
+
 - `POST /api/v1/metrics/ingest` - Ingest single metric
 - `POST /api/v1/metrics/batch` - Ingest metrics batch
 - `GET /api/v1/metrics/latest/{metric_name}` - Get latest metric value
 
 ### Querying
+
 - `POST /api/v1/metrics/query` - Query metrics with filters
 - `GET /api/v1/metrics/query/range` - Prometheus-style range queries
 - `GET /api/v1/metrics/query/instant` - Instant metric queries
 - `GET /api/v1/metrics/aggregated` - Get pre-aggregated data
 
 ### Alert Management
+
 - `POST /api/v1/alerts/rules` - Create alert rule
 - `GET /api/v1/alerts/rules` - List alert rules
 - `GET /api/v1/alerts/active` - Get active alerts
 - `POST /api/v1/alerts/resolve/{alert_id}` - Resolve alert
 
 ### Health & Monitoring
+
 - `GET /health` - Basic health check
 - `GET /health/detailed` - Detailed service health
 - `GET /health/ready` - Kubernetes readiness probe
@@ -121,6 +132,7 @@ A high-performance, production-ready API for real-time metrics ingestion, storag
 - `GET /metrics` - Prometheus metrics
 
 ### WebSocket
+
 - `WS /ws/metrics` - Real-time metric and alert updates
 
 ## Authentication
@@ -169,7 +181,7 @@ curl -X POST http://localhost:8000/api/v1/metrics/batch \
         "labels": {"host": "server01"}
       },
       {
-        "name": "memory_usage_percent", 
+        "name": "memory_usage_percent",
         "type": "gauge",
         "value": 78.5,
         "labels": {"host": "server01"}
@@ -227,10 +239,10 @@ ws.onopen = function() {
         type: 'subscribe',
         data: { subscription: 'metrics' }
     }));
-    
+
     // Subscribe to alerts
     ws.send(JSON.stringify({
-        type: 'subscribe', 
+        type: 'subscribe',
         data: { subscription: 'alerts' }
     }));
 };
@@ -238,7 +250,7 @@ ws.onopen = function() {
 ws.onmessage = function(event) {
     const message = JSON.parse(event.data);
     console.log('Received:', message);
-    
+
     if (message.type === 'metric_update') {
         // Handle new metrics
         console.log('New metrics:', message.data.metrics);
@@ -424,7 +436,7 @@ docker-compose -f docker-compose.yml up rtpm-api-dev
    - Verify DATABASE_URL configuration
    - Check network connectivity
 
-2. **Redis Connection Failed** 
+2. **Redis Connection Failed**
    - Ensure Redis is running
    - Verify REDIS_URL configuration
    - Check Redis memory limits
@@ -470,6 +482,7 @@ docker-compose -f docker-compose.yml up rtpm-api-dev
 ## Support
 
 For support and questions:
+
 - Create an issue on GitHub
 - Check the documentation at `/docs`
 - Review logs for error details

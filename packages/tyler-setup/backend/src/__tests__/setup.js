@@ -12,7 +12,7 @@ beforeAll(async () => {
   process.env.REDIS_URL = process.env.TEST_REDIS_URL || 'redis://localhost:6379/1';
   process.env.JWT_SECRET = 'test-jwt-secret-key';
   process.env.AWS_REGION = 'us-east-1';
-  
+
   // Suppress console logs during tests
   if (!process.env.VERBOSE_TESTS) {
     console.log = jest.fn();

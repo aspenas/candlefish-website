@@ -43,12 +43,12 @@ main() {
 
     # Step 1: Check prerequisites
     log_info "Checking prerequisites..."
-    
+
     local missing_deps=0
     check_command "node" || missing_deps=$((missing_deps + 1))
     check_command "npm" || missing_deps=$((missing_deps + 1))
     check_command "git" || missing_deps=$((missing_deps + 1))
-    
+
     if [ $missing_deps -gt 0 ]; then
         log_error "Please install missing dependencies before continuing"
         exit 1
@@ -76,7 +76,7 @@ main() {
 
     # Step 3: Setup environment variables
     log_info "Setting up environment variables..."
-    
+
     if [ ! -f ".env" ]; then
         if [ -f ".env.example" ]; then
             cp .env.example .env
@@ -111,7 +111,7 @@ EOF
 
     # Step 4: Install global tools
     log_info "Installing development tools..."
-    
+
     # Install Netlify CLI if not present
     if ! command -v netlify &> /dev/null; then
         log_info "Installing Netlify CLI..."
@@ -131,13 +131,13 @@ EOF
 
     # Step 5: Setup Git hooks
     log_info "Setting up Git hooks..."
-    
+
     # Initialize Husky
     npx husky install
 
     # Add pre-commit hook
     npx husky add .husky/pre-commit "npm run lint:fix && npm test -- --passWithNoTests"
-    
+
     # Add commit-msg hook for conventional commits
     npx husky add .husky/commit-msg 'npx --no -- commitlint --edit ${1}'
 
@@ -152,7 +152,7 @@ EOF
 
     # Step 7: Setup test infrastructure
     log_info "Setting up test infrastructure..."
-    
+
     # Create basic Jest config if not exists
     if [ ! -f "jest.config.js" ]; then
         cat > jest.config.js << 'EOF'
@@ -184,20 +184,20 @@ EOF
 
     # Step 8: Verify setup
     log_info "Verifying setup..."
-    
+
     # Run linting
     npm run lint:fix || log_warn "Linting needs attention"
-    
+
     # Run tests
     npm test -- --passWithNoTests || log_warn "Tests need attention"
-    
+
     # Check if Netlify dev works
     log_info "Testing Netlify dev server..."
     timeout 5 npx netlify dev --offline &> /dev/null && log_info "Netlify dev works" || log_warn "Netlify dev needs configuration"
 
     # Step 9: Generate documentation
     log_info "Generating initial documentation..."
-    
+
     cat > README_DEV.md << 'EOF'
 # PromoterOS Development Guide
 

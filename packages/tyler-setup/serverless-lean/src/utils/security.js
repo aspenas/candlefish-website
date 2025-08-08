@@ -14,25 +14,25 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 export const getJwtSecret = async () => {
   const cacheKey = 'jwt-secret';
   const cached = secretsCache.get(cacheKey);
-  
+
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.value;
   }
-  
+
   try {
     const command = new GetSecretValueCommand({
       SecretId: `${process.env.SECRETS_PREFIX}/jwt-secret`
     });
-    
+
     const result = await secretsClient.send(command);
     const secret = JSON.parse(result.SecretString).secret;
-    
+
     // Cache the secret
     secretsCache.set(cacheKey, {
       value: secret,
       timestamp: Date.now()
     });
-    
+
     return secret;
   } catch (error) {
     console.error('Failed to retrieve JWT secret from Secrets Manager:', error);

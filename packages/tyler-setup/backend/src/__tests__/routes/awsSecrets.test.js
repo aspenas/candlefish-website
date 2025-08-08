@@ -58,7 +58,7 @@ describe('AWS Secrets Routes', () => {
     app = express();
     app.use(express.json());
     app.use('/api/aws-secrets', awsSecretsRouter);
-    
+
     // Reset all mocks
     jest.clearAllMocks();
     mockSecretsManagerClient.send.mockReset();
@@ -409,8 +409,8 @@ describe('AWS Secrets Routes', () => {
     it('should apply rate limiting to all routes', async () => {
       // This test verifies rate limiting middleware is applied
       // In real implementation, you'd need to mock the rate limiter to return rate limit exceeded
-      expect(awsSecretsRouter.stack.some(layer => 
-        layer.handle.name === 'strictRateLimiter' || 
+      expect(awsSecretsRouter.stack.some(layer =>
+        layer.handle.name === 'strictRateLimiter' ||
         layer.name === 'strictRateLimiter'
       )).toBeTruthy();
     });
@@ -431,7 +431,7 @@ describe('AWS Secrets Routes', () => {
 
     it('should handle malicious secret names', async () => {
       const maliciousName = '../../../etc/passwd';
-      
+
       const response = await request(app)
         .get(`/api/aws-secrets/${encodeURIComponent(maliciousName)}/value`)
         .expect(500); // Should fail safely

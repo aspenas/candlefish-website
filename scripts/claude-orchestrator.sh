@@ -64,32 +64,32 @@ show_main_menu() {
 view_worktree_status() {
     echo -e "${BLUE}=== Detailed Worktree Status ===${NC}"
     echo ""
-    
+
     for worktree in $(git worktree list --porcelain | grep "worktree " | cut -d' ' -f2); do
         if [ -d "$worktree" ]; then
             echo -e "${CYAN}📁 $(basename $worktree)${NC}"
             cd "$worktree" 2>/dev/null || continue
-            
+
             # Branch info
             branch=$(git branch --show-current)
             echo "   Branch: $branch"
-            
+
             # File statistics
             modified=$(git status --porcelain | grep -c "^ M" || echo 0)
             untracked=$(git status --porcelain | grep -c "^??" || echo 0)
             staged=$(git status --porcelain | grep -c "^[AM]" || echo 0)
-            
+
             if [ "$modified" -gt 0 ] || [ "$untracked" -gt 0 ] || [ "$staged" -gt 0 ]; then
                 echo -e "   Files: ${YELLOW}$modified modified, $untracked untracked, $staged staged${NC}"
             else
                 echo -e "   Files: ${GREEN}✅ Clean${NC}"
             fi
-            
+
             # Remote sync status
             if git rev-parse --abbrev-ref @{u} >/dev/null 2>&1; then
                 ahead=$(git rev-list --count @{u}..HEAD 2>/dev/null || echo 0)
                 behind=$(git rev-list --count HEAD..@{u} 2>/dev/null || echo 0)
-                
+
                 if [ "$ahead" -gt 0 ] && [ "$behind" -gt 0 ]; then
                     echo -e "   Remote: ${YELLOW}↑$ahead ↓$behind (diverged)${NC}"
                 elif [ "$ahead" -gt 0 ]; then
@@ -102,14 +102,14 @@ view_worktree_status() {
             else
                 echo -e "   Remote: ${RED}No upstream${NC}"
             fi
-            
+
             # Last commit
             last_commit=$(git log -1 --format="%h %s" 2>/dev/null || echo "No commits")
             echo "   Last: $last_commit"
             echo ""
         fi
     done
-    
+
     cd "$CURRENT_DIR"
 }
 
@@ -123,9 +123,9 @@ switch_worktree() {
     echo "5) main-hotfix"
     echo "6) main-docs"
     echo "7) main-cicd"
-    
+
     read -p "Select worktree (1-7): " choice
-    
+
     case $choice in
         1) target="/Users/patricksmith/candlefish-ai" ;;
         2) target="$WORKTREE_BASE/main-development" ;;
@@ -136,7 +136,7 @@ switch_worktree() {
         7) target="$WORKTREE_BASE/main-cicd" ;;
         *) echo -e "${RED}Invalid choice${NC}"; return ;;
     esac
-    
+
     cd "$target"
     echo -e "${GREEN}✅ Switched to: $target${NC}"
     echo "Current directory: $(pwd)"
@@ -145,38 +145,38 @@ switch_worktree() {
 # Update worktrees from main
 update_worktrees() {
     echo -e "${BLUE}Updating all worktrees from main...${NC}"
-    
+
     cd "$REPO_DIR"
     git fetch origin
-    
+
     for worktree in "$WORKTREE_BASE"/main-*; do
         if [ -d "$worktree" ]; then
             echo -e "${CYAN}Updating $(basename $worktree)...${NC}"
             cd "$worktree"
-            
+
             # Stash any changes
             if [ -n "$(git status --porcelain)" ]; then
                 echo "  Stashing local changes..."
                 git stash push -m "Auto-stash before update $(date +%Y%m%d-%H%M%S)"
             fi
-            
+
             # Pull latest changes
             git pull origin main --rebase || {
                 echo -e "${YELLOW}  Merge conflicts detected, skipping${NC}"
                 continue
             }
-            
+
             echo -e "${GREEN}  ✅ Updated${NC}"
         fi
     done
-    
+
     cd "$CURRENT_DIR"
 }
 
 # Run parallel tests
 run_parallel_tests() {
     echo -e "${BLUE}Running tests in parallel across 3 worktrees...${NC}"
-    
+
     # Create temporary script for parallel execution
     cat > /tmp/parallel-tests.sh << 'EOF'
 #!/bin/bash
@@ -196,7 +196,7 @@ else
 fi
 EOF
     chmod +x /tmp/parallel-tests.sh
-    
+
     # Run tests in parallel
     (
         /tmp/parallel-tests.sh "$WORKTREE_BASE/main-development" 1 3 &
@@ -204,21 +204,21 @@ EOF
         /tmp/parallel-tests.sh "$WORKTREE_BASE/main-experimental" 3 3 &
         wait
     )
-    
+
     echo -e "${GREEN}✅ Parallel tests completed${NC}"
 }
 
 # Run parallel build
 run_parallel_build() {
     echo -e "${BLUE}Running parallel build across worktrees...${NC}"
-    
+
     parallel_command() {
         local worktree=$1
         local task=$2
-        
+
         echo -e "${CYAN}Building in $(basename $worktree)...${NC}"
         cd "$worktree"
-        
+
         if [ -f "package.json" ]; then
             npm run build 2>&1 | sed "s/^/[$(basename $worktree)] /"
         elif [ -f "Makefile" ]; then
@@ -227,30 +227,30 @@ run_parallel_build() {
             echo "[$(basename $worktree)] No build configuration found"
         fi
     }
-    
+
     export -f parallel_command
-    
+
     # Run builds in parallel
     echo "$WORKTREE_BASE/main-development" | xargs -P 3 -I {} bash -c 'parallel_command "$@"' _ {} build &
     echo "$WORKTREE_BASE/main-feature" | xargs -P 3 -I {} bash -c 'parallel_command "$@"' _ {} build &
     echo "$WORKTREE_BASE/main-experimental" | xargs -P 3 -I {} bash -c 'parallel_command "$@"' _ {} build &
     wait
-    
+
     echo -e "${GREEN}✅ Parallel build completed${NC}"
 }
 
 # Trigger GitHub Actions workflow
 trigger_workflow() {
     echo -e "${BLUE}Triggering Claude automation workflow...${NC}"
-    
+
     echo "Select workflow to trigger:"
     echo "1) Parallel Claude Sessions"
     echo "2) Claude Automation Suite"
     echo "3) Multi-Worktree CI/CD"
     echo "4) Daily Automation"
-    
+
     read -p "Choice (1-4): " workflow_choice
-    
+
     case $workflow_choice in
         1)
             read -p "Number of sessions (1-5): " sessions
@@ -274,7 +274,7 @@ trigger_workflow() {
             return
             ;;
     esac
-    
+
     echo -e "${GREEN}✅ Workflow triggered${NC}"
     echo "View status: gh run list --repo aspenas/candlefish-ai --limit 1"
 }
@@ -288,24 +288,24 @@ view_workflow_runs() {
 # Generate documentation
 generate_documentation() {
     echo -e "${BLUE}Generating documentation...${NC}"
-    
+
     cd "$REPO_DIR"
-    
+
     # Generate README sections
     echo "# Candlefish AI - Workflow Documentation" > docs/workflow-guide.md
     echo "" >> docs/workflow-guide.md
     echo "Generated: $(date)" >> docs/workflow-guide.md
     echo "" >> docs/workflow-guide.md
-    
+
     # Add worktree information
     echo "## Worktree Structure" >> docs/workflow-guide.md
     git worktree list >> docs/workflow-guide.md
     echo "" >> docs/workflow-guide.md
-    
+
     # Add workflow information
     echo "## GitHub Actions Workflows" >> docs/workflow-guide.md
     ls -la .github/workflows/*.yml 2>/dev/null | awk '{print "- " $NF}' >> docs/workflow-guide.md
-    
+
     echo -e "${GREEN}✅ Documentation generated at docs/workflow-guide.md${NC}"
     cd "$CURRENT_DIR"
 }
@@ -314,47 +314,47 @@ generate_documentation() {
 system_health_check() {
     echo -e "${BLUE}=== System Health Check ===${NC}"
     echo ""
-    
+
     # Check git status
     echo -e "${CYAN}Git Configuration:${NC}"
     git --version
     echo "User: $(git config user.name) <$(git config user.email)>"
     echo ""
-    
+
     # Check GitHub CLI
     echo -e "${CYAN}GitHub CLI:${NC}"
     gh --version
     gh auth status 2>&1 | head -3
     echo ""
-    
+
     # Check Node.js
     echo -e "${CYAN}Node.js Environment:${NC}"
     node --version 2>/dev/null || echo "Node.js not installed"
     npm --version 2>/dev/null || echo "npm not installed"
     echo ""
-    
+
     # Check Python
     echo -e "${CYAN}Python Environment:${NC}"
     python3 --version 2>/dev/null || echo "Python not installed"
     pip3 --version 2>/dev/null || echo "pip not installed"
     echo ""
-    
+
     # Check Docker
     echo -e "${CYAN}Docker:${NC}"
     docker --version 2>/dev/null || echo "Docker not installed"
     docker ps 2>/dev/null | head -1 || echo "Docker daemon not running"
     echo ""
-    
+
     # Check disk space
     echo -e "${CYAN}Disk Space:${NC}"
     df -h "$REPO_DIR" | tail -1
     echo ""
-    
+
     # Check worktree health
     echo -e "${CYAN}Worktree Health:${NC}"
     healthy=0
     unhealthy=0
-    
+
     for worktree in $(git worktree list --porcelain | grep "worktree " | cut -d' ' -f2); do
         if [ -d "$worktree" ]; then
             ((healthy++))
@@ -363,7 +363,7 @@ system_health_check() {
             echo -e "${RED}  Missing: $worktree${NC}"
         fi
     done
-    
+
     echo -e "${GREEN}  Healthy: $healthy${NC}"
     if [ "$unhealthy" -gt 0 ]; then
         echo -e "${RED}  Unhealthy: $unhealthy${NC}"
@@ -373,12 +373,12 @@ system_health_check() {
 # Full CI/CD pipeline
 run_full_pipeline() {
     echo -e "${BLUE}Running full CI/CD pipeline...${NC}"
-    
+
     stages=("lint" "test" "build" "security" "deploy")
-    
+
     for stage in "${stages[@]}"; do
         echo -e "${CYAN}Stage: $stage${NC}"
-        
+
         case $stage in
             lint)
                 npm run lint 2>/dev/null || echo "Lint not configured"
@@ -396,10 +396,10 @@ run_full_pipeline() {
                 echo "Deploy stage (dry run)"
                 ;;
         esac
-        
+
         echo -e "${GREEN}  ✅ $stage completed${NC}"
     done
-    
+
     echo -e "${GREEN}✅ Full pipeline completed${NC}"
 }
 
@@ -408,7 +408,7 @@ main() {
     while true; do
         show_main_menu
         read -p "Select option: " choice
-        
+
         case $choice in
             1) view_worktree_status ;;
             2) switch_worktree ;;
@@ -433,7 +433,7 @@ main() {
             0) echo -e "${GREEN}Goodbye!${NC}"; exit 0 ;;
             *) echo -e "${RED}Invalid option${NC}" ;;
         esac
-        
+
         echo ""
         read -p "Press enter to continue..."
     done

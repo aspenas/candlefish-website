@@ -162,7 +162,7 @@ describe('Authentication Security Tests', () => {
 
     test('should allow admin access to all endpoints', async () => {
       const adminToken = createTokenWithRole('admin');
-      
+
       // These should succeed (mocked AWS calls will still fail, but auth should pass)
       const protectedEndpoints = [
         '/api/config',
@@ -183,9 +183,9 @@ describe('Authentication Security Tests', () => {
     test('should validate role injection attacks', async () => {
       // Attempt to inject admin role via token manipulation
       const tokenWithInjectedRole = jwt.sign(
-        { 
-          id: 'test', 
-          username: 'test', 
+        {
+          id: 'test',
+          username: 'test',
           role: 'user',
           'role\\": \\"admin': true // JSON injection attempt
         },
@@ -337,7 +337,7 @@ describe('Authentication Security Tests', () => {
       }
 
       const responses = await Promise.all(requests);
-      
+
       // At least some requests should be rate limited
       const rateLimitedResponses = responses.filter(r => r.status === 429);
       expect(rateLimitedResponses.length).toBeGreaterThan(0);

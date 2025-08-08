@@ -1,19 +1,19 @@
 /**
  * Dashboard Card Component
- * 
+ *
  * Reusable card component for displaying key metrics and statistics
  */
 
 'use client';
 
 import React from 'react';
-import { 
-  TrendingUpIcon, 
-  TrendingDownIcon, 
-  MinusIcon 
+import {
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
+  MinusIcon
 } from '@heroicons/react/24/outline';
 import { DashboardCard as DashboardCardType } from '@/lib/types/dashboard';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/cn';
 
 interface DashboardCardProps extends DashboardCardType {
   onClick?: () => void;
@@ -73,9 +73,9 @@ export function DashboardCard({
   const getTrendIcon = () => {
     switch (changeType) {
       case 'increase':
-        return TrendingUpIcon;
+        return ArrowTrendingUpIcon;
       case 'decrease':
-        return TrendingDownIcon;
+        return ArrowTrendingDownIcon;
       default:
         return MinusIcon;
     }
@@ -113,7 +113,7 @@ export function DashboardCard({
         )}>
           <Icon className={cn('w-6 h-6', colorClasses.icon)} />
         </div>
-        
+
         {change !== undefined && (
           <div className={cn(
             'flex items-center text-sm font-medium',
@@ -131,7 +131,7 @@ export function DashboardCard({
           {title}
         </h3>
         <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">
-          {typeof value === 'number' && value > 999 
+          {typeof value === 'number' && value > 999
             ? `${(value / 1000).toFixed(1)}k`
             : value
           }

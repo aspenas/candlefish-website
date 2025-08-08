@@ -258,16 +258,16 @@ export const mockPaintingMeasurements = {
   },
   interior: {
     rooms: [
-      { 
-        name: 'Living Room', 
+      {
+        name: 'Living Room',
         walls: { width: 50, height: 10, sqft: 500 },
         ceiling: { width: 20, height: 25, sqft: 500 },
         trim: { linear_feet: 100 },
         doors: 2,
         windows: 3
       },
-      { 
-        name: 'Kitchen', 
+      {
+        name: 'Kitchen',
         walls: { width: 40, height: 10, sqft: 400 },
         ceiling: { width: 15, height: 20, sqft: 300 },
         trim: { linear_feet: 80 },
@@ -275,32 +275,32 @@ export const mockPaintingMeasurements = {
         windows: 2,
         cabinets: { count: 24, condition: 'paint' }
       },
-      { 
-        name: 'Master Bedroom', 
+      {
+        name: 'Master Bedroom',
         walls: { width: 45, height: 10, sqft: 450 },
         ceiling: { width: 18, height: 20, sqft: 360 },
         trim: { linear_feet: 90 },
         doors: 3,
         windows: 2
       },
-      { 
-        name: 'Bedroom 2', 
+      {
+        name: 'Bedroom 2',
         walls: { width: 35, height: 10, sqft: 350 },
         ceiling: { width: 14, height: 16, sqft: 224 },
         trim: { linear_feet: 70 },
         doors: 2,
         windows: 1
       },
-      { 
-        name: 'Bedroom 3', 
+      {
+        name: 'Bedroom 3',
         walls: { width: 35, height: 10, sqft: 350 },
         ceiling: { width: 14, height: 16, sqft: 224 },
         trim: { linear_feet: 70 },
         doors: 2,
         windows: 1
       },
-      { 
-        name: 'Bathrooms (2)', 
+      {
+        name: 'Bathrooms (2)',
         walls: { width: 30, height: 10, sqft: 300 },
         ceiling: { width: 10, height: 12, sqft: 120 },
         trim: { linear_feet: 60 },
@@ -390,7 +390,7 @@ export class MockApiService {
   async searchContacts(query: string): Promise<any[]> {
     await delay(300);
     const lowercaseQuery = query.toLowerCase();
-    return mockCustomers.filter(customer => 
+    return mockCustomers.filter(customer =>
       customer.Name.toLowerCase().includes(lowercaseQuery) ||
       customer.Email?.toLowerCase().includes(lowercaseQuery) ||
       customer.Phone?.includes(query) ||
@@ -401,7 +401,7 @@ export class MockApiService {
   async searchAccounts(query: string): Promise<any[]> {
     await delay(300);
     const lowercaseQuery = query.toLowerCase();
-    return mockAccounts.filter(account => 
+    return mockAccounts.filter(account =>
       account.Name.toLowerCase().includes(lowercaseQuery) ||
       account.Phone?.includes(query) ||
       account.BillingCity?.toLowerCase().includes(lowercaseQuery)

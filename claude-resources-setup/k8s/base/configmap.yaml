@@ -8,38 +8,38 @@ data:
   ENVIRONMENT: "production"
   LOG_LEVEL: "INFO"
   DEBUG: "false"
-  
+
   # Server configuration
   HOST: "0.0.0.0"
   PORT: "8000"
   WORKERS: "4"
-  
+
   # Database configuration
   DB_POOL_SIZE: "20"
   DB_MAX_OVERFLOW: "30"
   DB_POOL_TIMEOUT: "30"
   DB_POOL_RECYCLE: "3600"
-  
-  # Redis configuration  
+
+  # Redis configuration
   REDIS_MAX_CONNECTIONS: "100"
   REDIS_CONNECTION_TIMEOUT: "5"
   REDIS_SOCKET_TIMEOUT: "5"
-  
+
   # Security configuration
   CORS_ORIGINS: '["https://claude-resources.candlefish.ai", "https://app.candlefish.ai"]'
   ALLOWED_HOSTS: '["claude-resources.candlefish.ai", "app.candlefish.ai"]'
   SECURE_COOKIES: "true"
   SESSION_TIMEOUT: "3600"
-  
+
   # Rate limiting
   RATE_LIMIT_REQUESTS: "100"
   RATE_LIMIT_WINDOW: "60"
-  
+
   # Monitoring and observability
   METRICS_ENABLED: "true"
   METRICS_PORT: "9090"
   HEALTH_CHECK_INTERVAL: "30"
-  
+
   # Feature flags
   ENABLE_WEBSOCKETS: "true"
   ENABLE_API_DOCS: "false"
@@ -78,7 +78,7 @@ data:
         # API routes
         location /api/ {
             limit_req zone=api burst=20 nodelay;
-            
+
             proxy_pass http://backend;
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
@@ -88,7 +88,7 @@ data:
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
             proxy_cache_bypass $http_upgrade;
-            
+
             proxy_connect_timeout 60s;
             proxy_send_timeout 60s;
             proxy_read_timeout 60s;
@@ -104,7 +104,7 @@ data:
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
-            
+
             proxy_connect_timeout 7d;
             proxy_send_timeout 7d;
             proxy_read_timeout 7d;

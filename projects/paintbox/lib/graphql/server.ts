@@ -62,7 +62,7 @@ const createPubSub = () => {
 // Authentication middleware
 const getUser = async (req: express.Request) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
-  
+
   if (!token) {
     return null;
   }
@@ -171,7 +171,7 @@ const createApolloServer = async (): Promise<ApolloServer> => {
     // Schema configuration
     schema: ENABLE_FEDERATION ? createFederatedSchema() : createStandaloneSchema(),
     gateway: ENABLE_FEDERATION ? createGateway() : undefined,
-    
+
     // Context function
     context: async ({ req, connection }) => {
       // For subscriptions (WebSocket)
@@ -225,14 +225,14 @@ const createApolloServer = async (): Promise<ApolloServer> => {
           };
         },
       },
-      
+
       // Performance monitoring
       {
         requestDidStart() {
           return {
             willSendResponse({ response, context }) {
               if (context.user?.roles.includes('admin')) {
-                response.http?.headers.set('X-Query-Complexity', 
+                response.http?.headers.set('X-Query-Complexity',
                   response.extensions?.complexity?.toString() || '0');
               }
             },
@@ -244,12 +244,12 @@ const createApolloServer = async (): Promise<ApolloServer> => {
     // Error handling
     formatError: (error) => {
       console.error('GraphQL Error:', error);
-      
+
       // Don't leak internal errors in production
       if (ENV === 'production' && !error.message.includes('Authentication')) {
         return new Error('Internal server error');
       }
-      
+
       return error;
     },
 
@@ -274,11 +274,11 @@ const createSubscriptionServer = (server: any, schema: GraphQLSchema) => {
       schema,
       execute,
       subscribe,
-      
+
       // Connection lifecycle
       onConnect: async (connectionParams, webSocket, context) => {
         console.log('WebSocket client connected');
-        
+
         // Authentication for subscriptions
         const token = connectionParams?.authorization?.replace('Bearer ', '');
         const user = token ? await getUser({ headers: { authorization: `Bearer ${token}` } } as any) : null;
@@ -381,8 +381,8 @@ export const startServer = async (): Promise<void> => {
     await apolloServer.start();
 
     // Apply Apollo Server middleware
-    apolloServer.applyMiddleware({ 
-      app, 
+    apolloServer.applyMiddleware({
+      app,
       path: '/graphql',
       cors: {
         origin: ENV === 'production' ? process.env.ALLOWED_ORIGINS?.split(',') : true,
@@ -395,9 +395,9 @@ export const startServer = async (): Promise<void> => {
 
     // Start HTTP server
     const httpServer = createServer(app);
-    
+
     // Setup subscriptions if enabled
-    const subscriptionServer = ENABLE_SUBSCRIPTIONS 
+    const subscriptionServer = ENABLE_SUBSCRIPTIONS
       ? createSubscriptionServer(httpServer, apolloServer.schema!)
       : null;
 
@@ -405,7 +405,7 @@ export const startServer = async (): Promise<void> => {
       console.log(`🚀 GraphQL Server ready at http://localhost:${PORT}${apolloServer.graphqlPath}`);
       console.log(`🏥 Health check available at http://localhost:${PORT}/health`);
       console.log(`📊 Metrics available at http://localhost:${PORT}/metrics`);
-      
+
       if (subscriptionServer) {
         console.log(`🔗 Subscriptions ready at ws://localhost:${PORT}${apolloServer.graphqlPath}`);
       }
@@ -420,15 +420,15 @@ export const startServer = async (): Promise<void> => {
     // Graceful shutdown
     const gracefulShutdown = async (signal: string) => {
       console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
-      
+
       try {
         if (subscriptionServer) {
           subscriptionServer.close();
         }
-        
+
         await apolloServer.stop();
         httpServer.close();
-        
+
         // Cleanup services
         await services.discovery.cleanup();
         await services.monitoring.cleanup();

@@ -5,7 +5,7 @@ const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION 
 
 export const handler = async (event) => {
   console.log('Starting monthly secret rotation...');
-  
+
   try {
     // List all secrets with our prefix
     const listCommand = new ListSecretsCommand({
@@ -16,12 +16,12 @@ export const handler = async (event) => {
         }
       ]
     });
-    
+
     const listResult = await secretsClient.send(listCommand);
     const secretsToRotate = listResult.SecretList.filter(s => s.RotationEnabled);
-    
+
     console.log(`Found ${secretsToRotate.length} secrets to rotate`);
-    
+
     const results = [];
     for (const secret of secretsToRotate) {
       try {
@@ -29,14 +29,14 @@ export const handler = async (event) => {
           SecretId: secret.ARN,
           ClientRequestToken: `rotation-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
         });
-        
+
         await secretsClient.send(rotateCommand);
-        
+
         results.push({
           name: secret.Name,
           status: 'rotated',
         });
-        
+
         await logAudit({
           action: 'SECRET_ROTATED',
           resource: secret.Name,
@@ -51,7 +51,7 @@ export const handler = async (event) => {
         });
       }
     }
-    
+
     return {
       statusCode: 200,
       body: JSON.stringify({

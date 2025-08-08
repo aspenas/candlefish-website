@@ -9,9 +9,9 @@ interface LogoProps {
   animated?: boolean;
 }
 
-export function Logo({ 
-  variant = 'horizontal', 
-  size = 'md', 
+export function Logo({
+  variant = 'horizontal',
+  size = 'md',
   className = '',
   showText = true,
   animated = true
@@ -22,7 +22,7 @@ export function Logo({
     md: { width: 48, height: 48, fontSize: '1.25rem' },
     lg: { width: 64, height: 64, fontSize: '1.5rem' },
     xl: { width: 160, height: 160, fontSize: '2rem' }
-  };
+  } as const;
 
   const { width, height, fontSize } = sizeMap[size];
 
@@ -44,7 +44,7 @@ export function Logo({
       <div className={logoClasses}>
         <div className={logoMarkClasses}>
           <Image
-            src="/logo/candlefish_highquality.png"
+            src="/logo/candlefish_original.png"
             alt="Candlefish AI"
             width={width}
             height={height}
@@ -59,9 +59,9 @@ export function Logo({
   if (variant === 'stacked') {
     return (
       <div className={logoClasses}>
-        <div className={logoMarkClasses}>
+      <div className={logoMarkClasses}>
           <Image
-            src="/logo/candlefish_highquality.png"
+            src="/logo/candlefish_original.png"
             alt="Candlefish AI"
             width={width}
             height={height}
@@ -83,7 +83,7 @@ export function Logo({
     <div className={logoClasses}>
       <div className={logoMarkClasses}>
         <Image
-          src="/logo_candlefish.png"
+          src="/logo/candlefish_original.png"
           alt="Candlefish AI"
           width={width}
           height={height}

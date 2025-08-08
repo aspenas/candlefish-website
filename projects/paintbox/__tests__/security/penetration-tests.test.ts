@@ -6,13 +6,13 @@ global.fetch = jest.fn() as jest.MockedFunction<typeof fetch>
 
 describe('Security Penetration Tests', () => {
   const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>
-  
+
   beforeEach(() => {
     jest.clearAllMocks()
   })
 
   afterEach(() => {
-    jest.restoreAllMocks()  
+    jest.restoreAllMocks()
   })
 
   describe('SQL Injection Attacks', () => {
@@ -48,13 +48,13 @@ describe('Security Penetration Tests', () => {
 
         // Should reject SQL injection attempts
         expect(response.status).toBe(400)
-        
+
         const responseBody = await response.json()
-        
+
         // Should not contain SQL keywords in error messages
         const responseText = JSON.stringify(responseBody)
         expect(responseText.toLowerCase()).not.toMatch(/drop|insert|select|union|delete/)
-        
+
         // Should indicate invalid input rather than specific SQL error
         expect(responseBody.error).toMatch(/invalid.*input|validation.*error/i)
       }
@@ -85,11 +85,11 @@ describe('Security Penetration Tests', () => {
         // Should either sanitize the query or return empty results
         if (response.ok) {
           const data = await response.json()
-          
+
           // Should return structured data, not SQL injection results
           expect(data).toHaveProperty('events')
           expect(Array.isArray(data.events)).toBe(true)
-          
+
           // Should not return sensitive information that wouldn't normally be in audit logs
           const responseText = JSON.stringify(data)
           expect(responseText).not.toMatch(/password|secret|key.*[a-zA-Z0-9]{16,}/)
@@ -110,7 +110,7 @@ describe('Security Penetration Tests', () => {
 
       for (const payload of blindSqlPayloads) {
         const startTime = Date.now()
-        
+
         mockFetch.mockResolvedValueOnce({
           ok: false,
           status: 400,
@@ -131,7 +131,7 @@ describe('Security Penetration Tests', () => {
 
         // Should not execute SQL delays or take longer than normal
         expect(responseTime).toBeLessThan(1000)
-        
+
         // Should reject with standard error
         expect(response.status).toBe(400)
       }
@@ -173,12 +173,12 @@ describe('Security Penetration Tests', () => {
         if (response.ok) {
           const data = await response.json()
           const responseText = JSON.stringify(data)
-          
+
           // Should not contain unescaped script tags
           expect(responseText).not.toMatch(/<script[^>]*>.*<\/script>/i)
           expect(responseText).not.toMatch(/javascript:/i)
           expect(responseText).not.toMatch(/on\w+\s*=/i) // Event handlers
-          
+
           // Should contain escaped or sanitized version
           if (responseText.includes('script')) {
             expect(responseText).toMatch(/&lt;script|\\u003cscript|&amp;lt;script/)
@@ -205,7 +205,7 @@ describe('Security Penetration Tests', () => {
 
         await fetch('/api/v1/user/profile', {
           method: 'POST',
-          headers: { 
+          headers: {
             'Authorization': 'Bearer test-token',
             'Content-Type': 'application/json'
           },
@@ -227,7 +227,7 @@ describe('Security Penetration Tests', () => {
         })
 
         const data = await response.json()
-        
+
         // Should sanitize stored content
         expect(data.displayName).not.toMatch(/<script[^>]*>.*<\/script>/i)
         expect(data.displayName).not.toMatch(/javascript:/i)
@@ -268,7 +268,7 @@ describe('Security Penetration Tests', () => {
 
         // Check if scripts would execute (in a real DOM they shouldn't due to CSP)
         const content = dom.window.document.getElementById('content')?.innerHTML
-        
+
         if (content) {
           // Should not contain executable script tags
           expect(content).not.toMatch(/<script[^>]*>.*<\/script>/i)
@@ -306,7 +306,7 @@ describe('Security Penetration Tests', () => {
 
         // Should reject requests without CSRF token
         expect(response.status).toBe(403)
-        
+
         const errorData = await response.json()
         expect(errorData.error).toMatch(/csrf|token.*required/i)
       }
@@ -339,7 +339,7 @@ describe('Security Penetration Tests', () => {
         })
 
         expect(response.status).toBe(403)
-        
+
         const errorData = await response.json()
         expect(errorData.error).toMatch(/invalid.*csrf|token.*invalid/i)
       }
@@ -373,10 +373,10 @@ describe('Security Penetration Tests', () => {
       const manipulatedTokens = [
         // Modified signature
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.manipulated-signature',
-        
+
         // Algorithm confusion
         'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.',
-        
+
         // Expired token
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwMjJ9.expired-token',
       ]
@@ -401,7 +401,7 @@ describe('Security Penetration Tests', () => {
     it('should prevent privilege escalation attacks', async () => {
       // Simulate regular user token
       const userToken = 'user-token-123'
-      
+
       const adminEndpoints = [
         '/api/v1/admin/users',
         '/api/v1/admin/secrets',
@@ -424,7 +424,7 @@ describe('Security Penetration Tests', () => {
 
         // Should deny access to admin endpoints
         expect(response.status).toBe(403)
-        
+
         const errorData = await response.json()
         expect(errorData.error).toMatch(/insufficient.*privileges|access.*denied/i)
       }
@@ -556,7 +556,7 @@ describe('Security Penetration Tests', () => {
         mockFetch.mockResolvedValueOnce({
           ok: false,
           status: 404,
-          json: () => Promise.resolve({ 
+          json: () => Promise.resolve({
             error: 'Resource not found',
             // Should NOT include: stack traces, file paths, database errors, etc.
           })
@@ -596,7 +596,7 @@ describe('Security Penetration Tests', () => {
       })
 
       const headers = response.headers
-      
+
       // Should not expose detailed server information
       expect(headers.get('x-powered-by')).not.toMatch(/express|node\.js|php/i)
       expect(headers.get('server')).not.toMatch(/apache\/\d|nginx\/\d|iis\/\d/i)
@@ -622,7 +622,7 @@ describe('Security Penetration Tests', () => {
 
         // Should not return directory listings
         expect([403, 404]).toContain(response.status)
-        
+
         if (response.ok) {
           const text = await response.text()
           expect(text).not.toMatch(/Index of|Directory listing/)
@@ -634,7 +634,7 @@ describe('Security Penetration Tests', () => {
   describe('Business Logic Vulnerabilities', () => {
     it('should prevent race condition attacks', async () => {
       // Simulate concurrent requests that could cause race conditions
-      const concurrentRequests = Array.from({ length: 10 }, () => 
+      const concurrentRequests = Array.from({ length: 10 }, () =>
         fetch('/api/v1/secrets/rotate', {
           method: 'POST',
           headers: {
@@ -646,10 +646,10 @@ describe('Security Penetration Tests', () => {
       )
 
       // Mock responses - should handle concurrent requests safely
-      mockFetch.mockImplementation(() => 
+      mockFetch.mockImplementation(() =>
         Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ 
+          json: () => Promise.resolve({
             success: true,
             rotationId: 'unique-rotation-id'
           })
@@ -657,7 +657,7 @@ describe('Security Penetration Tests', () => {
       )
 
       const responses = await Promise.all(concurrentRequests)
-      
+
       // Should handle concurrent requests without corruption
       responses.forEach(response => {
         expect([200, 409, 429]).toContain(response.status) // Success, conflict, or rate limited
@@ -666,7 +666,7 @@ describe('Security Penetration Tests', () => {
 
     it('should prevent workflow bypass attacks', async () => {
       // Try to skip required steps in secret rotation workflow
-      
+
       // Step 1: Should require initialization
       mockFetch.mockResolvedValueOnce({
         ok: false,
@@ -698,7 +698,7 @@ describe('Security Penetration Tests', () => {
           'Authorization': 'Bearer test-token',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           secretName: 'test-secret',
           skipApproval: true // Malicious parameter
         })
@@ -734,7 +734,7 @@ describe('Security Penetration Tests', () => {
 
         if (response.ok) {
           const data = await response.json()
-          
+
           // Should handle parameter pollution safely
           expect(data).toHaveProperty('events')
           expect(Array.isArray(data.events)).toBe(true)
@@ -830,7 +830,7 @@ describe('Security Penetration Tests', () => {
 
         // Should not take excessive time to process
         expect(responseTime).toBeLessThan(2000)
-        
+
         // Should reject or handle complex input safely
         expect([200, 400, 413, 422]).toContain(response.status)
       }
@@ -860,7 +860,7 @@ describe('Security Penetration Tests', () => {
       })
 
       const setCookieHeader = response.headers.get('Set-Cookie')
-      
+
       if (setCookieHeader) {
         expect(setCookieHeader).toMatch(/HttpOnly/i)
         expect(setCookieHeader).toMatch(/Secure/i)
@@ -891,7 +891,7 @@ describe('Security Penetration Tests', () => {
       })
 
       const newSessionCookie = response.headers.get('Set-Cookie')
-      
+
       // Should issue new session ID, not use the provided one
       if (newSessionCookie) {
         expect(newSessionCookie).not.toContain('attacker-controlled-session-id')
@@ -938,7 +938,7 @@ describe('Automated Security Scanning Simulation', () => {
         })
 
         const passed = check.expectedStatus.includes(response.status)
-        
+
         results.push({
           category: check.category,
           passed,
@@ -958,7 +958,7 @@ describe('Automated Security Scanning Simulation', () => {
     const totalChecks = results.length
 
     console.log(`OWASP Top 10 Security Check Results: ${passedChecks}/${totalChecks} passed`)
-    
+
     results.forEach(result => {
       console.log(`${result.category}: ${result.passed ? '✅ PASS' : '❌ FAIL'}`)
     })

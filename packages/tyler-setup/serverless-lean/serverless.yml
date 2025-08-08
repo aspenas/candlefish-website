@@ -7,13 +7,13 @@ provider:
   region: ${opt:region, 'us-east-1'}
   memorySize: 512  # Small memory for cost savings
   timeout: 30
-  
+
   environment:
     STAGE: ${self:provider.stage}
     SECRETS_PREFIX: ${self:service}-${self:provider.stage}
     ENABLE_CONTRACTOR_ACCESS: true
     MAX_TEAM_SIZE: 20
-    
+
   iam:
     role:
       statements:
@@ -24,7 +24,7 @@ provider:
             - secretsmanager:UpdateSecret
             - secretsmanager:RotateSecret
             - secretsmanager:ListSecrets
-          Resource: 
+          Resource:
             - arn:aws:secretsmanager:${self:provider.region}:*:secret:${self:service}-${self:provider.stage}/*
         - Effect: Allow
           Action:
@@ -55,7 +55,7 @@ functions:
           path: /health
           method: get
           cors: true
-  
+
   # Authentication - Called rarely
   auth:
     handler: src/handlers/auth.handler
@@ -72,7 +72,7 @@ functions:
           path: /auth/logout
           method: post
           cors: true
-  
+
   # Employee/Contractor Management
   manageUsers:
     handler: src/handlers/users.handler
@@ -102,7 +102,7 @@ functions:
           method: delete
           cors: true
           authorizer: authVerify
-  
+
   # Contractor Temporary Access
   contractorAccess:
     handler: src/handlers/contractors.handler
@@ -121,7 +121,7 @@ functions:
           method: post
           cors: true
           authorizer: authVerify
-  
+
   # AWS Secrets Manager Interface
   secrets:
     handler: src/handlers/secrets.handler
@@ -152,7 +152,7 @@ functions:
           method: delete
           cors: true
           authorizer: authVerify
-  
+
   # Secret Rotation - Runs monthly
   rotateSecrets:
     handler: src/handlers/rotation.handler
@@ -160,7 +160,7 @@ functions:
       - schedule:
           rate: rate(30 days)
           description: Rotate secrets monthly
-  
+
   # Configuration Management
   config:
     handler: src/handlers/config.handler
@@ -175,7 +175,7 @@ functions:
           method: put
           cors: true
           authorizer: authVerify
-  
+
   # Claude Integration (via stored prompts, no API calls)
   claudeAssist:
     handler: src/handlers/claude.handler
@@ -191,7 +191,7 @@ functions:
           method: post
           cors: true
           authorizer: authVerify
-  
+
   # Audit Logging
   auditLog:
     handler: src/handlers/audit.handler
@@ -201,11 +201,11 @@ functions:
           method: get
           cors: true
           authorizer: authVerify
-  
+
   # Custom Authorizer
   authVerify:
     handler: src/handlers/authorizer.handler
-    
+
   # Cleanup expired contractor access (daily)
   cleanupContractors:
     handler: src/handlers/cleanup.handler
@@ -243,7 +243,7 @@ resources:
           PointInTimeRecoveryEnabled: true
         SSESpecification:
           SSEEnabled: true
-    
+
     ContractorsTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -275,7 +275,7 @@ resources:
         TimeToLiveSpecification:
           AttributeName: ttl
           Enabled: true
-    
+
     RefreshTokensTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -305,7 +305,7 @@ resources:
           Enabled: true
         SSESpecification:
           SSEEnabled: true
-    
+
     AuditTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -336,7 +336,7 @@ resources:
                 KeyType: RANGE
             Projection:
               ProjectionType: ALL
-    
+
     ConfigTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -350,7 +350,7 @@ resources:
             KeyType: HASH
         SSESpecification:
           SSEEnabled: true
-    
+
     # S3 Bucket for static hosting (frontend)
     WebsiteBucket:
       Type: AWS::S3::Bucket
@@ -374,7 +374,7 @@ resources:
                 - GET
                 - HEAD
               MaxAge: 3000
-    
+
     WebsiteBucketPolicy:
       Type: AWS::S3::BucketPolicy
       Properties:
@@ -387,7 +387,7 @@ resources:
               Action:
                 - s3:GetObject
               Resource: !Sub '${WebsiteBucket.Arn}/*'
-    
+
 
   Outputs:
     ApiEndpoint:
@@ -403,13 +403,13 @@ resources:
             - ${self:provider.stage}
       Export:
         Name: ${self:service}-${self:provider.stage}-api-endpoint
-    
+
     WebsiteURL:
       Description: S3 Website URL
       Value: !GetAtt WebsiteBucket.WebsiteURL
       Export:
         Name: ${self:service}-${self:provider.stage}-website-url
-    
+
     S3BucketName:
       Description: S3 bucket for static website
       Value: !Ref WebsiteBucket
@@ -427,11 +427,11 @@ custom:
     includeModules: true
     packager: npm
     excludeFiles: '**/*.test.js'
-  
+
   serverless-offline:
     httpPort: 3000
     lambdaPort: 3001
-  
+
   dynamodb:
     stages:
       - dev

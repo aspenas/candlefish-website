@@ -46,31 +46,31 @@
   [headers.values]
     # Prevent clickjacking attacks
     X-Frame-Options = "DENY"
-    
+
     # Prevent MIME type sniffing
     X-Content-Type-Options = "nosniff"
-    
+
     # Enable XSS filter (legacy browsers)
     X-XSS-Protection = "1; mode=block"
-    
+
     # Control information sent with referrers
     Referrer-Policy = "strict-origin-when-cross-origin"
-    
+
     # Feature Policy / Permissions Policy
     Permissions-Policy = '''
-      camera=(), 
-      microphone=(), 
-      geolocation=(), 
-      payment=(), 
-      usb=(), 
-      magnetometer=(), 
-      gyroscope=(), 
+      camera=(),
+      microphone=(),
+      geolocation=(),
+      payment=(),
+      usb=(),
+      magnetometer=(),
+      gyroscope=(),
       accelerometer=()
     '''
-    
+
     # Force HTTPS with HSTS
     Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
-    
+
     # Content Security Policy
     Content-Security-Policy = '''
       default-src 'self';
@@ -90,7 +90,7 @@
       manifest-src 'self';
       upgrade-insecure-requests;
     '''
-    
+
     # Additional security headers
     X-DNS-Prefetch-Control = "on"
     X-Permitted-Cross-Domain-Policies = "none"
@@ -200,7 +200,7 @@
   package = "@netlify/plugin-lighthouse"
   [plugins.inputs]
     output_path = "reports/lighthouse.html"
-    
+
 # Form handling with spam protection
 [forms]
   honeypot = "website"

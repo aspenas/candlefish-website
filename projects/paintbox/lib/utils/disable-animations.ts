@@ -4,12 +4,12 @@ export const isAnimationEnabled = () => {
   if (typeof window === 'undefined') {
     return false;
   }
-  
+
   // Enable in development
   if (process.env.NODE_ENV === 'development') {
     return true;
   }
-  
+
   // Disable in production for now
   return false;
 };

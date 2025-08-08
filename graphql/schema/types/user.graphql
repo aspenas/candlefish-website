@@ -1,0 +1,149 @@
+# User and Authentication Types
+type User @key(fields: "id") @auth(requires: USER) {
+  id: UUID!
+  email: EmailAddress!
+  firstName: NonEmptyString!
+  lastName: NonEmptyString!
+  avatar: URL
+  role: UserRole!
+  status: UserStatus!
+  preferences: UserPreferences
+  organizations: [OrganizationMembership!]! @tenant
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  lastLoginAt: DateTime
+  timezone: String
+  locale: String
+
+  # Analytics and Activity
+  activityLogs: [ActivityLog!]! @tenant @complexity(value: 10)
+  dashboards: [Dashboard!]! @tenant @complexity(value: 5)
+  widgets: [Widget!]! @tenant @complexity(value: 5)
+
+  # Notifications
+  notifications: [Notification!]! @tenant
+  notificationSettings: NotificationSettings
+}
+
+type OrganizationMembership @tenant {
+  id: UUID!
+  user: User!
+  organization: Organization!
+  role: OrganizationRole!
+  permissions: [Permission!]!
+  invitedBy: User
+  joinedAt: DateTime!
+  isActive: Boolean!
+}
+
+type UserPreferences {
+  theme: Theme!
+  language: String!
+  timezone: String!
+  dateFormat: String!
+  currency: Currency!
+  dashboardLayout: DashboardLayout!
+  emailNotifications: Boolean!
+  pushNotifications: Boolean!
+  analyticsPreferences: AnalyticsPreferences
+}
+
+type AnalyticsPreferences {
+  defaultTimeRange: TimeRange!
+  defaultChartType: ChartType!
+  autoRefresh: Boolean!
+  refreshInterval: PositiveInt
+  showTooltips: Boolean!
+  enableAnimations: Boolean!
+  colorScheme: ColorScheme!
+}
+
+type ActivityLog @tenant {
+  id: UUID!
+  user: User!
+  action: ActivityAction!
+  resource: String
+  resourceId: UUID
+  metadata: JSON
+  ipAddress: String
+  userAgent: String
+  createdAt: DateTime!
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  MANAGER
+  ANALYST
+  VIEWER
+}
+
+enum Theme {
+  LIGHT
+  DARK
+  AUTO
+}
+
+enum DashboardLayout {
+  GRID
+  FLUID
+  MASONRY
+}
+
+enum ActivityAction {
+  LOGIN
+  LOGOUT
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  EXPORT
+  SHARE
+  DASHBOARD_VIEW
+  WIDGET_INTERACTION
+  FILTER_APPLIED
+  QUERY_EXECUTED
+}
+
+enum TimeRange {
+  HOUR
+  DAY
+  WEEK
+  MONTH
+  QUARTER
+  YEAR
+  CUSTOM
+}
+
+enum ChartType {
+  LINE
+  BAR
+  PIE
+  DOUGHNUT
+  AREA
+  SCATTER
+  FUNNEL
+  GAUGE
+  TABLE
+  METRIC
+}
+
+enum ColorScheme {
+  DEFAULT
+  VIBRANT
+  PASTEL
+  MONOCHROME
+  CUSTOM
+}

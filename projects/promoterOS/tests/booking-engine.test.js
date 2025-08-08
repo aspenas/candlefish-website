@@ -96,7 +96,7 @@ describe('BookingRecommendationEngine', () => {
       };
 
       const result = engine.calculateMomentumScore(explosiveMetrics);
-      
+
       expect(result.score).toBeGreaterThan(90);
       expect(result.trend_direction).toBe('EXPLOSIVE');
       expect(result.momentum_sustainability).toBe('HIGH');
@@ -116,7 +116,7 @@ describe('BookingRecommendationEngine', () => {
       };
 
       const result = engine.calculateMarketScore(excellentMarketFit);
-      
+
       expect(result.score).toBeGreaterThan(75);
       expect(['PRIME', 'READY', 'DEVELOPING', 'EARLY']).toContain(result.market_readiness);
       expect(result.components.market_opportunity).toBeGreaterThan(60); // Low penetration = high opportunity
@@ -220,7 +220,7 @@ describe('BookingRecommendationEngine', () => {
         .toBeLessThan(projections.revenue_breakdown.total_revenue);
       expect(projections.profitability.profit_margin).toBeGreaterThan(0);
       expect(projections.profitability.break_even_attendance).toBeGreaterThan(0);
-      
+
       // Sensitivity analysis should show variance
       expect(projections.sensitivity_analysis.conservative_scenario)
         .toBeLessThan(projections.sensitivity_analysis.expected_scenario);
@@ -260,7 +260,7 @@ describe('Booking Score API Handler', () => {
     const result = await handler(mockEvent, {});
 
     expect(result.statusCode).toBe(200);
-    
+
     const response = JSON.parse(result.body);
     expect(response.success).toBe(true);
     expect(response.data).toHaveProperty('booking_score');

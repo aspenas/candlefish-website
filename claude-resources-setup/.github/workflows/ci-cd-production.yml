@@ -9,7 +9,7 @@ on:
   pull_request:
     branches: [main]
     paths-ignore:
-      - '**.md'  
+      - '**.md'
       - 'docs/**'
 
 env:
@@ -54,7 +54,7 @@ jobs:
     name: Test Suite
     runs-on: ubuntu-latest
     needs: [security-scan]
-    
+
     services:
       postgres:
         image: postgres:15
@@ -115,7 +115,7 @@ jobs:
           REDIS_URL: redis://localhost:6379
         run: |
           pytest --cov=src --cov-report=xml --cov-report=html
-          
+
       - name: Run frontend tests
         run: |
           pnpm test -- --coverage --watchAll=false
@@ -207,11 +207,11 @@ jobs:
           curl -LO https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64
           chmod +x container-structure-test-linux-amd64
           sudo mv container-structure-test-linux-amd64 /usr/local/bin/container-structure-test
-          
+
           # Test backend container
           container-structure-test test --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:latest --config tests/backend-structure-test.yaml
-          
-          # Test frontend container  
+
+          # Test frontend container
           container-structure-test test --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:latest --config tests/frontend-structure-test.yaml
 
   deploy-staging:
@@ -220,7 +220,7 @@ jobs:
     needs: [build]
     if: github.ref == 'refs/heads/main'
     environment: staging
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -243,7 +243,7 @@ jobs:
           # Update image tags in staging manifests
           sed -i 's|IMAGE_TAG_BACKEND|${{ needs.build.outputs.backend-image }}|g' k8s/staging/backend-deployment.yaml
           sed -i 's|IMAGE_TAG_FRONTEND|${{ needs.build.outputs.frontend-image }}|g' k8s/staging/frontend-deployment.yaml
-          
+
           # Apply staging manifests
           kubectl apply -f k8s/staging/ --record
           kubectl rollout status deployment/backend-staging -n staging
@@ -253,7 +253,7 @@ jobs:
         run: |
           # Wait for deployment to be ready
           sleep 30
-          
+
           # Run smoke tests against staging environment
           pytest tests/smoke/ --base-url=https://staging.claude-resources.candlefish.ai
 
@@ -263,7 +263,7 @@ jobs:
     needs: [build, deploy-staging]
     if: github.ref == 'refs/heads/main'
     environment: production
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -292,17 +292,17 @@ jobs:
           # Update image tags in production manifests
           sed -i 's|IMAGE_TAG_BACKEND|${{ needs.build.outputs.backend-image }}|g' k8s/production/backend-deployment.yaml
           sed -i 's|IMAGE_TAG_FRONTEND|${{ needs.build.outputs.frontend-image }}|g' k8s/production/frontend-deployment.yaml
-          
+
           # Deploy to green environment
           kubectl apply -f k8s/production/ --record
-          
+
           # Wait for green deployment to be ready
           kubectl rollout status deployment/backend-production -n production
           kubectl rollout status deployment/frontend-production -n production
-          
+
           # Run health checks
           kubectl exec -n production deployment/backend-production -- curl -f http://localhost:8000/health
-          
+
           # Switch traffic to green (handled by service)
           echo "Production deployment completed successfully"
 
@@ -310,10 +310,10 @@ jobs:
         run: |
           # Wait for services to stabilize
           sleep 60
-          
+
           # Run comprehensive smoke tests
           pytest tests/smoke/ --base-url=https://claude-resources.candlefish.ai
-          
+
           # Run performance tests
           artillery run tests/performance/load-test.yml
 
@@ -328,7 +328,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [deploy-production]
     if: always() && github.ref == 'refs/heads/main'
-    
+
     steps:
       - name: Delete old container images
         uses: actions/delete-package-versions@v4

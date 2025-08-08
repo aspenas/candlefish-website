@@ -6,7 +6,7 @@ export const ValidationMessage = ({ type = 'success', message }: any) => {
     error: 'text-red-600 bg-red-50',
     warning: 'text-yellow-600 bg-yellow-50'
   };
-  
+
   return (
     <div className={`p-3 rounded-md ${colors[type as keyof typeof colors]}`}>
       {message}
@@ -37,7 +37,7 @@ export const ValidationSteps = ({ steps }: any) => {
 
 export const SuccessOverlay = ({ show }: any) => {
   if (!show) return null;
-  
+
   return (
     <div className="fixed inset-0 bg-green-500 bg-opacity-20 flex items-center justify-center">
       <div className="bg-white p-8 rounded-lg shadow-lg">
@@ -49,7 +49,7 @@ export const SuccessOverlay = ({ show }: any) => {
 
 export const InlineValidation = ({ error }: any) => {
   if (!error) return null;
-  
+
   return (
     <span className="text-sm text-red-600 mt-1">{error}</span>
   );

@@ -36,11 +36,11 @@ describe('/api/v1/services/salesforce/auth', () => {
       token_type: 'Bearer',
       expires_in: 3600
     }
-    
+
     mockSalesforceAuth.mockResolvedValue(mockToken)
 
     const { POST } = await import('../../app/api/v1/services/salesforce/auth/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/services/salesforce/auth', {
       method: 'POST',
       headers: {
@@ -67,7 +67,7 @@ describe('/api/v1/services/salesforce/auth', () => {
     mockSalesforceAuth.mockRejectedValue(new Error('INVALID_LOGIN'))
 
     const { POST } = await import('../../app/api/v1/services/salesforce/auth/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/services/salesforce/auth', {
       method: 'POST',
       headers: {
@@ -88,7 +88,7 @@ describe('/api/v1/services/salesforce/auth', () => {
 
   it('should validate and sanitize input credentials', async () => {
     const { POST } = await import('../../app/api/v1/services/salesforce/auth/route')
-    
+
     // Test various malicious inputs
     const maliciousInputs = [
       // SQL injection in username
@@ -112,7 +112,7 @@ describe('/api/v1/services/salesforce/auth', () => {
       })
 
       const response = await POST(request)
-      
+
       // Should reject malicious inputs
       expect([400, 401, 403]).toContain(response.status)
     }
@@ -120,14 +120,14 @@ describe('/api/v1/services/salesforce/auth', () => {
 
   it('should enforce rate limiting on authentication attempts', async () => {
     // Mock rate limiter to deny request
-    mockRateLimiter.check.mockResolvedValue({ 
-      allowed: false, 
-      remaining: 0, 
+    mockRateLimiter.check.mockResolvedValue({
+      allowed: false,
+      remaining: 0,
       resetTime: Date.now() + 300000 // 5 minutes
     })
 
     const { POST } = await import('../../app/api/v1/services/salesforce/auth/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/services/salesforce/auth', {
       method: 'POST',
       headers: {
@@ -150,11 +150,11 @@ describe('/api/v1/services/salesforce/auth', () => {
 
   it('should not log sensitive information', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
-    
+
     mockSalesforceAuth.mockRejectedValue(new Error('Authentication failed'))
 
     const { POST } = await import('../../app/api/v1/services/salesforce/auth/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/services/salesforce/auth', {
       method: 'POST',
       headers: {
@@ -174,7 +174,7 @@ describe('/api/v1/services/salesforce/auth', () => {
     const logCalls = consoleSpy.mock.calls.flat().join(' ')
     expect(logCalls).not.toContain('secretpassword123')
     expect(logCalls).not.toContain('supersecrettoken')
-    
+
     consoleSpy.mockRestore()
   })
 })
@@ -192,11 +192,11 @@ describe('/api/v1/services/companycam/auth', () => {
       expires_in: 7200,
       scope: 'read write'
     }
-    
+
     mockCompanyCamAuth.mockResolvedValue(mockToken)
 
     const { POST } = await import('../../app/api/v1/services/companycam/auth/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/services/companycam/auth', {
       method: 'POST',
       headers: {
@@ -224,11 +224,11 @@ describe('/api/v1/services/companycam/auth', () => {
       token_type: 'Bearer',
       expires_in: 7200
     }
-    
+
     mockCompanyCamAuth.mockResolvedValue(mockToken)
 
     const { POST } = await import('../../app/api/v1/services/companycam/auth/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/services/companycam/auth', {
       method: 'POST',
       headers: {
@@ -254,7 +254,7 @@ describe('/api/v1/services/companycam/auth', () => {
 
   it('should validate redirect URI to prevent open redirect attacks', async () => {
     const { POST } = await import('../../app/api/v1/services/companycam/auth/route')
-    
+
     const maliciousRedirects = [
       'http://evil.com/steal-tokens',
       'javascript:alert("xss")',
@@ -280,7 +280,7 @@ describe('/api/v1/services/companycam/auth', () => {
       })
 
       const response = await POST(request)
-      
+
       // Should reject malicious redirect URIs
       expect([400, 403]).toContain(response.status)
     }
@@ -295,7 +295,7 @@ describe('/api/v1/services/{service}/status', () => {
 
   it('should return Salesforce service status', async () => {
     const { GET } = await import('../../app/api/v1/services/salesforce/status/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/services/salesforce/status', {
       method: 'GET',
       headers: {
@@ -315,7 +315,7 @@ describe('/api/v1/services/{service}/status', () => {
 
   it('should return CompanyCam service status', async () => {
     const { GET } = await import('../../app/api/v1/services/companycam/status/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/services/companycam/status', {
       method: 'GET',
       headers: {
@@ -337,7 +337,7 @@ describe('/api/v1/services/{service}/status', () => {
     jest.setTimeout(5000)
 
     const { GET } = await import('../../app/api/v1/services/salesforce/status/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/services/salesforce/status', {
       method: 'GET',
       headers: {
@@ -355,7 +355,7 @@ describe('/api/v1/services/{service}/status', () => {
 
   it('should not expose internal service details', async () => {
     const { GET } = await import('../../app/api/v1/services/salesforce/status/route')
-    
+
     const request = new NextRequest('http://localhost:3000/api/v1/services/salesforce/status', {
       method: 'GET',
       headers: {

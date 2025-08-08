@@ -1,20 +1,21 @@
 # Security Audit Report: Candlefish.ai React Modernization
 
-**Date:** January 2025  
-**Auditor:** Security Specialist  
-**Project:** Converting static HTML to React 18 with TypeScript  
+**Date:** January 2025
+**Auditor:** Security Specialist
+**Project:** Converting static HTML to React 18 with TypeScript
 **OWASP Compliance:** Based on OWASP Top 10 2021
 
 ## Executive Summary
 
 This security audit evaluates the proposed React modernization of Candlefish.ai, focusing on potential vulnerabilities and security best practices. The analysis covers XSS prevention, secure routing, CSP implementation, dependency security, and OWASP compliance.
 
-**Risk Level:** LOW to MEDIUM  
+**Risk Level:** LOW to MEDIUM
 **Recommendation:** PROCEED with security enhancements
 
 ## 1. XSS (Cross-Site Scripting) Vulnerabilities
 
 ### Current State Analysis
+
 - Static HTML files use inline scripts for GSAP animations
 - Google Analytics tracking script loads from external CDN
 - Email address exposed in plain text: `hello@candlefish.ai`
@@ -36,14 +37,15 @@ export const SafeContent: React.FC<SafeContentProps> = ({ content, allowedTags }
     ALLOWED_TAGS: allowedTags || ['p', 'span', 'strong', 'em'],
     ALLOWED_ATTR: ['class', 'id']
   });
-  
+
   return <div dangerouslySetInnerHTML={{ __html: sanitized }} />;
 };
 ```
 
 ### Severity: MEDIUM
+
 - **Risk:** Dynamic content rendering without sanitization
-- **Mitigation:** 
+- **Mitigation:**
   - Use React's built-in XSS protection (auto-escaping)
   - Implement DOMPurify for any dangerouslySetInnerHTML usage
   - Avoid eval() and Function() constructors
@@ -52,6 +54,7 @@ export const SafeContent: React.FC<SafeContentProps> = ({ content, allowedTags }
 ## 2. Input Validation Requirements
 
 ### Current State
+
 - No input forms detected in current static HTML
 - Contact section only displays email link
 
@@ -66,11 +69,11 @@ const ContactFormSchema = z.object({
     .min(2, 'Name must be at least 2 characters')
     .max(100, 'Name too long')
     .regex(/^[a-zA-Z\s'-]+$/, 'Invalid characters in name'),
-  
+
   email: z.string()
     .email('Invalid email format')
     .max(255, 'Email too long'),
-  
+
   message: z.string()
     .min(10, 'Message must be at least 10 characters')
     .max(5000, 'Message too long')
@@ -85,6 +88,7 @@ const RATE_LIMIT = {
 ```
 
 ### Severity: LOW (currently), HIGH (when forms added)
+
 - **Mitigation:**
   - Implement Zod or Yup for schema validation
   - Add rate limiting with express-rate-limit
@@ -94,6 +98,7 @@ const RATE_LIMIT = {
 ## 3. Secure Routing and 404 Handling
 
 ### Current Implementation
+
 - Basic 404.html with animation
 - Netlify redirect rules in place
 
@@ -143,6 +148,7 @@ export const Error404: React.FC = () => {
 ```
 
 ### Severity: LOW
+
 - **Mitigation:**
   - Implement catch-all routes
   - Avoid exposing system information in errors
@@ -152,6 +158,7 @@ export const Error404: React.FC = () => {
 ## 4. Content Security Policy (CSP) Recommendations
 
 ### Current State
+
 - Basic security headers in netlify.toml
 - No CSP implementation
 
@@ -200,6 +207,7 @@ export default defineConfig({
 ```
 
 ### Severity: HIGH
+
 - **Priority:** Implement comprehensive CSP
 - **Benefits:** Prevents XSS, data injection, clickjacking
 
@@ -222,7 +230,9 @@ export default defineConfig({
 ```
 
 ### Security Recommendations
+
 1. **Run regular audits:**
+
    ```bash
    npm audit
    npm audit fix
@@ -231,6 +241,7 @@ export default defineConfig({
 2. **Use Snyk or Dependabot** for continuous monitoring
 
 3. **Lock dependencies:**
+
    ```json
    {
      "overrides": {
@@ -240,12 +251,14 @@ export default defineConfig({
    ```
 
 ### Severity: MEDIUM
+
 - **Action:** Enable GitHub Dependabot
 - **Schedule:** Weekly dependency updates
 
 ## 6. HTTPS and Secure Communication
 
 ### Current State
+
 - Site uses HTTPS (enforced by Netlify)
 - upgrade-insecure-requests not implemented
 
@@ -292,12 +305,14 @@ apiClient.interceptors.response.use(
 ```
 
 ### Severity: LOW
+
 - **Status:** HTTPS already enforced
 - **Enhancement:** Add HSTS preload
 
 ## 7. Email Protection
 
 ### Current Implementation
+
 - Email exposed in plain text: `hello@candlefish.ai`
 
 ### Secure Implementation
@@ -306,23 +321,23 @@ apiClient.interceptors.response.use(
 // Email obfuscation component
 export const ProtectedEmail: React.FC = () => {
   const [email, setEmail] = useState<string>('');
-  
+
   useEffect(() => {
     // Decode on client-side only
     const encoded = 'aGVsbG9AY2FuZGxlZmlzaC5haQ=='; // base64
     setEmail(atob(encoded));
   }, []);
-  
+
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     if (email) {
       window.location.href = `mailto:${email}`;
     }
   };
-  
+
   return (
-    <a 
-      href="#contact" 
+    <a
+      href="#contact"
       onClick={handleClick}
       aria-label="Contact email"
     >
@@ -333,12 +348,14 @@ export const ProtectedEmail: React.FC = () => {
 ```
 
 ### Severity: LOW
+
 - **Risk:** Email harvesting by bots
 - **Mitigation:** Client-side rendering, obfuscation
 
 ## 8. Third-Party Script Security
 
 ### Current Scripts
+
 - Google Analytics (gtag.js)
 - GSAP animation library
 - Unpkg CDN usage
@@ -351,19 +368,19 @@ export const GoogleAnalytics: React.FC<{ measurementId: string }> = ({ measureme
   useEffect(() => {
     // Only load in production
     if (process.env.NODE_ENV !== 'production') return;
-    
+
     // Create script with nonce
     const script = document.createElement('script');
     script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
     script.async = true;
     script.nonce = getNonce(); // From CSP nonce generator
-    
+
     // Subresource integrity
     script.integrity = 'sha384-...'; // Add actual hash
     script.crossOrigin = 'anonymous';
-    
+
     document.head.appendChild(script);
-    
+
     // Initialize gtag
     window.dataLayer = window.dataLayer || [];
     function gtag() { dataLayer.push(arguments); }
@@ -372,23 +389,25 @@ export const GoogleAnalytics: React.FC<{ measurementId: string }> = ({ measureme
       cookie_flags: 'secure;samesite=strict',
       anonymize_ip: true
     });
-    
+
     return () => {
       document.head.removeChild(script);
     };
   }, [measurementId]);
-  
+
   return null;
 };
 ```
 
 ### Severity: MEDIUM
+
 - **Risk:** Supply chain attacks
 - **Mitigation:** Use SRI, vendor dependencies
 
 ## 9. Authentication & Authorization Requirements
 
 ### Current State
+
 - No authentication required (public site)
 
 ### Future Considerations
@@ -402,15 +421,15 @@ export const secureTokenStorage = {
   setTokens: (access: string, refresh: string) => {
     // Use sessionStorage for sensitive tokens
     sessionStorage.setItem(TOKEN_KEY, access);
-    
+
     // Or use secure cookie
     document.cookie = `${TOKEN_KEY}=${access}; Secure; HttpOnly; SameSite=Strict; Max-Age=3600`;
   },
-  
+
   getAccessToken: (): string | null => {
     return sessionStorage.getItem(TOKEN_KEY);
   },
-  
+
   clearTokens: () => {
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(REFRESH_KEY);
@@ -420,21 +439,23 @@ export const secureTokenStorage = {
 // Protected route wrapper
 export const ProtectedRoute: React.FC<{ children: ReactNode }> = ({ children }) => {
   const token = secureTokenStorage.getAccessToken();
-  
+
   if (!token) {
     return <Navigate to="/login" replace />;
   }
-  
+
   return <>{children}</>;
 };
 ```
 
 ### Severity: N/A (not currently needed)
+
 - **Future:** Implement OAuth2/SAML if needed
 
 ## 10. Data Protection & Privacy
 
 ### GDPR Compliance Checklist
+
 - [ ] Privacy policy page
 - [ ] Cookie consent banner
 - [ ] Data retention policies
@@ -447,14 +468,14 @@ export const ProtectedRoute: React.FC<{ children: ReactNode }> = ({ children }) 
 // Cookie consent component
 export const CookieConsent: React.FC = () => {
   const [consent, setConsent] = useState<boolean | null>(null);
-  
+
   useEffect(() => {
     const stored = localStorage.getItem('cookie_consent');
     if (stored) {
       setConsent(JSON.parse(stored));
     }
   }, []);
-  
+
   const handleAccept = () => {
     localStorage.setItem('cookie_consent', 'true');
     setConsent(true);
@@ -463,7 +484,7 @@ export const CookieConsent: React.FC = () => {
       analytics_storage: 'granted'
     });
   };
-  
+
   const handleDecline = () => {
     localStorage.setItem('cookie_consent', 'false');
     setConsent(false);
@@ -472,9 +493,9 @@ export const CookieConsent: React.FC = () => {
       analytics_storage: 'denied'
     });
   };
-  
+
   if (consent !== null) return null;
-  
+
   return (
     <div className="cookie-banner" role="dialog" aria-label="Cookie consent">
       <p>We use cookies to improve your experience.</p>
@@ -487,12 +508,14 @@ export const CookieConsent: React.FC = () => {
 ```
 
 ### Severity: MEDIUM
+
 - **Legal requirement in EU**
 - **Implementation priority: HIGH**
 
 ## Security Testing Checklist
 
 ### Automated Testing
+
 ```typescript
 // Example security test
 describe('Security Tests', () => {
@@ -501,7 +524,7 @@ describe('Security Tests', () => {
     const { container } = render(<SafeContent content={maliciousInput} />);
     expect(container.innerHTML).not.toContain('<script>');
   });
-  
+
   test('CSP Headers', async () => {
     const response = await fetch('/');
     const csp = response.headers.get('Content-Security-Policy');
@@ -511,6 +534,7 @@ describe('Security Tests', () => {
 ```
 
 ### Manual Testing Checklist
+
 - [ ] Test all input fields with malicious payloads
 - [ ] Verify CSP headers in browser DevTools
 - [ ] Check for console errors/warnings
@@ -522,18 +546,21 @@ describe('Security Tests', () => {
 ## Implementation Priority
 
 ### Phase 1 - Critical (Week 1)
+
 1. Implement CSP headers
 2. Set up dependency scanning
 3. Configure secure build pipeline
 4. Add basic security headers
 
 ### Phase 2 - Important (Week 2)
+
 1. Implement input validation
 2. Add email obfuscation
 3. Set up error boundaries
 4. Configure rate limiting
 
 ### Phase 3 - Enhancement (Week 3)
+
 1. Add cookie consent
 2. Implement SRI for scripts
 3. Set up security monitoring
@@ -569,11 +596,13 @@ export default defineConfig({
 ## Monitoring & Incident Response
 
 ### Recommended Tools
+
 1. **Sentry** - Error tracking and performance
 2. **LogRocket** - Session replay
 3. **Datadog** - APM and security monitoring
 
 ### Security Headers Monitoring
+
 ```typescript
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -590,23 +619,26 @@ app.get('/api/health', (req, res) => {
 
 The React modernization of Candlefish.ai presents minimal security risks in its current form as a static marketing site. However, implementing the recommended security measures will ensure the application remains secure as features are added.
 
-### Key Recommendations:
+### Key Recommendations
+
 1. **Implement comprehensive CSP** - Priority HIGH
-2. **Enable dependency scanning** - Priority HIGH  
+2. **Enable dependency scanning** - Priority HIGH
 3. **Add security headers** - Priority HIGH
 4. **Prepare for future forms** - Priority MEDIUM
 5. **Implement monitoring** - Priority MEDIUM
 
 ### Overall Risk Assessment: LOW to MEDIUM
+
 The modernization can proceed safely with the implementation of recommended security controls. The existing Netlify infrastructure provides good baseline security.
 
-### Next Steps:
+### Next Steps
+
 1. Review and approve security recommendations
 2. Create security implementation tickets
 3. Set up automated security testing
 4. Schedule quarterly security reviews
 
 ---
-**Document Version:** 1.0  
-**Last Updated:** January 2025  
+**Document Version:** 1.0
+**Last Updated:** January 2025
 **Next Review:** April 2025

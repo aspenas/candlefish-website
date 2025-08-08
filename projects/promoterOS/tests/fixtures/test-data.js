@@ -144,7 +144,7 @@ class TestDataFactory {
     };
 
     const baseProfile = profiles[tier];
-    
+
     // Deep merge overrides
     return this.deepMerge(baseProfile, overrides);
   }
@@ -234,7 +234,7 @@ class TestDataFactory {
   static createFinancialScenarios(venueCapacity = 2000) {
     const baseTicketPrice = 50;
     const fillRate = 0.75;
-    
+
     return {
       conservative: {
         ticket_price: baseTicketPrice * 0.8,
@@ -279,7 +279,7 @@ class TestDataFactory {
    */
   static deepMerge(target, source) {
     const result = { ...target };
-    
+
     for (const key in source) {
       if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
         result[key] = this.deepMerge(target[key] || {}, source[key]);
@@ -287,7 +287,7 @@ class TestDataFactory {
         result[key] = source[key];
       }
     }
-    
+
     return result;
   }
 
@@ -297,7 +297,7 @@ class TestDataFactory {
   static createPerformanceTestData(artistCount = 10) {
     const artists = [];
     const tiers = ['high', 'medium', 'low'];
-    
+
     for (let i = 0; i < artistCount; i++) {
       const tier = tiers[i % tiers.length];
       artists.push({
@@ -307,7 +307,7 @@ class TestDataFactory {
         target_date: this.createSeasonalDates().peak_fall
       });
     }
-    
+
     return artists;
   }
 
@@ -321,24 +321,24 @@ class TestDataFactory {
         instagram_followers: 0,
         twitter_followers: 0
       }),
-      
+
       viral_explosion: this.createStreamingData({
         spotify_monthly: 100000000,
         growth_rate: 5.0,
         viral_coefficient: 0.99,
         tiktok_uses: 50000000
       }),
-      
+
       declining_artist: this.createStreamingData({
         growth_rate: -0.3,
         viral_coefficient: 0.1
       }),
-      
+
       venue_mismatch_small: {
         venue_capacity: 50000,
         artist_profile: this.createArtistProfile('low')
       },
-      
+
       venue_mismatch_large: {
         venue_capacity: 200,
         artist_profile: this.createArtistProfile('high')

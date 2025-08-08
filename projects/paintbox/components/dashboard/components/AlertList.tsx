@@ -1,6 +1,6 @@
 /**
  * Alert List Component
- * 
+ *
  * Displays alerts in a list format with severity indicators and actions
  */
 
@@ -9,17 +9,17 @@
 import React from 'react';
 import { useMutation } from '@apollo/client';
 import { Alert, AlertSeverity, AlertStatus } from '@/lib/types/dashboard';
-import { 
+import {
   ExclamationTriangleIcon,
   CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
   EyeSlashIcon,
 } from '@heroicons/react/24/outline';
-import { 
-  ACKNOWLEDGE_ALERT, 
-  RESOLVE_ALERT, 
-  SUPPRESS_ALERT 
+import {
+  ACKNOWLEDGE_ALERT,
+  RESOLVE_ALERT,
+  SUPPRESS_ALERT
 } from '@/lib/graphql/queries';
 import { useDashboard } from '@/lib/context/DashboardContext';
 import { cn } from '@/lib/utils';
@@ -32,11 +32,11 @@ interface AlertListProps {
   onAlertClick?: (alert: Alert) => void;
 }
 
-export function AlertList({ 
-  alerts, 
-  showAll = false, 
-  onViewAll, 
-  onAlertClick 
+export function AlertList({
+  alerts,
+  showAll = false,
+  onViewAll,
+  onAlertClick
 }: AlertListProps) {
   const { updateAlert, addNotification } = useDashboard();
 
@@ -106,7 +106,7 @@ export function AlertList({
 
   const handleAcknowledgeAlert = async (alert: Alert, event: React.MouseEvent) => {
     event.stopPropagation();
-    
+
     try {
       const { data } = await acknowledgeAlert({
         variables: {
@@ -136,7 +136,7 @@ export function AlertList({
 
   const handleResolveAlert = async (alert: Alert, event: React.MouseEvent) => {
     event.stopPropagation();
-    
+
     try {
       const { data } = await resolveAlert({
         variables: {
@@ -166,7 +166,7 @@ export function AlertList({
 
   const handleSuppressAlert = async (alert: Alert, event: React.MouseEvent) => {
     event.stopPropagation();
-    
+
     try {
       const { data } = await suppressAlert({
         variables: {
@@ -214,7 +214,7 @@ export function AlertList({
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-700">
         {alerts.map((alert) => {
           const SeverityIcon = getSeverityIcon(alert.severity);
-          
+
           return (
             <div
               key={alert.id}
@@ -302,7 +302,7 @@ export function AlertList({
                       </button>
                     </>
                   )}
-                  
+
                   {(alert.status === AlertStatus.ACTIVE || alert.status === AlertStatus.ACKNOWLEDGED) && (
                     <button
                       onClick={(e) => handleResolveAlert(alert, e)}

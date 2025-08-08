@@ -33,11 +33,11 @@ export function middleware(request: NextRequest) {
     if (current) {
       if (current.count >= RATE_LIMIT.maxRequestsPerIP) {
         return NextResponse.json(
-          { 
+          {
             error: 'Rate limit exceeded',
             retryAfter: Math.ceil((current.resetTime - now) / 1000)
           },
-          { 
+          {
             status: 429,
             headers: {
               'Retry-After': String(Math.ceil((current.resetTime - now) / 1000)),

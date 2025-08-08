@@ -1,0 +1,317 @@
+# Organization and Multi-tenancy Types
+type Organization @key(fields: "id") @auth(requires: USER) @tenant {
+  id: UUID!
+  name: NonEmptyString!
+  slug: NonEmptyString!
+  logo: URL
+  website: URL
+  description: String
+  industry: Industry
+  size: OrganizationSize!
+  status: OrganizationStatus!
+
+  # Subscription and Billing
+  subscription: Subscription!
+  billingInfo: BillingInfo @auth(requires: ORG_ADMIN)
+
+  # Settings and Configuration
+  settings: OrganizationSettings!
+  branding: BrandingSettings
+
+  # Members and Permissions
+  members: [OrganizationMembership!]! @complexity(value: 5)
+  invitations: [Invitation!]! @auth(requires: ORG_ADMIN)
+  roles: [CustomRole!]!
+
+  # Analytics and Data
+  dashboards: [Dashboard!]! @complexity(value: 10)
+  dataSources: [DataSource!]! @complexity(value: 5)
+  metrics: [Metric!]! @complexity(value: 15)
+
+  # Usage and Limits
+  usage: OrganizationUsage!
+  limits: OrganizationLimits!
+
+  # Audit and Compliance
+  auditLogs: [AuditLog!]! @auth(requires: ORG_ADMIN) @complexity(value: 20)
+
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type OrganizationSettings {
+  timezone: String!
+  dateFormat: String!
+  currency: Currency!
+  language: String!
+
+  # Security Settings
+  requireTwoFactor: Boolean!
+  passwordPolicy: PasswordPolicy!
+  sessionTimeout: PositiveInt!
+  allowedDomains: [String!]
+  ipWhitelist: [String!]
+
+  # Data Settings
+  dataRetentionDays: PositiveInt!
+  allowDataExport: Boolean!
+  enableAuditLogs: Boolean!
+
+  # Feature Flags
+  enableRealTime: Boolean!
+  enableCustomMetrics: Boolean!
+  enableAdvancedFilters: Boolean!
+  enableAPIAccess: Boolean!
+}
+
+type BrandingSettings {
+  primaryColor: HexColorCode!
+  secondaryColor: HexColorCode!
+  accentColor: HexColorCode!
+  logoUrl: URL
+  faviconUrl: URL
+  customCSS: String
+  customDomain: String
+}
+
+type Subscription {
+  id: UUID!
+  plan: SubscriptionPlan!
+  status: SubscriptionStatus!
+  billingCycle: BillingCycle!
+  currentPeriodStart: DateTime!
+  currentPeriodEnd: DateTime!
+  trialEnd: DateTime
+  cancelAtPeriodEnd: Boolean!
+  usage: SubscriptionUsage!
+}
+
+type SubscriptionUsage {
+  users: UsageMetric!
+  dashboards: UsageMetric!
+  dataSources: UsageMetric!
+  apiCalls: UsageMetric!
+  storage: UsageMetric!
+  exports: UsageMetric!
+}
+
+type UsageMetric {
+  current: NonNegativeInt!
+  limit: NonNegativeInt!
+  percentage: Decimal!
+}
+
+type BillingInfo @auth(requires: ORG_ADMIN) {
+  customerId: String!
+  paymentMethod: PaymentMethod
+  billingAddress: Address
+  taxId: String
+  nextBillingDate: DateTime
+  amountDue: Decimal
+}
+
+type PaymentMethod {
+  id: String!
+  type: PaymentType!
+  last4: String
+  expiryMonth: PositiveInt
+  expiryYear: PositiveInt
+  brand: String
+}
+
+type Address {
+  line1: String!
+  line2: String
+  city: String!
+  state: String
+  postalCode: String!
+  country: String!
+}
+
+type Invitation {
+  id: UUID!
+  email: EmailAddress!
+  role: OrganizationRole!
+  invitedBy: User!
+  invitedAt: DateTime!
+  expiresAt: DateTime!
+  acceptedAt: DateTime
+  status: InvitationStatus!
+}
+
+type CustomRole {
+  id: UUID!
+  name: NonEmptyString!
+  description: String
+  permissions: [Permission!]!
+  isSystem: Boolean!
+  createdBy: User!
+  createdAt: DateTime!
+}
+
+type Permission {
+  id: UUID!
+  name: NonEmptyString!
+  resource: Resource!
+  action: Action!
+  conditions: JSON
+}
+
+type OrganizationUsage {
+  users: NonNegativeInt!
+  dashboards: NonNegativeInt!
+  widgets: NonNegativeInt!
+  dataSources: NonNegativeInt!
+  apiCalls: NonNegativeInt!
+  storage: BigInt!
+  monthlyQueries: NonNegativeInt!
+}
+
+type OrganizationLimits {
+  maxUsers: NonNegativeInt!
+  maxDashboards: NonNegativeInt!
+  maxDataSources: NonNegativeInt!
+  maxWidgets: NonNegativeInt!
+  maxApiCallsPerHour: NonNegativeInt!
+  maxStorageMB: NonNegativeInt!
+  maxQueriesPerMonth: NonNegativeInt!
+}
+
+type AuditLog @auth(requires: ORG_ADMIN) {
+  id: UUID!
+  user: User
+  action: AuditAction!
+  resource: Resource!
+  resourceId: UUID
+  oldValues: JSON
+  newValues: JSON
+  metadata: JSON
+  ipAddress: String
+  userAgent: String
+  createdAt: DateTime!
+}
+
+type PasswordPolicy {
+  minLength: PositiveInt!
+  requireUppercase: Boolean!
+  requireLowercase: Boolean!
+  requireNumbers: Boolean!
+  requireSymbols: Boolean!
+  preventReuse: PositiveInt!
+  maxAge: PositiveInt
+}
+
+enum Industry {
+  TECHNOLOGY
+  HEALTHCARE
+  FINANCE
+  EDUCATION
+  RETAIL
+  MANUFACTURING
+  CONSULTING
+  MEDIA
+  GOVERNMENT
+  NON_PROFIT
+  OTHER
+}
+
+enum OrganizationSize {
+  STARTUP
+  SMALL
+  MEDIUM
+  LARGE
+  ENTERPRISE
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED
+  TRIAL
+  PENDING_SETUP
+}
+
+enum SubscriptionPlan {
+  FREE
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+  CUSTOM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  UNPAID
+  TRIALING
+  INCOMPLETE
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUALLY
+}
+
+enum PaymentType {
+  CARD
+  BANK_ACCOUNT
+  PAYPAL
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELED
+}
+
+enum Resource {
+  ORGANIZATION
+  USER
+  DASHBOARD
+  WIDGET
+  DATA_SOURCE
+  METRIC
+  ALERT
+  REPORT
+  API_KEY
+  BILLING
+}
+
+enum Action {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  INVITE
+  EXPORT
+  SHARE
+  MANAGE_BILLING
+  MANAGE_USERS
+  MANAGE_SETTINGS
+}
+
+enum AuditAction {
+  USER_LOGIN
+  USER_LOGOUT
+  USER_CREATED
+  USER_UPDATED
+  USER_DELETED
+  USER_INVITED
+  USER_ROLE_CHANGED
+  ORGANIZATION_UPDATED
+  ORGANIZATION_SETTINGS_CHANGED
+  DASHBOARD_CREATED
+  DASHBOARD_UPDATED
+  DASHBOARD_DELETED
+  DASHBOARD_SHARED
+  DATA_SOURCE_CONNECTED
+  DATA_SOURCE_UPDATED
+  DATA_SOURCE_DELETED
+  BILLING_UPDATED
+  SUBSCRIPTION_CHANGED
+  API_KEY_CREATED
+  API_KEY_REVOKED
+  EXPORT_REQUESTED
+  BULK_OPERATION
+}

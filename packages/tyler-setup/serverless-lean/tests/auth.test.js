@@ -64,9 +64,9 @@ jest.mock('../src/utils/helpers.js', () => ({
   response: (statusCode, body) => ({ statusCode, body }),
   errorResponse: (statusCode, message) => ({ statusCode, body: { error: { message } } }),
   logAudit: jest.fn().mockResolvedValue(undefined),
-  handleError: jest.fn().mockImplementation((error) => ({ 
-    statusCode: 500, 
-    body: { error: { message: error.message } } 
+  handleError: jest.fn().mockImplementation((error) => ({
+    statusCode: 500,
+    body: { error: { message: error.message } }
   })),
   checkRateLimit: jest.fn().mockReturnValue(true),
   getClientIP: jest.fn().mockReturnValue('127.0.0.1'),

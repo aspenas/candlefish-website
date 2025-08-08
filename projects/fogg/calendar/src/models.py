@@ -62,7 +62,7 @@ class Event(BaseModel):
     reminders: dict = Field(
         default_factory=lambda: {
             "useDefault": False,
-            "overrides": [{"method": "email", "minutes": 1440}]
+            "overrides": [{"method": "email", "minutes": 1440}],
         }
     )
 

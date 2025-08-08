@@ -35,36 +35,36 @@ jobs:
     defaults:
       run:
         working-directory: ${{ env.WORKING_DIR }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.branch }}
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: '${{ env.WORKING_DIR }}/package-lock.json'
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Run transformation
         run: |
           echo "🎨 Applying Tyler-Setup transformation..."
           echo "Scope: ${{ github.event.inputs.transform_scope }}"
           echo "Improvements: ${{ github.event.inputs.improvements }}"
-          
+
           # For now, we'll create the scripts inline
           # In production, these would be in .github/scripts/
-          
+
           if [ "${{ github.event.inputs.transform_scope }}" = "full" ]; then
             npm run build || echo "Build check completed"
           fi
-      
+
       - name: Upload transformed files
         uses: actions/upload-artifact@v3
         with:
@@ -82,30 +82,30 @@ jobs:
     defaults:
       run:
         working-directory: ${{ env.WORKING_DIR }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Download transformed files
         uses: actions/download-artifact@v3
         with:
           name: tyler-setup-transformed
           path: ${{ env.WORKING_DIR }}
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Generate test files
         run: |
           echo "🧪 Generating test files..."
           npm test -- --passWithNoTests || true
-      
+
       - name: Upload test files
         uses: actions/upload-artifact@v3
         with:
@@ -122,30 +122,30 @@ jobs:
     defaults:
       run:
         working-directory: ${{ env.WORKING_DIR }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Download transformed files
         uses: actions/download-artifact@v3
         with:
           name: tyler-setup-transformed
           path: ${{ env.WORKING_DIR }}
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Fix type issues
         run: |
           echo "🔧 Fixing type safety issues..."
           npx tsc --noEmit || echo "Type check completed"
-      
+
       - name: Upload typed files
         uses: actions/upload-artifact@v3
         with:
@@ -161,31 +161,31 @@ jobs:
     defaults:
       run:
         working-directory: ${{ env.WORKING_DIR }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Download all artifacts
         uses: actions/download-artifact@v3
         with:
           path: ${{ env.WORKING_DIR }}/artifacts
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Generate documentation
         run: |
           echo "📚 Generating documentation..."
           mkdir -p docs
           echo "# Tyler-Setup Documentation" > docs/README.md
           echo "Generated on $(date)" >> docs/README.md
-      
+
       - name: Upload documentation
         uses: actions/upload-artifact@v3
         with:
@@ -201,37 +201,37 @@ jobs:
     defaults:
       run:
         working-directory: ${{ env.WORKING_DIR }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Download all artifacts
         uses: actions/download-artifact@v3
         with:
           path: ${{ env.WORKING_DIR }}/artifacts
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Run validation
         run: |
           echo "✅ Validating transformation..."
           npm run build || echo "Build validation completed"
           npm test -- --passWithNoTests || echo "Test validation completed"
           npx tsc --noEmit || echo "Type validation completed"
-      
+
       - name: Create validation report
         run: |
           echo "# Tyler-Setup Validation Report" > validation-report.md
           echo "Date: $(date)" >> validation-report.md
           echo "Status: ✅ Passed" >> validation-report.md
-      
+
       - name: Upload validation report
         uses: actions/upload-artifact@v3
         with:
@@ -244,48 +244,48 @@ jobs:
     needs: validate
     runs-on: ubuntu-latest
     if: success()
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Download all artifacts
         uses: actions/download-artifact@v3
         with:
           path: artifacts
-      
+
       - name: Apply transformed files
         run: |
           # Copy transformed files from artifacts
           if [ -d "artifacts/tyler-setup-transformed" ]; then
             cp -r artifacts/tyler-setup-transformed/* ${{ env.WORKING_DIR }}/ || true
           fi
-          
+
           if [ -d "artifacts/tyler-setup-tests" ]; then
             cp -r artifacts/tyler-setup-tests/* ${{ env.WORKING_DIR }}/ || true
           fi
-          
+
           if [ -d "artifacts/tyler-setup-typed" ]; then
             cp -r artifacts/tyler-setup-typed/* ${{ env.WORKING_DIR }}/ || true
           fi
-          
+
           if [ -d "artifacts/tyler-setup-docs" ]; then
             cp -r artifacts/tyler-setup-docs/* ${{ env.WORKING_DIR }}/ || true
           fi
-      
+
       - name: Create feature branch
         run: |
           BRANCH_NAME="feature/tyler-setup-$(date +%Y%m%d-%H%M%S)"
           git checkout -b $BRANCH_NAME
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
-      
+
       - name: Commit changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          
+
           git add -A
           git diff --staged --quiet || git commit -m "feat: Apply Tyler-Setup transformation
 
@@ -293,16 +293,16 @@ jobs:
           - Add comprehensive test coverage
           - Fix TypeScript type safety issues
           - Generate component documentation
-          
+
           Scope: ${{ github.event.inputs.transform_scope }}
           Improvements: ${{ github.event.inputs.improvements }}
-          
+
           🤖 Generated with GitHub Actions"
-      
+
       - name: Push changes
         run: |
           git push origin ${{ env.BRANCH_NAME }}
-      
+
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
@@ -311,9 +311,9 @@ jobs:
           title: "feat: Tyler-Setup Transformation"
           body: |
             ## 🎨 Tyler-Setup Transformation
-            
+
             This PR applies the Tyler-Setup design system transformation to the Paintbox application.
-            
+
             ### Changes
             - ✅ CSS variable system with HSL colors
             - ✅ Theme provider with light/dark modes
@@ -322,22 +322,22 @@ jobs:
             - ✅ Comprehensive test coverage
             - ✅ TypeScript type safety improvements
             - ✅ Component documentation
-            
+
             ### Configuration
             - **Scope**: ${{ github.event.inputs.transform_scope }}
             - **Improvements Applied**: ${{ github.event.inputs.improvements }}
-            
+
             ### Validation
             - 🧪 All tests passing
             - 🔧 TypeScript checks passing
             - 📦 Build successful
-            
+
             ### Next Steps
             1. Review the changes
             2. Test on iPad devices
             3. Verify Excel calculations remain accurate
             4. Merge when ready
-            
+
             ---
             🤖 Generated by Tyler-Setup Transformation Pipeline
           labels: |

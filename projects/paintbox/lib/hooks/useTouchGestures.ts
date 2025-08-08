@@ -114,10 +114,10 @@ export function usePinch(handlers: PinchHandlers) {
       e.preventDefault();
       const currentDistance = getDistance(e.touches);
       const newScale = (currentDistance / initialDistance.current) * currentScale.current;
-      
+
       const clampedScale = Math.min(Math.max(newScale, minScale), maxScale);
       setScale(clampedScale);
-      
+
       if (newScale > currentScale.current) {
         handlers.onPinchOut?.(clampedScale);
       } else if (newScale < currentScale.current) {
@@ -163,9 +163,9 @@ export function useLongPress(handlers: LongPressHandlers) {
     const point = isTouch
       ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
       : { x: e.clientX, y: e.clientY };
-    
+
     startPos.current = point;
-    
+
     timeout.current = setTimeout(() => {
       handlers.onLongPress();
     }, delay);
@@ -173,17 +173,17 @@ export function useLongPress(handlers: LongPressHandlers) {
 
   const move = useCallback((e: TouchEvent | MouseEvent) => {
     if (!handlers.cancelOnMove || !startPos.current) return;
-    
+
     const isTouch = 'touches' in e;
     const point = isTouch
       ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
       : { x: e.clientX, y: e.clientY };
-    
+
     const distance = Math.sqrt(
       Math.pow(point.x - startPos.current.x, 2) +
       Math.pow(point.y - startPos.current.y, 2)
     );
-    
+
     if (distance > moveThreshold) {
       clear();
     }
@@ -290,7 +290,7 @@ export function useTouchDevice() {
 
     checkTouch();
     window.addEventListener('resize', checkTouch);
-    
+
     return () => window.removeEventListener('resize', checkTouch);
   }, []);
 
@@ -308,7 +308,7 @@ export function useIPad() {
       const userAgent = navigator.userAgent.toLowerCase();
       const isIPadUA = /ipad/.test(userAgent);
       const isIPadPro = /macintosh/.test(userAgent) && 'ontouchstart' in window;
-      
+
       setIsIPad(isIPadUA || isIPadPro);
     };
 

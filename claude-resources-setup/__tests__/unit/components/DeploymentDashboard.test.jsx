@@ -48,7 +48,7 @@ describe('DeploymentDashboard', () => {
       }
     },
     {
-      id: 'repo-2', 
+      id: 'repo-2',
       name: 'project-alpha',
       organization: 'candlefish-ai',
       status: 'error',
@@ -210,14 +210,14 @@ describe('DeploymentDashboard', () => {
     it('should handle action button clicks', async () => {
       const user = userEvent.setup()
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation()
-      
+
       render(<DeploymentDashboard />)
 
       const actionButton = screen.getByText('Sync All Repositories').closest('button')
       await user.click(actionButton)
 
       expect(consoleSpy).toHaveBeenCalledWith('Executing action:', 'sync')
-      
+
       consoleSpy.mockRestore()
     })
 
@@ -236,7 +236,7 @@ describe('DeploymentDashboard', () => {
       }
 
       deploymentAPIClient.deployment.getActions.mockResolvedValue([runningAction])
-      
+
       render(<DeploymentDashboard />)
 
       await waitFor(() => {
@@ -253,7 +253,7 @@ describe('DeploymentDashboard', () => {
       }
 
       deploymentAPIClient.deployment.getActions.mockResolvedValue([runningAction])
-      
+
       render(<DeploymentDashboard />)
 
       await waitFor(() => {
@@ -269,7 +269,7 @@ describe('DeploymentDashboard', () => {
       }
 
       deploymentAPIClient.deployment.getActions.mockResolvedValue([failedAction])
-      
+
       render(<DeploymentDashboard />)
 
       await waitFor(() => {
@@ -304,7 +304,7 @@ describe('DeploymentDashboard', () => {
       }
 
       deploymentAPIClient.repositories.getRepositories.mockResolvedValue([syncingRepo])
-      
+
       render(<DeploymentDashboard />)
 
       await waitFor(() => {
@@ -332,7 +332,7 @@ describe('DeploymentDashboard', () => {
       }
 
       deploymentAPIClient.repositories.getRepositories.mockResolvedValue([neverSyncedRepo])
-      
+
       render(<DeploymentDashboard />)
 
       await waitFor(() => {
@@ -348,12 +348,12 @@ describe('DeploymentDashboard', () => {
       )
 
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation()
-      
+
       render(<DeploymentDashboard />)
 
       // Component should still render without crashing
       expect(screen.getByText('Claude Resources Deployment')).toBeInTheDocument()
-      
+
       consoleSpy.mockRestore()
     })
 
@@ -368,7 +368,7 @@ describe('DeploymentDashboard', () => {
       }
 
       deploymentAPIClient.repositories.getRepositories.mockResolvedValue([repoWithoutMetadata])
-      
+
       render(<DeploymentDashboard />)
 
       await waitFor(() => {

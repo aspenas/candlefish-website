@@ -7,7 +7,7 @@ The React modernization is complete and the production build is ready in the `di
 ## Option 1: Manual Netlify Deployment (Recommended)
 
 1. **Go to Netlify Dashboard**:
-   - Visit: https://app.netlify.com/projects/candlefish-grotto
+   - Visit: <https://app.netlify.com/projects/candlefish-grotto>
    - Or navigate to your Netlify team dashboard
 
 2. **Deploy the dist folder**:
@@ -16,12 +16,13 @@ The React modernization is complete and the production build is ready in the `di
    - Or use "Deploy manually" and select the `dist` folder
 
 3. **Verify deployment**:
-   - Check that the site loads at https://candlefish.ai
-   - Verify security headers at https://securityheaders.com
+   - Check that the site loads at <https://candlefish.ai>
+   - Verify security headers at <https://securityheaders.com>
 
 ## Option 2: GitHub Push (Automatic Deployment)
 
 1. **Commit and push changes**:
+
    ```bash
    git add apps/website
    git commit -m "React modernization of Candlefish.ai website"
@@ -36,6 +37,7 @@ The React modernization is complete and the production build is ready in the `di
 ## Option 3: Fix Netlify CLI (If needed)
 
 1. **Update the root netlify.toml** to properly handle the monorepo:
+
    ```toml
    [build]
      base = "apps/website"
@@ -44,6 +46,7 @@ The React modernization is complete and the production build is ready in the `di
    ```
 
 2. **Then deploy**:
+
    ```bash
    cd apps/website
    netlify deploy --prod
@@ -61,8 +64,8 @@ The React modernization is complete and the production build is ready in the `di
 
 ## Post-Deployment Checklist
 
-- [ ] Verify site loads at https://candlefish.ai
-- [ ] Check security rating at https://securityheaders.com (should be A+)
+- [ ] Verify site loads at <https://candlefish.ai>
+- [ ] Check security rating at <https://securityheaders.com> (should be A+)
 - [ ] Test all animations and interactions
 - [ ] Verify 404 page with fish animation
 - [ ] Check mobile responsiveness
@@ -71,6 +74,7 @@ The React modernization is complete and the production build is ready in the `di
 ## Support
 
 If you encounter any issues:
+
 1. Check the Netlify build logs
 2. Ensure all dependencies are installed
 3. Verify the netlify.toml configuration

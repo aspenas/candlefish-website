@@ -1,6 +1,6 @@
 /**
  * Metric Chart Component
- * 
+ *
  * Small chart component for displaying metric trends using Chart.js
  */
 
@@ -19,13 +19,13 @@ import {
   Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { 
-  TrendingUpIcon, 
-  TrendingDownIcon, 
-  MinusIcon 
+import {
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
+  MinusIcon
 } from '@heroicons/react/24/outline';
 import { TrendDirection } from '@/lib/types/dashboard';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/cn';
 
 ChartJS.register(
   CategoryScale,
@@ -48,21 +48,21 @@ interface MetricChartProps {
   height?: number;
 }
 
-export function MetricChart({ 
-  title, 
-  value, 
-  unit = '', 
-  trend, 
-  data, 
+export function MetricChart({
+  title,
+  value,
+  unit = '',
+  trend,
+  data,
   color = 'blue',
-  height = 100 
+  height = 100
 }: MetricChartProps) {
   const getTrendIcon = () => {
     switch (trend) {
       case TrendDirection.INCREASING:
-        return TrendingUpIcon;
+        return ArrowTrendingUpIcon;
       case TrendDirection.DECREASING:
-        return TrendingDownIcon;
+        return ArrowTrendingDownIcon;
       default:
         return MinusIcon;
     }

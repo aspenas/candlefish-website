@@ -83,7 +83,7 @@ VITE_METRICS_MAX_DATA_POINTS=1000
 
 The application includes a demo mode for testing without a backend:
 
-- **Demo Email**: admin@example.com  
+- **Demo Email**: <admin@example.com>
 - **Demo Password**: admin123
 - **Demo Role**: Admin (full access)
 
@@ -219,7 +219,7 @@ export const theme = createTheme({
 ### Adding New Metrics
 
 1. Update the metrics store with new metric types
-2. Add data fetching in the metrics API service  
+2. Add data fetching in the metrics API service
 3. Create visualization components
 4. Add to the dashboard layout
 
@@ -231,7 +231,7 @@ Create new monitoring panels by extending the existing panel structure:
 // src/components/panels/CustomPanel.tsx
 const CustomPanel: React.FC = () => {
   const { data, isLoading } = useMetrics(['custom_metric']);
-  
+
   return (
     <Card>
       <CardHeader title="Custom Panel" />

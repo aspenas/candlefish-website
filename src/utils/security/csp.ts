@@ -82,7 +82,7 @@ export const defaultCSPConfig: CSPConfig = {
 // Build CSP header string from configuration
 export const buildCSPHeader = (config: CSPConfig, nonce?: string): string => {
   const directives: string[] = [];
-  
+
   // Process each directive
   Object.entries(config).forEach(([directive, value]) => {
     if (value === true) {
@@ -91,23 +91,23 @@ export const buildCSPHeader = (config: CSPConfig, nonce?: string): string => {
     } else if (Array.isArray(value) && value.length > 0) {
       // Array-based directives
       let sources = value.join(' ');
-      
+
       // Replace nonce placeholder if provided
       if (nonce && sources.includes('{NONCE}')) {
         sources = sources.replace(/{NONCE}/g, nonce);
       }
-      
+
       directives.push(`${directive} ${sources}`);
     }
   });
-  
+
   return directives.join('; ');
 };
 
 // Environment-specific CSP configurations
 export const getEnvironmentCSP = (env: 'development' | 'production'): CSPConfig => {
   const baseConfig = { ...defaultCSPConfig };
-  
+
   if (env === 'development') {
     // Relax CSP for development
     baseConfig['script-src'] = [
@@ -116,14 +116,14 @@ export const getEnvironmentCSP = (env: 'development' | 'production'): CSPConfig 
       'http://localhost:*',
       'ws://localhost:*' // Hot Module Replacement
     ];
-    
+
     baseConfig['connect-src'] = [
       ...(baseConfig['connect-src'] || []),
       'http://localhost:*',
       'ws://localhost:*'
     ];
   }
-  
+
   return baseConfig;
 };
 
@@ -149,7 +149,7 @@ export const handleCSPViolation = (violation: CSPViolation): void => {
     sourceFile: violation['source-file'],
     lineNumber: violation['line-number']
   });
-  
+
   // In production, send to monitoring service
   if (process.env.NODE_ENV === 'production') {
     // Example: Send to Sentry or custom endpoint
@@ -166,7 +166,7 @@ export const handleCSPViolation = (violation: CSPViolation): void => {
 // React hook for CSP nonce
 export const useCSPNonce = (): string | null => {
   if (typeof window === 'undefined') return null;
-  
+
   // Get nonce from meta tag (set by server)
   const metaTag = document.querySelector('meta[name="csp-nonce"]');
   return metaTag?.getAttribute('content') || null;
@@ -187,18 +187,18 @@ export const cspMiddleware = (req: any, res: any, next: any) => {
   const env = process.env.NODE_ENV as 'development' | 'production';
   const cspConfig = getEnvironmentCSP(env);
   const cspHeader = buildCSPHeader(cspConfig, nonce);
-  
+
   // Set CSP header
   res.setHeader('Content-Security-Policy', cspHeader);
-  
+
   // Set report-only header for testing
   if (process.env.CSP_REPORT_ONLY === 'true') {
     res.setHeader('Content-Security-Policy-Report-Only', cspHeader);
   }
-  
+
   // Make nonce available to templates
   res.locals.cspNonce = nonce;
-  
+
   next();
 };
 
@@ -211,14 +211,14 @@ export const viteCSPPlugin = () => {
       const env = process.env.NODE_ENV as 'development' | 'production';
       const cspConfig = getEnvironmentCSP(env);
       const cspHeader = buildCSPHeader(cspConfig, nonce);
-      
+
       // Inject CSP meta tag
       const cspMeta = `<meta http-equiv="Content-Security-Policy" content="${cspHeader}">`;
       const nonceMeta = `<meta name="csp-nonce" content="${nonce}">`;
-      
+
       // Add nonce to existing script tags
       html = html.replace(/<script/g, `<script nonce="${nonce}"`);
-      
+
       // Inject meta tags into head
       return html.replace('<head>', `<head>\n    ${cspMeta}\n    ${nonceMeta}`);
     }
@@ -238,12 +238,12 @@ export const initializeTrustedTypes = () => {
             'https://www.google-analytics.com',
             'https://cdnjs.cloudflare.com'
           ];
-          
+
           const url = new URL(input);
           if (allowedOrigins.some(origin => url.origin === origin)) {
             return input;
           }
-          
+
           throw new Error(`Untrusted script URL: ${input}`);
         }
       });
@@ -259,18 +259,18 @@ import { useCSPNonce, createNoncedScript } from '@/utils/security/csp';
 
 export const ThirdPartyScript: React.FC<{ src: string }> = ({ src }) => {
   const nonce = useCSPNonce();
-  
+
   useEffect(() => {
     if (!nonce) return;
-    
+
     const script = createNoncedScript(src, nonce);
     document.head.appendChild(script);
-    
+
     return () => {
       document.head.removeChild(script);
     };
   }, [src, nonce]);
-  
+
   return null;
 };
 */

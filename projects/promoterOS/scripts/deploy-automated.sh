@@ -25,7 +25,7 @@ log_step() { echo -e "${BLUE}[STEP]${NC} $1"; }
 # Pre-deployment checks
 pre_deployment_checks() {
     log_step "Running pre-deployment checks..."
-    
+
     # Check for uncommitted changes
     if ! git diff-index --quiet HEAD --; then
         log_warn "You have uncommitted changes. Commit or stash them first."
@@ -35,7 +35,7 @@ pre_deployment_checks() {
             exit 1
         fi
     fi
-    
+
     # Check branch
     CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
     if [ "$CURRENT_BRANCH" != "main" ]; then
@@ -51,10 +51,10 @@ pre_deployment_checks() {
 # Install dependencies
 install_dependencies() {
     log_step "Installing dependencies..."
-    
+
     # Root dependencies
     npm ci || npm install
-    
+
     # Function dependencies
     if [ -d "netlify/functions" ]; then
         cd netlify/functions
@@ -66,39 +66,39 @@ install_dependencies() {
 # Apply security updates
 apply_security_updates() {
     log_step "Applying security updates..."
-    
+
     # Check if middleware files exist
     if [ ! -f "src/middleware/auth.js" ]; then
         log_error "Authentication middleware not found!"
         exit 1
     fi
-    
+
     if [ ! -f "src/middleware/validation.js" ]; then
         log_error "Validation middleware not found!"
         exit 1
     fi
-    
+
     if [ ! -f "src/middleware/rateLimiter.js" ]; then
         log_error "Rate limiter middleware not found!"
         exit 1
     fi
-    
+
     log_info "✅ Security middleware files verified"
-    
+
     # Update API functions to use middleware
     log_info "Updating API functions with security middleware..."
-    
+
     # This would normally update each function, but for safety we'll just verify
     for func in netlify/functions/*.js; do
         if [ -f "$func" ]; then
             filename=$(basename "$func")
-            
+
             # Skip health check (public endpoint)
             if [ "$filename" = "health.js" ]; then
                 log_info "  - $filename: Public endpoint (no auth)"
                 continue
             fi
-            
+
             # Check if function has authentication
             if grep -q "authMiddleware\|publicEndpoint" "$func"; then
                 log_info "  - $filename: ✅ Security configured"
@@ -112,29 +112,29 @@ apply_security_updates() {
 # Run tests
 run_tests() {
     log_step "Running test suite..."
-    
+
     # Lint check
     log_info "Running linter..."
     npm run lint:fix || log_warn "Linting issues fixed"
-    
+
     # Security audit
     log_info "Running security audit..."
     npm audit --audit-level=high || log_warn "Some vulnerabilities found"
-    
+
     # Unit tests
     log_info "Running unit tests..."
     npm test -- --passWithNoTests || log_warn "Tests need attention"
-    
+
     # API tests
     log_info "Testing API endpoints locally..."
-    
+
     # Start dev server in background
     npx netlify dev --offline &
     DEV_PID=$!
-    
+
     # Wait for server to start
     sleep 10
-    
+
     # Test endpoints
     log_info "Testing health endpoint..."
     if curl -f -s http://localhost:8888/api/health > /dev/null; then
@@ -142,7 +142,7 @@ run_tests() {
     else
         log_warn "⚠️  Health endpoint not responding"
     fi
-    
+
     # Kill dev server
     kill $DEV_PID 2>/dev/null || true
 }
@@ -150,17 +150,17 @@ run_tests() {
 # Optimize for production
 optimize_production() {
     log_step "Optimizing for production..."
-    
+
     # Bundle functions for better performance
     if [ -d "netlify/functions" ]; then
         cd netlify/functions
-        
+
         # Install bundler if not present
         if ! command -v esbuild &> /dev/null; then
             log_info "Installing esbuild for bundling..."
             npm install --save-dev esbuild
         fi
-        
+
         # Bundle each function
         for func in *.js; do
             if [ -f "$func" ] && [ "$func" != "*.bundled.js" ]; then
@@ -172,14 +172,14 @@ optimize_production() {
                     --minify \
                     --outfile="${func%.js}.bundled.js" \
                     --external:@netlify/functions || true
-                
+
                 # Use bundled version if successful
                 if [ -f "${func%.js}.bundled.js" ]; then
                     mv "${func%.js}.bundled.js" "$func"
                 fi
             fi
         done
-        
+
         cd ../..
     fi
 }
@@ -187,23 +187,23 @@ optimize_production() {
 # Deploy to Netlify
 deploy_to_netlify() {
     log_step "Deploying to Netlify..."
-    
+
     # Check for Netlify CLI
     if ! command -v netlify &> /dev/null; then
         log_error "Netlify CLI not installed. Run: npm install -g netlify-cli"
         exit 1
     fi
-    
+
     # Deploy
     log_info "Deploying to site ID: $SITE_ID"
-    
+
     netlify deploy \
         --prod \
         --site "$SITE_ID" \
         --dir . \
         --functions netlify/functions \
         --message "Automated deployment: $(git rev-parse --short HEAD)"
-    
+
     if [ $? -eq 0 ]; then
         log_info "✅ Deployment successful!"
     else
@@ -215,11 +215,11 @@ deploy_to_netlify() {
 # Post-deployment verification
 verify_deployment() {
     log_step "Verifying deployment..."
-    
+
     # Wait for deployment to propagate
     log_info "Waiting for deployment to propagate..."
     sleep 15
-    
+
     # Check main site
     log_info "Checking main site..."
     response=$(curl -s -o /dev/null -w "%{http_code}" "$SITE_URL")
@@ -228,7 +228,7 @@ verify_deployment() {
     else
         log_warn "⚠️  Main site returned HTTP $response"
     fi
-    
+
     # Check API health
     log_info "Checking API health..."
     health_response=$(curl -s "$SITE_URL/api/health" | grep -o '"status":"[^"]*"' || echo "failed")
@@ -237,7 +237,7 @@ verify_deployment() {
     else
         log_warn "⚠️  API health check needs attention"
     fi
-    
+
     # Check CORS headers
     log_info "Checking CORS configuration..."
     cors_header=$(curl -s -I "$SITE_URL/api/health" | grep -i "access-control-allow-origin" || echo "")
@@ -253,9 +253,9 @@ verify_deployment() {
 # Generate deployment report
 generate_report() {
     log_step "Generating deployment report..."
-    
+
     REPORT_FILE="deployment-report-$(date +%Y%m%d-%H%M%S).md"
-    
+
     cat > "$REPORT_FILE" << EOF
 # PromoterOS Deployment Report
 
@@ -306,7 +306,7 @@ generate_report() {
 ---
 *Generated by automated deployment script*
 EOF
-    
+
     log_info "Report saved to: $REPORT_FILE"
 }
 
@@ -316,7 +316,7 @@ main() {
     echo "  PromoterOS Automated Deployment"
     echo "======================================"
     echo ""
-    
+
     # Run deployment steps
     pre_deployment_checks
     install_dependencies
@@ -326,7 +326,7 @@ main() {
     deploy_to_netlify
     verify_deployment
     generate_report
-    
+
     echo ""
     echo "======================================"
     echo "  Deployment Complete! 🚀"

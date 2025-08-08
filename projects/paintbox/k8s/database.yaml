@@ -240,11 +240,11 @@ data:
     max_parallel_workers_per_gather = 2
     max_parallel_workers = 8
     max_parallel_maintenance_workers = 2
-    
+
     # TimescaleDB specific
     shared_preload_libraries = 'timescaledb'
     timescaledb.max_background_workers = 8
-    
+
     # Logging
     logging_collector = on
     log_destination = 'stderr'
@@ -265,11 +265,11 @@ data:
     port 6379
     timeout 0
     tcp-keepalive 300
-    
+
     # Memory management
     maxmemory 256mb
     maxmemory-policy allkeys-lru
-    
+
     # Persistence
     save 900 1
     save 300 10
@@ -279,7 +279,7 @@ data:
     rdbchecksum yes
     dbfilename dump.rdb
     dir /data
-    
+
     # Append only file
     appendonly yes
     appendfilename "appendonly.aof"
@@ -287,10 +287,10 @@ data:
     no-appendfsync-on-rewrite no
     auto-aof-rewrite-percentage 100
     auto-aof-rewrite-min-size 64mb
-    
+
     # Security
     requirepass ${REDIS_PASSWORD}
-    
+
     # Logging
     loglevel notice
     logfile ""
@@ -305,7 +305,7 @@ data:
   01-init-timescaledb.sql: |
     -- Initialize TimescaleDB
     CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
-    
+
     -- Create hypertables for time-series data
     CREATE TABLE IF NOT EXISTS system_metrics (
       time TIMESTAMPTZ NOT NULL,
@@ -314,12 +314,12 @@ data:
       metric_value DOUBLE PRECISION NOT NULL,
       tags JSONB DEFAULT '{}'
     );
-    
+
     SELECT create_hypertable('system_metrics', 'time', if_not_exists => TRUE);
-    
+
     -- Create retention policy (keep data for 30 days)
     SELECT add_retention_policy('system_metrics', INTERVAL '30 days', if_not_exists => TRUE);
-    
+
     -- Create continuous aggregates for performance
     CREATE MATERIALIZED VIEW IF NOT EXISTS system_metrics_hourly
     WITH (timescaledb.continuous) AS
@@ -332,14 +332,14 @@ data:
            COUNT(*) AS count
     FROM system_metrics
     GROUP BY service_name, metric_name, bucket;
-    
+
     -- Add refresh policy
     SELECT add_continuous_aggregate_policy('system_metrics_hourly',
       start_offset => INTERVAL '3 hours',
       end_offset => INTERVAL '1 hour',
       schedule_interval => INTERVAL '1 hour',
       if_not_exists => TRUE);
-  
+
   02-create-tables.sql: |
     -- Create application tables
     CREATE TABLE IF NOT EXISTS users (
@@ -350,7 +350,7 @@ data:
       created_at TIMESTAMPTZ DEFAULT NOW(),
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
-    
+
     CREATE TABLE IF NOT EXISTS services (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       name VARCHAR(255) NOT NULL,
@@ -362,7 +362,7 @@ data:
       created_at TIMESTAMPTZ DEFAULT NOW(),
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
-    
+
     CREATE TABLE IF NOT EXISTS alerts (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       service_id UUID REFERENCES services(id),
@@ -373,14 +373,14 @@ data:
       created_at TIMESTAMPTZ DEFAULT NOW(),
       resolved_at TIMESTAMPTZ NULL
     );
-    
+
     -- Create indexes
     CREATE INDEX IF NOT EXISTS idx_services_status ON services(status);
     CREATE INDEX IF NOT EXISTS idx_services_type ON services(type);
     CREATE INDEX IF NOT EXISTS idx_alerts_service_id ON alerts(service_id);
     CREATE INDEX IF NOT EXISTS idx_alerts_status ON alerts(status);
     CREATE INDEX IF NOT EXISTS idx_alerts_severity ON alerts(severity);
-    
+
     -- Create function to update updated_at timestamp
     CREATE OR REPLACE FUNCTION update_updated_at_column()
     RETURNS TRIGGER AS $$
@@ -389,10 +389,10 @@ data:
       RETURN NEW;
     END;
     $$ language 'plpgsql';
-    
+
     -- Create triggers
     CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
       FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-    
+
     CREATE TRIGGER update_services_updated_at BEFORE UPDATE ON services
       FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

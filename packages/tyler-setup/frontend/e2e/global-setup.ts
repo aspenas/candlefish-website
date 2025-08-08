@@ -27,7 +27,7 @@ async function globalSetup(config: FullConfig) {
 
 async function waitForService(url: string, timeout: number, name: string): Promise<void> {
   const startTime = Date.now();
-  
+
   while (Date.now() - startTime < timeout) {
     try {
       const response = await fetch(url);
@@ -38,10 +38,10 @@ async function waitForService(url: string, timeout: number, name: string): Promi
     } catch (error) {
       // Service not ready yet
     }
-    
+
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
-  
+
   throw new Error(`${name} failed to start within ${timeout}ms`);
 }
 
@@ -54,7 +54,7 @@ async function setupTestUser(): Promise<void> {
 
     // Navigate to the app and perform any necessary setup
     await page.goto('http://localhost:3000');
-    
+
     // Store test credentials in browser local storage or session storage
     await page.evaluate(() => {
       localStorage.setItem('e2e_test_token', 'test-jwt-token');

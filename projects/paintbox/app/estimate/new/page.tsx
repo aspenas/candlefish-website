@@ -7,7 +7,7 @@ import { useState } from 'react';
 
 const StepCard = ({ number, title, description, icon: Icon, href, delay }: any) => {
   const [hovered, setHovered] = useState(false);
-  
+
   const spring = useSpring({
     transform: hovered ? 'translateX(10px)' : 'translateX(0px)',
     config: { tension: 300, friction: 20 }
@@ -56,7 +56,7 @@ export default function NewEstimate() {
                 <FileText className="w-8 h-8 text-white" />
               </div>
             </div>
-            
+
             <h1 className="text-4xl font-bold text-paintbox-text mb-4">
               Create New Estimate
             </h1>
@@ -74,7 +74,7 @@ export default function NewEstimate() {
               href="/estimate/new/details"
               delay={0}
             />
-            
+
             <StepCard
               number="2"
               title="Exterior Measurements"
@@ -83,7 +83,7 @@ export default function NewEstimate() {
               href="/estimate/new/exterior"
               delay={100}
             />
-            
+
             <StepCard
               number="3"
               title="Interior Measurements"
@@ -92,7 +92,7 @@ export default function NewEstimate() {
               href="/estimate/new/interior"
               delay={200}
             />
-            
+
             <StepCard
               number="4"
               title="Review & Finalize"

@@ -39,7 +39,7 @@ export default function ExteriorMeasurementPage() {
   });
 
   const updateSurface = (id: string, field: keyof Surface, value: any) => {
-    setSurfaces(surfaces.map(s => 
+    setSurfaces(surfaces.map(s =>
       s.id === id ? { ...s, [field]: value } : s
     ));
   };
@@ -201,7 +201,7 @@ export default function ExteriorMeasurementPage() {
                 <p className="text-2xl font-bold paintbox-gradient-text">{totalSqft} sq ft</p>
               </div>
             </div>
-            
+
             {/* CompanyCam Gallery */}
             <CompanyCamGallery />
           </div>

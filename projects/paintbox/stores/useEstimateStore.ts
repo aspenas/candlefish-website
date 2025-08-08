@@ -1,29 +1,197 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { useOfflineStore } from './useOfflineStore';
+import { v4 as uuidv4 } from 'uuid';
 
 interface EstimateStore {
   estimate: any;
+  isOfflineMode: boolean;
+  lastSavedAt: Date | null;
   updateClientInfo: (info: any) => void;
   markStepCompleted: (step: string) => void;
   updateEstimate: (data: any) => void;
+  saveEstimate: () => Promise<void>;
+  loadEstimate: (estimateId: string) => Promise<void>;
+  clearEstimate: () => void;
+  setOfflineMode: (offline: boolean) => void;
 }
 
-export const useEstimateStore = create<EstimateStore>((set) => ({
-  estimate: {
-    clientInfo: {},
-    measurements: {},
-    pricing: {},
-    stepsCompleted: []
-  },
-  updateClientInfo: (info) => set((state) => ({ 
-    estimate: { ...state.estimate, clientInfo: info } 
-  })),
-  markStepCompleted: (step) => set((state) => ({ 
-    estimate: { 
-      ...state.estimate, 
-      stepsCompleted: [...state.estimate.stepsCompleted, step] 
-    } 
-  })),
-  updateEstimate: (data) => set((state) => ({ 
-    estimate: { ...state.estimate, ...data } 
-  })),
-}));
+export const useEstimateStore = create<EstimateStore>()(
+  persist(
+    (set, get) => ({
+      estimate: {
+        id: null,
+        clientInfo: {},
+        measurements: {},
+        pricing: {},
+        stepsCompleted: [],
+        createdAt: null,
+        updatedAt: null,
+        syncStatus: 'pending'
+      },
+      isOfflineMode: false,
+      lastSavedAt: null,
+
+      updateClientInfo: (info) => {
+        const estimate = {
+          ...get().estimate,
+          clientInfo: info,
+          updatedAt: new Date().toISOString()
+        };
+
+        set({ estimate });
+
+        // Auto-save after client info updates
+        setTimeout(() => get().saveEstimate(), 500);
+      },
+
+      markStepCompleted: (step) => {
+        const estimate = {
+          ...get().estimate,
+          stepsCompleted: [...get().estimate.stepsCompleted, step],
+          updatedAt: new Date().toISOString()
+        };
+
+        set({ estimate });
+
+        // Auto-save after step completion
+        setTimeout(() => get().saveEstimate(), 500);
+      },
+
+      updateEstimate: (data) => {
+        const estimate = {
+          ...get().estimate,
+          ...data,
+          updatedAt: new Date().toISOString()
+        };
+
+        set({ estimate });
+
+        // Auto-save after estimate updates
+        setTimeout(() => get().saveEstimate(), 1000);
+      },
+
+      saveEstimate: async () => {
+        try {
+          const state = get();
+          let { estimate } = state;
+
+          // Generate ID if new estimate
+          if (!estimate.id) {
+            estimate = {
+              ...estimate,
+              id: uuidv4(),
+              createdAt: new Date().toISOString()
+            };
+            set({ estimate });
+          }
+
+          // Check if we're offline or in offline mode
+          const offlineStore = useOfflineStore.getState();
+          const shouldSaveOffline = !offlineStore.networkStatus.isOnline || state.isOfflineMode;
+
+          if (shouldSaveOffline) {
+            // Save to IndexedDB for offline use
+            await offlineStore.saveEstimateOffline(estimate.id, estimate);
+            console.log('Estimate saved offline');
+          } else {
+            // Try to save to server
+            try {
+              const response = await fetch('/api/estimates', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(estimate)
+              });
+
+              if (response.ok) {
+                const savedEstimate = await response.json();
+                set({
+                  estimate: { ...savedEstimate, syncStatus: 'synced' },
+                  lastSavedAt: new Date()
+                });
+                console.log('Estimate saved to server');
+              } else {
+                // Server save failed, save offline as backup
+                await offlineStore.saveEstimateOffline(estimate.id, estimate);
+                console.log('Server save failed, saved offline as backup');
+              }
+            } catch (error) {
+              // Network error, save offline
+              await offlineStore.saveEstimateOffline(estimate.id, estimate);
+              console.log('Network error, saved offline');
+            }
+          }
+
+          set({ lastSavedAt: new Date() });
+        } catch (error) {
+          console.error('Failed to save estimate:', error);
+        }
+      },
+
+      loadEstimate: async (estimateId: string) => {
+        try {
+          const offlineStore = useOfflineStore.getState();
+
+          // Try to load from server first if online
+          if (offlineStore.networkStatus.isOnline && !get().isOfflineMode) {
+            try {
+              const response = await fetch(`/api/estimates/${estimateId}`);
+              if (response.ok) {
+                const estimate = await response.json();
+                set({
+                  estimate: { ...estimate, syncStatus: 'synced' },
+                  lastSavedAt: new Date()
+                });
+                return;
+              }
+            } catch (error) {
+              console.log('Server load failed, trying offline...');
+            }
+          }
+
+          // Load from offline storage
+          const offlineDB = await import('@/lib/db/offline-db');
+          const offlineEstimate = await offlineDB.offlineDB.getEstimate(estimateId);
+
+          if (offlineEstimate) {
+            set({
+              estimate: { ...offlineEstimate.data, syncStatus: offlineEstimate.syncStatus },
+              lastSavedAt: offlineEstimate.updatedAt
+            });
+          }
+        } catch (error) {
+          console.error('Failed to load estimate:', error);
+        }
+      },
+
+      clearEstimate: () => {
+        set({
+          estimate: {
+            id: null,
+            clientInfo: {},
+            measurements: {},
+            pricing: {},
+            stepsCompleted: [],
+            createdAt: null,
+            updatedAt: null,
+            syncStatus: 'pending'
+          },
+          lastSavedAt: null
+        });
+      },
+
+      setOfflineMode: (offline) => {
+        set({ isOfflineMode: offline });
+      }
+    }),
+    {
+      name: 'paintbox-estimate-store',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        estimate: state.estimate,
+        lastSavedAt: state.lastSavedAt,
+        isOfflineMode: state.isOfflineMode
+      })
+    }
+  )
+);

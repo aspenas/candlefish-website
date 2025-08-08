@@ -34,7 +34,7 @@ jobs:
         run: |
           should_run="false"
           pr_number=""
-          
+
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             should_run="true"
             pr_number="${{ inputs.pr_number }}"
@@ -52,7 +52,7 @@ jobs:
               fi
             fi
           fi
-          
+
           echo "should_run=$should_run" >> $GITHUB_OUTPUT
           echo "pr_number=$pr_number" >> $GITHUB_OUTPUT
 
@@ -60,20 +60,20 @@ jobs:
     needs: should-review
     if: needs.should-review.outputs.should_run == 'true'
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           role-session-name: claude-review-${{ github.run_id }}
           aws-region: us-east-1
-          
+
       - name: Get Anthropic API Key from AWS
         id: get-secrets
         run: |
@@ -82,21 +82,21 @@ jobs:
             --secret-id "candlefish-ai/anthropic/api-key" \
             --query SecretString \
             --output text)
-          
+
           # Extract the API key
           API_KEY=$(echo "$SECRET_JSON" | jq -r '.ANTHROPIC_API_KEY')
-          
+
           if [ -z "$API_KEY" ] || [ "$API_KEY" = "null" ]; then
             echo "::error::Failed to retrieve ANTHROPIC_API_KEY from AWS Secrets Manager"
             exit 1
           fi
-          
+
           # Mask the API key in logs
           echo "::add-mask::$API_KEY"
-          
+
           # Set as output
           echo "anthropic_api_key=$API_KEY" >> $GITHUB_OUTPUT
-          
+
       - name: Setup review environment
         id: setup
         env:
@@ -104,7 +104,7 @@ jobs:
         run: |
           # Determine review focus based on comment
           review_focus="comprehensive"
-          
+
           if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
             comment="${{ github.event.comment.body }}"
             if [[ "$comment" == *"security"* ]]; then
@@ -115,9 +115,9 @@ jobs:
               review_focus="quick"
             fi
           fi
-          
+
           echo "review_focus=$review_focus" >> $GITHUB_OUTPUT
-          
+
       - name: Automatic PR Review with Claude
         uses: anthropics/claude-code-action@beta
         with:
@@ -125,16 +125,16 @@ jobs:
           timeout_minutes: "30"
           direct_prompt: |
             SYSTEM: You are Claude Opus-4 (claude-opus-4-20250514) with Tier-4 capabilities. You have access to 2,000,000 input tokens and 400,000 output tokens for this review. Use this expanded capacity to provide an exceptionally thorough and detailed code review.
-            
+
             Please review this pull request with a ${{ steps.setup.outputs.review_focus }} focus.
-            
+
             For a ${{ steps.setup.outputs.review_focus }} review, pay special attention to:
-            
+
             ${{ steps.setup.outputs.review_focus == 'comprehensive' && 'Code quality, best practices, potential bugs, performance, security, test coverage, and documentation. Provide specific, actionable feedback with code examples where applicable.' || '' }}
             ${{ steps.setup.outputs.review_focus == 'security' && 'Input validation, authentication/authorization, data security, common vulnerabilities (SQL injection, XSS, CSRF), and dependency security. Rate findings by severity.' || '' }}
             ${{ steps.setup.outputs.review_focus == 'performance' && 'Algorithm efficiency, database performance, frontend optimization, caching opportunities, and memory management. Provide before/after optimization examples.' || '' }}
             ${{ steps.setup.outputs.review_focus == 'quick' && 'Obvious bugs, critical security issues, major code smells, and missing error handling. Keep feedback concise and actionable.' || '' }}
-            
+
             For this Next.js/TypeScript project, also consider:
             - TypeScript type safety and proper error handling
             - React hooks best practices and performance optimizations
@@ -143,15 +143,15 @@ jobs:
             - API route security and validation
             - State management with Zustand
             - Excel formula accuracy (if touching calculation logic)
-            
+
             Use inline comments for specific line-by-line feedback.
             Summarize key findings at the end with severity ratings:
             - 🔴 Critical: Must fix before merge
             - 🟡 Major: Should fix before merge
             - 🟢 Minor: Nice to have improvements
-            
+
             If the code looks good overall, provide positive feedback and suggestions for future improvements.
-            
+
       - name: Post review summary
         if: always()
         env:
@@ -161,16 +161,16 @@ jobs:
           # Create status check
           if [[ "${{ job.status }}" == "success" ]]; then
             gh pr comment $PR_NUMBER --body "✅ **Claude Review Complete**
-            
+
             Review type: **${{ steps.setup.outputs.review_focus }}**
             Status: Successfully completed
-            
+
             Check the review comments above for detailed feedback.
-            
+
             ---
             *Trigger a new review by commenting: \`/claude-review [type]\`*
             *Types: comprehensive (default), security, performance, quick*"
-            
+
             # Set commit status
             gh api repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha || github.sha }} \
               -f state="success" \
@@ -178,16 +178,16 @@ jobs:
               -f description="Claude review completed successfully"
           else
             gh pr comment $PR_NUMBER --body "❌ **Claude Review Failed**
-            
+
             The automated review encountered an error. Please check the [workflow logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
-            
+
             Common issues:
             - AWS credentials not properly configured
             - API key retrieval failed
             - Rate limiting
-            
+
             You can retry by commenting \`/claude-review\`"
-            
+
             # Set commit status
             gh api repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha || github.sha }} \
               -f state="failure" \

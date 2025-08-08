@@ -28,7 +28,7 @@ class RedisCacheService implements CacheService {
 
   constructor(redisUrl?: string) {
     const url = redisUrl || process.env.REDIS_URL || 'redis://localhost:6379';
-    
+
     this.client = new Redis(url, {
       retryDelayOnFailover: 100,
       maxRetriesPerRequest: 3,
@@ -67,8 +67,8 @@ class RedisCacheService implements CacheService {
     try {
       await this.client.connect();
     } catch (error) {
-      logger.error('Failed to connect to Redis cache', { 
-        error: error instanceof Error ? error.message : String(error) 
+      logger.error('Failed to connect to Redis cache', {
+        error: error instanceof Error ? error.message : String(error)
       });
     }
   }
@@ -80,9 +80,9 @@ class RedisCacheService implements CacheService {
       }
       return await this.client.get(key);
     } catch (error) {
-      logger.error('Redis GET operation failed', { 
-        key, 
-        error: error instanceof Error ? error.message : String(error) 
+      logger.error('Redis GET operation failed', {
+        key,
+        error: error instanceof Error ? error.message : String(error)
       });
       return null;
     }
@@ -100,10 +100,10 @@ class RedisCacheService implements CacheService {
         await this.client.set(key, value);
       }
     } catch (error) {
-      logger.error('Redis SET operation failed', { 
-        key, 
+      logger.error('Redis SET operation failed', {
+        key,
         ttlSeconds,
-        error: error instanceof Error ? error.message : String(error) 
+        error: error instanceof Error ? error.message : String(error)
       });
       throw error;
     }
@@ -116,9 +116,9 @@ class RedisCacheService implements CacheService {
       }
       await this.client.del(key);
     } catch (error) {
-      logger.error('Redis DEL operation failed', { 
-        key, 
-        error: error instanceof Error ? error.message : String(error) 
+      logger.error('Redis DEL operation failed', {
+        key,
+        error: error instanceof Error ? error.message : String(error)
       });
       throw error;
     }
@@ -132,9 +132,9 @@ class RedisCacheService implements CacheService {
       const result = await this.client.exists(key);
       return result === 1;
     } catch (error) {
-      logger.error('Redis EXISTS operation failed', { 
-        key, 
-        error: error instanceof Error ? error.message : String(error) 
+      logger.error('Redis EXISTS operation failed', {
+        key,
+        error: error instanceof Error ? error.message : String(error)
       });
       return false;
     }
@@ -147,9 +147,9 @@ class RedisCacheService implements CacheService {
       }
       return await this.client.ttl(key);
     } catch (error) {
-      logger.error('Redis TTL operation failed', { 
-        key, 
-        error: error instanceof Error ? error.message : String(error) 
+      logger.error('Redis TTL operation failed', {
+        key,
+        error: error instanceof Error ? error.message : String(error)
       });
       return -1;
     }
@@ -162,18 +162,18 @@ class RedisCacheService implements CacheService {
       }
 
       const result = await this.client.incr(key);
-      
+
       if (ttlSeconds && result === 1) {
         // Set TTL only on first increment
         await this.client.expire(key, ttlSeconds);
       }
-      
+
       return result;
     } catch (error) {
-      logger.error('Redis INCR operation failed', { 
-        key, 
+      logger.error('Redis INCR operation failed', {
+        key,
         ttlSeconds,
-        error: error instanceof Error ? error.message : String(error) 
+        error: error instanceof Error ? error.message : String(error)
       });
       throw error;
     }
@@ -186,9 +186,9 @@ class RedisCacheService implements CacheService {
       }
       return await this.client.decr(key);
     } catch (error) {
-      logger.error('Redis DECR operation failed', { 
-        key, 
-        error: error instanceof Error ? error.message : String(error) 
+      logger.error('Redis DECR operation failed', {
+        key,
+        error: error instanceof Error ? error.message : String(error)
       });
       throw error;
     }
@@ -201,10 +201,10 @@ class RedisCacheService implements CacheService {
       }
       await this.client.expire(key, ttlSeconds);
     } catch (error) {
-      logger.error('Redis EXPIRE operation failed', { 
-        key, 
+      logger.error('Redis EXPIRE operation failed', {
+        key,
         ttlSeconds,
-        error: error instanceof Error ? error.message : String(error) 
+        error: error instanceof Error ? error.message : String(error)
       });
       throw error;
     }
@@ -218,8 +218,8 @@ class RedisCacheService implements CacheService {
       await this.client.flushall();
       logger.warn('Redis cache flushed all keys');
     } catch (error) {
-      logger.error('Redis FLUSHALL operation failed', { 
-        error: error instanceof Error ? error.message : String(error) 
+      logger.error('Redis FLUSHALL operation failed', {
+        error: error instanceof Error ? error.message : String(error)
       });
       throw error;
     }
@@ -231,8 +231,8 @@ class RedisCacheService implements CacheService {
       this.isConnected = false;
       logger.info('Redis cache disconnected');
     } catch (error) {
-      logger.error('Redis disconnect failed', { 
-        error: error instanceof Error ? error.message : String(error) 
+      logger.error('Redis disconnect failed', {
+        error: error instanceof Error ? error.message : String(error)
       });
     }
   }
@@ -247,7 +247,7 @@ class InMemoryCacheService implements CacheService {
 
   async get(key: string): Promise<string | null> {
     const item = this.cache.get(key);
-    
+
     if (!item) {
       return null;
     }
@@ -268,7 +268,7 @@ class InMemoryCacheService implements CacheService {
 
   async set(key: string, value: string, ttlSeconds?: number): Promise<void> {
     const expires = ttlSeconds ? Date.now() + (ttlSeconds * 1000) : undefined;
-    
+
     this.cache.set(key, { value, expires });
 
     // Clear any existing timer
@@ -283,7 +283,7 @@ class InMemoryCacheService implements CacheService {
         this.cache.delete(key);
         this.timers.delete(key);
       }, ttlSeconds * 1000);
-      
+
       this.timers.set(key, timer);
     }
   }
@@ -304,13 +304,13 @@ class InMemoryCacheService implements CacheService {
 
   async ttl(key: string): Promise<number> {
     const item = this.cache.get(key);
-    
+
     if (!item || !item.expires) {
       return -1; // Key doesn't exist or has no expiration
     }
 
     const remainingMs = item.expires - Date.now();
-    
+
     if (remainingMs <= 0) {
       return -2; // Key expired
     }
@@ -321,7 +321,7 @@ class InMemoryCacheService implements CacheService {
   async incr(key: string, ttlSeconds?: number): Promise<number> {
     const current = await this.get(key);
     const value = current ? parseInt(current, 10) + 1 : 1;
-    
+
     await this.set(key, value.toString(), ttlSeconds);
     return value;
   }
@@ -329,7 +329,7 @@ class InMemoryCacheService implements CacheService {
   async decr(key: string): Promise<number> {
     const current = await this.get(key);
     const value = current ? parseInt(current, 10) - 1 : -1;
-    
+
     await this.set(key, value.toString());
     return value;
   }
@@ -346,10 +346,10 @@ class InMemoryCacheService implements CacheService {
     for (const timer of this.timers.values()) {
       clearTimeout(timer);
     }
-    
+
     this.cache.clear();
     this.timers.clear();
-    
+
     logger.warn('In-memory cache flushed all keys');
   }
 
@@ -378,8 +378,8 @@ export default function getCacheInstance(redisUrl?: string): CacheService {
         logger.warn('Using in-memory cache service (Redis not configured)');
       }
     } catch (error) {
-      logger.error('Failed to initialize Redis cache, falling back to in-memory', { 
-        error: error instanceof Error ? error.message : String(error) 
+      logger.error('Failed to initialize Redis cache, falling back to in-memory', {
+        error: error instanceof Error ? error.message : String(error)
       });
       cacheInstance = new InMemoryCacheService();
     }

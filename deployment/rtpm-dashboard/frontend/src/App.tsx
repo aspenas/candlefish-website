@@ -17,7 +17,7 @@ function App() {
   useEffect(() => {
     // Initialize WebSocket connection
     const ws = new WebSocketService('ws://localhost:8000/ws/metrics');
-    
+
     ws.onMessage((data) => {
       if (data.type === 'metric') {
         setMetrics(prev => [...prev.slice(-99), data.payload]);
@@ -51,25 +51,25 @@ function App() {
       </header>
 
       <nav className="panel-nav">
-        <button 
+        <button
           className={activePanel === 'infrastructure' ? 'active' : ''}
           onClick={() => setActivePanel('infrastructure')}
         >
           Infrastructure
         </button>
-        <button 
+        <button
           className={activePanel === 'kubernetes' ? 'active' : ''}
           onClick={() => setActivePanel('kubernetes')}
         >
           Kubernetes
         </button>
-        <button 
+        <button
           className={activePanel === 'dns' ? 'active' : ''}
           onClick={() => setActivePanel('dns')}
         >
           DNS
         </button>
-        <button 
+        <button
           className={activePanel === 'validation' ? 'active' : ''}
           onClick={() => setActivePanel('validation')}
         >
@@ -86,7 +86,7 @@ function App() {
           <div className="metric-card">
             <h3>Last Update</h3>
             <p className="metric-value">
-              {metrics.length > 0 
+              {metrics.length > 0
                 ? new Date(metrics[metrics.length - 1].timestamp).toLocaleTimeString()
                 : 'No data'}
             </p>

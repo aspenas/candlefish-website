@@ -17,7 +17,7 @@ const WS_ENDPOINT = `ws://localhost:4000/graphql`;
 // Performance thresholds
 const PERFORMANCE_THRESHOLDS = {
   systemAnalysis: 5000,     // 5 seconds max
-  serviceQuery: 1000,       // 1 second max  
+  serviceQuery: 1000,       // 1 second max
   metricIngestion: 100,     // 100ms max per metric
   alertProcessing: 500,     // 500ms max
   webSocketConnection: 2000, // 2 seconds max
@@ -57,7 +57,7 @@ describe('System Analyzer Performance Tests', () => {
     const passedTests = testResults.filter(r => r.passed).length;
     const totalTests = testResults.length;
     const performanceScore = Math.round((passedTests / totalTests) * 100);
-    
+
     console.log(`\n🎯 Overall Performance Score: ${performanceScore}% (${passedTests}/${totalTests} tests passed)`);
   });
 
@@ -632,7 +632,7 @@ describe('System Analyzer Performance Tests', () => {
       // Run many queries to test for memory leaks
       for (let i = 0; i < iterations; i++) {
         await graphqlClient.request(query);
-        
+
         // Occasionally force garbage collection if available
         if (i % 20 === 0 && global.gc) {
           global.gc();
@@ -654,7 +654,7 @@ describe('System Analyzer Performance Tests', () => {
       });
 
       console.log(`Memory increase: ${Math.round(memoryIncrease / 1024)}KB total, ${Math.round(memoryIncreasePerIteration)}B per iteration`);
-      
+
       expect(memoryIncreasePerIteration).toBeLessThan(1024);
     });
   });

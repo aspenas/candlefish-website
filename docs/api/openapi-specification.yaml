@@ -3,7 +3,7 @@ info:
   title: Candlefish.ai Employee Setup Platform API
   version: 1.0.0
   description: |
-    API for managing employee and contractor onboarding, authentication, 
+    API for managing employee and contractor onboarding, authentication,
     and configuration in the Candlefish.ai platform.
   contact:
     name: Candlefish.ai DevOps Team
@@ -28,7 +28,7 @@ components:
   schemas:
     UserRole:
       type: string
-      enum: 
+      enum:
         - employee
         - contractor
         - admin
@@ -36,7 +36,7 @@ components:
 
     AuthRequest:
       type: object
-      required: 
+      required:
         - email
         - password
       properties:
@@ -205,7 +205,7 @@ paths:
     get:
       summary: List active contractors
       description: |
-        Retrieves a list of active contractors. 
+        Retrieves a list of active contractors.
         Only accessible by admin and management roles.
       operationId: listContractors
       security:
@@ -215,7 +215,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: 
+            enum:
               - active
               - expired
               - upcoming
@@ -258,8 +258,8 @@ paths:
     post:
       summary: Request temporary access to AWS Secrets Manager
       description: |
-        Generates a temporary, role-based access token for retrieving 
-        specific secrets from AWS Secrets Manager. 
+        Generates a temporary, role-based access token for retrieving
+        specific secrets from AWS Secrets Manager.
         Strictly controlled based on user role and project access.
       operationId: requestSecretAccess
       security:

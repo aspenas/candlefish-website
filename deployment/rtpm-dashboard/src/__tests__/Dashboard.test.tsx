@@ -104,7 +104,7 @@ describe('Dashboard Component', () => {
 
     it('shows loading state initially', () => {
       // Mock delayed API response
-      apiMock.setApiResponse('getDeploymentStatus', 
+      apiMock.setApiResponse('getDeploymentStatus',
         new Promise(resolve => setTimeout(() => resolve(mockDeploymentStatus), 100))
       );
 
@@ -196,7 +196,7 @@ describe('Dashboard Component', () => {
       );
 
       await websocketMock.mockWebSocketClient.connect(mockAuthToken);
-      
+
       // Simulate disconnect
       websocketMock.mockWebSocketClient.disconnect();
 
@@ -368,7 +368,7 @@ describe('Dashboard Component', () => {
 
       // Simulate status update via WebSocket
       await websocketMock.mockWebSocketClient.connect(mockAuthToken);
-      
+
       websocketMock.simulateMetricUpdate({
         type: 'system_status',
         data: {
@@ -418,7 +418,7 @@ describe('Dashboard Component', () => {
       );
 
       await websocketMock.mockWebSocketClient.connect(mockAuthToken);
-      
+
       websocketMock.simulateAlertFired({
         id: 'alert-123',
         ruleName: 'High CPU Usage',
@@ -542,7 +542,7 @@ describe('Dashboard Component', () => {
 
       // Mock expensive computation
       const computationSpy = jest.fn();
-      
+
       // Rerender with same props
       rerender(
         <TestWrapper>
@@ -656,7 +656,7 @@ describe('Dashboard Component', () => {
 
     it('shows retry option on errors', async () => {
       const user = userEvent.setup();
-      
+
       apiMock.setApiError('getDeploymentStatus', new Error('Network Error'));
 
       render(

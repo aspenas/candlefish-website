@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 280" role="img" aria-label="Candlefish Stacked Lockup" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <clipPath id="round8"><rect x="20" y="0" width="160" height="160" rx="12" ry="12"/></clipPath>
+  </defs>
+  <g clip-path="url(#round8)">
+    <image href="/logo/candlefish_original.png" x="20" y="0" width="160" height="160" preserveAspectRatio="xMidYMid meet"/>
+  </g>
+  <style>
+    text { font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif; font-weight:300; letter-spacing:0.05em; }
+  </style>
+  <text x="20" y="240" font-size="56">CANDLEFISH</text>
+</svg>

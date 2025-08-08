@@ -50,11 +50,11 @@ exports.handler = async (event, context) => {
 
   try {
     // Extract client information
-    const clientIP = event.headers['x-forwarded-for'] || 
-                    event.headers['x-real-ip'] || 
-                    event.headers['client-ip'] || 
+    const clientIP = event.headers['x-forwarded-for'] ||
+                    event.headers['x-real-ip'] ||
+                    event.headers['client-ip'] ||
                     'unknown';
-    
+
     const userAgent = event.headers['user-agent'] || 'unknown';
 
     const response = {
@@ -85,7 +85,7 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         error: 'Internal server error',
         request_id: context.awsRequestId
       })

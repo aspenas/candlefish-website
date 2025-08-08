@@ -20,11 +20,11 @@
         </div>
       </div>
     </nav>
-    
+
     <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
       <div class="px-4 py-6 sm:px-0">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          
+
           <!-- Secrets Management -->
           <div class="bg-white overflow-hidden shadow rounded-lg">
             <div class="px-4 py-5 sm:p-6">
@@ -35,7 +35,7 @@
               </button>
             </div>
           </div>
-          
+
           <!-- Contractor Access -->
           <div class="bg-white overflow-hidden shadow rounded-lg">
             <div class="px-4 py-5 sm:p-6">
@@ -46,7 +46,7 @@
               </button>
             </div>
           </div>
-          
+
           <!-- Claude Assistant -->
           <div class="bg-white overflow-hidden shadow rounded-lg">
             <div class="px-4 py-5 sm:p-6">
@@ -57,24 +57,24 @@
               </button>
             </div>
           </div>
-          
+
         </div>
-        
+
         <!-- Dynamic Content Area -->
         <div id="content" class="mt-8"></div>
       </div>
     </main>
   </div>
-  
+
   <script>
     const API_URL = 'https://5x6gs2o6b6.execute-api.us-east-1.amazonaws.com/prod'; // Will be replaced during deployment
-    
+
     async function loadSecrets() {
       const content = document.getElementById('content');
       content.innerHTML = '<p>Loading secrets...</p>';
       // Implement API call
     }
-    
+
     function manageContractors() {
       const content = document.getElementById('content');
       content.innerHTML = `
@@ -89,7 +89,7 @@
         </div>
       `;
     }
-    
+
     function showPrompts() {
       const content = document.getElementById('content');
       content.innerHTML = `
@@ -106,7 +106,7 @@
         </div>
       `;
     }
-    
+
     function copyToClipboard(button) {
       const textarea = button.previousElementSibling;
       textarea.select();
@@ -114,7 +114,7 @@
       button.textContent = 'Copied!';
       setTimeout(() => button.textContent = 'Copy to Clipboard', 2000);
     }
-    
+
     async function inviteContractor(event) {
       event.preventDefault();
       // Implement contractor invitation

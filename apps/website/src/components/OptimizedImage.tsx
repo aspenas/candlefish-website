@@ -34,13 +34,13 @@ const OptimizedImage: React.FC<OptimizedImageProps> = React.memo(({
   const generateSrcSet = (baseSrc: string) => {
     const extension = baseSrc.split('.').pop()
     const basename = baseSrc.replace(`.${extension}`, '')
-    
+
     // Check if WebP is supported
-    const supportsWebP = typeof window !== 'undefined' && 
+    const supportsWebP = typeof window !== 'undefined' &&
       window.navigator.userAgent.indexOf('Safari') === -1
 
     const format = supportsWebP ? 'webp' : extension
-    
+
     return {
       srcSet: `
         ${basename}-320w.${format} 320w,
@@ -63,7 +63,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = React.memo(({
 
   if (error) {
     return (
-      <div 
+      <div
         className={`bg-gray-800 flex items-center justify-center ${className}`}
         style={{ width, height }}
         role="img"
@@ -78,12 +78,12 @@ const OptimizedImage: React.FC<OptimizedImageProps> = React.memo(({
     <div ref={ref} className={`relative ${className}`} style={{ width, height }}>
       {/* Blur placeholder */}
       {!loaded && (
-        <div 
+        <div
           className="absolute inset-0 bg-gray-800 animate-pulse"
           aria-hidden="true"
         />
       )}
-      
+
       {/* Actual image */}
       {shouldLoad && (
         <img

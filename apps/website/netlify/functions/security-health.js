@@ -74,7 +74,7 @@ exports.handler = async (event, context) => {
     }
 
     const healthyStatuses = ['healthy', 'not_configured'];
-    const overallStatus = Object.values(checks).every(status => 
+    const overallStatus = Object.values(checks).every(status =>
       healthyStatuses.includes(status)
     ) ? 'healthy' : 'degraded';
 
@@ -102,7 +102,7 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         status: 'unhealthy',
         error: 'Health check failed',
         timestamp: new Date().toISOString(),

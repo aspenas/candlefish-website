@@ -77,7 +77,7 @@ export default function ServiceStatusCard({ service, onPress }: ServiceStatusCar
     : 0;
 
   // Active containers count
-  const activeContainers = service.containers?.filter(c => 
+  const activeContainers = service.containers?.filter(c =>
     c.status === 'RUNNING' || c.status === 'HEALTHY'
   ).length || 0;
 
@@ -92,15 +92,15 @@ export default function ServiceStatusCard({ service, onPress }: ServiceStatusCar
               size={20}
               color={statusColor}
             />
-            <Badge 
-              size={8} 
+            <Badge
+              size={8}
               style={[styles.statusBadge, { backgroundColor: statusColor }]}
             />
           </View>
 
           {/* Service name */}
-          <Text 
-            variant="labelLarge" 
+          <Text
+            variant="labelLarge"
             numberOfLines={2}
             style={styles.serviceName}
           >
@@ -109,8 +109,8 @@ export default function ServiceStatusCard({ service, onPress }: ServiceStatusCar
 
           {/* Environment tag */}
           <View style={styles.environmentContainer}>
-            <Text 
-              variant="labelSmall" 
+            <Text
+              variant="labelSmall"
               style={[styles.environment, { color: theme.colors.onSurfaceVariant }]}
             >
               {service.environment.toUpperCase()}
@@ -161,8 +161,8 @@ export default function ServiceStatusCard({ service, onPress }: ServiceStatusCar
 
           {/* Last health check */}
           {service.lastHealthCheck && (
-            <Text 
-              variant="labelSmall" 
+            <Text
+              variant="labelSmall"
               style={[styles.lastCheck, { color: theme.colors.onSurfaceVariant }]}
               numberOfLines={1}
             >

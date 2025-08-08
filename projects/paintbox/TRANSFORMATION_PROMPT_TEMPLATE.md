@@ -5,7 +5,9 @@
 You are tasked with transforming the Paintbox application's UI to adopt the Tyler-Setup design system. This is Phase [X] of a 5-phase transformation.
 
 ### Context Loading
+
 Before starting, read these files in order:
+
 1. `/Users/patricksmith/candlefish-ai/projects/paintbox/CONTEXT_MANAGEMENT_PAINTBOX_TRANSFORM.md`
 2. `/Users/patricksmith/candlefish-ai/projects/paintbox/PHASE_[X]_STATUS.md` (if exists)
 
@@ -14,6 +16,7 @@ Before starting, read these files in order:
 ## Phase-Specific Instructions
 
 ### Phase 1: Foundation Setup
+
 ```
 OBJECTIVE: Establish Tyler-Setup design foundation in Paintbox
 
@@ -60,6 +63,7 @@ Create PHASE_1_COMPLETE.md with:
 ```
 
 ### Phase 2: Component Transformation
+
 ```
 OBJECTIVE: Transform all UI components to Tyler-Setup patterns
 
@@ -72,7 +76,7 @@ TASKS:
    Files:
    - /components/workflow/ClientInfoFormEnhanced.tsx
    - /components/workflow/ReviewCalculations.tsx
-   
+
    Requirements:
    - Apply Tyler-Setup styling patterns
    - Preserve ALL business logic
@@ -82,16 +86,16 @@ TASKS:
 2. UI Component Library
    Files:
    - /components/ui/*.tsx (all files)
-   
+
    Pattern to follow:
    ```typescript
    import { cn } from '@/lib/utils/cn'
-   
+
    interface ComponentProps {
      className?: string
      // ... other props
    }
-   
+
    export function Component({ className, ...props }: ComponentProps) {
      return (
        <div className={cn(
@@ -110,6 +114,7 @@ TASKS:
    - Apply consistent theming
 
 VALIDATION:
+
 - [ ] All components render correctly
 - [ ] Dark mode works on all components
 - [ ] Touch interactions are smooth
@@ -117,18 +122,22 @@ VALIDATION:
 
 OUTPUT:
 Create PHASE_2_COMPLETE.md
+
 ```
 
 ### Phase 3: Excel Engine Enhancement
 ```
+
 OBJECTIVE: Optimize Excel engine without breaking changes
 
 PREREQUISITES:
+
 - Do NOT modify formula logic
 - Preserve all calculations
 - Test against original Excel file
 
 TASKS:
+
 1. Performance Analysis
    - Profile /lib/excel-engine/
    - Identify slow formulas
@@ -145,6 +154,7 @@ TASKS:
    - Add calculation progress indicators
 
 VALIDATION:
+
 - [ ] All 14,000+ formulas still work
 - [ ] Calculations match Excel exactly
 - [ ] Performance improved by >20%
@@ -152,13 +162,16 @@ VALIDATION:
 
 OUTPUT:
 Create PHASE_3_COMPLETE.md
+
 ```
 
 ### Phase 4: iPad Optimization
 ```
+
 OBJECTIVE: Perfect the tablet experience
 
 TASKS:
+
 1. Touch Gestures
    - Implement swipe navigation
    - Add pinch-to-zoom
@@ -175,6 +188,7 @@ TASKS:
    - Enhance service worker
 
 VALIDATION:
+
 - [ ] Smooth on iPad Pro/Air
 - [ ] All gestures work
 - [ ] <2s page load time
@@ -182,13 +196,16 @@ VALIDATION:
 
 OUTPUT:
 Create PHASE_4_COMPLETE.md
+
 ```
 
 ### Phase 5: Testing & Validation
 ```
+
 OBJECTIVE: Ensure zero regression
 
 TASKS:
+
 1. Test Suite
    - Component tests
    - Integration tests
@@ -205,6 +222,7 @@ TASKS:
    - Document new patterns
 
 VALIDATION:
+
 - [ ] 100% test pass rate
 - [ ] No calculation errors
 - [ ] Performance targets met
@@ -212,6 +230,7 @@ VALIDATION:
 
 OUTPUT:
 Create PHASE_5_COMPLETE.md
+
 ```
 
 ## Critical Rules
@@ -254,6 +273,7 @@ import { cn } from '@/lib/utils/cn'
 ## Testing Protocol
 
 After EACH file modification:
+
 1. Run component tests: `npm run test:components`
 2. Check theme switching works
 3. Test on iPad simulator/device
@@ -262,6 +282,7 @@ After EACH file modification:
 ## Progress Tracking
 
 Update these files as you work:
+
 - `PHASE_[X]_STATUS.md` - Current progress
 - `PHASE_[X]_CHANGES.md` - Detailed change log
 - `PHASE_[X]_ISSUES.md` - Problems encountered
@@ -271,26 +292,27 @@ Update these files as you work:
 When completing your phase:
 
 1. **Create Completion Report**
+
    ```markdown
    # Phase [X] Completion Report
-   
+
    ## Summary
    - Started: [timestamp]
    - Completed: [timestamp]
    - Files modified: [count]
-   
+
    ## Changes Made
    [Detailed list]
-   
+
    ## Test Results
    [Coverage and pass rates]
-   
+
    ## Performance Metrics
    [Before/after comparison]
-   
+
    ## Known Issues
    [Any pending problems]
-   
+
    ## Next Phase Requirements
    [What the next agent needs to know]
    ```
@@ -310,18 +332,21 @@ When completing your phase:
 If you encounter:
 
 ### Business Logic Break
+
 1. STOP immediately
 2. Revert changes
 3. Document in PHASE_[X]_ISSUES.md
 4. Flag for review
 
 ### Performance Degradation
+
 1. Profile the issue
 2. Document metrics
 3. Attempt optimization
 4. If >10% degradation, revert
 
 ### Test Failures
+
 1. Identify affected tests
 2. Determine if UI or logic issue
 3. Fix UI issues only
@@ -330,6 +355,7 @@ If you encounter:
 ## Success Criteria
 
 Your phase is complete when:
+
 - [ ] All assigned tasks completed
 - [ ] Tests passing at >95%
 - [ ] Performance targets met
@@ -339,10 +365,12 @@ Your phase is complete when:
 ## Quick Reference
 
 ### Key Paths
+
 - Paintbox: `/Users/patricksmith/candlefish-ai/projects/paintbox`
 - Tyler-Setup: `/Users/patricksmith/candlefish-ai/packages/tyler-setup`
 
 ### Key Commands
+
 ```bash
 # Development
 npm run dev
@@ -357,6 +385,7 @@ npm run build
 ```
 
 ### Key Files
+
 - Context: `CONTEXT_MANAGEMENT_PAINTBOX_TRANSFORM.md`
 - Current Phase: `PHASE_[X]_STATUS.md`
 - Tyler CSS: `/packages/tyler-setup/frontend/src/index.css`

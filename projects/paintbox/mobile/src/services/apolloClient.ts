@@ -1,6 +1,6 @@
 /**
  * Apollo Client Configuration for React Native System Analyzer
- * 
+ *
  * Features:
  * - GraphQL queries and mutations with offline support
  * - Real-time subscriptions via WebSocket
@@ -60,7 +60,7 @@ const wsLink = new GraphQLWsLink(
 // Auth Link to add authorization headers
 const authLink = setContext(async (_, { headers }) => {
   const token = await AsyncStorage.getItem('authToken');
-  
+
   return {
     headers: {
       ...headers,
@@ -79,7 +79,7 @@ const errorLink = onError(({ graphQLErrors, networkError, operation, forward }) 
       console.error(
         `GraphQL error: Message: ${message}, Location: ${locations}, Path: ${path}`
       );
-      
+
       // Handle authentication errors
       if (message.includes('UNAUTHENTICATED')) {
         AsyncStorage.removeItem('authToken');
@@ -90,7 +90,7 @@ const errorLink = onError(({ graphQLErrors, networkError, operation, forward }) 
 
   if (networkError) {
     console.error(`Network error: ${networkError}`);
-    
+
     // Handle specific network errors
     if ('statusCode' in networkError && networkError.statusCode === 401) {
       AsyncStorage.removeItem('authToken');
@@ -224,14 +224,14 @@ export const initializeApolloClient = async (): Promise<ApolloClient<NormalizedC
   NetInfo.addEventListener(state => {
     const wasOnline = isOnline;
     isOnline = Boolean(state.isConnected && state.isInternetReachable);
-    
+
     if (isOnline && !wasOnline) {
       // Back online - refetch active queries
       client.refetchQueries({
         include: 'active',
       });
     }
-    
+
     // Update default fetch policies
     client.defaultOptions.watchQuery!.fetchPolicy = isOnline ? 'cache-and-network' : 'cache-first';
     client.defaultOptions.query!.fetchPolicy = isOnline ? 'cache-first' : 'cache-only';

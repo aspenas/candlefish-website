@@ -4,7 +4,7 @@ import path from 'path'
 
 async function globalTeardown(config: FullConfig) {
   console.log('🧹 Cleaning up E2E test environment...')
-  
+
   try {
     // Clean up auth files
     const authDir = path.join(__dirname, 'auth')
@@ -14,7 +14,7 @@ async function globalTeardown(config: FullConfig) {
     } catch (error) {
       // Directory might not exist, ignore
     }
-    
+
     // Clean up any test artifacts
     const testResultsDir = path.join(process.cwd(), 'test-results')
     try {
@@ -29,20 +29,20 @@ async function globalTeardown(config: FullConfig) {
           return false
         }
       })
-      
+
       for (const file of oldFiles) {
         await fs.unlink(path.join(testResultsDir, file))
       }
-      
+
       if (oldFiles.length > 0) {
         console.log(`🗑️  Cleaned up ${oldFiles.length} old test artifacts`)
       }
     } catch (error) {
       // Directory might not exist, ignore
     }
-    
+
     console.log('✅ Global teardown completed successfully')
-    
+
   } catch (error) {
     console.error('❌ Global teardown failed:', error)
   }

@@ -52,7 +52,7 @@ export const CompanyCamGallery: React.FC<CompanyCamGalleryProps> = ({
 
   const loadProject = async () => {
     if (!projectId) return;
-    
+
     setIsLoading(true);
     try {
       const projectData = await companyCamApi.getProject(projectId);
@@ -96,7 +96,7 @@ export const CompanyCamGallery: React.FC<CompanyCamGalleryProps> = ({
       try {
         const tags = ['exterior', 'before', new Date().toLocaleDateString()];
         const photo = await companyCamApi.uploadPhoto(projectId || 'new', file, tags);
-        
+
         // Add to current project
         if (project) {
           const updatedProject = {
@@ -119,14 +119,14 @@ export const CompanyCamGallery: React.FC<CompanyCamGalleryProps> = ({
     if (!project) return;
 
     await companyCamApi.addTags(photoId, [tag]);
-    
+
     // Update local state
-    const updatedPhotos = project.photos.map(photo => 
-      photo.id === photoId 
+    const updatedPhotos = project.photos.map(photo =>
+      photo.id === photoId
         ? { ...photo, tags: [...photo.tags, tag] }
         : photo
     );
-    
+
     setProject({ ...project, photos: updatedPhotos });
     onPhotosChange?.(updatedPhotos);
   };
@@ -145,7 +145,7 @@ export const CompanyCamGallery: React.FC<CompanyCamGalleryProps> = ({
             <p className="text-sm text-paintbox-text-muted">{project.name}</p>
           )}
         </div>
-        
+
         <button
           onClick={() => setShowUpload(true)}
           className="paintbox-btn paintbox-btn-secondary"
@@ -184,7 +184,7 @@ export const CompanyCamGallery: React.FC<CompanyCamGalleryProps> = ({
                     transitions={transitions}
                   />
                 )}
-                
+
                 {categorizedPhotos.progress.length > 0 && (
                   <PhotoSection
                     title="Progress"
@@ -193,7 +193,7 @@ export const CompanyCamGallery: React.FC<CompanyCamGalleryProps> = ({
                     transitions={transitions}
                   />
                 )}
-                
+
                 {categorizedPhotos.after.length > 0 && (
                   <PhotoSection
                     title="Completed"
@@ -202,7 +202,7 @@ export const CompanyCamGallery: React.FC<CompanyCamGalleryProps> = ({
                     transitions={transitions}
                   />
                 )}
-                
+
                 {categorizedPhotos.other.length > 0 && (
                   <PhotoSection
                     title="Other"
@@ -230,7 +230,7 @@ export const CompanyCamGallery: React.FC<CompanyCamGalleryProps> = ({
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <div className="border-2 border-dashed border-paintbox-border rounded-lg p-8 text-center">
               <Camera className="w-12 h-12 text-paintbox-primary/50 mx-auto mb-3" />
               <p className="text-paintbox-text-muted mb-4">
@@ -251,7 +251,7 @@ export const CompanyCamGallery: React.FC<CompanyCamGalleryProps> = ({
                 Choose Photos
               </label>
             </div>
-            
+
             {uploadProgress > 0 && (
               <div className="mt-4">
                 <div className="h-2 bg-paintbox-border rounded-full overflow-hidden">
@@ -292,7 +292,7 @@ export const CompanyCamGallery: React.FC<CompanyCamGalleryProps> = ({
               >
                 <X className="w-5 h-5" />
               </button>
-              
+
               {selectedPhoto.annotations.map((annotation, index) => (
                 <div
                   key={index}
@@ -303,7 +303,7 @@ export const CompanyCamGallery: React.FC<CompanyCamGalleryProps> = ({
                 </div>
               ))}
             </div>
-            
+
             <div className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Tag className="w-4 h-4 text-paintbox-primary" />
@@ -327,7 +327,7 @@ export const CompanyCamGallery: React.FC<CompanyCamGalleryProps> = ({
                   </button>
                 </div>
               </div>
-              
+
               <p className="text-sm text-paintbox-text-muted">
                 Uploaded {new Date(selectedPhoto.created_at).toLocaleDateString()}
               </p>

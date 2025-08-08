@@ -70,7 +70,7 @@ class CalculationService {
     }));
 
     // Calculate exterior
-    const exteriorCalc = exteriorSurfaces.length > 0 
+    const exteriorCalc = exteriorSurfaces.length > 0
       ? paintingCalculator.calculateExterior(exteriorSurfaces)
       : { labor: { total: 0 }, materials: { total: 0 }, subtotal: 0, total: 0 };
 

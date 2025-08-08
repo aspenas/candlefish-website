@@ -6,37 +6,37 @@
 <body>
     <h1>Testing Paintbox Animations</h1>
     <p>Click the button to load the animations demo page in an iframe and check console for errors.</p>
-    
+
     <button onclick="loadDemo()">Load Demo Page</button>
     <button onclick="checkComponents()">Check Component Status</button>
-    
+
     <div id="status" style="margin: 20px 0; padding: 10px; border: 1px solid #ccc;"></div>
-    
+
     <iframe id="demoFrame" src="" width="100%" height="600" style="border: 1px solid #ddd; display: none;"></iframe>
-    
+
     <script>
         const statusDiv = document.getElementById('status');
         const iframe = document.getElementById('demoFrame');
-        
+
         function log(message, type = 'info') {
             const color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'blue';
             statusDiv.innerHTML += `<div style="color: ${color}">${new Date().toLocaleTimeString()}: ${message}</div>`;
             console.log(`[${type.toUpperCase()}]`, message);
         }
-        
+
         function loadDemo() {
             log('Loading demo page...');
             iframe.style.display = 'block';
             iframe.src = 'http://localhost:3002/demo/animations';
-            
+
             iframe.onload = () => {
                 log('Page loaded successfully', 'success');
-                
+
                 try {
                     const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
                     const title = iframeDoc.title;
                     log(`Page title: ${title}`, title.includes('404') ? 'error' : 'info');
-                    
+
                     // Check for error messages
                     const bodyText = iframeDoc.body.textContent;
                     if (bodyText.includes('404') || bodyText.includes('not found')) {
@@ -49,15 +49,15 @@
                     log(`Cannot access iframe content: ${e.message}`, 'error');
                 }
             };
-            
+
             iframe.onerror = () => {
                 log('Failed to load page', 'error');
             };
         }
-        
+
         async function checkComponents() {
             log('Checking component compilation...');
-            
+
             // List of components to check
             const components = [
                 '/components/ui/MicroInteractions.tsx',
@@ -70,24 +70,24 @@
                 '/lib/utils/accessibility.ts',
                 '/lib/utils/performance-monitor.ts'
             ];
-            
+
             log(`Created ${components.length} animation components and utilities`, 'success');
             log('Components include:', 'info');
             components.forEach(comp => {
                 log(`  ✓ ${comp}`, 'success');
             });
-            
+
             log('\nIf the page shows 404, possible issues:', 'info');
             log('1. Next.js might need a restart to detect new pages', 'info');
             log('2. The project might be using a different routing structure', 'info');
             log('3. There might be compilation errors in the components', 'info');
-            
+
             log('\nTry these solutions:', 'info');
             log('1. Restart the Next.js server (Ctrl+C and npm run dev)', 'info');
             log('2. Check console for compilation errors', 'info');
             log('3. Verify the page exists at: app/demo/animations/page.tsx', 'info');
         }
-        
+
         // Auto-check on load
         window.onload = () => {
             log('Test page loaded. Click buttons to test animations demo.', 'info');

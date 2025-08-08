@@ -1,0 +1,67 @@
+# Authorization and Multi-tenant Directives
+directive @auth(
+  requires: Role = USER
+) on OBJECT | FIELD_DEFINITION
+
+directive @rateLimit(
+  max: Int!
+  window: Duration!
+  message: String = "Rate limit exceeded"
+) on FIELD_DEFINITION
+
+directive @tenant(
+  field: String = "organizationId"
+) on OBJECT | FIELD_DEFINITION
+
+directive @complexity(
+  value: Int!
+) on FIELD_DEFINITION
+
+directive @deprecated(
+  reason: String = "No longer supported"
+) on FIELD_DEFINITION | ENUM_VALUE
+
+directive @cacheControl(
+  maxAge: Int
+  scope: CacheControlScope
+) on FIELD_DEFINITION | OBJECT | INTERFACE
+
+directive @audit(
+  level: AuditLevel = INFO
+) on FIELD_DEFINITION | OBJECT
+
+directive @sanitize(
+  type: SanitizationType = HTML
+) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION
+
+directive @validate(
+  constraint: String!
+) on INPUT_FIELD_DEFINITION | ARGUMENT_DEFINITION
+
+enum Role {
+  SUPER_ADMIN
+  ORG_ADMIN
+  ORG_USER
+  USER
+  GUEST
+}
+
+enum CacheControlScope {
+  PUBLIC
+  PRIVATE
+}
+
+enum AuditLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+  CRITICAL
+}
+
+enum SanitizationType {
+  HTML
+  SQL
+  XSS
+  ALPHANUMERIC
+}

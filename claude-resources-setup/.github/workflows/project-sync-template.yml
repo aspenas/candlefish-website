@@ -16,46 +16,46 @@ permissions:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout project
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Checkout Claude resources
         uses: actions/checkout@v4
         with:
           repository: candlefish/claude-resources
           path: claude-resources
           token: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Sync Claude directory
         run: |
           # Remove old .claude if it exists and is not a symlink
           if [ -e .claude ] && [ ! -L .claude ]; then
             rm -rf .claude
           fi
-          
+
           # Copy latest resources
           cp -r claude-resources/.claude .
-          
+
           # Add .gitignore
           cat > .claude/.gitignore << 'EOF'
           # Local overrides
           *.local
           local-*
-          
+
           # Temporary files
           *.tmp
           *.swp
           .DS_Store
-          
+
           # Editor files
           .vscode/
           .idea/
           EOF
-      
+
       - name: Check for changes
         id: check_changes
         run: |
@@ -65,7 +65,7 @@ jobs:
           else
             echo "has_changes=true" >> $GITHUB_OUTPUT
           fi
-      
+
       - name: Create PR for changes
         if: steps.check_changes.outputs.has_changes == 'true'
         uses: peter-evans/create-pull-request@v6
@@ -75,11 +75,11 @@ jobs:
           title: "🤖 Update Claude resources from organization"
           body: |
             This PR updates the Claude agents and commands from the organization repository.
-            
+
             ### Source
             - Repository: [candlefish/claude-resources](https://github.com/candlefish/claude-resources)
             - Includes latest agents and commands
-            
+
             ### Review
             Please review the changes to ensure compatibility with this project.
           branch: claude-resources-update

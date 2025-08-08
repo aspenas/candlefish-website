@@ -9,18 +9,18 @@ const ContactFormSchema = z.object({
     .max(100, 'Name must not exceed 100 characters')
     .regex(/^[a-zA-Z\s'-]+$/, 'Name contains invalid characters')
     .transform(val => DOMPurify.sanitize(val.trim())),
-  
+
   email: z.string()
     .email('Please enter a valid email address')
     .max(255, 'Email address too long')
     .toLowerCase()
     .transform(val => DOMPurify.sanitize(val.trim())),
-  
+
   company: z.string()
     .max(100, 'Company name too long')
     .optional()
     .transform(val => val ? DOMPurify.sanitize(val.trim()) : val),
-  
+
   message: z.string()
     .min(10, 'Message must be at least 10 characters')
     .max(5000, 'Message must not exceed 5000 characters')
@@ -28,7 +28,7 @@ const ContactFormSchema = z.object({
       ALLOWED_TAGS: [], // Strip all HTML
       ALLOWED_ATTR: []
     })),
-  
+
   // Honeypot field for bot detection
   website: z.string().max(0, 'Invalid submission detected')
 });
@@ -48,22 +48,22 @@ const MAX_SUBMISSIONS = 5;
 const checkRateLimit = (identifier: string): boolean => {
   const now = Date.now();
   const submissions = submissionTracker.get(identifier) || [];
-  
+
   // Remove old submissions outside the window
   const recentSubmissions = submissions.filter(time => now - time < RATE_LIMIT_WINDOW);
-  
+
   if (recentSubmissions.length >= MAX_SUBMISSIONS) {
     return false;
   }
-  
+
   recentSubmissions.push(now);
   submissionTracker.set(identifier, recentSubmissions);
   return true;
 };
 
-export const SecureContactForm: React.FC<SecureContactFormProps> = ({ 
+export const SecureContactForm: React.FC<SecureContactFormProps> = ({
   onSubmit,
-  recaptchaSiteKey 
+  recaptchaSiteKey
 }) => {
   const [formData, setFormData] = useState<Partial<ContactFormData>>({
     name: '',
@@ -72,21 +72,21 @@ export const SecureContactForm: React.FC<SecureContactFormProps> = ({
     message: '',
     website: '' // Honeypot
   });
-  
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
-  
+
   const formRef = useRef<HTMLFormElement>(null);
   const recaptchaRef = useRef<any>(null);
-  
+
   // Generate a unique identifier for rate limiting (in production, use IP address)
   const getSubmissionIdentifier = (): string => {
     // In a real app, this would be the user's IP address from the server
     return `user_${formData.email || 'anonymous'}`;
   };
-  
+
   const validateField = (name: keyof ContactFormData, value: any): string | null => {
     try {
       const fieldSchema = ContactFormSchema.shape[name];
@@ -99,23 +99,23 @@ export const SecureContactForm: React.FC<SecureContactFormProps> = ({
       return 'Validation error';
     }
   };
-  
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    
+
     // Don't show honeypot field changes
     if (name === 'website') {
       setFormData(prev => ({ ...prev, [name]: value }));
       return;
     }
-    
+
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
-    
+
     // Validate on blur
     if (e.type === 'blur' && value) {
       const error = validateField(name as keyof ContactFormData, value);
@@ -124,41 +124,41 @@ export const SecureContactForm: React.FC<SecureContactFormProps> = ({
       }
     }
   };
-  
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    
+
     // Reset states
     setSubmitError(null);
     setErrors({});
-    
+
     // Check rate limiting
     const identifier = getSubmissionIdentifier();
     if (!checkRateLimit(identifier)) {
       setSubmitError('Too many submissions. Please try again later.');
       return;
     }
-    
+
     try {
       // Validate all fields
       const validatedData = ContactFormSchema.parse(formData);
-      
+
       // Check honeypot
       if (validatedData.website) {
         // Silently fail for bots
         setSubmitSuccess(true);
         return;
       }
-      
+
       setIsSubmitting(true);
-      
+
       // Execute reCAPTCHA if configured
       if (recaptchaSiteKey && window.grecaptcha) {
         try {
           const token = await window.grecaptcha.execute(recaptchaSiteKey, {
             action: 'contact_form'
           });
-          
+
           // Add token to submission
           await onSubmit?.({ ...validatedData, recaptchaToken: token } as any);
         } catch (recaptchaError) {
@@ -168,7 +168,7 @@ export const SecureContactForm: React.FC<SecureContactFormProps> = ({
         // Submit without reCAPTCHA
         await onSubmit?.(validatedData);
       }
-      
+
       // Success
       setSubmitSuccess(true);
       setFormData({
@@ -178,10 +178,10 @@ export const SecureContactForm: React.FC<SecureContactFormProps> = ({
         message: '',
         website: ''
       });
-      
+
       // Reset form
       formRef.current?.reset();
-      
+
     } catch (error) {
       if (error instanceof z.ZodError) {
         // Set field-specific errors
@@ -195,8 +195,8 @@ export const SecureContactForm: React.FC<SecureContactFormProps> = ({
       } else {
         // General submission error
         setSubmitError(
-          error instanceof Error 
-            ? error.message 
+          error instanceof Error
+            ? error.message
             : 'An error occurred. Please try again.'
         );
       }
@@ -204,7 +204,7 @@ export const SecureContactForm: React.FC<SecureContactFormProps> = ({
       setIsSubmitting(false);
     }
   };
-  
+
   // Add reCAPTCHA script if needed
   React.useEffect(() => {
     if (recaptchaSiteKey && !window.grecaptcha) {
@@ -213,15 +213,15 @@ export const SecureContactForm: React.FC<SecureContactFormProps> = ({
       script.async = true;
       script.defer = true;
       document.head.appendChild(script);
-      
+
       return () => {
         document.head.removeChild(script);
       };
     }
   }, [recaptchaSiteKey]);
-  
+
   return (
-    <form 
+    <form
       ref={formRef}
       onSubmit={handleSubmit}
       className="secure-contact-form"
@@ -234,13 +234,13 @@ export const SecureContactForm: React.FC<SecureContactFormProps> = ({
           <p>We'll get back to you within 24 hours.</p>
         </div>
       )}
-      
+
       {submitError && (
         <div className="alert alert-error" role="alert">
           <p>{submitError}</p>
         </div>
       )}
-      
+
       <div className="form-group">
         <label htmlFor="contact-name">
           Name <span aria-label="required">*</span>
@@ -266,7 +266,7 @@ export const SecureContactForm: React.FC<SecureContactFormProps> = ({
           </span>
         )}
       </div>
-      
+
       <div className="form-group">
         <label htmlFor="contact-email">
           Email <span aria-label="required">*</span>
@@ -292,7 +292,7 @@ export const SecureContactForm: React.FC<SecureContactFormProps> = ({
           </span>
         )}
       </div>
-      
+
       <div className="form-group">
         <label htmlFor="contact-company">Company</label>
         <input
@@ -314,7 +314,7 @@ export const SecureContactForm: React.FC<SecureContactFormProps> = ({
           </span>
         )}
       </div>
-      
+
       <div className="form-group">
         <label htmlFor="contact-message">
           Message <span aria-label="required">*</span>
@@ -342,7 +342,7 @@ export const SecureContactForm: React.FC<SecureContactFormProps> = ({
           {formData.message?.length || 0} / 5000
         </span>
       </div>
-      
+
       {/* Honeypot field - hidden from users */}
       <div className="visually-hidden" aria-hidden="true">
         <label htmlFor="contact-website">
@@ -358,15 +358,15 @@ export const SecureContactForm: React.FC<SecureContactFormProps> = ({
           autoComplete="off"
         />
       </div>
-      
-      <button 
-        type="submit" 
+
+      <button
+        type="submit"
         disabled={isSubmitting || submitSuccess}
         className="btn btn-primary"
       >
         {isSubmitting ? 'Sending...' : 'Send Message'}
       </button>
-      
+
       <p className="privacy-notice">
         By submitting this form, you agree to our{' '}
         <a href="/privacy" target="_blank" rel="noopener noreferrer">
@@ -391,47 +391,47 @@ const styles = `
     white-space: nowrap;
     border: 0;
   }
-  
+
   /* Secure form styling */
   .secure-contact-form {
     max-width: 600px;
     margin: 0 auto;
   }
-  
+
   .form-group {
     margin-bottom: 1.5rem;
   }
-  
+
   .error {
     color: #dc3545;
     font-size: 0.875rem;
     margin-top: 0.25rem;
     display: block;
   }
-  
+
   input[aria-invalid="true"],
   textarea[aria-invalid="true"] {
     border-color: #dc3545;
   }
-  
+
   .alert {
     padding: 1rem;
     margin-bottom: 1rem;
     border-radius: 0.25rem;
   }
-  
+
   .alert-success {
     background-color: #d4edda;
     color: #155724;
     border: 1px solid #c3e6cb;
   }
-  
+
   .alert-error {
     background-color: #f8d7da;
     color: #721c24;
     border: 1px solid #f5c6cb;
   }
-  
+
   .character-count {
     font-size: 0.875rem;
     color: #6c757d;
@@ -439,7 +439,7 @@ const styles = `
     display: block;
     margin-top: 0.25rem;
   }
-  
+
   .privacy-notice {
     font-size: 0.875rem;
     color: #6c757d;

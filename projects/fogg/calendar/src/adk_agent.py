@@ -42,14 +42,14 @@ class FOGGCalendarAgent:
         # Use Claude to interpret the analysis and make recommendations
         prompt = f"""
         Based on the following meeting analysis for the FOGG leadership team:
-        
+
         {json.dumps(analysis, indent=2)}
-        
+
         Please provide:
         1. A summary of the current meeting patterns
         2. Recommendations for improving attendance
         3. Suggested optimal meeting time and cadence
-        
+
         Format your response as JSON with keys: summary, recommendations, optimal_schedule
         """
 
@@ -77,9 +77,7 @@ class FOGGCalendarAgent:
             "ai_recommendations": recommendations,
         }
 
-    async def create_optimized_recurring_meeting(
-        self, calendar_id: str, group_email: str
-    ) -> str:
+    async def create_optimized_recurring_meeting(self, calendar_id: str, group_email: str) -> str:
         """Create an optimized recurring meeting based on analysis."""
         # First sync with group
         sync_result = await self.mcp_client.call_tool(
@@ -141,9 +139,7 @@ async def demo():
     print(f"Found {len(calendars)} calendars")
 
     # Find FOGG calendar
-    fogg_calendar = next(
-        (cal for cal in calendars if "fogg" in cal["name"].lower()), None
-    )
+    fogg_calendar = next((cal for cal in calendars if "fogg" in cal["name"].lower()), None)
 
     if fogg_calendar:
         print(f"\n2. Found FOGG calendar: {fogg_calendar['name']}")

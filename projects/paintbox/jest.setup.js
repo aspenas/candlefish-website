@@ -72,14 +72,14 @@ global.securityTestHelpers = {
     "' UNION SELECT * FROM secrets --",
     "'; INSERT INTO admin_users VALUES ('hacker', 'password'); --"
   ],
-  
+
   xssPayloads: [
     "<script>alert('XSS')</script>",
     "javascript:alert('XSS')",
     "<img src=x onerror=alert('XSS')>",
     "';alert(String.fromCharCode(88,83,83));//"
   ],
-  
+
   // Rate limiting test helpers
   createRateLimitRequests: (count) => {
     return Array.from({ length: count }, (_, i) => ({
@@ -89,7 +89,7 @@ global.securityTestHelpers = {
       userAgent: 'test-agent'
     }))
   },
-  
+
   // Mock JWT tokens
   createMockJWT: (payload = {}, expired = false) => {
     const header = { alg: 'HS256', typ: 'JWT' }
@@ -99,15 +99,15 @@ global.securityTestHelpers = {
       exp: expired ? Math.floor(Date.now() / 1000) - 3600 : Math.floor(Date.now() / 1000) + 3600,
       ...payload
     }
-    
+
     // Simple base64 encoding for testing (not secure, just for mocking)
     const encodedHeader = Buffer.from(JSON.stringify(header)).toString('base64')
     const encodedPayload = Buffer.from(JSON.stringify(defaultPayload)).toString('base64')
     const signature = 'mock-signature'
-    
+
     return `${encodedHeader}.${encodedPayload}.${signature}`
   },
-  
+
   // Mock AWS responses
   createMockAWSSecret: (name, value, description = '') => ({
     Name: name,

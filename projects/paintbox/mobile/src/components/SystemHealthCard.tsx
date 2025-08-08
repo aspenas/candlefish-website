@@ -104,7 +104,7 @@ export default function SystemHealthCard({ analysis, onPress }: SystemHealthCard
                   Overall status: {analysis.overallHealth.toLowerCase()}
                 </Text>
               </View>
-              
+
               <MaterialCommunityIcons
                 name={healthIcon}
                 size={32}
@@ -124,15 +124,15 @@ export default function SystemHealthCard({ analysis, onPress }: SystemHealthCard
                   color={theme.colors.onSurfaceVariant}
                 />
               </View>
-              
+
               <LinearGradient
                 colors={scoreGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.progressBarGradient}
               >
-                <ProgressBar 
-                  progress={analysis.healthScore / 100} 
+                <ProgressBar
+                  progress={analysis.healthScore / 100}
                   style={styles.progressBar}
                   color="transparent"
                 />
@@ -147,7 +147,7 @@ export default function SystemHealthCard({ analysis, onPress }: SystemHealthCard
                     {analysis.healthyServices} healthy
                   </Text>
                 </View>
-                
+
                 {analysis.degradedServices > 0 && (
                   <View style={styles.serviceCount}>
                     <Text variant="labelSmall" style={{ color: theme.colors.warning }}>
@@ -155,7 +155,7 @@ export default function SystemHealthCard({ analysis, onPress }: SystemHealthCard
                     </Text>
                   </View>
                 )}
-                
+
                 {analysis.unhealthyServices > 0 && (
                   <View style={styles.serviceCount}>
                     <Text variant="labelSmall" style={{ color: theme.colors.error }}>
@@ -164,7 +164,7 @@ export default function SystemHealthCard({ analysis, onPress }: SystemHealthCard
                   </View>
                 )}
               </View>
-              
+
               <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
                 {analysis.totalServices} total services
               </Text>

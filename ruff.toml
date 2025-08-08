@@ -1,0 +1,62 @@
+# Ruff configuration for candlefish-ai
+
+# Increase line length to a more reasonable 100 characters
+line-length = 100
+
+# Exclude certain directories and files
+extend-exclude = [
+    "node_modules",
+    "dist",
+    "build",
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".git",
+    "coverage",
+    ".pytest_cache",
+    ".next",
+    "*.lock",
+    "projects/fogg/calendar/",  # Skip fogg calendar subproject
+]
+
+[lint]
+# Enable specific rule sets but ignore problematic ones for now
+extend-ignore = [
+    "E501",    # Line too long (handled by formatter)
+    "RUF012",  # Mutable class attributes
+    "SIM102",  # Nested if statements
+    "SIM105",  # Use contextlib.suppress
+    "SIM110",  # Use `all()` instead of for loop
+    "RUF005",  # Consider unpacking
+    "RUF013",  # PEP 484 implicit Optional
+    "B023",    # Function definition loop variable binding
+    "PLR0913", # Too many arguments
+    "PLR0915", # Too many statements
+    "PLR0911", # Too many return statements
+    "TRY300",  # Consider moving to else block
+    "TRY400",  # Use logging.exception
+    "TRY003",  # Long exception messages
+    "ARG001",  # Unused function argument
+    "PTH100",  # os.path.abspath
+    "PTH118",  # os.path.join
+    "PTH120",  # os.path.dirname
+    "PTH123",  # open() should be Path.open()
+    "PTH206",  # .split(os.sep) should be Path.parts
+]
+
+# Select specific rules to run (focus on critical issues)
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+]
+
+[lint.per-file-ignores]
+# Allow unused imports in __init__.py files
+"__init__.py" = ["F401"]
+# Allow print statements in scripts
+"scripts/*.py" = ["T201"]
+"analyze_*.py" = ["T201"]
+# Allow complex functions in test files
+"test_*.py" = ["C901", "PLR0913"]
+"**/tests/**" = ["C901", "PLR0913"]

@@ -54,7 +54,7 @@ export default function InteriorMeasurementPage() {
   });
 
   const updateRoom = (id: string, field: keyof Room, value: any) => {
-    setRooms(rooms.map(r => 
+    setRooms(rooms.map(r =>
       r.id === id ? { ...r, [field]: value } : r
     ));
   };
@@ -196,7 +196,7 @@ export default function InteriorMeasurementPage() {
                     className="paintbox-section relative overflow-hidden"
                   >
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-paintbox-primary to-paintbox-accent" />
-                    
+
                     <div className="flex items-start justify-between mb-4">
                       <input
                         type="text"

@@ -5,13 +5,13 @@ async function globalTeardown() {
   // Clean up test data
   if (process.env.CLEANUP_TEST_DATA === 'true') {
     console.log('🗑️  Cleaning up test data...')
-    
+
     try {
       // Clean up any test repositories, files, or database entries
       // This would make API calls to clean up test data
-      
+
       const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3000'
-      
+
       // Example cleanup calls
       const cleanupEndpoints = [
         '/api/test/cleanup/repositories',
@@ -42,7 +42,7 @@ async function globalTeardown() {
   try {
     const fs = await import('fs/promises')
     const path = await import('path')
-    
+
     const tempFiles = [
       '__tests__/setup/auth-state.json',
       'test-results/temp-screenshots',
@@ -75,7 +75,7 @@ async function globalTeardown() {
 
     const fs = await import('fs/promises')
     await fs.writeFile(
-      'test-results/test-summary.json', 
+      'test-results/test-summary.json',
       JSON.stringify(testResults, null, 2)
     )
     console.log('📊 Generated test summary')

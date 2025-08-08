@@ -1,8 +1,9 @@
 # Claude Resources Organization-Wide Sharing System - Project Context
 
 ## Project Overview
-**Date**: August 4, 2025  
-**Status**: Implementation Complete, Ready for Deployment  
+
+**Date**: August 4, 2025
+**Status**: Implementation Complete, Ready for Deployment
 **Purpose**: Create a centralized system for sharing Claude agents and commands across all Candlefish projects and team members
 
 ## System Architecture
@@ -10,8 +11,8 @@
 ### Core Components
 
 1. **Central Repository**: `candlefish/claude-resources`
-   - Contains all agents from https://github.com/wshobson/agents
-   - Contains all commands from https://github.com/wshobson/commands
+   - Contains all agents from <https://github.com/wshobson/agents>
+   - Contains all commands from <https://github.com/wshobson/commands>
    - Auto-syncs every 6 hours via GitHub Actions
    - PR-based review process with Aaron and Tyler as reviewers
 
@@ -29,32 +30,40 @@
 ## Technical Architecture Decisions
 
 ### 1. Symlink-Based Distribution
-**Decision**: Use symlinks from ~/.claude to organization repository  
-**Rationale**: 
+
+**Decision**: Use symlinks from ~/.claude to organization repository
+**Rationale**:
+
 - Instant updates when pulling claude-resources repo
 - No duplication of files across projects
 - Works seamlessly with Git worktrees
 - Simple rollback by changing symlink
 
 ### 2. GitHub Actions for Automation
-**Decision**: Use GitHub Actions for all sync and distribution  
+
+**Decision**: Use GitHub Actions for all sync and distribution
 **Rationale**:
+
 - Native GitHub integration
 - No external dependencies
 - Built-in secret management
 - Reusable workflows across projects
 
 ### 3. PR-Based Review Process
-**Decision**: All updates create PRs for review  
+
+**Decision**: All updates create PRs for review
 **Rationale**:
+
 - Ensures quality control
 - Allows custom modifications
 - Provides audit trail
 - Enables rollback if needed
 
 ### 4. Upstream Repository Structure
-**Decision**: Mirror upstream structure in .claude directory  
+
+**Decision**: Mirror upstream structure in .claude directory
 **Rationale**:
+
 - Maintains compatibility
 - Easy to track changes
 - Allows selective syncing
@@ -63,6 +72,7 @@
 ## Implementation Details
 
 ### File Structure
+
 ```
 claude-resources/
 ├── .claude/
@@ -85,18 +95,21 @@ claude-resources/
 ```
 
 ### API Design (Future Enhancement)
+
 - RESTful API for programmatic access
 - PostgreSQL for sync history and status
 - Redis for caching and rate limiting
 - WebSocket for real-time updates
 
 ### Frontend Dashboard (Future Enhancement)
+
 - React/TypeScript deployment dashboard
 - Real-time sync progress monitoring
 - One-click deployment actions
 - Team member onboarding wizard
 
 ### Production Infrastructure (Future Enhancement)
+
 - Docker containers with multi-stage builds
 - Kubernetes deployment with auto-scaling
 - Prometheus/Grafana monitoring
@@ -105,6 +118,7 @@ claude-resources/
 ## Key Workflows
 
 ### 1. Initial Setup (One-Time)
+
 ```bash
 # For implementer
 gh repo create candlefish/claude-resources --private
@@ -116,18 +130,21 @@ curl -sSL https://raw.githubusercontent.com/candlefish/claude-resources/main/scr
 ```
 
 ### 2. Upstream Sync (Automated)
+
 - Runs every 6 hours via cron schedule
 - Creates PR with changes for review
 - Aaron and Tyler review and merge
 - Changes propagate to all projects
 
 ### 3. Project Integration (Automated)
+
 - Each project has sync workflow
 - Pulls from claude-resources repository
 - Updates .claude directory
 - No manual intervention needed
 
 ### 4. Git Worktree Support
+
 - setup-worktree-claude.sh handles all worktrees
 - Creates symlinks in each worktree
 - Works with existing and new worktrees
@@ -153,20 +170,24 @@ curl -sSL https://raw.githubusercontent.com/candlefish/claude-resources/main/scr
 ## Maintenance Procedures
 
 ### Daily
+
 - Automatic syncs run every 6 hours
 - No manual intervention required
 
 ### Weekly
+
 - Review pending sync PRs
 - Check for failed workflows
 - Monitor team feedback
 
 ### Monthly
+
 - Review custom additions
 - Update documentation
 - Audit resource usage
 
 ### Quarterly
+
 - Evaluate sync frequency
 - Plan feature enhancements
 - Security audit

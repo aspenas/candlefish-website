@@ -5,24 +5,28 @@ A React Native mobile application for the System Analyzer platform, providing co
 ## Features
 
 ### 🔍 Real-time System Monitoring
+
 - **Dashboard Overview**: System health summary with real-time status updates
 - **Service Management**: Grid view of all services with status indicators
 - **Live Metrics**: Mobile-optimized charts for CPU, memory, disk, and network metrics
 - **Alert Management**: Comprehensive alert listing with filtering and quick actions
 
 ### 📱 Mobile-Optimized Experience
+
 - **Pull-to-refresh**: Refresh data with native mobile gestures
 - **Offline Support**: Apollo GraphQL cache persistence with AsyncStorage
 - **Network-aware**: Automatic retry and offline detection
 - **Responsive Design**: Optimized for all screen sizes and orientations
 
 ### 🔔 Push Notifications
+
 - **Real-time Alerts**: Instant notifications for critical system issues
 - **Background Monitoring**: Periodic system health checks when app is backgrounded
 - **Smart Notifications**: Severity-based notification priorities
 - **Quick Actions**: Acknowledge and resolve alerts directly from notifications
 
 ### ⚡ Performance & Reliability
+
 - **Background Tasks**: Periodic data synchronization using Expo BackgroundFetch
 - **Deep Linking**: Direct navigation to specific services and alerts
 - **Error Handling**: Comprehensive error boundaries and retry mechanisms
@@ -31,6 +35,7 @@ A React Native mobile application for the System Analyzer platform, providing co
 ## Architecture
 
 ### 🏗️ Technical Stack
+
 - **React Native**: Cross-platform mobile development
 - **Expo**: Development platform and build tools
 - **React Navigation**: Tab-based navigation with stack navigators
@@ -40,6 +45,7 @@ A React Native mobile application for the System Analyzer platform, providing co
 - **Expo Notifications**: Push notification management
 
 ### 📊 Data Management
+
 - **GraphQL API**: Consistent with web frontend
 - **Real-time Updates**: WebSocket subscriptions for live data
 - **Offline Caching**: Apollo cache with AsyncStorage persistence
@@ -47,6 +53,7 @@ A React Native mobile application for the System Analyzer platform, providing co
 - **Network Detection**: Adaptive fetch policies based on connectivity
 
 ### 🔗 Integration
+
 - **Shared GraphQL Schema**: Consistent API with web frontend
 - **Deep Linking**: URL-based navigation and sharing
 - **Push Notifications**: Firebase (Android) and APNS (iOS)
@@ -95,6 +102,7 @@ mobile/
 ## Key Features Implementation
 
 ### 🎯 Dashboard Screen
+
 - System health overview with health score
 - Service status grid with real-time updates
 - Active alerts summary with quick navigation
@@ -102,6 +110,7 @@ mobile/
 - Pull-to-refresh functionality
 
 ### 📋 Service Management
+
 - Comprehensive service listing with filtering
 - Service detail views with container and process information
 - Quick actions: restart, health check, view metrics
@@ -109,6 +118,7 @@ mobile/
 - Dependency visualization
 
 ### 📊 Metrics & Monitoring
+
 - Mobile-optimized charts using React Native Chart Kit
 - Time range selection (1h, 6h, 24h, 7d)
 - Metric type filtering (CPU, Memory, Disk, Network)
@@ -116,6 +126,7 @@ mobile/
 - Performance trend analysis
 
 ### 🚨 Alert Management
+
 - Comprehensive alert listing with filtering
 - Severity-based organization (Critical, High, Medium, Low)
 - Status filtering (Active, Resolved, Acknowledged)
@@ -123,6 +134,7 @@ mobile/
 - Alert detail views with full context
 
 ### ⚙️ Settings & Configuration
+
 - Push notification preferences
 - Background sync configuration
 - Cache management
@@ -131,18 +143,21 @@ mobile/
 ## Development Setup
 
 ### Prerequisites
+
 - Node.js 18+
 - Expo CLI
 - iOS Simulator or Android Emulator
 - GraphQL API server running
 
 ### Installation
+
 ```bash
 cd mobile
 npm install
 ```
 
 ### Development
+
 ```bash
 # Start Expo development server
 npm start
@@ -158,6 +173,7 @@ npm run web
 ```
 
 ### Build
+
 ```bash
 # Build for Android
 npm run build:android
@@ -169,7 +185,9 @@ npm run build:ios
 ## Configuration
 
 ### Environment Variables
+
 Configure in `app.json` under `extra`:
+
 ```json
 {
   "extra": {
@@ -180,12 +198,15 @@ Configure in `app.json` under `extra`:
 ```
 
 ### Push Notifications
+
 1. Configure Firebase (Android) and Apple Push Notifications (iOS)
 2. Add certificates and keys to Expo
 3. Update notification categories in `notifications.ts`
 
 ### Deep Linking
+
 The app supports deep linking for:
+
 - Services: `systemanalyzer://service/{id}`
 - Alerts: `systemanalyzer://alert/{id}`
 - Metrics: `systemanalyzer://metrics/{id}`
@@ -194,18 +215,21 @@ The app supports deep linking for:
 ## Performance Features
 
 ### 📱 Mobile Optimizations
+
 - **Lazy Loading**: Components loaded on demand
 - **Image Optimization**: Automatic image compression
 - **Bundle Splitting**: Code splitting for optimal loading
 - **Memory Management**: Efficient component lifecycle management
 
 ### 🔄 Data Synchronization
+
 - **Smart Caching**: Apollo cache with persistence
 - **Background Sync**: 15-minute intervals with BackgroundFetch
 - **Conflict Resolution**: Automatic data conflict handling
 - **Network Optimization**: Adaptive queries based on connection
 
 ### 🚀 Performance Monitoring
+
 - **Error Tracking**: Comprehensive error reporting
 - **Performance Metrics**: Load time and interaction tracking
 - **Crash Reporting**: Automatic crash detection and reporting
@@ -214,12 +238,14 @@ The app supports deep linking for:
 ## Security
 
 ### 🔐 Data Protection
+
 - **Authentication**: JWT token management
 - **API Security**: Secure GraphQL endpoint communication
 - **Local Storage**: Encrypted sensitive data storage
 - **Network Security**: Certificate pinning and TLS validation
 
 ### 🛡️ Privacy Features
+
 - **Data Minimization**: Only necessary data collection
 - **User Consent**: Explicit permission for notifications and background sync
 - **Data Retention**: Configurable cache expiration
@@ -228,16 +254,19 @@ The app supports deep linking for:
 ## Testing
 
 ### Unit Tests
+
 ```bash
 npm test
 ```
 
 ### E2E Tests
+
 ```bash
 npm run test:e2e
 ```
 
 ### Performance Tests
+
 ```bash
 npm run test:performance
 ```
@@ -245,11 +274,13 @@ npm run test:performance
 ## Deployment
 
 ### App Store Distribution
+
 1. Configure signing certificates
 2. Build release version
 3. Submit to Apple App Store and Google Play Store
 
 ### Over-the-Air Updates
+
 - Expo Updates for quick bug fixes
 - Staged rollout capabilities
 - Rollback support

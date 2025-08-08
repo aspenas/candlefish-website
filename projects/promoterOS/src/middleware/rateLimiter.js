@@ -28,16 +28,16 @@ setInterval(cleanupExpiredEntries, 60000);
  */
 function getClientIdentifier(event) {
   // Try to get IP from various headers
-  const ip = event.headers['x-forwarded-for'] || 
-             event.headers['x-real-ip'] || 
+  const ip = event.headers['x-forwarded-for'] ||
+             event.headers['x-real-ip'] ||
              event.headers['client-ip'] ||
              'unknown';
-  
+
   // If authenticated, use user ID for more accurate limiting
   if (event.user && event.user.id) {
     return `user:${event.user.id}`;
   }
-  
+
   // Use IP address for anonymous users
   return `ip:${ip}`;
 }
@@ -52,21 +52,21 @@ const rateLimitConfigs = {
     maxRequests: 30,
     message: 'Too many requests, please try again later'
   },
-  
+
   // Stricter limits for sensitive endpoints
   strict: {
     windowMs: 60 * 1000, // 1 minute
     maxRequests: 10,
     message: 'Rate limit exceeded for this endpoint'
   },
-  
+
   // Relaxed limits for authenticated users
   authenticated: {
     windowMs: 60 * 1000, // 1 minute
     maxRequests: 100,
     message: 'Rate limit exceeded, please slow down'
   },
-  
+
   // Very strict limits for auth endpoints
   auth: {
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -83,15 +83,15 @@ const rateLimitConfigs = {
 function rateLimiter(options = {}) {
   const config = options.config || 'default';
   const limits = rateLimitConfigs[config] || rateLimitConfigs.default;
-  
+
   return async function(event, context, handler) {
     const clientId = getClientIdentifier(event);
     const now = Date.now();
     const windowStart = now - limits.windowMs;
-    
+
     // Get or create client data
     let clientData = rateLimitStore.get(clientId);
-    
+
     if (!clientData) {
       clientData = {
         requests: [],
@@ -99,14 +99,14 @@ function rateLimiter(options = {}) {
       };
       rateLimitStore.set(clientId, clientData);
     }
-    
+
     // Clean up old requests outside the window
     clientData.requests = clientData.requests.filter(timestamp => timestamp > windowStart);
-    
+
     // Check if limit exceeded
     if (clientData.requests.length >= limits.maxRequests) {
       const resetTime = new Date(clientData.resetTime).toISOString();
-      
+
       return {
         statusCode: 429,
         headers: {
@@ -123,31 +123,31 @@ function rateLimiter(options = {}) {
         })
       };
     }
-    
+
     // Add current request
     clientData.requests.push(now);
-    
+
     // Update reset time
     if (clientData.requests.length === 1) {
       clientData.resetTime = now + limits.windowMs;
     }
-    
+
     // Add rate limit headers to response
     const remaining = limits.maxRequests - clientData.requests.length;
-    
+
     // Call handler and add rate limit headers to response
     const response = await handler(event, context);
-    
+
     // Ensure response has headers object
     if (!response.headers) {
       response.headers = {};
     }
-    
+
     // Add rate limit headers
     response.headers['X-RateLimit-Limit'] = limits.maxRequests.toString();
     response.headers['X-RateLimit-Remaining'] = remaining.toString();
     response.headers['X-RateLimit-Reset'] = new Date(clientData.resetTime).toISOString();
-    
+
     return response;
   };
 }
@@ -171,22 +171,22 @@ class RedisRateLimiter {
 
     // Use Redis sorted sets for sliding window
     const pipeline = this.redis.pipeline();
-    
+
     // Remove old entries
     pipeline.zremrangebyscore(key, '-inf', windowStart);
-    
+
     // Count current entries
     pipeline.zcard(key);
-    
+
     // Add current request
     pipeline.zadd(key, now, `${now}-${Math.random()}`);
-    
+
     // Set expiry
     pipeline.expire(key, Math.ceil(this.windowMs / 1000));
-    
+
     const results = await pipeline.exec();
     const count = results[1][1];
-    
+
     return {
       allowed: count < this.maxRequests,
       remaining: Math.max(0, this.maxRequests - count - 1),
@@ -201,17 +201,17 @@ class RedisRateLimiter {
  */
 function throttle(operationKey, cooldownMs = 60000) {
   const throttleStore = new Map();
-  
+
   return async function(event, context, handler) {
     const clientId = getClientIdentifier(event);
     const throttleKey = `${clientId}:${operationKey}`;
     const now = Date.now();
-    
+
     const lastOperation = throttleStore.get(throttleKey);
-    
+
     if (lastOperation && lastOperation + cooldownMs > now) {
       const retryAfter = Math.ceil((lastOperation + cooldownMs - now) / 1000);
-      
+
       return {
         statusCode: 429,
         headers: {
@@ -225,10 +225,10 @@ function throttle(operationKey, cooldownMs = 60000) {
         })
       };
     }
-    
+
     // Record operation time
     throttleStore.set(throttleKey, now);
-    
+
     // Clean up old entries periodically
     if (Math.random() < 0.01) { // 1% chance to clean up
       for (const [key, timestamp] of throttleStore.entries()) {
@@ -237,7 +237,7 @@ function throttle(operationKey, cooldownMs = 60000) {
         }
       }
     }
-    
+
     return handler(event, context);
   };
 }
@@ -285,8 +285,8 @@ class IPBlocker {
 
   middleware() {
     return async (event, context, handler) => {
-      const ip = event.headers['x-forwarded-for'] || 
-                 event.headers['x-real-ip'] || 
+      const ip = event.headers['x-forwarded-for'] ||
+                 event.headers['x-real-ip'] ||
                  'unknown';
 
       if (this.isBlocked(ip)) {

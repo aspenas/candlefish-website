@@ -50,7 +50,7 @@ export default function AnimationsDemo() {
   const validateEmail = (value: string) => {
     setEmail(value);
     setEmailError("");
-    
+
     if (value) {
       setIsValidating(true);
       setTimeout(() => {
@@ -72,7 +72,7 @@ export default function AnimationsDemo() {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <PerformanceOverlay show={true} />
-      
+
       <div className="max-w-6xl mx-auto">
         <h1 className="text-4xl font-bold text-gray-900 mb-8">
           Paintbox Animation Showcase
@@ -217,8 +217,8 @@ export default function AnimationsDemo() {
 
       <SuccessOverlay show={showSuccess} />
       {showSuccess && (
-        <div 
-          className="fixed inset-0 z-40" 
+        <div
+          className="fixed inset-0 z-40"
           onClick={() => setShowSuccess(false)}
         />
       )}

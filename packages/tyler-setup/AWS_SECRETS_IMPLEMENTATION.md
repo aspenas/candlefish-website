@@ -1,4 +1,5 @@
 # AWS Secrets Manager - Secure Implementation Guide
+
 ## Tyler Setup System - Production Security Requirements
 
 ---
@@ -114,8 +115,8 @@ aws cloudtrail create-trail \
 ### `/backend/src/services/SecureSecretsManager.js`
 
 ```javascript
-import { 
-  SecretsManagerClient, 
+import {
+  SecretsManagerClient,
   GetSecretValueCommand,
   CreateSecretCommand,
   UpdateSecretCommand,
@@ -124,9 +125,9 @@ import {
   DescribeSecretCommand,
   RotateSecretCommand
 } from '@aws-sdk/client-secrets-manager';
-import { 
-  CloudWatchClient, 
-  PutMetricDataCommand 
+import {
+  CloudWatchClient,
+  PutMetricDataCommand
 } from '@aws-sdk/client-cloudwatch';
 import crypto from 'crypto';
 import { logger } from '../utils/logger.js';
@@ -140,11 +141,11 @@ class SecureSecretsManager {
       maxRetries: 3,
       retryMode: 'adaptive'
     });
-    
+
     this.cloudwatch = new CloudWatchClient({
       region: process.env.AWS_REGION || 'us-east-1'
     });
-    
+
     this.encryptionKey = null;
     this.initPromise = this.initialize();
   }
@@ -172,12 +173,12 @@ class SecureSecretsManager {
   encryptValue(plaintext) {
     const iv = crypto.randomBytes(16);
     const cipher = crypto.createCipheriv('aes-256-gcm', this.encryptionKey, iv);
-    
+
     let encrypted = cipher.update(plaintext, 'utf8', 'base64');
     encrypted += cipher.final('base64');
-    
+
     const authTag = cipher.getAuthTag();
-    
+
     return {
       encrypted,
       iv: iv.toString('base64'),
@@ -192,21 +193,21 @@ class SecureSecretsManager {
       this.encryptionKey,
       Buffer.from(encryptedData.iv, 'base64')
     );
-    
+
     decipher.setAuthTag(Buffer.from(encryptedData.authTag, 'base64'));
-    
+
     let decrypted = decipher.update(encryptedData.encrypted, 'base64', 'utf8');
     decrypted += decipher.final('utf8');
-    
+
     return decrypted;
   }
 
   // Get secret with caching and audit logging
   async getSecret(secretName, userId, options = {}) {
     await this.ensureInitialized();
-    
-    const { 
-      skipCache = false, 
+
+    const {
+      skipCache = false,
       maskValue = true,
       reason = 'Access requested'
     } = options;
@@ -227,7 +228,7 @@ class SecureSecretsManager {
       });
 
       const response = await this.client.send(command);
-      
+
       let secretValue;
       if (response.SecretString) {
         secretValue = JSON.parse(response.SecretString);
@@ -257,7 +258,7 @@ class SecureSecretsManager {
         Action: 'GET',
         Result: 'FAILURE'
       });
-      
+
       logger.error(`Failed to get secret ${secretName}:`, error);
       throw new Error('Secret access denied');
     }
@@ -266,7 +267,7 @@ class SecureSecretsManager {
   // Create secret with encryption
   async createSecret(secretName, secretValue, userId, options = {}) {
     await this.ensureInitialized();
-    
+
     const {
       description = '',
       tags = [],
@@ -315,7 +316,7 @@ class SecureSecretsManager {
   // Update secret with versioning
   async updateSecret(secretName, newValue, userId, options = {}) {
     await this.ensureInitialized();
-    
+
     const { reason = 'Update requested' } = options;
 
     try {
@@ -339,10 +340,10 @@ class SecureSecretsManager {
       await cache.del(`secret:${secretName}`);
 
       await this.auditAccess(
-        userId, 
-        secretName, 
-        'UPDATE', 
-        'SUCCESS', 
+        userId,
+        secretName,
+        'UPDATE',
+        'SUCCESS',
         reason,
         `Previous version: ${currentSecret.VersionId}`
       );
@@ -363,8 +364,8 @@ class SecureSecretsManager {
   // Soft delete with recovery window
   async deleteSecret(secretName, userId, options = {}) {
     await this.ensureInitialized();
-    
-    const { 
+
+    const {
       recoveryDays = 30,
       forceDelete = false,
       reason = 'Deletion requested'
@@ -383,10 +384,10 @@ class SecureSecretsManager {
       await cache.del(`secret:${secretName}`);
 
       await this.auditAccess(
-        userId, 
-        secretName, 
-        'DELETE', 
-        'SUCCESS', 
+        userId,
+        secretName,
+        'DELETE',
+        'SUCCESS',
         reason,
         `Recovery days: ${recoveryDays}, Force: ${forceDelete}`
       );
@@ -407,8 +408,8 @@ class SecureSecretsManager {
   // List secrets with filtering
   async listSecrets(userId, options = {}) {
     await this.ensureInitialized();
-    
-    const { 
+
+    const {
       maxResults = 100,
       filters = []
     } = options;
@@ -447,7 +448,7 @@ class SecureSecretsManager {
   // Rotate secret
   async rotateSecret(secretName, userId, lambdaArn) {
     await this.ensureInitialized();
-    
+
     try {
       const command = new RotateSecretCommand({
         SecretId: `tyler-setup/${secretName}`,
@@ -482,7 +483,7 @@ class SecureSecretsManager {
       }
       return value.substring(0, 4) + '••••••••' + value.substring(value.length - 4);
     }
-    
+
     if (typeof value === 'object') {
       const masked = {};
       for (const [key, val] of Object.entries(value)) {
@@ -490,7 +491,7 @@ class SecureSecretsManager {
       }
       return masked;
     }
-    
+
     return '••••••••';
   }
 
@@ -515,7 +516,7 @@ class SecureSecretsManager {
     try {
       const db = require('../db/connection.js').getDB();
       await db.query(`
-        INSERT INTO security_audit_log 
+        INSERT INTO security_audit_log
         (user_id, resource_type, resource_name, action, result, reason, details, ip_address, user_agent)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       `, [
@@ -640,12 +641,12 @@ const updateSecretSchema = Joi.object({
 // List secrets (masked)
 router.get('/', asyncHandler(async (req, res) => {
   const secretsManager = getSecretsManager();
-  
+
   try {
     const secrets = await secretsManager.listSecrets(req.user.id);
-    
+
     // Filter based on user role
-    const accessibleSecrets = secrets.filter(secret => 
+    const accessibleSecrets = secrets.filter(secret =>
       canAccessSecretCategory(req.user.role, secret.name)
     );
 
@@ -664,17 +665,17 @@ router.get('/', asyncHandler(async (req, res) => {
 // Get secret metadata (no value)
 router.get('/:name/metadata', asyncHandler(async (req, res) => {
   const { name } = req.params;
-  
+
   if (!canAccessSecretCategory(req.user.role, name)) {
     throw new ForbiddenError('Access denied to this secret category');
   }
 
   const secretsManager = getSecretsManager();
-  
+
   try {
     const secrets = await secretsManager.listSecrets(req.user.id);
     const secret = secrets.find(s => s.name === name);
-    
+
     if (!secret) {
       return res.status(404).json({ error: 'Secret not found' });
     }
@@ -709,19 +710,19 @@ router.post('/:name/access', asyncHandler(async (req, res) => {
   // Additional verification for sensitive secrets
   if (name.startsWith('financial') || name.startsWith('employee')) {
     if (!req.headers['x-verification-token']) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         error: 'Additional verification required',
-        requiresToken: true 
+        requiresToken: true
       });
     }
     // Verify the additional token (implement your verification logic)
   }
 
   const secretsManager = getSecretsManager();
-  
+
   try {
     const secretValue = await secretsManager.getSecret(
-      name, 
+      name,
       req.user.id,
       {
         skipCache: unmask,
@@ -756,9 +757,9 @@ router.post('/', requireRole('admin'), asyncHandler(async (req, res) => {
   }
 
   const { name, value: secretValue, description, category } = value;
-  
+
   const secretsManager = getSecretsManager();
-  
+
   try {
     const result = await secretsManager.createSecret(
       `${category}/${name}`,
@@ -791,9 +792,9 @@ router.put('/:name', asyncHandler(async (req, res) => {
   }
 
   const { value: newValue, reason } = value;
-  
+
   const secretsManager = getSecretsManager();
-  
+
   try {
     const result = await secretsManager.updateSecret(
       name,
@@ -832,7 +833,7 @@ router.delete('/:name', requireRole('admin'), asyncHandler(async (req, res) => {
   }
 
   const secretsManager = getSecretsManager();
-  
+
   try {
     const result = await secretsManager.deleteSecret(
       name,
@@ -845,8 +846,8 @@ router.delete('/:name', requireRole('admin'), asyncHandler(async (req, res) => {
     );
 
     res.json({
-      message: forceDelete 
-        ? 'Secret permanently deleted' 
+      message: forceDelete
+        ? 'Secret permanently deleted'
         : 'Secret scheduled for deletion (30-day recovery window)',
       ...result
     });
@@ -867,7 +868,7 @@ router.post('/:name/rotate', requireRole('admin'), asyncHandler(async (req, res)
   }
 
   const secretsManager = getSecretsManager();
-  
+
   try {
     const result = await secretsManager.rotateSecret(
       name,
@@ -892,10 +893,10 @@ router.get('/:name/audit', requireRole('admin'), asyncHandler(async (req, res) =
   const { startDate, endDate, limit = 100 } = req.query;
 
   const db = require('../db/connection.js').getDB();
-  
+
   let query = `
-    SELECT * FROM security_audit_log 
-    WHERE resource_type = 'secret' 
+    SELECT * FROM security_audit_log
+    WHERE resource_type = 'secret'
     AND resource_name = $1
   `;
   const params = [name];
@@ -1022,9 +1023,9 @@ SECRETS_RATE_LIMIT_MAX=10
 
 ```javascript
 // /backend/src/services/SecurityMonitoring.js
-import { 
-  CloudWatchClient, 
-  PutMetricAlarmCommand 
+import {
+  CloudWatchClient,
+  PutMetricAlarmCommand
 } from '@aws-sdk/client-cloudwatch';
 
 export async function setupSecurityAlarms() {
@@ -1083,10 +1084,10 @@ export async function setupSecurityAlarms() {
 ```javascript
 // /lambda/secret-rotation/index.js
 export async function handler(event) {
-  const { 
-    SecretId, 
-    Token, 
-    Step 
+  const {
+    SecretId,
+    Token,
+    Step
   } = event;
 
   const secretsClient = new SecretsManagerClient({
@@ -1114,7 +1115,7 @@ export async function handler(event) {
 async function createNewSecret(client, secretId, token) {
   // Generate new secret value
   const newPassword = generateSecurePassword();
-  
+
   // Store as AWSPENDING version
   await client.send(new PutSecretValueCommand({
     SecretId: secretId,
@@ -1128,12 +1129,12 @@ async function generateSecurePassword() {
   const length = 32;
   const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
   let password = '';
-  
+
   const randomBytes = crypto.randomBytes(length);
   for (let i = 0; i < length; i++) {
     password += charset[randomBytes[i] % charset.length];
   }
-  
+
   return password;
 }
 ```
@@ -1188,6 +1189,6 @@ curl -X GET https://api.tyler-setup.com/api/secrets/config/test-secret/audit \
 
 ---
 
-*Implementation Guide Version: 1.0*  
-*Last Updated: August 2025*  
+*Implementation Guide Version: 1.0*
+*Last Updated: August 2025*
 *Classification: CONFIDENTIAL*

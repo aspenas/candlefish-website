@@ -38,7 +38,7 @@ def get_events_for_calendar(
                 orderBy="startTime",
             )
             .execute(),
-            f"get_events_for_calendar({calendar_id})"
+            f"get_events_for_calendar({calendar_id})",
         )
 
         for event in events_result.get("items", []):
@@ -95,9 +95,7 @@ def analyze_meeting_patterns(
         # Calculate attendance rate
         if event.attendees:
             total_attendees = len(event.attendees)
-            accepted = sum(
-                1 for att in event.attendees if att.get("response_status") == "accepted"
-            )
+            accepted = sum(1 for att in event.attendees if att.get("response_status") == "accepted")
             attendance_rate = accepted / total_attendees if total_attendees > 0 else 0
 
             # If we have target attendees, calculate their attendance
@@ -130,12 +128,10 @@ def analyze_meeting_patterns(
 
     # Calculate averages
     avg_by_day = {
-        day: sum(rates) / len(rates) if rates else 0
-        for day, rates in attendance_by_day.items()
+        day: sum(rates) / len(rates) if rates else 0 for day, rates in attendance_by_day.items()
     }
     avg_by_hour = {
-        hour: sum(rates) / len(rates) if rates else 0
-        for hour, rates in attendance_by_hour.items()
+        hour: sum(rates) / len(rates) if rates else 0 for hour, rates in attendance_by_hour.items()
     }
 
     # Find best day and time

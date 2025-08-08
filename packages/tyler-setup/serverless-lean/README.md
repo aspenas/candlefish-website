@@ -5,6 +5,7 @@ A secure, scalable, and cost-optimized serverless backend for employee onboardin
 ## 🚀 Features
 
 ### Security
+
 - **JWT Authentication** with secure token management via AWS Secrets Manager
 - **Argon2 Password Hashing** - Industry standard password security
 - **Role-based Access Control** (RBAC) with granular permissions
@@ -14,6 +15,7 @@ A secure, scalable, and cost-optimized serverless backend for employee onboardin
 - **Audit Logging** - Complete trail of all security events
 
 ### Architecture
+
 - **Serverless-first** - AWS Lambda + API Gateway for cost efficiency
 - **DynamoDB** - Pay-per-request scaling with built-in encryption
 - **AWS Secrets Manager** - Secure credential storage with rotation
@@ -21,6 +23,7 @@ A secure, scalable, and cost-optimized serverless backend for employee onboardin
 - **Multi-environment** - Development, staging, and production ready
 
 ### Developer Experience
+
 - **OpenAPI Specification** - Complete API documentation
 - **Comprehensive Testing** - Unit tests with 80%+ coverage
 - **Type Safety** - Full input validation and sanitization
@@ -37,17 +40,20 @@ A secure, scalable, and cost-optimized serverless backend for employee onboardin
 ## 🛠️ Installation
 
 1. **Clone and install dependencies:**
+
    ```bash
    cd /Users/patricksmith/candlefish-ai/packages/tyler-setup/serverless-lean
    npm install
    ```
 
 2. **Configure AWS credentials:**
+
    ```bash
    aws configure
    ```
 
 3. **Deploy to development environment:**
+
    ```bash
    ./scripts/deploy.sh dev --test
    ```
@@ -169,6 +175,7 @@ npm run test:ci
 ### CloudWatch Dashboards
 
 Access the monitoring dashboard:
+
 1. AWS Console → CloudWatch → Dashboards
 2. Select: `candlefish-employee-setup-lean-[stage]-monitoring`
 
@@ -184,6 +191,7 @@ Access the monitoring dashboard:
 ### Alerts
 
 Configured CloudWatch alarms for:
+
 - API Gateway 4XX/5XX error rates
 - Lambda function errors and timeouts
 - DynamoDB throttling
@@ -196,6 +204,7 @@ Configured CloudWatch alarms for:
 ### Current Architecture Costs (Estimated)
 
 **Development Environment:** ~$15-25/month
+
 - Lambda: ~$5/month (1M requests)
 - DynamoDB: ~$8/month (pay-per-request)
 - API Gateway: ~$7/month (1M requests)
@@ -203,6 +212,7 @@ Configured CloudWatch alarms for:
 - Secrets Manager: ~$2/month
 
 **Production Environment:** ~$50-100/month
+
 - Lambda: ~$15-30/month
 - DynamoDB: ~$20-40/month
 - API Gateway: ~$10-20/month
@@ -246,15 +256,17 @@ CORS_ORIGIN: https://your-frontend-domain.com
 ### Common Issues
 
 1. **Deployment Fails**
+
    ```bash
    # Check AWS credentials
    aws sts get-caller-identity
-   
+
    # Validate configuration
    ./scripts/deploy.sh dev --validate
    ```
 
 2. **Authentication Errors**
+
    ```bash
    # Check JWT secret exists
    aws secretsmanager get-secret-value --secret-id "candlefish-employee-setup-lean-dev/jwt-secret"
@@ -308,6 +320,7 @@ npm run dev
 ## 🤝 Contributing
 
 1. **Development Setup**
+
    ```bash
    npm install
    npm run dev  # Start offline development server
@@ -334,7 +347,7 @@ MIT License - see LICENSE file for details.
 
 - **Documentation**: [API Specification](./docs/api-spec.yml)
 - **Issues**: Create GitHub issues for bugs and feature requests
-- **Email**: support@candlefish.ai
+- **Email**: <support@candlefish.ai>
 
 ---
 

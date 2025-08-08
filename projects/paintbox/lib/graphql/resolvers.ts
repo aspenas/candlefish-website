@@ -414,7 +414,7 @@ export const resolvers: Resolvers<GraphQLContext> = {
 
   Container: {
     service: async (container, _, context) => {
-      return container.serviceId 
+      return container.serviceId
         ? context.dataloaders.serviceById.load(container.serviceId)
         : null;
     },
@@ -422,7 +422,7 @@ export const resolvers: Resolvers<GraphQLContext> = {
 
   Process: {
     service: async (process, _, context) => {
-      return process.serviceId 
+      return process.serviceId
         ? context.dataloaders.serviceById.load(process.serviceId)
         : null;
     },
@@ -470,7 +470,7 @@ export const resolvers: Resolvers<GraphQLContext> = {
 
   PerformanceInsight: {
     service: async (insight, _, context) => {
-      return insight.serviceId 
+      return insight.serviceId
         ? context.dataloaders.serviceById.load(insight.serviceId)
         : null;
     },
@@ -484,7 +484,7 @@ export const resolvers: Resolvers<GraphQLContext> = {
 
   SystemRecommendation: {
     service: async (recommendation, _, context) => {
-      return recommendation.serviceId 
+      return recommendation.serviceId
         ? context.dataloaders.serviceById.load(recommendation.serviceId)
         : null;
     },
@@ -504,12 +504,12 @@ export const createComplexityAnalysis = () => {
       runFullAnalysis: { cost: 100 },
       healthCheckAll: { cost: 50 },
       systemAnalysis: { cost: 30 },
-      
+
       // Moderate operations
       services: { cost: 5 },
       alerts: { cost: 5 },
       metrics: { cost: 10 },
-      
+
       // Light operations
       service: { cost: 1 },
       alert: { cost: 1 },
@@ -522,7 +522,7 @@ export const createRateLimitConfig = () => {
   return {
     windowMs: 60 * 1000, // 1 minute
     max: 100, // limit each IP to 100 requests per windowMs
-    
+
     // Operation-specific limits
     operationLimits: {
       runFullAnalysis: { max: 5, windowMs: 5 * 60 * 1000 }, // 5 per 5 minutes

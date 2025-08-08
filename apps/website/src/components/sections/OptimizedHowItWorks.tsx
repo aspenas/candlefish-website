@@ -12,22 +12,22 @@ interface ProcessStepProps {
   prefersReducedMotion: boolean
 }
 
-const ProcessStep: React.FC<ProcessStepProps> = React.memo(({ 
-  title, 
-  subtitle, 
+const ProcessStep: React.FC<ProcessStepProps> = React.memo(({
+  title,
+  subtitle,
   isActive,
   index,
   inView,
-  prefersReducedMotion 
+  prefersReducedMotion
 }) => {
   const spring = useSpring({
-    from: { 
-      opacity: 0, 
+    from: {
+      opacity: 0,
       transform: 'translateX(-20px) scale(0.9)',
       borderColor: 'rgba(55, 65, 81, 1)'
     },
-    to: { 
-      opacity: inView ? 1 : 0, 
+    to: {
+      opacity: inView ? 1 : 0,
       transform: inView ? 'translateX(0px) scale(1)' : 'translateX(-20px) scale(0.9)',
       borderColor: isActive ? 'rgba(0, 206, 209, 1)' : 'rgba(55, 65, 81, 1)'
     },
@@ -42,7 +42,7 @@ const ProcessStep: React.FC<ProcessStepProps> = React.memo(({
   })
 
   return (
-    <animated.div 
+    <animated.div
       className={`flex-shrink-0 px-8 py-6 bg-black border-2 font-mono text-sm text-center min-w-[150px] relative ${
         isActive ? 'text-teal-400' : 'text-white'
       }`}
@@ -68,23 +68,23 @@ const ProcessStep: React.FC<ProcessStepProps> = React.memo(({
 
 ProcessStep.displayName = 'ProcessStep'
 
-const Arrow: React.FC<{ index: number; inView: boolean; prefersReducedMotion: boolean }> = React.memo(({ 
-  index, 
+const Arrow: React.FC<{ index: number; inView: boolean; prefersReducedMotion: boolean }> = React.memo(({
+  index,
   inView,
-  prefersReducedMotion 
+  prefersReducedMotion
 }) => {
   const spring = useSpring({
     from: { opacity: 0, transform: 'scale(0)' },
-    to: { 
-      opacity: inView ? 1 : 0, 
-      transform: inView ? 'scale(1)' : 'scale(0)' 
+    to: {
+      opacity: inView ? 1 : 0,
+      transform: inView ? 'scale(1)' : 'scale(0)'
     },
     delay: prefersReducedMotion ? 0 : 350 + (index * 150),
     config: config.gentle
   })
 
   return (
-    <animated.div 
+    <animated.div
       className="text-gray-400 text-xl flex-shrink-0"
       style={spring}
       aria-hidden="true"
@@ -102,7 +102,7 @@ const OptimizedHowItWorks: React.FC = React.memo(() => {
     triggerOnce: true,
     threshold: 0.2
   })
-  
+
   const [activeStep, setActiveStep] = useState(0)
 
   // Auto-advance active step
@@ -118,9 +118,9 @@ const OptimizedHowItWorks: React.FC = React.memo(() => {
 
   const titleSpring = useSpring({
     from: { opacity: 0, transform: 'translateY(30px)' },
-    to: { 
-      opacity: inView ? 1 : 0, 
-      transform: inView ? 'translateY(0px)' : 'translateY(30px)' 
+    to: {
+      opacity: inView ? 1 : 0,
+      transform: inView ? 'translateY(0px)' : 'translateY(30px)'
     },
     config: config.gentle
   })
@@ -133,25 +133,25 @@ const OptimizedHowItWorks: React.FC = React.memo(() => {
   ]
 
   return (
-    <section 
+    <section
       ref={ref}
-      className="py-20 lg:py-32 bg-black" 
+      className="py-20 lg:py-32 bg-black"
       id="how-it-works"
       aria-label="How It Works"
     >
       <div className="container mx-auto px-6 max-w-6xl">
-        <animated.div 
+        <animated.div
           className="text-center mb-16"
           style={titleSpring}
         >
           <h2 className="text-4xl md:text-5xl font-light mb-6">The Candlefish Method</h2>
           <p className="text-xl text-gray-400 max-w-3xl mx-auto">
-            We deliver working software in weeks, not months. Every solution includes 
+            We deliver working software in weeks, not months. Every solution includes
             the "why" along with the "how."
           </p>
         </animated.div>
-        
-        <div 
+
+        <div
           className="flex items-center justify-center gap-8 py-12 px-6 bg-gray-900 border border-gray-700 overflow-x-auto"
           role="list"
           aria-label="Process steps"
@@ -167,8 +167,8 @@ const OptimizedHowItWorks: React.FC = React.memo(() => {
                 prefersReducedMotion={prefersReducedMotion}
               />
               {index < steps.length - 1 && (
-                <Arrow 
-                  index={index} 
+                <Arrow
+                  index={index}
                   inView={inView}
                   prefersReducedMotion={prefersReducedMotion}
                 />

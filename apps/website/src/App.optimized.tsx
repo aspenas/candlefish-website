@@ -7,10 +7,10 @@ import { usePerformanceMonitor } from './hooks/usePerformanceMonitor'
 // Lazy load components
 const Navigation = lazy(() => import('./components/Navigation'))
 const ParticleField = lazy(() => import('./components/ParticleField'))
-const HomePage = lazy(() => 
+const HomePage = lazy(() =>
   import('./pages/HomePage.optimized' /* webpackChunkName: "home" */)
 )
-const NotFoundPage = lazy(() => 
+const NotFoundPage = lazy(() =>
   import('./pages/NotFoundPage' /* webpackChunkName: "404" */)
 )
 
@@ -37,12 +37,12 @@ function App() {
           <Suspense fallback={null}>
             <ParticleField />
           </Suspense>
-          
+
           {/* Navigation */}
           <Suspense fallback={<div className="h-20" />}>
             <Navigation />
           </Suspense>
-          
+
           {/* Routes */}
           <Suspense fallback={<LoadingScreen />}>
             <Routes>

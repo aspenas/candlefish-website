@@ -45,21 +45,21 @@ exports.handler = async (event, context) => {
     if (event.httpMethod === 'POST') {
       // Handle performance metrics collection
       const body = JSON.parse(event.body || '{}');
-      
+
       // Basic validation
       if (!body.session_id || !body.page_url) {
         return {
           statusCode: 400,
           headers,
-          body: JSON.stringify({ 
-            error: 'Missing required fields: session_id, page_url' 
+          body: JSON.stringify({
+            error: 'Missing required fields: session_id, page_url'
           })
         };
       }
 
       // Simulate storing metrics (in production, this would go to a database)
       const metricsId = Math.floor(Math.random() * 10000) + 1;
-      
+
       console.log('Performance metrics received:', {
         session_id: body.session_id,
         page_url: body.page_url,
@@ -76,12 +76,12 @@ exports.handler = async (event, context) => {
           metrics_id: metricsId
         })
       };
-      
+
     } else if (event.httpMethod === 'GET') {
       // Handle metrics retrieval
       const queryParams = event.queryStringParameters || {};
       const limit = parseInt(queryParams.limit) || 100;
-      
+
       // Mock performance data
       const mockMetrics = [];
       for (let i = 0; i < Math.min(limit, 10); i++) {
@@ -119,7 +119,7 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         error: 'Internal server error',
         request_id: context.awsRequestId
       })

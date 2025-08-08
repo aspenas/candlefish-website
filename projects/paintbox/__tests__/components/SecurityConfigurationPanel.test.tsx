@@ -72,11 +72,11 @@ describe('SecurityConfigurationPanel', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     // Default mock responses
     mockFetch.mockImplementation((url) => {
       const urlStr = url.toString()
-      
+
       if (urlStr.includes('/api/v1/security/checks')) {
         return Promise.resolve({
           ok: true,
@@ -87,14 +87,14 @@ describe('SecurityConfigurationPanel', () => {
           })
         } as Response)
       }
-      
+
       if (urlStr.includes('/api/v1/security/config')) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(mockConfiguration)
         } as Response)
       }
-      
+
       if (urlStr.includes('/api/v1/security/migrate')) {
         return Promise.resolve({
           ok: true,
@@ -104,7 +104,7 @@ describe('SecurityConfigurationPanel', () => {
           })
         } as Response)
       }
-      
+
       return Promise.reject(new Error('Unknown endpoint'))
     })
   })
@@ -116,14 +116,14 @@ describe('SecurityConfigurationPanel', () => {
   describe('Initial Rendering', () => {
     it('should render security configuration panel with loading state', () => {
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       expect(screen.getByText('Security Configuration')).toBeInTheDocument()
       expect(screen.getByText('Loading security status...')).toBeInTheDocument()
     })
 
     it('should load and display security checks', async () => {
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('SSL Certificate Validation')).toBeInTheDocument()
       })
@@ -135,7 +135,7 @@ describe('SecurityConfigurationPanel', () => {
 
     it('should display overall security status', async () => {
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText(/overall.*status/i)).toBeInTheDocument()
       })
@@ -145,7 +145,7 @@ describe('SecurityConfigurationPanel', () => {
 
     it('should show security checklist with proper status indicators', async () => {
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('SSL Certificate Validation')).toBeInTheDocument()
       })
@@ -160,22 +160,22 @@ describe('SecurityConfigurationPanel', () => {
   describe('Security Checks', () => {
     it('should display check details and requirements', async () => {
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('SSL Certificate Validation')).toBeInTheDocument()
       })
 
       // Check descriptions
       expect(screen.getByText('Verify SSL certificates are valid and not expired')).toBeInTheDocument()
-      
+
       // Check details
       expect(screen.getByText('Certificate expires in 89 days')).toBeInTheDocument()
       expect(screen.getByText('Some secrets expire within 30 days')).toBeInTheDocument()
-      
+
       // Check required indicators
       const requiredChecks = screen.getAllByText('Required')
       expect(requiredChecks).toHaveLength(3)
-      
+
       const optionalChecks = screen.getAllByText('Optional')
       expect(optionalChecks).toHaveLength(1)
     })
@@ -183,7 +183,7 @@ describe('SecurityConfigurationPanel', () => {
     it('should run security checks manually', async () => {
       const user = userEvent.setup()
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('SSL Certificate Validation')).toBeInTheDocument()
       })
@@ -205,7 +205,7 @@ describe('SecurityConfigurationPanel', () => {
     it('should fix failed checks when possible', async () => {
       const user = userEvent.setup()
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Access Logging')).toBeInTheDocument()
       })
@@ -213,7 +213,7 @@ describe('SecurityConfigurationPanel', () => {
       // Find the failed check and its fix button
       const failedCheck = screen.getByText('Access Logging').closest('[data-testid="security-check"]')
       const fixButton = within(failedCheck!).getByRole('button', { name: /fix/i })
-      
+
       await user.click(fixButton)
 
       await waitFor(() => {
@@ -230,7 +230,7 @@ describe('SecurityConfigurationPanel', () => {
     it('should expand check details when clicked', async () => {
       const user = userEvent.setup()
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('SSL Certificate Validation')).toBeInTheDocument()
       })
@@ -251,14 +251,14 @@ describe('SecurityConfigurationPanel', () => {
   describe('Configuration Display', () => {
     it('should display current security configuration', async () => {
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Current Configuration')).toBeInTheDocument()
       })
 
       // Environment
       expect(screen.getByText('Environment: production')).toBeInTheDocument()
-      
+
       // Features
       expect(screen.getByText('Multi-Factor Authentication: Enabled')).toBeInTheDocument()
       expect(screen.getByText('Encryption at Rest: Enabled')).toBeInTheDocument()
@@ -268,7 +268,7 @@ describe('SecurityConfigurationPanel', () => {
 
     it('should display password policy settings', async () => {
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Password Policy')).toBeInTheDocument()
       })
@@ -281,7 +281,7 @@ describe('SecurityConfigurationPanel', () => {
 
     it('should display session and login settings', async () => {
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Session Settings')).toBeInTheDocument()
       })
@@ -294,7 +294,7 @@ describe('SecurityConfigurationPanel', () => {
   describe('Migration Features', () => {
     it('should display migration status and options', async () => {
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Security Migration')).toBeInTheDocument()
       })
@@ -306,7 +306,7 @@ describe('SecurityConfigurationPanel', () => {
     it('should start security migration when requested', async () => {
       const user = userEvent.setup()
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Security Migration')).toBeInTheDocument()
       })
@@ -347,7 +347,7 @@ describe('SecurityConfigurationPanel', () => {
             })
           } as Response)
         }
-        
+
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(mockConfiguration)
@@ -356,7 +356,7 @@ describe('SecurityConfigurationPanel', () => {
 
       const user = userEvent.setup()
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /start.*migration/i })).toBeInTheDocument()
       })
@@ -381,7 +381,7 @@ describe('SecurityConfigurationPanel', () => {
   describe('Security Recommendations', () => {
     it('should display security recommendations based on current status', async () => {
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Security Recommendations')).toBeInTheDocument()
       })
@@ -393,13 +393,13 @@ describe('SecurityConfigurationPanel', () => {
 
     it('should prioritize recommendations by severity', async () => {
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Security Recommendations')).toBeInTheDocument()
       })
 
       const recommendations = screen.getAllByRole('listitem')
-      
+
       // High priority recommendations should come first
       expect(recommendations[0]).toHaveTextContent(/high.*priority/i)
       expect(recommendations[0]).toHaveClass(expect.stringMatching(/red/)) // High priority styling
@@ -408,7 +408,7 @@ describe('SecurityConfigurationPanel', () => {
     it('should allow dismissing recommendations', async () => {
       const user = userEvent.setup()
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Security Recommendations')).toBeInTheDocument()
       })
@@ -438,7 +438,7 @@ describe('SecurityConfigurationPanel', () => {
       )
 
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText(/failed.*to.*load/i)).toBeInTheDocument()
       })
@@ -458,7 +458,7 @@ describe('SecurityConfigurationPanel', () => {
             })
           } as Response)
         }
-        
+
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ checks: mockSecurityChecks })
@@ -467,7 +467,7 @@ describe('SecurityConfigurationPanel', () => {
 
       const user = userEvent.setup()
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /run.*checks/i })).toBeInTheDocument()
       })
@@ -492,7 +492,7 @@ describe('SecurityConfigurationPanel', () => {
       )
 
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText(/insufficient.*permissions/i)).toBeInTheDocument()
       })
@@ -515,14 +515,14 @@ describe('SecurityConfigurationPanel', () => {
       )
 
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Current Configuration')).toBeInTheDocument()
       })
 
       // Should not execute script
       expect(document.querySelector('script')).toBeNull()
-      
+
       // Should display escaped content
       expect(screen.getByText(/script.*alert/)).toBeInTheDocument()
     })
@@ -531,7 +531,7 @@ describe('SecurityConfigurationPanel', () => {
   describe('Real-time Updates', () => {
     it('should update check status in real-time during execution', async () => {
       jest.useFakeTimers()
-      
+
       // Mock progressive updates
       let callCount = 0
       mockFetch.mockImplementation((url) => {
@@ -557,7 +557,7 @@ describe('SecurityConfigurationPanel', () => {
             } as Response)
           }
         }
-        
+
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ checks: mockSecurityChecks })
@@ -566,7 +566,7 @@ describe('SecurityConfigurationPanel', () => {
 
       const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /run.*checks/i })).toBeInTheDocument()
       })
@@ -594,7 +594,7 @@ describe('SecurityConfigurationPanel', () => {
   describe('Accessibility', () => {
     it('should have proper ARIA labels and roles', async () => {
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('SSL Certificate Validation')).toBeInTheDocument()
       })
@@ -602,10 +602,10 @@ describe('SecurityConfigurationPanel', () => {
       // Check main sections
       expect(screen.getByRole('region', { name: /security.*configuration/i })).toBeInTheDocument()
       expect(screen.getByRole('table')).toBeInTheDocument()
-      
+
       // Check interactive elements
       expect(screen.getByRole('button', { name: /run.*checks/i })).toBeInTheDocument()
-      
+
       // Check status indicators have proper labels
       const statusElements = screen.getAllByRole('status')
       expect(statusElements.length).toBeGreaterThan(0)
@@ -614,7 +614,7 @@ describe('SecurityConfigurationPanel', () => {
     it('should be keyboard navigable', async () => {
       const user = userEvent.setup()
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /run.*checks/i })).toBeInTheDocument()
       })
@@ -630,7 +630,7 @@ describe('SecurityConfigurationPanel', () => {
 
     it('should announce status changes to screen readers', async () => {
       render(<SecurityConfigurationPanel {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('SSL Certificate Validation')).toBeInTheDocument()
       })
@@ -646,20 +646,20 @@ describe('SecurityConfigurationPanel', () => {
   describe('Performance', () => {
     it('should not re-render excessively during status updates', async () => {
       const renderSpy = jest.fn()
-      
+
       const TestComponent = () => {
         renderSpy()
         return <SecurityConfigurationPanel {...defaultProps} />
       }
 
       render(<TestComponent />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('SSL Certificate Validation')).toBeInTheDocument()
       })
 
       const initialRenderCount = renderSpy.mock.calls.length
-      
+
       // Trigger manual checks
       const runChecksButton = screen.getByRole('button', { name: /run.*checks/i })
       fireEvent.click(runChecksButton)

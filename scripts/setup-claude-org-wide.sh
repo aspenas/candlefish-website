@@ -15,35 +15,35 @@ echo "=================================================="
 # Function to check prerequisites
 check_prerequisites() {
     echo "📋 Checking prerequisites..."
-    
+
     # Check GitHub CLI
     if ! command -v gh &> /dev/null; then
         echo "❌ GitHub CLI (gh) is required but not installed."
         echo "   Install with: brew install gh"
         exit 1
     fi
-    
+
     # Check AWS CLI
     if ! command -v aws &> /dev/null; then
         echo "❌ AWS CLI is required but not installed."
         echo "   Install with: brew install awscli"
         exit 1
     fi
-    
+
     # Check GitHub authentication
     if ! gh auth status &> /dev/null; then
         echo "❌ Not authenticated with GitHub CLI."
         echo "   Run: gh auth login"
         exit 1
     fi
-    
+
     echo "✅ All prerequisites met"
 }
 
 # Function to create template repository
 create_template_repo() {
     echo -e "\n📁 Creating organization template repository..."
-    
+
     # Check if .github repo already exists
     if gh repo view "$ORG/$TEMPLATE_REPO" &> /dev/null; then
         echo "✅ Template repository already exists"
@@ -53,14 +53,14 @@ create_template_repo() {
             --public \
             --description "Organization-wide GitHub Actions workflows and Claude review configs" \
             --clone
-        
+
         cd "$TEMPLATE_REPO"
-        
+
         # Create directory structure
         mkdir -p .github/workflows
         mkdir -p workflow-templates
         mkdir -p scripts
-        
+
         echo "✅ Template repository created"
         cd ..
     fi
@@ -69,10 +69,10 @@ create_template_repo() {
 # Function to set organization secrets
 setup_org_secrets() {
     echo -e "\n🔐 Setting up organization secrets..."
-    
+
     # Get AWS account ID
     AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text 2>/dev/null || echo "")
-    
+
     if [ -z "$AWS_ACCOUNT_ID" ]; then
         echo "⚠️  Could not determine AWS account ID. Please set AWS_ROLE_ARN manually."
         echo "   Example: gh secret set AWS_ROLE_ARN --org $ORG --value 'arn:aws:iam::ACCOUNT:role/github-actions-claude-review'"
@@ -83,7 +83,7 @@ setup_org_secrets() {
         gh secret set AWS_ROLE_ARN --org "$ORG" --body "$ROLE_ARN" --visibility all
         echo "✅ AWS_ROLE_ARN set to: $ROLE_ARN"
     fi
-    
+
     # Set AWS_REGION
     echo "Setting AWS_REGION for organization..."
     gh secret set AWS_REGION --org "$ORG" --body "us-east-1" --visibility all
@@ -93,7 +93,7 @@ setup_org_secrets() {
 # Function to create reusable workflows
 create_reusable_workflows() {
     echo -e "\n📝 Creating reusable workflows..."
-    
+
     # Clone or pull latest template repo
     if [ -d "$TEMPLATE_REPO" ]; then
         cd "$TEMPLATE_REPO"
@@ -102,11 +102,11 @@ create_reusable_workflows() {
         gh repo clone "$ORG/$TEMPLATE_REPO"
         cd "$TEMPLATE_REPO"
     fi
-    
+
     # Copy workflow files from main repo
     cp "$SCRIPT_DIR/../.github/workflows/claude-"*.yml .github/workflows/ 2>/dev/null || true
     cp "$SCRIPT_DIR/../.github/scripts/"*.py scripts/ 2>/dev/null || true
-    
+
     # Create workflow template
     cat > workflow-templates/claude-review.yml << 'EOF'
 name: Claude AI Review
@@ -146,7 +146,7 @@ EOF
     git add .
     git commit -m "Add Claude review workflows and templates" || true
     git push
-    
+
     echo "✅ Reusable workflows created"
     cd ..
 }
@@ -154,16 +154,16 @@ EOF
 # Function to setup DynamoDB table for org-wide tracking
 setup_dynamodb() {
     echo -e "\n🗄️  Setting up centralized DynamoDB table..."
-    
+
     python3 "$SCRIPT_DIR/../.github/scripts/setup_dynamodb_table.py"
-    
+
     echo "✅ DynamoDB table configured"
 }
 
 # Function to create setup script for individual repos
 create_repo_setup_script() {
     echo -e "\n🔧 Creating repository setup script..."
-    
+
     cat > "$SCRIPT_DIR/enable-claude-review.sh" << 'EOF'
 #!/bin/bash
 # Enable Claude reviews for a specific repository
@@ -234,24 +234,24 @@ enable_for_existing_repos() {
     echo "This will add the Claude review workflow to all repositories in the organization."
     read -p "Continue? (y/N) " -n 1 -r
     echo
-    
+
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         echo "Fetching repository list..."
-        
+
         # Get all repos
         REPOS=$(gh repo list "$ORG" --limit 200 --json name -q '.[].name')
         REPO_COUNT=$(echo "$REPOS" | wc -l)
-        
+
         echo "Found $REPO_COUNT repositories"
         echo ""
-        
+
         # Ask which repos to enable
         echo "Select repositories to enable:"
         echo "  1) All repositories"
         echo "  2) Specific repositories (interactive)"
         echo "  3) Skip for now"
         read -p "Choice (1-3): " choice
-        
+
         case $choice in
             1)
                 for repo in $REPOS; do
@@ -278,10 +278,10 @@ enable_for_existing_repos() {
 # Function to create organization dashboard
 create_dashboard() {
     echo -e "\n📊 Creating cost monitoring dashboard..."
-    
+
     # Create dashboard directory
     mkdir -p "$SCRIPT_DIR/../dashboard"
-    
+
     # Note about dashboard
     echo "✅ Dashboard configuration created"
     echo "   Deploy the dashboard to monitor costs across all repositories"
@@ -298,7 +298,7 @@ main() {
     create_repo_setup_script
     enable_for_existing_repos
     create_dashboard
-    
+
     echo -e "\n✅ Organization-wide Claude review setup complete!"
     echo ""
     echo "📋 Summary:"

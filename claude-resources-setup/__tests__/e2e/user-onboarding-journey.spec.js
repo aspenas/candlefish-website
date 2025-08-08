@@ -59,10 +59,10 @@ test.describe('User Onboarding Journey E2E', () => {
   test.beforeEach(async ({ page }) => {
     // Set longer timeout for E2E tests
     test.setTimeout(60000)
-    
+
     // Navigate to the application
     await page.goto(TEST_CONFIG.baseURL)
-    
+
     // Clear any existing state
     await page.evaluate(() => {
       localStorage.clear()
@@ -75,11 +75,11 @@ test.describe('User Onboarding Journey E2E', () => {
       // Step 1: Admin Login
       console.log('🔐 Admin logging in...')
       await page.goto(`${TEST_CONFIG.baseURL}/admin/login`)
-      
+
       await page.fill('[data-testid="email-input"]', TEST_CONFIG.adminEmail)
       await page.fill('[data-testid="password-input"]', TEST_CONFIG.adminPassword)
       await page.click('[data-testid="login-button"]')
-      
+
       await expect(page).toHaveURL(/.*\/admin\/dashboard/)
       await expect(page.locator('[data-testid="admin-dashboard"]')).toBeVisible()
 
@@ -91,18 +91,18 @@ test.describe('User Onboarding Journey E2E', () => {
       // Step 3: Add New User
       console.log('➕ Adding new user...')
       await page.click('[data-testid="add-user-button"]')
-      
+
       const addUserModal = page.locator('[data-testid="add-user-modal"]')
       await expect(addUserModal).toBeVisible()
-      
+
       await page.fill('[data-testid="user-username"]', TEST_USER.username)
       await page.fill('[data-testid="user-email"]', TEST_USER.email)
       await page.selectOption('[data-testid="user-department"]', TEST_USER.department)
       await page.selectOption('[data-testid="user-role"]', TEST_USER.role)
       await page.selectOption('[data-testid="user-phase"]', TEST_USER.phase)
-      
+
       await page.click('[data-testid="create-user-button"]')
-      
+
       // Wait for user creation success
       await expect(page.locator('[data-testid="user-created-success"]')).toBeVisible()
       await expect(addUserModal).not.toBeVisible()
@@ -116,20 +116,20 @@ test.describe('User Onboarding Journey E2E', () => {
       // Step 5: Send Invitation
       console.log('📧 Sending invitation...')
       await userRow.locator('[data-testid="send-invitation-button"]').click()
-      
+
       const invitationModal = page.locator('[data-testid="invitation-modal"]')
       await expect(invitationModal).toBeVisible()
-      
+
       await page.click('[data-testid="send-invitation-confirm"]')
       await expect(page.locator('[data-testid="invitation-sent-success"]')).toBeVisible()
-      
+
       // Verify invitation status updated
       await expect(userRow.locator('[data-testid="user-status"]')).toHaveText('Invitation Sent')
 
       // Step 6: Start User Onboarding (simulate user clicking invitation link)
       console.log('🚀 Starting user onboarding...')
       await page.click('[data-testid="start-onboarding-button"]', { force: true })
-      
+
       // Wait for onboarding to begin
       await expect(page.locator('[data-testid="onboarding-started-success"]')).toBeVisible()
       await expect(userRow.locator('[data-testid="user-status"]')).toHaveText('Onboarding')
@@ -201,7 +201,7 @@ bulk-user-3,bulk3@candlefish-test.ai,Design,designer,phase-2
       // Step 3: Set Initial Password
       console.log('🔑 Setting up password...')
       await expect(page.locator('[data-testid="password-setup"]')).toBeVisible()
-      
+
       await page.fill('[data-testid="password-input"]', TEST_CONFIG.testUserPassword)
       await page.fill('[data-testid="confirm-password-input"]', TEST_CONFIG.testUserPassword)
       await page.click('[data-testid="set-password-button"]')
@@ -231,7 +231,7 @@ bulk-user-3,bulk3@candlefish-test.ai,Design,designer,phase-2
 
         // Verify step completion
         await expect(page.locator(step.completionSelector)).toBeVisible()
-        
+
         // Check progress update
         const expectedProgress = Math.round(((i + 1) / ONBOARDING_STEPS.length) * 100)
         await expect(page.locator('[data-testid="progress-percentage"]')).toHaveText(`${expectedProgress}%`)
@@ -239,7 +239,7 @@ bulk-user-3,bulk3@candlefish-test.ai,Design,designer,phase-2
         // Move to next step (unless it's the last step)
         if (i < ONBOARDING_STEPS.length - 1) {
           await page.click('[data-testid="next-step-button"]')
-          
+
           // Verify step transition
           const nextStepNumber = i + 2
           await expect(page.locator('[data-testid="current-step"]')).toHaveText(`Step ${nextStepNumber} of 4`)
@@ -265,12 +265,12 @@ bulk-user-3,bulk3@candlefish-test.ai,Design,designer,phase-2
 
     test('should handle onboarding interruption and resume', async ({ page }) => {
       const invitationToken = 'resume-test-token-456'
-      
+
       // Step 1: Start onboarding
       console.log('🔄 Starting onboarding (to be interrupted)...')
       await page.goto(`${TEST_CONFIG.baseURL}/onboarding/invite/${invitationToken}`)
       await page.click('[data-testid="accept-invitation-button"]')
-      
+
       await page.fill('[data-testid="password-input"]', TEST_CONFIG.testUserPassword)
       await page.fill('[data-testid="confirm-password-input"]', TEST_CONFIG.testUserPassword)
       await page.click('[data-testid="set-password-button"]')
@@ -315,22 +315,22 @@ bulk-user-3,bulk3@candlefish-test.ai,Design,designer,phase-2
 
     test('should provide help and support during onboarding', async ({ page }) => {
       const invitationToken = 'help-test-token-789'
-      
+
       // Start onboarding
       await page.goto(`${TEST_CONFIG.baseURL}/onboarding/invite/${invitationToken}`)
       await page.click('[data-testid="accept-invitation-button"]')
-      
+
       await page.fill('[data-testid="password-input"]', TEST_CONFIG.testUserPassword)
       await page.fill('[data-testid="confirm-password-input"]', TEST_CONFIG.testUserPassword)
       await page.click('[data-testid="set-password-button"]')
 
       // Test help functionality
       console.log('❓ Testing help and support features...')
-      
+
       // Step 1: Test contextual help
       await expect(page.locator('[data-testid="help-icon"]')).toBeVisible()
       await page.click('[data-testid="help-icon"]')
-      
+
       const helpPanel = page.locator('[data-testid="help-panel"]')
       await expect(helpPanel).toBeVisible()
       await expect(helpPanel).toContainText('Account Setup Help')
@@ -338,30 +338,30 @@ bulk-user-3,bulk3@candlefish-test.ai,Design,designer,phase-2
 
       // Step 2: Test video tutorial
       await page.click('[data-testid="watch-tutorial-button"]')
-      
+
       const videoModal = page.locator('[data-testid="video-tutorial-modal"]')
       await expect(videoModal).toBeVisible()
       await expect(videoModal.locator('[data-testid="tutorial-video"]')).toBeVisible()
-      
+
       await page.click('[data-testid="close-video-modal"]')
       await expect(videoModal).not.toBeVisible()
 
       // Step 3: Test FAQ
       await page.click('[data-testid="faq-button"]')
-      
+
       const faqPanel = page.locator('[data-testid="faq-panel"]')
       await expect(faqPanel).toBeVisible()
       await expect(faqPanel.locator('[data-testid="faq-item"]').first()).toBeVisible()
 
       // Step 4: Test contact support
       await page.click('[data-testid="contact-support-button"]')
-      
+
       const supportModal = page.locator('[data-testid="support-modal"]')
       await expect(supportModal).toBeVisible()
-      
+
       await page.fill('[data-testid="support-message"]', 'I need help with account setup')
       await page.click('[data-testid="send-support-request"]')
-      
+
       await expect(page.locator('[data-testid="support-sent-confirmation"]')).toBeVisible()
 
       console.log('✅ Help and support features verified')
@@ -379,13 +379,13 @@ bulk-user-3,bulk3@candlefish-test.ai,Design,designer,phase-2
 
       for (const phase of phases) {
         console.log(`🎯 Testing ${phase.name} phase onboarding...`)
-        
+
         const invitationToken = `phase-${phase.id}-token`
         await page.goto(`${TEST_CONFIG.baseURL}/onboarding/invite/${invitationToken}`)
-        
+
         // Accept invitation
         await page.click('[data-testid="accept-invitation-button"]')
-        
+
         // Set password
         await page.fill('[data-testid="password-input"]', TEST_CONFIG.testUserPassword)
         await page.fill('[data-testid="confirm-password-input"]', TEST_CONFIG.testUserPassword)
@@ -405,7 +405,7 @@ bulk-user-3,bulk3@candlefish-test.ai,Design,designer,phase-2
         }
 
         console.log(`✅ ${phase.name} phase onboarding verified`)
-        
+
         // Clean up for next iteration
         await page.evaluate(() => {
           localStorage.clear()
@@ -428,11 +428,11 @@ bulk-user-3,bulk3@candlefish-test.ai,Design,designer,phase-2
 
       // Start next phase
       await page.click('[data-testid="start-phase-2-button"]')
-      
+
       const confirmModal = page.locator('[data-testid="start-phase-confirmation"]')
       await expect(confirmModal).toBeVisible()
       await expect(confirmModal).toContainText('Are you ready to start Phase 2?')
-      
+
       await page.click('[data-testid="confirm-start-phase"]')
 
       // Verify phase transition
@@ -441,16 +441,16 @@ bulk-user-3,bulk3@candlefish-test.ai,Design,designer,phase-2
 
       // Test user migration between phases
       await page.click('[data-testid="migrate-users-button"]')
-      
+
       const migrationModal = page.locator('[data-testid="user-migration-modal"]')
       await expect(migrationModal).toBeVisible()
-      
+
       // Select users to migrate
       await page.check('[data-testid="migrate-user-checkbox-1"]')
       await page.check('[data-testid="migrate-user-checkbox-2"]')
-      
+
       await page.click('[data-testid="confirm-migration"]')
-      
+
       // Verify migration success
       await expect(page.locator('[data-testid="migration-success"]')).toBeVisible()
       await expect(page.locator('[data-testid="migrated-users-count"]')).toHaveText('2 users migrated')
@@ -497,7 +497,7 @@ bulk-user-3,bulk3@candlefish-test.ai,Design,designer,phase-2
 
       // Test password validation
       console.log('🔍 Testing validation errors...')
-      
+
       // Weak password
       await page.fill('[data-testid="password-input"]', '123')
       await page.fill('[data-testid="confirm-password-input"]', '123')
@@ -524,7 +524,7 @@ bulk-user-3,bulk3@candlefish-test.ai,Design,designer,phase-2
 
     test('should handle expired invitation links', async ({ page }) => {
       console.log('⏰ Testing expired invitation handling...')
-      
+
       const expiredToken = 'expired-invitation-token'
       await page.goto(`${TEST_CONFIG.baseURL}/onboarding/invite/${expiredToken}`)
 
@@ -535,10 +535,10 @@ bulk-user-3,bulk3@candlefish-test.ai,Design,designer,phase-2
 
       // Test requesting new invitation
       await page.click('[data-testid="request-new-invitation"]')
-      
+
       const requestModal = page.locator('[data-testid="new-invitation-request"]')
       await expect(requestModal).toBeVisible()
-      
+
       await page.fill('[data-testid="request-email"]', TEST_CONFIG.testUserEmail)
       await page.click('[data-testid="send-request"]')
 
@@ -552,7 +552,7 @@ bulk-user-3,bulk3@candlefish-test.ai,Design,designer,phase-2
     test('should track onboarding analytics events', async ({ page }) => {
       // Setup analytics event tracking
       const analyticsEvents = []
-      
+
       await page.addInitScript(() => {
         window.analyticsEvents = []
         window.trackEvent = (event, data) => {
@@ -563,12 +563,12 @@ bulk-user-3,bulk3@candlefish-test.ai,Design,designer,phase-2
       // Start onboarding
       const invitationToken = 'analytics-test-token'
       await page.goto(`${TEST_CONFIG.baseURL}/onboarding/invite/${invitationToken}`)
-      
+
       console.log('📊 Testing analytics tracking...')
-      
+
       // Accept invitation
       await page.click('[data-testid="accept-invitation-button"]')
-      
+
       // Set password
       await page.fill('[data-testid="password-input"]', TEST_CONFIG.testUserPassword)
       await page.fill('[data-testid="confirm-password-input"]', TEST_CONFIG.testUserPassword)
@@ -579,7 +579,7 @@ bulk-user-3,bulk3@candlefish-test.ai,Design,designer,phase-2
 
       // Verify analytics events were tracked
       const events = await page.evaluate(() => window.analyticsEvents)
-      
+
       expect(events).toContainEqual(
         expect.objectContaining({
           event: 'onboarding_started',

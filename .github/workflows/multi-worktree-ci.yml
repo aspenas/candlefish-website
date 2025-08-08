@@ -39,7 +39,7 @@ jobs:
     outputs:
       projects: ${{ steps.detect.outputs.projects }}
       worktrees: ${{ steps.detect.outputs.worktrees }}
-    
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -54,7 +54,7 @@ jobs:
           else
             CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
           fi
-          
+
           # Detect affected projects
           PROJECTS=()
           if echo "$CHANGED_FILES" | grep -q "^apps/"; then
@@ -66,11 +66,11 @@ jobs:
           if echo "$CHANGED_FILES" | grep -q "^projects/"; then
             PROJECTS+=("projects")
           fi
-          
+
           # Determine which worktrees to test
           WORKTREES=()
           BRANCH="${{ github.ref_name }}"
-          
+
           if [[ "$BRANCH" == "main" ]]; then
             WORKTREES+=("main")
           elif [[ "$BRANCH" == "development" ]]; then
@@ -84,7 +84,7 @@ jobs:
           else
             WORKTREES+=("main")
           fi
-          
+
           echo "projects=$(printf '%s\n' "${PROJECTS[@]}" | jq -R . | jq -s .)" >> $GITHUB_OUTPUT
           echo "worktrees=$(printf '%s\n' "${WORKTREES[@]}" | jq -R . | jq -s .)" >> $GITHUB_OUTPUT
 
@@ -98,7 +98,7 @@ jobs:
         worktree: ${{ fromJson(needs.detect-changes.outputs.worktrees) }}
       fail-fast: false
       max-parallel: 6
-    
+
     steps:
       - name: Checkout worktree
         uses: actions/checkout@v4
@@ -174,7 +174,7 @@ jobs:
     needs: parallel-tests
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/development'
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v4
 
@@ -207,7 +207,7 @@ jobs:
   sync-worktrees:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -218,12 +218,12 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
+
           # Update development branch
           git checkout development || git checkout -b development
           git merge main --no-edit || true
           git push origin development || true
-          
+
           # Update other worktree branches if they exist
           for branch in feature/parallel-work experimental/testing hotfix/quick-fixes docs/updates cicd/github-actions; do
             if git show-ref --verify --quiet "refs/remotes/origin/$branch"; then

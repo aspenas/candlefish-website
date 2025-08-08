@@ -5,9 +5,11 @@
 This document provides a condensed context summary for creating the final transformation prompt. The full project will require ~70K tokens across 5 phases.
 
 ## Project Goal
+
 Transform Paintbox application's UI to match Tyler-Setup's modern design system while preserving ALL business logic, Excel formulas, and integrations.
 
 ## Critical Constraints
+
 1. **KEEP Zustand** - Do NOT migrate to Redux (Tyler uses Redux, but we keep Zustand)
 2. **PRESERVE Excel Engine** - 14,000+ formulas must remain untouched
 3. **MAINTAIN Integrations** - Salesforce, Company Cam, WebSocket must work
@@ -17,6 +19,7 @@ Transform Paintbox application's UI to match Tyler-Setup's modern design system 
 ## Technical Stack Comparison
 
 ### Paintbox (Current)
+
 ```
 Framework: Next.js 15.4.5 (App Router)
 State: Zustand 5.0.7
@@ -26,6 +29,7 @@ Integrations: Salesforce, Company Cam, WebSocket
 ```
 
 ### Tyler-Setup (Target Design)
+
 ```
 Framework: Vite + React 18 (reference only)
 State: Redux (we won't use, keeping Zustand)
@@ -37,6 +41,7 @@ Utilities: cn() pattern for className merging
 ## What We're Taking from Tyler-Setup
 
 ### 1. CSS Variable System
+
 ```css
 :root {
   --background: 0 0% 100%;
@@ -53,6 +58,7 @@ Utilities: cn() pattern for className merging
 ```
 
 ### 2. Utility Pattern
+
 ```typescript
 // The cn() utility for className merging
 import { type ClassValue, clsx } from 'clsx'
@@ -64,6 +70,7 @@ export function cn(...inputs: ClassValue[]) {
 ```
 
 ### 3. Component Patterns
+
 - Clean, modern component structure
 - Consistent theming approach
 - Professional light/dark mode
@@ -71,26 +78,31 @@ export function cn(...inputs: ClassValue[]) {
 ## Phase Breakdown (70K tokens total)
 
 ### Phase 1: Foundation (10K tokens)
+
 - CSS variables, theme system, utilities
 - Base component library
 - Theme provider and hooks
 
 ### Phase 2: Components (20K tokens)
+
 - Transform ALL UI components
 - Maintain business logic
 - Add dark mode support
 
 ### Phase 3: Excel Engine (15K tokens)
+
 - Optimize performance
 - Add missing functions
 - Improve caching
 
 ### Phase 4: iPad Optimization (10K tokens)
+
 - Touch gestures
 - Responsive layouts
 - Performance tuning
 
 ### Phase 5: Testing (10K tokens)
+
 - Full regression testing
 - Performance validation
 - Documentation
@@ -100,6 +112,7 @@ export function cn(...inputs: ClassValue[]) {
 ## Key Files Created
 
 ### Context Management
+
 1. **CONTEXT_MANAGEMENT_PAINTBOX_TRANSFORM.md** - Complete project context (comprehensive)
 2. **TRANSFORMATION_PROMPT_TEMPLATE.md** - Template for agent prompts
 3. **PHASE_1_STATUS.md** - Ready to start Phase 1
@@ -109,6 +122,7 @@ export function cn(...inputs: ClassValue[]) {
 ### For Each Phase Prompt
 
 1. **Start with Context Load**
+
 ```
 Read these files first:
 - CONTEXT_MANAGEMENT_PAINTBOX_TRANSFORM.md
@@ -116,8 +130,9 @@ Read these files first:
 ```
 
 2. **Emphasize Constraints**
+
 ```
-CRITICAL: 
+CRITICAL:
 - Keep Zustand (no Redux)
 - Preserve ALL Excel formulas
 - Maintain service integrations
@@ -125,6 +140,7 @@ CRITICAL:
 ```
 
 3. **Provide Clear Patterns**
+
 ```typescript
 // Show Tyler-Setup patterns to follow
 // Include specific examples
@@ -132,6 +148,7 @@ CRITICAL:
 ```
 
 4. **Include Validation Steps**
+
 ```
 After each change:
 - Test business logic preserved
@@ -140,6 +157,7 @@ After each change:
 ```
 
 5. **Define Success Metrics**
+
 ```
 Phase complete when:
 - All tasks done
@@ -178,12 +196,14 @@ Phase complete when:
 ## Risk Mitigation Notes
 
 ### High-Risk Areas
+
 1. **Excel Engine** - Any modification could break 14,000+ formulas
 2. **Zustand Stores** - Must remain compatible with existing logic
 3. **API Integrations** - Breaking changes would affect production
 4. **WebSocket** - Real-time updates critical for UX
 
 ### Safe Areas for Transformation
+
 1. **Component Styling** - Full freedom to change
 2. **CSS Architecture** - Can completely restructure
 3. **Theme System** - New implementation welcome
@@ -193,6 +213,7 @@ Phase complete when:
 ## Success Criteria Summary
 
 ### Must Have
+
 - ✅ All Excel formulas working exactly as before
 - ✅ Salesforce/Company Cam integrations intact
 - ✅ Zustand state management preserved
@@ -200,6 +221,7 @@ Phase complete when:
 - ✅ iPad-optimized touch targets (44px minimum)
 
 ### Nice to Have
+
 - ⚡ 20%+ performance improvement
 - 📦 Smaller bundle size
 - 🎨 Smooth animations
@@ -209,6 +231,7 @@ Phase complete when:
 ## Quick Reference Paths
 
 ### Paintbox
+
 ```
 Root: /Users/patricksmith/candlefish-ai/projects/paintbox
 Components: ./components/
@@ -218,6 +241,7 @@ Services: ./lib/services/
 ```
 
 ### Tyler-Setup
+
 ```
 Root: /Users/patricksmith/candlefish-ai/packages/tyler-setup
 Frontend: ./frontend/src/
@@ -243,6 +267,7 @@ Components: ./frontend/src/components/
 **Purpose**: This summary enables you to create focused, effective prompts for each transformation phase while maintaining project coherence across the 70K token scope.
 
 **Key Documents**:
+
 - Full Context: CONTEXT_MANAGEMENT_PAINTBOX_TRANSFORM.md
 - Agent Template: TRANSFORMATION_PROMPT_TEMPLATE.md
 - Phase 1 Ready: PHASE_1_STATUS.md

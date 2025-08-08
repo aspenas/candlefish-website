@@ -15,12 +15,14 @@ That's it! You now have access to all Claude agents and commands across every Ca
 ## 📚 What You Get
 
 ### Agents (51+ AI Specialists)
+
 - **Language Experts**: Python, Go, Rust, JavaScript, TypeScript, Java, C++, etc.
 - **Framework Specialists**: React, Vue, Django, Rails, Spring Boot, etc.
 - **Infrastructure**: AWS, Kubernetes, Docker, Terraform, CI/CD
 - **Specialized**: Security, Performance, Database, ML, Mobile, etc.
 
 ### Commands & Workflows
+
 - **Tools**: Individual utility commands for specific tasks
 - **Workflows**: Multi-step processes for complex operations
 - **Templates**: Reusable patterns for common scenarios
@@ -28,6 +30,7 @@ That's it! You now have access to all Claude agents and commands across every Ca
 ## 🔧 How It Works
 
 ### Organization Structure
+
 ```
 candlefish/claude-resources/           # Central repository
 ├── .claude/
@@ -41,6 +44,7 @@ candlefish/claude-resources/           # Central repository
 ```
 
 ### Automatic Synchronization
+
 - **Upstream Sync**: Every 6 hours from wshobson/agents and wshobson/commands
 - **Project Sync**: Each Candlefish project automatically gets updates
 - **Local Updates**: Pull the claude-resources repo to get latest changes
@@ -48,6 +52,7 @@ candlefish/claude-resources/           # Central repository
 ## 💻 Daily Usage
 
 ### Using Agents in Claude Code
+
 ```bash
 # List available agents
 ls ~/.claude/agents/
@@ -58,6 +63,7 @@ claude --agent react-specialist "Convert this to use hooks"
 ```
 
 ### Using Commands/Workflows
+
 ```bash
 # List available workflows
 ls ~/.claude/workflows/
@@ -68,6 +74,7 @@ claude --workflow bug-fix "Fix memory leak in user service"
 ```
 
 ### Updating Your Local Resources
+
 ```bash
 # Manual update (if needed)
 cd ~/code/candlefish/claude-resources
@@ -82,17 +89,21 @@ git pull
 If you use Git worktrees for your development:
 
 ### Setup All Worktrees at Once
+
 ```bash
 ~/code/candlefish/setup-worktree-claude.sh
 ```
 
 ### Setup Specific Project Worktrees
+
 ```bash
 ~/code/candlefish/setup-worktree-claude.sh /path/to/project
 ```
 
-### New Worktree? 
+### New Worktree?
+
 The setup script creates symlinks automatically, but for new worktrees:
+
 ```bash
 ln -s ~/.claude /path/to/new/worktree/.claude
 ```
@@ -100,11 +111,13 @@ ln -s ~/.claude /path/to/new/worktree/.claude
 ## 🔄 Keeping Everything in Sync
 
 ### Your Side (Automatic)
+
 1. Shell reminder prompts you daily if updates are available
 2. Each project pulls from claude-resources via GitHub Actions
 3. Your ~/.claude always points to the latest version
 
 ### Organization Side (Automatic)
+
 1. GitHub Actions sync from upstream every 6 hours
 2. Changes create PRs reviewed by Aaron and Tyler
 3. Approved changes propagate to all projects
@@ -112,7 +125,9 @@ ln -s ~/.claude /path/to/new/worktree/.claude
 ## 🛠️ Troubleshooting
 
 ### "Command not found: claude"
+
 Make sure Claude Code is installed and in your PATH:
+
 ```bash
 # Check installation
 which claude
@@ -122,6 +137,7 @@ which claude
 ```
 
 ### "No agents found"
+
 ```bash
 # Verify symlink
 ls -la ~/.claude
@@ -131,6 +147,7 @@ ls -la ~/.claude
 ```
 
 ### "Permission denied"
+
 ```bash
 # Ensure you have access to the candlefish organization
 gh auth login
@@ -141,7 +158,9 @@ git clone https://github.com/candlefish/claude-resources.git
 ```
 
 ### Conflicts with Existing .claude
+
 The setup script backs up your existing .claude directory. To restore:
+
 ```bash
 # Find backups
 ls -la ~/.claude.backup.*
@@ -153,12 +172,14 @@ mv ~/.claude.backup.20240115-093021 ~/.claude
 ## 🤝 Contributing
 
 ### Adding Custom Agents/Commands
+
 1. Clone the claude-resources repository
 2. Add your files to appropriate directories
 3. Create a PR for review
 4. Once merged, everyone gets your additions automatically
 
 ### Example: Adding a Custom Agent
+
 ```bash
 cd ~/code/candlefish/claude-resources
 git checkout -b add-my-agent
@@ -179,11 +200,13 @@ gh pr create --title "Add my-specialist agent" --body "This agent helps with..."
 ## 📞 Support
 
 ### Getting Help
+
 - **Setup Issues**: Contact @patricksmith
 - **Agent Questions**: Check agent documentation in ~/.claude/agents/
 - **Workflow Help**: See ~/.claude/workflows/README.md
 
 ### Useful Commands
+
 ```bash
 # Check Claude resources status
 ls -la ~/.claude/

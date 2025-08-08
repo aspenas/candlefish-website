@@ -219,7 +219,7 @@ describe('User Onboarding API Endpoints', () => {
       mockOnboardingService.getUserProgress.mockResolvedValue(progress)
 
       // Act
-      const promises = Array(10).fill().map(() => 
+      const promises = Array(10).fill().map(() =>
         getUserOnboardingProgress(userId)
       )
       const results = await Promise.all(promises)
@@ -278,7 +278,7 @@ describe('User Onboarding API Endpoints', () => {
         ...mockUsers[1].onboardingStatus,
         progress: 50,
         steps: mockUsers[1].onboardingStatus.steps.map(step =>
-          step.id === stepId 
+          step.id === stepId
             ? { ...step, status: 'completed', completedAt: new Date() }
             : step
         )
@@ -416,8 +416,8 @@ describe('User Onboarding API Endpoints', () => {
       mockOnboardingService.startUserOnboarding.mockResolvedValue(onboardingData)
 
       // Act
-      await startUserOnboarding('user-4', 'phase-2', { 
-        analytics: mockAnalytics 
+      await startUserOnboarding('user-4', 'phase-2', {
+        analytics: mockAnalytics
       })
 
       // Assert
@@ -499,7 +499,7 @@ async function startUserOnboarding(userId, phaseId, options = {}) {
 
 async function startBulkUserOnboarding(userIds, phaseId) {
   const results = await mockOnboardingService.startBulkOnboarding(userIds, phaseId)
-  
+
   return {
     successful: results.filter(r => r.success),
     failed: results.filter(r => !r.success)
@@ -520,8 +520,8 @@ async function updateUserOnboardingProgress(userId, updates) {
 
 async function completeOnboardingStep(userId, stepId, stepData = {}) {
   const progress = await mockOnboardingService.completeOnboardingStep(
-    userId, 
-    stepId, 
+    userId,
+    stepId,
     stepData
   )
 
@@ -538,7 +538,7 @@ async function completeOnboardingStep(userId, stepId, stepData = {}) {
 
 async function generateTeamProgressReport(teamMembers) {
   const progressData = await mockOnboardingService.getTeamProgress(teamMembers)
-  
+
   return {
     summary: {
       totalUsers: progressData.length,

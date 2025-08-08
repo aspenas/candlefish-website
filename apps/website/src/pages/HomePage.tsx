@@ -22,7 +22,7 @@ const HomePage: React.FC = () => {
       // Parallax effect for hero section
       gsap.utils.toArray('.parallax-layer').forEach((layer: Element) => {
         const speed = parseFloat((layer as HTMLElement).dataset.speed || '0.5')
-        
+
         gsap.to(layer, {
           yPercent: -100 * speed,
           ease: "none",
@@ -48,7 +48,7 @@ const HomePage: React.FC = () => {
       // Process steps animation
       const processSteps = document.querySelectorAll('.process-step')
       let currentStep = 0
-      
+
       const stepInterval = setInterval(() => {
         processSteps.forEach(step => step.classList.remove('active'))
         currentStep = (currentStep + 1) % processSteps.length
@@ -63,7 +63,7 @@ const HomePage: React.FC = () => {
 
     // Wait for DOM to be fully loaded
     const timer = setTimeout(initializeAnimations, 100)
-    
+
     return () => {
       clearTimeout(timer)
     }
@@ -76,7 +76,7 @@ const HomePage: React.FC = () => {
     "name": "Candlefish AI LLC",
     "description": "Enterprise AI consulting through discrete, composable modules",
     "url": "https://candlefish.ai",
-    "logo": "https://candlefish.ai/logo/candlefish_highquality.png",
+    "logo": "https://candlefish.ai/logo/candlefish_original.png",
     "contactPoint": {
       "@type": "ContactPoint",
       "email": "hello@candlefish.ai",
@@ -110,7 +110,7 @@ const HomePage: React.FC = () => {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
-      
+
       <div className="pt-24 lg:pt-0" data-theme="dark">
         <Navigation />
         <HeroSection />

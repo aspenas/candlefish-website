@@ -15,7 +15,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
-      
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -111,20 +111,20 @@ jobs:
       - name: Check for hardcoded credentials
         run: |
           echo "Checking for hardcoded credentials..."
-          
+
           # Check for API keys
           grep -r "sk-[a-zA-Z0-9]{32}" . --exclude-dir=node_modules --exclude-dir=.git || echo "No API keys found"
-          
+
           # Check for JWT secrets
           grep -r "JWT_SECRET\s*=\s*['\"][^'\"]*['\"]" . --exclude-dir=node_modules --exclude-dir=.git || echo "No hardcoded JWT secrets"
-          
+
           # Check for database passwords
           grep -r "password\s*[:=]\s*['\"][^'\"]*['\"]" . --exclude-dir=node_modules --exclude-dir=.git --exclude="*.md" || echo "No hardcoded passwords"
 
       - name: CORS Configuration Check
         run: |
           echo "Checking CORS configuration..."
-          
+
           # Check netlify.toml for proper CORS
           if grep -q 'Access-Control-Allow-Origin = "\*"' netlify.toml; then
             echo "⚠️ WARNING: CORS allows all origins (*)"
@@ -136,14 +136,14 @@ jobs:
       - name: Authentication Middleware Check
         run: |
           echo "Verifying authentication middleware..."
-          
+
           # Check if auth middleware exists
           if [ -f "src/middleware/auth.js" ]; then
             echo "✅ Authentication middleware found"
           else
             echo "⚠️ WARNING: Authentication middleware missing"
           fi
-          
+
           # Check if functions use auth middleware
           for func in netlify/functions/*.js; do
             if grep -q "authMiddleware" "$func"; then
@@ -162,13 +162,13 @@ jobs:
           echo "Branch: ${{ github.ref_name }}" >> security-report.md
           echo "Commit: ${{ github.sha }}" >> security-report.md
           echo "" >> security-report.md
-          
+
           echo "## Scan Results" >> security-report.md
           echo "- Secret Scanning: Complete" >> security-report.md
           echo "- Dependency Scanning: Complete" >> security-report.md
           echo "- SAST: Complete" >> security-report.md
           echo "- Infrastructure Scanning: Complete" >> security-report.md
-          
+
           cat security-report.md >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Security Reports

@@ -1,6 +1,6 @@
 /**
  * Dashboard Context for System Analyzer
- * 
+ *
  * Provides centralized state management for:
  * - Dashboard filters and preferences
  * - Real-time updates
@@ -36,12 +36,12 @@ interface DashboardState {
   services: Service[];
   alerts: Alert[];
   systemAnalysis: SystemAnalysis | null;
-  
+
   // UI State
   filters: DashboardFilters;
   selectedService: Service | null;
   selectedAlert: Alert | null;
-  
+
   // Loading States
   loading: {
     services: boolean;
@@ -49,7 +49,7 @@ interface DashboardState {
     analysis: boolean;
     serviceDetails: boolean;
   };
-  
+
   // Error States
   errors: {
     services: string | null;
@@ -57,14 +57,14 @@ interface DashboardState {
     analysis: string | null;
     serviceDetails: string | null;
   };
-  
+
   // Real-time State
   isRealTimeEnabled: boolean;
   lastUpdated: string | null;
-  
+
   // Notifications
   notifications: NotificationMessage[];
-  
+
   // View State
   view: 'overview' | 'services' | 'alerts' | 'metrics' | 'insights';
   sidebarCollapsed: boolean;
@@ -81,7 +81,7 @@ type DashboardAction =
   | { type: 'ADD_ALERT'; payload: Alert }
   | { type: 'UPDATE_ALERT'; payload: Alert }
   | { type: 'REMOVE_ALERT'; payload: string }
-  
+
   // UI Actions
   | { type: 'SET_FILTERS'; payload: Partial<DashboardFilters> }
   | { type: 'RESET_FILTERS' }
@@ -91,16 +91,16 @@ type DashboardAction =
   | { type: 'TOGGLE_SIDEBAR' }
   | { type: 'TOGGLE_DARK_MODE' }
   | { type: 'SET_SIDEBAR_COLLAPSED'; payload: boolean }
-  
+
   // Loading Actions
   | { type: 'SET_LOADING'; payload: { key: keyof DashboardState['loading']; loading: boolean } }
   | { type: 'SET_ERROR'; payload: { key: keyof DashboardState['errors']; error: string | null } }
-  
+
   // Real-time Actions
   | { type: 'TOGGLE_REAL_TIME' }
   | { type: 'SET_LAST_UPDATED'; payload: string }
   | { type: 'SERVICE_STATUS_UPDATE'; payload: ServiceStatusUpdate }
-  
+
   // Notification Actions
   | { type: 'ADD_NOTIFICATION'; payload: NotificationMessage }
   | { type: 'REMOVE_NOTIFICATION'; payload: string }
@@ -314,7 +314,7 @@ function dashboardReducer(state: DashboardState, action: DashboardAction): Dashb
 interface DashboardContextType {
   state: DashboardState;
   dispatch: React.Dispatch<DashboardAction>;
-  
+
   // Helper functions
   setServices: (services: Service[]) => void;
   setAlerts: (alerts: Alert[]) => void;
@@ -354,7 +354,7 @@ export function DashboardProvider({ children }: DashboardProviderProps) {
     onData: ({ data }) => {
       if (data.data?.serviceStatusChanged) {
         dispatch({ type: 'SERVICE_STATUS_UPDATE', payload: data.data.serviceStatusChanged });
-        
+
         // Show notification for status changes
         const update = data.data.serviceStatusChanged;
         const notification: Omit<NotificationMessage, 'id' | 'timestamp'> = {
@@ -373,7 +373,7 @@ export function DashboardProvider({ children }: DashboardProviderProps) {
     onData: ({ data }) => {
       if (data.data?.alertTriggered) {
         dispatch({ type: 'ADD_ALERT', payload: data.data.alertTriggered });
-        
+
         // Show toast notification for new alerts
         const alert = data.data.alertTriggered;
         toast.error(`${alert.severity} Alert: ${alert.name}`, {
@@ -389,7 +389,7 @@ export function DashboardProvider({ children }: DashboardProviderProps) {
     onData: ({ data }) => {
       if (data.data?.alertResolved) {
         dispatch({ type: 'UPDATE_ALERT', payload: data.data.alertResolved });
-        
+
         // Show success toast
         const alert = data.data.alertResolved;
         toast.success(`Alert Resolved: ${alert.name}`);
@@ -414,55 +414,55 @@ export function DashboardProvider({ children }: DashboardProviderProps) {
   }, []);
 
   // Helper functions
-  const setServices = (services: Service[]) => 
+  const setServices = (services: Service[]) =>
     dispatch({ type: 'SET_SERVICES', payload: services });
 
-  const setAlerts = (alerts: Alert[]) => 
+  const setAlerts = (alerts: Alert[]) =>
     dispatch({ type: 'SET_ALERTS', payload: alerts });
 
-  const setSystemAnalysis = (analysis: SystemAnalysis) => 
+  const setSystemAnalysis = (analysis: SystemAnalysis) =>
     dispatch({ type: 'SET_SYSTEM_ANALYSIS', payload: analysis });
 
-  const updateService = (service: Service) => 
+  const updateService = (service: Service) =>
     dispatch({ type: 'UPDATE_SERVICE', payload: service });
 
-  const addAlert = (alert: Alert) => 
+  const addAlert = (alert: Alert) =>
     dispatch({ type: 'ADD_ALERT', payload: alert });
 
-  const updateAlert = (alert: Alert) => 
+  const updateAlert = (alert: Alert) =>
     dispatch({ type: 'UPDATE_ALERT', payload: alert });
 
-  const removeAlert = (alertId: string) => 
+  const removeAlert = (alertId: string) =>
     dispatch({ type: 'REMOVE_ALERT', payload: alertId });
 
-  const setFilters = (filters: Partial<DashboardFilters>) => 
+  const setFilters = (filters: Partial<DashboardFilters>) =>
     dispatch({ type: 'SET_FILTERS', payload: filters });
 
-  const resetFilters = () => 
+  const resetFilters = () =>
     dispatch({ type: 'RESET_FILTERS' });
 
-  const selectService = (service: Service | null) => 
+  const selectService = (service: Service | null) =>
     dispatch({ type: 'SELECT_SERVICE', payload: service });
 
-  const selectAlert = (alert: Alert | null) => 
+  const selectAlert = (alert: Alert | null) =>
     dispatch({ type: 'SELECT_ALERT', payload: alert });
 
-  const setView = (view: DashboardState['view']) => 
+  const setView = (view: DashboardState['view']) =>
     dispatch({ type: 'SET_VIEW', payload: view });
 
-  const toggleSidebar = () => 
+  const toggleSidebar = () =>
     dispatch({ type: 'TOGGLE_SIDEBAR' });
 
-  const toggleDarkMode = () => 
+  const toggleDarkMode = () =>
     dispatch({ type: 'TOGGLE_DARK_MODE' });
 
-  const setLoading = (key: keyof DashboardState['loading'], loading: boolean) => 
+  const setLoading = (key: keyof DashboardState['loading'], loading: boolean) =>
     dispatch({ type: 'SET_LOADING', payload: { key, loading } });
 
-  const setError = (key: keyof DashboardState['errors'], error: string | null) => 
+  const setError = (key: keyof DashboardState['errors'], error: string | null) =>
     dispatch({ type: 'SET_ERROR', payload: { key, error } });
 
-  const toggleRealTime = () => 
+  const toggleRealTime = () =>
     dispatch({ type: 'TOGGLE_REAL_TIME' });
 
   const addNotification = (notification: Omit<NotificationMessage, 'id' | 'timestamp'>) => {
@@ -474,10 +474,10 @@ export function DashboardProvider({ children }: DashboardProviderProps) {
     dispatch({ type: 'ADD_NOTIFICATION', payload: fullNotification });
   };
 
-  const removeNotification = (id: string) => 
+  const removeNotification = (id: string) =>
     dispatch({ type: 'REMOVE_NOTIFICATION', payload: id });
 
-  const clearNotifications = () => 
+  const clearNotifications = () =>
     dispatch({ type: 'CLEAR_NOTIFICATIONS' });
 
   const value: DashboardContextType = {

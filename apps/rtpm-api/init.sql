@@ -19,18 +19,18 @@ CREATE TABLE IF NOT EXISTS metrics (
 );
 
 -- Create hypertable for metrics
-SELECT create_hypertable('metrics', 'timestamp', 
+SELECT create_hypertable('metrics', 'timestamp',
                         chunk_time_interval => INTERVAL '1 day',
                         if_not_exists => TRUE);
 
 -- Create indexes for better query performance
-CREATE INDEX IF NOT EXISTS idx_metrics_name_timestamp 
+CREATE INDEX IF NOT EXISTS idx_metrics_name_timestamp
 ON metrics (metric_name, timestamp DESC);
 
-CREATE INDEX IF NOT EXISTS idx_metrics_labels_gin 
+CREATE INDEX IF NOT EXISTS idx_metrics_labels_gin
 ON metrics USING GIN (labels);
 
-CREATE INDEX IF NOT EXISTS idx_metrics_type_timestamp 
+CREATE INDEX IF NOT EXISTS idx_metrics_type_timestamp
 ON metrics (metric_type, timestamp DESC);
 
 -- Create aggregated metrics table
@@ -52,10 +52,10 @@ SELECT create_hypertable('aggregated_metrics', 'timestamp',
                         if_not_exists => TRUE);
 
 -- Create indexes for aggregated metrics
-CREATE INDEX IF NOT EXISTS idx_aggregated_name_type_timestamp 
+CREATE INDEX IF NOT EXISTS idx_aggregated_name_type_timestamp
 ON aggregated_metrics (metric_name, aggregation_type, timestamp DESC);
 
-CREATE INDEX IF NOT EXISTS idx_aggregated_interval_timestamp 
+CREATE INDEX IF NOT EXISTS idx_aggregated_interval_timestamp
 ON aggregated_metrics (interval_duration, timestamp DESC);
 
 -- Create alert rules table
@@ -116,7 +116,7 @@ SELECT add_compression_policy('aggregated_metrics', INTERVAL '30 days', if_not_e
 -- Create continuous aggregates for common queries (optional)
 CREATE MATERIALIZED VIEW IF NOT EXISTS metrics_hourly
 WITH (timescaledb.continuous) AS
-SELECT 
+SELECT
     time_bucket('1 hour', timestamp) AS bucket,
     metric_name,
     labels,
@@ -140,7 +140,7 @@ GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO rtmp;
 
 -- Insert some sample alert rules
 INSERT INTO alert_rules (id, name, metric_name, condition, threshold, severity, annotations)
-VALUES 
+VALUES
     (gen_random_uuid(), 'High CPU Usage', 'cpu_usage_percent', '> 80', 80.0, 'high', '{"description": "CPU usage is above 80%"}'),
     (gen_random_uuid(), 'High Memory Usage', 'memory_usage_percent', '> 90', 90.0, 'critical', '{"description": "Memory usage is above 90%"}'),
     (gen_random_uuid(), 'Low Disk Space', 'disk_usage_percent', '> 85', 85.0, 'medium', '{"description": "Disk usage is above 85%"}')

@@ -8,36 +8,36 @@
     @apply px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2;
     @apply transform hover:scale-105 active:scale-95;
   }
-  
+
   .paintbox-btn-primary {
     @apply bg-gradient-to-r from-paintbox-primary to-paintbox-accent text-white;
     @apply hover:from-paintbox-primary-dark hover:to-paintbox-accent shadow-lg;
   }
-  
+
   .paintbox-btn-secondary {
     @apply bg-white text-paintbox-text border-2 border-paintbox-border;
     @apply hover:border-paintbox-primary hover:text-paintbox-primary;
   }
-  
+
   .paintbox-card {
     @apply bg-white rounded-xl shadow-paintbox border border-paintbox-border;
     @apply transition-all duration-300 hover:shadow-paintbox-hover;
   }
-  
+
   .paintbox-input {
     @apply w-full px-4 py-3 rounded-lg border border-paintbox-border;
     @apply focus:border-paintbox-primary focus:outline-none focus:ring-2 focus:ring-paintbox-primary/20;
     @apply transition-all duration-200;
   }
-  
+
   .paintbox-label {
     @apply text-sm font-medium text-paintbox-text mb-2 block;
   }
-  
+
   .paintbox-section {
     @apply bg-paintbox-surface rounded-xl p-6 shadow-paintbox;
   }
-  
+
   .paintbox-gradient-text {
     @apply bg-gradient-to-r from-paintbox-primary to-paintbox-accent bg-clip-text text-transparent;
   }

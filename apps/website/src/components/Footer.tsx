@@ -8,14 +8,14 @@ const Footer: React.FC = () => {
           © 2025 Candlefish AI LLC. Illuminating the path to AI transformation.
         </p>
         <div className="text-sm">
-          <a 
-            href="/privacy" 
+          <a
+            href="/privacy"
             className="text-gray-400 hover:text-white transition-colors duration-200 mr-6"
           >
             Privacy Policy
           </a>
-          <a 
-            href="/terms" 
+          <a
+            href="/terms"
             className="text-gray-400 hover:text-white transition-colors duration-200"
           >
             Terms of Service

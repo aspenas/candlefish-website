@@ -59,7 +59,7 @@ describe('useMetrics Hook', () => {
 
   it('handles loading state', () => {
     // Mock delayed response
-    apiMock.setApiResponse('getMetrics', 
+    apiMock.setApiResponse('getMetrics',
       new Promise(resolve => setTimeout(() => resolve([]), 100))
     );
 
@@ -221,8 +221,8 @@ describe('useWebSocket Hook', () => {
 
   it('receives real-time metric updates', async () => {
     const onMetricUpdate = jest.fn();
-    
-    const { result } = renderHook(() => 
+
+    const { result } = renderHook(() =>
       useWebSocket({ onMetricUpdate })
     );
 
@@ -339,7 +339,7 @@ describe('useAuth Hook', () => {
 
   it('initializes with existing token from localStorage', () => {
     localStorage.setItem('authToken', 'existing-token');
-    
+
     const { result } = renderHook(() => useAuth());
 
     expect(result.current.token).toBe('existing-token');
@@ -391,7 +391,7 @@ describe('useAuth Hook', () => {
 
   it('handles logout', () => {
     localStorage.setItem('authToken', 'existing-token');
-    
+
     const { result } = renderHook(() => useAuth());
 
     act(() => {

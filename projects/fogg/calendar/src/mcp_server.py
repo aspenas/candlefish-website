@@ -246,13 +246,13 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     """Handle tool calls."""
     start_time = time.time()
     trace_id = str(uuid.uuid4())
-    
+
     # Log tool invocation
     log_mcp_tool_invocation(name, arguments, trace_id)
-    
+
     try:
         result = None
-        
+
         if name == "list_calendars":
             calendars = await asyncio.to_thread(list_all_calendars)
             result = [
@@ -260,13 +260,15 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                 for cal in calendars
             ]
             response = [TextContent(type="text", text=json.dumps(result, indent=2))]
-            
+
             # Record success and return
             duration_ms = (time.time() - start_time) * 1000
-            logger.info("MCP tool invocation completed",
-                        tool=name,
-                        trace_id=trace_id,
-                        duration_ms=duration_ms)
+            logger.info(
+                "MCP tool invocation completed",
+                tool=name,
+                trace_id=trace_id,
+                duration_ms=duration_ms,
+            )
             metrics.record_mcp_invocation(name, success=True, duration_ms=duration_ms)
             return response
 
@@ -292,13 +294,15 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                 for event in events
             ]
             response = [TextContent(type="text", text=json.dumps(result, indent=2))]
-            
+
             # Record success and return
             duration_ms = (time.time() - start_time) * 1000
-            logger.info("MCP tool invocation completed",
-                        tool=name,
-                        trace_id=trace_id,
-                        duration_ms=duration_ms)
+            logger.info(
+                "MCP tool invocation completed",
+                tool=name,
+                trace_id=trace_id,
+                duration_ms=duration_ms,
+            )
             metrics.record_mcp_invocation(name, success=True, duration_ms=duration_ms)
             return response
 
@@ -342,30 +346,31 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                     TextContent(
                         type="text",
                         text=(
-                            "Non-recurring events not yet implemented. "
-                            "Please use recurrence_rule."
+                            "Non-recurring events not yet implemented. Please use recurrence_rule."
                         ),
                     )
                 ]
 
             response = [TextContent(type="text", text=f"Created event: {event_id}")]
-            
+
             # Record success and return
             duration_ms = (time.time() - start_time) * 1000
-            logger.info("MCP tool invocation completed",
-                        tool=name,
-                        trace_id=trace_id,
-                        duration_ms=duration_ms)
+            logger.info(
+                "MCP tool invocation completed",
+                tool=name,
+                trace_id=trace_id,
+                duration_ms=duration_ms,
+            )
             metrics.record_mcp_invocation(name, success=True, duration_ms=duration_ms)
             return response
 
         elif name == "share_calendar":
             args = ShareCalendarArgs(**arguments)
-            
+
             success = await asyncio.to_thread(
                 share_calendar_with_group, args.calendar_id, args.group_email, args.role
             )
-            
+
             result = {
                 "success": success,
                 "calendar_id": args.calendar_id,
@@ -373,49 +378,53 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                 "role": args.role,
             }
             response = [TextContent(type="text", text=json.dumps(result, indent=2))]
-            
+
             # Record success and return
             duration_ms = (time.time() - start_time) * 1000
-            logger.info("MCP tool invocation completed",
-                        tool=name,
-                        trace_id=trace_id,
-                        duration_ms=duration_ms)
+            logger.info(
+                "MCP tool invocation completed",
+                tool=name,
+                trace_id=trace_id,
+                duration_ms=duration_ms,
+            )
             metrics.record_mcp_invocation(name, success=True, duration_ms=duration_ms)
             return response
 
         elif name == "get_group_members":
             args = GetGroupMembersArgs(**arguments)
-            
+
             members = await asyncio.to_thread(list_group_members, args.group_email)
             member_list = [{"email": m.email, "role": m.role, "type": m.type} for m in members]
-            
+
             result = {
                 "group_email": args.group_email,
                 "member_count": len(member_list),
                 "members": member_list,
             }
             response = [TextContent(type="text", text=json.dumps(result, indent=2))]
-            
+
             # Record success and return
             duration_ms = (time.time() - start_time) * 1000
-            logger.info("MCP tool invocation completed",
-                        tool=name,
-                        trace_id=trace_id,
-                        duration_ms=duration_ms)
+            logger.info(
+                "MCP tool invocation completed",
+                tool=name,
+                trace_id=trace_id,
+                duration_ms=duration_ms,
+            )
             metrics.record_mcp_invocation(name, success=True, duration_ms=duration_ms)
             return response
 
         elif name == "update_event_attendees":
             args = UpdateEventAttendeesArgs(**arguments)
             from src.calendar_manager import update_event_attendees
-            
+
             success = await asyncio.to_thread(
                 update_event_attendees,
                 args.calendar_id,
                 args.event_id,
                 args.attendee_emails,
             )
-            
+
             result = {
                 "success": success,
                 "calendar_id": args.calendar_id,
@@ -423,13 +432,15 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                 "attendee_count": len(args.attendee_emails),
             }
             response = [TextContent(type="text", text=json.dumps(result, indent=2))]
-            
+
             # Record success and return
             duration_ms = (time.time() - start_time) * 1000
-            logger.info("MCP tool invocation completed",
-                        tool=name,
-                        trace_id=trace_id,
-                        duration_ms=duration_ms)
+            logger.info(
+                "MCP tool invocation completed",
+                tool=name,
+                trace_id=trace_id,
+                duration_ms=duration_ms,
+            )
             metrics.record_mcp_invocation(name, success=True, duration_ms=duration_ms)
             return response
 
@@ -457,24 +468,27 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                 },
             }
             response = [TextContent(type="text", text=json.dumps(result, indent=2))]
-            
+
             # Record success and return
             duration_ms = (time.time() - start_time) * 1000
-            logger.info("MCP tool invocation completed",
-                        tool=name,
-                        trace_id=trace_id,
-                        duration_ms=duration_ms)
+            logger.info(
+                "MCP tool invocation completed",
+                tool=name,
+                trace_id=trace_id,
+                duration_ms=duration_ms,
+            )
             metrics.record_mcp_invocation(name, success=True, duration_ms=duration_ms)
             return response
 
         elif name == "get_free_busy":
             args = GetFreeBusyArgs(**arguments)
             from dateutil import parser
+
             from src.calendar_free_busy import get_free_busy
-            
+
             time_min = parser.parse(args.start_time)
             time_max = parser.parse(args.end_time)
-            
+
             freebusy_data = await asyncio.to_thread(
                 get_free_busy,
                 args.calendar_id,
@@ -482,15 +496,17 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                 time_min,
                 time_max,
             )
-            
+
             response = [TextContent(type="text", text=json.dumps(freebusy_data, indent=2))]
-            
+
             # Record success and return
             duration_ms = (time.time() - start_time) * 1000
-            logger.info("MCP tool invocation completed",
-                        tool=name,
-                        trace_id=trace_id,
-                        duration_ms=duration_ms)
+            logger.info(
+                "MCP tool invocation completed",
+                tool=name,
+                trace_id=trace_id,
+                duration_ms=duration_ms,
+            )
             metrics.record_mcp_invocation(name, success=True, duration_ms=duration_ms)
             return response
 
@@ -500,14 +516,16 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
     except Exception as e:
         duration_ms = (time.time() - start_time) * 1000
-        logger.error("MCP tool invocation failed", 
-                    tool=name, 
-                    trace_id=trace_id,
-                    duration_ms=duration_ms,
-                    error=str(e))
+        logger.error(
+            "MCP tool invocation failed",
+            tool=name,
+            trace_id=trace_id,
+            duration_ms=duration_ms,
+            error=str(e),
+        )
         metrics.record_mcp_invocation(name, success=False, duration_ms=duration_ms)
         return [TextContent(type="text", text=f"Error: {e!s}")]
-    
+
     # This should never be reached as all branches above return
     # But just in case:
     logger.error("Unreachable code in MCP tool handler", tool=name, trace_id=trace_id)

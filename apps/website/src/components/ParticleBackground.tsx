@@ -37,9 +37,9 @@ const ParticleBackground: React.FC = () => {
       attribute vec2 a_position;
       attribute float a_size;
       attribute float a_opacity;
-      
+
       varying float v_opacity;
-      
+
       void main() {
         gl_Position = vec4(a_position, 0.0, 1.0);
         gl_PointSize = a_size;
@@ -49,17 +49,17 @@ const ParticleBackground: React.FC = () => {
 
     const fragmentShaderSource = `
       precision mediump float;
-      
+
       varying float v_opacity;
-      
+
       void main() {
         vec2 coord = gl_PointCoord - vec2(0.5);
         float distance = length(coord);
-        
+
         if (distance > 0.5) {
           discard;
         }
-        
+
         float alpha = 1.0 - smoothstep(0.0, 0.5, distance);
         gl_FragColor = vec4(0.0, 0.808, 0.82, alpha * v_opacity * 0.3);
       }
@@ -76,13 +76,13 @@ const ParticleBackground: React.FC = () => {
 
     const vertexShader = createShader(gl.VERTEX_SHADER, vertexShaderSource)
     const fragmentShader = createShader(gl.FRAGMENT_SHADER, fragmentShaderSource)
-    
+
     if (!vertexShader || !fragmentShader) return
 
     // Create program
     const program = gl.createProgram()
     if (!program) return
-    
+
     gl.attachShader(program, vertexShader)
     gl.attachShader(program, fragmentShader)
     gl.linkProgram(program)

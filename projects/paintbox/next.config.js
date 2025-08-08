@@ -24,6 +24,29 @@ const nextConfig = {
   compress: true,
   poweredByHeader: false,
   generateEtags: false,
+  // Webpack configuration to handle Node.js modules
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Don't bundle Node.js modules on the client side
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        dns: false,
+        net: false,
+        tls: false,
+        fs: false,
+        crypto: false,
+        stream: false,
+        url: false,
+        zlib: false,
+        http: false,
+        https: false,
+        assert: false,
+        os: false,
+        path: false,
+      };
+    }
+    return config;
+  },
 }
 
 module.exports = nextConfig

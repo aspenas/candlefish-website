@@ -7,20 +7,23 @@ This document provides comprehensive guidance for running and understanding the 
 The security test suite covers multiple layers of security testing:
 
 ### 1. Unit Tests for API Endpoints (`__tests__/api/`)
+
 - **Purpose**: Test individual API endpoints with security-focused edge cases
 - **Coverage**: Authentication, authorization, input validation, rate limiting
 - **Files**:
   - `secrets.test.ts` - Secrets management API endpoints
-  - `services.test.ts` - Service authentication and status endpoints  
+  - `services.test.ts` - Service authentication and status endpoints
   - `audit.test.ts` - Audit logging and retrieval endpoints
 
 ### 2. Integration Tests (`__tests__/integration/`)
+
 - **Purpose**: Test integration with external services like AWS Secrets Manager
 - **Coverage**: Connection security, error handling, retry logic
 - **Files**:
   - `aws-secrets-manager.test.ts` - AWS integration testing
 
 ### 3. Component Tests (`__tests__/components/`)
+
 - **Purpose**: Test React components with security considerations
 - **Coverage**: XSS prevention, data sanitization, access controls
 - **Files**:
@@ -30,6 +33,7 @@ The security test suite covers multiple layers of security testing:
   - `SecurityConfigurationPanel.test.tsx`
 
 ### 4. End-to-End Tests (`e2e/`)
+
 - **Purpose**: Test complete security workflows in browser environment
 - **Coverage**: Authentication flows, session management, CSRF protection
 - **Files**:
@@ -38,12 +42,14 @@ The security test suite covers multiple layers of security testing:
   - `security-api-endpoints.spec.ts` - API security via browser
 
 ### 5. Performance Tests (`__tests__/performance/`)
+
 - **Purpose**: Test security under load conditions
 - **Coverage**: Rate limiting, DoS protection, resource exhaustion
 - **Files**:
   - `secret-retrieval-load.test.ts` - Load testing for secret operations
 
 ### 6. Penetration Tests (`__tests__/security/`)
+
 - **Purpose**: Simulate real-world attacks against the application
 - **Coverage**: SQL injection, XSS, CSRF, authentication bypass
 - **Files**:
@@ -101,18 +107,21 @@ npm run test:coverage
 ## Test Configuration
 
 ### Jest Configuration (`jest.config.js`)
+
 - Test environment setup
 - Mock configurations for AWS SDK, Redis, external APIs
 - Coverage thresholds (80% minimum)
 - Security-specific test helpers
 
 ### Playwright Configuration (`playwright.config.ts`)
+
 - Browser testing setup for E2E tests
 - Multiple browser support (Chrome, Firefox, Safari)
 - Mobile device testing
 - Security-focused timeouts and retry logic
 
 ### Artillery Configuration (`artillery-config.yml`)
+
 - Load testing scenarios
 - Rate limiting validation
 - Security injection testing
@@ -197,27 +206,35 @@ npm run test:coverage
 ### Common Test Failures and Solutions
 
 #### Authentication Failures
+
 ```
 FAIL: should require MFA for admin accounts
 ```
+
 **Solution**: Ensure MFA middleware is properly configured and admin routes are protected.
 
 #### Rate Limiting Failures
+
 ```
 FAIL: should implement rate limiting on login attempts
 ```
+
 **Solution**: Verify rate limiting middleware is active and configured with appropriate thresholds.
 
 #### XSS Prevention Failures
+
 ```
 FAIL: should prevent reflected XSS in URL parameters
 ```
+
 **Solution**: Ensure all user input is properly escaped/sanitized before being reflected in responses.
 
 #### SQL Injection Failures
+
 ```
 FAIL: should prevent SQL injection in login forms
 ```
+
 **Solution**: Use parameterized queries and input validation for all database operations.
 
 ## Security Test Maintenance
@@ -331,12 +348,14 @@ jobs:
 ## Tools and Resources
 
 ### Testing Tools
+
 - **Jest**: Unit and integration testing framework
 - **Playwright**: End-to-end testing with security focus
 - **Artillery**: Load testing and DoS simulation
 - **OWASP ZAP**: Web application security scanner (manual integration)
 
 ### Security Resources
+
 - **OWASP Testing Guide**: Web application security testing methodology
 - **NIST SP 800-53**: Security controls catalog
 - **CWE/SANS Top 25**: Most dangerous software errors
@@ -345,11 +364,13 @@ jobs:
 ## Contact and Support
 
 For questions about security testing:
-- **Security Team**: security@paintbox.com
-- **DevOps Team**: devops@paintbox.com
-- **Development Team**: dev@paintbox.com
+
+- **Security Team**: <security@paintbox.com>
+- **DevOps Team**: <devops@paintbox.com>
+- **Development Team**: <dev@paintbox.com>
 
 For security incident reporting:
-- **Email**: security-incident@paintbox.com
+
+- **Email**: <security-incident@paintbox.com>
 - **Phone**: +1-555-SECURITY
 - **Slack**: #security-incidents

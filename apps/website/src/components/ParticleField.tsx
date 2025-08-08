@@ -25,7 +25,7 @@ const ParticleField: React.FC = React.memo(() => {
   const initParticles = useMemo(() => {
     const count = prefersReducedMotion ? 20 : 50
     const particles: Particle[] = []
-    
+
     for (let i = 0; i < count; i++) {
       particles.push({
         x: Math.random() * window.innerWidth,
@@ -52,7 +52,7 @@ const ParticleField: React.FC = React.memo(() => {
 
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-      
+
       particlesRef.current.forEach((particle) => {
         // Update position
         particle.x += particle.vx

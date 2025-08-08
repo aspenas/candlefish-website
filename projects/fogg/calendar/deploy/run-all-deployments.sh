@@ -31,15 +31,15 @@ print_color() {
 run_test() {
     local test_name="$1"
     local test_command="$2"
-    
+
     TOTAL_TESTS=$((TOTAL_TESTS + 1))
-    
+
     print_color $CYAN "\n════════════════════════════════════════════════════════════════"
     print_color $CYAN "Test #$TOTAL_TESTS: $test_name"
     print_color $CYAN "════════════════════════════════════════════════════════════════"
     print_color $YELLOW "Command: $test_command"
     echo ""
-    
+
     if eval "$test_command"; then
         PASSED_TESTS=$((PASSED_TESTS + 1))
         print_color $GREEN "✅ Test PASSED: $test_name"
@@ -47,7 +47,7 @@ run_test() {
         FAILED_TESTS=$((FAILED_TESTS + 1))
         print_color $RED "❌ Test FAILED: $test_name"
     fi
-    
+
     # Brief pause between tests
     sleep 2
 }

@@ -60,7 +60,7 @@ describe('DiscoveryService', () => {
 
     it('should load persisted services on initialization', async () => {
       const mockServices = ServiceFactory.createMany(3);
-      
+
       mockDocker.ping = jest.fn().mockResolvedValue(true);
       mockDocker.listContainers = jest.fn().mockResolvedValue([]);
 
@@ -619,7 +619,7 @@ root 5678 0.2 1.0 23456 7890 ? S 12:01 0:02 python app.py`;
       await discoveryService.initialize();
 
       const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
-      
+
       await discoveryService.cleanup();
 
       expect(clearIntervalSpy).toHaveBeenCalledTimes(2); // discovery and health check intervals
@@ -666,7 +666,7 @@ root 5678 0.2 1.0 23456 7890 ? S 12:01 0:02 python app.py`;
 
       const services = await Promise.all(operations);
       expect(services).toHaveLength(10);
-      
+
       const allServices = await discoveryService.getServices();
       expect(allServices).toHaveLength(10);
     });

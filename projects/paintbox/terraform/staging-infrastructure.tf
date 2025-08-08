@@ -138,7 +138,7 @@ resource "aws_ecs_service" "paintbox_blue" {
   deployment_configuration {
     maximum_percent         = 200
     minimum_healthy_percent = 100
-    
+
     deployment_circuit_breaker {
       enable   = true
       rollback = true
@@ -178,7 +178,7 @@ resource "aws_ecs_service" "paintbox_green" {
   deployment_configuration {
     maximum_percent         = 200
     minimum_healthy_percent = 100
-    
+
     deployment_circuit_breaker {
       enable   = true
       rollback = true

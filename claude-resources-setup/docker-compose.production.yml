@@ -111,7 +111,7 @@ services:
           memory: 2G
           cpus: '1.0'
     command: >
-      postgres 
+      postgres
       -c shared_preload_libraries=pg_stat_statements
       -c pg_stat_statements.track=all
       -c max_connections=200
@@ -129,7 +129,7 @@ services:
     container_name: claude-resources-redis
     restart: unless-stopped
     command: >
-      redis-server 
+      redis-server
       --requirepass ${REDIS_PASSWORD}
       --maxmemory 1gb
       --maxmemory-policy allkeys-lru

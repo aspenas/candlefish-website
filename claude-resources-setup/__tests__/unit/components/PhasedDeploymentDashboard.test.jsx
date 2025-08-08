@@ -9,9 +9,9 @@ import '@testing-library/jest-dom'
 import { mockDeployments, mockPhases, mockUsers } from '../../mocks/data.js'
 
 // Mock the dashboard component - would be imported from actual source
-const PhasedDeploymentDashboard = ({ 
-  deployments = [], 
-  onPhaseStart, 
+const PhasedDeploymentDashboard = ({
+  deployments = [],
+  onPhaseStart,
   onDeploymentSelect,
   isLoading = false,
   error = null
@@ -80,7 +80,7 @@ const PhasedDeploymentDashboard = ({
             <h2>{selectedDeployment.name}</h2>
             <p>{selectedDeployment.description}</p>
             <div className="deployment-status">
-              <span 
+              <span
                 className={`status-badge ${selectedDeployment.status}`}
                 data-testid="deployment-status"
               >
@@ -95,12 +95,12 @@ const PhasedDeploymentDashboard = ({
           <div className="phases-container">
             <h3>Deployment Phases</h3>
             {selectedDeployment.phases.map((phase, index) => (
-              <div 
-                key={phase.id} 
+              <div
+                key={phase.id}
                 className={`phase-card ${phase.status}`}
                 data-testid={`phase-card-${phase.id}`}
               >
-                <div 
+                <div
                   className="phase-header"
                   onClick={() => handlePhaseToggle(phase.id)}
                   role="button"
@@ -134,7 +134,7 @@ const PhasedDeploymentDashboard = ({
                 {expandedPhases.has(phase.id) && (
                   <div className="phase-details" data-testid={`phase-details-${phase.id}`}>
                     <p>{phase.description}</p>
-                    
+
                     <div className="phase-dates">
                       <span>Start: {new Date(phase.startDate).toLocaleDateString()}</span>
                       <span>End: {new Date(phase.endDate).toLocaleDateString()}</span>
@@ -142,7 +142,7 @@ const PhasedDeploymentDashboard = ({
 
                     <div className="phase-progress">
                       <div className="progress-bar">
-                        <div 
+                        <div
                           className="progress-fill"
                           style={{ width: `${phase.metrics.completionRate}%` }}
                         />
@@ -165,7 +165,7 @@ const PhasedDeploymentDashboard = ({
                           Start Phase
                         </button>
                       )}
-                      
+
                       {phase.status === 'in_progress' && (
                         <div className="active-phase-info">
                           <span className="active-indicator">🟢 Active</span>
@@ -187,7 +187,7 @@ const PhasedDeploymentDashboard = ({
                         {phase.targetUsers.map(userId => {
                           const isCompleted = phase.completedUsers.includes(userId)
                           return (
-                            <div 
+                            <div
                               key={userId}
                               className={`user-badge ${isCompleted ? 'completed' : 'pending'}`}
                               data-testid={`user-${userId}-${phase.id}`}
@@ -221,7 +221,7 @@ describe('PhasedDeploymentDashboard', () => {
   describe('Rendering', () => {
     it('should render the dashboard with deployment data', () => {
       render(
-        <PhasedDeploymentDashboard 
+        <PhasedDeploymentDashboard
           deployments={mockDeployments}
           onPhaseStart={mockOnPhaseStart}
           onDeploymentSelect={mockOnDeploymentSelect}
@@ -235,7 +235,7 @@ describe('PhasedDeploymentDashboard', () => {
 
     it('should display loading state correctly', () => {
       render(
-        <PhasedDeploymentDashboard 
+        <PhasedDeploymentDashboard
           deployments={[]}
           isLoading={true}
         />
@@ -247,9 +247,9 @@ describe('PhasedDeploymentDashboard', () => {
 
     it('should display error state correctly', () => {
       const error = new Error('Failed to load deployments')
-      
+
       render(
-        <PhasedDeploymentDashboard 
+        <PhasedDeploymentDashboard
           deployments={[]}
           error={error}
         />
@@ -261,7 +261,7 @@ describe('PhasedDeploymentDashboard', () => {
 
     it('should render deployment details when deployment is selected', () => {
       render(
-        <PhasedDeploymentDashboard 
+        <PhasedDeploymentDashboard
           deployments={mockDeployments}
         />
       )
@@ -275,7 +275,7 @@ describe('PhasedDeploymentDashboard', () => {
 
     it('should render all phases for selected deployment', () => {
       render(
-        <PhasedDeploymentDashboard 
+        <PhasedDeploymentDashboard
           deployments={mockDeployments}
         />
       )
@@ -288,7 +288,7 @@ describe('PhasedDeploymentDashboard', () => {
 
     it('should show phase completion metrics', () => {
       render(
-        <PhasedDeploymentDashboard 
+        <PhasedDeploymentDashboard
           deployments={mockDeployments}
         />
       )
@@ -303,15 +303,15 @@ describe('PhasedDeploymentDashboard', () => {
   describe('Interactions', () => {
     it('should expand and collapse phase details', async () => {
       const user = userEvent.setup()
-      
+
       render(
-        <PhasedDeploymentDashboard 
+        <PhasedDeploymentDashboard
           deployments={mockDeployments}
         />
       )
 
       const phaseHeader = screen.getByText('Leadership Onboarding').closest('.phase-header')
-      
+
       // Initially collapsed
       expect(screen.queryByTestId('phase-details-phase-1')).not.toBeInTheDocument()
 
@@ -326,15 +326,15 @@ describe('PhasedDeploymentDashboard', () => {
 
     it('should handle keyboard navigation for phase expansion', async () => {
       const user = userEvent.setup()
-      
+
       render(
-        <PhasedDeploymentDashboard 
+        <PhasedDeploymentDashboard
           deployments={mockDeployments}
         />
       )
 
       const phaseHeader = screen.getByText('Development Team').closest('.phase-header')
-      
+
       // Focus and press Enter
       phaseHeader.focus()
       await user.keyboard('{Enter}')
@@ -347,9 +347,9 @@ describe('PhasedDeploymentDashboard', () => {
 
     it('should call onPhaseStart when start phase button is clicked', async () => {
       const user = userEvent.setup()
-      
+
       render(
-        <PhasedDeploymentDashboard 
+        <PhasedDeploymentDashboard
           deployments={mockDeployments}
           onPhaseStart={mockOnPhaseStart}
         />
@@ -367,17 +367,17 @@ describe('PhasedDeploymentDashboard', () => {
 
     it('should disable start button if previous phase is not completed', async () => {
       const user = userEvent.setup()
-      
+
       // Mock deployment with phase-1 still in progress
       const modifiedDeployment = {
         ...mockDeployments[0],
-        phases: mockPhases.map(phase => 
+        phases: mockPhases.map(phase =>
           phase.id === 'phase-1' ? { ...phase, status: 'in_progress' } : phase
         )
       }
 
       render(
-        <PhasedDeploymentDashboard 
+        <PhasedDeploymentDashboard
           deployments={[modifiedDeployment]}
           onPhaseStart={mockOnPhaseStart}
         />
@@ -403,7 +403,7 @@ describe('PhasedDeploymentDashboard', () => {
       ]
 
       render(
-        <PhasedDeploymentDashboard 
+        <PhasedDeploymentDashboard
           deployments={multipleDeployments}
           onDeploymentSelect={mockOnDeploymentSelect}
         />
@@ -421,9 +421,9 @@ describe('PhasedDeploymentDashboard', () => {
   describe('Phase Status Display', () => {
     it('should show appropriate indicators for different phase statuses', async () => {
       const user = userEvent.setup()
-      
+
       render(
-        <PhasedDeploymentDashboard 
+        <PhasedDeploymentDashboard
           deployments={mockDeployments}
         />
       )
@@ -436,19 +436,19 @@ describe('PhasedDeploymentDashboard', () => {
 
       // Check completed phase
       expect(screen.getByText('✅ Completed')).toBeInTheDocument()
-      
+
       // Check in-progress phase
       expect(screen.getByText('🟢 Active')).toBeInTheDocument()
-      
+
       // Check pending phase - should have start button
       expect(screen.getByTestId('start-phase-phase-3')).toBeInTheDocument()
     })
 
     it('should display phase metrics correctly', async () => {
       const user = userEvent.setup()
-      
+
       render(
-        <PhasedDeploymentDashboard 
+        <PhasedDeploymentDashboard
           deployments={mockDeployments}
         />
       )
@@ -464,9 +464,9 @@ describe('PhasedDeploymentDashboard', () => {
 
     it('should show user completion status', async () => {
       const user = userEvent.setup()
-      
+
       render(
-        <PhasedDeploymentDashboard 
+        <PhasedDeploymentDashboard
           deployments={mockDeployments}
         />
       )
@@ -498,7 +498,7 @@ describe('PhasedDeploymentDashboard', () => {
   describe('Accessibility', () => {
     it('should have proper ARIA attributes', () => {
       render(
-        <PhasedDeploymentDashboard 
+        <PhasedDeploymentDashboard
           deployments={mockDeployments}
         />
       )
@@ -512,15 +512,15 @@ describe('PhasedDeploymentDashboard', () => {
 
     it('should handle keyboard navigation', async () => {
       const user = userEvent.setup()
-      
+
       render(
-        <PhasedDeploymentDashboard 
+        <PhasedDeploymentDashboard
           deployments={mockDeployments}
         />
       )
 
       const phaseHeader = screen.getByText('Leadership Onboarding').closest('.phase-header')
-      
+
       // Should be focusable
       phaseHeader.focus()
       expect(phaseHeader).toHaveFocus()
@@ -532,15 +532,15 @@ describe('PhasedDeploymentDashboard', () => {
 
     it('should have proper expand/collapse button states', async () => {
       const user = userEvent.setup()
-      
+
       render(
-        <PhasedDeploymentDashboard 
+        <PhasedDeploymentDashboard
           deployments={mockDeployments}
         />
       )
 
       const expandButton = screen.getAllByClassName('expand-button')[0]
-      
+
       // Initial state
       expect(expandButton).toHaveAttribute('aria-expanded', 'false')
       expect(expandButton).toHaveTextContent('+')
@@ -548,7 +548,7 @@ describe('PhasedDeploymentDashboard', () => {
       // After expansion
       const phaseHeader = expandButton.closest('.phase-header')
       await user.click(phaseHeader)
-      
+
       expect(expandButton).toHaveAttribute('aria-expanded', 'true')
       expect(expandButton).toHaveTextContent('−')
     })
@@ -557,7 +557,7 @@ describe('PhasedDeploymentDashboard', () => {
   describe('Error Handling', () => {
     it('should handle missing deployment data gracefully', () => {
       render(
-        <PhasedDeploymentDashboard 
+        <PhasedDeploymentDashboard
           deployments={[]}
         />
       )
@@ -582,7 +582,7 @@ describe('PhasedDeploymentDashboard', () => {
       }
 
       render(
-        <PhasedDeploymentDashboard 
+        <PhasedDeploymentDashboard
           deployments={[malformedDeployment]}
         />
       )
@@ -598,7 +598,7 @@ describe('PhasedDeploymentDashboard', () => {
       )
 
       render(
-        <PhasedDeploymentDashboard 
+        <PhasedDeploymentDashboard
           deployments={mockDeployments}
           onPhaseStart={mockOnPhaseStartWithError}
         />
@@ -609,10 +609,10 @@ describe('PhasedDeploymentDashboard', () => {
       await user.click(phaseHeader)
 
       const startButton = screen.getByTestId('start-phase-phase-3')
-      
+
       // Should not crash when phase start fails
       await user.click(startButton)
-      
+
       expect(mockOnPhaseStartWithError).toHaveBeenCalled()
     })
   })
@@ -631,9 +631,9 @@ describe('PhasedDeploymentDashboard', () => {
       }
 
       const startTime = performance.now()
-      
+
       render(
-        <PhasedDeploymentDashboard 
+        <PhasedDeploymentDashboard
           deployments={[largeDeployment]}
         />
       )
@@ -648,7 +648,7 @@ describe('PhasedDeploymentDashboard', () => {
 
     it('should not re-render unnecessarily', () => {
       const { rerender } = render(
-        <PhasedDeploymentDashboard 
+        <PhasedDeploymentDashboard
           deployments={mockDeployments}
           onPhaseStart={mockOnPhaseStart}
         />
@@ -656,7 +656,7 @@ describe('PhasedDeploymentDashboard', () => {
 
       // Re-render with same props
       rerender(
-        <PhasedDeploymentDashboard 
+        <PhasedDeploymentDashboard
           deployments={mockDeployments}
           onPhaseStart={mockOnPhaseStart}
         />

@@ -4,12 +4,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, Alert } from 'react-native';
-import { 
-  Text, 
-  useTheme, 
-  Card, 
-  List, 
-  Switch, 
+import {
+  Text,
+  useTheme,
+  Card,
+  List,
+  Switch,
   Button,
   Divider,
 } from 'react-native-paper';
@@ -18,8 +18,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { SettingsStackParamList } from '@/navigation/AppNavigator';
-import { 
-  isBackgroundSyncEnabled, 
+import {
+  isBackgroundSyncEnabled,
   getLastSyncResult,
   triggerManualSync,
 } from '@/services/backgroundTasks';
@@ -29,7 +29,7 @@ type Props = NativeStackScreenProps<SettingsStackParamList, 'SettingsMain'>;
 
 export default function SettingsScreen({ }: Props) {
   const theme = useTheme();
-  
+
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [backgroundSyncEnabled, setBackgroundSyncEnabled] = useState(false);
   const [lastSyncResult, setLastSyncResult] = useState(null);
@@ -68,7 +68,7 @@ export default function SettingsScreen({ }: Props) {
     try {
       const result = await triggerManualSync();
       setLastSyncResult(result);
-      
+
       Alert.alert(
         'Manual Sync Complete',
         `New alerts: ${result.newAlerts}\nService changes: ${result.serviceStatusChanges}`,
@@ -110,14 +110,14 @@ export default function SettingsScreen({ }: Props) {
             <Text variant="titleMedium" style={styles.sectionTitle}>
               Notifications
             </Text>
-            
+
             <List.Item
               title="Push Notifications"
               description="Receive alerts and system status updates"
               left={() => (
-                <MaterialCommunityIcons 
-                  name="bell-outline" 
-                  size={24} 
+                <MaterialCommunityIcons
+                  name="bell-outline"
+                  size={24}
                   color={theme.colors.onSurface}
                   style={styles.listIcon}
                 />
@@ -138,14 +138,14 @@ export default function SettingsScreen({ }: Props) {
             <Text variant="titleMedium" style={styles.sectionTitle}>
               Background Sync
             </Text>
-            
+
             <List.Item
               title="Background Updates"
               description={backgroundSyncEnabled ? 'Enabled' : 'Disabled'}
               left={() => (
-                <MaterialCommunityIcons 
-                  name="sync" 
-                  size={24} 
+                <MaterialCommunityIcons
+                  name="sync"
+                  size={24}
                   color={theme.colors.onSurface}
                   style={styles.listIcon}
                 />
@@ -159,9 +159,9 @@ export default function SettingsScreen({ }: Props) {
                   title="Last Sync"
                   description={`${new Date(lastSyncResult.timestamp).toLocaleString()}\n${lastSyncResult.newAlerts} new alerts, ${lastSyncResult.serviceStatusChanges} status changes`}
                   left={() => (
-                    <MaterialCommunityIcons 
-                      name={lastSyncResult.success ? "check-circle" : "alert-circle"} 
-                      size={24} 
+                    <MaterialCommunityIcons
+                      name={lastSyncResult.success ? "check-circle" : "alert-circle"}
+                      size={24}
                       color={lastSyncResult.success ? theme.colors.success : theme.colors.error}
                       style={styles.listIcon}
                     />
@@ -187,7 +187,7 @@ export default function SettingsScreen({ }: Props) {
             <Text variant="titleMedium" style={styles.sectionTitle}>
               Data Management
             </Text>
-            
+
             <Button
               mode="outlined"
               onPress={handleClearCache}
@@ -205,27 +205,27 @@ export default function SettingsScreen({ }: Props) {
             <Text variant="titleMedium" style={styles.sectionTitle}>
               About
             </Text>
-            
+
             <List.Item
               title="Version"
               description="1.0.0"
               left={() => (
-                <MaterialCommunityIcons 
-                  name="information-outline" 
-                  size={24} 
+                <MaterialCommunityIcons
+                  name="information-outline"
+                  size={24}
                   color={theme.colors.onSurface}
                   style={styles.listIcon}
                 />
               )}
             />
-            
+
             <List.Item
               title="System Analyzer Mobile"
               description="Monitor and manage your system infrastructure"
               left={() => (
-                <MaterialCommunityIcons 
-                  name="cellphone" 
-                  size={24} 
+                <MaterialCommunityIcons
+                  name="cellphone"
+                  size={24}
                   color={theme.colors.onSurface}
                   style={styles.listIcon}
                 />

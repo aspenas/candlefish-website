@@ -60,10 +60,10 @@ describe('WebSocket Client', () => {
       wsClient.on('reconnect', reconnectSpy);
 
       await wsClient.connect('valid-token');
-      
+
       // Simulate disconnection
       wsClient.disconnect();
-      
+
       // Simulate automatic reconnection
       websocketMock.simulateReconnect();
 
@@ -123,7 +123,7 @@ describe('WebSocket Client', () => {
       wsClient.subscribe(['cpu_usage', 'memory_usage']);
 
       expect(websocketMock.getEventCount('subscribe')).toBe(1);
-      
+
       // Simulate subscription confirmation
       setTimeout(() => {
         expect(subscriptionSpy).toHaveBeenCalledWith(
@@ -136,7 +136,7 @@ describe('WebSocket Client', () => {
 
     it('subscribes with label filters', () => {
       const labels = { host: 'web-01', environment: 'production' };
-      
+
       wsClient.subscribe(['cpu_usage'], labels);
 
       const subscriptions = wsClient.getSubscriptions();
@@ -145,7 +145,7 @@ describe('WebSocket Client', () => {
 
     it('unsubscribes from metrics', () => {
       wsClient.subscribe(['cpu_usage', 'memory_usage']);
-      
+
       const unsubscribeSpy = jest.fn();
       wsClient.on('unsubscription_confirmed', unsubscribeSpy);
 
@@ -157,9 +157,9 @@ describe('WebSocket Client', () => {
     it('maintains subscriptions across reconnections', async () => {
       // Subscribe to metrics
       wsClient.subscribe(['cpu_usage', 'memory_usage']);
-      
+
       const initialSubscriptions = wsClient.getSubscriptions();
-      
+
       // Simulate connection loss and reconnection
       wsClient.disconnect();
       websocketMock.simulateReconnect();
@@ -175,7 +175,7 @@ describe('WebSocket Client', () => {
 
       // Try to subscribe while disconnected
       wsClient.disconnect();
-      
+
       expect(() => {
         wsClient.subscribe(['cpu_usage']);
       }).toThrow('WebSocket not connected');
@@ -196,7 +196,7 @@ describe('WebSocket Client', () => {
 
       // Try to exceed subscription limit
       const metrics = Array.from({ length: 15 }, (_, i) => `metric_${i}`);
-      
+
       expect(() => {
         wsClient.subscribe(metrics);
       }).toThrow('Maximum subscriptions exceeded');
@@ -312,7 +312,7 @@ describe('WebSocket Client', () => {
 
       // Simulate malformed message
       const malformedMessage = { invalid: 'format', missing: 'required_fields' };
-      
+
       // This would be handled internally by the WebSocket client
       // The exact implementation depends on how the client processes messages
     });
@@ -365,7 +365,7 @@ describe('WebSocket Client', () => {
 
     it('detects connection loss via missed heartbeats', async () => {
       jest.useFakeTimers();
-      
+
       const connectionLostSpy = jest.fn();
       wsClient.on('connection_lost', connectionLostSpy);
 
@@ -556,7 +556,7 @@ describe('WebSocket Client', () => {
   describe('Security', () => {
     it('validates server certificates in secure connections', async () => {
       const secureClient = new WebSocketClient('wss://secure.example.com/ws/metrics');
-      
+
       // Mock certificate validation
       const certSpy = jest.fn();
       secureClient.on('certificate_validated', certSpy);

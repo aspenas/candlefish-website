@@ -8,27 +8,27 @@ export * from "./hero"
 
 // Component Types
 export type { ButtonProps, ButtonGroupProps } from "./button"
-export type { 
-  CardProps, 
-  FeatureCardProps, 
-  MetricCardProps 
+export type {
+  CardProps,
+  FeatureCardProps,
+  MetricCardProps
 } from "./card"
-export type { 
-  BadgeProps, 
-  StatusBadgeProps, 
-  ValidationBadgeProps 
+export type {
+  BadgeProps,
+  StatusBadgeProps,
+  ValidationBadgeProps
 } from "./badge"
-export type { 
-  LogoProps, 
-  LogoWithTaglineProps 
+export type {
+  LogoProps,
+  LogoWithTaglineProps
 } from "./logo"
-export type { 
-  NavigationProps, 
-  NavItemProps, 
-  BreadcrumbProps 
+export type {
+  NavigationProps,
+  NavItemProps,
+  BreadcrumbProps
 } from "./navigation"
-export type { 
-  HeroProps, 
-  CandlefishHeroProps, 
-  SplitHeroProps 
+export type {
+  HeroProps,
+  CandlefishHeroProps,
+  SplitHeroProps
 } from "./hero"

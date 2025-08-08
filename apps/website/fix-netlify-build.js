@@ -22,10 +22,10 @@ try {
   console.log('Updating build configuration...');
   const result = execSync(updateCommand, { encoding: 'utf8' });
   console.log('✅ Build configuration updated!\n');
-  
+
   console.log('🚀 Triggering a new build...');
   const buildCommand = `netlify build --context production`;
-  
+
   try {
     execSync(buildCommand, { encoding: 'utf8', stdio: 'inherit' });
   } catch (e) {
@@ -33,7 +33,7 @@ try {
     console.log('1. Go to: https://app.netlify.com/sites/candlefish-grotto/deploys');
     console.log('2. Click "Trigger deploy" → "Deploy site"');
   }
-  
+
 } catch (error) {
   console.error('Error:', error.message);
   console.log('\n⚠️  Please update build settings manually:');

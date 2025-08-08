@@ -1,6 +1,6 @@
 /**
  * Service Grid Component
- * 
+ *
  * Displays services in a grid layout with status indicators
  */
 
@@ -8,7 +8,7 @@
 
 import React from 'react';
 import { Service, ServiceStatus } from '@/lib/types/dashboard';
-import { 
+import {
   ServerIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
@@ -26,11 +26,11 @@ interface ServiceGridProps {
   onServiceClick?: (service: Service) => void;
 }
 
-export function ServiceGrid({ 
-  services, 
-  showAll = false, 
-  onViewAll, 
-  onServiceClick 
+export function ServiceGrid({
+  services,
+  showAll = false,
+  onViewAll,
+  onServiceClick
 }: ServiceGridProps) {
   const getStatusIcon = (status: ServiceStatus) => {
     switch (status) {
@@ -112,7 +112,7 @@ export function ServiceGrid({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {services.map((service) => {
           const StatusIcon = getStatusIcon(service.status);
-          
+
           return (
             <div
               key={service.id}

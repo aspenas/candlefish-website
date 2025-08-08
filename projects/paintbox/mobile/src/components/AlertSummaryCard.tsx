@@ -67,7 +67,7 @@ export default function AlertSummaryCard({ alerts, onPress }: AlertSummaryCardPr
       const severityOrder = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
       const severityDiff = severityOrder[b.severity] - severityOrder[a.severity];
       if (severityDiff !== 0) return severityDiff;
-      
+
       // Then by time
       return new Date(b.triggeredAt).getTime() - new Date(a.triggeredAt).getTime();
     })
@@ -91,25 +91,25 @@ export default function AlertSummaryCard({ alerts, onPress }: AlertSummaryCardPr
             size={16}
             color={severityColor}
           />
-          <Text 
-            variant="labelMedium" 
-            numberOfLines={1} 
+          <Text
+            variant="labelMedium"
+            numberOfLines={1}
             style={styles.alertName}
           >
             {alert.name}
           </Text>
         </View>
-        
+
         <View style={styles.alertMeta}>
-          <Text 
-            variant="labelSmall" 
+          <Text
+            variant="labelSmall"
             style={{ color: theme.colors.onSurfaceVariant }}
             numberOfLines={1}
           >
             {alert.service.displayName || alert.service.name}
           </Text>
-          <Text 
-            variant="labelSmall" 
+          <Text
+            variant="labelSmall"
             style={{ color: theme.colors.onSurfaceVariant }}
           >
             {formatDistanceToNow(new Date(alert.triggeredAt), { addSuffix: true })}
@@ -161,7 +161,7 @@ export default function AlertSummaryCard({ alerts, onPress }: AlertSummaryCardPr
               )}
             </View>
           </View>
-          
+
           <MaterialCommunityIcons
             name="chevron-right"
             size={20}
@@ -174,11 +174,11 @@ export default function AlertSummaryCard({ alerts, onPress }: AlertSummaryCardPr
           {sortedAlerts.map((alert) => (
             <AlertItem key={alert.id} alert={alert} />
           ))}
-          
+
           {alerts.length > 3 && (
             <View style={styles.moreAlertsContainer}>
-              <Text 
-                variant="labelSmall" 
+              <Text
+                variant="labelSmall"
                 style={{ color: theme.colors.onSurfaceVariant }}
               >
                 +{alerts.length - 3} more alerts

@@ -14,10 +14,10 @@ export const handler = async (event) => {
     if (!user) {
       return response(401, { error: 'Unauthorized' });
     }
-    
+
     const method = event.httpMethod;
     const userId = event.pathParameters?.id;
-    
+
     switch (method) {
       case 'GET':
         if (userId) {
@@ -45,13 +45,13 @@ async function listUsers(requestingUser) {
   if (requestingUser.role !== 'admin') {
     return response(403, { error: 'Admin access required' });
   }
-  
+
   try {
     const result = await docClient.send(new ScanCommand({
       TableName: USERS_TABLE,
       Limit: 100,
     }));
-    
+
     const users = result.Items.map(user => ({
       id: user.id,
       email: user.email,
@@ -61,13 +61,13 @@ async function listUsers(requestingUser) {
       lastLogin: user.lastLogin,
       createdAt: user.createdAt,
     }));
-    
+
     await logAudit({
       action: 'USERS_LISTED',
       userId: requestingUser.id,
       count: users.length,
     });
-    
+
     return response(200, {
       users,
       count: users.length,
@@ -83,17 +83,17 @@ async function getUser(userId, requestingUser) {
   if (userId !== requestingUser.id && requestingUser.role !== 'admin') {
     return response(403, { error: 'Unauthorized' });
   }
-  
+
   try {
     const result = await docClient.send(new GetCommand({
       TableName: USERS_TABLE,
       Key: { id: userId },
     }));
-    
+
     if (!result.Item) {
       return response(404, { error: 'User not found' });
     }
-    
+
     const user = {
       id: result.Item.id,
       email: result.Item.email,
@@ -103,7 +103,7 @@ async function getUser(userId, requestingUser) {
       lastLogin: result.Item.lastLogin,
       createdAt: result.Item.createdAt,
     };
-    
+
     return response(200, user);
   } catch (error) {
     console.error('Get user error:', error);
@@ -116,18 +116,18 @@ async function createUser(userData, requestingUser) {
   if (requestingUser.role !== 'admin') {
     return response(403, { error: 'Admin access required' });
   }
-  
+
   const { email, name, password, role = 'user' } = userData;
-  
+
   if (!email || !name || !password) {
     return response(400, { error: 'Email, name, and password required' });
   }
-  
+
   try {
     // Use Argon2 for password hashing (matches auth.js expectations)
     const { hashPassword } = await import('../utils/security.js');
     const passwordHash = await hashPassword(password);
-    
+
     const newUser = {
       id: uuidv4(),
       email: email.toLowerCase(),
@@ -140,20 +140,20 @@ async function createUser(userData, requestingUser) {
       createdBy: requestingUser.id,
       lastLogin: null,
     };
-    
+
     await docClient.send(new PutCommand({
       TableName: USERS_TABLE,
       Item: newUser,
       ConditionExpression: 'attribute_not_exists(id)',
     }));
-    
+
     await logAudit({
       action: 'USER_CREATED',
       userId: requestingUser.id,
       targetUserId: newUser.id,
       details: { email, name, role },
     });
-    
+
     return response(201, {
       success: true,
       user: {
@@ -177,16 +177,16 @@ async function updateUser(userId, updates, requestingUser) {
   if (userId !== requestingUser.id && requestingUser.role !== 'admin') {
     return response(403, { error: 'Unauthorized' });
   }
-  
+
   try {
-    const allowedUpdates = requestingUser.role === 'admin' 
+    const allowedUpdates = requestingUser.role === 'admin'
       ? ['name', 'email', 'role', 'isActive']
       : ['name']; // Regular users can only update their name
-    
+
     const updateExpression = [];
     const expressionAttributeNames = {};
     const expressionAttributeValues = {};
-    
+
     for (const [key, value] of Object.entries(updates)) {
       if (allowedUpdates.includes(key)) {
         updateExpression.push(`#${key} = :${key}`);
@@ -194,15 +194,15 @@ async function updateUser(userId, updates, requestingUser) {
         expressionAttributeValues[`:${key}`] = value;
       }
     }
-    
+
     if (updateExpression.length === 0) {
       return response(400, { error: 'No valid updates provided' });
     }
-    
+
     updateExpression.push('#updatedAt = :updatedAt');
     expressionAttributeNames['#updatedAt'] = 'updatedAt';
     expressionAttributeValues[':updatedAt'] = Date.now();
-    
+
     await docClient.send(new UpdateCommand({
       TableName: USERS_TABLE,
       Key: { id: userId },
@@ -211,14 +211,14 @@ async function updateUser(userId, updates, requestingUser) {
       ExpressionAttributeValues: expressionAttributeValues,
       ConditionExpression: 'attribute_exists(id)',
     }));
-    
+
     await logAudit({
       action: 'USER_UPDATED',
       userId: requestingUser.id,
       targetUserId: userId,
       changes: Object.keys(updates),
     });
-    
+
     return response(200, {
       success: true,
       message: 'User updated successfully',
@@ -237,25 +237,25 @@ async function deleteUser(userId, requestingUser) {
   if (requestingUser.role !== 'admin') {
     return response(403, { error: 'Admin access required' });
   }
-  
+
   // Prevent self-deletion
   if (userId === requestingUser.id) {
     return response(400, { error: 'Cannot delete your own account' });
   }
-  
+
   try {
     await docClient.send(new DeleteCommand({
       TableName: USERS_TABLE,
       Key: { id: userId },
       ConditionExpression: 'attribute_exists(id)',
     }));
-    
+
     await logAudit({
       action: 'USER_DELETED',
       userId: requestingUser.id,
       targetUserId: userId,
     });
-    
+
     return response(200, {
       success: true,
       message: 'User deleted successfully',

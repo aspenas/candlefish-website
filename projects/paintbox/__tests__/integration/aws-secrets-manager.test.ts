@@ -155,7 +155,7 @@ describe('AWS Secrets Manager Integration', () => {
 
       // First call should hit AWS
       const result1 = await secretsManager.getSecretCached('test/cached/secret', 300) // 5 min cache
-      
+
       // Second call should use cache
       const result2 = await secretsManager.getSecretCached('test/cached/secret', 300)
 
@@ -305,7 +305,7 @@ describe('AWS Secrets Manager Integration', () => {
 
     it('should log all access attempts for auditing', async () => {
       const auditSpy = jest.spyOn(secretsManager, 'auditLog')
-      
+
       mockSend.mockResolvedValueOnce({
         SecretString: JSON.stringify({ key: 'value' }),
         VersionId: 'version-123'
@@ -338,7 +338,7 @@ describe('AWS Secrets Manager Integration', () => {
       const logCalls = consoleSpy.mock.calls.flat().join(' ')
       expect(logCalls).not.toContain('super-secret-password')
       expect(logCalls).not.toContain('very-sensitive-api-key')
-      
+
       consoleSpy.mockRestore()
     })
 
@@ -368,7 +368,7 @@ describe('AWS Secrets Manager Integration', () => {
   describe('Performance and Scalability', () => {
     it('should handle concurrent secret retrievals efficiently', async () => {
       const secretNames = Array.from({ length: 10 }, (_, i) => `test/concurrent/secret-${i}`)
-      
+
       mockSend.mockImplementation(() => Promise.resolve({
         SecretString: JSON.stringify({ key: 'value' }),
         VersionId: 'version-123'
@@ -386,7 +386,7 @@ describe('AWS Secrets Manager Integration', () => {
 
     it('should implement connection pooling for better performance', async () => {
       const poolSpy = jest.spyOn(secretsManager, 'getConnection')
-      
+
       mockSend.mockResolvedValue({
         SecretString: JSON.stringify({ key: 'value' }),
         VersionId: 'version-123'

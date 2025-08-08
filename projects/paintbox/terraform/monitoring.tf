@@ -9,6 +9,17 @@ resource "aws_sns_topic" "paintbox_alerts" {
 }
 
 resource "aws_sns_topic_subscription" "email_alerts" {
+  count = length(var.alert_email_addresses)
+
+  topic_arn = aws_sns_topic.paintbox_alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email_addresses[count.index]
+}
+
+# Fallback for backward compatibility
+resource "aws_sns_topic_subscription" "email_alerts_fallback" {
+  count = var.alert_email != "" ? 1 : 0
+
   topic_arn = aws_sns_topic.paintbox_alerts.arn
   protocol  = "email"
   endpoint  = var.alert_email
@@ -400,4 +411,425 @@ resource "random_id" "bucket_suffix" {
   count = var.environment == "production" ? 1 : 0
 
   byte_length = 8
+}
+
+# ECS Service Monitoring and Alerting
+# Only create if ECS resources exist (when ecs.tf is applied)
+data "aws_ecs_cluster" "paintbox" {
+  count = var.environment == "production" || var.environment == "staging" ? 1 : 0
+  cluster_name = "paintbox-${var.environment}"
+
+  depends_on = [aws_ecs_cluster.paintbox]
+}
+
+data "aws_ecs_service" "paintbox" {
+  count = var.environment == "production" || var.environment == "staging" ? 1 : 0
+  service_name = "paintbox-${var.environment}-service"
+  cluster_arn  = data.aws_ecs_cluster.paintbox[0].arn
+
+  depends_on = [aws_ecs_service.paintbox]
+}
+
+# ECS CloudWatch Alarms
+resource "aws_cloudwatch_metric_alarm" "ecs_cpu_high" {
+  count = var.environment == "production" || var.environment == "staging" ? 1 : 0
+
+  alarm_name          = "paintbox-ecs-cpu-high-${var.environment}"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/ECS"
+  period              = "300"
+  statistic           = "Average"
+  threshold           = var.cpu_threshold_high
+  alarm_description   = "ECS service CPU utilization is too high"
+  alarm_actions       = [aws_sns_topic.paintbox_alerts.arn]
+  ok_actions         = [aws_sns_topic.paintbox_alerts.arn]
+
+  dimensions = {
+    ServiceName = "paintbox-${var.environment}-service"
+    ClusterName = "paintbox-${var.environment}"
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "ecs_memory_high" {
+  count = var.environment == "production" || var.environment == "staging" ? 1 : 0
+
+  alarm_name          = "paintbox-ecs-memory-high-${var.environment}"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "MemoryUtilization"
+  namespace           = "AWS/ECS"
+  period              = "300"
+  statistic           = "Average"
+  threshold           = var.memory_threshold_high
+  alarm_description   = "ECS service memory utilization is too high"
+  alarm_actions       = [aws_sns_topic.paintbox_alerts.arn]
+  ok_actions         = [aws_sns_topic.paintbox_alerts.arn]
+
+  dimensions = {
+    ServiceName = "paintbox-${var.environment}-service"
+    ClusterName = "paintbox-${var.environment}"
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "ecs_service_tasks_stopped" {
+  count = var.environment == "production" || var.environment == "staging" ? 1 : 0
+
+  alarm_name          = "paintbox-ecs-tasks-stopped-${var.environment}"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "1"
+  metric_name         = "RunningTaskCount"
+  namespace           = "AWS/ECS"
+  period              = "60"
+  statistic           = "Average"
+  threshold           = "0"
+  alarm_description   = "ECS service has no running tasks"
+  alarm_actions       = [aws_sns_topic.paintbox_alerts.arn]
+  treat_missing_data  = "breaching"
+
+  dimensions = {
+    ServiceName = "paintbox-${var.environment}-service"
+    ClusterName = "paintbox-${var.environment}"
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "ecs_service_desired_count" {
+  count = var.environment == "production" || var.environment == "staging" ? 1 : 0
+
+  alarm_name          = "paintbox-ecs-desired-count-${var.environment}"
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "RunningTaskCount"
+  namespace           = "AWS/ECS"
+  period              = "300"
+  statistic           = "Average"
+  threshold           = var.app_count
+  alarm_description   = "ECS service running task count is below desired count"
+  alarm_actions       = [aws_sns_topic.paintbox_alerts.arn]
+
+  dimensions = {
+    ServiceName = "paintbox-${var.environment}-service"
+    ClusterName = "paintbox-${var.environment}"
+  }
+
+  tags = local.common_tags
+}
+
+# Application Load Balancer Monitoring
+resource "aws_cloudwatch_metric_alarm" "alb_response_time" {
+  count = var.environment == "production" || var.environment == "staging" ? 1 : 0
+
+  alarm_name          = "paintbox-alb-response-time-${var.environment}"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "TargetResponseTime"
+  namespace           = "AWS/ApplicationELB"
+  period              = "300"
+  statistic           = "Average"
+  threshold           = "2" # 2 seconds
+  alarm_description   = "ALB target response time is too high"
+  alarm_actions       = [aws_sns_topic.paintbox_alerts.arn]
+
+  dimensions = {
+    LoadBalancer = aws_lb.paintbox.arn_suffix
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "alb_5xx_errors" {
+  count = var.environment == "production" || var.environment == "staging" ? 1 : 0
+
+  alarm_name          = "paintbox-alb-5xx-errors-${var.environment}"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "HTTPCode_ELB_5XX_Count"
+  namespace           = "AWS/ApplicationELB"
+  period              = "300"
+  statistic           = "Sum"
+  threshold           = "5"
+  alarm_description   = "Too many 5xx errors from ALB"
+  alarm_actions       = [aws_sns_topic.paintbox_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    LoadBalancer = aws_lb.paintbox.arn_suffix
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "alb_4xx_errors" {
+  count = var.environment == "production" || var.environment == "staging" ? 1 : 0
+
+  alarm_name          = "paintbox-alb-4xx-errors-${var.environment}"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "3"
+  metric_name         = "HTTPCode_Target_4XX_Count"
+  namespace           = "AWS/ApplicationELB"
+  period              = "300"
+  statistic           = "Sum"
+  threshold           = "20"
+  alarm_description   = "High rate of 4xx errors from targets"
+  alarm_actions       = [aws_sns_topic.paintbox_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    LoadBalancer = aws_lb.paintbox.arn_suffix
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "alb_healthy_targets" {
+  count = var.environment == "production" || var.environment == "staging" ? 1 : 0
+
+  alarm_name          = "paintbox-alb-healthy-targets-${var.environment}"
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "HealthyHostCount"
+  namespace           = "AWS/ApplicationELB"
+  period              = "60"
+  statistic           = "Average"
+  threshold           = "1"
+  alarm_description   = "No healthy targets available"
+  alarm_actions       = [aws_sns_topic.paintbox_alerts.arn]
+
+  dimensions = {
+    TargetGroup  = aws_lb_target_group.paintbox.arn_suffix
+    LoadBalancer = aws_lb.paintbox.arn_suffix
+  }
+
+  tags = local.common_tags
+}
+
+# Enhanced CloudWatch Dashboard with ECS metrics
+resource "aws_cloudwatch_dashboard" "paintbox_enhanced" {
+  count = var.environment == "production" || var.environment == "staging" ? 1 : 0
+
+  dashboard_name = "Paintbox-Enhanced-${var.environment}"
+
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 12
+        height = 6
+
+        properties = {
+          metrics = [
+            ["AWS/ECS", "CPUUtilization", "ServiceName", "paintbox-${var.environment}-service", "ClusterName", "paintbox-${var.environment}"],
+            [".", "MemoryUtilization", ".", ".", ".", "."],
+            [".", "RunningTaskCount", ".", ".", ".", "."]
+          ]
+          view    = "timeSeries"
+          stacked = false
+          region  = var.aws_region
+          title   = "ECS Service Metrics"
+          period  = 300
+        }
+      },
+      {
+        type   = "metric"
+        x      = 12
+        y      = 0
+        width  = 12
+        height = 6
+
+        properties = {
+          metrics = [
+            ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", aws_lb.paintbox.arn_suffix],
+            [".", "TargetResponseTime", ".", "."],
+            [".", "HTTPCode_Target_2XX_Count", ".", "."],
+            [".", "HTTPCode_Target_4XX_Count", ".", "."],
+            [".", "HTTPCode_Target_5XX_Count", ".", "."]
+          ]
+          view    = "timeSeries"
+          stacked = false
+          region  = var.aws_region
+          title   = "Load Balancer Metrics"
+          period  = 300
+        }
+      },
+      {
+        type   = "metric"
+        x      = 0
+        y      = 6
+        width  = 8
+        height = 6
+
+        properties = {
+          metrics = [
+            ["AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", aws_db_instance.paintbox.id],
+            [".", "DatabaseConnections", ".", "."],
+            [".", "ReadLatency", ".", "."],
+            [".", "WriteLatency", ".", "."]
+          ]
+          view    = "timeSeries"
+          stacked = false
+          region  = var.aws_region
+          title   = "RDS Performance"
+          period  = 300
+        }
+      },
+      {
+        type   = "metric"
+        x      = 8
+        y      = 6
+        width  = 8
+        height = 6
+
+        properties = {
+          metrics = [
+            ["AWS/ElastiCache", "CPUUtilization", "CacheClusterId", "${aws_elasticache_replication_group.paintbox.replication_group_id}-001"],
+            [".", "DatabaseMemoryUsagePercentage", ".", "."],
+            [".", "CurrConnections", ".", "."],
+            [".", "NetworkBytesIn", ".", "."],
+            [".", "NetworkBytesOut", ".", "."]
+          ]
+          view    = "timeSeries"
+          stacked = false
+          region  = var.aws_region
+          title   = "Redis Performance"
+          period  = 300
+        }
+      },
+      {
+        type   = "metric"
+        x      = 16
+        y      = 6
+        width  = 8
+        height = 6
+
+        properties = {
+          metrics = [
+            ["AWS/ApplicationELB", "HealthyHostCount", "TargetGroup", aws_lb_target_group.paintbox.arn_suffix, "LoadBalancer", aws_lb.paintbox.arn_suffix],
+            [".", "UnHealthyHostCount", ".", ".", ".", "."]
+          ]
+          view    = "timeSeries"
+          stacked = false
+          region  = var.aws_region
+          title   = "Target Health"
+          period  = 300
+          yAxis = {
+            left = {
+              min = 0
+            }
+          }
+        }
+      },
+      {
+        type   = "log"
+        x      = 0
+        y      = 12
+        width  = 12
+        height = 6
+
+        properties = {
+          query   = "SOURCE '${aws_cloudwatch_log_group.ecs_app.name}' | fields @timestamp, @message | filter @message like /ERROR/ | sort @timestamp desc | limit 50"
+          region  = var.aws_region
+          title   = "Application Errors (ECS)"
+        }
+      },
+      {
+        type   = "log"
+        x      = 12
+        y      = 12
+        width  = 12
+        height = 6
+
+        properties = {
+          query   = "SOURCE '${aws_cloudwatch_log_group.ecs_app.name}' | fields @timestamp, @message | filter @message like /WARN/ | sort @timestamp desc | limit 50"
+          region  = var.aws_region
+          title   = "Application Warnings (ECS)"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 0
+        y      = 18
+        width  = 24
+        height = 6
+
+        properties = {
+          metrics = [
+            ["Paintbox/${var.environment}", "ErrorCount"],
+            [".", "APIErrors"]
+          ]
+          view    = "timeSeries"
+          stacked = false
+          region  = var.aws_region
+          title   = "Custom Application Metrics"
+          period  = 300
+        }
+      }
+    ]
+  })
+
+  tags = local.common_tags
+}
+
+# CloudWatch Composite Alarm for Service Health
+resource "aws_cloudwatch_composite_alarm" "service_health" {
+  count = var.environment == "production" ? 1 : 0
+
+  alarm_name        = "paintbox-service-health-${var.environment}"
+  alarm_description = "Composite alarm for overall service health"
+
+  alarm_rule = join(" OR ", [
+    "ALARM('${aws_cloudwatch_metric_alarm.ecs_cpu_high[0].alarm_name}')",
+    "ALARM('${aws_cloudwatch_metric_alarm.ecs_memory_high[0].alarm_name}')",
+    "ALARM('${aws_cloudwatch_metric_alarm.ecs_service_tasks_stopped[0].alarm_name}')",
+    "ALARM('${aws_cloudwatch_metric_alarm.alb_5xx_errors[0].alarm_name}')",
+    "ALARM('${aws_cloudwatch_metric_alarm.alb_healthy_targets[0].alarm_name}')"
+  ])
+
+  alarm_actions = [aws_sns_topic.paintbox_alerts.arn]
+  ok_actions   = [aws_sns_topic.paintbox_alerts.arn]
+
+  tags = local.common_tags
+}
+
+# CloudWatch Insights Queries for ECS
+resource "aws_cloudwatch_query_definition" "ecs_error_analysis" {
+  count = var.environment == "production" || var.environment == "staging" ? 1 : 0
+
+  name = "paintbox-ecs-error-analysis-${var.environment}"
+
+  log_group_names = [
+    aws_cloudwatch_log_group.ecs_app.name
+  ]
+
+  query_string = <<EOF
+fields @timestamp, @message, @requestId
+| filter @message like /ERROR/
+| stats count() by bin(5m), @requestId
+| sort @timestamp desc
+EOF
+}
+
+resource "aws_cloudwatch_query_definition" "ecs_performance_analysis" {
+  count = var.environment == "production" || var.environment == "staging" ? 1 : 0
+
+  name = "paintbox-ecs-performance-analysis-${var.environment}"
+
+  log_group_names = [
+    aws_cloudwatch_log_group.ecs_app.name
+  ]
+
+  query_string = <<EOF
+fields @timestamp, @message, @duration, @requestId
+| filter @message like /duration/
+| stats avg(@duration), max(@duration), min(@duration), count() by bin(5m)
+| sort @timestamp desc
+EOF
 }

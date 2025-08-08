@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json.schemastore.org/typetokens",
+  "meta": {
+    "name": "Candlefish Design Tokens",
+    "version": "2.0.0",
+    "updated": "2025-08-08",
+    "sourceOfTruth": "brand/"
+  },
+  "color": {
+    "brand": {
+      "black": { "hex": "#000000" },
+      "white": { "hex": "#FFFFFF" },
+      "teal": { "hex": "#00CED1", "oklch": "oklch(0.5 0.2 180)" }
+    },
+    "neutral": {
+      "50": { "hex": "#FAFAFA" },
+      "100": { "hex": "#F4F4F5" },
+      "200": { "hex": "#E4E4E7" },
+      "300": { "hex": "#D4D4D8" },
+      "400": { "hex": "#A1A1AA" },
+      "500": { "hex": "#71717A" },
+      "600": { "hex": "#52525B" },
+      "700": { "hex": "#3F3F46" },
+      "800": { "hex": "#27272A" },
+      "900": { "hex": "#18181B" },
+      "950": { "hex": "#09090B" }
+    },
+    "semantic": {
+      "success": { "oklch": "oklch(0.6 0.2 142)", "fallbackHex": "#059669" },
+      "warning": { "oklch": "oklch(0.7 0.2 60)", "fallbackHex": "#F59E0B" },
+      "error": { "oklch": "oklch(0.6 0.25 25)", "fallbackHex": "#DC2626" },
+      "information": { "oklch": "oklch(0.6 0.15 220)", "fallbackHex": "#3B82F6" }
+    }
+  },
+  "typography": {
+    "web": {
+      "sans": "-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif",
+      "mono": "'Space Mono', 'SF Mono', Monaco, Consolas, 'Courier New', monospace"
+    },
+    "print": {
+      "primary": "'USGraphics Berkeley', 'Berkeley', 'Times New Roman', serif",
+      "mono": "'USGraphics Berkeley Mono', 'Berkeley Mono', 'Courier New', monospace"
+    },
+    "scale": {
+      "xs": "0.75rem",
+      "sm": "0.875rem",
+      "base": "1rem",
+      "lg": "1.125rem",
+      "xl": "1.25rem",
+      "2xl": "1.5rem",
+      "3xl": "1.875rem",
+      "4xl": "2.25rem",
+      "5xl": "3rem",
+      "6xl": "3.75rem",
+      "7xl": "4.5rem"
+    },
+    "weights": {
+      "light": 300,
+      "regular": 400,
+      "medium": 500,
+      "semibold": 600,
+      "bold": 700
+    }
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "8px",
+    "lg": "12px"
+  },
+  "spacing": {
+    "xs": "0.5rem",
+    "sm": "0.75rem",
+    "md": "1rem",
+    "lg": "1.5rem",
+    "xl": "2rem",
+    "2xl": "3rem",
+    "3xl": "4rem",
+    "4xl": "6rem"
+  },
+  "motion": {
+    "duration": {
+      "instant": "50ms",
+      "fast": "150ms",
+      "normal": "300ms",
+      "slow": "500ms",
+      "slower": "700ms"
+    },
+    "easing": {
+      "inOut": "cubic-bezier(0.4, 0, 0.2, 1)",
+      "out": "cubic-bezier(0, 0, 0.2, 1)",
+      "in": "cubic-bezier(0.4, 0, 1, 1)",
+      "spring": "cubic-bezier(0.175, 0.885, 0.32, 1.275)"
+    }
+  },
+  "layout": {
+    "gridColumns": 12,
+    "gutter": "24px",
+    "containerMax": "1400px",
+    "breakpoints": {
+      "mobile": "640px",
+      "tablet": "768px",
+      "laptop": "1024px",
+      "desktop": "1280px",
+      "wide": "1536px"
+    }
+  }
+}

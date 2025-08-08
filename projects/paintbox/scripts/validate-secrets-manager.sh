@@ -76,37 +76,37 @@ log_debug() {
 # Validation functions
 validate_prerequisites() {
     log_info "Validating prerequisites..."
-    
+
     # Check AWS CLI
     if ! command -v aws &> /dev/null; then
         log_error "AWS CLI is not installed"
         exit 1
     fi
-    
+
     # Check jq for JSON parsing
     if ! command -v jq &> /dev/null; then
         log_error "jq is not installed"
         exit 1
     fi
-    
+
     # Validate AWS credentials
     if ! aws sts get-caller-identity &> /dev/null; then
         log_error "AWS credentials are not configured properly"
         exit 1
     fi
-    
+
     # Check if we have permissions to access Secrets Manager
     if ! aws secretsmanager list-secrets --region "$AWS_REGION" &> /dev/null; then
         log_error "No permissions to access AWS Secrets Manager"
         exit 1
     fi
-    
+
     log_info "Prerequisites validation completed"
 }
 
 check_secret_exists() {
     log_info "Checking if secret exists: $SECRET_NAME"
-    
+
     if aws secretsmanager describe-secret --secret-id "$SECRET_NAME" --region "$AWS_REGION" &>/dev/null; then
         log_info "✅ Secret exists: $SECRET_NAME"
         return 0
@@ -118,21 +118,21 @@ check_secret_exists() {
 
 validate_secret_encryption() {
     log_info "Validating secret encryption configuration..."
-    
+
     local kms_key_id
     kms_key_id=$(aws secretsmanager describe-secret \
         --secret-id "$SECRET_NAME" \
         --region "$AWS_REGION" \
         --query 'KmsKeyId' \
         --output text)
-    
+
     if [[ "$kms_key_id" == "None" ]] || [[ "$kms_key_id" == "null" ]]; then
         log_warn "⚠️  Secret is using default AWS managed encryption"
         SECURITY_ISSUES+=("Secret using default encryption instead of customer-managed KMS key")
         return 1
     else
         log_info "✅ Secret is encrypted with KMS key: $kms_key_id"
-        
+
         # Validate key rotation if it's a customer-managed key
         if [[ "$kms_key_id" =~ ^arn:aws:kms: ]]; then
             local key_rotation
@@ -141,7 +141,7 @@ validate_secret_encryption() {
                 --region "$AWS_REGION" \
                 --query 'KeyRotationEnabled' \
                 --output text 2>/dev/null || echo "false")
-            
+
             if [[ "$key_rotation" == "true" ]]; then
                 log_info "✅ KMS key rotation is enabled"
             else
@@ -149,21 +149,21 @@ validate_secret_encryption() {
                 SECURITY_ISSUES+=("KMS key rotation disabled")
             fi
         fi
-        
+
         return 0
     fi
 }
 
 validate_secret_replication() {
     log_info "Checking secret replication configuration..."
-    
+
     local replication_regions
     replication_regions=$(aws secretsmanager describe-secret \
         --secret-id "$SECRET_NAME" \
         --region "$AWS_REGION" \
         --query 'ReplicationStatus' \
         --output json)
-    
+
     if [[ "$replication_regions" == "null" ]] || [[ "$replication_regions" == "[]" ]]; then
         log_warn "⚠️  Secret is not replicated to other regions"
         SECURITY_ISSUES+=("Secret not replicated for disaster recovery")
@@ -181,12 +181,12 @@ get_secret_value() {
         --region "$AWS_REGION" \
         --query 'SecretString' \
         --output text 2>/dev/null || echo "")
-    
+
     if [[ -z "$secret_string" ]]; then
         log_error "❌ Unable to retrieve secret value"
         return 1
     fi
-    
+
     echo "$secret_string"
 }
 
@@ -194,22 +194,22 @@ validate_individual_secret() {
     local key="$1"
     local description="$2"
     local secret_value="$3"
-    
+
     TOTAL_SECRETS=$((TOTAL_SECRETS + 1))
-    
+
     log_debug "Validating secret: $key"
-    
+
     # Check if secret exists in the JSON
     local value
     value=$(echo "$secret_value" | jq -r ".$key" 2>/dev/null || echo "null")
-    
+
     if [[ "$value" == "null" ]]; then
         log_error "❌ Missing secret: $key ($description)"
         MISSING_SECRETS+=("$key")
         INVALID_SECRETS=$((INVALID_SECRETS + 1))
         return 1
     fi
-    
+
     # Check for placeholder values
     if [[ "$value" == "REPLACE_WITH_ACTUAL_VALUE" ]] || [[ "$value" == "" ]]; then
         log_warn "⚠️  Placeholder value for: $key ($description)"
@@ -217,7 +217,7 @@ validate_individual_secret() {
         INVALID_SECRETS=$((INVALID_SECRETS + 1))
         return 1
     fi
-    
+
     # Validate specific secret formats
     case "$key" in
         "SALESFORCE_CLIENT_ID")
@@ -257,19 +257,19 @@ validate_individual_secret() {
             fi
             ;;
     esac
-    
+
     # Check for common security issues
     if [[ "$value" =~ (password|secret|key|token) ]]; then
         log_warn "⚠️  Secret value for $key contains common words - might be a test value"
         SECURITY_ISSUES+=("Suspicious secret value: $key")
     fi
-    
+
     # Check minimum length for secrets
     if [[ ${#value} -lt 8 ]]; then
         log_warn "⚠️  Secret $key is very short (${#value} characters)"
         SECURITY_ISSUES+=("Very short secret: $key")
     fi
-    
+
     log_info "✅ Valid secret: $key ($description)"
     VALID_SECRETS=$((VALID_SECRETS + 1))
     return 0
@@ -277,22 +277,22 @@ validate_individual_secret() {
 
 validate_all_secrets() {
     log_info "Validating all required secrets..."
-    
+
     local secret_value
     if ! secret_value=$(get_secret_value); then
         log_error "❌ Failed to retrieve secret value"
         return 1
     fi
-    
+
     # Validate each required secret
     for key in "${!REQUIRED_SECRETS[@]}"; do
         validate_individual_secret "$key" "${REQUIRED_SECRETS[$key]}" "$secret_value"
     done
-    
+
     # Check for unexpected secrets
     local all_keys
     all_keys=$(echo "$secret_value" | jq -r 'keys[]' 2>/dev/null || echo "")
-    
+
     for key in $all_keys; do
         if [[ -z "${REQUIRED_SECRETS[$key]:-}" ]]; then
             log_warn "⚠️  Unexpected secret found: $key"
@@ -303,17 +303,17 @@ validate_all_secrets() {
 
 test_secret_access() {
     log_info "Testing secret access from application perspective..."
-    
+
     # Test if ECS execution role can access the secret
     local execution_role="paintbox-ecs-execution-${ENVIRONMENT}"
-    
+
     if aws iam get-role --role-name "$execution_role" &>/dev/null; then
         log_info "✅ ECS execution role exists: $execution_role"
-        
+
         # Check if role has permission to access secrets
         local policies
         policies=$(aws iam list-attached-role-policies --role-name "$execution_role" --query 'AttachedPolicies[].PolicyArn' --output text)
-        
+
         local has_secrets_access=false
         for policy_arn in $policies; do
             if [[ "$policy_arn" == *"SecretsManager"* ]] || [[ "$policy_arn" == *"secrets"* ]]; then
@@ -321,21 +321,21 @@ test_secret_access() {
                 break
             fi
         done
-        
+
         # Check inline policies
         local inline_policies
         inline_policies=$(aws iam list-role-policies --role-name "$execution_role" --query 'PolicyNames[]' --output text)
-        
+
         for policy_name in $inline_policies; do
             local policy_doc
             policy_doc=$(aws iam get-role-policy --role-name "$execution_role" --policy-name "$policy_name" --query 'PolicyDocument' --output json)
-            
+
             if echo "$policy_doc" | jq -r '.Statement[].Action[]?' | grep -q "secretsmanager:GetSecretValue"; then
                 has_secrets_access=true
                 break
             fi
         done
-        
+
         if [[ "$has_secrets_access" == "true" ]]; then
             log_info "✅ ECS execution role has secrets access"
         else
@@ -346,17 +346,17 @@ test_secret_access() {
         log_error "❌ ECS execution role not found: $execution_role"
         SECURITY_ISSUES+=("ECS execution role missing")
     fi
-    
+
     # Test application role access
     local app_role="paintbox-app-${ENVIRONMENT}"
-    
+
     if aws iam get-role --role-name "$app_role" &>/dev/null; then
         log_info "✅ Application role exists: $app_role"
-        
+
         # Similar check for app role...
         local app_policies
         app_policies=$(aws iam list-attached-role-policies --role-name "$app_role" --query 'AttachedPolicies[].PolicyArn' --output text)
-        
+
         local has_app_secrets_access=false
         for policy_arn in $app_policies; do
             if [[ "$policy_arn" == *"SecretsManager"* ]] || [[ "$policy_arn" == *"secrets"* ]]; then
@@ -364,21 +364,21 @@ test_secret_access() {
                 break
             fi
         done
-        
+
         # Check inline policies for app role
         local app_inline_policies
         app_inline_policies=$(aws iam list-role-policies --role-name "$app_role" --query 'PolicyNames[]' --output text)
-        
+
         for policy_name in $app_inline_policies; do
             local policy_doc
             policy_doc=$(aws iam get-role-policy --role-name "$app_role" --policy-name "$policy_name" --query 'PolicyDocument' --output json)
-            
+
             if echo "$policy_doc" | jq -r '.Statement[].Action[]?' | grep -q "secretsmanager:GetSecretValue"; then
                 has_app_secrets_access=true
                 break
             fi
         done
-        
+
         if [[ "$has_app_secrets_access" == "true" ]]; then
             log_info "✅ Application role has secrets access"
         else
@@ -393,17 +393,17 @@ test_secret_access() {
 
 validate_secret_rotation() {
     log_info "Checking secret rotation configuration..."
-    
+
     local rotation_config
     rotation_config=$(aws secretsmanager describe-secret \
         --secret-id "$SECRET_NAME" \
         --region "$AWS_REGION" \
         --query 'RotationEnabled' \
         --output text)
-    
+
     if [[ "$rotation_config" == "true" ]]; then
         log_info "✅ Secret rotation is enabled"
-        
+
         # Get rotation details
         local rotation_lambda
         rotation_lambda=$(aws secretsmanager describe-secret \
@@ -411,14 +411,14 @@ validate_secret_rotation() {
             --region "$AWS_REGION" \
             --query 'RotationLambdaARN' \
             --output text)
-        
+
         if [[ "$rotation_lambda" != "None" ]] && [[ "$rotation_lambda" != "null" ]]; then
             log_info "✅ Rotation Lambda configured: $rotation_lambda"
         else
             log_warn "⚠️  Rotation enabled but no Lambda function configured"
             SECURITY_ISSUES+=("Rotation enabled without Lambda")
         fi
-        
+
         # Check last rotation
         local last_rotated
         last_rotated=$(aws secretsmanager describe-secret \
@@ -426,7 +426,7 @@ validate_secret_rotation() {
             --region "$AWS_REGION" \
             --query 'LastRotatedDate' \
             --output text)
-        
+
         if [[ "$last_rotated" != "None" ]] && [[ "$last_rotated" != "null" ]]; then
             log_info "✅ Secret was last rotated: $last_rotated"
         else
@@ -441,33 +441,33 @@ validate_secret_rotation() {
 
 check_secret_versions() {
     log_info "Checking secret versions..."
-    
+
     local versions
     versions=$(aws secretsmanager list-secret-version-ids \
         --secret-id "$SECRET_NAME" \
         --region "$AWS_REGION" \
         --query 'Versions' \
         --output json)
-    
+
     local version_count
     version_count=$(echo "$versions" | jq length)
-    
+
     log_info "✅ Secret has $version_count version(s)"
-    
+
     # Check for AWSCURRENT and AWSPENDING
     local current_version
     current_version=$(echo "$versions" | jq -r '.[] | select(.VersionStage[]? == "AWSCURRENT") | .VersionId')
-    
+
     local pending_version
     pending_version=$(echo "$versions" | jq -r '.[] | select(.VersionStage[]? == "AWSPENDING") | .VersionId' 2>/dev/null || echo "")
-    
+
     if [[ -n "$current_version" ]]; then
         log_info "✅ Current version: $current_version"
     else
         log_error "❌ No current version found"
         SECURITY_ISSUES+=("No current secret version")
     fi
-    
+
     if [[ -n "$pending_version" ]]; then
         log_info "✅ Pending version: $pending_version"
     else
@@ -477,9 +477,9 @@ check_secret_versions() {
 
 generate_secrets_report() {
     log_info "Generating secrets validation report..."
-    
+
     local report_file="${PROJECT_ROOT}/secrets-validation-report-${ENVIRONMENT}-$(date +%Y%m%d-%H%M%S).md"
-    
+
     cat > "$report_file" << EOF
 # AWS Secrets Manager Validation Report
 
@@ -623,13 +623,13 @@ EOF
 # Main execution
 main() {
     log_info "Starting AWS Secrets Manager validation for environment: $ENVIRONMENT"
-    
+
     # Create logs directory
     mkdir -p "$PROJECT_ROOT/logs"
-    
+
     # Run validation steps
     validate_prerequisites
-    
+
     if check_secret_exists; then
         validate_secret_encryption
         validate_secret_replication
@@ -644,11 +644,11 @@ main() {
             MISSING_SECRETS+=("$key")
         done
     fi
-    
+
     # Generate report
     local report_file
     report_file=$(generate_secrets_report)
-    
+
     # Summary
     log_info "================================================="
     log_info "Secrets Manager Validation Complete"
@@ -657,15 +657,15 @@ main() {
     log_info "Valid: $VALID_SECRETS"
     log_info "Invalid/Missing: $INVALID_SECRETS"
     log_info "Security Issues: ${#SECURITY_ISSUES[@]}"
-    
+
     if [[ $INVALID_SECRETS -eq 0 ]]; then
         log_info "Completion Rate: 100%"
     else
         log_info "Completion Rate: $((VALID_SECRETS * 100 / TOTAL_SECRETS))%"
     fi
-    
+
     log_info "Report: $report_file"
-    
+
     if [[ $INVALID_SECRETS -eq 0 && ${#SECURITY_ISSUES[@]} -eq 0 ]]; then
         log_info "🟢 All secrets are properly configured - Ready for deployment!"
         exit 0

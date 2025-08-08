@@ -3,22 +3,22 @@ info:
   title: Candlefish Employee Setup API
   description: |
     Production-ready serverless API for employee onboarding and secrets management.
-    
+
     ## Authentication
-    
+
     Most endpoints require JWT authentication via the `Authorization` header:
     ```
     Authorization: Bearer <jwt_token>
     ```
-    
+
     ## Rate Limits
-    
+
     - Authentication endpoints: 5 requests per 15 minutes per IP
-    - General API endpoints: 100 requests per 15 minutes per IP  
+    - General API endpoints: 100 requests per 15 minutes per IP
     - Secrets endpoints: 20 requests per 5 minutes per IP
-    
+
     ## Error Responses
-    
+
     All error responses follow this format:
     ```json
     {

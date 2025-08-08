@@ -14,7 +14,7 @@ class ClaudeService {
   constructor() {
     this.client = null;
     this.model = 'claude-opus-4-1-20250805';
-    
+
     // Rate limiting configuration
     this.rateLimits = {
       input: {
@@ -30,14 +30,14 @@ class ClaudeService {
         resetTime: Date.now() + 60000,
       },
     };
-    
+
     // Concurrent request limiting
     this.concurrencyLimit = pLimit(100); // Up to 100 concurrent requests
-    
+
     // Response cache for efficiency
     this.responseCache = new Map();
     this.cacheTimeout = 300000; // 5 minutes
-    
+
     // Usage tracking
     this.usageMetrics = {
       totalInputTokens: 0,
@@ -46,7 +46,7 @@ class ClaudeService {
       totalCost: 0,
       requestHistory: [],
     };
-    
+
     // Prompt templates
     this.promptTemplates = new Map();
     this.initialized = false;
@@ -56,31 +56,31 @@ class ClaudeService {
     try {
       // Get API key from AWS Secrets Manager
       const apiKey = await secretsManager.getSecret('claude/api-key');
-      
+
       if (!apiKey) {
         throw new Error('Claude API key not found in Secrets Manager');
       }
-      
+
       // Initialize Anthropic client
       this.client = new Anthropic({
         apiKey: typeof apiKey === 'object' ? apiKey.value : apiKey,
         maxRetries: 3,
         timeout: 60000, // 60 seconds
       });
-      
+
       // Load prompt templates
       await this.loadPromptTemplates();
-      
+
       // Set up usage tracking
       this.startUsageTracking();
-      
+
       // Test connection
       await this.testConnection();
-      
+
       this.initialized = true;
       logger.info('Claude Opus 4.1 service initialized successfully');
       logger.info(`Rate limits: ${this.rateLimits.input.tokensPerMinute.toLocaleString()} input tokens/min, ${this.rateLimits.output.tokensPerMinute.toLocaleString()} output tokens/min`);
-      
+
       return true;
     } catch (error) {
       logger.error('Failed to initialize Claude service:', error);
@@ -94,7 +94,7 @@ class ClaudeService {
   async processEmployeeOnboarding(employeeData, options = {}) {
     const operation = 'employee_onboarding';
     const cacheKey = this.getCacheKey(operation, employeeData);
-    
+
     // Check cache first
     if (!options.bypassCache && this.responseCache.has(cacheKey)) {
       const cached = this.responseCache.get(cacheKey);
@@ -103,14 +103,14 @@ class ClaudeService {
         return cached.response;
       }
     }
-    
+
     try {
       const prompt = this.buildOnboardingPrompt(employeeData);
       const estimatedTokens = this.estimateTokens(prompt);
-      
+
       // Check rate limits
       await this.checkRateLimits(estimatedTokens, 4000); // Estimate 4000 output tokens
-      
+
       // Process with concurrency control
       const response = await this.concurrencyLimit(async () => {
         return await this.client.messages.create({
@@ -126,22 +126,22 @@ class ClaudeService {
           ],
         });
       });
-      
+
       // Update usage metrics
       this.updateUsageMetrics(response.usage.input_tokens, response.usage.output_tokens);
-      
+
       // Parse and structure the response
       const structuredResponse = this.parseOnboardingResponse(response.content[0].text);
-      
+
       // Cache the response
       this.responseCache.set(cacheKey, {
         response: structuredResponse,
         expires: Date.now() + this.cacheTimeout,
       });
-      
+
       // Log for audit
       await this.logUsage(operation, employeeData.id, response.usage);
-      
+
       return structuredResponse;
     } catch (error) {
       logger.error(`Failed to process employee onboarding:`, error);
@@ -154,13 +154,13 @@ class ClaudeService {
    */
   async generateSetupInstructions(employee, systems, options = {}) {
     const operation = 'setup_instructions';
-    
+
     try {
       const prompt = this.buildSetupInstructionsPrompt(employee, systems);
       const estimatedTokens = this.estimateTokens(prompt);
-      
+
       await this.checkRateLimits(estimatedTokens, 8000);
-      
+
       const response = await this.concurrencyLimit(async () => {
         return await this.client.messages.create({
           model: this.model,
@@ -175,13 +175,13 @@ class ClaudeService {
           ],
         });
       });
-      
+
       this.updateUsageMetrics(response.usage.input_tokens, response.usage.output_tokens);
-      
+
       const instructions = this.formatSetupInstructions(response.content[0].text);
-      
+
       await this.logUsage(operation, employee.id, response.usage);
-      
+
       return instructions;
     } catch (error) {
       logger.error(`Failed to generate setup instructions:`, error);
@@ -194,13 +194,13 @@ class ClaudeService {
    */
   async analyzeSecurityConfiguration(config, options = {}) {
     const operation = 'security_analysis';
-    
+
     try {
       const prompt = this.buildSecurityAnalysisPrompt(config);
       const estimatedTokens = this.estimateTokens(prompt);
-      
+
       await this.checkRateLimits(estimatedTokens, 6000);
-      
+
       const response = await this.concurrencyLimit(async () => {
         return await this.client.messages.create({
           model: this.model,
@@ -215,13 +215,13 @@ class ClaudeService {
           ],
         });
       });
-      
+
       this.updateUsageMetrics(response.usage.input_tokens, response.usage.output_tokens);
-      
+
       const analysis = this.parseSecurityAnalysis(response.content[0].text);
-      
+
       await this.logUsage(operation, 'system', response.usage);
-      
+
       return analysis;
     } catch (error) {
       logger.error(`Failed to analyze security configuration:`, error);
@@ -236,25 +236,25 @@ class ClaudeService {
     const results = [];
     const batchSize = options.batchSize || 10;
     const batches = this.chunkArray(requests, batchSize);
-    
+
     for (const batch of batches) {
-      const batchPromises = batch.map(request => 
+      const batchPromises = batch.map(request =>
         this.processRequest(request).catch(error => ({
           success: false,
           error: error.message,
           request,
         }))
       );
-      
+
       const batchResults = await Promise.all(batchPromises);
       results.push(...batchResults);
-      
+
       // Brief pause between batches to respect rate limits
       if (batches.indexOf(batch) < batches.length - 1) {
         await this.sleep(1000);
       }
     }
-    
+
     return results;
   }
 
@@ -263,11 +263,11 @@ class ClaudeService {
    */
   async processRequest(request) {
     const { prompt, maxTokens = 4000, temperature = 0.5, system } = request;
-    
+
     try {
       const estimatedInputTokens = this.estimateTokens(prompt);
       await this.checkRateLimits(estimatedInputTokens, maxTokens);
-      
+
       const response = await this.concurrencyLimit(async () => {
         return await this.client.messages.create({
           model: this.model,
@@ -282,9 +282,9 @@ class ClaudeService {
           ],
         });
       });
-      
+
       this.updateUsageMetrics(response.usage.input_tokens, response.usage.output_tokens);
-      
+
       return {
         success: true,
         content: response.content[0].text,
@@ -303,7 +303,7 @@ class ClaudeService {
   buildOnboardingPrompt(employeeData) {
     return `
     Analyze the following new employee information and generate a comprehensive onboarding plan:
-    
+
     Employee Information:
     - Name: ${employeeData.name}
     - Role: ${employeeData.role}
@@ -312,7 +312,7 @@ class ClaudeService {
     - Manager: ${employeeData.manager}
     - Location: ${employeeData.location}
     - Experience Level: ${employeeData.experienceLevel}
-    
+
     Please provide:
     1. Personalized welcome message
     2. First week schedule
@@ -322,7 +322,7 @@ class ClaudeService {
     6. Role-specific resources
     7. Compliance requirements
     8. Success metrics for first 30/60/90 days
-    
+
     Format the response as structured JSON.
     `;
   }
@@ -332,23 +332,23 @@ class ClaudeService {
    */
   buildSetupInstructionsPrompt(employee, systems) {
     const systemsList = systems.map(s => `- ${s.name}: ${s.description}`).join('\n');
-    
+
     return `
     Generate detailed setup instructions for the following employee and systems:
-    
+
     Employee: ${employee.name} (${employee.role})
     Technical Level: ${employee.techLevel || 'intermediate'}
-    
+
     Systems to Set Up:
     ${systemsList}
-    
+
     For each system, provide:
     1. Step-by-step setup instructions
     2. Common troubleshooting tips
     3. Security best practices
     4. Quick reference guide
     5. Support contacts
-    
+
     Make instructions clear and appropriate for the employee's technical level.
     Include command examples where applicable.
     `;
@@ -360,24 +360,24 @@ class ClaudeService {
   buildSecurityAnalysisPrompt(config) {
     return `
     Analyze the following security configuration for vulnerabilities and compliance:
-    
+
     Configuration:
     ${JSON.stringify(config, null, 2)}
-    
+
     Evaluate against:
     1. OWASP Top 10 vulnerabilities
     2. SOC 2 Type II requirements
     3. GDPR compliance (if applicable)
     4. AWS Security Best Practices
     5. Zero Trust principles
-    
+
     Provide:
     1. Critical vulnerabilities (immediate action required)
     2. High-risk issues (address within 7 days)
     3. Medium-risk issues (address within 30 days)
     4. Recommendations for improvement
     5. Compliance gaps
-    
+
     Include specific remediation steps for each issue.
     `;
   }
@@ -387,18 +387,18 @@ class ClaudeService {
    */
   async checkRateLimits(inputTokens, outputTokens) {
     const now = Date.now();
-    
+
     // Reset counters if minute has passed
     if (now >= this.rateLimits.input.resetTime) {
       this.rateLimits.input.currentUsage = 0;
       this.rateLimits.input.resetTime = now + 60000;
     }
-    
+
     if (now >= this.rateLimits.output.resetTime) {
       this.rateLimits.output.currentUsage = 0;
       this.rateLimits.output.resetTime = now + 60000;
     }
-    
+
     // Check if request would exceed limits
     if (this.rateLimits.input.currentUsage + inputTokens > this.rateLimits.input.tokensPerMinute) {
       const waitTime = this.rateLimits.input.resetTime - now;
@@ -406,14 +406,14 @@ class ClaudeService {
       await this.sleep(waitTime);
       return this.checkRateLimits(inputTokens, outputTokens);
     }
-    
+
     if (this.rateLimits.output.currentUsage + outputTokens > this.rateLimits.output.tokensPerMinute) {
       const waitTime = this.rateLimits.output.resetTime - now;
       logger.warn(`Output rate limit reached. Waiting ${waitTime}ms`);
       await this.sleep(waitTime);
       return this.checkRateLimits(inputTokens, outputTokens);
     }
-    
+
     // Update usage
     this.rateLimits.input.currentUsage += inputTokens;
     this.rateLimits.output.currentUsage += outputTokens;
@@ -434,12 +434,12 @@ class ClaudeService {
     this.usageMetrics.totalInputTokens += inputTokens;
     this.usageMetrics.totalOutputTokens += outputTokens;
     this.usageMetrics.totalRequests += 1;
-    
+
     // Calculate cost (example rates, adjust based on actual pricing)
     const inputCost = (inputTokens / 1_000_000) * 15; // $15 per million input tokens
     const outputCost = (outputTokens / 1_000_000) * 75; // $75 per million output tokens
     this.usageMetrics.totalCost += inputCost + outputCost;
-    
+
     // Keep last 1000 requests in history
     this.usageMetrics.requestHistory.push({
       timestamp: new Date().toISOString(),
@@ -447,7 +447,7 @@ class ClaudeService {
       outputTokens,
       cost: inputCost + outputCost,
     });
-    
+
     if (this.usageMetrics.requestHistory.length > 1000) {
       this.usageMetrics.requestHistory.shift();
     }
@@ -458,25 +458,25 @@ class ClaudeService {
    */
   getSystemPrompt(type) {
     const prompts = {
-      onboarding: `You are an expert HR onboarding specialist at Candlefish.ai. 
-        Your role is to create personalized, comprehensive onboarding plans that ensure 
-        new employees have a smooth and successful start. Focus on clarity, completeness, 
+      onboarding: `You are an expert HR onboarding specialist at Candlefish.ai.
+        Your role is to create personalized, comprehensive onboarding plans that ensure
+        new employees have a smooth and successful start. Focus on clarity, completeness,
         and creating a welcoming experience.`,
-      
-      setup_instructions: `You are a technical documentation expert specializing in 
-        enterprise software setup. Create clear, step-by-step instructions that are 
-        appropriate for the user's technical level. Include troubleshooting tips and 
+
+      setup_instructions: `You are a technical documentation expert specializing in
+        enterprise software setup. Create clear, step-by-step instructions that are
+        appropriate for the user's technical level. Include troubleshooting tips and
         best practices.`,
-      
-      security: `You are a senior security architect with expertise in cloud security, 
-        compliance, and enterprise security best practices. Analyze configurations 
+
+      security: `You are a senior security architect with expertise in cloud security,
+        compliance, and enterprise security best practices. Analyze configurations
         thoroughly and provide actionable recommendations with specific remediation steps.`,
-      
-      general: `You are Claude, an AI assistant for Candlefish.ai's Employee Setup Platform. 
-        Provide helpful, accurate, and professional responses. Focus on being clear, 
+
+      general: `You are Claude, an AI assistant for Candlefish.ai's Employee Setup Platform.
+        Provide helpful, accurate, and professional responses. Focus on being clear,
         concise, and actionable.`,
     };
-    
+
     return prompts[type] || prompts.general;
   }
 
@@ -549,7 +549,7 @@ class ClaudeService {
     const sections = [];
     const lines = text.split('\n');
     let currentSection = null;
-    
+
     for (const line of lines) {
       if (line.match(/^\d+\.|^[A-Z][^:]*:/)) {
         if (currentSection) {
@@ -563,11 +563,11 @@ class ClaudeService {
         currentSection.content.push(line);
       }
     }
-    
+
     if (currentSection) {
       sections.push(currentSection);
     }
-    
+
     return sections;
   }
 
@@ -594,9 +594,9 @@ class ClaudeService {
       model: this.model,
       cost: this.calculateCost(usage.input_tokens, usage.output_tokens),
     };
-    
+
     logger.info('Claude usage:', logEntry);
-    
+
     // Store in database for billing tracking
     // await db.query('INSERT INTO ai_usage_logs ...');
   }
@@ -643,7 +643,7 @@ class ClaudeService {
           },
         ],
       });
-      
+
       logger.info('Claude API connection test successful');
       return true;
     } catch (error) {

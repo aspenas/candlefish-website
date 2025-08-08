@@ -142,7 +142,7 @@ export const PerformanceDashboard: React.FC<{
   // Get performance report
   const updateMetrics = useCallback(() => {
     const report = performanceOptimizer.getReport();
-    
+
     // Update cache hit rate
     const cacheRate = report.cache.hits + report.cache.misses > 0
       ? (report.cache.hits / (report.cache.hits + report.cache.misses)) * 100
@@ -203,7 +203,7 @@ export const PerformanceDashboard: React.FC<{
     // Update chart data
     setChartData(prev => {
       const newLabels = [...prev.labels, new Date().toLocaleTimeString()].slice(-20);
-      
+
       const fpsData = prev.datasets.find(d => d.label === 'FPS')?.data || [];
       const memoryData = prev.datasets.find(d => d.label === 'Memory')?.data || [];
       const latencyData = prev.datasets.find(d => d.label === 'Latency')?.data || [];

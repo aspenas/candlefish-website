@@ -34,10 +34,10 @@ function addResult(result: SecurityCheckResult) {
 // 1. SSL/TLS Configuration Checks
 async function checkSSLConfiguration(url: string): Promise<void> {
   console.log('\n🔒 Checking SSL/TLS Configuration...\n');
-  
+
   try {
     const parsedUrl = new URL(url);
-    
+
     // Check HTTPS enforcement
     if (parsedUrl.protocol !== 'https:') {
       addResult({
@@ -62,12 +62,12 @@ async function checkSSLConfiguration(url: string): Promise<void> {
     await new Promise((resolve, reject) => {
       const req = https.request(options, (res) => {
         const cert = res.socket.getPeerCertificate();
-        
+
         // Check certificate validity
         const now = new Date();
         const validFrom = new Date(cert.valid_from);
         const validTo = new Date(cert.valid_to);
-        
+
         if (now < validFrom || now > validTo) {
           addResult({
             category: 'SSL/TLS',
@@ -129,7 +129,7 @@ async function checkSSLConfiguration(url: string): Promise<void> {
 // 2. Security Headers Checks
 async function checkSecurityHeaders(url: string): Promise<void> {
   console.log('\n🛡️ Checking Security Headers...\n');
-  
+
   try {
     const response = await fetch(url, { method: 'HEAD' });
     const headers = response.headers;
@@ -213,20 +213,20 @@ async function checkSecurityHeaders(url: string): Promise<void> {
 // 3. Rate Limiting Checks
 async function checkRateLimiting(url: string): Promise<void> {
   console.log('\n⏱️ Checking Rate Limiting...\n');
-  
+
   try {
     // Make multiple rapid requests
     const requests = 150; // Exceed the 100 req/min limit
     const startTime = Date.now();
     let blockedAt = 0;
-    
+
     for (let i = 0; i < requests; i++) {
       try {
         const response = await fetch(`${url}/api/health`, {
           method: 'GET',
           headers: { 'X-Test-Request': `rate-limit-test-${i}` }
         });
-        
+
         if (response.status === 429) {
           blockedAt = i + 1;
           break;
@@ -235,9 +235,9 @@ async function checkRateLimiting(url: string): Promise<void> {
         // Connection errors might indicate rate limiting
       }
     }
-    
+
     const duration = Date.now() - startTime;
-    
+
     if (blockedAt > 0 && blockedAt <= 100) {
       addResult({
         category: 'Rate Limiting',
@@ -265,7 +265,7 @@ async function checkRateLimiting(url: string): Promise<void> {
         recommendation: 'Implement rate limiting to prevent abuse'
       });
     }
-    
+
   } catch (error) {
     addResult({
       category: 'Rate Limiting',
@@ -280,7 +280,7 @@ async function checkRateLimiting(url: string): Promise<void> {
 // 4. Input Validation Checks
 async function checkInputValidation(url: string): Promise<void> {
   console.log('\n🔍 Checking Input Validation...\n');
-  
+
   const payloads = [
     {
       name: 'XSS Payload',
@@ -311,9 +311,9 @@ async function checkInputValidation(url: string): Promise<void> {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload.data)
       });
-      
+
       const body = await response.text();
-      
+
       if (response.status === 400 || payload.checkResponse(body)) {
         addResult({
           category: 'Input Validation',
@@ -348,15 +348,15 @@ async function checkInputValidation(url: string): Promise<void> {
 // 5. Authentication & Session Security
 async function checkAuthSecurity(url: string): Promise<void> {
   console.log('\n🔐 Checking Authentication Security...\n');
-  
+
   try {
     // Test JWT configuration
     const testToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
-    
+
     const response = await fetch(`${url}/api/protected`, {
       headers: { 'Authorization': `Bearer ${testToken}` }
     });
-    
+
     if (response.status === 401) {
       addResult({
         category: 'Authentication',
@@ -379,12 +379,12 @@ async function checkAuthSecurity(url: string): Promise<void> {
     // Check for secure session configuration
     const sessionResponse = await fetch(`${url}/api/auth/session`);
     const setCookie = sessionResponse.headers.get('set-cookie');
-    
+
     if (setCookie) {
       const hasSecure = setCookie.includes('Secure');
       const hasHttpOnly = setCookie.includes('HttpOnly');
       const hasSameSite = setCookie.includes('SameSite');
-      
+
       if (hasSecure && hasHttpOnly && hasSameSite) {
         addResult({
           category: 'Authentication',
@@ -404,7 +404,7 @@ async function checkAuthSecurity(url: string): Promise<void> {
         });
       }
     }
-    
+
   } catch (error) {
     addResult({
       category: 'Authentication',
@@ -419,14 +419,14 @@ async function checkAuthSecurity(url: string): Promise<void> {
 // 6. CORS Configuration Check
 async function checkCORSConfiguration(url: string): Promise<void> {
   console.log('\n🌐 Checking CORS Configuration...\n');
-  
+
   try {
     const origins = [
       'https://evil.com',
       'http://localhost:3000',
       'https://paintbox.vercel.app'
     ];
-    
+
     for (const origin of origins) {
       const response = await fetch(`${url}/api/health`, {
         method: 'OPTIONS',
@@ -435,9 +435,9 @@ async function checkCORSConfiguration(url: string): Promise<void> {
           'Access-Control-Request-Method': 'POST'
         }
       });
-      
+
       const allowedOrigin = response.headers.get('access-control-allow-origin');
-      
+
       if (origin === 'https://evil.com' && allowedOrigin === '*') {
         addResult({
           category: 'CORS',
@@ -465,7 +465,7 @@ async function checkCORSConfiguration(url: string): Promise<void> {
         });
       }
     }
-    
+
   } catch (error) {
     addResult({
       category: 'CORS',
@@ -481,7 +481,7 @@ async function checkCORSConfiguration(url: string): Promise<void> {
 function generateSecurityReport(): void {
   console.log('\n\n📋 SECURITY AUDIT REPORT\n');
   console.log('========================\n');
-  
+
   const summary = {
     total: results.length,
     passed: results.filter(r => r.status === 'PASS').length,
@@ -492,7 +492,7 @@ function generateSecurityReport(): void {
     medium: results.filter(r => r.severity === 'MEDIUM').length,
     low: results.filter(r => r.severity === 'LOW').length
   };
-  
+
   console.log('📊 Summary:');
   console.log(`   Total Checks: ${summary.total}`);
   console.log(`   ✅ Passed: ${summary.passed}`);
@@ -503,16 +503,16 @@ function generateSecurityReport(): void {
   console.log(`   High: ${summary.high}`);
   console.log(`   Medium: ${summary.medium}`);
   console.log(`   Low: ${summary.low}`);
-  
+
   console.log('\n\n📝 Detailed Findings:\n');
-  
+
   // Group by category
   const categories = [...new Set(results.map(r => r.category))];
-  
+
   for (const category of categories) {
     console.log(`\n### ${category}\n`);
     const categoryResults = results.filter(r => r.category === category);
-    
+
     for (const result of categoryResults) {
       const icon = result.status === 'PASS' ? '✅' : result.status === 'WARN' ? '⚠️' : '❌';
       console.log(`${icon} ${result.check}`);
@@ -524,13 +524,13 @@ function generateSecurityReport(): void {
       console.log('');
     }
   }
-  
+
   console.log('\n\n🔧 Priority Recommendations:\n');
-  
-  const criticalAndHigh = results.filter(r => 
+
+  const criticalAndHigh = results.filter(r =>
     r.status !== 'PASS' && (r.severity === 'CRITICAL' || r.severity === 'HIGH')
   );
-  
+
   if (criticalAndHigh.length === 0) {
     console.log('✅ No critical or high severity issues found!');
   } else {
@@ -540,11 +540,11 @@ function generateSecurityReport(): void {
       console.log('');
     });
   }
-  
+
   // Calculate security score
   const score = Math.round((summary.passed / summary.total) * 100);
   const grade = score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : score >= 60 ? 'D' : 'F';
-  
+
   console.log('\n\n🏆 Security Score: ' + score + '% (Grade: ' + grade + ')\n');
 }
 
@@ -555,7 +555,7 @@ async function runSecurityAudit(): Promise<void> {
   console.log(`Staging URL: ${STAGING_URL}`);
   console.log(`API URL: ${API_URL}`);
   console.log(`Timestamp: ${new Date().toISOString()}\n`);
-  
+
   try {
     // Run all security checks
     await checkSSLConfiguration(STAGING_URL);
@@ -564,14 +564,14 @@ async function runSecurityAudit(): Promise<void> {
     await checkInputValidation(API_URL);
     await checkAuthSecurity(API_URL);
     await checkCORSConfiguration(API_URL);
-    
+
     // Generate report
     generateSecurityReport();
-    
+
     // Exit with appropriate code
     const failedCount = results.filter(r => r.status === 'FAIL').length;
     const criticalCount = results.filter(r => r.severity === 'CRITICAL').length;
-    
+
     if (criticalCount > 0) {
       console.log('\n❌ CRITICAL SECURITY ISSUES DETECTED - DEPLOYMENT SHOULD BE BLOCKED\n');
       process.exit(1);
@@ -582,7 +582,7 @@ async function runSecurityAudit(): Promise<void> {
       console.log('\n✅ SECURITY AUDIT COMPLETED - READY FOR STAGING\n');
       process.exit(0);
     }
-    
+
   } catch (error) {
     console.error('\n❌ Security audit failed:', error);
     process.exit(1);

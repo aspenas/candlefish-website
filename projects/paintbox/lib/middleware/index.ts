@@ -69,21 +69,21 @@ export type MiddlewareResult = NextResponse | null | { user?: any; data?: any };
 export function composeMiddleware(...middlewares: MiddlewareFunction[]) {
   return async (request: NextRequest): Promise<NextResponse | { [key: string]: any }> => {
     const context: { [key: string]: any } = {};
-    
+
     for (const middleware of middlewares) {
       const result = await middleware(request);
-      
+
       // If middleware returns a NextResponse, return it immediately (error/redirect)
       if (result instanceof NextResponse) {
         return result;
       }
-      
+
       // If middleware returns data, merge it into context
       if (result && typeof result === 'object') {
         Object.assign(context, result);
       }
     }
-    
+
     return context;
   };
 }
@@ -99,7 +99,7 @@ export function createSecureApiMiddleware(options: {
   sensitiveAction?: boolean;
 } = {}) {
   const middlewares: MiddlewareFunction[] = [];
-  
+
   // Rate limiting (applied first)
   if (options.rateLimit) {
     if (options.sensitiveAction) {
@@ -110,7 +110,7 @@ export function createSecureApiMiddleware(options: {
       middlewares.push(apiRateLimiter);
     }
   }
-  
+
   // Authentication
   if (options.auth) {
     if (options.adminOnly) {
@@ -119,20 +119,20 @@ export function createSecureApiMiddleware(options: {
       middlewares.push(userAuthMiddleware);
     }
   }
-  
+
   // Input validation
   if (options.validation) {
     const validateMiddleware = createValidationMiddleware(
       options.validation,
-      options.sensitiveAction ? { 
-        sanitizeStrings: true, 
+      options.sensitiveAction ? {
+        sanitizeStrings: true,
         allowExtraFields: false,
         maxPayloadSize: 50 * 1024 // 50KB for sensitive operations
       } : undefined
     );
     middlewares.push(validateMiddleware);
   }
-  
+
   return composeMiddleware(...middlewares);
 }
 
@@ -185,12 +185,12 @@ export function withMiddleware<T = any>(
   return async (request: NextRequest): Promise<NextResponse> => {
     try {
       const result = await middleware(request);
-      
+
       // If middleware returns a response (error/redirect), return it
       if (result instanceof NextResponse) {
         return result;
       }
-      
+
       // Continue to handler with context
       return await handler(request, result as T);
     } catch (error) {

@@ -62,7 +62,7 @@ const SettingsStack = createStackNavigator<SettingsStackParamList>();
 // Stack Navigators
 function DashboardStackNavigator() {
   const theme = useTheme();
-  
+
   return (
     <DashboardStack.Navigator
       screenOptions={{
@@ -75,18 +75,18 @@ function DashboardStackNavigator() {
         },
       }}
     >
-      <DashboardStack.Screen 
-        name="DashboardMain" 
+      <DashboardStack.Screen
+        name="DashboardMain"
         component={DashboardScreen}
         options={{ title: 'System Dashboard' }}
       />
-      <DashboardStack.Screen 
-        name="ServiceDetail" 
+      <DashboardStack.Screen
+        name="ServiceDetail"
         component={ServiceDetailScreen}
         options={{ title: 'Service Details' }}
       />
-      <DashboardStack.Screen 
-        name="Metrics" 
+      <DashboardStack.Screen
+        name="Metrics"
         component={MetricsScreen}
         options={{ title: 'Metrics' }}
       />
@@ -96,7 +96,7 @@ function DashboardStackNavigator() {
 
 function ServicesStackNavigator() {
   const theme = useTheme();
-  
+
   return (
     <ServicesStack.Navigator
       screenOptions={{
@@ -109,18 +109,18 @@ function ServicesStackNavigator() {
         },
       }}
     >
-      <ServicesStack.Screen 
-        name="ServicesList" 
+      <ServicesStack.Screen
+        name="ServicesList"
         component={ServicesScreen}
         options={{ title: 'Services' }}
       />
-      <ServicesStack.Screen 
-        name="ServiceDetail" 
+      <ServicesStack.Screen
+        name="ServiceDetail"
         component={ServiceDetailScreen}
         options={{ title: 'Service Details' }}
       />
-      <ServicesStack.Screen 
-        name="Metrics" 
+      <ServicesStack.Screen
+        name="Metrics"
         component={MetricsScreen}
         options={{ title: 'Metrics' }}
       />
@@ -130,7 +130,7 @@ function ServicesStackNavigator() {
 
 function AlertsStackNavigator() {
   const theme = useTheme();
-  
+
   return (
     <AlertsStack.Navigator
       screenOptions={{
@@ -143,18 +143,18 @@ function AlertsStackNavigator() {
         },
       }}
     >
-      <AlertsStack.Screen 
-        name="AlertsList" 
+      <AlertsStack.Screen
+        name="AlertsList"
         component={AlertsScreen}
         options={{ title: 'Alerts' }}
       />
-      <AlertsStack.Screen 
-        name="AlertDetail" 
+      <AlertsStack.Screen
+        name="AlertDetail"
         component={AlertDetailScreen}
         options={{ title: 'Alert Details' }}
       />
-      <AlertsStack.Screen 
-        name="ServiceDetail" 
+      <AlertsStack.Screen
+        name="ServiceDetail"
         component={ServiceDetailScreen}
         options={{ title: 'Service Details' }}
       />
@@ -164,7 +164,7 @@ function AlertsStackNavigator() {
 
 function SettingsStackNavigator() {
   const theme = useTheme();
-  
+
   return (
     <SettingsStack.Navigator
       screenOptions={{
@@ -177,8 +177,8 @@ function SettingsStackNavigator() {
         },
       }}
     >
-      <SettingsStack.Screen 
-        name="SettingsMain" 
+      <SettingsStack.Screen
+        name="SettingsMain"
         component={SettingsScreen}
         options={{ title: 'Settings' }}
       />
@@ -189,7 +189,7 @@ function SettingsStackNavigator() {
 // Tab Navigator
 function AppTabs() {
   const theme = useTheme();
-  
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -250,14 +250,14 @@ function AppTabs() {
 // Main App Navigator
 export default function AppNavigator() {
   const theme = useTheme();
-  
+
   return (
     <NavigationContainer
       linking={linkingConfig}
       ref={setNavigationRef}
     >
-      <StatusBar 
-        style={theme.dark ? 'light' : 'dark'} 
+      <StatusBar
+        style={theme.dark ? 'light' : 'dark'}
         backgroundColor={theme.colors.surface}
       />
       <AppTabs />

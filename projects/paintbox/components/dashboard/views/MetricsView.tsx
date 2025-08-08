@@ -1,6 +1,6 @@
 /**
  * Metrics View Component
- * 
+ *
  * Detailed metrics visualization with charts and real-time updates
  */
 
@@ -60,7 +60,7 @@ export function MetricsView() {
             color="blue"
             height={200}
           />
-          
+
           <MetricChart
             title="Memory Usage"
             value={systemAnalysis.resourceUtilization.memory.current}
@@ -78,7 +78,7 @@ export function MetricsView() {
             color="green"
             height={200}
           />
-          
+
           <MetricChart
             title="Disk Usage"
             value={systemAnalysis.resourceUtilization.disk.current}
@@ -96,7 +96,7 @@ export function MetricsView() {
             color="purple"
             height={200}
           />
-          
+
           <MetricChart
             title="Network I/O"
             value={systemAnalysis.resourceUtilization.network.current}

@@ -41,7 +41,7 @@ module.exports = {
       testMatch: ['<rootDir>/__tests__/unit/**/*.test.{js,ts,tsx}']
     },
     {
-      displayName: 'integration', 
+      displayName: 'integration',
       testMatch: ['<rootDir>/__tests__/integration/**/*.test.{js,ts,tsx}']
     },
     {

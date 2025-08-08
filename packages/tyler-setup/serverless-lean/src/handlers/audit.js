@@ -13,12 +13,12 @@ export const handler = async (event) => {
     if (!user) {
       return response(401, { error: 'Unauthorized' });
     }
-    
+
     // Only admins can view audit logs
     if (user.role !== 'admin') {
       return response(403, { error: 'Admin access required' });
     }
-    
+
     const queryParams = event.queryStringParameters || {};
     return await getAuditLogs(queryParams, user);
   } catch (error) {
@@ -30,9 +30,9 @@ export const handler = async (event) => {
 async function getAuditLogs(params, user) {
   try {
     const { userId, action, startDate, endDate, limit = 100 } = params;
-    
+
     let command;
-    
+
     if (userId) {
       // Query by user ID
       command = new QueryCommand({
@@ -50,25 +50,25 @@ async function getAuditLogs(params, user) {
       const filterExpressions = [];
       const expressionAttributeValues = {};
       const expressionAttributeNames = {};
-      
+
       if (action) {
         filterExpressions.push('#action = :action');
         expressionAttributeNames['#action'] = 'action';
         expressionAttributeValues[':action'] = action;
       }
-      
+
       if (startDate) {
         filterExpressions.push('#timestamp >= :startDate');
         expressionAttributeNames['#timestamp'] = 'timestamp';
         expressionAttributeValues[':startDate'] = parseInt(startDate);
       }
-      
+
       if (endDate) {
         filterExpressions.push('#timestamp <= :endDate');
         expressionAttributeNames['#timestamp'] = 'timestamp';
         expressionAttributeValues[':endDate'] = parseInt(endDate);
       }
-      
+
       command = new ScanCommand({
         TableName: AUDIT_TABLE,
         Limit: parseInt(limit),
@@ -79,9 +79,9 @@ async function getAuditLogs(params, user) {
         }),
       });
     }
-    
+
     const result = await docClient.send(command);
-    
+
     // Format logs for response
     const logs = result.Items
       .sort((a, b) => b.timestamp - a.timestamp)
@@ -95,7 +95,7 @@ async function getAuditLogs(params, user) {
         ip: log.ip,
         userAgent: log.userAgent,
       }));
-    
+
     return response(200, {
       logs,
       count: logs.length,

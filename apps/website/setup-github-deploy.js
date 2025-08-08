@@ -28,7 +28,7 @@ try {
   console.log('Updating site configuration...');
   const result = execSync(updateCommand, { encoding: 'utf8' });
   console.log('✅ Site configuration updated!\n');
-  
+
   console.log('📝 Next steps:');
   console.log('1. Go to: https://app.netlify.com/sites/candlefish-grotto/settings/deploys');
   console.log('2. Click "Link site to Git"');
@@ -39,7 +39,7 @@ try {
   console.log('   - Base directory: apps/website');
   console.log('   - Build command: npm install && npm run build');
   console.log('   - Publish directory: dist');
-  
+
 } catch (error) {
   console.error('Error:', error.message);
   console.log('\n⚠️  Manual setup required:');

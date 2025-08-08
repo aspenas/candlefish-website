@@ -21,7 +21,7 @@ global.console = {
 global.testUtils = {
   // Delay utility for async tests
   delay: (ms) => new Promise(resolve => setTimeout(resolve, ms)),
-  
+
   // Random string generator for test data
   randomString: (length = 10) => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -31,25 +31,25 @@ global.testUtils = {
     }
     return result;
   },
-  
+
   // Random number between min and max
   randomNumber: (min = 0, max = 100) => {
     return Math.floor(Math.random() * (max - min + 1)) + min;
   },
-  
+
   // Validate JSON structure
   validateJsonStructure: (obj, schema) => {
     const validate = (current, currentSchema, path = '') => {
       for (const key in currentSchema) {
         const fullPath = path ? `${path}.${key}` : key;
-        
+
         if (!(key in current)) {
           throw new Error(`Missing property: ${fullPath}`);
         }
-        
+
         const expectedType = currentSchema[key];
         const actualValue = current[key];
-        
+
         if (typeof expectedType === 'string') {
           if (expectedType === 'number' && typeof actualValue !== 'number') {
             throw new Error(`Expected ${fullPath} to be number, got ${typeof actualValue}`);
@@ -74,7 +74,7 @@ global.testUtils = {
         }
       }
     };
-    
+
     try {
       validate(obj, schema);
       return true;
@@ -122,10 +122,10 @@ expect.extend({
       success: 'boolean',
       data: 'object'
     };
-    
+
     const validationResult = global.testUtils.validateJsonStructure(received, schema);
     const pass = validationResult === true;
-    
+
     if (pass) {
       return {
         message: () => `expected response not to match API schema`,
@@ -168,7 +168,7 @@ process.on('unhandledRejection', (reason, promise) => {
 afterEach(() => {
   // Clear any timers
   jest.clearAllTimers();
-  
+
   // Reset any mocked functions
   jest.clearAllMocks();
 });

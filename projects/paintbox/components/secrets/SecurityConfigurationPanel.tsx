@@ -202,10 +202,10 @@ export const SecurityConfigurationPanel: React.FC<SecurityConfigurationPanelProp
       const response = await fetch(`/api/v1/security/check/${checkId}`, {
         method: 'POST'
       });
-      
+
       if (response.ok) {
         const result = await response.json();
-        setSecurityChecks(prev => prev.map(check => 
+        setSecurityChecks(prev => prev.map(check =>
           check.id === checkId ? { ...check, ...result } : check
         ));
       }
@@ -224,15 +224,15 @@ export const SecurityConfigurationPanel: React.FC<SecurityConfigurationPanelProp
 
   const runMigrationStep = async (stepId: string) => {
     setRunningMigration(true);
-    
+
     try {
       const response = await fetch(`/api/v1/migration/step/${stepId}`, {
         method: 'POST'
       });
-      
+
       if (response.ok) {
         const result = await response.json();
-        setMigrationSteps(prev => prev.map(step => 
+        setMigrationSteps(prev => prev.map(step =>
           step.id === stepId ? { ...step, ...result } : step
         ));
       }
@@ -342,7 +342,7 @@ export const SecurityConfigurationPanel: React.FC<SecurityConfigurationPanelProp
           <div className="flex items-center space-x-4">
             <div className="flex-1">
               <div className="w-full bg-gray-200 rounded-full h-3">
-                <div 
+                <div
                   className={`h-3 rounded-full transition-all duration-500 ${
                     overallSecurityScore >= 80 ? 'bg-green-500' :
                     overallSecurityScore >= 60 ? 'bg-yellow-500' : 'bg-red-500'
@@ -365,7 +365,7 @@ export const SecurityConfigurationPanel: React.FC<SecurityConfigurationPanelProp
           <div className="flex items-center space-x-4">
             <div className="flex-1">
               <div className="w-full bg-gray-200 rounded-full h-3">
-                <div 
+                <div
                   className="h-3 bg-blue-500 rounded-full transition-all duration-500"
                   style={{ width: `${migrationProgress}%` }}
                 ></div>
@@ -405,7 +405,7 @@ export const SecurityConfigurationPanel: React.FC<SecurityConfigurationPanelProp
                     <p className="text-sm mt-2 ml-8">{check.details}</p>
                   )}
                 </div>
-                <Button 
+                <Button
                   onClick={() => runSecurityCheck(check.id)}
                   variant="ghost"
                   className="text-sm py-1 px-2"
@@ -481,7 +481,7 @@ export const SecurityConfigurationPanel: React.FC<SecurityConfigurationPanelProp
                     {step.status.replace('_', ' ')}
                   </span>
                   {step.status === 'pending' && (
-                    <Button 
+                    <Button
                       onClick={() => runMigrationStep(step.id)}
                       disabled={runningMigration}
                       variant="ghost"
@@ -492,11 +492,11 @@ export const SecurityConfigurationPanel: React.FC<SecurityConfigurationPanelProp
                   )}
                 </div>
               </div>
-              
+
               <div className="ml-8">
                 <div className="flex items-center space-x-4 mb-2">
                   <div className="flex-1 bg-gray-200 rounded-full h-2">
-                    <div 
+                    <div
                       className={`h-2 rounded-full transition-all duration-500 ${
                         step.status === 'completed' ? 'bg-green-500' :
                         step.status === 'in_progress' ? 'bg-blue-500' :
@@ -509,11 +509,11 @@ export const SecurityConfigurationPanel: React.FC<SecurityConfigurationPanelProp
                     {step.progress}%
                   </span>
                 </div>
-                
+
                 {step.details && (
                   <p className="text-sm text-gray-600">{step.details}</p>
                 )}
-                
+
                 {step.error && (
                   <p className="text-sm text-red-600 mt-1">Error: {step.error}</p>
                 )}

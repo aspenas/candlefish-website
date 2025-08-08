@@ -12,7 +12,7 @@ function sanitizeString(input) {
   if (typeof input !== 'string') {
     return input;
   }
-  
+
   // Remove dangerous characters and HTML tags
   return input
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
@@ -43,7 +43,7 @@ function validateArtistName(artistName) {
   }
 
   const sanitized = sanitizeString(artistName);
-  
+
   // Artist names should be 1-100 characters
   if (sanitized.length < 1 || sanitized.length > 100) {
     return {
@@ -74,7 +74,7 @@ function validateArtistName(artistName) {
  */
 function validateVenueCapacity(capacity) {
   const parsed = parseInt(capacity, 10);
-  
+
   if (isNaN(parsed)) {
     return {
       valid: false,
@@ -103,7 +103,7 @@ function validateVenueCapacity(capacity) {
  */
 function validateDate(dateString) {
   const date = new Date(dateString);
-  
+
   if (isNaN(date.getTime())) {
     return {
       valid: false,
@@ -145,10 +145,10 @@ function validateEmail(email) {
   }
 
   const sanitized = sanitizeString(email).toLowerCase();
-  
+
   // Basic email regex pattern
   const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  
+
   if (!emailPattern.test(sanitized)) {
     return {
       valid: false,
@@ -170,7 +170,7 @@ function validateEmail(email) {
 function validatePagination(params = {}) {
   const page = parseInt(params.page || 1, 10);
   const limit = parseInt(params.limit || 20, 10);
-  
+
   if (isNaN(page) || page < 1) {
     return {
       valid: false,
@@ -322,7 +322,7 @@ function validationMiddleware(schema) {
 
     // Validate request body
     const validation = validateRequestBody(body, schema);
-    
+
     if (!validation.valid) {
       return {
         statusCode: 400,
@@ -336,7 +336,7 @@ function validationMiddleware(schema) {
 
     // Attach validated data to event
     event.validatedBody = validation.value;
-    
+
     // Proceed to handler
     return handler(event, context);
   };
@@ -355,7 +355,7 @@ const schemas = {
       type: 'object'
     }
   },
-  
+
   bookingScore: {
     artist: {
       required: true,

@@ -3,6 +3,7 @@
 Production-ready slash commands for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) that accelerate development through intelligent automation.
 
 **52 commands** organized as:
+
 - **🤖 Workflows**: Multi-subagent orchestration for complex tasks
 - **🔧 Tools**: Single-purpose utilities for specific operations
 
@@ -38,11 +39,13 @@ Claude Code automatically suggests relevant commands based on context.
 Multi-subagent orchestration for complex tasks:
 
 ### Feature Development
+
 - **[feature-development](workflows/feature-development.md)** - Backend, frontend, testing, and deployment subagents build complete features
 - **[full-review](workflows/full-review.md)** - Multiple review subagents provide comprehensive code analysis
 - **[smart-fix](workflows/smart-fix.md)** - Analyzes issues and delegates to appropriate specialist subagents
 
 ### Development Processes
+
 - **[git-workflow](workflows/git-workflow.md)** - Implements effective Git workflows with branching strategies and PR templates
 - **[improve-agent](workflows/improve-agent.md)** - Enhances subagent performance through prompt optimization
 - **[legacy-modernize](workflows/legacy-modernize.md)** - Modernizes legacy codebases using specialized subagents
@@ -51,6 +54,7 @@ Multi-subagent orchestration for complex tasks:
 - **[workflow-automate](workflows/workflow-automate.md)** - Automates CI/CD, monitoring, and deployment workflows
 
 ### Subagent-Orchestrated Workflows
+
 - **[full-stack-feature](workflows/full-stack-feature.md)** - Multi-platform features with backend, frontend, and mobile subagents
 - **[security-hardening](workflows/security-hardening.md)** - Security-first implementation with specialized subagents
 - **[data-driven-feature](workflows/data-driven-feature.md)** - ML-powered features with data science subagents
@@ -60,6 +64,7 @@ Multi-subagent orchestration for complex tasks:
 ## 🔧 Tools (Single-Purpose Commands)
 
 ### AI & Machine Learning
+
 - **[ai-assistant](tools/ai-assistant.md)** - Build production-ready AI assistants and chatbots
 - **[ai-review](tools/ai-review.md)** - Specialized review for AI/ML codebases
 - **[langchain-agent](tools/langchain-agent.md)** - Create LangChain/LangGraph agents with modern patterns
@@ -67,17 +72,20 @@ Multi-subagent orchestration for complex tasks:
 - **[prompt-optimize](tools/prompt-optimize.md)** - Optimize AI prompts for performance and quality
 
 ### Architecture & Code Quality
+
 - **[code-explain](tools/code-explain.md)** - Generate detailed explanations of complex code
 - **[code-migrate](tools/code-migrate.md)** - Migrate code between languages, frameworks, or versions
 - **[refactor-clean](tools/refactor-clean.md)** - Refactor code for maintainability and performance
 - **[tech-debt](tools/tech-debt.md)** - Analyze and prioritize technical debt
 
 ### Data & Database
+
 - **[data-pipeline](tools/data-pipeline.md)** - Design scalable data pipeline architectures
 - **[data-validation](tools/data-validation.md)** - Implement comprehensive data validation systems
 - **[db-migrate](tools/db-migrate.md)** - Advanced database migration strategies
 
 ### DevOps & Infrastructure
+
 - **[deploy-checklist](tools/deploy-checklist.md)** - Generate deployment configurations and checklists
 - **[docker-optimize](tools/docker-optimize.md)** - Advanced container optimization strategies
 - **[k8s-manifest](tools/k8s-manifest.md)** - Production-grade Kubernetes deployments
@@ -86,38 +94,46 @@ Multi-subagent orchestration for complex tasks:
 - **[workflow-automate](tools/workflow-automate.md)** - Automate development and operational workflows
 
 ### Development & Testing
+
 - **[api-mock](tools/api-mock.md)** - Create realistic API mocks for development and testing
 - **[api-scaffold](tools/api-scaffold.md)** - Generate production-ready API endpoints with complete implementation stack
 - **[test-harness](tools/test-harness.md)** - Create comprehensive test suites with framework detection
 
 ### Security & Compliance
+
 - **[accessibility-audit](tools/accessibility-audit.md)** - Comprehensive accessibility testing and fixes
 - **[compliance-check](tools/compliance-check.md)** - Ensure regulatory compliance (GDPR, HIPAA, SOC2)
 - **[security-scan](tools/security-scan.md)** - Comprehensive security scanning with automated remediation
 
 ### Debugging & Analysis
+
 - **[debug-trace](tools/debug-trace.md)** - Advanced debugging and tracing strategies
 - **[error-analysis](tools/error-analysis.md)** - Deep error pattern analysis and resolution strategies
 - **[error-trace](tools/error-trace.md)** - Trace and diagnose production errors
 - **[issue](tools/issue.md)** - Create well-structured GitHub/GitLab issues
 
 ### Dependencies & Configuration
+
 - **[config-validate](tools/config-validate.md)** - Validate and manage application configuration
 - **[deps-audit](tools/deps-audit.md)** - Audit dependencies for security and licensing
 - **[deps-upgrade](tools/deps-upgrade.md)** - Safely upgrade project dependencies
 
 ### Documentation & Collaboration
+
 - **[doc-generate](tools/doc-generate.md)** - Generate comprehensive documentation
 - **[git-workflow](tools/git-workflow.md)** - Implement effective Git workflows
 - **[pr-enhance](tools/pr-enhance.md)** - Enhance pull requests with quality checks
 
 ### Cost Optimization
+
 - **[cost-optimize](tools/cost-optimize.md)** - Optimize cloud and infrastructure costs
 
 ### Onboarding & Setup
+
 - **[onboard](tools/onboard.md)** - Set up development environments for new team members
 
 ### Subagent Tools
+
 - **[multi-agent-review](tools/multi-agent-review.md)** - Multi-perspective code review with specialized subagents
 - **[smart-debug](tools/smart-debug.md)** - Deep debugging with debugger and performance subagents
 - **[multi-agent-optimize](tools/multi-agent-optimize.md)** - Full-stack optimization with multiple subagents
@@ -138,7 +154,7 @@ Multi-subagent orchestration for complex tasks:
 
 ### 🤖 Workflows (14 commands)
 
-- Feature Development & Review (3 commands) 
+- Feature Development & Review (3 commands)
 - Development Process Automation (6 commands)
 - Subagent-Orchestrated Workflows (5 commands)
 
@@ -318,24 +334,27 @@ The real power comes from combining workflows and tools for complete development
 Commands can be used individually or combined in powerful patterns:
 
 ### Sequential Execution
+
 ```bash
 # Build → Test → Secure → Deploy pipeline
 /api-scaffold user management API
-/test-harness comprehensive test suite for user API  
+/test-harness comprehensive test suite for user API
 /security-scan check user API for vulnerabilities
 /k8s-manifest deploy user API to production
 ```
 
 ### Parallel Analysis
+
 ```bash
 # Multiple perspectives on the same codebase
 /multi-agent-review comprehensive architecture and code review
-/security-scan audit security posture  
+/security-scan audit security posture
 /performance-optimization identify and fix bottlenecks
 # Then consolidate findings
 ```
 
 ### Iterative Refinement
+
 ```bash
 # Start broad, then narrow focus
 /feature-development implement payment processing
@@ -345,6 +364,7 @@ Commands can be used individually or combined in powerful patterns:
 ```
 
 ### Cross-Domain Integration
+
 ```bash
 # Frontend + Backend + Infrastructure
 /api-scaffold backend payment API
@@ -356,23 +376,27 @@ Commands can be used individually or combined in powerful patterns:
 ## When to Use Workflows vs Tools
 
 ### 🔀 Workflows & Subagent Tools
+
 - **Problem-solving**: Analyze and fix issues adaptively
 - **Multiple perspectives**: Coordinate specialist subagents
 - **Complex tasks**: Multi-step processes across domains
 - **Unknown solutions**: Let subagents determine approach
 
 ### 🛠️ Specialized Tools
+
 - **Infrastructure setup**: Configure environments
 - **Code generation**: Create specific implementations
 - **Analysis**: Generate reports without fixes
 - **Domain tasks**: Highly specialized operations
 
 **Examples:**
+
 - "Implement user authentication system" → `/feature-development`
 - "Fix performance issues across the stack" → `/smart-fix`
 - "Modernize legacy monolith" → `/legacy-modernize`
 
-### 🔧 Use Tools When:
+### 🔧 Use Tools When
+
 - **Specific expertise needed** - Clear, focused task in one domain
 - **Precise control desired** - Want to direct specific implementation details
 - **Part of manual workflow** - Integrating into existing processes
@@ -380,6 +404,7 @@ Commands can be used individually or combined in powerful patterns:
 - **Building on existing work** - Enhancing or refining previous outputs
 
 **Examples:**
+
 - "Create Kubernetes manifests" → `/k8s-manifest`
 - "Scan for security vulnerabilities" → `/security-scan`
 - "Generate API documentation" → `/doc-generate`
@@ -387,6 +412,7 @@ Commands can be used individually or combined in powerful patterns:
 ## Command Format
 
 Slash commands are simple markdown files where:
+
 - The filename becomes the command name (e.g., `api-scaffold.md` → `/api-scaffold`)
 - The file content is the prompt/instructions executed when invoked
 - Use `$ARGUMENTS` placeholder for user input
@@ -394,11 +420,13 @@ Slash commands are simple markdown files where:
 ## Best Practices
 
 ### Command Selection
+
 - **Let Claude Code suggest automatically** - Analyzes context and selects optimal commands
 - **Use workflows for complex tasks** - Subagents coordinate multi-domain implementations
 - **Use tools for focused tasks** - Apply specific commands for targeted improvements
 
 ### Effective Usage
+
 - **Provide comprehensive context** - Include tech stack, constraints, and requirements
 - **Chain commands strategically** - Workflows → Tools → Refinements
 - **Build on previous outputs** - Commands are designed to work together
@@ -422,22 +450,26 @@ Slash commands are simple markdown files where:
 ## Performance Tips
 
 **Command Selection:**
+
 - **Workflows**: Multi-subagent coordination for complex features
 - **Tools**: Single-purpose operations for specific tasks
 - **Simple edits**: Stay with main agent
 
 **Optimization:**
+
 - Start with tools for known problems
 - Provide detailed requirements upfront
 - Build on previous command outputs
 - Let workflows complete before modifications
 
-### Adding a New Workflow:
+### Adding a New Workflow
+
 - Focus on subagent orchestration and delegation logic
 - Specify which specialized subagents to use and in what order
 - Define coordination patterns between subagents
 
-### Adding a New Tool:
+### Adding a New Tool
+
 - Include complete, production-ready implementations
 - Structure content with clear sections and actionable outputs
 - Include examples, best practices, and integration points

@@ -13,9 +13,9 @@ const OptimizedHeroSection: React.FC = React.memo(() => {
   // Badge animation
   const badgeSpring = useSpring({
     from: { opacity: 0, transform: 'translateY(20px)' },
-    to: { 
-      opacity: inView ? 1 : 0, 
-      transform: inView ? 'translateY(0px)' : 'translateY(20px)' 
+    to: {
+      opacity: inView ? 1 : 0,
+      transform: inView ? 'translateY(0px)' : 'translateY(20px)'
     },
     delay: prefersReducedMotion ? 0 : 200,
     config: config.gentle
@@ -24,9 +24,9 @@ const OptimizedHeroSection: React.FC = React.memo(() => {
   // Title animation
   const titleSpring = useSpring({
     from: { opacity: 0, transform: 'translateY(30px)' },
-    to: { 
-      opacity: inView ? 1 : 0, 
-      transform: inView ? 'translateY(0px)' : 'translateY(30px)' 
+    to: {
+      opacity: inView ? 1 : 0,
+      transform: inView ? 'translateY(0px)' : 'translateY(30px)'
     },
     delay: prefersReducedMotion ? 0 : 400,
     config: config.gentle
@@ -35,9 +35,9 @@ const OptimizedHeroSection: React.FC = React.memo(() => {
   // Subtitle animation
   const subtitleSpring = useSpring({
     from: { opacity: 0, transform: 'translateY(30px)' },
-    to: { 
-      opacity: inView ? 1 : 0, 
-      transform: inView ? 'translateY(0px)' : 'translateY(30px)' 
+    to: {
+      opacity: inView ? 1 : 0,
+      transform: inView ? 'translateY(0px)' : 'translateY(30px)'
     },
     delay: prefersReducedMotion ? 0 : 600,
     config: config.gentle
@@ -46,9 +46,9 @@ const OptimizedHeroSection: React.FC = React.memo(() => {
   // CTA animation
   const ctaSpring = useSpring({
     from: { opacity: 0, transform: 'translateY(20px)' },
-    to: { 
-      opacity: inView ? 1 : 0, 
-      transform: inView ? 'translateY(0px)' : 'translateY(20px)' 
+    to: {
+      opacity: inView ? 1 : 0,
+      transform: inView ? 'translateY(0px)' : 'translateY(20px)'
     },
     delay: prefersReducedMotion ? 0 : 800,
     config: config.gentle
@@ -90,13 +90,13 @@ const OptimizedHeroSection: React.FC = React.memo(() => {
   }, [setParallax, prefersReducedMotion])
 
   return (
-    <section 
+    <section
       ref={ref}
       className="hero-section relative min-h-screen flex items-center overflow-hidden"
       aria-label="Hero Section"
     >
       {/* Optimized Grid Background */}
-      <animated.div 
+      <animated.div
         className="absolute inset-0 pointer-events-none"
         style={{
           transform: parallax.y.to(y => `translateY(${y * 0.1}px)`),
@@ -104,9 +104,9 @@ const OptimizedHeroSection: React.FC = React.memo(() => {
         }}
         aria-hidden="true"
       >
-        <svg 
-          width="100%" 
-          height="100%" 
+        <svg
+          width="100%"
+          height="100%"
           className="opacity-5"
           xmlns="http://www.w3.org/2000/svg"
         >
@@ -118,11 +118,11 @@ const OptimizedHeroSection: React.FC = React.memo(() => {
           <rect width="100%" height="100%" fill="url(#grid)" />
         </svg>
       </animated.div>
-      
+
       <div className="container mx-auto px-6 max-w-6xl relative z-10">
         <div className="text-center">
           {/* Validation Badge */}
-          <animated.div 
+          <animated.div
             style={badgeSpring}
             className="inline-block"
           >
@@ -130,25 +130,25 @@ const OptimizedHeroSection: React.FC = React.memo(() => {
               VALIDATION PHASE
             </span>
           </animated.div>
-          
+
           {/* Main Title */}
-          <animated.h1 
+          <animated.h1
             style={titleSpring}
             className="text-5xl md:text-6xl lg:text-7xl font-light leading-tight mt-8 mb-6"
           >
             Illuminating the path to{' '}
             <span className="text-teal-400">AI transformation</span>
           </animated.h1>
-          
+
           {/* Subtitle */}
-          <animated.p 
+          <animated.p
             style={subtitleSpring}
             className="text-xl md:text-2xl text-gray-400 mb-12 max-w-4xl mx-auto leading-relaxed font-light"
           >
             We turn your slowest business processes into your fastest competitive advantages
             through discrete, composable AI modules.
           </animated.p>
-          
+
           {/* CTA Button */}
           <animated.div style={ctaSpring}>
             <animated.a
@@ -164,9 +164,9 @@ const OptimizedHeroSection: React.FC = React.memo(() => {
               onBlur={handleMouseLeave}
             >
               <span>Explore Partnership</span>
-              <animated.svg 
-                className="w-5 h-5" 
-                viewBox="0 0 20 20" 
+              <animated.svg
+                className="w-5 h-5"
+                viewBox="0 0 20 20"
                 fill="currentColor"
                 style={{
                   transform: buttonHover.x.to(x => `translateX(${x}px)`)

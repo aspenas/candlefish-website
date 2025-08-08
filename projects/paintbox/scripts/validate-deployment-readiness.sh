@@ -64,10 +64,10 @@ run_validation() {
     local test_name="$1"
     local test_command="$2"
     local critical="${3:-false}"
-    
+
     TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
     log_debug "Running validation: $test_name"
-    
+
     if eval "$test_command" >/dev/null 2>&1; then
         log_info "✅ $test_name"
         PASSED_CHECKS=$((PASSED_CHECKS + 1))
@@ -89,37 +89,37 @@ run_validation() {
 # Infrastructure validation
 validate_terraform_state() {
     log_step "Validating Terraform infrastructure state"
-    
+
     cd "$PROJECT_ROOT/terraform" || return 1
-    
+
     run_validation "Terraform initialized" "terraform --version && ls .terraform" true
     run_validation "Terraform configuration valid" "terraform validate" true
     run_validation "Terraform plan succeeds" "terraform plan -var='environment=$ENVIRONMENT' -var-file='environments/${ENVIRONMENT}.tfvars' -detailed-exitcode" false
-    
+
     cd - >/dev/null
 }
 
 validate_aws_resources() {
     log_step "Validating AWS resources"
-    
+
     # ECS Cluster
     run_validation "ECS cluster exists" "aws ecs describe-clusters --clusters paintbox-${ENVIRONMENT}" true
-    
+
     # VPC and networking
     run_validation "VPC exists" "aws ec2 describe-vpcs --filters 'Name=tag:Name,Values=paintbox-vpc-${ENVIRONMENT}'" true
     run_validation "Private subnets exist" "aws ec2 describe-subnets --filters 'Name=tag:Type,Values=private' --query 'length(Subnets) >= \`2\`'" true
     run_validation "Public subnets exist" "aws ec2 describe-subnets --filters 'Name=tag:Type,Values=public' --query 'length(Subnets) >= \`2\`'" true
-    
+
     # Database
     run_validation "RDS instance exists" "aws rds describe-db-instances --db-instance-identifier paintbox-${ENVIRONMENT}" true
     run_validation "Database is encrypted" "aws rds describe-db-instances --db-instance-identifier paintbox-${ENVIRONMENT} --query 'DBInstances[0].StorageEncrypted'" true
     run_validation "Database not publicly accessible" "aws rds describe-db-instances --db-instance-identifier paintbox-${ENVIRONMENT} --query 'DBInstances[0].PubliclyAccessible == \`false\`'" true
-    
+
     # Redis
     run_validation "ElastiCache cluster exists" "aws elasticache describe-replication-groups --replication-group-id paintbox-${ENVIRONMENT}" true
     run_validation "Redis encryption at rest enabled" "aws elasticache describe-replication-groups --replication-group-id paintbox-${ENVIRONMENT} --query 'ReplicationGroups[0].AtRestEncryptionEnabled'" true
     run_validation "Redis encryption in transit enabled" "aws elasticache describe-replication-groups --replication-group-id paintbox-${ENVIRONMENT} --query 'ReplicationGroups[0].TransitEncryptionEnabled'" true
-    
+
     # Load Balancer (for staging with blue-green)
     if [[ "$ENVIRONMENT" == "staging" ]]; then
         run_validation "Application Load Balancer exists" "aws elbv2 describe-load-balancers --names paintbox-alb-${ENVIRONMENT}" true
@@ -130,31 +130,31 @@ validate_aws_resources() {
 
 validate_security_configuration() {
     log_step "Validating security configuration"
-    
+
     # KMS
     run_validation "KMS key exists" "aws kms describe-key --key-id alias/paintbox-${ENVIRONMENT}" true
     run_validation "KMS key rotation enabled" "aws kms get-key-rotation-status --key-id alias/paintbox-${ENVIRONMENT} --query 'KeyRotationEnabled'" false
-    
+
     # Secrets Manager
     run_validation "Secrets Manager secret exists" "aws secretsmanager describe-secret --secret-id paintbox-${ENVIRONMENT}" true
     run_validation "Secret is encrypted" "aws secretsmanager describe-secret --secret-id paintbox-${ENVIRONMENT} --query 'KmsKeyId != null'" true
-    
+
     # IAM Roles
     run_validation "ECS execution role exists" "aws iam get-role --role-name paintbox-ecs-execution-${ENVIRONMENT}" true
     run_validation "Application role exists" "aws iam get-role --role-name paintbox-app-${ENVIRONMENT}" true
-    
+
     # Security Groups
     run_validation "Database security group exists" "aws ec2 describe-security-groups --filters 'Name=tag:Name,Values=paintbox-database-sg-${ENVIRONMENT}'" true
     run_validation "Redis security group exists" "aws ec2 describe-security-groups --filters 'Name=tag:Name,Values=paintbox-redis-sg-${ENVIRONMENT}'" true
     run_validation "Application security group exists" "aws ec2 describe-security-groups --filters 'Name=tag:Name,Values=paintbox-app-sg-${ENVIRONMENT}'" true
-    
+
     # WAF (optional for staging)
     run_validation "WAF Web ACL configured" "aws wafv2 list-web-acls --scope CLOUDFRONT --region us-east-1 --query \"WebACLs[?Name=='paintbox-web-acl-${ENVIRONMENT}']\"" false
 }
 
 validate_secrets() {
     log_step "Validating secrets configuration"
-    
+
     # Run comprehensive secrets validation
     if "$PROJECT_ROOT/scripts/validate-secrets-manager.sh" --environment "$ENVIRONMENT" >/dev/null 2>&1; then
         log_info "✅ All secrets properly configured"
@@ -169,12 +169,12 @@ validate_secrets() {
 
 validate_container_images() {
     log_step "Validating container images"
-    
+
     local registry_url="ghcr.io/candlefish-ai/paintbox"
-    
+
     # Check if we can authenticate to container registry
     run_validation "Container registry authentication" "echo \$GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin" false
-    
+
     # Check if base images exist
     run_validation "Frontend base image exists" "docker manifest inspect ${registry_url}-frontend:${ENVIRONMENT}-latest" false
     run_validation "Backend base image exists" "docker manifest inspect ${registry_url}-backend:${ENVIRONMENT}-latest" false
@@ -182,14 +182,14 @@ validate_container_images() {
 
 validate_database_connectivity() {
     log_step "Validating database connectivity"
-    
+
     # Get database endpoint
     local db_endpoint
     db_endpoint=$(aws rds describe-db-instances \
         --db-instance-identifier "paintbox-${ENVIRONMENT}" \
         --query 'DBInstances[0].Endpoint.Address' \
         --output text 2>/dev/null || echo "")
-    
+
     if [[ -n "$db_endpoint" ]]; then
         # Test network connectivity (port 5432)
         run_validation "Database port accessible" "timeout 5 bash -c '</dev/tcp/${db_endpoint}/5432'" true
@@ -204,14 +204,14 @@ validate_database_connectivity() {
 
 validate_redis_connectivity() {
     log_step "Validating Redis connectivity"
-    
+
     # Get Redis endpoint
     local redis_endpoint
     redis_endpoint=$(aws elasticache describe-replication-groups \
         --replication-group-id "paintbox-${ENVIRONMENT}" \
         --query 'ReplicationGroups[0].ConfigurationEndpoint.Address' \
         --output text 2>/dev/null || echo "")
-    
+
     if [[ -z "$redis_endpoint" ]] || [[ "$redis_endpoint" == "None" ]]; then
         # Try primary endpoint for single-node clusters
         redis_endpoint=$(aws elasticache describe-replication-groups \
@@ -219,7 +219,7 @@ validate_redis_connectivity() {
             --query 'ReplicationGroups[0].NodeGroups[0].PrimaryEndpoint.Address' \
             --output text 2>/dev/null || echo "")
     fi
-    
+
     if [[ -n "$redis_endpoint" ]] && [[ "$redis_endpoint" != "None" ]]; then
         # Test network connectivity (port 6379)
         run_validation "Redis port accessible" "timeout 5 bash -c '</dev/tcp/${redis_endpoint}/6379'" true
@@ -234,29 +234,29 @@ validate_redis_connectivity() {
 
 validate_monitoring_setup() {
     log_step "Validating monitoring and logging setup"
-    
+
     # CloudWatch Log Groups
     run_validation "Application log group exists" "aws logs describe-log-groups --log-group-name-prefix '/aws/paintbox/app-${ENVIRONMENT}'" false
     run_validation "API log group exists" "aws logs describe-log-groups --log-group-name-prefix '/aws/paintbox/api-${ENVIRONMENT}'" false
-    
+
     # CloudWatch Dashboard (if exists)
     run_validation "CloudWatch dashboard exists" "aws cloudwatch get-dashboard --dashboard-name 'Paintbox-${ENVIRONMENT}'" false
 }
 
 validate_deployment_scripts() {
     log_step "Validating deployment scripts"
-    
+
     local scripts=(
         "blue-green-deploy.sh"
         "emergency-rollback.sh"
         "security-validation.sh"
         "validate-secrets-manager.sh"
     )
-    
+
     for script in "${scripts[@]}"; do
         run_validation "Script $script exists and executable" "test -x '$PROJECT_ROOT/scripts/$script'" true
     done
-    
+
     # Validate script syntax
     for script in "${scripts[@]}"; do
         run_validation "Script $script syntax valid" "bash -n '$PROJECT_ROOT/scripts/$script'" true
@@ -265,36 +265,36 @@ validate_deployment_scripts() {
 
 validate_external_dependencies() {
     log_step "Validating external service dependencies"
-    
+
     # Salesforce sandbox connectivity
     run_validation "Salesforce sandbox reachable" "curl -f -s -m 10 https://kindhomesolutions1--bartsand.sandbox.my.salesforce.com/" false
-    
+
     # Company Cam API connectivity
     run_validation "Company Cam API reachable" "curl -f -s -m 10 https://api.companycam.com/" false
-    
+
     # Anthropic API connectivity
     run_validation "Anthropic API reachable" "curl -f -s -m 10 https://api.anthropic.com/" false
-    
+
     # Docker registry connectivity
     run_validation "GitHub Container Registry reachable" "curl -f -s -m 10 https://ghcr.io/" false
 }
 
 validate_prerequisites() {
     log_step "Validating deployment prerequisites"
-    
+
     # Required tools
     local tools=("aws" "terraform" "docker" "jq" "curl")
     for tool in "${tools[@]}"; do
         run_validation "$tool command available" "command -v $tool" true
     done
-    
+
     # AWS credentials
     run_validation "AWS credentials configured" "aws sts get-caller-identity" true
     run_validation "AWS region set correctly" "test \"\$(aws configure get region)\" = \"$AWS_REGION\"" false
-    
+
     # Docker daemon
     run_validation "Docker daemon running" "docker info" true
-    
+
     # Terraform workspace
     cd "$PROJECT_ROOT/terraform" || return 1
     run_validation "Terraform workspace correct" "terraform workspace show | grep -E '(default|${ENVIRONMENT})'" false
@@ -303,10 +303,10 @@ validate_prerequisites() {
 
 generate_readiness_report() {
     log_step "Generating deployment readiness report"
-    
+
     local report_file="${PROJECT_ROOT}/deployment-readiness-report-${ENVIRONMENT}-$(date +%Y%m%d-%H%M%S).md"
     local readiness_status
-    
+
     if [[ $FAILED_CHECKS -eq 0 ]]; then
         if [[ $WARNING_CHECKS -eq 0 ]]; then
             readiness_status="🟢 **READY** - All checks passed"
@@ -316,7 +316,7 @@ generate_readiness_report() {
     else
         readiness_status="🔴 **NOT READY** - Critical issues must be resolved"
     fi
-    
+
     cat > "$report_file" << EOF
 # Deployment Readiness Report
 
@@ -465,10 +465,10 @@ EOF
 # Main execution
 main() {
     log_info "Starting deployment readiness validation for environment: $ENVIRONMENT"
-    
+
     # Create logs directory
     mkdir -p "$PROJECT_ROOT/logs"
-    
+
     # Run all validation categories
     validate_prerequisites
     validate_terraform_state
@@ -481,11 +481,11 @@ main() {
     validate_monitoring_setup
     validate_deployment_scripts
     validate_external_dependencies
-    
+
     # Generate comprehensive report
     local report_file
     report_file=$(generate_readiness_report)
-    
+
     # Final summary
     log_info "================================================="
     log_info "Deployment Readiness Validation Complete"
@@ -497,7 +497,7 @@ main() {
     log_info "Warnings: $WARNING_CHECKS"
     log_info "Success Rate: $((PASSED_CHECKS * 100 / TOTAL_CHECKS))%"
     log_info "Report: $report_file"
-    
+
     if [[ $FAILED_CHECKS -eq 0 ]]; then
         if [[ $WARNING_CHECKS -eq 0 ]]; then
             log_info "🟢 All checks passed - Ready for deployment!"

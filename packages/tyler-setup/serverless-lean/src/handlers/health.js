@@ -7,7 +7,7 @@ const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION 
 
 export const handler = async (event) => {
   const startTime = Date.now();
-  
+
   try {
     // Basic health check data
     const healthData = {
@@ -23,7 +23,7 @@ export const handler = async (event) => {
 
     // Check if this is a detailed health check
     const detailed = event.queryStringParameters?.detailed === 'true';
-    
+
     if (detailed) {
       // Check DynamoDB connectivity
       try {
@@ -34,7 +34,7 @@ export const handler = async (event) => {
         healthData.checks.dynamodb = 'unhealthy';
         healthData.status = 'degraded';
       }
-      
+
       // Check Secrets Manager connectivity
       try {
         await checkSecretsManagerHealth();
@@ -44,7 +44,7 @@ export const handler = async (event) => {
         healthData.checks.secretsManager = 'unhealthy';
         healthData.status = 'degraded';
       }
-      
+
       // Check memory usage
       const memoryUsage = process.memoryUsage();
       const memoryUsageMB = memoryUsage.heapUsed / 1024 / 1024;
@@ -53,7 +53,7 @@ export const handler = async (event) => {
         heapUsedMB: Math.round(memoryUsageMB),
         heapTotalMB: Math.round(memoryUsage.heapTotal / 1024 / 1024),
       };
-      
+
       if (memoryUsageMB > 400) {
         healthData.status = 'degraded';
       }
@@ -62,22 +62,22 @@ export const handler = async (event) => {
     // Calculate response time
     const responseTime = Date.now() - startTime;
     healthData.responseTimeMs = responseTime;
-    
+
     // Send metrics to CloudWatch
     await putMetric('HealthCheckResponseTime', responseTime, [
       { Name: 'Stage', Value: process.env.STAGE || 'dev' },
       { Name: 'Detailed', Value: detailed ? 'true' : 'false' }
     ]);
-    
+
     await putMetric('HealthCheckStatus', healthData.status === 'healthy' ? 1 : 0, [
       { Name: 'Stage', Value: process.env.STAGE || 'dev' }
     ]);
 
     return response(200, healthData);
-    
+
   } catch (error) {
     console.error('Health check error:', error);
-    
+
     const errorData = {
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
@@ -86,11 +86,11 @@ export const handler = async (event) => {
       error: error.message,
       responseTimeMs: Date.now() - startTime,
     };
-    
+
     await putMetric('HealthCheckStatus', 0, [
       { Name: 'Stage', Value: process.env.STAGE || 'dev' }
     ]);
-    
+
     return response(503, errorData);
   }
 };
@@ -100,7 +100,7 @@ export const handler = async (event) => {
  */
 async function checkDynamoDBHealth() {
   const tableName = `${process.env.SECRETS_PREFIX}-users`;
-  
+
   await dynamoClient.send(new DescribeTableCommand({
     TableName: tableName
   }));

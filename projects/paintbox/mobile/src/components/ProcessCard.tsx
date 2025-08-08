@@ -72,7 +72,7 @@ export default function ProcessCard({ process }: ProcessCardProps) {
   const statusIcon = getStatusIcon(process.status);
 
   // Truncate command for display
-  const displayCommand = process.command.length > 50 
+  const displayCommand = process.command.length > 50
     ? process.command.substring(0, 47) + '...'
     : process.command;
 
@@ -95,7 +95,7 @@ export default function ProcessCard({ process }: ProcessCardProps) {
             </Text>
           </View>
         </View>
-        
+
         <Chip
           mode="outlined"
           compact
@@ -113,8 +113,8 @@ export default function ProcessCard({ process }: ProcessCardProps) {
           size={12}
           color={theme.colors.onSurfaceVariant}
         />
-        <Text 
-          variant="labelSmall" 
+        <Text
+          variant="labelSmall"
           style={[styles.commandText, { color: theme.colors.onSurfaceVariant }]}
         >
           {displayCommand}
@@ -184,7 +184,7 @@ export default function ProcessCard({ process }: ProcessCardProps) {
               User: {process.user}
             </Text>
           )}
-          
+
           <Text variant="labelSmall" style={[styles.metadataText, { color: theme.colors.onSurfaceVariant }]}>
             Started {formatDistanceToNow(new Date(process.startTime), { addSuffix: true })}
           </Text>

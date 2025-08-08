@@ -13,7 +13,7 @@ describe('SecretsManagementDashboard', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     // Mock successful API responses by default
     mockFetch.mockImplementation((url) => {
       if (url.toString().includes('/api/v1/secrets/config')) {
@@ -37,7 +37,7 @@ describe('SecretsManagementDashboard', () => {
           })
         } as Response)
       }
-      
+
       if (url.toString().includes('/api/v1/services/')) {
         const serviceName = url.toString().includes('salesforce') ? 'salesforce' : 'companycam'
         return Promise.resolve({
@@ -51,7 +51,7 @@ describe('SecretsManagementDashboard', () => {
           })
         } as Response)
       }
-      
+
       return Promise.reject(new Error('Unknown endpoint'))
     })
   })
@@ -63,14 +63,14 @@ describe('SecretsManagementDashboard', () => {
   describe('Rendering and Initial Load', () => {
     it('should render loading state initially', () => {
       render(<SecretsManagementDashboard />)
-      
+
       expect(screen.getByText('Refreshing...')).toBeInTheDocument()
       expect(screen.getAllByRole('generic')).toHaveLength(expect.any(Number)) // Loading skeletons
     })
 
     it('should load and display dashboard data successfully', async () => {
       render(<SecretsManagementDashboard />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Secrets Management')).toBeInTheDocument()
       })
@@ -83,13 +83,13 @@ describe('SecretsManagementDashboard', () => {
 
     it('should display service health information', async () => {
       render(<SecretsManagementDashboard />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Salesforce')).toBeInTheDocument()
       })
 
       expect(screen.getByText('Companycam')).toBeInTheDocument()
-      
+
       // Check for health status indicators
       const healthyStatuses = screen.getAllByText(/healthy/i)
       expect(healthyStatuses.length).toBeGreaterThan(0)
@@ -97,7 +97,7 @@ describe('SecretsManagementDashboard', () => {
 
     it('should display secrets rotation table', async () => {
       render(<SecretsManagementDashboard />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Secret Rotation Status')).toBeInTheDocument()
       })
@@ -117,7 +117,7 @@ describe('SecretsManagementDashboard', () => {
 
   describe('Error Handling', () => {
     it('should display error state when config fetch fails', async () => {
-      mockFetch.mockImplementationOnce(() => 
+      mockFetch.mockImplementationOnce(() =>
         Promise.resolve({
           ok: false,
           status: 500,
@@ -126,7 +126,7 @@ describe('SecretsManagementDashboard', () => {
       )
 
       render(<SecretsManagementDashboard />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Dashboard Error')).toBeInTheDocument()
       })
@@ -148,14 +148,14 @@ describe('SecretsManagementDashboard', () => {
             })
           } as Response)
         }
-        
+
         if (url.toString().includes('/api/v1/services/salesforce/status')) {
           return Promise.resolve({
             ok: false,
             status: 503
           } as Response)
         }
-        
+
         if (url.toString().includes('/api/v1/services/companycam/status')) {
           return Promise.resolve({
             ok: true,
@@ -166,12 +166,12 @@ describe('SecretsManagementDashboard', () => {
             })
           } as Response)
         }
-        
+
         return Promise.reject(new Error('Unknown endpoint'))
       })
 
       render(<SecretsManagementDashboard />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Secrets Management')).toBeInTheDocument()
       })
@@ -188,7 +188,7 @@ describe('SecretsManagementDashboard', () => {
 
     it('should retry failed requests when retry button is clicked', async () => {
       // First call fails
-      mockFetch.mockImplementationOnce(() => 
+      mockFetch.mockImplementationOnce(() =>
         Promise.resolve({
           ok: false,
           status: 500
@@ -196,7 +196,7 @@ describe('SecretsManagementDashboard', () => {
       )
 
       render(<SecretsManagementDashboard />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Dashboard Error')).toBeInTheDocument()
       })
@@ -214,7 +214,7 @@ describe('SecretsManagementDashboard', () => {
             })
           } as Response)
         }
-        
+
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({
@@ -239,18 +239,18 @@ describe('SecretsManagementDashboard', () => {
   describe('Auto-refresh Functionality', () => {
     it('should auto-refresh data every 30 seconds', async () => {
       jest.useFakeTimers()
-      
+
       render(<SecretsManagementDashboard />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Secrets Management')).toBeInTheDocument()
       })
 
       const initialCallCount = mockFetch.mock.calls.length
-      
+
       // Fast-forward 30 seconds
       jest.advanceTimersByTime(30000)
-      
+
       await waitFor(() => {
         expect(mockFetch.mock.calls.length).toBeGreaterThan(initialCallCount)
       })
@@ -260,7 +260,7 @@ describe('SecretsManagementDashboard', () => {
 
     it('should display last refresh timestamp', async () => {
       render(<SecretsManagementDashboard />)
-      
+
       await waitFor(() => {
         expect(screen.getByText(/Last updated:/)).toBeInTheDocument()
       })
@@ -273,13 +273,13 @@ describe('SecretsManagementDashboard', () => {
   describe('Manual Refresh', () => {
     it('should refresh data when refresh button is clicked', async () => {
       render(<SecretsManagementDashboard />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Secrets Management')).toBeInTheDocument()
       })
 
       const initialCallCount = mockFetch.mock.calls.length
-      
+
       const refreshButton = screen.getByRole('button', { name: 'Refresh' })
       fireEvent.click(refreshButton)
 
@@ -290,7 +290,7 @@ describe('SecretsManagementDashboard', () => {
 
     it('should disable refresh button during refresh', async () => {
       render(<SecretsManagementDashboard />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Secrets Management')).toBeInTheDocument()
       })
@@ -305,7 +305,7 @@ describe('SecretsManagementDashboard', () => {
   describe('Status Indicators', () => {
     it('should display correct status colors and icons', async () => {
       render(<SecretsManagementDashboard />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Secrets Management')).toBeInTheDocument()
       })
@@ -332,7 +332,7 @@ describe('SecretsManagementDashboard', () => {
             })
           } as Response)
         }
-        
+
         if (url.toString().includes('/api/v1/services/salesforce/status')) {
           return Promise.resolve({
             ok: true,
@@ -345,7 +345,7 @@ describe('SecretsManagementDashboard', () => {
             })
           } as Response)
         }
-        
+
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({
@@ -357,7 +357,7 @@ describe('SecretsManagementDashboard', () => {
       })
 
       render(<SecretsManagementDashboard />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Secrets Management')).toBeInTheDocument()
       })
@@ -370,7 +370,7 @@ describe('SecretsManagementDashboard', () => {
   describe('AWS Secrets Manager Status', () => {
     it('should display AWS Secrets Manager connection status', async () => {
       render(<SecretsManagementDashboard />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('AWS Secrets Manager')).toBeInTheDocument()
       })
@@ -384,7 +384,7 @@ describe('SecretsManagementDashboard', () => {
   describe('Accessibility', () => {
     it('should have proper ARIA labels and roles', async () => {
       render(<SecretsManagementDashboard />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Secrets Management')).toBeInTheDocument()
       })
@@ -397,7 +397,7 @@ describe('SecretsManagementDashboard', () => {
       // Check for table accessibility
       const table = screen.getByRole('table')
       expect(table).toBeInTheDocument()
-      
+
       const tableHeaders = within(table).getAllByRole('columnheader')
       expect(tableHeaders).toHaveLength(5)
     })
@@ -405,20 +405,20 @@ describe('SecretsManagementDashboard', () => {
     it('should be keyboard navigable', async () => {
       const user = userEvent.setup()
       render(<SecretsManagementDashboard />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Secrets Management')).toBeInTheDocument()
       })
 
       const refreshButton = screen.getByRole('button', { name: 'Refresh' })
-      
+
       // Tab to the refresh button
       await user.tab()
       expect(refreshButton).toHaveFocus()
 
       // Press Enter to activate
       await user.keyboard('{Enter}')
-      
+
       // Should trigger refresh (indicated by button text change)
       await waitFor(() => {
         expect(screen.getByRole('button', { name: 'Refreshing...' })).toBeInTheDocument()
@@ -429,13 +429,13 @@ describe('SecretsManagementDashboard', () => {
   describe('Security Considerations', () => {
     it('should not display sensitive information in the UI', async () => {
       render(<SecretsManagementDashboard />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Secrets Management')).toBeInTheDocument()
       })
 
       // Get all text content from the component
-      const componentText = screen.getByTestId ? 
+      const componentText = screen.getByTestId ?
         screen.getByTestId('secrets-dashboard')?.textContent || document.body.textContent :
         document.body.textContent
 
@@ -448,13 +448,13 @@ describe('SecretsManagementDashboard', () => {
 
     it('should handle XSS attempts in error messages', async () => {
       const xssPayload = '<script>alert("XSS")</script>'
-      
-      mockFetch.mockImplementationOnce(() => 
+
+      mockFetch.mockImplementationOnce(() =>
         Promise.reject(new Error(xssPayload))
       )
 
       render(<SecretsManagementDashboard />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Dashboard Error')).toBeInTheDocument()
       })
@@ -468,20 +468,20 @@ describe('SecretsManagementDashboard', () => {
   describe('Performance', () => {
     it('should not cause excessive re-renders', async () => {
       const renderSpy = jest.fn()
-      
+
       const TestComponent = () => {
         renderSpy()
         return <SecretsManagementDashboard />
       }
 
       render(<TestComponent />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Secrets Management')).toBeInTheDocument()
       })
 
       const initialRenderCount = renderSpy.mock.calls.length
-      
+
       // Trigger a manual refresh
       const refreshButton = screen.getByRole('button', { name: 'Refresh' })
       fireEvent.click(refreshButton)

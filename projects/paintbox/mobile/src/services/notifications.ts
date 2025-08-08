@@ -241,7 +241,7 @@ export const sendAlertNotification = async (
 ): Promise<void> => {
   const title = `${severity} Alert: ${alertName}`;
   const body = `Service: ${serviceName}`;
-  
+
   await showLocalNotification(title, body, {
     type: 'alert',
     serviceId,
@@ -258,7 +258,7 @@ export const sendServiceDownNotification = async (
 ): Promise<void> => {
   const title = 'Service Down';
   const body = `${serviceName} is no longer responding`;
-  
+
   await showLocalNotification(title, body, {
     type: 'service_down',
     serviceId,
@@ -274,7 +274,7 @@ export const sendSystemHealthNotification = async (
 ): Promise<void> => {
   const title = 'System Health Alert';
   const body = `Health score: ${healthScore}% - ${issue}`;
-  
+
   await showLocalNotification(title, body, {
     type: 'system_health',
     severity: healthScore < 50 ? 'CRITICAL' : healthScore < 70 ? 'HIGH' : 'MEDIUM',

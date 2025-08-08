@@ -614,9 +614,9 @@ describe('Metrics and Analytics API Endpoints', () => {
 
       // Act
       const start = Date.now()
-      const result = await getAdoptionMetrics({ 
+      const result = await getAdoptionMetrics({
         largeDataset: true,
-        optimizeQuery: true 
+        optimizeQuery: true
       })
       const duration = Date.now() - start
 
@@ -630,7 +630,7 @@ describe('Metrics and Analytics API Endpoints', () => {
 // Helper functions that would be in the actual API implementation
 async function getAdoptionMetrics(options = {}) {
   const metrics = await mockMetricsService.getAdoptionMetrics(options)
-  
+
   // Handle missing data
   if (metrics.onboardedUsers === null || isNaN(metrics.onboardedUsers)) {
     metrics.onboardedUsers = 0
@@ -661,7 +661,7 @@ async function submitFeedback(feedbackData, options = {}) {
   // Validate required fields
   const requiredFields = ['type', 'category']
   const missingFields = requiredFields.filter(field => !feedbackData[field])
-  
+
   if (missingFields.length > 0) {
     throw new Error(`Missing required fields: ${missingFields.join(', ')}`)
   }
@@ -686,7 +686,7 @@ async function submitFeedback(feedbackData, options = {}) {
 
 async function submitBulkFeedback(feedbackArray) {
   const results = await mockFeedbackService.submitBulkFeedback(feedbackArray)
-  
+
   return {
     successful: results.filter(r => r.success),
     failed: results.filter(r => !r.success)
@@ -714,7 +714,7 @@ async function getWeeklyReport(weekId, options = {}) {
   if (options.includePreviousWeek && report) {
     const previousWeekId = `${weekId.split('-W')[0]}-W${String(weekNumber - 1).padStart(2, '0')}`
     const previousReport = await mockReportingService.getWeeklyReport(previousWeekId)
-    
+
     if (previousReport) {
       report.comparison = {
         newOnboardings: {

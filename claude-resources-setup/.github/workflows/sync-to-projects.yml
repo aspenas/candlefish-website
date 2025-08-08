@@ -31,7 +31,7 @@ permissions:
 jobs:
   sync-resources:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout Claude Resources
         uses: actions/checkout@v4
@@ -39,13 +39,13 @@ jobs:
           repository: candlefish/claude-resources
           path: claude-resources
           token: ${{ secrets.token || secrets.GITHUB_TOKEN }}
-      
+
       - name: Get target projects
         id: get-projects
         if: github.event_name == 'workflow_dispatch'
         run: |
           ORG_NAME="candlefish"
-          
+
           if [ "${{ github.event.inputs.target_projects }}" = "all" ]; then
             # Get all organization repositories
             PROJECTS=$(gh repo list $ORG_NAME --limit 100 --json name,isArchived \
@@ -54,33 +54,33 @@ jobs:
             # Use specified projects
             PROJECTS="${{ github.event.inputs.target_projects }}"
           fi
-          
+
           echo "projects<<EOF" >> $GITHUB_OUTPUT
           echo "$PROJECTS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-      
+
       - name: Sync to individual project
         if: github.event_name == 'workflow_call'
         run: |
           PROJECT="${{ inputs.project_name }}"
           ORG_NAME="candlefish"
-          
+
           echo "🔄 Syncing Claude resources to $PROJECT..."
-          
+
           # Checkout target project
           gh repo clone "$ORG_NAME/$PROJECT" target-project
           cd target-project
-          
+
           # Setup git
           git config user.name "Claude Sync Bot"
           git config user.email "noreply@candlefish.com"
-          
+
           # Create .claude directory
           mkdir -p .claude
-          
+
           # Copy resources
           cp -r ../claude-resources/.claude/* .claude/
-          
+
           # Add .gitignore for .claude directory
           cat > .claude/.gitignore << 'EOF'
 # Temporary files
@@ -96,29 +96,29 @@ local-*
 .vscode/
 .idea/
 EOF
-          
+
           # Check for changes
           git add .claude
           if git diff --staged --quiet; then
             echo "No changes to sync"
             exit 0
           fi
-          
+
           if [ "${{ inputs.create_pr }}" = "true" ]; then
             # Create branch and PR
             BRANCH="claude-sync-$(date +%Y%m%d-%H%M%S)"
             git checkout -b "$BRANCH"
             git commit -m "🤖 Sync Claude resources from organization repository"
             git push origin "$BRANCH"
-            
+
             gh pr create \
               --title "🤖 Update Claude resources" \
               --body "This PR syncs the latest Claude agents and commands from the organization repository.
-              
+
               ### Changes
               - Updated .claude/ directory with latest agents and commands
               - Synced from candlefish/claude-resources
-              
+
               ### Reviewers
               - @aaron
               - @tyler" \
@@ -128,21 +128,21 @@ EOF
             git commit -m "🤖 Sync Claude resources from organization repository"
             git push
           fi
-      
+
       - name: Sync to multiple projects
         if: github.event_name == 'workflow_dispatch'
         run: |
           ORG_NAME="candlefish"
-          
+
           for project in ${{ steps.get-projects.outputs.projects }}; do
             echo "🔄 Syncing to $project..."
-            
+
             # Trigger individual sync workflow
             gh workflow run sync-to-projects.yml \
               --repo "$ORG_NAME/claude-resources" \
               -f project_name="$project" \
               -f create_pr=true
-            
+
             sleep 2  # Avoid rate limiting
           done
 
@@ -150,12 +150,12 @@ EOF
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
     needs: sync-resources
-    
+
     steps:
       - name: Deploy sync workflow to projects
         run: |
           ORG_NAME="candlefish"
-          
+
           # Create workflow file content
           cat > claude-sync.yml << 'EOF'
 name: Sync Claude Resources
@@ -178,24 +178,24 @@ jobs:
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
 EOF
-          
+
           # Deploy to each project
           for project in ${{ needs.sync-resources.outputs.projects }}; do
             echo "📝 Adding sync workflow to $project..."
-            
+
             # Clone project
             gh repo clone "$ORG_NAME/$project" "$project-tmp"
             cd "$project-tmp"
-            
+
             # Add workflow
             mkdir -p .github/workflows
             cp ../claude-sync.yml .github/workflows/
-            
+
             # Commit and push
             git add .github/workflows/claude-sync.yml
             git commit -m "🤖 Add Claude resources sync workflow" || echo "Workflow already exists"
             git push || echo "No changes to push"
-            
+
             cd ..
             rm -rf "$project-tmp"
           done

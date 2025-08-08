@@ -108,7 +108,7 @@ export class PaintingCalculator {
 
     surfaces.forEach(surface => {
       const sqft = new Decimal(surface.sqft);
-      
+
       // Calculate prep hours based on condition
       const prepRate = this.productionRates.wallPrep[surface.condition];
       const prepHours = sqft.dividedBy(prepRate);
@@ -195,7 +195,7 @@ export class PaintingCalculator {
       const wallSqft = new Decimal(room.walls.sqft);
       const wallPrepHours = wallSqft.dividedBy(this.productionRates.wallPrep.good);
       const wallPaintHours = wallSqft.dividedBy(this.productionRates.wallPainting.roll).times(2); // 2 coats
-      
+
       totalPrepHours = totalPrepHours.plus(wallPrepHours);
       totalPaintHours = totalPaintHours.plus(wallPaintHours);
 

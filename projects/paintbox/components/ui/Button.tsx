@@ -7,7 +7,7 @@ export const Button = ({ children, variant = 'default', ...props }: any) => {
     outline: 'border border-gray-300 hover:bg-gray-50',
     ghost: 'hover:bg-gray-100'
   };
-  
+
   return (
     <button
       className={`${baseClass} ${variants[variant as keyof typeof variants] || variants.default}`}

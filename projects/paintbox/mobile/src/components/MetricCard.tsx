@@ -33,7 +33,7 @@ const getTrendIcon = (trend: string) => {
 const getTrendColor = (trend: string, current: number, theme: any) => {
   if (current > 90) return theme.colors.error;
   if (current > 75) return theme.colors.warning || '#f59e0b';
-  
+
   switch (trend) {
     case 'INCREASING':
       return current > 60 ? theme.colors.warning || '#f59e0b' : theme.colors.primary;
@@ -108,10 +108,10 @@ export default function MetricCard({ title, current, average, trend, unit }: Met
               <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
                 vs Average
               </Text>
-              <Text 
-                variant="labelLarge" 
+              <Text
+                variant="labelLarge"
                 style={[
-                  styles.statValue, 
+                  styles.statValue,
                   { color: percentageDiff > 0 ? theme.colors.error : theme.colors.success }
                 ]}
               >
@@ -123,8 +123,8 @@ export default function MetricCard({ title, current, average, trend, unit }: Met
               <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
                 Trend
               </Text>
-              <Text 
-                variant="labelLarge" 
+              <Text
+                variant="labelLarge"
                 style={[styles.statValue, { color: trendColor }]}
               >
                 {trend.toLowerCase()}

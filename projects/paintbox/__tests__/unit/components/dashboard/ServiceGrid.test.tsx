@@ -391,7 +391,7 @@ describe('ServiceGrid', () => {
       renderServiceGrid();
 
       const searchInput = screen.getByTestId('search-input');
-      
+
       // Type multiple characters quickly
       await user.type(searchInput, 'api', { delay: 50 });
 

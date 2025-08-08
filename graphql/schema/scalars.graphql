@@ -1,0 +1,20 @@
+# Custom Scalars for Analytics Dashboard
+scalar DateTime
+scalar Date
+scalar JSON
+scalar JSONObject
+scalar Upload
+scalar UUID
+scalar BigInt
+scalar Decimal
+scalar EmailAddress
+scalar URL
+scalar PhoneNumber
+scalar PositiveInt
+scalar NonNegativeInt
+scalar NonEmptyString
+scalar Base64
+scalar HexColorCode
+scalar Timestamp
+scalar Duration
+scalar Currency

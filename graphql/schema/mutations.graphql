@@ -1,0 +1,753 @@
+# Root Mutation Type with Authorization
+type Mutation {
+  # User Mutations
+  updateProfile(input: UpdateProfileInput!): User! @auth(requires: USER)
+  updateUserPreferences(input: UpdateUserPreferencesInput!): UserPreferences! @auth(requires: USER)
+  deleteUser(id: UUID!): Boolean! @auth(requires: ORG_ADMIN) @tenant @audit(level: WARN)
+
+  # Organization Mutations
+  createOrganization(input: CreateOrganizationInput!): Organization!
+    @auth(requires: USER) @rateLimit(max: 5, window: "1h")
+
+  updateOrganization(input: UpdateOrganizationInput!): Organization!
+    @auth(requires: ORG_ADMIN) @tenant @audit(level: INFO)
+
+  updateOrganizationSettings(input: UpdateOrganizationSettingsInput!): OrganizationSettings!
+    @auth(requires: ORG_ADMIN) @tenant @audit(level: INFO)
+
+  deleteOrganization(id: UUID!): Boolean!
+    @auth(requires: SUPER_ADMIN) @audit(level: CRITICAL)
+
+  # Organization Member Management
+  inviteUser(input: InviteUserInput!): Invitation!
+    @auth(requires: ORG_ADMIN) @tenant @rateLimit(max: 20, window: "1h")
+
+  acceptInvitation(token: NonEmptyString!): OrganizationMembership! @auth(requires: USER)
+
+  updateMemberRole(input: UpdateMemberRoleInput!): OrganizationMembership!
+    @auth(requires: ORG_ADMIN) @tenant @audit(level: WARN)
+
+  removeMember(userId: UUID!): Boolean!
+    @auth(requires: ORG_ADMIN) @tenant @audit(level: WARN)
+
+  # Dashboard Mutations
+  createDashboard(input: CreateDashboardInput!): Dashboard!
+    @auth(requires: USER) @tenant @rateLimit(max: 10, window: "1h")
+
+  updateDashboard(input: UpdateDashboardInput!): Dashboard!
+    @auth(requires: USER) @tenant
+
+  cloneDashboard(input: CloneDashboardInput!): Dashboard!
+    @auth(requires: USER) @tenant @rateLimit(max: 5, window: "1h")
+
+  deleteDashboard(id: UUID!): Boolean!
+    @auth(requires: USER) @tenant @audit(level: INFO)
+
+  shareDashboard(input: ShareDashboardInput!): DashboardShare!
+    @auth(requires: USER) @tenant @rateLimit(max: 10, window: "1h")
+
+  unshareDashboard(shareId: UUID!): Boolean! @auth(requires: USER) @tenant
+
+  favoriteDashboard(id: UUID!): Dashboard! @auth(requires: USER) @tenant
+  unfavoriteDashboard(id: UUID!): Dashboard! @auth(requires: USER) @tenant
+
+  # Widget Mutations
+  createWidget(input: CreateWidgetInput!): Widget!
+    @auth(requires: USER) @tenant @rateLimit(max: 20, window: "1h")
+
+  updateWidget(input: UpdateWidgetInput!): Widget! @auth(requires: USER) @tenant
+
+  updateWidgetPosition(input: UpdateWidgetPositionInput!): Widget!
+    @auth(requires: USER) @tenant
+
+  deleteWidget(id: UUID!): Boolean! @auth(requires: USER) @tenant
+
+  refreshWidget(id: UUID!): Widget!
+    @auth(requires: USER) @tenant @complexity(value: 10)
+
+  # Data Source Mutations
+  createDataSource(input: CreateDataSourceInput!): DataSource!
+    @auth(requires: USER) @tenant @rateLimit(max: 5, window: "1h")
+
+  updateDataSource(input: UpdateDataSourceInput!): DataSource!
+    @auth(requires: USER) @tenant @audit(level: INFO)
+
+  deleteDataSource(id: UUID!): Boolean!
+    @auth(requires: USER) @tenant @audit(level: WARN)
+
+  syncDataSource(id: UUID!): DataSource!
+    @auth(requires: USER) @tenant @complexity(value: 15) @rateLimit(max: 10, window: "5m")
+
+  # Metric Mutations
+  createMetric(input: CreateMetricInput!): Metric!
+    @auth(requires: USER) @tenant @rateLimit(max: 10, window: "1h")
+
+  updateMetric(input: UpdateMetricInput!): Metric! @auth(requires: USER) @tenant
+
+  deleteMetric(id: UUID!): Boolean! @auth(requires: USER) @tenant @audit(level: INFO)
+
+  calculateMetric(id: UUID!, parameters: JSON): MetricResult!
+    @auth(requires: USER) @tenant @complexity(value: 20)
+
+  # Alert Mutations
+  createAlert(input: CreateAlertInput!): Alert!
+    @auth(requires: USER) @tenant @rateLimit(max: 10, window: "1h")
+
+  updateAlert(input: UpdateAlertInput!): Alert! @auth(requires: USER) @tenant
+
+  deleteAlert(id: UUID!): Boolean! @auth(requires: USER) @tenant @audit(level: INFO)
+
+  enableAlert(id: UUID!): Alert! @auth(requires: USER) @tenant
+  disableAlert(id: UUID!): Alert! @auth(requires: USER) @tenant
+
+  testAlert(id: UUID!): AlertTestResult!
+    @auth(requires: USER) @tenant @complexity(value: 15) @rateLimit(max: 5, window: "5m")
+
+  # Export Mutations
+  createExport(input: CreateExportInput!): Export!
+    @auth(requires: USER) @tenant @rateLimit(max: 5, window: "1h")
+
+  cancelExport(id: UUID!): Boolean! @auth(requires: USER) @tenant
+
+  # Notification Mutations
+  markNotificationRead(id: UUID!): Notification! @auth(requires: USER) @tenant
+  markAllNotificationsRead: Int! @auth(requires: USER) @tenant
+
+  deleteNotification(id: UUID!): Boolean! @auth(requires: USER) @tenant
+
+  updateNotificationSettings(input: UpdateNotificationSettingsInput!): NotificationSettings!
+    @auth(requires: USER) @tenant
+
+  # Bulk Operations
+  bulkUpdateWidgetPositions(input: BulkUpdateWidgetPositionsInput!): [Widget!]!
+    @auth(requires: USER) @tenant @complexity(value: 25)
+
+  bulkDeleteDashboards(ids: [UUID!]!): Int!
+    @auth(requires: USER) @tenant @audit(level: WARN) @rateLimit(max: 3, window: "1h")
+
+  bulkShareDashboards(input: BulkShareDashboardsInput!): [DashboardShare!]!
+    @auth(requires: USER) @tenant @rateLimit(max: 3, window: "1h")
+
+  # Admin Operations
+  migrateData(input: MigrateDataInput!): MigrationResult!
+    @auth(requires: SUPER_ADMIN) @audit(level: CRITICAL) @rateLimit(max: 1, window: "1h")
+
+  purgeOldData(input: PurgeOldDataInput!): PurgeResult!
+    @auth(requires: ORG_ADMIN) @tenant @audit(level: WARN) @rateLimit(max: 1, window: "24h")
+
+  rebuildCache(type: CacheType!): Boolean!
+    @auth(requires: ORG_ADMIN) @tenant @rateLimit(max: 5, window: "1h")
+}
+
+# User Input Types
+input UpdateProfileInput {
+  firstName: NonEmptyString
+  lastName: NonEmptyString
+  avatar: URL
+  timezone: String
+  locale: String
+}
+
+input UpdateUserPreferencesInput {
+  theme: Theme
+  language: String
+  timezone: String
+  dateFormat: String
+  currency: Currency
+  dashboardLayout: DashboardLayout
+  emailNotifications: Boolean
+  pushNotifications: Boolean
+  analyticsPreferences: UpdateAnalyticsPreferencesInput
+}
+
+input UpdateAnalyticsPreferencesInput {
+  defaultTimeRange: TimeRange
+  defaultChartType: ChartType
+  autoRefresh: Boolean
+  refreshInterval: PositiveInt
+  showTooltips: Boolean
+  enableAnimations: Boolean
+  colorScheme: ColorScheme
+}
+
+# Organization Input Types
+input CreateOrganizationInput {
+  name: NonEmptyString!
+  slug: NonEmptyString!
+  logo: URL
+  website: URL
+  description: String
+  industry: Industry
+  size: OrganizationSize!
+}
+
+input UpdateOrganizationInput {
+  id: UUID!
+  name: NonEmptyString
+  logo: URL
+  website: URL
+  description: String
+  industry: Industry
+  size: OrganizationSize
+}
+
+input UpdateOrganizationSettingsInput {
+  timezone: String
+  dateFormat: String
+  currency: Currency
+  language: String
+  requireTwoFactor: Boolean
+  passwordPolicy: UpdatePasswordPolicyInput
+  sessionTimeout: PositiveInt
+  allowedDomains: [String!]
+  ipWhitelist: [String!]
+  dataRetentionDays: PositiveInt
+  allowDataExport: Boolean
+  enableAuditLogs: Boolean
+  enableRealTime: Boolean
+  enableCustomMetrics: Boolean
+  enableAdvancedFilters: Boolean
+  enableAPIAccess: Boolean
+  branding: UpdateBrandingSettingsInput
+}
+
+input UpdatePasswordPolicyInput {
+  minLength: PositiveInt
+  requireUppercase: Boolean
+  requireLowercase: Boolean
+  requireNumbers: Boolean
+  requireSymbols: Boolean
+  preventReuse: PositiveInt
+  maxAge: PositiveInt
+}
+
+input UpdateBrandingSettingsInput {
+  primaryColor: HexColorCode
+  secondaryColor: HexColorCode
+  accentColor: HexColorCode
+  logoUrl: URL
+  faviconUrl: URL
+  customCSS: String
+  customDomain: String
+}
+
+input InviteUserInput {
+  email: EmailAddress!
+  role: OrganizationRole!
+  message: String
+}
+
+input UpdateMemberRoleInput {
+  userId: UUID!
+  role: OrganizationRole!
+}
+
+# Dashboard Input Types
+input CreateDashboardInput {
+  name: NonEmptyString!
+  description: String
+  visibility: Visibility = PRIVATE
+  category: DashboardCategory
+  tags: [String!]
+  settings: CreateDashboardSettingsInput
+  theme: CreateDashboardThemeInput
+}
+
+input UpdateDashboardInput {
+  id: UUID!
+  name: NonEmptyString
+  description: String
+  visibility: Visibility
+  category: DashboardCategory
+  tags: [String!]
+  settings: UpdateDashboardSettingsInput
+  theme: UpdateDashboardThemeInput
+  autoRefresh: Boolean
+  refreshInterval: PositiveInt
+}
+
+input CloneDashboardInput {
+  sourceId: UUID!
+  name: NonEmptyString!
+  description: String
+  includeData: Boolean = false
+  includeSharing: Boolean = false
+}
+
+input ShareDashboardInput {
+  dashboardId: UUID!
+  userIds: [UUID!]
+  emails: [EmailAddress!]
+  permission: SharePermission!
+  expiresAt: DateTime
+  message: String
+}
+
+input CreateDashboardSettingsInput {
+  allowExport: Boolean = true
+  allowShare: Boolean = true
+  allowEdit: Boolean = true
+  allowClone: Boolean = true
+  requireAuth: Boolean = true
+  watermark: String
+}
+
+input UpdateDashboardSettingsInput {
+  allowExport: Boolean
+  allowShare: Boolean
+  allowEdit: Boolean
+  allowClone: Boolean
+  requireAuth: Boolean
+  watermark: String
+  customCSS: String
+}
+
+input CreateDashboardThemeInput {
+  name: NonEmptyString!
+  colors: ThemeColorsInput!
+  fonts: ThemeFontsInput
+}
+
+input UpdateDashboardThemeInput {
+  id: UUID!
+  name: NonEmptyString
+  colors: ThemeColorsInput
+  fonts: ThemeFontsInput
+  customCSS: String
+}
+
+input ThemeColorsInput {
+  primary: HexColorCode!
+  secondary: HexColorCode!
+  accent: HexColorCode!
+  background: HexColorCode!
+  surface: HexColorCode!
+  text: HexColorCode!
+  textSecondary: HexColorCode!
+  border: HexColorCode!
+  success: HexColorCode!
+  warning: HexColorCode!
+  error: HexColorCode!
+  info: HexColorCode!
+}
+
+input ThemeFontsInput {
+  primary: String!
+  secondary: String
+  monospace: String!
+}
+
+# Widget Input Types
+input CreateWidgetInput {
+  dashboardId: UUID!
+  name: NonEmptyString!
+  description: String
+  type: WidgetType!
+  metricId: UUID!
+  position: WidgetPositionInput!
+  size: WidgetSizeInput!
+  config: WidgetConfigInput
+  style: WidgetStyleInput
+  drillDown: DrillDownConfigInput
+  filters: [WidgetFilterInput!]
+}
+
+input UpdateWidgetInput {
+  id: UUID!
+  name: NonEmptyString
+  description: String
+  type: WidgetType
+  metricId: UUID
+  config: WidgetConfigInput
+  style: WidgetStyleInput
+  drillDown: DrillDownConfigInput
+  filters: [WidgetFilterInput!]
+}
+
+input UpdateWidgetPositionInput {
+  id: UUID!
+  position: WidgetPositionInput!
+  size: WidgetSizeInput
+}
+
+input WidgetPositionInput {
+  x: NonNegativeInt!
+  y: NonNegativeInt!
+  row: NonNegativeInt
+  col: NonNegativeInt
+}
+
+input WidgetSizeInput {
+  width: PositiveInt!
+  height: PositiveInt!
+  minWidth: PositiveInt
+  minHeight: PositiveInt
+  maxWidth: PositiveInt
+  maxHeight: PositiveInt
+}
+
+input WidgetConfigInput {
+  title: WidgetTitleInput
+  legend: WidgetLegendInput
+  axes: WidgetAxesInput
+  colors: [HexColorCode!]
+  animation: AnimationConfigInput
+  tooltip: TooltipConfigInput
+  responsive: Boolean
+  customOptions: JSON
+}
+
+input WidgetTitleInput {
+  text: String!
+  fontSize: PositiveInt
+  color: HexColorCode
+  alignment: TextAlignment
+  visible: Boolean
+}
+
+input WidgetLegendInput {
+  visible: Boolean!
+  position: LegendPosition!
+  alignment: TextAlignment
+  fontSize: PositiveInt
+  maxWidth: PositiveInt
+}
+
+input WidgetAxesInput {
+  x: AxisConfigInput
+  y: AxisConfigInput
+  y2: AxisConfigInput
+}
+
+input AxisConfigInput {
+  label: String
+  visible: Boolean
+  gridLines: Boolean
+  tickCount: PositiveInt
+  format: String
+  min: Decimal
+  max: Decimal
+  scale: ScaleType
+}
+
+input AnimationConfigInput {
+  enabled: Boolean!
+  duration: PositiveInt
+  easing: EasingType
+  delay: NonNegativeInt
+}
+
+input TooltipConfigInput {
+  enabled: Boolean!
+  format: String
+  backgroundColor: HexColorCode
+  borderColor: HexColorCode
+  fontSize: PositiveInt
+}
+
+input WidgetStyleInput {
+  backgroundColor: HexColorCode
+  borderColor: HexColorCode
+  borderWidth: NonNegativeInt
+  borderRadius: NonNegativeInt
+  shadow: ShadowConfigInput
+  opacity: Decimal
+}
+
+input ShadowConfigInput {
+  enabled: Boolean!
+  color: HexColorCode
+  blur: NonNegativeInt
+  offsetX: Int
+  offsetY: Int
+}
+
+input DrillDownConfigInput {
+  enabled: Boolean!
+  targetDashboardId: UUID
+  targetWidgetId: UUID
+  parameters: [DrillDownParameterInput!]
+}
+
+input DrillDownParameterInput {
+  source: String!
+  target: String!
+  type: ParameterType!
+}
+
+input WidgetFilterInput {
+  field: NonEmptyString!
+  operator: FilterOperator!
+  value: JSON!
+  label: String
+  required: Boolean
+}
+
+# Data Source Input Types
+input CreateDataSourceInput {
+  name: NonEmptyString!
+  type: DataSourceType!
+  description: String
+  connection: DataSourceConnectionInput!
+  config: DataSourceConfigInput
+  tags: [String!]
+}
+
+input UpdateDataSourceInput {
+  id: UUID!
+  name: NonEmptyString
+  description: String
+  connection: DataSourceConnectionInput
+  config: DataSourceConfigInput
+  tags: [String!]
+}
+
+input DataSourceConfigInput {
+  refreshInterval: PositiveInt
+  timeout: PositiveInt
+  maxConnections: PositiveInt
+  enableCache: Boolean
+  cacheTimeout: PositiveInt
+  customParams: JSON
+}
+
+# Metric Input Types
+input CreateMetricInput {
+  name: NonEmptyString!
+  description: String
+  type: MetricType!
+  dataSourceId: UUID!
+  query: MetricQueryInput!
+  aggregation: AggregationType!
+  dimensions: [DimensionInput!]
+  filters: [FilterInput!]
+  format: MetricFormatInput
+  unit: String
+  precision: NonNegativeInt
+  tags: [String!]
+  category: MetricCategory
+}
+
+input UpdateMetricInput {
+  id: UUID!
+  name: NonEmptyString
+  description: String
+  type: MetricType
+  query: MetricQueryInput
+  aggregation: AggregationType
+  dimensions: [DimensionInput!]
+  filters: [FilterInput!]
+  format: MetricFormatInput
+  unit: String
+  precision: NonNegativeInt
+  tags: [String!]
+  category: MetricCategory
+}
+
+input MetricQueryInput {
+  sql: String!
+  parameters: [QueryParameterInput!]
+  schedule: String
+  timeout: PositiveInt
+}
+
+input QueryParameterInput {
+  name: NonEmptyString!
+  type: ParameterType!
+  defaultValue: String
+  required: Boolean
+  description: String
+}
+
+input DimensionInput {
+  name: NonEmptyString!
+  field: String!
+  type: DimensionType!
+  displayName: String
+  format: String
+}
+
+input MetricFormatInput {
+  type: FormatType!
+  pattern: String
+  prefix: String
+  suffix: String
+  locale: String
+}
+
+# Alert Input Types
+input CreateAlertInput {
+  name: NonEmptyString!
+  description: String
+  metricId: UUID!
+  condition: AlertConditionInput!
+  threshold: Decimal!
+  operator: ComparisonOperator!
+  frequency: Duration!
+  severity: AlertSeverity!
+  channels: [NotificationChannelInput!]!
+  enabled: Boolean = true
+}
+
+input UpdateAlertInput {
+  id: UUID!
+  name: NonEmptyString
+  description: String
+  condition: AlertConditionInput
+  threshold: Decimal
+  operator: ComparisonOperator
+  frequency: Duration
+  severity: AlertSeverity
+  channels: [NotificationChannelInput!]
+  enabled: Boolean
+}
+
+input AlertConditionInput {
+  type: ConditionType!
+  window: Duration!
+  aggregation: AggregationType
+  comparison: ComparisonType
+}
+
+input NotificationChannelInput {
+  type: ChannelType!
+  config: JSON!
+  enabled: Boolean = true
+}
+
+# Export Input Types
+input CreateExportInput {
+  dashboardId: UUID!
+  format: ExportFormat!
+  filters: JSON
+  dateRange: DateRangeInput
+  options: ExportOptionsInput
+}
+
+input ExportOptionsInput {
+  includeFilters: Boolean = true
+  includeData: Boolean = true
+  includeCharts: Boolean = true
+  quality: ExportQuality = HIGH
+  pageSize: PageSize = A4
+  orientation: PageOrientation = PORTRAIT
+}
+
+input DateRangeInput {
+  start: DateTime!
+  end: DateTime!
+  preset: TimeRange
+}
+
+# Notification Input Types
+input UpdateNotificationSettingsInput {
+  email: EmailNotificationSettingsInput
+  push: PushNotificationSettingsInput
+  inApp: InAppNotificationSettingsInput
+}
+
+input EmailNotificationSettingsInput {
+  enabled: Boolean!
+  frequency: NotificationFrequency!
+  categories: [NotificationCategory!]!
+  digest: Boolean!
+  digestTime: String
+}
+
+input PushNotificationSettingsInput {
+  enabled: Boolean!
+  categories: [NotificationCategory!]!
+  quietHours: QuietHoursInput
+}
+
+input InAppNotificationSettingsInput {
+  enabled: Boolean!
+  categories: [NotificationCategory!]!
+  showBadges: Boolean!
+  playSound: Boolean!
+}
+
+input QuietHoursInput {
+  enabled: Boolean!
+  startTime: String!
+  endTime: String!
+  timezone: String!
+}
+
+# Bulk Operation Input Types
+input BulkUpdateWidgetPositionsInput {
+  updates: [WidgetPositionUpdateInput!]!
+}
+
+input WidgetPositionUpdateInput {
+  id: UUID!
+  position: WidgetPositionInput!
+  size: WidgetSizeInput
+}
+
+input BulkShareDashboardsInput {
+  dashboardIds: [UUID!]!
+  userIds: [UUID!]
+  emails: [EmailAddress!]
+  permission: SharePermission!
+  expiresAt: DateTime
+  message: String
+}
+
+# Admin Operation Input Types
+input MigrateDataInput {
+  source: DataSourceType!
+  target: DataSourceType!
+  tables: [String!]
+  options: JSON
+}
+
+input PurgeOldDataInput {
+  types: [PurgeDataType!]!
+  olderThan: DateTime!
+  dryRun: Boolean = false
+}
+
+# Result Types
+type AlertTestResult {
+  success: Boolean!
+  triggered: Boolean!
+  value: Decimal
+  threshold: Decimal!
+  message: String!
+  executionTime: Decimal!
+}
+
+type MigrationResult {
+  success: Boolean!
+  recordsProcessed: NonNegativeInt!
+  recordsMigrated: NonNegativeInt!
+  errors: [String!]!
+  duration: Decimal!
+}
+
+type PurgeResult {
+  success: Boolean!
+  recordsDeleted: NonNegativeInt!
+  spaceSaved: BigInt!
+  duration: Decimal!
+  summary: JSON!
+}
+
+enum CacheType {
+  DASHBOARD
+  WIDGET
+  METRIC
+  QUERY
+  USER
+  ALL
+}
+
+enum PurgeDataType {
+  ACTIVITY_LOGS
+  AUDIT_LOGS
+  EXPORTS
+  NOTIFICATIONS
+  SNAPSHOTS
+  CACHE
+}

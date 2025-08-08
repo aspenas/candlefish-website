@@ -1,6 +1,7 @@
 """Centralized API client with retry logic for Google APIs."""
 
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable
+from typing import TypeVar
 
 from googleapiclient.errors import HttpError
 from structlog import get_logger

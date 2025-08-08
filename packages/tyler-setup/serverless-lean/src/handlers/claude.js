@@ -30,15 +30,15 @@ export const handler = async (event) => {
     if (!user) {
       return response(401, { error: 'Unauthorized' });
     }
-    
+
     const path = event.path;
-    
+
     if (path.includes('/assist/onboarding')) {
       return await getOnboardingPrompt(JSON.parse(event.body), user);
     } else if (path.includes('/assist/setup')) {
       return await getSetupPrompt(JSON.parse(event.body), user);
     }
-    
+
     return response(404, { error: 'Not found' });
   } catch (error) {
     console.error('Claude handler error:', error);
@@ -48,7 +48,7 @@ export const handler = async (event) => {
 
 async function getOnboardingPrompt(data, user) {
   const { employeeName, jobTitle, department, startDate, managerName } = data;
-  
+
   // Replace placeholders in template
   let prompt = PROMPT_TEMPLATES.onboarding
     .replace('[EMPLOYEE_NAME]', employeeName || 'New Employee')
@@ -56,13 +56,13 @@ async function getOnboardingPrompt(data, user) {
     .replace('[DEPARTMENT]', department || 'Operations')
     .replace('[START_DATE]', startDate || 'Next Monday')
     .replace('[MANAGER_NAME]', managerName || 'Direct Manager');
-  
+
   await logAudit({
     action: 'CLAUDE_PROMPT_GENERATED',
     userId: user.id,
     promptType: 'onboarding',
   });
-  
+
   return response(200, {
     success: true,
     prompt,
@@ -73,19 +73,19 @@ async function getOnboardingPrompt(data, user) {
 
 async function getSetupPrompt(data, user) {
   const { userName, role, technicalLevel, operatingSystem } = data;
-  
+
   let prompt = PROMPT_TEMPLATES.setup
     .replace('[USER_NAME]', userName || 'New User')
     .replace('[ROLE]', role || 'Team Member')
     .replace('[LEVEL]', technicalLevel || 'Intermediate')
     .replace('[OS]', operatingSystem || 'Mac');
-  
+
   await logAudit({
     action: 'CLAUDE_PROMPT_GENERATED',
     userId: user.id,
     promptType: 'setup',
   });
-  
+
   return response(200, {
     success: true,
     prompt,

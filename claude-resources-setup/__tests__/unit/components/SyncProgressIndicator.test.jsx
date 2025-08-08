@@ -31,7 +31,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} />)
-      
+
       const clockIcon = document.querySelector('.text-yellow-500')
       expect(clockIcon).toBeInTheDocument()
     })
@@ -44,7 +44,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} />)
-      
+
       const spinningIcon = document.querySelector('.text-blue-500.animate-spin')
       expect(spinningIcon).toBeInTheDocument()
     })
@@ -58,7 +58,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} />)
-      
+
       const checkIcon = document.querySelector('.text-green-500')
       expect(checkIcon).toBeInTheDocument()
     })
@@ -73,7 +73,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} />)
-      
+
       const alertIcon = document.querySelector('.text-red-500')
       expect(alertIcon).toBeInTheDocument()
     })
@@ -87,7 +87,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} />)
-      
+
       const xIcon = document.querySelector('.text-gray-500')
       expect(xIcon).toBeInTheDocument()
     })
@@ -102,7 +102,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} />)
-      
+
       expect(screen.getByText('67%')).toBeInTheDocument()
     })
 
@@ -114,7 +114,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} />)
-      
+
       expect(screen.getByText('0%')).toBeInTheDocument()
     })
 
@@ -126,7 +126,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} />)
-      
+
       expect(screen.getByText('100%')).toBeInTheDocument()
     })
 
@@ -138,7 +138,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} />)
-      
+
       expect(screen.getByText('100%')).toBeInTheDocument()
     })
   })
@@ -154,14 +154,14 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} />)
-      
+
       expect(screen.getByText(/2m 30s/)).toBeInTheDocument()
     })
 
     it('should calculate duration for running operations', () => {
       const now = new Date()
       const startTime = new Date(now.getTime() - 75000) // 1 minute 15 seconds ago
-      
+
       const operation = {
         ...baseSyncOperation,
         status: 'running',
@@ -170,7 +170,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} />)
-      
+
       expect(screen.getByText(/1m 15s/)).toBeInTheDocument()
     })
 
@@ -184,7 +184,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} />)
-      
+
       expect(screen.getByText('45s')).toBeInTheDocument()
     })
   })
@@ -199,9 +199,9 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} />)
-      
+
       expect(screen.getByText('Network timeout occurred')).toBeInTheDocument()
-      
+
       const errorContainer = screen.getByText('Network timeout occurred').closest('div')
       expect(errorContainer).toHaveClass('bg-red-50')
     })
@@ -214,7 +214,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} />)
-      
+
       const errorSection = document.querySelector('.bg-red-50')
       expect(errorSection).not.toBeInTheDocument()
     })
@@ -234,7 +234,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} />)
-      
+
       expect(screen.getByText('12/20 files')).toBeInTheDocument()
     })
 
@@ -249,7 +249,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} />)
-      
+
       expect(screen.getByText('Creating symlinks')).toBeInTheDocument()
     })
 
@@ -261,7 +261,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} />)
-      
+
       // Should not crash and should still show basic info
       expect(screen.getByText('50%')).toBeInTheDocument()
     })
@@ -277,7 +277,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} onCancel={onCancel} />)
-      
+
       const cancelButton = screen.getByTitle('Cancel sync')
       expect(cancelButton).toBeInTheDocument()
     })
@@ -292,10 +292,10 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} onCancel={onCancel} />)
-      
+
       const cancelButton = screen.getByTitle('Cancel sync')
       await user.click(cancelButton)
-      
+
       expect(onCancel).toHaveBeenCalledTimes(1)
     })
 
@@ -309,7 +309,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} onRetry={onRetry} />)
-      
+
       const retryButton = screen.getByTitle('Retry sync')
       expect(retryButton).toBeInTheDocument()
     })
@@ -325,10 +325,10 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} onRetry={onRetry} />)
-      
+
       const retryButton = screen.getByTitle('Retry sync')
       await user.click(retryButton)
-      
+
       expect(onRetry).toHaveBeenCalledTimes(1)
     })
 
@@ -340,10 +340,10 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} />)
-      
+
       const cancelButton = screen.queryByTitle('Cancel sync')
       const retryButton = screen.queryByTitle('Retry sync')
-      
+
       expect(cancelButton).not.toBeInTheDocument()
       expect(retryButton).not.toBeInTheDocument()
     })
@@ -366,10 +366,10 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} />)
-      
+
       const expandButton = screen.getByRole('button')
       await user.click(expandButton)
-      
+
       expect(screen.getByText('Activity Log')).toBeInTheDocument()
       expect(screen.getByText('Starting sync process')).toBeInTheDocument()
     })
@@ -389,7 +389,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} showDetails={true} />)
-      
+
       expect(screen.getByText('Activity Log')).toBeInTheDocument()
     })
   })
@@ -420,18 +420,18 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} showDetails={true} />)
-      
+
       expect(screen.getByText('Information message')).toBeInTheDocument()
       expect(screen.getByText('Warning message')).toBeInTheDocument()
       expect(screen.getByText('Error message')).toBeInTheDocument()
-      
+
       // Check styling classes
       const infoLog = screen.getByText('Information message').closest('div')
       expect(infoLog).toHaveClass('text-blue-600')
-      
+
       const warningLog = screen.getByText('Warning message').closest('div')
       expect(warningLog).toHaveClass('text-yellow-600')
-      
+
       const errorLog = screen.getByText('Error message').closest('div')
       expect(errorLog).toHaveClass('text-red-600')
     })
@@ -451,7 +451,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} showDetails={true} />)
-      
+
       // Should show formatted time (exact format depends on locale)
       const timeElement = document.querySelector('.font-mono.text-gray-500')
       expect(timeElement).toBeInTheDocument()
@@ -477,7 +477,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} showDetails={true} />)
-      
+
       expect(screen.getByText('"fileName": "test.md"')).toBeInTheDocument()
       expect(screen.getByText('"size": 1024')).toBeInTheDocument()
     })
@@ -497,7 +497,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} showDetails={true} />)
-      
+
       // Should only show last 10 entries (6-15)
       expect(screen.getByText('Log entry 15')).toBeInTheDocument()
       expect(screen.getByText('Log entry 6')).toBeInTheDocument()
@@ -518,7 +518,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} showDetails={true} />)
-      
+
       expect(screen.getByText('Current step: Processing files')).toBeInTheDocument()
     })
 
@@ -533,7 +533,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} showDetails={true} />)
-      
+
       const processingStep = screen.getByText('Processing files')
       expect(processingStep).toHaveClass('font-medium', 'text-claude-600')
     })
@@ -556,13 +556,13 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} />)
-      
+
       // Initial progress
       expect(screen.getByText('50%')).toBeInTheDocument()
-      
+
       // Advance timers to trigger progress simulation
       jest.advanceTimersByTime(1000)
-      
+
       await waitFor(() => {
         const progressText = screen.getByText(/%/)
         const progressValue = parseInt(progressText.textContent)
@@ -578,12 +578,12 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} />)
-      
+
       expect(screen.getByText('100%')).toBeInTheDocument()
-      
+
       // Advance timers
       jest.advanceTimersByTime(5000)
-      
+
       // Progress should remain at 100%
       expect(screen.getByText('100%')).toBeInTheDocument()
     })
@@ -601,7 +601,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} onCancel={onCancel} onRetry={onRetry} />)
-      
+
       const retryButton = screen.getByTitle('Retry sync')
       expect(retryButton).toHaveAttribute('title', 'Retry sync')
     })
@@ -615,7 +615,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       render(<SyncProgressIndicator operation={operation} showDetails={true} />)
-      
+
       const logHeading = screen.getByText('Activity Log')
       expect(logHeading.tagName).toBe('H4')
     })
@@ -632,7 +632,7 @@ describe('SyncProgressIndicator', () => {
       const { container } = render(
         <SyncProgressIndicator operation={operation} className="custom-class" />
       )
-      
+
       const indicator = container.firstChild
       expect(indicator).toHaveClass('custom-class')
     })
@@ -645,7 +645,7 @@ describe('SyncProgressIndicator', () => {
       }
 
       const { container } = render(<SyncProgressIndicator operation={operation} />)
-      
+
       const indicator = container.firstChild
       expect(indicator).toHaveClass('glass', 'rounded-lg')
     })

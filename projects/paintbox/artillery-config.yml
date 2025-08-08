@@ -17,16 +17,16 @@ config:
     - duration: 60
       arrivalRate: 10
       name: "Cool down"
-  
+
   # Global configuration
   timeout: 30
-  
+
   # Headers to include in all requests
   defaults:
     headers:
       'Content-Type': 'application/json'
       'User-Agent': 'Artillery-LoadTest/1.0'
-  
+
   # Variables for dynamic testing
   variables:
     authToken:
@@ -41,7 +41,7 @@ config:
 
   # Rate limiting configuration
   pool: 10 # connection pool size
-  
+
   # TLS configuration
   tls:
     rejectUnauthorized: false # For testing with self-signed certs
@@ -62,7 +62,7 @@ scenarios:
               as: "accessToken"
           expect:
             - statusCode: [200, 401, 429] # Accept auth success, failure, or rate limiting
-      
+
       # Follow up with authenticated request if successful
       - get:
           url: "/api/v1/secrets/config"
@@ -82,7 +82,7 @@ scenarios:
             Authorization: "{{ authToken }}"
           expect:
             - statusCode: [200, 401, 429, 503]
-      
+
       - get:
           url: "/api/v1/services/companycam/status"
           headers:
@@ -104,7 +104,7 @@ scenarios:
             service: "{{ $pick(['salesforce', 'companycam', 'all']) }}"
           expect:
             - statusCode: [200, 401, 403, 429]
-      
+
       # Test search functionality
       - get:
           url: "/api/v1/audit/events"
@@ -129,7 +129,7 @@ scenarios:
             scope: "read"
           expect:
             - statusCode: [400, 401, 403] # Should reject malicious input
-      
+
       # Test XSS on search endpoint
       - get:
           url: "/api/v1/audit/events"
@@ -156,7 +156,7 @@ scenarios:
                   scope: "read"
                 expect:
                   - statusCode: [200, 401, 429] # Eventually should hit rate limit
-      
+
       # Verify rate limiting headers are present
       - get:
           url: "/api/v1/secrets/config"
@@ -176,7 +176,7 @@ engines:
       function(requestParams, context, ee, next) {
         // Add timestamp to identify requests
         requestParams.headers['X-Test-Timestamp'] = Date.now();
-        
+
         // Add random user agent variations
         const userAgents = [
           'Artillery-Security-Test/1.0',
@@ -184,34 +184,34 @@ engines:
           'Penetration-Test-Bot/1.0'
         ];
         requestParams.headers['User-Agent'] = userAgents[Math.floor(Math.random() * userAgents.length)];
-        
+
         return next();
       }
-    
+
     # Custom response processing
     afterResponse: |
       function(requestParams, response, context, ee, next) {
-        // Log security-relevant response headers  
+        // Log security-relevant response headers
         const securityHeaders = [
           'x-frame-options',
-          'x-content-type-options', 
+          'x-content-type-options',
           'x-xss-protection',
           'content-security-policy',
           'x-ratelimit-remaining'
         ];
-        
+
         securityHeaders.forEach(header => {
           if (response.headers[header]) {
             console.log(`${header}: ${response.headers[header]}`);
           }
         });
-        
+
         // Track performance metrics
         const responseTime = response.timings.phases.total;
         if (responseTime > 2000) {
           console.warn(`Slow response: ${requestParams.url} took ${responseTime}ms`);
         }
-        
+
         return next();
       }
 
@@ -220,10 +220,10 @@ expect:
   # Response time expectations
   p95: 1500  # 95th percentile should be under 1.5 seconds
   p99: 3000  # 99th percentile should be under 3 seconds
-  
-  # Error rate expectations  
+
+  # Error rate expectations
   maxErrorRate: 5  # Maximum 5% error rate
-  
+
   # Throughput expectations
   minRps: 30  # Should handle at least 30 requests per second
 
@@ -231,14 +231,14 @@ expect:
 plugins:
   expect: {}
   metrics-by-endpoint: {}
-  
+
 # Custom metrics collection
 metrics:
   - name: "security_violations"
     unit: "count"
-    
-  - name: "rate_limit_hits" 
+
+  - name: "rate_limit_hits"
     unit: "count"
-    
+
   - name: "injection_attempts_blocked"
     unit: "count"

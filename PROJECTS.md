@@ -10,6 +10,7 @@
 ## 🏗️ Active Projects
 
 ### 💼 Enterprise Tools
+
 | Hotkey | Project | Path | Description |
 |--------|---------|------|-------------|
 | `cfpaint` | **Paintbox** | `/projects/paintbox` | Painting contractor business management platform |
@@ -17,6 +18,7 @@
 | `cfprom` | **PromoterOS** | `/projects/promoterOS` | Event promoter management system |
 
 ### 🛠️ Business Solutions
+
 | Hotkey | Project | Path | Description |
 |--------|---------|------|-------------|
 | `cfbrew` | **Brewkit** | `/projects/brewkit` | Brewery management & inventory system |
@@ -31,7 +33,7 @@ candlefish-ai/
 │   └── website/          → Marketing site & docs
 ├── 🚀 projects/
 │   ├── paintbox/         → Contractor platform
-│   ├── fogg/            
+│   ├── fogg/
 │   │   └── calendar/     → Smart scheduling
 │   ├── promoterOS/       → Event management
 │   ├── brewkit/          → Brewery tools
@@ -45,6 +47,7 @@ candlefish-ai/
 ## ⚡ Quick Commands
 
 ### Navigation
+
 ```bash
 cf          # Go to root
 cfweb       # Website project
@@ -57,6 +60,7 @@ cfbart      # BART analytics
 ```
 
 ### Project Actions
+
 ```bash
 cfbuild     # Build current project
 cftest      # Run tests
@@ -66,15 +70,18 @@ cfdeploy    # Deploy to production
 ## 🎨 Project Categories
 
 ### 🏢 **B2B SaaS**
+
 - **Paintbox** - Vertical SaaS for painting contractors
 - **PromoterOS** - Event industry management
 - **Brewkit** - Brewery operations platform
 
 ### 📊 **Analytics & Data**
+
 - **BART** - Business intelligence engine
 - **Fogg Calendar** - AI-powered scheduling
 
 ### 🛍️ **E-Commerce**
+
 - **Crown Trophy** - Awards marketplace
 - **Website** - Marketing & lead generation
 

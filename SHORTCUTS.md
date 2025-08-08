@@ -123,7 +123,8 @@
 
 ## 🔄 Workflow Examples
 
-### Create and merge a feature:
+### Create and merge a feature
+
 ```bash
 cf                    # Go to project
 gcb feature/my-feature  # Create branch
@@ -135,7 +136,8 @@ ghprv                   # View in browser
 ghprm                   # Merge when ready
 ```
 
-### Debug with Claude:
+### Debug with Claude
+
 ```bash
 ccmax                   # Start Claude with max context
 # Paste error message
@@ -143,7 +145,8 @@ ccmax                   # Start Claude with max context
 cftest                  # Run tests
 ```
 
-### Deploy to production:
+### Deploy to production
+
 ```bash
 deploy_candlefish       # Trigger deployment
 ghrunl                  # Watch run status

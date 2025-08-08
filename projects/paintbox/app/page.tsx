@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Paintbrush2, Home, Building2, ArrowRight, CheckCircle, Phone, Mail, Clock, Shield, Users, Award } from 'lucide-react';
+import PaintboxLogo from '@/components/ui/PaintboxLogo';
 
 const ServiceCard = ({ icon: Icon, title, description }: any) => {
   return (
@@ -35,7 +36,7 @@ const TestimonialCard = ({ name, location, text, rating }: any) => {
 export default function Home() {
   const features = [
     "Professional residential painting",
-    "Commercial property painting", 
+    "Commercial property painting",
     "Interior & exterior services",
     "Free detailed estimates",
     "Licensed & insured",
@@ -48,15 +49,7 @@ export default function Home() {
       <header className="bg-white shadow-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-red-700 rounded-lg flex items-center justify-center shadow-md">
-                <Paintbrush2 className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">KIND HOME</h1>
-                <p className="text-xs text-gray-600">Professional Painting Services</p>
-              </div>
-            </div>
+            <PaintboxLogo size="desktop" showText priority className="flex items-center space-x-3" />
             <div className="flex items-center space-x-6">
               <a href="tel:720-903-0002" className="flex items-center space-x-2 text-gray-700 hover:text-red-600 transition-colors">
                 <Phone className="w-4 h-4" />
@@ -80,10 +73,10 @@ export default function Home() {
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-red-700"> Professional Painting</span>
             </h2>
             <p className="text-xl text-gray-700 mb-8 leading-relaxed">
-              Serving Colorado with exceptional residential and commercial painting services. 
+              Serving Colorado with exceptional residential and commercial painting services.
               Licensed, insured, and committed to excellence.
             </p>
-            <Link 
+            <Link
               href="/workflow/start"
               className="inline-flex items-center space-x-2 bg-gradient-to-r from-red-600 to-red-700 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1"
             >
@@ -236,13 +229,13 @@ export default function Home() {
             Get your free, no-obligation estimate today and see why Colorado trusts KIND HOME
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
-            <Link 
+            <Link
               href="/workflow/start"
               className="bg-white text-red-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-all duration-300 hover:shadow-xl"
             >
               Start Your Estimate
             </Link>
-            <a 
+            <a
               href="tel:720-903-0002"
               className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-red-600 transition-all duration-300"
             >
@@ -259,10 +252,7 @@ export default function Home() {
           <div className="grid md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-br from-red-600 to-red-700 rounded-lg flex items-center justify-center">
-                  <Paintbrush2 className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-bold text-white">KIND HOME</span>
+                <PaintboxLogo size="mobile" showText />
               </div>
               <p className="text-sm">Professional painting services in Colorado since 2015.</p>
             </div>
@@ -300,8 +290,8 @@ export default function Home() {
             </div>
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm">
-            <p>&copy; 2024 KIND HOME. All rights reserved. | 
-              <Link href="/privacy" className="hover:text-red-400 transition-colors ml-2">Privacy Policy</Link> | 
+            <p>&copy; 2024 KIND HOME. All rights reserved. |
+              <Link href="/privacy" className="hover:text-red-400 transition-colors ml-2">Privacy Policy</Link> |
               <Link href="/terms" className="hover:text-red-400 transition-colors ml-2">Terms of Service</Link>
             </p>
           </div>

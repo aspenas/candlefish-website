@@ -72,17 +72,17 @@ export interface LogoProps
 }
 
 const Logo = React.forwardRef<HTMLDivElement, LogoProps>(
-  ({ 
-    className, 
-    size, 
-    variant, 
+  ({
+    className,
+    size,
+    variant,
     layout,
     showIcon = true,
     showText = true,
     iconVariant = "default",
     animated = false,
     href,
-    ...props 
+    ...props
   }, ref) => {
     const content = (
       <>
@@ -98,7 +98,7 @@ const Logo = React.forwardRef<HTMLDivElement, LogoProps>(
           </div>
         )}
         {showText && layout !== "icon" && (
-          <span 
+          <span
             className={cn(
               "font-light tracking-[0.05em]",
               size === "xs" && "text-sm",

@@ -12,18 +12,18 @@ export const handlers = [
   rest.get(`${API_BASE}/repositories/:id`, (req, res, ctx) => {
     const { id } = req.params
     const repository = mockRepositories.find(repo => repo.id === id)
-    
+
     if (!repository) {
       return res(ctx.status(404), ctx.json({ message: 'Repository not found' }))
     }
-    
+
     return res(ctx.json(repository))
   }),
 
   rest.post(`${API_BASE}/repositories/:repoId/sync`, (req, res, ctx) => {
     const { repoId } = req.params
     const repository = mockRepositories.find(repo => repo.id === repoId)
-    
+
     if (!repository) {
       return res(ctx.status(404), ctx.json({ message: 'Repository not found' }))
     }
@@ -45,14 +45,14 @@ export const handlers = [
         currentStep: 'Initializing'
       }
     }
-    
+
     return res(ctx.json(syncOperation))
   }),
 
   rest.post(`${API_BASE}/local/setup/:repoId`, (req, res, ctx) => {
     const { repoId } = req.params
     const repository = mockRepositories.find(repo => repo.id === repoId)
-    
+
     if (!repository) {
       return res(ctx.status(404), ctx.json({ message: 'Repository not found' }))
     }
@@ -67,16 +67,16 @@ export const handlers = [
   rest.get(`${API_BASE}/sync/:id`, (req, res, ctx) => {
     const { id } = req.params
     const operation = mockSyncOperations.find(op => op.id === id)
-    
+
     if (!operation) {
       return res(ctx.status(404), ctx.json({ message: 'Sync operation not found' }))
     }
-    
+
     return res(ctx.json(operation))
   }),
 
   rest.get(`${API_BASE}/sync/active`, (req, res, ctx) => {
-    const activeOperations = mockSyncOperations.filter(op => 
+    const activeOperations = mockSyncOperations.filter(op =>
       op.status === 'running' || op.status === 'pending'
     )
     return res(ctx.json(activeOperations))
@@ -95,8 +95,8 @@ export const handlers = [
     const { targetRepositories } = body
 
     if (!targetRepositories || !Array.isArray(targetRepositories)) {
-      return res(ctx.status(400), ctx.json({ 
-        message: 'targetRepositories must be an array' 
+      return res(ctx.status(400), ctx.json({
+        message: 'targetRepositories must be an array'
       }))
     }
 
@@ -111,18 +111,18 @@ export const handlers = [
         status: 'pending'
       }))
     }
-    
+
     return res(ctx.json(distributionJob))
   }),
 
   rest.get(`${API_BASE}/distribute/:id`, (req, res, ctx) => {
     const { id } = req.params
     const job = mockDistributionJobs.find(job => job.id === id)
-    
+
     if (!job) {
       return res(ctx.status(404), ctx.json({ message: 'Distribution job not found' }))
     }
-    
+
     return res(ctx.json(job))
   }),
 
@@ -138,11 +138,11 @@ export const handlers = [
   rest.get(`${API_BASE}/status/service/:service`, (req, res, ctx) => {
     const { service } = req.params
     const serviceStatus = mockSystemStatus.components[service]
-    
+
     if (!serviceStatus) {
       return res(ctx.status(404), ctx.json({ message: 'Service not found' }))
     }
-    
+
     return res(ctx.json({
       status: serviceStatus,
       lastCheck: new Date().toISOString(),

@@ -17,14 +17,14 @@ export interface NavigationProps extends React.HTMLAttributes<HTMLElement> {
 }
 
 const Navigation = React.forwardRef<HTMLElement, NavigationProps>(
-  ({ 
-    className, 
+  ({
+    className,
     logo,
     items = [],
     actions,
     transparent = false,
     sticky = true,
-    ...props 
+    ...props
   }, ref) => {
     const [isScrolled, setIsScrolled] = React.useState(false)
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
@@ -46,8 +46,8 @@ const Navigation = React.forwardRef<HTMLElement, NavigationProps>(
         className={cn(
           "w-full z-50 transition-all duration-300",
           sticky && "fixed top-0 left-0 right-0",
-          transparent && !isScrolled 
-            ? "bg-transparent" 
+          transparent && !isScrolled
+            ? "bg-transparent"
             : "bg-background/80 backdrop-blur-md border-b border-border",
           isScrolled && "shadow-lg",
           className
@@ -71,8 +71,8 @@ const Navigation = React.forwardRef<HTMLElement, NavigationProps>(
                     href={item.href}
                     className={cn(
                       "text-sm font-medium transition-colors hover:text-primary",
-                      item.active 
-                        ? "text-primary" 
+                      item.active
+                        ? "text-primary"
                         : "text-muted-foreground"
                     )}
                   >
@@ -108,8 +108,8 @@ const Navigation = React.forwardRef<HTMLElement, NavigationProps>(
                     href={item.href}
                     className={cn(
                       "text-sm font-medium py-2 transition-colors hover:text-primary",
-                      item.active 
-                        ? "text-primary" 
+                      item.active
+                        ? "text-primary"
                         : "text-muted-foreground"
                     )}
                     onClick={() => setIsMobileMenuOpen(false)}

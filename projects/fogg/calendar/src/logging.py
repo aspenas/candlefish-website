@@ -1,10 +1,9 @@
 """Centralized logging configuration with structlog and Google Cloud Logging."""
 
-import json
 import logging
 import os
 import sys
-from typing import Any, Dict, Optional
+from typing import Any
 
 import structlog
 from google.cloud import logging as cloud_logging
@@ -29,7 +28,7 @@ def setup_logging(
             client = cloud_logging.Client()
             handler = CloudLoggingHandler(client, name=service_name)
             handler.setLevel(getattr(logging, log_level))
-            
+
             # Configure root logger
             root_logger = logging.getLogger()
             root_logger.setLevel(getattr(logging, log_level))
@@ -73,7 +72,7 @@ def setup_logging(
     structlog.contextvars.bind_contextvars(service=service_name)
 
 
-def get_logger(name: Optional[str] = None) -> structlog.BoundLogger:
+def get_logger(name: str | None = None) -> structlog.BoundLogger:
     """Get a structured logger instance.
 
     Args:
@@ -87,8 +86,8 @@ def get_logger(name: Optional[str] = None) -> structlog.BoundLogger:
 
 def log_api_call(
     operation: str,
-    calendar_id: Optional[str] = None,
-    event_id: Optional[str] = None,
+    calendar_id: str | None = None,
+    event_id: str | None = None,
     **kwargs: Any,
 ) -> None:
     """Log an API call with consistent format.
@@ -104,21 +103,21 @@ def log_api_call(
         "operation": operation,
         "api": "google_calendar",
     }
-    
+
     if calendar_id:
         context["calendar_id"] = calendar_id
     if event_id:
         context["event_id"] = event_id
-    
+
     context.update(kwargs)
-    
+
     logger.info("api_call", **context)
 
 
 def log_mcp_tool_invocation(
     tool_name: str,
-    arguments: Dict[str, Any],
-    trace_id: Optional[str] = None,
+    arguments: dict[str, Any],
+    trace_id: str | None = None,
     **kwargs: Any,
 ) -> None:
     """Log an MCP tool invocation with trace ID.
@@ -135,12 +134,12 @@ def log_mcp_tool_invocation(
         "arguments": arguments,
         "mcp": True,
     }
-    
+
     if trace_id:
         context["trace_id"] = trace_id
-    
+
     context.update(kwargs)
-    
+
     logger.info("mcp_tool_invocation", **context)
 
 
@@ -162,9 +161,9 @@ def log_error(
         "error_type": type(error).__name__,
         "error_message": str(error),
     }
-    
+
     context.update(kwargs)
-    
+
     logger.error("operation_failed", exc_info=error, **context)
 
 
@@ -187,7 +186,7 @@ def log_health_check(
         "latency_ms": latency_ms,
         "endpoint": "/healthz",
     }
-    
+
     context.update(kwargs)
-    
+
     logger.info("health_check", **context)

@@ -3,7 +3,7 @@
 
 terraform {
   required_version = ">= 1.0"
-  
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -23,7 +23,7 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
-  
+
   default_tags {
     tags = {
       Project     = "Paintbox"
@@ -42,7 +42,7 @@ data "aws_region" "current" {}
 locals {
   account_id = data.aws_caller_identity.current.account_id
   region     = data.aws_region.current.name
-  
+
   common_tags = {
     Project     = "Paintbox"
     Environment = var.environment
@@ -467,26 +467,26 @@ resource "aws_elasticache_subnet_group" "paintbox" {
 resource "aws_elasticache_replication_group" "paintbox" {
   replication_group_id         = "paintbox-${var.environment}"
   description                  = "Redis cluster for Paintbox application"
-  
+
   node_type                    = var.environment == "production" ? "cache.t3.medium" : "cache.t3.micro"
   port                         = 6379
   parameter_group_name         = "default.redis7"
-  
+
   num_cache_clusters           = var.environment == "production" ? 2 : 1
-  
+
   subnet_group_name            = aws_elasticache_subnet_group.paintbox.name
   security_group_ids           = [aws_security_group.redis.id]
-  
+
   at_rest_encryption_enabled   = true
   transit_encryption_enabled   = true
   auth_token                   = var.redis_auth_token
-  
+
   snapshot_retention_limit     = var.environment == "production" ? 7 : 1
   snapshot_window              = "03:00-05:00"
   maintenance_window           = "sun:05:00-sun:07:00"
-  
+
   auto_minor_version_upgrade   = true
-  
+
   tags = merge(local.common_tags, {
     Name = "paintbox-redis-${var.environment}"
   })

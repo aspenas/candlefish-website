@@ -109,7 +109,7 @@ export const validateAuth = async (event) => {
   try {
     const token = event.headers.Authorization?.replace('Bearer ', '');
     if (!token) return null;
-    
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'temp-secret');
     return decoded;
   } catch (error) {
@@ -183,11 +183,11 @@ cat > ../frontend-lean/index.html << 'EOL'
         </div>
       </div>
     </nav>
-    
+
     <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
       <div class="px-4 py-6 sm:px-0">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          
+
           <!-- Secrets Management -->
           <div class="bg-white overflow-hidden shadow rounded-lg">
             <div class="px-4 py-5 sm:p-6">
@@ -198,7 +198,7 @@ cat > ../frontend-lean/index.html << 'EOL'
               </button>
             </div>
           </div>
-          
+
           <!-- Contractor Access -->
           <div class="bg-white overflow-hidden shadow rounded-lg">
             <div class="px-4 py-5 sm:p-6">
@@ -209,7 +209,7 @@ cat > ../frontend-lean/index.html << 'EOL'
               </button>
             </div>
           </div>
-          
+
           <!-- Claude Assistant -->
           <div class="bg-white overflow-hidden shadow rounded-lg">
             <div class="px-4 py-5 sm:p-6">
@@ -220,24 +220,24 @@ cat > ../frontend-lean/index.html << 'EOL'
               </button>
             </div>
           </div>
-          
+
         </div>
-        
+
         <!-- Dynamic Content Area -->
         <div id="content" class="mt-8"></div>
       </div>
     </main>
   </div>
-  
+
   <script>
     const API_URL = 'API_GATEWAY_URL'; // Will be replaced during deployment
-    
+
     async function loadSecrets() {
       const content = document.getElementById('content');
       content.innerHTML = '<p>Loading secrets...</p>';
       // Implement API call
     }
-    
+
     function manageContractors() {
       const content = document.getElementById('content');
       content.innerHTML = `
@@ -252,7 +252,7 @@ cat > ../frontend-lean/index.html << 'EOL'
         </div>
       `;
     }
-    
+
     function showPrompts() {
       const content = document.getElementById('content');
       content.innerHTML = `
@@ -269,7 +269,7 @@ cat > ../frontend-lean/index.html << 'EOL'
         </div>
       `;
     }
-    
+
     function copyToClipboard(button) {
       const textarea = button.previousElementSibling;
       textarea.select();
@@ -277,7 +277,7 @@ cat > ../frontend-lean/index.html << 'EOL'
       button.textContent = 'Copied!';
       setTimeout(() => button.textContent = 'Copy to Clipboard', 2000);
     }
-    
+
     async function inviteContractor(event) {
       event.preventDefault();
       // Implement contractor invitation

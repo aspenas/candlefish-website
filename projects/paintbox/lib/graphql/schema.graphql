@@ -54,25 +54,25 @@ type Service {
   healthEndpoint: String
   baseUrl: String
   tags: [String!]!
-  
+
   # Relationships
   dependencies: [ServiceDependency!]!
   containers: [Container!]!
   processes: [Process!]!
   metrics: [Metric!]!
   alerts: [Alert!]!
-  
+
   # Timestamps
   discoveredAt: DateTime!
   lastHealthCheck: DateTime
   lastStatusChange: DateTime
   uptime: Duration
-  
+
   # Configuration
   autoDiscovered: Boolean!
   monitoringEnabled: Boolean!
   alertingEnabled: Boolean!
-  
+
   # Health Check Configuration
   healthCheckInterval: Duration
   healthCheckTimeout: Duration
@@ -107,7 +107,7 @@ type Container {
   tag: String
   status: ProcessStatus!
   service: Service
-  
+
   # Resource Usage
   cpuUsage: Float
   memoryUsage: Float
@@ -115,17 +115,17 @@ type Container {
   networkRx: Float
   networkTx: Float
   diskUsage: Float
-  
+
   # Configuration
   environment: [EnvironmentVariable!]!
   ports: [PortMapping!]!
   volumes: [VolumeMount!]!
-  
+
   # Timestamps
   createdAt: DateTime!
   startedAt: DateTime
   lastRestart: DateTime
-  
+
   # Health
   healthCheck: ContainerHealthCheck
   restartCount: Int!
@@ -138,19 +138,19 @@ type Process {
   command: String!
   status: ProcessStatus!
   service: Service
-  
+
   # Resource Usage
   cpuPercent: Float
   memoryMb: Float
   openFiles: Int
   threads: Int
-  
+
   # Process Info
   user: String
   startTime: DateTime!
   parentPid: Int
   children: [Process!]!
-  
+
   # Environment
   workingDirectory: String
   environment: [EnvironmentVariable!]!
@@ -193,7 +193,7 @@ type Metric {
   unit: String!
   timestamp: DateTime!
   labels: JSON
-  
+
   # Thresholds for alerting
   warningThreshold: Float
   criticalThreshold: Float
@@ -242,19 +242,19 @@ type Alert {
   description: String!
   severity: AlertSeverity!
   status: AlertStatus!
-  
+
   # Rule Configuration
   rule: AlertRule!
-  
+
   # Lifecycle
   triggeredAt: DateTime!
   resolvedAt: DateTime
   acknowledgedAt: DateTime
   acknowledgedBy: String
-  
+
   # Notifications
   notifications: [AlertNotification!]!
-  
+
   # Related Data
   triggerMetric: Metric
   triggerValue: Float
@@ -278,11 +278,11 @@ type AlertRule {
   duration: Duration! # How long condition must be true
   severity: AlertSeverity!
   enabled: Boolean!
-  
+
   # Notification settings
   notificationChannels: [String!]!
   suppressDuration: Duration
-  
+
   # Service targeting
   services: [Service!]!
   tags: [String!]!
@@ -313,28 +313,28 @@ type AlertNotification {
 type SystemAnalysis {
   id: ID!
   timestamp: DateTime!
-  
+
   # Overall Health
   overallHealth: ServiceStatus!
   healthScore: Float! # 0-100
-  
+
   # Service Analysis
   totalServices: Int!
   healthyServices: Int!
   degradedServices: Int!
   unhealthyServices: Int!
-  
+
   # Performance Insights
   performanceInsights: [PerformanceInsight!]!
   resourceUtilization: SystemResourceUtilization!
-  
+
   # Alerts Summary
   activeAlerts: Int!
   alertsByService: [ServiceAlertSummary!]!
-  
+
   # Recommendations
   recommendations: [SystemRecommendation!]!
-  
+
   # Trends
   trendAnalysis: TrendAnalysis!
 }
@@ -431,14 +431,14 @@ type Query {
     limit: Int = 50
     offset: Int = 0
   ): [Service!]!
-  
+
   service(id: ID!): Service
   serviceByName(name: String!, environment: String): Service
-  
+
   # System Analysis
   systemAnalysis(timeRange: TimeRangeInput): SystemAnalysis!
   runFullAnalysis: SystemAnalysis!
-  
+
   # Metrics
   metrics(
     serviceId: ID
@@ -446,7 +446,7 @@ type Query {
     timeRange: TimeRangeInput
     limit: Int = 100
   ): [Metric!]!
-  
+
   metricSeries(
     serviceId: ID!
     metricName: String!
@@ -454,7 +454,7 @@ type Query {
     aggregation: AggregationType = AVG
     granularity: Duration = "1m"
   ): MetricSeries!
-  
+
   # Alerts
   alerts(
     serviceId: ID
@@ -463,27 +463,27 @@ type Query {
     limit: Int = 50
     offset: Int = 0
   ): [Alert!]!
-  
+
   alert(id: ID!): Alert
-  
+
   # Alert Rules
   alertRules(
     serviceId: ID
     enabled: Boolean
     severity: AlertSeverity
   ): [AlertRule!]!
-  
+
   # Containers and Processes
   containers(
     serviceId: ID
     status: ProcessStatus
   ): [Container!]!
-  
+
   processes(
     serviceId: ID
     status: ProcessStatus
   ): [Process!]!
-  
+
   # Health Checks
   healthCheck(serviceId: ID!): ServiceHealthResult!
   healthCheckAll: [ServiceHealthResult!]!
@@ -496,26 +496,26 @@ type Mutation {
   registerService(input: RegisterServiceInput!): Service!
   updateService(id: ID!, input: UpdateServiceInput!): Service!
   removeService(id: ID!): Boolean!
-  
+
   # Manual Health Checks
   triggerHealthCheck(serviceId: ID!): ServiceHealthResult!
   triggerHealthCheckAll: [ServiceHealthResult!]!
-  
+
   # Alert Management
   acknowledgeAlert(alertId: ID!, userId: String!): Alert!
   resolveAlert(alertId: ID!, userId: String!): Alert!
   suppressAlert(alertId: ID!, duration: Duration!): Alert!
-  
+
   # Alert Rules
   createAlertRule(input: CreateAlertRuleInput!): AlertRule!
   updateAlertRule(id: ID!, input: UpdateAlertRuleInput!): AlertRule!
   deleteAlertRule(id: ID!): Boolean!
-  
+
   # System Actions
   restartService(serviceId: ID!): ServiceActionResult!
   restartContainer(containerId: ID!): ContainerActionResult!
   scaleService(serviceId: ID!, replicas: Int!): ServiceActionResult!
-  
+
   # Analysis
   requestSystemAnalysis: SystemAnalysis!
 }
@@ -526,19 +526,19 @@ type Subscription {
   # Real-time Service Updates
   serviceStatusChanged(serviceId: ID): ServiceStatusUpdate!
   servicesStatusChanged(serviceIds: [ID!]): ServiceStatusUpdate!
-  
+
   # Real-time Metrics
   metricsUpdated(serviceId: ID!): Metric!
   systemMetricsUpdated: [Metric!]!
-  
+
   # Real-time Alerts
   alertTriggered(serviceId: ID): Alert!
   alertResolved(serviceId: ID): Alert!
   alertsChanged: Alert!
-  
+
   # System Analysis Updates
   systemAnalysisUpdated: SystemAnalysis!
-  
+
   # Container/Process Updates
   containerStatusChanged(serviceId: ID): ContainerStatusUpdate!
   processStatusChanged(serviceId: ID): ProcessStatusUpdate!

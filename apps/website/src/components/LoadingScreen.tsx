@@ -5,9 +5,9 @@ const LoadingScreen: React.FC = () => {
     <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
       <div className="text-center">
         <picture>
-          <source srcSet="/logo/candlefish_highquality.webp" type="image/webp" />
+          <source srcSet="/logo/candlefish_original.png" type="image/webp" />
           <img
-            src="/logo/candlefish_highquality.png"
+            src="/logo/candlefish_original.png"
             alt="Candlefish AI Logo"
             className="w-auto h-48 max-w-32 mb-6 mx-auto object-contain animate-pulse"
           />

@@ -5,30 +5,35 @@ A comprehensive GraphQL API for system monitoring and analysis with the core pri
 ## 🎯 Core Features
 
 ### 🔍 **Service Discovery**
+
 - **Automated Detection**: Discovers Docker containers, running processes, and HTTP services
 - **Manual Registration**: Register custom services with health endpoints
 - **Dependency Mapping**: Track service dependencies and their health impact
 - **Multi-Environment**: Support for dev, staging, production environments
 
 ### 📊 **Real-Time Monitoring**
+
 - **Health Checks**: Configurable health monitoring with retries and timeouts
 - **Performance Metrics**: CPU, memory, disk, network utilization tracking
 - **Container Monitoring**: Docker container resource usage and status
 - **Process Tracking**: System process monitoring with resource consumption
 
 ### 🚨 **Intelligent Alerting**
+
 - **Rule-Based Alerts**: Create custom alert rules with thresholds and conditions
 - **Multi-Channel Notifications**: Slack, email, webhook, PagerDuty integration
 - **Alert Lifecycle**: Trigger → Acknowledge → Resolve workflow
 - **Severity Levels**: Low, Medium, High, Critical classification
 
 ### 📈 **System Analysis**
+
 - **Health Scoring**: Overall system health with 0-100 scoring
 - **Performance Insights**: Automated detection of performance issues
 - **Trend Analysis**: Historical trend analysis with MTTR calculations
 - **Recommendations**: AI-powered recommendations for system improvements
 
 ### ⚡ **Real-Time Updates**
+
 - **GraphQL Subscriptions**: Real-time status updates via WebSocket
 - **Live Metrics**: Streaming performance metrics
 - **Alert Notifications**: Instant alert notifications
@@ -37,6 +42,7 @@ A comprehensive GraphQL API for system monitoring and analysis with the core pri
 ## 🏗️ Architecture
 
 ### Schema Design
+
 ```
 Services → Containers/Processes → Metrics → Alerts
          ↓
@@ -48,11 +54,12 @@ Services → Containers/Processes → Metrics → Alerts
 ### Key Components
 
 1. **Discovery Service**: Auto-discovers and registers services
-2. **Monitoring Service**: Tracks health and performance metrics  
+2. **Monitoring Service**: Tracks health and performance metrics
 3. **Analysis Service**: Provides system-wide insights and trends
 4. **Alert Service**: Manages alerting rules and notifications
 
 ### Federation Support
+
 - Supports Apollo Federation for microservices architecture
 - Can operate as standalone service or federated subgraph
 - Gateway configuration for multi-service deployments
@@ -489,12 +496,12 @@ describe('System Analysis', () => {
     const query = `
       query { runFullAnalysis { overallHealth healthScore } }
     `;
-    
+
     const response = await request(app)
       .post('/graphql')
       .send({ query })
       .expect(200);
-      
+
     expect(response.body.data.runFullAnalysis).toBeDefined();
     expect(response.body.data.runFullAnalysis.healthScore).toBeGreaterThan(0);
   });
@@ -547,7 +554,7 @@ class RateLimitError extends Error {
 formatError: (error) => {
   // Log full error for debugging
   logger.error('GraphQL Error', { error, stack: error.stack });
-  
+
   // Return safe error to client
   return {
     message: error.message,
@@ -561,18 +568,21 @@ formatError: (error) => {
 ## 📈 Roadmap
 
 ### Near Term (Q1)
+
 - [ ] Machine learning-based anomaly detection
 - [ ] Advanced dependency graph visualization
 - [ ] Custom metric collection agents
 - [ ] Mobile app for alerts and monitoring
 
 ### Medium Term (Q2-Q3)
+
 - [ ] Multi-cloud support (AWS, GCP, Azure)
 - [ ] Kubernetes operator for auto-deployment
 - [ ] Advanced AI recommendations
 - [ ] Cost optimization analysis
 
 ### Long Term (Q4+)
+
 - [ ] Predictive scaling recommendations
 - [ ] Automated incident response
 - [ ] Integration with major APM tools
@@ -603,7 +613,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Documentation**: [Full API Documentation](./docs/)
 - **Issues**: [GitHub Issues](https://github.com/candlefish-ai/paintbox/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/candlefish-ai/paintbox/discussions)
-- **Email**: support@candlefish.ai
+- **Email**: <support@candlefish.ai>
 
 ---
 

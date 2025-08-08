@@ -8,10 +8,10 @@ import * as TaskManager from 'expo-task-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApolloClient } from './apolloClient';
 import { GET_BACKGROUND_STATUS } from './queries';
-import { 
-  sendAlertNotification, 
-  sendServiceDownNotification, 
-  sendSystemHealthNotification 
+import {
+  sendAlertNotification,
+  sendServiceDownNotification,
+  sendSystemHealthNotification
 } from './notifications';
 
 const BACKGROUND_SYNC_TASK = 'background-sync';
@@ -29,12 +29,12 @@ interface BackgroundSyncResult {
 TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
   try {
     console.log('Background sync started');
-    
+
     const result = await performBackgroundSync();
-    
+
     // Store sync result
     await AsyncStorage.setItem('lastBackgroundSync', JSON.stringify(result));
-    
+
     if (result.success) {
       console.log('Background sync completed successfully');
       return BackgroundFetch.BackgroundFetchResult.NewData;
@@ -44,7 +44,7 @@ TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
     }
   } catch (error) {
     console.error('Background sync error:', error);
-    
+
     // Store error result
     const errorResult: BackgroundSyncResult = {
       success: false,
@@ -54,7 +54,7 @@ TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
       error: error instanceof Error ? error.message : 'Unknown error',
     };
     await AsyncStorage.setItem('lastBackgroundSync', JSON.stringify(errorResult));
-    
+
     return BackgroundFetch.BackgroundFetchResult.Failed;
   }
 });
@@ -63,8 +63,8 @@ export const initializeBackgroundTasks = async (): Promise<void> => {
   try {
     // Check if background fetch is available
     const status = await BackgroundFetch.getStatusAsync();
-    
-    if (status === BackgroundFetch.BackgroundFetchStatus.Restricted || 
+
+    if (status === BackgroundFetch.BackgroundFetchStatus.Restricted ||
         status === BackgroundFetch.BackgroundFetchStatus.Denied) {
       console.log('Background fetch is disabled');
       return;
@@ -103,7 +103,7 @@ const performBackgroundSync = async (): Promise<BackgroundSyncResult> => {
   try {
     // Get Apollo client
     const client = getApolloClient();
-    
+
     // Fetch current status
     const { data } = await client.query({
       query: GET_BACKGROUND_STATUS,
@@ -117,14 +117,14 @@ const performBackgroundSync = async (): Promise<BackgroundSyncResult> => {
 
     // Get stored state for comparison
     const storedState = await getStoredSystemState();
-    
+
     // Check for new alerts
     const newAlerts = await processNewAlerts(data.alerts, storedState?.alerts || []);
     result.newAlerts = newAlerts;
 
     // Check for service status changes
     const statusChanges = await processServiceStatusChanges(
-      data.services, 
+      data.services,
       storedState?.services || []
     );
     result.serviceStatusChanges = statusChanges;
@@ -151,7 +151,7 @@ const performBackgroundSync = async (): Promise<BackgroundSyncResult> => {
 const processNewAlerts = async (currentAlerts: any[], previousAlerts: any[]): Promise<number> => {
   const previousAlertIds = new Set(previousAlerts.map(a => a.id));
   const newAlerts = currentAlerts.filter(alert => !previousAlertIds.has(alert.id));
-  
+
   // Send notifications for critical and high severity new alerts
   for (const alert of newAlerts) {
     if (alert.severity === 'CRITICAL' || alert.severity === 'HIGH') {
@@ -169,7 +169,7 @@ const processNewAlerts = async (currentAlerts: any[], previousAlerts: any[]): Pr
 };
 
 const processServiceStatusChanges = async (
-  currentServices: any[], 
+  currentServices: any[],
   previousServices: any[]
 ): Promise<number> => {
   const previousServiceMap = new Map(previousServices.map(s => [s.id, s.status]));
@@ -177,10 +177,10 @@ const processServiceStatusChanges = async (
 
   for (const service of currentServices) {
     const previousStatus = previousServiceMap.get(service.id);
-    
+
     if (previousStatus && previousStatus !== service.status) {
       changesCount++;
-      
+
       // Send notification for services going down
       if (service.status === 'UNHEALTHY' && previousStatus === 'HEALTHY') {
         await sendServiceDownNotification(service.name, service.id);
@@ -192,14 +192,14 @@ const processServiceStatusChanges = async (
 };
 
 const processSystemHealthChanges = async (
-  currentAnalysis: any, 
+  currentAnalysis: any,
   previousAnalysis?: any
 ): Promise<void> => {
   if (!previousAnalysis) return;
 
   const currentScore = currentAnalysis.healthScore;
   const previousScore = previousAnalysis.healthScore;
-  
+
   // Significant health score drop (>20 points)
   if (currentScore < previousScore - 20) {
     await sendSystemHealthNotification(
@@ -207,7 +207,7 @@ const processSystemHealthChanges = async (
       'Significant performance degradation detected'
     );
   }
-  
+
   // Critical health threshold
   if (currentScore < 30 && previousScore >= 30) {
     await sendSystemHealthNotification(
@@ -252,7 +252,7 @@ export const isBackgroundSyncEnabled = async (): Promise<boolean> => {
   try {
     const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_SYNC_TASK);
     const status = await BackgroundFetch.getStatusAsync();
-    
+
     return isRegistered && status === BackgroundFetch.BackgroundFetchStatus.Available;
   } catch {
     return false;

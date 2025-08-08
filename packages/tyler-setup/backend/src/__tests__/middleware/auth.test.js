@@ -1,12 +1,12 @@
 import jwt from 'jsonwebtoken';
 import { jest } from '@jest/globals';
-import { 
-  authMiddleware, 
-  optionalAuth, 
-  requireRole, 
-  requireAnyRole, 
-  generateToken, 
-  verifyToken 
+import {
+  authMiddleware,
+  optionalAuth,
+  requireRole,
+  requireAnyRole,
+  generateToken,
+  verifyToken
 } from '../../middleware/auth.js';
 import { UnauthorizedError } from '../../middleware/errorHandler.js';
 
@@ -33,7 +33,7 @@ describe('Authentication Middleware', () => {
       json: jest.fn()
     };
     next = jest.fn();
-    
+
     // Reset JWT mocks
     jwt.verify.mockReset();
     jwt.sign.mockReset();

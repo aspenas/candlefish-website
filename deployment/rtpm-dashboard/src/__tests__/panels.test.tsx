@@ -179,7 +179,7 @@ describe('DNS Management Panel', () => {
 
   it('handles DNS loading and error states', async () => {
     // Test loading state
-    apiMock.setApiResponse('getDNSConfiguration', 
+    apiMock.setApiResponse('getDNSConfiguration',
       new Promise(resolve => setTimeout(() => resolve([]), 100))
     );
 
@@ -690,7 +690,7 @@ describe('Validation Results Panel', () => {
 
   it('filters validation results', async () => {
     const user = userEvent.setup();
-    
+
     const mockResults = [
       { id: '1', type: 'dns', status: 'passed', message: 'DNS Test', timestamp: '2022-01-01T00:00:00Z' },
       { id: '2', type: 'ssl', status: 'failed', message: 'SSL Test', timestamp: '2022-01-01T00:01:00Z' },

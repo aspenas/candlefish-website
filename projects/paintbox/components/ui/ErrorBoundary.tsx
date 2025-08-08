@@ -1,6 +1,6 @@
 /**
  * Error Boundary Component
- * 
+ *
  * Catches JavaScript errors anywhere in the component tree and displays a fallback UI
  */
 
@@ -47,15 +47,15 @@ class ErrorBoundary extends Component<Props, State> {
             <div className="w-12 h-12 mx-auto mb-4 text-red-500">
               <ExclamationTriangleIcon />
             </div>
-            
+
             <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
               Something went wrong
             </h2>
-            
+
             <p className="text-gray-600 dark:text-gray-400 mb-6">
               An unexpected error occurred while loading this component.
             </p>
-            
+
             {process.env.NODE_ENV === 'development' && this.state.error && (
               <details className="text-left mb-4">
                 <summary className="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -73,7 +73,7 @@ class ErrorBoundary extends Component<Props, State> {
                 </div>
               </details>
             )}
-            
+
             <div className="space-y-3">
               <button
                 onClick={() => this.setState({ hasError: false, error: undefined, errorInfo: undefined })}
@@ -81,7 +81,7 @@ class ErrorBoundary extends Component<Props, State> {
               >
                 Try Again
               </button>
-              
+
               <button
                 onClick={() => window.location.reload()}
                 className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"

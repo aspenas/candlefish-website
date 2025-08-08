@@ -1,4 +1,5 @@
 # Candlefish AI Brand Guidelines 2025
+
 ### Illuminating Intelligence Through Design
 
 ---
@@ -31,31 +32,38 @@ This comprehensive guide ensures consistent brand application across all touchpo
 ## Brand Foundation
 
 ### Mission
+
 To illuminate the path to AI transformation by turning organizations' slowest business processes into their fastest competitive advantages through discrete, composable AI modules.
 
 ### Vision
+
 A world where artificial intelligence enhances rather than replaces human intelligence, creating symbiotic relationships between natural wisdom and technological capability.
 
 ### Core Values
 
 #### 1. **Illumination**
+
 We bring clarity to complexity, making the incomprehensible accessible.
 
 #### 2. **Depth**
+
 Like the ocean, AI has unexplored depths. We navigate these waters with expertise and precision.
 
 #### 3. **Natural Intelligence**
+
 We believe the best AI solutions mirror natural systems—adaptive, efficient, and harmonious.
 
 #### 4. **Modularity**
+
 Our approach is discrete and composable, allowing for flexible, scalable solutions.
 
-### Brand Personality
+### Brand Personality (Locked)
 
-- **Sophisticated**: Enterprise-grade without being intimidating
-- **Innovative**: Cutting-edge technology with practical application
 - **Trustworthy**: Reliable partner for critical transformations
-- **Accessible**: Complex technology made understandable
+- **Precise**: Technical rigor, clear information hierarchy, measured motion
+- **Innovative**: Forward-looking, leveraging modern standards (OKLCH, container queries)
+- **Creative**: Bioluminescent inspiration and abstract tech motifs
+- **Sophisticated**: Premium, minimal, confident restraint
 
 ---
 
@@ -64,20 +72,25 @@ Our approach is discrete and composable, allowing for flexible, scalable solutio
 ### Design Principles
 
 #### 1. **Minimalism with Purpose**
+
 Every element serves a function. No decoration without intention.
 
 #### 2. **High Contrast**
+
 Clear differentiation between elements ensures accessibility and impact.
 
 #### 3. **Bioluminescent Inspiration**
+
 Subtle glows and light effects reference our candlefish namesake.
 
 #### 4. **Technical Precision**
+
 Grid-based layouts and mathematical proportions convey engineering excellence.
 
 ### Visual Language
 
 Our visual language draws from:
+
 - **Ocean depths**: Dark backgrounds with points of light
 - **Neural networks**: Interconnected patterns and grids
 - **Bioluminescence**: Organic light effects and glows
@@ -88,23 +101,27 @@ Our visual language draws from:
 ## Color System
 
 ### Philosophy
+
 Our color palette is intentionally minimal, focusing on the interplay between darkness and light—mirroring how the candlefish illuminates the ocean depths.
 
 ### Primary Palette
 
 #### Candlefish Black
+
 - **Hex**: #000000
 - **RGB**: 0, 0, 0
 - **OKLCH**: oklch(0% 0 0)
 - **Usage**: Primary backgrounds, text on light surfaces
 
 #### Candlefish Teal
+
 - **Hex**: #00CED1
 - **RGB**: 0, 206, 209
 - **OKLCH**: oklch(50% 0.20 180)
 - **Usage**: Primary accent, CTAs, highlights
 
 #### Pure White
+
 - **Hex**: #FFFFFF
 - **RGB**: 255, 255, 255
 - **OKLCH**: oklch(95% 0 0)
@@ -175,21 +192,35 @@ $information: oklch(60% 0.15 220);  // Blue
 ## Typography
 
 ### Type Philosophy
+
 Clean, modern, and highly legible. Our typography choices reflect technical precision while maintaining approachability.
 
 ### Font Stack
 
-#### Primary (Sans-serif)
+#### Web (Sans + Mono)
+
 ```css
-font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', 
+font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI',
              'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 ```
 
-#### Monospace (Technical content)
 ```css
-font-family: 'Space Mono', 'SF Mono', 'Monaco', 'Consolas', 
+font-family: 'Space Mono', 'SF Mono', 'Monaco', 'Consolas',
              'Courier New', monospace;
 ```
+
+#### Corporate Docs (Email/Letters/Contracts)
+
+```css
+/* Installed fonts (US Graphics Berkeley family) */
+font-family: 'USGraphics Berkeley', 'Times New Roman', serif;
+```
+
+```css
+font-family: 'USGraphics Berkeley Mono', 'Courier New', monospace;
+```
+
+Licensing: Active Developer Font License (Desktop/Print + Website). Assets located at `/Users/patricksmith/candlefish-ai/Branding/cf-fonts`.
 
 ### Type Scale
 
@@ -224,7 +255,7 @@ $font-bold:      700;  // Special emphasis only
 1. **Headlines**: Light weight (300) for elegance
 2. **Body Text**: Normal weight (400) for readability
 3. **Line Height**: 1.5-1.8 for optimal reading
-4. **Letter Spacing**: 
+4. **Letter Spacing**:
    - Headlines: -0.02em to -0.03em
    - Body: 0
    - Uppercase labels: 0.1em
@@ -232,6 +263,7 @@ $font-bold:      700;  // Special emphasis only
 ### Special Typography
 
 #### Validation Badge
+
 ```css
 .badge {
   font-family: var(--font-mono);
@@ -257,30 +289,36 @@ Our logo combines symbolic and typographic elements:
 ### Logo Variations
 
 #### Primary Horizontal
+
 ```
 [C] CANDLEFISH
 ```
+
 - Use when width > 200px
 - Primary application for most contexts
 
 #### Stacked
+
 ```
   [C]
 CANDLEFISH
 ```
+
 - Use when width < 200px or height > width
 - Mobile applications, social media
 
 #### Icon Only
+
 ```
 [C]
 ```
+
 - Use when width < 80px
 - App icons, favicons, small spaces
 
 ### Logo Specifications
 
-- **Minimum Size**: 
+- **Minimum Size**:
   - Horizontal: 120px wide
   - Stacked: 80px wide
   - Icon: 32px
@@ -291,6 +329,12 @@ CANDLEFISH
   - Black on light backgrounds
   - White on dark backgrounds
   - Teal on black for special applications
+
+### Deliverables
+
+- SVG master icon + wordmark, mono, inverted, single-color, and clear-space diagram
+- PNG exports @1x/@2x, and vector PDF for print
+- Location: `public/logo/svg/`
 
 ### Logo Don'ts
 
@@ -323,12 +367,14 @@ Our photography emphasizes:
 ### Iconography
 
 We use custom line icons with:
+
 - 1.5px stroke weight
 - 24x24px base grid
 - Rounded corners (2px radius)
 - Consistent visual weight
 
 Common icons include:
+
 - Neural networks
 - Data flows
 - Security shields
@@ -368,7 +414,9 @@ $ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
 ### Signature Animations
 
 #### Bioluminescence Pulse
+
 Subtle glow effect for interactive elements
+
 ```css
 @keyframes bioluminescence {
   0%, 100% { filter: brightness(1) drop-shadow(0 0 10px var(--teal)); }
@@ -377,7 +425,9 @@ Subtle glow effect for interactive elements
 ```
 
 #### Neural Network Flow
+
 Particle movement suggesting data/intelligence flow
+
 ```css
 @keyframes neural-flow {
   0% { transform: translateX(-100%); opacity: 0; }
@@ -393,12 +443,14 @@ Particle movement suggesting data/intelligence flow
 ### Web Implementation
 
 #### Grid System
+
 - 12-column grid
 - 24px gutters
 - Max width: 1400px
 - Container padding: 24px mobile, 48px desktop
 
 #### Breakpoints
+
 ```scss
 $mobile:  640px;
 $tablet:  768px;
@@ -408,6 +460,7 @@ $wide:    1536px;
 ```
 
 #### Component Architecture
+
 - Atomic design methodology
 - Component-first approach
 - Consistent spacing scale
@@ -416,6 +469,7 @@ $wide:    1536px;
 ### UI Components
 
 #### Buttons
+
 - **Primary**: Teal background, black text
 - **Secondary**: Transparent, teal border
 - **Ghost**: Transparent, white/black text
@@ -423,12 +477,14 @@ $wide:    1536px;
 - **Active**: Pressed appearance
 
 #### Form Elements
+
 - Minimal borders
 - Focus states with teal glow
 - Clear error/success states
 - Adequate touch targets (44px minimum)
 
 #### Cards
+
 - Subtle glass morphism effect
 - 1px border with low opacity
 - Hover state with slight elevation
@@ -439,12 +495,14 @@ $wide:    1536px;
 Both modes maintain brand integrity:
 
 #### Dark Mode (Default)
+
 - Background: Pure black
 - Surface: 5% white
 - Text: White/gray hierarchy
 - Accents: Teal remains constant
 
 #### Light Mode
+
 - Background: White
 - Surface: 5% black
 - Text: Black/gray hierarchy
@@ -457,20 +515,24 @@ Both modes maintain brand integrity:
 ### Color Specifications
 
 #### CMYK Values
+
 - Black: C0 M0 Y0 K100
 - Teal: C100 M0 Y10 K20
 - White: C0 M0 Y0 K0
 
 #### Pantone
+
 - Black: Black C
 - Teal: Pantone 3125 C
 
 ### Paper Specifications
+
 - Weight: 16pt minimum for business cards
 - Finish: Matte or soft-touch
 - Color: Bright white or deep black
 
 ### Special Finishes
+
 - Spot UV on logo for subtle dimension
 - Metallic teal foil for premium applications
 - Embossing/debossing for tactile interest
@@ -482,23 +544,26 @@ Both modes maintain brand integrity:
 ### Brand Voice Attributes
 
 1. **Knowledgeable** without being condescending
-2. **Innovative** without being inaccessible  
+2. **Innovative** without being inaccessible
 3. **Professional** without being cold
 4. **Confident** without being arrogant
 
 ### Tone Variations
 
 #### For Executives
+
 - Strategic focus
 - ROI and business impact
 - Transformation narratives
 
 #### For Technical Audiences
+
 - Precise specifications
 - Implementation details
 - Performance metrics
 
 #### For General Business
+
 - Clear benefits
 - Relatable analogies
 - Success stories
@@ -506,9 +571,11 @@ Both modes maintain brand integrity:
 ### Messaging Framework
 
 #### Primary Message
+
 "Illuminating the path to AI transformation"
 
 #### Supporting Messages
+
 - "Turn your slowest processes into your fastest advantages"
 - "Discrete, composable AI modules for enterprise scale"
 - "Where natural wisdom meets artificial intelligence"
@@ -528,28 +595,33 @@ Both modes maintain brand integrity:
 ### WCAG 2.1 AA Compliance
 
 #### Color Contrast
+
 - Normal text: 7:1 minimum
 - Large text: 4.5:1 minimum
 - UI components: 3:1 minimum
 
 #### Motion
+
 - Respect `prefers-reduced-motion`
 - Provide pause controls
 - Avoid flashing (3Hz limit)
 
 #### Navigation
+
 - Keyboard accessible
 - Clear focus indicators
 - Skip links
 - Logical tab order
 
 #### Content
+
 - Alt text for images
 - Descriptive links
 - Proper heading hierarchy
 - Language declaration
 
 ### Testing Requirements
+
 - Screen reader testing
 - Keyboard navigation testing
 - Color contrast validation
@@ -568,7 +640,7 @@ Our design system uses tokens for consistency:
   "color": {
     "brand": {
       "black": { "value": "#000000" },
-      "teal": { 
+      "teal": {
         "value": "#00CED1",
         "oklch": "oklch(50% 0.20 180)"
       },
@@ -597,17 +669,20 @@ Our design system uses tokens for consistency:
 ### File Formats
 
 #### Logo Files
+
 - SVG (preferred for web)
 - PNG (2x, 3x for retina)
 - PDF (vector for print)
 
 #### Color Formats
+
 - HEX for web
 - RGB for screen
 - CMYK for print
 - OKLCH for modern browsers
 
 ### Version Control
+
 - Semantic versioning for updates
 - Changelog maintenance
 - Deprecation notices
@@ -631,7 +706,8 @@ Our brand is designed to evolve while maintaining core identity:
 For brand questions or asset requests:
 
 **Brand Team**
-- Email: brand@candlefish.ai
+
+- Email: <brand@candlefish.ai>
 - Slack: #brand-guidelines
 - Portal: brand.candlefish.ai
 
@@ -642,20 +718,24 @@ For brand questions or asset requests:
 ### Quick Reference
 
 #### Primary Colors
+
 - Black: #000000
 - Teal: #00CED1
 - White: #FFFFFF
 
 #### Fonts
+
 - Sans: System stack with Inter fallback
 - Mono: Space Mono
 
 #### Key Measurements
+
 - Border radius: 8px (0.5rem)
 - Base spacing: 16px (1rem)
 - Max width: 1400px
 
 #### Animation Timing
+
 - Fast: 150ms
 - Normal: 300ms
 - Slow: 500ms

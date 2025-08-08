@@ -154,11 +154,11 @@ describe('Full System Integration Tests', () => {
         // Should find at least one auto-discovered service
         expect(result.services).toBeDefined();
         expect(Array.isArray(result.services)).toBe(true);
-        
-        const autoDiscoveredService = result.services.find((s: any) => 
+
+        const autoDiscoveredService = result.services.find((s: any) =>
           s.autoDiscovered && s.tags.includes('auto-discovered')
         );
-        
+
         expect(autoDiscoveredService).toBeDefined();
       } finally {
         mockService.close();
@@ -204,7 +204,7 @@ describe('Full System Integration Tests', () => {
       // Set up WebSocket subscription for alerts
       const alertPromise = new Promise((resolve) => {
         wsClient = new WebSocket(WS_ENDPOINT, 'graphql-ws');
-        
+
         wsClient.on('open', () => {
           // Send connection init
           wsClient.send(JSON.stringify({
@@ -253,7 +253,7 @@ describe('Full System Integration Tests', () => {
 
       // Wait for alert notification
       const alertNotification = await alertPromise;
-      
+
       expect(alertNotification).toBeDefined();
       expect((alertNotification as any).severity).toBe('CRITICAL');
 
@@ -335,7 +335,7 @@ describe('Full System Integration Tests', () => {
           labels: { endpoint: '/api/test' },
         };
         metrics.push(metric);
-        
+
         await axios.post(`${API_BASE_URL}/api/metrics`, metric);
       }
 
@@ -583,10 +583,10 @@ describe('Full System Integration Tests', () => {
     });
 
     const server = app.listen(port);
-    
+
     // Wait for server to start
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     return server;
   }
 });

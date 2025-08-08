@@ -6,7 +6,7 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 
 const nextConfig = {
   reactStrictMode: true,
-  
+
   // Image optimization
   images: {
     remotePatterns: [
@@ -24,18 +24,18 @@ const nextConfig = {
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
-  
+
   // Build optimizations
   swcMinify: true,
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
-  
+
   // Performance optimizations
   compress: true,
   poweredByHeader: false,
   generateEtags: true,
-  
+
   // Module resolution optimizations
   modularizeImports: {
     '@heroicons/react': {
@@ -51,7 +51,7 @@ const nextConfig = {
       transform: '@mui/icons-material/{{member}}',
     },
   },
-  
+
   // Webpack optimizations
   webpack: (config, { dev, isServer, webpack }) => {
     // Production optimizations
@@ -61,14 +61,14 @@ const nextConfig = {
         ...config.optimization,
         usedExports: true,
         sideEffects: false,
-        
+
         // Code splitting
         splitChunks: {
           chunks: 'all',
           cacheGroups: {
             default: false,
             vendors: false,
-            
+
             // Framework chunk
             framework: {
               name: 'framework',
@@ -77,7 +77,7 @@ const nextConfig = {
               priority: 40,
               enforce: true,
             },
-            
+
             // Library chunk
             lib: {
               test(module) {
@@ -95,14 +95,14 @@ const nextConfig = {
               minChunks: 1,
               reuseExistingChunk: true,
             },
-            
+
             // Commons chunk
             commons: {
               name: 'commons',
               minChunks: 2,
               priority: 20,
             },
-            
+
             // Shared modules
             shared: {
               name(module, chunks) {
@@ -117,25 +117,25 @@ const nextConfig = {
               reuseExistingChunk: true,
             },
           },
-          
+
           // Maximum parallel requests
           maxAsyncRequests: 30,
           maxInitialRequests: 30,
-          
+
           // Minimum chunk size
           minSize: 20000,
           maxSize: 244000,
         },
-        
+
         // Runtime chunk
         runtimeChunk: {
           name: 'runtime',
         },
-        
+
         // Module IDs
         moduleIds: 'deterministic',
       };
-      
+
       // Terser options for better minification
       config.optimization.minimizer = config.optimization.minimizer.map(minimizer => {
         if (minimizer.constructor.name === 'TerserPlugin') {
@@ -159,14 +159,14 @@ const nextConfig = {
         return minimizer;
       });
     }
-    
+
     // Add webpack plugins
     config.plugins.push(
       new webpack.DefinePlugin({
         'process.env.BUILD_TIME': JSON.stringify(new Date().toISOString()),
       })
     );
-    
+
     // Ignore moment locales to reduce bundle size
     config.plugins.push(
       new webpack.IgnorePlugin({
@@ -174,10 +174,10 @@ const nextConfig = {
         contextRegExp: /moment$/,
       })
     );
-    
+
     return config;
   },
-  
+
   // Experimental features for performance
   experimental: {
     optimizeCss: true,
@@ -190,7 +190,7 @@ const nextConfig = {
       '@mui/icons-material',
     ],
   },
-  
+
   // Headers for caching
   async headers() {
     return [
@@ -261,7 +261,7 @@ const nextConfig = {
       },
     ];
   },
-  
+
   // Redirects for performance
   async redirects() {
     return [
@@ -272,7 +272,7 @@ const nextConfig = {
       },
     ];
   },
-  
+
   // Rewrites for API optimization
   async rewrites() {
     return {
@@ -292,22 +292,22 @@ const nextConfig = {
       ],
     };
   },
-  
+
   // Environment variables
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://paintbox-api.railway.app',
     NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL || 'wss://paintbox-api.railway.app',
     NEXT_PUBLIC_CDN_URL: process.env.CDN_URL || 'https://cdn.candlefish.ai',
   },
-  
+
   // Output configuration
   output: 'standalone',
-  
+
   // TypeScript configuration
   typescript: {
     ignoreBuildErrors: process.env.NODE_ENV === 'production',
   },
-  
+
   // ESLint configuration
   eslint: {
     ignoreDuringBuilds: process.env.NODE_ENV === 'production',

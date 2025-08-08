@@ -50,11 +50,11 @@ describe('AuditLogViewer', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     // Default successful response
     mockFetch.mockImplementation((url) => {
       const urlStr = url.toString()
-      
+
       if (urlStr.includes('/api/v1/audit/events')) {
         const urlObj = new URL(urlStr)
         const page = parseInt(urlObj.searchParams.get('page') || '1')
@@ -62,9 +62,9 @@ describe('AuditLogViewer', () => {
         const service = urlObj.searchParams.get('service')
         const action = urlObj.searchParams.get('action')
         const search = urlObj.searchParams.get('search')
-        
+
         let filteredEvents = [...mockAuditEvents]
-        
+
         // Apply filters
         if (service) {
           filteredEvents = filteredEvents.filter(event => event.service === service)
@@ -73,15 +73,15 @@ describe('AuditLogViewer', () => {
           filteredEvents = filteredEvents.filter(event => event.action === action)
         }
         if (search) {
-          filteredEvents = filteredEvents.filter(event => 
+          filteredEvents = filteredEvents.filter(event =>
             JSON.stringify(event).toLowerCase().includes(search.toLowerCase())
           )
         }
-        
+
         // Apply pagination
         const startIndex = (page - 1) * limit
         const paginatedEvents = filteredEvents.slice(startIndex, startIndex + limit)
-        
+
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({
@@ -93,7 +93,7 @@ describe('AuditLogViewer', () => {
           })
         } as Response)
       }
-      
+
       return Promise.reject(new Error('Unknown endpoint'))
     })
   })
@@ -105,14 +105,14 @@ describe('AuditLogViewer', () => {
   describe('Initial Rendering', () => {
     it('should render audit log viewer with loading state', () => {
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       expect(screen.getByText('Audit Log Viewer')).toBeInTheDocument()
       expect(screen.getByText('Loading audit events...')).toBeInTheDocument()
     })
 
     it('should load and display audit events', async () => {
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('event-1')).toBeInTheDocument()
       })
@@ -125,14 +125,14 @@ describe('AuditLogViewer', () => {
 
     it('should display audit events in a table format', async () => {
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByRole('table')).toBeInTheDocument()
       })
 
       const table = screen.getByRole('table')
       const headers = within(table).getAllByRole('columnheader')
-      
+
       expect(headers).toHaveLength(8) // Timestamp, Service, Action, User, IP, Status, Details, Actions
       expect(within(table).getByText('Timestamp')).toBeInTheDocument()
       expect(within(table).getByText('Service')).toBeInTheDocument()
@@ -145,7 +145,7 @@ describe('AuditLogViewer', () => {
 
     it('should display event details with proper formatting', async () => {
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('salesforce')).toBeInTheDocument()
       })
@@ -153,10 +153,10 @@ describe('AuditLogViewer', () => {
       // Check success/failure indicators
       expect(screen.getByText('Success')).toBeInTheDocument()
       expect(screen.getByText('Failed')).toBeInTheDocument()
-      
+
       // Check timestamp formatting
       expect(screen.getByText(/Jan 15, 2024/)).toBeInTheDocument()
-      
+
       // Check IP addresses
       expect(screen.getByText('192.168.1.100')).toBeInTheDocument()
       expect(screen.getByText('10.0.0.1')).toBeInTheDocument()
@@ -166,7 +166,7 @@ describe('AuditLogViewer', () => {
   describe('Filtering', () => {
     it('should filter events by service', async () => {
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('event-1')).toBeInTheDocument()
       })
@@ -184,7 +184,7 @@ describe('AuditLogViewer', () => {
 
     it('should filter events by action', async () => {
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('event-1')).toBeInTheDocument()
       })
@@ -202,7 +202,7 @@ describe('AuditLogViewer', () => {
     it('should filter events by date range', async () => {
       const user = userEvent.setup()
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('event-1')).toBeInTheDocument()
       })
@@ -212,7 +212,7 @@ describe('AuditLogViewer', () => {
 
       await user.clear(startDateInput)
       await user.type(startDateInput, '2024-01-15')
-      
+
       await user.clear(endDateInput)
       await user.type(endDateInput, '2024-01-15')
 
@@ -229,7 +229,7 @@ describe('AuditLogViewer', () => {
 
     it('should filter events by success/failure status', async () => {
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('event-1')).toBeInTheDocument()
       })
@@ -247,7 +247,7 @@ describe('AuditLogViewer', () => {
     it('should clear all filters when clear button is clicked', async () => {
       const user = userEvent.setup()
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('event-1')).toBeInTheDocument()
       })
@@ -276,7 +276,7 @@ describe('AuditLogViewer', () => {
     it('should search events by text', async () => {
       const user = userEvent.setup()
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('event-1')).toBeInTheDocument()
       })
@@ -294,26 +294,26 @@ describe('AuditLogViewer', () => {
     it('should debounce search input to avoid excessive API calls', async () => {
       jest.useFakeTimers()
       const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
-      
+
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('event-1')).toBeInTheDocument()
       })
 
       const initialCallCount = mockFetch.mock.calls.length
-      
+
       const searchInput = screen.getByRole('textbox', { name: /search/i })
-      
+
       // Type multiple characters quickly
       await user.type(searchInput, 'login')
-      
+
       // Should not have made additional API calls yet
       expect(mockFetch.mock.calls.length).toBe(initialCallCount)
-      
+
       // Fast-forward debounce delay
       jest.advanceTimersByTime(500)
-      
+
       await waitFor(() => {
         expect(mockFetch.mock.calls.length).toBeGreaterThan(initialCallCount)
       })
@@ -325,7 +325,7 @@ describe('AuditLogViewer', () => {
   describe('Pagination', () => {
     it('should display pagination controls', async () => {
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('event-1')).toBeInTheDocument()
       })
@@ -337,12 +337,12 @@ describe('AuditLogViewer', () => {
 
     it('should navigate between pages', async () => {
       const user = userEvent.setup()
-      
+
       // Mock pagination response
       mockFetch.mockImplementation((url) => {
         const urlObj = new URL(url.toString())
         const page = parseInt(urlObj.searchParams.get('page') || '1')
-        
+
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({
@@ -356,7 +356,7 @@ describe('AuditLogViewer', () => {
       })
 
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('event-1')).toBeInTheDocument()
       })
@@ -373,7 +373,7 @@ describe('AuditLogViewer', () => {
     it('should change page size', async () => {
       const user = userEvent.setup()
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('event-1')).toBeInTheDocument()
       })
@@ -393,7 +393,7 @@ describe('AuditLogViewer', () => {
     it('should show detailed view when event is clicked', async () => {
       const user = userEvent.setup()
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('event-1')).toBeInTheDocument()
       })
@@ -413,7 +413,7 @@ describe('AuditLogViewer', () => {
     it('should display raw JSON for technical users', async () => {
       const user = userEvent.setup()
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('event-1')).toBeInTheDocument()
       })
@@ -435,11 +435,11 @@ describe('AuditLogViewer', () => {
   describe('Export Functionality', () => {
     it('should export filtered events to CSV', async () => {
       const user = userEvent.setup()
-      
+
       // Mock URL.createObjectURL
       global.URL.createObjectURL = jest.fn(() => 'mock-blob-url')
       global.URL.revokeObjectURL = jest.fn()
-      
+
       // Mock document.createElement for download link
       const mockCreateElement = jest.spyOn(document, 'createElement').mockImplementation((tagName) => {
         if (tagName === 'a') {
@@ -454,7 +454,7 @@ describe('AuditLogViewer', () => {
       })
 
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('event-1')).toBeInTheDocument()
       })
@@ -463,7 +463,7 @@ describe('AuditLogViewer', () => {
       await user.click(exportButton)
 
       expect(global.URL.createObjectURL).toHaveBeenCalled()
-      
+
       mockCreateElement.mockRestore()
     })
 
@@ -492,7 +492,7 @@ describe('AuditLogViewer', () => {
 
       const user = userEvent.setup()
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('event-0')).toBeInTheDocument()
       })
@@ -533,17 +533,17 @@ describe('AuditLogViewer', () => {
       )
 
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('event-sensitive')).toBeInTheDocument()
       })
 
       const componentText = document.body.textContent || ''
-      
+
       // Should not display actual sensitive values
       expect(componentText).not.toContain('secretpass123')
       expect(componentText).not.toContain('abc123xyz')
-      
+
       // Should show redacted version
       expect(screen.getByText(/password:.*\[REDACTED\]/i)).toBeInTheDocument()
     })
@@ -551,20 +551,20 @@ describe('AuditLogViewer', () => {
     it('should validate and sanitize search input', async () => {
       const user = userEvent.setup()
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('event-1')).toBeInTheDocument()
       })
 
       const searchInput = screen.getByRole('textbox', { name: /search/i })
-      
+
       // Test XSS payload
       await user.type(searchInput, '<script>alert("xss")</script>')
 
       await waitFor(() => {
         // Should not execute script
         expect(document.querySelector('script')).toBeNull()
-        
+
         // Should sanitize the search term
         expect(mockFetch).toHaveBeenCalledWith(
           expect.stringContaining('search=')
@@ -583,7 +583,7 @@ describe('AuditLogViewer', () => {
       )
 
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText(/insufficient permissions/i)).toBeInTheDocument()
       })
@@ -601,7 +601,7 @@ describe('AuditLogViewer', () => {
       )
 
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText(/failed to load audit events/i)).toBeInTheDocument()
       })
@@ -617,7 +617,7 @@ describe('AuditLogViewer', () => {
       )
 
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText(/network.*timeout/i)).toBeInTheDocument()
       })
@@ -649,7 +649,7 @@ describe('AuditLogViewer', () => {
       )
 
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('event-0')).toBeInTheDocument()
       })
@@ -663,7 +663,7 @@ describe('AuditLogViewer', () => {
   describe('Accessibility', () => {
     it('should have proper ARIA labels and roles', async () => {
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('event-1')).toBeInTheDocument()
       })
@@ -671,11 +671,11 @@ describe('AuditLogViewer', () => {
       // Check table accessibility
       const table = screen.getByRole('table')
       expect(table).toBeInTheDocument()
-      
+
       // Check filter accessibility
       expect(screen.getByRole('combobox', { name: /service/i })).toBeInTheDocument()
       expect(screen.getByRole('textbox', { name: /search/i })).toBeInTheDocument()
-      
+
       // Check pagination accessibility
       expect(screen.getByRole('navigation', { name: /pagination/i })).toBeInTheDocument()
     })
@@ -683,7 +683,7 @@ describe('AuditLogViewer', () => {
     it('should be keyboard navigable', async () => {
       const user = userEvent.setup()
       render(<AuditLogViewer {...defaultProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('event-1')).toBeInTheDocument()
       })

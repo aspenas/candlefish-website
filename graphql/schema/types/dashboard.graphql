@@ -1,0 +1,675 @@
+# Dashboard and Visualization Types
+type Dashboard @key(fields: "id") @auth(requires: USER) @tenant {
+  id: UUID!
+  name: NonEmptyString!
+  description: String
+
+  # Layout and Structure
+  layout: DashboardLayout!
+  widgets: [Widget!]! @complexity(value: 10)
+  filters: [DashboardFilter!]
+
+  # Visibility and Access
+  visibility: Visibility!
+  isPublic: Boolean!
+  publicToken: String
+  sharedWith: [DashboardShare!] @complexity(value: 5)
+
+  # Configuration
+  settings: DashboardSettings!
+  theme: DashboardTheme
+  autoRefresh: Boolean!
+  refreshInterval: PositiveInt
+
+  # Performance
+  lastViewed: DateTime
+  viewCount: NonNegativeInt!
+  avgLoadTime: Decimal
+
+  # Metadata
+  tags: [String!]
+  category: DashboardCategory
+  isFavorite: Boolean!
+  isTemplate: Boolean!
+  templateSource: Dashboard
+
+  # Ownership and Audit
+  createdBy: User!
+  updatedBy: User
+  createdAt: DateTime!
+  updatedAt: DateTime!
+
+  # Related Data
+  dataSources: [DataSource!]! @complexity(value: 5)
+  alerts: [Alert!]! @complexity(value: 5)
+
+  # Export and Sharing
+  exports: [Export!]! @complexity(value: 5)
+  snapshots: [DashboardSnapshot!]! @complexity(value: 10)
+}
+
+type Widget @key(fields: "id") @auth(requires: USER) @tenant {
+  id: UUID!
+  name: NonEmptyString!
+  description: String
+  type: WidgetType!
+
+  # Data Configuration
+  metric: Metric!
+  query: WidgetQuery
+  dataSource: DataSource!
+
+  # Layout
+  position: WidgetPosition!
+  size: WidgetSize!
+
+  # Visualization
+  config: WidgetConfig!
+  style: WidgetStyle
+
+  # Interactivity
+  drillDown: DrillDownConfig
+  filters: [WidgetFilter!]
+  actions: [WidgetAction!]
+
+  # Performance
+  cacheTimeout: PositiveInt
+  lastUpdated: DateTime
+  loadTime: Decimal
+
+  # Status
+  status: WidgetStatus!
+  error: String
+
+  # Metadata
+  tags: [String!]
+  createdBy: User!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+
+  # Data
+  data: WidgetData @complexity(value: 15)
+}
+
+type WidgetPosition {
+  x: NonNegativeInt!
+  y: NonNegativeInt!
+  row: NonNegativeInt!
+  col: NonNegativeInt!
+}
+
+type WidgetSize {
+  width: PositiveInt!
+  height: PositiveInt!
+  minWidth: PositiveInt
+  minHeight: PositiveInt
+  maxWidth: PositiveInt
+  maxHeight: PositiveInt
+}
+
+type WidgetConfig {
+  title: WidgetTitle
+  legend: WidgetLegend
+  axes: WidgetAxes
+  colors: [HexColorCode!]
+  animation: AnimationConfig
+  tooltip: TooltipConfig
+  responsive: Boolean!
+  customOptions: JSON
+}
+
+type WidgetTitle {
+  text: String!
+  fontSize: PositiveInt
+  color: HexColorCode
+  alignment: TextAlignment!
+  visible: Boolean!
+}
+
+type WidgetLegend {
+  visible: Boolean!
+  position: LegendPosition!
+  alignment: TextAlignment
+  fontSize: PositiveInt
+  maxWidth: PositiveInt
+}
+
+type WidgetAxes {
+  x: AxisConfig
+  y: AxisConfig
+  y2: AxisConfig
+}
+
+type AxisConfig {
+  label: String
+  visible: Boolean!
+  gridLines: Boolean!
+  tickCount: PositiveInt
+  format: String
+  min: Decimal
+  max: Decimal
+  scale: ScaleType!
+}
+
+type AnimationConfig {
+  enabled: Boolean!
+  duration: PositiveInt
+  easing: EasingType!
+  delay: NonNegativeInt
+}
+
+type TooltipConfig {
+  enabled: Boolean!
+  format: String
+  backgroundColor: HexColorCode
+  borderColor: HexColorCode
+  fontSize: PositiveInt
+}
+
+type WidgetStyle {
+  backgroundColor: HexColorCode
+  borderColor: HexColorCode
+  borderWidth: NonNegativeInt
+  borderRadius: NonNegativeInt
+  shadow: ShadowConfig
+  opacity: Decimal
+}
+
+type ShadowConfig {
+  enabled: Boolean!
+  color: HexColorCode
+  blur: NonNegativeInt
+  offsetX: Int
+  offsetY: Int
+}
+
+type DrillDownConfig {
+  enabled: Boolean!
+  targetDashboard: Dashboard
+  targetWidget: Widget
+  parameters: [DrillDownParameter!]
+}
+
+type DrillDownParameter {
+  source: String!
+  target: String!
+  type: ParameterType!
+}
+
+type WidgetFilter {
+  field: NonEmptyString!
+  operator: FilterOperator!
+  value: JSON!
+  label: String
+  required: Boolean!
+}
+
+type WidgetAction {
+  type: ActionType!
+  label: NonEmptyString!
+  url: URL
+  parameters: JSON
+  confirmation: String
+}
+
+type WidgetQuery {
+  sql: String
+  parameters: [QueryParameter!]
+  timeout: PositiveInt
+  cacheable: Boolean!
+}
+
+type WidgetData {
+  series: [DataSeries!]!
+  summary: DataSummary
+  lastUpdated: DateTime!
+  rowCount: NonNegativeInt!
+  executionTime: Decimal!
+}
+
+type DataSeries {
+  name: String!
+  data: [DataPoint!]!
+  color: HexColorCode
+  type: SeriesType
+}
+
+type DataPoint {
+  x: JSON!
+  y: Decimal!
+  label: String
+  color: HexColorCode
+  metadata: JSON
+}
+
+type DataSummary {
+  total: Decimal
+  average: Decimal
+  min: Decimal
+  max: Decimal
+  count: NonNegativeInt!
+  trend: TrendDirection
+  changePercent: Decimal
+}
+
+type DashboardFilter {
+  id: UUID!
+  name: NonEmptyString!
+  field: NonEmptyString!
+  type: FilterType!
+  operator: FilterOperator!
+  defaultValue: JSON
+  options: [FilterOption!]
+  required: Boolean!
+  visible: Boolean!
+}
+
+type FilterOption {
+  value: JSON!
+  label: NonEmptyString!
+  description: String
+}
+
+type DashboardShare {
+  id: UUID!
+  user: User
+  email: EmailAddress
+  permission: SharePermission!
+  expiresAt: DateTime
+  createdBy: User!
+  createdAt: DateTime!
+  lastAccessed: DateTime
+}
+
+type DashboardSettings {
+  allowExport: Boolean!
+  allowShare: Boolean!
+  allowEdit: Boolean!
+  allowClone: Boolean!
+  requireAuth: Boolean!
+  watermark: String
+  customCSS: String
+}
+
+type DashboardTheme {
+  id: UUID!
+  name: NonEmptyString!
+  colors: ThemeColors!
+  fonts: ThemeFonts
+  spacing: ThemeSpacing
+  customCSS: String
+}
+
+type ThemeColors {
+  primary: HexColorCode!
+  secondary: HexColorCode!
+  accent: HexColorCode!
+  background: HexColorCode!
+  surface: HexColorCode!
+  text: HexColorCode!
+  textSecondary: HexColorCode!
+  border: HexColorCode!
+  success: HexColorCode!
+  warning: HexColorCode!
+  error: HexColorCode!
+  info: HexColorCode!
+}
+
+type ThemeFonts {
+  primary: String!
+  secondary: String
+  monospace: String!
+  sizes: FontSizes!
+}
+
+type FontSizes {
+  xs: PositiveInt!
+  sm: PositiveInt!
+  md: PositiveInt!
+  lg: PositiveInt!
+  xl: PositiveInt!
+  xxl: PositiveInt!
+}
+
+type ThemeSpacing {
+  xs: PositiveInt!
+  sm: PositiveInt!
+  md: PositiveInt!
+  lg: PositiveInt!
+  xl: PositiveInt!
+}
+
+type Export @auth(requires: USER) @tenant {
+  id: UUID!
+  dashboard: Dashboard!
+  format: ExportFormat!
+  status: ExportStatus!
+
+  # Configuration
+  filters: JSON
+  dateRange: DateRange
+  options: ExportOptions
+
+  # Output
+  url: URL
+  fileSize: BigInt
+
+  # Metadata
+  requestedBy: User!
+  requestedAt: DateTime!
+  completedAt: DateTime
+  expiresAt: DateTime!
+  downloadCount: NonNegativeInt!
+}
+
+type ExportOptions {
+  includeFilters: Boolean!
+  includeData: Boolean!
+  includeCharts: Boolean!
+  format: ExportFormat!
+  quality: ExportQuality!
+  pageSize: PageSize
+  orientation: PageOrientation
+}
+
+type DateRange {
+  start: DateTime!
+  end: DateTime!
+  preset: TimeRange
+}
+
+type DashboardSnapshot {
+  id: UUID!
+  name: NonEmptyString!
+  description: String
+  config: JSON!
+  data: JSON!
+  createdBy: User!
+  createdAt: DateTime!
+  restoredAt: DateTime
+}
+
+# Notification Types
+type Notification @auth(requires: USER) @tenant {
+  id: UUID!
+  type: NotificationType!
+  title: NonEmptyString!
+  message: String!
+
+  # Targeting
+  user: User!
+
+  # Content
+  data: JSON
+  actions: [NotificationAction!]
+
+  # Status
+  read: Boolean!
+  readAt: DateTime
+
+  # Metadata
+  priority: NotificationPriority!
+  category: NotificationCategory
+
+  # Timing
+  createdAt: DateTime!
+  expiresAt: DateTime
+
+  # Delivery
+  channels: [NotificationDelivery!]!
+}
+
+type NotificationAction {
+  id: UUID!
+  label: NonEmptyString!
+  url: URL
+  action: String!
+  style: ActionStyle!
+}
+
+type NotificationDelivery {
+  channel: ChannelType!
+  status: DeliveryStatus!
+  deliveredAt: DateTime
+  error: String
+}
+
+type NotificationSettings {
+  email: EmailNotificationSettings!
+  push: PushNotificationSettings!
+  inApp: InAppNotificationSettings!
+}
+
+type EmailNotificationSettings {
+  enabled: Boolean!
+  frequency: NotificationFrequency!
+  categories: [NotificationCategory!]!
+  digest: Boolean!
+  digestTime: String
+}
+
+type PushNotificationSettings {
+  enabled: Boolean!
+  categories: [NotificationCategory!]!
+  quietHours: QuietHours
+}
+
+type InAppNotificationSettings {
+  enabled: Boolean!
+  categories: [NotificationCategory!]!
+  showBadges: Boolean!
+  playSound: Boolean!
+}
+
+type QuietHours {
+  enabled: Boolean!
+  startTime: String!
+  endTime: String!
+  timezone: String!
+}
+
+enum WidgetType {
+  LINE_CHART
+  BAR_CHART
+  PIE_CHART
+  DOUGHNUT_CHART
+  AREA_CHART
+  SCATTER_PLOT
+  BUBBLE_CHART
+  HISTOGRAM
+  FUNNEL_CHART
+  GAUGE_CHART
+  HEATMAP
+  TREEMAP
+  SANKEY_DIAGRAM
+  TABLE
+  METRIC_CARD
+  PROGRESS_BAR
+  SPARKLINE
+  MAP
+  CALENDAR_HEATMAP
+  WORD_CLOUD
+  IFRAME
+  TEXT
+  IMAGE
+  CUSTOM
+}
+
+enum Visibility {
+  PRIVATE
+  ORGANIZATION
+  PUBLIC
+}
+
+enum DashboardCategory {
+  OVERVIEW
+  SALES
+  MARKETING
+  FINANCE
+  OPERATIONS
+  CUSTOMER
+  PRODUCT
+  TECHNICAL
+  CUSTOM
+}
+
+enum WidgetStatus {
+  LOADING
+  READY
+  ERROR
+  EMPTY
+  CACHED
+}
+
+enum TextAlignment {
+  LEFT
+  CENTER
+  RIGHT
+}
+
+enum LegendPosition {
+  TOP
+  BOTTOM
+  LEFT
+  RIGHT
+  TOP_LEFT
+  TOP_RIGHT
+  BOTTOM_LEFT
+  BOTTOM_RIGHT
+}
+
+enum ScaleType {
+  LINEAR
+  LOGARITHMIC
+  CATEGORY
+  TIME
+}
+
+enum EasingType {
+  LINEAR
+  EASE_IN
+  EASE_OUT
+  EASE_IN_OUT
+  BOUNCE
+  ELASTIC
+}
+
+enum ActionType {
+  NAVIGATE
+  DRILL_DOWN
+  EXPORT
+  REFRESH
+  FILTER
+  CUSTOM
+}
+
+enum SeriesType {
+  LINE
+  BAR
+  AREA
+  SCATTER
+  BUBBLE
+}
+
+enum TrendDirection {
+  UP
+  DOWN
+  STABLE
+  VOLATILE
+}
+
+enum SharePermission {
+  VIEW
+  EDIT
+  ADMIN
+}
+
+enum ExportFormat {
+  PDF
+  PNG
+  JPEG
+  SVG
+  EXCEL
+  CSV
+  JSON
+}
+
+enum ExportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  EXPIRED
+}
+
+enum ExportQuality {
+  LOW
+  MEDIUM
+  HIGH
+  PRINT
+}
+
+enum PageSize {
+  A4
+  A3
+  LETTER
+  LEGAL
+  TABLOID
+}
+
+enum PageOrientation {
+  PORTRAIT
+  LANDSCAPE
+}
+
+enum NotificationType {
+  ALERT
+  SYSTEM
+  ANNOUNCEMENT
+  REMINDER
+  ACHIEVEMENT
+  INVITATION
+  UPDATE
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum NotificationCategory {
+  ALERTS
+  SYSTEM
+  DASHBOARDS
+  BILLING
+  SECURITY
+  UPDATES
+  SOCIAL
+}
+
+enum ActionStyle {
+  PRIMARY
+  SECONDARY
+  SUCCESS
+  WARNING
+  DANGER
+  INFO
+}
+
+enum DeliveryStatus {
+  PENDING
+  DELIVERED
+  FAILED
+  BOUNCED
+  SPAM
+}
+
+enum NotificationFrequency {
+  IMMEDIATE
+  HOURLY
+  DAILY
+  WEEKLY
+  NEVER
+}

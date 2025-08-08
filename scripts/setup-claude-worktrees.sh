@@ -27,44 +27,44 @@ setup_worktree() {
     local name=$1
     local upstream=$2
     local branch=$3
-    
+
     echo -e "${YELLOW}Setting up $name worktree...${NC}"
-    
+
     # Check if worktree already exists
     if git worktree list | grep -q "$CLAUDE_BASE/$name"; then
         echo -e "${GREEN}✓ Worktree already exists: $CLAUDE_BASE/$name${NC}"
         return
     fi
-    
+
     # Create worktree
     git worktree add -B "claude-$name" "$CLAUDE_BASE/$name"
-    
+
     # Setup in worktree
     cd "$CLAUDE_BASE/$name"
-    
+
     # Initialize if needed
     if [ ! -d ".git" ]; then
         git init
     fi
-    
+
     # Add upstream remote
     git remote add upstream "$upstream" 2>/dev/null || git remote set-url upstream "$upstream"
-    
+
     # Fetch and merge upstream
     echo -e "${YELLOW}Fetching from upstream...${NC}"
     git fetch upstream main
     git merge upstream/main --allow-unrelated-histories -m "Merge upstream $name"
-    
+
     # Return to main repo
     cd "$MAIN_REPO_PATH"
-    
+
     echo -e "${GREEN}✓ $name worktree setup complete${NC}"
 }
 
 # Function to setup team permissions
 setup_team_permissions() {
     echo -e "${YELLOW}Setting up team permissions...${NC}"
-    
+
     # Create team access file
     cat > "$CLAUDE_BASE/TEAM_ACCESS.md" << EOF
 # Claude Resources Team Access
@@ -93,14 +93,14 @@ git merge upstream/main
 - Automatic sync runs every 6 hours
 - Manual sync: \`gh workflow run claude-agents-sync.yml\`
 EOF
-    
+
     echo -e "${GREEN}✓ Team permissions documented${NC}"
 }
 
 # Function to create sync script
 create_sync_script() {
     echo -e "${YELLOW}Creating sync script...${NC}"
-    
+
     cat > "$CLAUDE_BASE/sync-claude-resources.sh" << 'EOF'
 #!/bin/bash
 # Sync Claude resources with upstream
@@ -127,7 +127,7 @@ fi
 
 echo "✅ Sync complete!"
 EOF
-    
+
     chmod +x "$CLAUDE_BASE/sync-claude-resources.sh"
     echo -e "${GREEN}✓ Sync script created${NC}"
 }
@@ -139,20 +139,20 @@ main() {
         echo -e "${RED}Error: Not in a git repository${NC}"
         exit 1
     fi
-    
+
     # Create .claude directory
     mkdir -p "$CLAUDE_BASE"
-    
+
     # Setup worktrees
     setup_worktree "agents" "$AGENTS_UPSTREAM" "claude-agents"
     setup_worktree "commands" "$COMMANDS_UPSTREAM" "claude-commands"
-    
+
     # Setup team permissions
     setup_team_permissions
-    
+
     # Create sync script
     create_sync_script
-    
+
     # Create .gitignore for main repo
     if ! grep -q "^\.claude/\*$" .gitignore 2>/dev/null; then
         echo -e "${YELLOW}Adding .claude to .gitignore...${NC}"
@@ -160,7 +160,7 @@ main() {
         echo "!.claude/agents/" >> .gitignore
         echo "!.claude/commands/" >> .gitignore
     fi
-    
+
     # Summary
     echo
     echo -e "${BLUE}Setup Complete!${NC}"

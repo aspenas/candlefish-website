@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Candlefish AI - Presentation Template</title>
-    
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-    
+
     <style>
         * {
             margin: 0;
@@ -400,11 +400,11 @@
 
     <!-- Presentation Container -->
     <div class="presentation" id="presentation">
-        
+
         <!-- Slide 1: Title -->
         <div class="slide slide-title">
             <div class="logo">
-                <div class="logo-icon">C</div>
+                <img src="/logo/candlefish_original.png" alt="Candlefish" width="40" height="40" style="border-radius:8px;" />
                 <span>CANDLEFISH</span>
             </div>
             <div class="fade-in">
@@ -417,7 +417,7 @@
         <!-- Slide 2: Problem -->
         <div class="slide">
             <div class="logo">
-                <div class="logo-icon">C</div>
+                <img src="/logo/candlefish_original.png" alt="Candlefish" width="40" height="40" style="border-radius:8px;" />
                 <span>CANDLEFISH</span>
             </div>
             <h2>The <span class="accent">Problem</span></h2>
@@ -443,7 +443,7 @@
         <!-- Slide 3: Solution -->
         <div class="slide">
             <div class="logo">
-                <div class="logo-icon">C</div>
+                <img src="/logo/candlefish_original.png" alt="Candlefish" width="40" height="40" style="border-radius:8px;" />
                 <span>CANDLEFISH</span>
             </div>
             <h2>Our <span class="accent">Solution</span></h2>
@@ -471,7 +471,7 @@
         <!-- Slide 4: Market -->
         <div class="slide">
             <div class="logo">
-                <div class="logo-icon">C</div>
+                <img src="/logo/candlefish_original.png" alt="Candlefish" width="40" height="40" style="border-radius:8px;" />
                 <span>CANDLEFISH</span>
             </div>
             <h2>Market <span class="accent">Opportunity</span></h2>
@@ -495,7 +495,7 @@
         <!-- Slide 5: Product -->
         <div class="slide slide-section">
             <div class="logo">
-                <div class="logo-icon">C</div>
+                <img src="/logo/candlefish_original.png" alt="Candlefish" width="40" height="40" style="border-radius:8px;" />
                 <span>CANDLEFISH</span>
             </div>
             <h2>How It <span class="accent">Works</span></h2>
@@ -521,7 +521,7 @@
         <!-- Slide 6: Traction -->
         <div class="slide">
             <div class="logo">
-                <div class="logo-icon">C</div>
+                <img src="/logo/candlefish_original.png" alt="Candlefish" width="40" height="40" style="border-radius:8px;" />
                 <span>CANDLEFISH</span>
             </div>
             <h2>Early <span class="accent">Traction</span></h2>
@@ -548,7 +548,7 @@
         <!-- Slide 7: Team -->
         <div class="slide">
             <div class="logo">
-                <div class="logo-icon">C</div>
+                <img src="/logo/candlefish_original.png" alt="Candlefish" width="40" height="40" style="border-radius:8px;" />
                 <span>CANDLEFISH</span>
             </div>
             <h2>The <span class="accent">Team</span></h2>
@@ -575,7 +575,7 @@
         <!-- Slide 8: Ask -->
         <div class="slide">
             <div class="logo">
-                <div class="logo-icon">C</div>
+                <img src="/logo/candlefish_original.png" alt="Candlefish" width="40" height="40" style="border-radius:8px;" />
                 <span>CANDLEFISH</span>
             </div>
             <h2>Investment <span class="accent">Opportunity</span></h2>
@@ -639,10 +639,10 @@
             const scrollLeft = presentation.scrollLeft;
             const slideWidth = presentation.offsetWidth;
             currentSlide = Math.round(scrollLeft / slideWidth);
-            
+
             // Update progress bar
             progress.style.width = `${((currentSlide + 1) / totalSlides) * 100}%`;
-            
+
             // Update navigation dots
             dots.forEach((dot, index) => {
                 dot.classList.toggle('active', index === currentSlide);

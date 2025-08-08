@@ -10,7 +10,7 @@ async function globalSetup(config: FullConfig) {
 
   // Extract base URL from config
   const baseURL = config.projects[0].use?.baseURL || 'http://localhost:3000';
-  
+
   console.log(`Base URL: ${baseURL}`);
 
   // Launch browser for setup
@@ -21,7 +21,7 @@ async function globalSetup(config: FullConfig) {
     // Wait for application to be ready
     console.log('⏳ Waiting for application to be ready...');
     await page.goto(baseURL);
-    
+
     // Wait for main application to load
     await page.waitForSelector('[data-testid="app"]', { timeout: 30000 });
     console.log('✅ Application is ready');
@@ -47,11 +47,11 @@ async function globalSetup(config: FullConfig) {
 
 async function setupAuthentication(page: any) {
   console.log('🔑 Setting up authentication...');
-  
+
   try {
     // Navigate to login if not already authenticated
     await page.goto('/login');
-    
+
     // Check if already logged in
     const isDashboardVisible = await page.isVisible('[data-testid="dashboard"]');
     if (isDashboardVisible) {
@@ -66,10 +66,10 @@ async function setupAuthentication(page: any) {
 
     // Wait for successful login
     await page.waitForSelector('[data-testid="dashboard"]', { timeout: 10000 });
-    
+
     // Save authentication state
     await page.context().storageState({ path: 'e2e/auth-state.json' });
-    
+
     console.log('✅ Authentication setup completed');
   } catch (error) {
     console.error('❌ Authentication setup failed:', error);
@@ -79,17 +79,17 @@ async function setupAuthentication(page: any) {
 
 async function setupTestData(page: any) {
   console.log('📊 Setting up test data...');
-  
+
   try {
     // Create test alert rules
     await createTestAlertRules(page);
-    
+
     // Inject test metrics
     await injectTestMetrics(page);
-    
+
     // Set up test deployments
     await setupTestDeployments(page);
-    
+
     console.log('✅ Test data setup completed');
   } catch (error) {
     console.error('❌ Test data setup failed:', error);
@@ -100,7 +100,7 @@ async function setupTestData(page: any) {
 async function createTestAlertRules(page: any) {
   // Navigate to alerts management
   await page.goto('/alerts');
-  
+
   // Create test alert rules via API calls
   await page.evaluate(() => {
     return fetch('/api/v1/alerts/rules', {
@@ -206,7 +206,7 @@ async function setupTestDeployments(page: any) {
 
 async function verifyAPIConnectivity(page: any) {
   console.log('🔗 Verifying API connectivity...');
-  
+
   try {
     const response = await page.evaluate(() => {
       return fetch('/api/health').then(res => res.json());

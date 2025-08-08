@@ -31,5 +31,3 @@ primary_region = "sjc"
     method = "get"
     path = "/"
     protocol = "http"
-
-

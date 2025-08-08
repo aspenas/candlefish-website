@@ -42,8 +42,8 @@ export interface HeroProps
 }
 
 const Hero = React.forwardRef<HTMLElement, HeroProps>(
-  ({ 
-    className, 
+  ({
+    className,
     size,
     align,
     badge,
@@ -54,7 +54,7 @@ const Hero = React.forwardRef<HTMLElement, HeroProps>(
     background,
     overlay = true,
     children,
-    ...props 
+    ...props
   }, ref) => {
     return (
       <section
@@ -183,12 +183,12 @@ export interface SplitHeroProps extends HeroProps {
 }
 
 const SplitHero = React.forwardRef<HTMLElement, SplitHeroProps>(
-  ({ 
+  ({
     visual,
     visualPosition = "right",
     children,
     className,
-    ...props 
+    ...props
   }, ref) => {
     return (
       <Hero

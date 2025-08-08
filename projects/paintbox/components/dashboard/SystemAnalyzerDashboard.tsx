@@ -1,6 +1,6 @@
 /**
  * System Analyzer Dashboard - Main Component
- * 
+ *
  * Features:
  * - Real-time service monitoring
  * - Interactive metrics visualization
@@ -13,10 +13,10 @@
 
 import React, { useEffect } from 'react';
 import { useQuery } from '@apollo/client';
-import { 
-  GET_SERVICES, 
-  GET_ALERTS, 
-  GET_SYSTEM_ANALYSIS 
+import {
+  GET_SERVICES,
+  GET_ALERTS,
+  GET_SYSTEM_ANALYSIS
 } from '@/lib/graphql/queries';
 import { useDashboard } from '@/lib/context/DashboardContext';
 import { ServiceStatus, AlertSeverity } from '@/lib/types/dashboard';
@@ -246,19 +246,19 @@ export function SystemAnalyzerDashboard() {
     >
       <DashboardLayout
         sidebar={
-          <DashboardSidebar 
+          <DashboardSidebar
             collapsed={sidebarCollapsed}
             onRefresh={handleRefresh}
           />
         }
         header={
-          <DashboardHeader 
+          <DashboardHeader
             onRefresh={handleRefresh}
           />
         }
         className={`min-h-screen transition-colors duration-200 ${
-          darkMode 
-            ? 'bg-gray-900 text-gray-100' 
+          darkMode
+            ? 'bg-gray-900 text-gray-100'
             : 'bg-gray-50 text-gray-900'
         }`}
       >
@@ -266,9 +266,9 @@ export function SystemAnalyzerDashboard() {
           {/* Loading Overlay */}
           {(servicesLoading || alertsLoading || analysisLoading) && (
             <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm z-40 flex items-center justify-center">
-              <LoadingSpinner 
-                size="lg" 
-                message="Loading system data..." 
+              <LoadingSpinner
+                size="lg"
+                message="Loading system data..."
               />
             </div>
           )}

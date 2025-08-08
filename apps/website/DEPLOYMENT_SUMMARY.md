@@ -3,6 +3,7 @@
 ## ✅ Project Status: READY FOR DEPLOYMENT
 
 ### Implementation Complete
+
 - ✅ React 18 with TypeScript
 - ✅ All content preserved exactly from original HTML
 - ✅ All animations working (WebGL particles, GSAP scroll effects)
@@ -10,8 +11,9 @@
 - ✅ Code splitting implemented with lazy loading
 
 ### Performance Metrics
+
 - **Bundle Size**: 112.72 kB gzipped (✅ Target: <250KB)
-- **Code Splitting**: 
+- **Code Splitting**:
   - vendor.js: 45.46 kB (React, React-DOM)
   - HomePage: 25.97 kB (main content)
   - animations: 27.64 kB (GSAP)
@@ -19,6 +21,7 @@
   - three: 1.19 kB (WebGL particles)
 
 ### Security Configuration
+
 - **Current Grade**: B → **Target**: A+
 - **Headers Configured** in `netlify.toml`:
   - ✅ Content-Security-Policy
@@ -29,30 +32,37 @@
   - ✅ Referrer-Policy
 
 ### Deployment Steps
+
 1. **Install dependencies** (if not already done):
+
    ```bash
    cd /Users/patricksmith/candlefish-ai
    pnpm install
    ```
 
 2. **Build the website**:
+
    ```bash
    cd apps/website
    pnpm build
    ```
 
 3. **Deploy to Netlify**:
+
    ```bash
    pnpm deploy
    ```
+
    Or manually:
+
    ```bash
    netlify deploy --prod --dir=dist
    ```
 
 ### Post-Deployment Checklist
-- [ ] Verify site loads at https://candlefish.ai
-- [ ] Check security headers at https://securityheaders.com
+
+- [ ] Verify site loads at <https://candlefish.ai>
+- [ ] Check security headers at <https://securityheaders.com>
 - [ ] Run Lighthouse audit (target: 95+)
 - [ ] Test all animations on mobile devices
 - [ ] Verify 404 page with fish animation
@@ -60,6 +70,7 @@
 - [ ] Verify WebGL particle performance
 
 ### File Structure
+
 ```
 apps/website/
 ├── src/
@@ -74,6 +85,7 @@ apps/website/
 ```
 
 ### Notes
+
 - All original content preserved exactly
 - No new features added (technical modernization only)
 - Security headers will activate upon Netlify deployment

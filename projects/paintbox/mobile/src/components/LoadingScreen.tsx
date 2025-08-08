@@ -19,12 +19,12 @@ export default function LoadingScreen({ message = 'Loading System Analyzer...' }
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
-      
+
       {/* App Icon or Animation */}
       <View style={styles.iconContainer}>
-        <ActivityIndicator 
-          size="large" 
-          color={theme.colors.primary} 
+        <ActivityIndicator
+          size="large"
+          color={theme.colors.primary}
           style={styles.spinner}
         />
       </View>

@@ -13,15 +13,15 @@ export const handler = async (event) => {
     if (!user) {
       return response(401, { error: 'Unauthorized' });
     }
-    
+
     const method = event.httpMethod;
-    
+
     if (method === 'GET') {
       return await getConfig(user);
     } else if (method === 'PUT') {
       return await updateConfig(JSON.parse(event.body), user);
     }
-    
+
     return response(405, { error: 'Method not allowed' });
   } catch (error) {
     console.error('Config handler error:', error);
@@ -35,7 +35,7 @@ async function getConfig(user) {
       TableName: CONFIG_TABLE,
       Key: { key: 'global' },
     }));
-    
+
     const config = result.Item || {
       key: 'global',
       teamSize: parseInt(process.env.MAX_TEAM_SIZE) || 20,
@@ -45,12 +45,12 @@ async function getConfig(user) {
       mfaRequired: false,
       allowedDomains: [],
     };
-    
+
     await logAudit({
       action: 'CONFIG_RETRIEVED',
       userId: user.id,
     });
-    
+
     return response(200, config);
   } catch (error) {
     console.error('Get config error:', error);
@@ -63,7 +63,7 @@ async function updateConfig(updates, user) {
   if (user.role !== 'admin') {
     return response(403, { error: 'Admin access required' });
   }
-  
+
   try {
     const config = {
       key: 'global',
@@ -71,18 +71,18 @@ async function updateConfig(updates, user) {
       updatedAt: Date.now(),
       updatedBy: user.id,
     };
-    
+
     await docClient.send(new PutCommand({
       TableName: CONFIG_TABLE,
       Item: config,
     }));
-    
+
     await logAudit({
       action: 'CONFIG_UPDATED',
       userId: user.id,
       changes: Object.keys(updates),
     });
-    
+
     return response(200, {
       success: true,
       message: 'Configuration updated',

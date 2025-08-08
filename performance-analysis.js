@@ -109,13 +109,13 @@ build: {
 console.log('\n🚀 Performance Optimizations:');
 const optimizations = [
   '1. Code Splitting:\n   - Lazy load route components\n   - Dynamic imports for heavy components\n   - Separate WebGL particles into async chunk',
-  
+
   '2. Image Optimization:\n   - Use next/image or vite-imagetools\n   - Generate responsive sizes\n   - Implement lazy loading with Intersection Observer',
-  
+
   '3. Animation Performance:\n   - Use React.memo for animated components\n   - Implement will-change CSS property\n   - Use CSS transforms instead of position changes',
-  
+
   '4. Bundle Size Reduction:\n   - Tree-shake Lucide icons\n   - Replace Chart.js with lightweight alternative\n   - Use dynamic imports for analytics',
-  
+
   '5. Rendering Optimization:\n   - Implement virtual scrolling for lists\n   - Use React.Suspense boundaries\n   - Optimize re-renders with useMemo/useCallback'
 ];
 
@@ -197,25 +197,25 @@ import { useEffect, useRef } from 'react'
 export default function WebGLParticles() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef<number>()
-  
+
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    
+
     const gl = canvas.getContext('webgl', {
       alpha: true,
       antialias: false,
       powerPreference: 'high-performance'
     })
-    
+
     // Particle animation loop
     const animate = () => {
       // ... WebGL rendering
       rafRef.current = requestAnimationFrame(animate)
     }
-    
+
     animate()
-    
+
     return () => {
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current)
@@ -223,7 +223,7 @@ export default function WebGLParticles() {
       // Clean up WebGL resources
     }
   }, [])
-  
+
   return <canvas ref={canvasRef} className="fixed inset-0 -z-10" />
 }
 `);

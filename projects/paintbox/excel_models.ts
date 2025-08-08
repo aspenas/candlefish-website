@@ -11,7 +11,7 @@ export interface ExcelFormula {
   column: number;
 }
 
-export type FormulaCategory = 
+export type FormulaCategory =
   | 'Financial'
   | 'Lookup'
   | 'Statistical'

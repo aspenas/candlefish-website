@@ -9,10 +9,10 @@ const CONTRACTORS_TABLE = `${process.env.SECRETS_PREFIX}-contractors`;
 
 export const handler = async (event) => {
   console.log('Starting daily contractor cleanup...');
-  
+
   try {
     const now = Date.now();
-    
+
     // Scan for expired contractors
     const scanCommand = new ScanCommand({
       TableName: CONTRACTORS_TABLE,
@@ -25,13 +25,13 @@ export const handler = async (event) => {
         ':revoked': 'revoked',
       },
     });
-    
+
     const result = await docClient.send(scanCommand);
-    
+
     console.log(`Found ${result.Items.length} expired contractors to clean up`);
-    
+
     const cleanupResults = [];
-    
+
     for (const contractor of result.Items) {
       try {
         // Delete expired contractor (DynamoDB TTL will also handle this eventually)
@@ -39,13 +39,13 @@ export const handler = async (event) => {
           TableName: CONTRACTORS_TABLE,
           Key: { id: contractor.id },
         }));
-        
+
         cleanupResults.push({
           id: contractor.id,
           email: contractor.email,
           status: 'cleaned',
         });
-        
+
         await logAudit({
           action: 'CONTRACTOR_EXPIRED_CLEANUP',
           userId: 'system',
@@ -66,7 +66,7 @@ export const handler = async (event) => {
         });
       }
     }
-    
+
     return {
       statusCode: 200,
       body: JSON.stringify({

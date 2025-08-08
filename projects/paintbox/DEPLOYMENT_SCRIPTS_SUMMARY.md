@@ -295,8 +295,8 @@ npm run deploy:logs            # View service logs
 - **`RENDER_DEPLOYMENT_GUIDE.md`:** Complete deployment documentation
 - **`render.yaml`:** Service configuration reference
 - **`package.json`:** NPM script definitions
-- **Render CLI Documentation:** https://render.com/docs/cli
-- **AWS Secrets Manager:** https://aws.amazon.com/secrets-manager/
+- **Render CLI Documentation:** <https://render.com/docs/cli>
+- **AWS Secrets Manager:** <https://aws.amazon.com/secrets-manager/>
 
 ---
 

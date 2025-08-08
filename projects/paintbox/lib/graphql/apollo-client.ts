@@ -1,6 +1,6 @@
 /**
  * Apollo Client Configuration for System Analyzer Dashboard
- * 
+ *
  * Features:
  * - GraphQL queries and mutations
  * - Real-time subscriptions via WebSocket
@@ -41,7 +41,7 @@ const wsLink = typeof window !== 'undefined' ? new GraphQLWsLink(
 // Auth Link to add authorization headers
 const authLink = setContext((_, { headers }) => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-  
+
   return {
     headers: {
       ...headers,
@@ -59,7 +59,7 @@ const errorLink = onError(({ graphQLErrors, networkError, operation, forward }) 
       console.error(
         `GraphQL error: Message: ${message}, Location: ${locations}, Path: ${path}`
       );
-      
+
       // Handle specific error types
       if (message.includes('UNAUTHENTICATED')) {
         // Redirect to login or refresh token
@@ -73,7 +73,7 @@ const errorLink = onError(({ graphQLErrors, networkError, operation, forward }) 
 
   if (networkError) {
     console.error(`Network error: ${networkError}`);
-    
+
     // Handle network errors
     if (networkError.message?.includes('401')) {
       if (typeof window !== 'undefined') {

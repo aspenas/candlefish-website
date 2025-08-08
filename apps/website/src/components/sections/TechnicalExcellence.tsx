@@ -25,11 +25,11 @@ const TechnicalExcellence: React.FC = () => {
         <div className="text-center mb-16">
           <h2 className="mb-6">Technical Excellence</h2>
           <p className="text-xl text-gray-400 max-w-3xl mx-auto">
-            We leverage enterprise-grade AI platforms to process entire systems 
+            We leverage enterprise-grade AI platforms to process entire systems
             at once and deliver production-ready solutions.
           </p>
         </div>
-        
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <TechItem name="AI Platforms" description="Enterprise-grade" />
           <TechItem name="Machine Learning" description="Advanced reasoning" />

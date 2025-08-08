@@ -118,7 +118,7 @@ SENTRY_DSN=your_sentry_dsn
 npm run dev
 ```
 
-Visit http://localhost:3000 to see the application.
+Visit <http://localhost:3000> to see the application.
 
 ## 🏗 Architecture
 
@@ -346,7 +346,7 @@ This project is proprietary software owned by Kind Home Paint Company.
 
 **Need Help?**
 
-- 📧 Email: support@candlefish.ai
+- 📧 Email: <support@candlefish.ai>
 - 📚 Docs: See `/docs` directory
 - 🐛 Issues: GitHub Issues
 

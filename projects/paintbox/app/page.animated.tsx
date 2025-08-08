@@ -7,7 +7,7 @@ import { useState } from 'react';
 
 const ServiceCard = ({ icon: Icon, title, description, delay }: any) => {
   const [hovered, setHovered] = useState(false);
-  
+
   const spring = useSpring({
     transform: hovered ? 'translateY(-12px)' : 'translateY(0px)',
     boxShadow: hovered ? '0 30px 60px rgba(0, 0, 0, 0.15)' : '0 10px 30px rgba(0, 0, 0, 0.1)',
@@ -33,7 +33,7 @@ const ServiceCard = ({ icon: Icon, title, description, delay }: any) => {
 
 const TestimonialCard = ({ name, location, text, rating }: any) => {
   const [hovered, setHovered] = useState(false);
-  
+
   const spring = useSpring({
     transform: hovered ? 'scale(1.02)' : 'scale(1)',
     config: { tension: 400, friction: 25 }
@@ -62,7 +62,7 @@ const TestimonialCard = ({ name, location, text, rating }: any) => {
 
 export default function Home() {
   const [buttonHovered, setButtonHovered] = useState(false);
-  
+
   const heroSpring = useSpring({
     from: { opacity: 0, transform: 'translateY(30px)' },
     to: { opacity: 1, transform: 'translateY(0px)' },
@@ -77,7 +77,7 @@ export default function Home() {
 
   const features = [
     "Professional residential painting",
-    "Commercial property painting", 
+    "Commercial property painting",
     "Interior & exterior services",
     "Free detailed estimates",
     "Licensed & insured",
@@ -125,12 +125,12 @@ export default function Home() {
             Transform Your Space with
             <span className="block text-red-600 mt-2">KIND HOME Painting</span>
           </h1>
-          
+
           <p className="text-xl md:text-2xl text-gray-600 mb-10 leading-relaxed">
-            Professional painting services for residential and commercial properties. 
+            Professional painting services for residential and commercial properties.
             Quality work, competitive prices, and exceptional customer service.
           </p>
-          
+
           <Link href="/estimate/new">
             <animated.button
               style={buttonSpring}
@@ -161,7 +161,7 @@ export default function Home() {
           <p className="text-xl text-center text-gray-600 mb-12 max-w-2xl mx-auto">
             Complete painting solutions for every project, big or small
           </p>
-          
+
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             <ServiceCard
               icon={Home}
@@ -189,7 +189,7 @@ export default function Home() {
       <section className="py-20">
         <div className="container mx-auto px-4">
           <h2 className="text-4xl font-bold text-center text-gray-900 mb-12">Why Choose KIND HOME?</h2>
-          
+
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
             <div className="text-center">
               <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -198,7 +198,7 @@ export default function Home() {
               <h3 className="text-xl font-semibold mb-2">Expert Team</h3>
               <p className="text-gray-600">Skilled professionals with years of experience</p>
             </div>
-            
+
             <div className="text-center">
               <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Clock className="w-10 h-10 text-red-600" />
@@ -206,7 +206,7 @@ export default function Home() {
               <h3 className="text-xl font-semibold mb-2">On-Time Delivery</h3>
               <p className="text-gray-600">We respect your time and stick to schedules</p>
             </div>
-            
+
             <div className="text-center">
               <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Shield className="w-10 h-10 text-red-600" />
@@ -214,7 +214,7 @@ export default function Home() {
               <h3 className="text-xl font-semibold mb-2">Fully Insured</h3>
               <p className="text-gray-600">Licensed, bonded, and insured for your peace of mind</p>
             </div>
-            
+
             <div className="text-center">
               <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Award className="w-10 h-10 text-red-600" />
@@ -230,7 +230,7 @@ export default function Home() {
       <section className="bg-gray-50 py-20">
         <div className="container mx-auto px-4">
           <h2 className="text-4xl font-bold text-center text-gray-900 mb-12">What Our Customers Say</h2>
-          
+
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             <TestimonialCard
               name="Sarah Johnson"
@@ -289,7 +289,7 @@ export default function Home() {
               </div>
               <p className="text-sm">Professional painting services you can trust.</p>
             </div>
-            
+
             <div>
               <h4 className="text-white font-semibold mb-4">Services</h4>
               <ul className="space-y-2 text-sm">
@@ -299,7 +299,7 @@ export default function Home() {
                 <li><a href="#" className="hover:text-white transition-colors">Exterior Painting</a></li>
               </ul>
             </div>
-            
+
             <div>
               <h4 className="text-white font-semibold mb-4">Company</h4>
               <ul className="space-y-2 text-sm">
@@ -309,7 +309,7 @@ export default function Home() {
                 <li><a href="#" className="hover:text-white transition-colors">Testimonials</a></li>
               </ul>
             </div>
-            
+
             <div>
               <h4 className="text-white font-semibold mb-4">Contact</h4>
               <ul className="space-y-2 text-sm">
@@ -328,7 +328,7 @@ export default function Home() {
               </ul>
             </div>
           </div>
-          
+
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm">
             <p>&copy; 2024 KIND HOME Painting. All rights reserved. | Licensed & Insured</p>
           </div>

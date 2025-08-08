@@ -48,16 +48,16 @@ global.WebSocket = class WebSocket {
       this.onopen?.()
     }, 0)
   }
-  
+
   static CONNECTING = 0
   static OPEN = 1
   static CLOSING = 2
   static CLOSED = 3
-  
+
   send(data) {
     // Mock send
   }
-  
+
   close() {
     this.readyState = WebSocket.CLOSED
     this.onclose?.()
@@ -130,7 +130,7 @@ expect.extend({
       }
     }
   },
-  
+
   toBeWithinTimeRange(received, expected, tolerance = 1000) {
     const pass = Math.abs(received - expected) <= tolerance
     if (pass) {
@@ -145,15 +145,15 @@ expect.extend({
       }
     }
   },
-  
+
   toHaveValidOnboardingProgress(received) {
     const hasProgress = typeof received.progress === 'number'
     const hasStatus = typeof received.status === 'string'
     const hasSteps = Array.isArray(received.steps)
     const validProgress = received.progress >= 0 && received.progress <= 100
-    
+
     const pass = hasProgress && hasStatus && hasSteps && validProgress
-    
+
     if (pass) {
       return {
         message: () => `expected ${JSON.stringify(received)} not to have valid onboarding progress`,
@@ -166,20 +166,20 @@ expect.extend({
       }
     }
   },
-  
+
   toHaveValidPhaseMetrics(received) {
     const hasCompletionRate = typeof received.completionRate === 'number'
     const hasErrorRate = typeof received.errorRate === 'number'
     const hasAvgTime = typeof received.avgOnboardingTime === 'number'
     const hasSatisfaction = typeof received.userSatisfaction === 'number'
-    
+
     const validRanges = received.completionRate >= 0 && received.completionRate <= 100 &&
                        received.errorRate >= 0 && received.errorRate <= 100 &&
                        received.avgOnboardingTime >= 0 &&
                        received.userSatisfaction >= 0 && received.userSatisfaction <= 5
-    
+
     const pass = hasCompletionRate && hasErrorRate && hasAvgTime && hasSatisfaction && validRanges
-    
+
     if (pass) {
       return {
         message: () => `expected ${JSON.stringify(received)} not to have valid phase metrics`,

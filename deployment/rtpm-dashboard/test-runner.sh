@@ -129,7 +129,7 @@ echo
 check_service() {
     local port=$1
     local service=$2
-    
+
     if nc -z localhost $port 2>/dev/null; then
         print_success "$service is running on port $port"
         return 0
@@ -142,13 +142,13 @@ check_service() {
 # Function to start test database
 start_test_db() {
     print_info "Starting test database..."
-    
+
     # Check if Docker is available
     if ! command -v docker &> /dev/null; then
         print_warning "Docker not found, assuming database is available"
         return 0
     fi
-    
+
     # Start TimescaleDB for tests
     docker run --name rtpm-test-db -d \
         -p 5433:5432 \
@@ -157,7 +157,7 @@ start_test_db() {
         -e POSTGRES_PASSWORD=test_pass \
         timescale/timescaledb:latest-pg14 \
         > /dev/null 2>&1 || true
-    
+
     # Wait for database to be ready
     sleep 5
     print_success "Test database started"
@@ -175,20 +175,20 @@ run_backend_unit_tests() {
     if [ "$RUN_UNIT_TESTS" = false ]; then
         return 0
     fi
-    
+
     print_header "Backend Unit Tests"
-    
+
     cd "$BACKEND_DIR"
-    
+
     # Check if pytest is available
     if ! command -v pytest &> /dev/null; then
         print_error "pytest not found. Install with: pip install pytest pytest-cov pytest-asyncio"
         return 1
     fi
-    
+
     # Run tests with coverage
     print_info "Running backend unit tests..."
-    
+
     if pytest tests/ \
         --cov=app \
         --cov-report=html:$COVERAGE_DIR/backend-html \
@@ -198,14 +198,14 @@ run_backend_unit_tests() {
         --junit-xml=$REPORTS_DIR/backend-junit.xml \
         --tb=short \
         -v; then
-        
+
         print_success "Backend unit tests passed"
         BACKEND_UNIT_PASSED=true
-        
+
         # Extract coverage percentage
         local coverage=$(grep -oP 'TOTAL.*?(\d+)%' $COVERAGE_DIR/backend-coverage.xml | grep -oP '\d+%' | tail -1)
         print_info "Backend coverage: $coverage"
-        
+
     else
         print_error "Backend unit tests failed"
         BACKEND_UNIT_PASSED=false
@@ -217,41 +217,41 @@ run_frontend_unit_tests() {
     if [ "$RUN_UNIT_TESTS" = false ]; then
         return 0
     fi
-    
+
     print_header "Frontend Unit Tests"
-    
+
     cd "$FRONTEND_DIR"
-    
+
     # Check if npm is available
     if ! command -v npm &> /dev/null; then
         print_error "npm not found"
         return 1
     fi
-    
+
     # Install dependencies if needed
     if [ ! -d "node_modules" ]; then
         print_info "Installing frontend dependencies..."
         npm install
     fi
-    
+
     print_info "Running frontend unit tests..."
-    
+
     if npm test -- --coverage \
         --coverageDirectory="$COVERAGE_DIR/frontend" \
         --coverageReporters=html,lcov,text,cobertura \
         --coverageThreshold="{\"global\":{\"branches\":$COVERAGE_THRESHOLD,\"functions\":$COVERAGE_THRESHOLD,\"lines\":$COVERAGE_THRESHOLD,\"statements\":$COVERAGE_THRESHOLD}}" \
         --watchAll=false \
         --ci; then
-        
+
         print_success "Frontend unit tests passed"
         FRONTEND_UNIT_PASSED=true
-        
+
         # Extract coverage from lcov report
         if [ -f "$COVERAGE_DIR/frontend/lcov-report/index.html" ]; then
             local coverage=$(grep -oP 'Functions</span>.*?(\d+\.\d+)%' "$COVERAGE_DIR/frontend/lcov-report/index.html" | grep -oP '\d+\.\d+%' | head -1)
             print_info "Frontend coverage: $coverage"
         fi
-        
+
     else
         print_error "Frontend unit tests failed"
         FRONTEND_UNIT_PASSED=false
@@ -263,18 +263,18 @@ run_integration_tests() {
     if [ "$RUN_INTEGRATION_TESTS" = false ]; then
         return 0
     fi
-    
+
     print_header "Integration Tests"
-    
+
     cd "$BACKEND_DIR"
-    
+
     print_info "Running integration tests..."
-    
+
     if pytest tests/test_integration.py \
         --junit-xml=$REPORTS_DIR/integration-junit.xml \
         --tb=short \
         -v; then
-        
+
         print_success "Integration tests passed"
         INTEGRATION_PASSED=true
     else
@@ -288,18 +288,18 @@ run_e2e_tests() {
     if [ "$RUN_E2E_TESTS" = false ]; then
         return 0
     fi
-    
+
     print_header "End-to-End Tests"
-    
+
     cd "$E2E_DIR"
-    
+
     # Check if Playwright is installed
     if ! command -v npx &> /dev/null || ! npx playwright --version &> /dev/null; then
         print_info "Installing Playwright..."
         npm install @playwright/test
         npx playwright install
     fi
-    
+
     # Check if services are running
     if ! check_service 3000 "Frontend"; then
         print_warning "Starting frontend development server..."
@@ -309,28 +309,28 @@ run_e2e_tests() {
         sleep 10
         cd "$E2E_DIR"
     fi
-    
+
     if ! check_service 8000 "Backend API"; then
         print_error "Backend API is not running. Please start it before running E2E tests."
         return 1
     fi
-    
+
     print_info "Running E2E tests..."
-    
+
     if npx playwright test \
         --reporter=html,junit \
         --output-dir=$REPORTS_DIR/e2e; then
-        
+
         print_success "E2E tests passed"
         E2E_PASSED=true
     else
         print_error "E2E tests failed"
         E2E_PASSED=false
-        
+
         # Show test report location
         print_info "E2E test report available at: $REPORTS_DIR/e2e/playwright-report/index.html"
     fi
-    
+
     # Clean up frontend process if we started it
     if [ ! -z "$FRONTEND_PID" ]; then
         kill $FRONTEND_PID 2>/dev/null || true
@@ -342,25 +342,25 @@ run_performance_tests() {
     if [ "$RUN_PERFORMANCE_TESTS" = false ]; then
         return 0
     fi
-    
+
     print_header "Performance Tests"
-    
+
     cd "$BACKEND_DIR"
-    
+
     # Check if Locust is available
     if ! command -v locust &> /dev/null; then
         print_error "Locust not found. Install with: pip install locust"
         return 1
     fi
-    
+
     if ! check_service 8000 "Backend API"; then
         print_error "Backend API is not running. Please start it before running performance tests."
         return 1
     fi
-    
+
     print_info "Running performance tests (30 second duration)..."
     print_warning "Performance tests require manual review of results"
-    
+
     # Run Locust in headless mode
     if locust -f tests/performance/locustfile.py \
         --host=http://localhost:8000 \
@@ -370,7 +370,7 @@ run_performance_tests() {
         --html $REPORTS_DIR/locust_report.html \
         --csv $REPORTS_DIR/locust \
         --headless; then
-        
+
         print_success "Performance tests completed"
         print_info "Performance report: $REPORTS_DIR/locust_report.html"
         PERFORMANCE_PASSED=true
@@ -383,24 +383,24 @@ run_performance_tests() {
 # Generate combined coverage report
 generate_coverage_report() {
     print_header "Coverage Report Generation"
-    
+
     cd "$FRONTEND_DIR"
-    
+
     # Create combined coverage directory
     mkdir -p "$COVERAGE_DIR/combined"
-    
+
     # Copy backend coverage
     if [ -d "$COVERAGE_DIR/backend-html" ]; then
         cp -r "$COVERAGE_DIR/backend-html" "$COVERAGE_DIR/combined/"
         print_info "Backend coverage report: $COVERAGE_DIR/combined/backend-html/index.html"
     fi
-    
+
     # Copy frontend coverage
     if [ -d "$COVERAGE_DIR/frontend/lcov-report" ]; then
         cp -r "$COVERAGE_DIR/frontend/lcov-report" "$COVERAGE_DIR/combined/frontend-html"
         print_info "Frontend coverage report: $COVERAGE_DIR/combined/frontend-html/index.html"
     fi
-    
+
     # Generate summary report
     cat > "$COVERAGE_DIR/combined/index.html" << EOF
 <!DOCTYPE html>
@@ -425,7 +425,7 @@ generate_coverage_report() {
 <body>
     <h1 class="header">RTPM Dashboard - Test Coverage Report</h1>
     <p>Generated on $(date)</p>
-    
+
     <div class="stats">
         <div class="stat-box success">
             <div class="stat-title">Backend Unit Tests</div>
@@ -444,7 +444,7 @@ generate_coverage_report() {
             <div class="stat-value">$([ "$RUN_E2E_TESTS" = true ] && ([ "$E2E_PASSED" = true ] && echo "✅ PASS" || echo "❌ FAIL") || echo "⏭️ SKIP")</div>
         </div>
     </div>
-    
+
     <div class="section">
         <h2>Coverage Reports</h2>
         <ul>
@@ -452,7 +452,7 @@ generate_coverage_report() {
             <li><a href="frontend-html/index.html">Frontend Coverage Report</a> (React/TypeScript)</li>
         </ul>
     </div>
-    
+
     <div class="section">
         <h2>Test Reports</h2>
         <ul>
@@ -463,7 +463,7 @@ generate_coverage_report() {
             $([ "$RUN_PERFORMANCE_TESTS" = true ] && echo "<li>Performance Report: <code>test-reports/locust_report.html</code></li>")
         </ul>
     </div>
-    
+
     <div class="section">
         <h2>Next Steps</h2>
         <ul>
@@ -474,7 +474,7 @@ generate_coverage_report() {
             $([ "$RUN_PERFORMANCE_TESTS" = true ] && echo "<li>Review performance metrics and optimize bottlenecks</li>")
         </ul>
     </div>
-    
+
     <footer style="margin-top: 40px; text-align: center; color: #666; font-size: 12px;">
         Generated by RTPM Dashboard Test Runner
     </footer>
@@ -489,47 +489,47 @@ EOF
 main() {
     # Trap to ensure cleanup
     trap 'stop_test_db' EXIT
-    
+
     # Start test database if needed
     if [ "$RUN_UNIT_TESTS" = true ] || [ "$RUN_INTEGRATION_TESTS" = true ]; then
         start_test_db
     fi
-    
+
     # Run test suites
     run_backend_unit_tests
     run_frontend_unit_tests
     run_integration_tests
     run_e2e_tests
     run_performance_tests
-    
+
     # Generate reports
     generate_coverage_report
-    
+
     # Summary
     print_header "Test Results Summary"
-    
+
     echo "Backend Unit Tests:    $([ "$BACKEND_UNIT_PASSED" = true ] && echo -e "${GREEN}PASSED${NC}" || echo -e "${RED}FAILED${NC}")"
     echo "Frontend Unit Tests:   $([ "$FRONTEND_UNIT_PASSED" = true ] && echo -e "${GREEN}PASSED${NC}" || echo -e "${RED}FAILED${NC}")"
     echo "Integration Tests:     $([ "$INTEGRATION_PASSED" = true ] && echo -e "${GREEN}PASSED${NC}" || echo -e "${RED}FAILED${NC}")"
     echo "E2E Tests:             $([ "$RUN_E2E_TESTS" = true ] && ([ "$E2E_PASSED" = true ] && echo -e "${GREEN}PASSED${NC}" || echo -e "${RED}FAILED${NC}") || echo -e "${YELLOW}SKIPPED${NC}")"
     echo "Performance Tests:     $([ "$RUN_PERFORMANCE_TESTS" = true ] && ([ "$PERFORMANCE_PASSED" = true ] && echo -e "${GREEN}PASSED${NC}" || echo -e "${RED}FAILED${NC}") || echo -e "${YELLOW}SKIPPED${NC}")"
-    
+
     echo
     print_info "Coverage report: $COVERAGE_DIR/combined/index.html"
     print_info "Test reports: $REPORTS_DIR/"
-    
+
     # Exit with appropriate code
     local all_passed=true
-    
+
     if [ "$RUN_UNIT_TESTS" = true ]; then
         [ "$BACKEND_UNIT_PASSED" = false ] && all_passed=false
         [ "$FRONTEND_UNIT_PASSED" = false ] && all_passed=false
     fi
-    
+
     [ "$RUN_INTEGRATION_TESTS" = true ] && [ "$INTEGRATION_PASSED" = false ] && all_passed=false
     [ "$RUN_E2E_TESTS" = true ] && [ "$E2E_PASSED" = false ] && all_passed=false
     [ "$RUN_PERFORMANCE_TESTS" = true ] && [ "$PERFORMANCE_PASSED" = false ] && all_passed=false
-    
+
     if [ "$all_passed" = true ]; then
         print_success "All enabled test suites passed!"
         exit 0

@@ -18,8 +18,7 @@ def list_fogg_calendars() -> list[CalendarInfo]:
 
     try:
         calendar_list = execute_google_api_call(
-            lambda: service.calendarList().list().execute(),
-            "list_fogg_calendars"
+            lambda: service.calendarList().list().execute(), "list_fogg_calendars"
         )
 
         for calendar in calendar_list.get("items", []):
@@ -55,8 +54,7 @@ def list_all_calendars() -> list[CalendarInfo]:
 
     try:
         calendar_list = execute_google_api_call(
-            lambda: service.calendarList().list().execute(),
-            "list_all_calendars"
+            lambda: service.calendarList().list().execute(), "list_all_calendars"
         )
 
         for calendar in calendar_list.get("items", []):
@@ -93,7 +91,7 @@ def list_group_members(group_email: str) -> list[GroupMember]:
     try:
         result = execute_google_api_call(
             lambda: service.members().list(groupKey=group_email).execute(),
-            f"list_group_members({group_email})"
+            f"list_group_members({group_email})",
         )
 
         for member in result.get("members", []):
@@ -113,7 +111,7 @@ def list_group_members(group_email: str) -> list[GroupMember]:
                 lambda: service.members()
                 .list(groupKey=group_email, pageToken=result["nextPageToken"])
                 .execute(),
-                f"list_group_members_page({group_email})"
+                f"list_group_members_page({group_email})",
             )
             for member in result.get("members", []):
                 members.append(

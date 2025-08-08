@@ -95,13 +95,13 @@ class SalesforceApiService {
   async initialize(): Promise<void> {
     // Check backend availability first
     await this.checkBackendAvailability();
-    
+
     // If using mock data, no initialization needed
     if (this.useMockData) {
       console.log('Using mock Salesforce data');
       return;
     }
-    
+
     // If not using backend, initialize direct service
     if (!this.useBackend && !this.useMockData) {
       const { salesforceService } = await import('@/lib/services/salesforce');

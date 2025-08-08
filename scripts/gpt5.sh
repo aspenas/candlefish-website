@@ -149,5 +149,3 @@ if isinstance(choices, list) and choices:
 # If all else fails, pretty-print JSON
 print(json.dumps(data, indent=2))
 PY
-
-

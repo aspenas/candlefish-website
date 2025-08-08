@@ -85,7 +85,7 @@ class ApiClient {
       const result = await mockApi.calculatePricing(data);
       return { data: result, success: true };
     }
-    
+
     return this.request('/api/v1/calculations/estimate', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -99,7 +99,7 @@ class ApiClient {
       const result = await mockApi.calculatePricing({ measurements, laborRate, paintPrice });
       return { data: result.pricingTiers, success: true };
     }
-    
+
     return this.request('/api/v1/calculations/pricing-tiers', {
       method: 'POST',
       body: JSON.stringify({ measurements, laborRate, paintPrice }),

@@ -7,31 +7,33 @@ export default {
   theme: {
     extend: {
       colors: {
-        'teal': {
+        teal: {
           400: '#00CED1',
-          500: '#00A5A8',
+          500: '#00CED1'
         },
         gray: {
-          100: '#0A0A0A',
-          200: '#1A1A1A',
-          300: '#2A2A2A',
-          400: '#3A3A3A',
-          500: '#6A6A6A',
-          600: '#8A8A8A',
-          700: '#AAAAAA',
-          800: '#CACACA',
-          900: '#EAEAEA',
+          50: '#FAFAFA',
+          100: '#F4F4F5',
+          200: '#E4E4E7',
+          300: '#D4D4D8',
+          400: '#A1A1AA',
+          500: '#71717A',
+          600: '#52525B',
+          700: '#3F3F46',
+          800: '#27272A',
+          900: '#18181B',
+          950: '#09090B'
         },
         background: 'var(--bg-primary)',
         foreground: 'var(--text-primary)',
-        muted: 'var(--text-secondary)',
+        'muted-foreground': 'var(--text-secondary)',
         border: 'var(--border-color)',
         accent: 'var(--accent)',
         'accent-hover': 'var(--accent-hover)'
       },
       fontFamily: {
-        'mono': ['Berkeley Mono', 'Courier New', 'monospace'],
-        'sans': ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        mono: ["'Space Mono'", 'SF Mono', 'Monaco', 'Consolas', 'Courier New', 'monospace'],
+        sans: ['-apple-system', 'BlinkMacSystemFont', 'Inter', 'Segoe UI', 'sans-serif'],
       },
       fontSize: {
         'xs': 'clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem)',
@@ -95,5 +97,6 @@ export default {
   },
   plugins: [
     require('tailwindcss-animate'),
+    require('tailwind-scrollbar')({ nocompatible: true }),
   ],
 }

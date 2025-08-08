@@ -1,6 +1,6 @@
 /**
  * Insights View Component
- * 
+ *
  * System insights, recommendations, and performance analysis
  */
 
@@ -65,7 +65,7 @@ export function InsightsView() {
       {/* Health Score and Recommendations */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <SystemHealthScore analysis={systemAnalysis} />
-        <RecommendationsList 
+        <RecommendationsList
           recommendations={systemAnalysis.recommendations}
           showAll={true}
         />
@@ -103,7 +103,7 @@ export function InsightsView() {
                     {insight.severity.toLowerCase()}
                   </span>
                 </div>
-                
+
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                   {insight.description}
                 </p>
