@@ -355,7 +355,7 @@ jobs:
       - name: Install dependencies
         run: |
           if [[ -f "pnpm-lock.yaml" ]]; then
-            pnpm install --frozen-lockfile --prefer-offline
+            pnpm install --prefer-offline
           elif [[ -f "package-lock.json" ]]; then
             npm ci
           elif [[ -f "yarn.lock" ]]; then
