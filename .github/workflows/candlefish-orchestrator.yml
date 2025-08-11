@@ -95,13 +95,16 @@ jobs:
           fetch-depth: 0  # Need full history for change detection
 
       - name: Configure AWS credentials
+        id: aws-creds
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/github-actions-candlefish
           aws-region: ${{ env.AWS_REGION }}
+        continue-on-error: true
 
       - name: Detect changed projects
         id: detect-changes
+        if: success() || steps.aws-creds.outcome == 'failure'
         run: |
           # Project definitions
           declare -A PROJECTS=(
