@@ -23,8 +23,8 @@ const ProcessStep: React.FC<ProcessStepProps> = ({ title, subtitle, isActive = f
 
 const HowItWorks: React.FC = () => {
   return (
-    <section className="py-20 lg:py-32 bg-black" id="how-it-works">
-      <div className="container mx-auto px-6 max-w-screen-xl">
+    <section className="py-20 lg:py-32 bg-gray-900 border-t border-gray-800" id="how-it-works">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-screen-xl">
         <div className="text-center mb-16">
           <h2 className="mb-6">The Candlefish Method</h2>
           <p className="text-xl text-gray-400 max-w-3xl mx-auto">
@@ -33,7 +33,7 @@ const HowItWorks: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center justify-center gap-8 py-12 px-6 bg-gray-100 border border-gray-700 overflow-x-auto">
+        <div className="flex items-center justify-start lg:justify-center gap-4 lg:gap-8 py-8 lg:py-12 px-4 lg:px-6 bg-gray-800 border border-gray-700 overflow-x-auto">
           <ProcessStep
             title="Identify"
             subtitle="Biggest Pain Point"

@@ -14,10 +14,24 @@ const ParticleBackground: React.FC = () => {
   const animationFrameRef = useRef<number>()
 
   useEffect(() => {
+    // Disable on mobile devices for performance
+    if (window.innerWidth < 768) {
+      return
+    }
+
+    // Check for reduced motion preference
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return
+    }
+
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
+    const gl = canvas.getContext('webgl', {
+      alpha: true,
+      antialias: false,
+      powerPreference: 'low-power'
+    }) || canvas.getContext('experimental-webgl')
     if (!gl || !(gl instanceof WebGLRenderingContext)) {
       console.warn('WebGL not supported, particles disabled')
       return

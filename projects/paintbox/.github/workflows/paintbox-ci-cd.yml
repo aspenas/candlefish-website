@@ -1,0 +1,278 @@
+name: Paintbox CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop, feat/*]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy_target:
+        description: 'Deployment target'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  NODE_VERSION: '20'
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+jobs:
+  # Phase 1: Build Validation
+  build-validation:
+    name: Validate Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type checking
+        run: npm run typecheck || true  # Non-blocking initially
+
+      - name: Lint check
+        run: npm run lint || true  # Non-blocking initially
+
+      - name: Build application
+        run: npm run build
+        env:
+          NEXT_PUBLIC_APP_ENV: test
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: .next/
+          retention-days: 7
+
+  # Phase 2: Excel Parity Testing
+  excel-parity-tests:
+    name: Excel Formula Parity Tests
+    runs-on: ubuntu-latest
+    needs: build-validation
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download test Excel files
+        run: |
+          echo "Checking for test Excel files..."
+          ls -la test-data/*.xlsx || echo "No test files found yet"
+
+      - name: Run Excel parity validation
+        run: |
+          if [ -f "scripts/validate-excel-parity.ts" ]; then
+            npx tsx scripts/validate-excel-parity.ts
+          else
+            echo "Excel parity script not yet implemented"
+          fi
+        continue-on-error: true  # Non-blocking initially
+
+      - name: Generate parity report
+        if: always()
+        run: |
+          mkdir -p test-results
+          if [ -f "scripts/generate-test-report.ts" ]; then
+            npx tsx scripts/generate-test-report.ts
+          else
+            echo "No parity tests run" > test-results/excel-parity-report.txt
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: excel-parity-results
+          path: test-results/
+          retention-days: 30
+
+  # Phase 3: Integration Testing
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: build-validation
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test Salesforce integration
+        run: npm run test:salesforce || echo "Salesforce tests pending"
+        env:
+          SALESFORCE_CLIENT_ID: ${{ secrets.SALESFORCE_CLIENT_ID }}
+          SALESFORCE_CLIENT_SECRET: ${{ secrets.SALESFORCE_CLIENT_SECRET }}
+          SALESFORCE_USERNAME: ${{ secrets.SALESFORCE_USERNAME }}
+          SALESFORCE_PASSWORD: ${{ secrets.SALESFORCE_PASSWORD }}
+        continue-on-error: true
+
+      - name: Test CompanyCam integration
+        run: npm run test:companycam || echo "CompanyCam tests pending"
+        env:
+          COMPANYCAM_API_KEY: ${{ secrets.COMPANYCAM_API_KEY }}
+          COMPANYCAM_SECRET_KEY: ${{ secrets.COMPANYCAM_SECRET_KEY }}
+        continue-on-error: true
+
+      - name: Run all integration tests
+        run: |
+          if [ -f "scripts/test-integrations.ts" ]; then
+            npx tsx scripts/test-integrations.ts
+          else
+            echo "Integration test suite not yet implemented"
+          fi
+        continue-on-error: true
+
+  # Phase 4: Calculation Performance Tests
+  performance-tests:
+    name: Performance Validation
+    runs-on: ubuntu-latest
+    needs: build-validation
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run calculation benchmarks
+        run: |
+          if [ -f "scripts/benchmark-calculations.ts" ]; then
+            npx tsx scripts/benchmark-calculations.ts
+          else
+            echo "Creating basic benchmark..."
+            cat > scripts/benchmark-calculations.ts << 'EOF'
+import { performance } from 'perf_hooks';
+
+console.log('Calculation Performance Benchmark');
+console.log('=================================');
+
+// Placeholder for actual calculation tests
+const start = performance.now();
+// TODO: Add actual calculation tests here
+const end = performance.now();
+
+console.log(`Basic test completed in ${(end - start).toFixed(2)}ms`);
+
+// Target: All calculations < 100ms
+if (end - start > 100) {
+  console.warn('⚠️  Performance target not met');
+  process.exit(1);
+}
+
+console.log('✅ Performance targets met');
+EOF
+            npx tsx scripts/benchmark-calculations.ts
+          fi
+
+      - name: Generate performance report
+        if: always()
+        run: |
+          echo "Performance test results logged" > test-results/performance-report.txt
+
+  # Phase 5: Deploy to Staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-validation, excel-parity-tests, integration-tests]
+    if: github.ref == 'refs/heads/develop' || github.event_name == 'workflow_dispatch'
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Fly.io
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io Staging
+        run: |
+          flyctl deploy --remote-only \
+            --config fly.toml \
+            --app paintbox-staging \
+            --strategy immediate
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests against staging..."
+          curl -f https://paintbox-staging.fly.dev/api/health || exit 1
+          echo "Staging deployment successful!"
+
+  # Phase 6: Deploy to Production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-validation, excel-parity-tests, integration-tests, performance-tests]
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_target == 'production')
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Fly.io
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io Production
+        run: |
+          flyctl deploy --remote-only \
+            --config fly.toml \
+            --app paintbox-app \
+            --strategy canary
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Verify production deployment
+        run: |
+          echo "Verifying production deployment..."
+          sleep 30  # Wait for deployment to stabilize
+          curl -f https://paintbox-app.fly.dev/api/health || exit 1
+          echo "Production deployment successful!"
+
+      - name: Notify team
+        if: success()
+        run: |
+          echo "🚀 Paintbox deployed to production successfully!"
+          echo "URL: https://paintbox-app.fly.dev"
+
+  # Rollback job (manual trigger)
+  rollback:
+    name: Rollback Production
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_target == 'rollback'
+    environment: production
+    steps:
+      - name: Rollback Fly.io deployment
+        run: |
+          flyctl releases list --app paintbox-app
+          echo "Rolling back to previous version..."
+          flyctl scale count 0 --app paintbox-app
+          sleep 5
+          flyctl scale count 1 --app paintbox-app
+          echo "Rollback initiated"

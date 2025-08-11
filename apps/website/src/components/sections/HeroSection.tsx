@@ -3,7 +3,7 @@ import AIAnimation from '../AIAnimation'
 
 const HeroSection: React.FC = () => {
   return (
-    <section className="hero-section relative min-h-screen flex items-center overflow-hidden">
+    <section className="hero-section relative min-h-screen flex items-center overflow-hidden py-20 px-4 sm:px-6 lg:px-8">
       {/* Parallax Background */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="parallax-layer absolute w-[120%] h-[120%] -left-[10%] -top-[10%]" data-speed="0.5">
@@ -19,33 +19,18 @@ const HeroSection: React.FC = () => {
       <div className="container mx-auto px-6 max-w-screen-xl relative z-10">
         <div className="text-center pt-20">
           {/* Validation Badge */}
-          <div
-            className="inline-block bg-teal-400 text-black px-6 py-2 text-sm font-mono tracking-wider uppercase mb-8 opacity-0 transform translate-y-5"
-            style={{
-              animation: 'fadeInUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.2s forwards'
-            }}
-          >
+          <div className="inline-block bg-teal-400 text-black px-6 py-2 text-sm font-mono tracking-wider uppercase mb-8 animate-fadeInUp">
             VALIDATION PHASE
           </div>
 
           {/* Main Title */}
-          <h1
-            className="mb-8 max-w-5xl mx-auto opacity-0 transform translate-y-10"
-            style={{
-              animation: 'fadeInUp 1s cubic-bezier(0.22, 1, 0.36, 1) 0.4s forwards'
-            }}
-          >
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl mb-8 max-w-5xl mx-auto animate-fadeInUp animation-delay-200">
             Illuminating the path to{' '}
             <span className="gradient-text">AI transformation</span>
           </h1>
 
           {/* Subtitle */}
-          <p
-            className="text-2xl text-gray-400 mb-12 max-w-4xl mx-auto leading-relaxed opacity-0 transform translate-y-10"
-            style={{
-              animation: 'fadeInUp 1s cubic-bezier(0.22, 1, 0.36, 1) 0.6s forwards'
-            }}
-          >
+          <p className="text-lg sm:text-xl lg:text-2xl text-gray-400 mb-12 max-w-4xl mx-auto leading-relaxed animate-fadeInUp animation-delay-400">
             We turn your slowest business processes into your fastest competitive advantages
             through discrete, composable AI modules.
           </p>

@@ -7,15 +7,9 @@ interface FeatureProps {
   delay?: number
 }
 
-const Feature: React.FC<FeatureProps> = ({ icon, title, description, delay = 0 }) => {
+const Feature: React.FC<FeatureProps> = ({ icon, title, description }) => {
   return (
-    <div
-      className="feature opacity-0 transform translate-y-10"
-      data-animate
-      style={{
-        animationDelay: `${delay}ms`
-      }}
-    >
+    <div className="feature">
       <div className="feature__icon w-20 h-20 mb-6 flex items-center justify-center bg-gray-800 border border-gray-700 relative overflow-hidden transition-all duration-400 ease-out group-hover:-translate-y-2 group-hover:shadow-lg group-hover:shadow-teal-400/20">
         {/* Rotating border effect */}
         <div className="absolute inset-0 bg-gradient-conic from-transparent via-teal-400 to-transparent opacity-0 transition-opacity duration-400 animate-spin" style={{ animationDuration: '4s' }}></div>
@@ -37,8 +31,8 @@ const Feature: React.FC<FeatureProps> = ({ icon, title, description, delay = 0 }
 
 const WhatWeDo: React.FC = () => {
   return (
-    <section className="py-20 lg:py-32 bg-gray-100" id="what-we-do">
-      <div className="container mx-auto px-6 max-w-screen-xl">
+    <section className="py-20 lg:py-32 bg-gray-900 border-t border-gray-800" id="services">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-screen-xl">
         <div className="text-center mb-16">
           <h2 className="mb-8">What is Candlefish AI?</h2>
           <p className="text-xl text-gray-400 max-w-4xl mx-auto leading-relaxed">
@@ -57,7 +51,6 @@ const WhatWeDo: React.FC = () => {
               }
               title="Excel Automation"
               description="Transform manual spreadsheet workflows that take hours into automated AI systems that complete in minutes with zero errors."
-              delay={100}
             />
           </div>
 
@@ -71,7 +64,6 @@ const WhatWeDo: React.FC = () => {
               }
               title="System Integration"
               description="Connect your disconnected systems with intelligent AI bridges. No rip-and-replace, just smart connections that make everything work together."
-              delay={200}
             />
           </div>
 
@@ -85,7 +77,6 @@ const WhatWeDo: React.FC = () => {
               }
               title="AI Implementation"
               description="Production-ready AI solutions built with enterprise-grade AI platforms. We analyze years of data in seconds for truly intelligent implementations."
-              delay={300}
             />
           </div>
         </div>

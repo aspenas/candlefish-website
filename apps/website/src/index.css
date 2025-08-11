@@ -1,9 +1,9 @@
+/* Brand CSS variables (generated) */
+@import '/brand.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Brand CSS variables (generated) */
-@import '/brand.css';
 
 /* CSS Reset & Base */
 *, *::before, *::after {
@@ -236,6 +236,11 @@ h6 { font-size: var(--text-lg); }
 .value-card.animate { animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 .feature.animate { animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 .animate-swim { animation: swim 4s ease-in-out infinite; opacity: 0.6; }
+.animate-fadeInUp { animation: fadeInUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.animation-delay-200 { animation-delay: 200ms; }
+.animation-delay-400 { animation-delay: 400ms; }
+.animation-delay-600 { animation-delay: 600ms; }
+.animation-delay-800 { animation-delay: 800ms; }
 
 /* Utility animations */
 .bg-gradient-conic {

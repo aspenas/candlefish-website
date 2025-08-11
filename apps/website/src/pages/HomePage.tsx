@@ -69,14 +69,14 @@ const HomePage: React.FC = () => {
       />
 
       <div data-theme="dark">
-        <section className="spine-section"><div className="spine-container"><HeroSection /></div></section>
-        <section className="spine-section spine-rule"><div className="spine-container"><ValueProposition /></div></section>
-        <section className="spine-section spine-rule" id="services"><div className="spine-container"><WhatWeDo /></div></section>
-        <section className="spine-section spine-rule" id="how-it-works"><div className="spine-container"><HowItWorks /></div></section>
-        <section className="spine-section spine-rule" id="projects"><div className="spine-container"><PilotProjects /></div></section>
-        <section className="spine-section spine-rule"><div className="spine-container"><TechnicalExcellence /></div></section>
-        <section className="spine-section spine-rule"><div className="spine-container"><CTASection /></div></section>
-        <section className="spine-section spine-rule" id="contact"><div className="spine-container"><ContactSection /></div></section>
+        <HeroSection />
+        <ValueProposition />
+        <WhatWeDo />
+        <HowItWorks />
+        <PilotProjects />
+        <TechnicalExcellence />
+        <CTASection />
+        <ContactSection />
         <Footer />
       </div>
     </>
