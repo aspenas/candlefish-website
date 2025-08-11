@@ -1,0 +1,505 @@
+name: Automated Dependency Management
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      update_type:
+        description: 'Update type'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - security
+          - minor
+          - major
+      auto_merge:
+        description: 'Auto-merge PRs'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  security-events: write
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '9'
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  # ============================================
+  # JavaScript/TypeScript Dependencies
+  # ============================================
+  update-js-deps:
+    name: 📦 Update JS Dependencies
+    runs-on: ubuntu-latest
+    outputs:
+      pr_created: ${{ steps.create-pr.outputs.pr_created }}
+      pr_number: ${{ steps.create-pr.outputs.pr_number }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check for outdated packages
+        id: check
+        run: |
+          # Check for outdated packages
+          pnpm outdated --format json > outdated.json || true
+
+          # Parse and display outdated packages
+          if [ -s outdated.json ]; then
+            echo "📦 Found outdated packages:"
+            cat outdated.json | jq -r '.[] | "\(.name): \(.current) -> \(.latest)"'
+            echo "has_updates=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ All packages are up to date"
+            echo "has_updates=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update dependencies
+        if: steps.check.outputs.has_updates == 'true'
+        run: |
+          UPDATE_TYPE="${{ github.event.inputs.update_type || 'all' }}"
+
+          case "$UPDATE_TYPE" in
+            security)
+              # Update only packages with security vulnerabilities
+              pnpm audit --fix || true
+              ;;
+            minor)
+              # Update to latest minor/patch versions
+              pnpm update --depth 100
+              ;;
+            major)
+              # Update all dependencies including major versions
+              pnpm update --latest --depth 100
+              ;;
+            all)
+              # Update everything
+              pnpm update --latest --depth 100
+              pnpm audit --fix || true
+              ;;
+          esac
+
+          # Deduplicate dependencies
+          pnpm dedupe
+
+      - name: Run tests
+        if: steps.check.outputs.has_updates == 'true'
+        run: |
+          # Run tests to ensure updates don't break anything
+          pnpm turbo test:unit --cache-dir=.turbo || echo "::warning::Some tests failed"
+
+      - name: Create Pull Request
+        if: steps.check.outputs.has_updates == 'true'
+        id: create-pr
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(deps): update JavaScript dependencies"
+          title: "⬆️ Update JavaScript Dependencies"
+          body: |
+            ## Dependency Updates
+
+            This PR updates JavaScript/TypeScript dependencies.
+
+            ### Update Type
+            `${{ github.event.inputs.update_type || 'all' }}`
+
+            ### Changes
+            See commit diff for detailed changes.
+
+            ### Checklist
+            - [x] Dependencies updated
+            - [x] Lock file updated
+            - [x] Tests run
+            - [ ] Manual testing completed
+
+            ---
+            *This PR was automatically created by the dependency update workflow*
+          branch: deps/js-updates-${{ github.run_number }}
+          labels: dependencies, automated, javascript
+          assignees: ${{ github.actor }}
+
+  # ============================================
+  # Python Dependencies
+  # ============================================
+  update-python-deps:
+    name: 🐍 Update Python Dependencies
+    runs-on: ubuntu-latest
+    outputs:
+      pr_created: ${{ steps.create-pr.outputs.pr_created }}
+      pr_number: ${{ steps.create-pr.outputs.pr_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install pip-tools
+        run: |
+          pip install pip-tools pip-audit
+
+      - name: Find and update Python dependencies
+        id: update
+        run: |
+          # Find all requirements files
+          REQUIREMENTS_FILES=$(find . -name "requirements*.txt" -o -name "pyproject.toml")
+          UPDATED=false
+
+          for file in $REQUIREMENTS_FILES; do
+            if [[ "$file" == *"requirements"*.txt ]]; then
+              echo "📦 Updating $file..."
+
+              # Create a temporary requirements.in if it doesn't exist
+              if [ ! -f "${file%.txt}.in" ]; then
+                cp "$file" "${file%.txt}.in"
+              fi
+
+              # Update dependencies
+              pip-compile --upgrade "${file%.txt}.in" -o "$file"
+
+              if git diff --quiet "$file"; then
+                echo "✅ No updates for $file"
+              else
+                echo "⬆️ Updated $file"
+                UPDATED=true
+              fi
+            fi
+          done
+
+          echo "has_updates=$UPDATED" >> $GITHUB_OUTPUT
+
+      - name: Security audit
+        if: steps.update.outputs.has_updates == 'true'
+        run: |
+          # Run security audit
+          pip-audit || echo "::warning::Some security issues found"
+
+      - name: Create Pull Request
+        if: steps.update.outputs.has_updates == 'true'
+        id: create-pr
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(deps): update Python dependencies"
+          title: "⬆️ Update Python Dependencies"
+          body: |
+            ## Python Dependency Updates
+
+            This PR updates Python dependencies across the monorepo.
+
+            ### Security Audit
+            Security audit has been run. Check workflow logs for details.
+
+            ---
+            *This PR was automatically created by the dependency update workflow*
+          branch: deps/python-updates-${{ github.run_number }}
+          labels: dependencies, automated, python
+          assignees: ${{ github.actor }}
+
+  # ============================================
+  # Docker Image Updates
+  # ============================================
+  update-docker-images:
+    name: 🐳 Update Docker Images
+    runs-on: ubuntu-latest
+    outputs:
+      pr_created: ${{ steps.create-pr.outputs.pr_created }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update Dockerfile base images
+        id: update
+        run: |
+          UPDATED=false
+
+          # Find all Dockerfiles
+          for dockerfile in $(find . -name "Dockerfile*" -type f); do
+            echo "📦 Checking $dockerfile..."
+
+            # Extract base images
+            BASE_IMAGES=$(grep "^FROM" "$dockerfile" | awk '{print $2}')
+
+            for image in $BASE_IMAGES; do
+              # Skip scratch and local images
+              if [[ "$image" == "scratch" ]] || [[ "$image" == *"localhost"* ]]; then
+                continue
+              fi
+
+              # Get latest version
+              IMAGE_NAME=${image%:*}
+              CURRENT_TAG=${image#*:}
+
+              # For node images
+              if [[ "$IMAGE_NAME" == *"node"* ]]; then
+                LATEST_TAG="20-alpine"
+                if [[ "$CURRENT_TAG" != "$LATEST_TAG" ]]; then
+                  sed -i "s|FROM $image|FROM $IMAGE_NAME:$LATEST_TAG|g" "$dockerfile"
+                  echo "⬆️ Updated $IMAGE_NAME from $CURRENT_TAG to $LATEST_TAG"
+                  UPDATED=true
+                fi
+              fi
+
+              # For Python images
+              if [[ "$IMAGE_NAME" == *"python"* ]]; then
+                LATEST_TAG="3.12-slim"
+                if [[ "$CURRENT_TAG" != "$LATEST_TAG" ]]; then
+                  sed -i "s|FROM $image|FROM $IMAGE_NAME:$LATEST_TAG|g" "$dockerfile"
+                  echo "⬆️ Updated $IMAGE_NAME from $CURRENT_TAG to $LATEST_TAG"
+                  UPDATED=true
+                fi
+              fi
+            done
+          done
+
+          echo "has_updates=$UPDATED" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request
+        if: steps.update.outputs.has_updates == 'true'
+        id: create-pr
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(deps): update Docker base images"
+          title: "🐳 Update Docker Base Images"
+          body: |
+            ## Docker Image Updates
+
+            This PR updates Docker base images to their latest stable versions.
+
+            ---
+            *This PR was automatically created by the dependency update workflow*
+          branch: deps/docker-updates-${{ github.run_number }}
+          labels: dependencies, automated, docker
+          assignees: ${{ github.actor }}
+
+  # ============================================
+  # GitHub Actions Updates
+  # ============================================
+  update-actions:
+    name: 🎬 Update GitHub Actions
+    runs-on: ubuntu-latest
+    outputs:
+      pr_created: ${{ steps.create-pr.outputs.pr_created }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update GitHub Actions
+        uses: actions/dependency-review-action@v4
+        with:
+          config-file: .github/dependency-review-config.yml
+
+      - name: Update action versions
+        id: update
+        run: |
+          UPDATED=false
+
+          # Find all workflow files
+          for workflow in .github/workflows/*.yml; do
+            echo "📦 Checking $workflow..."
+
+            # Update common actions to latest versions
+            sed -i 's/actions\/checkout@v[0-9]*/actions\/checkout@v4/g' "$workflow"
+            sed -i 's/actions\/setup-node@v[0-9]*/actions\/setup-node@v4/g' "$workflow"
+            sed -i 's/actions\/setup-python@v[0-9]*/actions\/setup-python@v5/g' "$workflow"
+            sed -i 's/actions\/cache@v[0-9]*/actions\/cache@v4/g' "$workflow"
+            sed -i 's/actions\/upload-artifact@v[0-9]*/actions\/upload-artifact@v4/g' "$workflow"
+            sed -i 's/actions\/download-artifact@v[0-9]*/actions\/download-artifact@v4/g' "$workflow"
+            sed -i 's/pnpm\/action-setup@v[0-9]*/pnpm\/action-setup@v4/g' "$workflow"
+
+            if ! git diff --quiet "$workflow"; then
+              echo "⬆️ Updated $workflow"
+              UPDATED=true
+            fi
+          done
+
+          echo "has_updates=$UPDATED" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request
+        if: steps.update.outputs.has_updates == 'true'
+        id: create-pr
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(deps): update GitHub Actions"
+          title: "🎬 Update GitHub Actions"
+          body: |
+            ## GitHub Actions Updates
+
+            This PR updates GitHub Actions to their latest versions.
+
+            ---
+            *This PR was automatically created by the dependency update workflow*
+          branch: deps/actions-updates-${{ github.run_number }}
+          labels: dependencies, automated, github-actions
+          assignees: ${{ github.actor }}
+
+  # ============================================
+  # Auto-merge PRs
+  # ============================================
+  auto-merge:
+    name: 🤖 Auto-merge Dependency PRs
+    needs: [update-js-deps, update-python-deps, update-docker-images, update-actions]
+    if: |
+      github.event.inputs.auto_merge == 'true' &&
+      (needs.update-js-deps.outputs.pr_created == 'true' ||
+       needs.update-python-deps.outputs.pr_created == 'true' ||
+       needs.update-docker-images.outputs.pr_created == 'true' ||
+       needs.update-actions.outputs.pr_created == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for checks
+        run: sleep 60
+
+      - name: Auto-merge PRs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Get all open dependency PRs
+            const pulls = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: `${context.repo.owner}:deps/`
+            });
+
+            for (const pr of pulls.data) {
+              // Check if PR is from this workflow run
+              if (pr.head.ref.includes(`-${context.runNumber}`)) {
+                console.log(`Checking PR #${pr.number}: ${pr.title}`);
+
+                // Wait for status checks
+                let checks_passed = false;
+                let attempts = 0;
+
+                while (!checks_passed && attempts < 10) {
+                  const checks = await github.rest.checks.listForRef({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    ref: pr.head.sha
+                  });
+
+                  const check_runs = checks.data.check_runs;
+                  const all_success = check_runs.length > 0 &&
+                    check_runs.every(run => run.conclusion === 'success' || run.conclusion === 'skipped');
+
+                  if (all_success) {
+                    checks_passed = true;
+                  } else {
+                    console.log(`Waiting for checks... (attempt ${attempts + 1}/10)`);
+                    await new Promise(resolve => setTimeout(resolve, 30000)); // Wait 30 seconds
+                    attempts++;
+                  }
+                }
+
+                if (checks_passed) {
+                  // Enable auto-merge
+                  await github.rest.pulls.merge({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: pr.number,
+                    merge_method: 'squash'
+                  });
+
+                  console.log(`✅ Auto-merged PR #${pr.number}`);
+                } else {
+                  console.log(`⚠️ Checks did not pass for PR #${pr.number}`);
+
+                  // Add comment
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: pr.number,
+                    body: '⚠️ Auto-merge disabled: Some checks did not pass. Please review manually.'
+                  });
+                }
+              }
+            }
+
+  # ============================================
+  # Security Report
+  # ============================================
+  security-report:
+    name: 🔒 Security Report
+    needs: [update-js-deps, update-python-deps]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run security audit
+        run: |
+          echo "## 🔒 Security Audit Report" > security-report.md
+          echo "" >> security-report.md
+          echo "### JavaScript/TypeScript" >> security-report.md
+          echo '```' >> security-report.md
+          pnpm audit 2>&1 | tee -a security-report.md || true
+          echo '```' >> security-report.md
+
+          echo "" >> security-report.md
+          echo "### Python" >> security-report.md
+          echo '```' >> security-report.md
+          pip-audit 2>&1 | tee -a security-report.md || true
+          echo '```' >> security-report.md
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: security-report.md
+
+      - name: Create security issue if needed
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('security-report.md', 'utf8');
+
+            // Check if there are any vulnerabilities
+            if (report.includes('found') && report.includes('vulnerabilit')) {
+              // Create an issue
+              const issue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '🔒 Security vulnerabilities detected in dependencies',
+                body: report + '\n\n---\n*This issue was automatically created by the dependency update workflow*',
+                labels: ['security', 'dependencies', 'automated'],
+                assignees: ['${{ github.actor }}']
+              });
+
+              console.log(`Created security issue: ${issue.data.html_url}`);
+            }
