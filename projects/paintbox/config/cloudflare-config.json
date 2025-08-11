@@ -1,0 +1,277 @@
+{
+  "zone": {
+    "name": "paintbox-app.com",
+    "plan": "pro",
+    "settings": {
+      "ssl": "full_strict",
+      "always_use_https": "on",
+      "min_tls_version": "1.2",
+      "opportunistic_encryption": "on",
+      "automatic_https_rewrites": "on",
+      "http3": "on",
+      "websockets": "on",
+      "brotli": "on",
+      "minify": {
+        "css": "on",
+        "html": "on",
+        "js": "on"
+      },
+      "polish": "lossless",
+      "mirage": "on",
+      "rocket_loader": "off",
+      "development_mode": "off",
+      "browser_cache_ttl": 14400,
+      "challenge_ttl": 1800,
+      "max_upload": 100,
+      "security_header": {
+        "enabled": true,
+        "max_age": 31536000,
+        "include_subdomains": true,
+        "preload": true,
+        "nosniff": true
+      }
+    }
+  },
+  "page_rules": [
+    {
+      "targets": [
+        {
+          "target": "url",
+          "constraint": {
+            "operator": "matches",
+            "value": "*paintbox-app.com/_next/static/*"
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "browser_cache_ttl",
+          "value": 31536000
+        },
+        {
+          "id": "cache_level",
+          "value": "cache_everything"
+        },
+        {
+          "id": "edge_cache_ttl",
+          "value": 2678400
+        }
+      ],
+      "priority": 1,
+      "status": "active"
+    },
+    {
+      "targets": [
+        {
+          "target": "url",
+          "constraint": {
+            "operator": "matches",
+            "value": "*paintbox-app.com/public/*"
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "browser_cache_ttl",
+          "value": 86400
+        },
+        {
+          "id": "cache_level",
+          "value": "cache_everything"
+        },
+        {
+          "id": "edge_cache_ttl",
+          "value": 86400
+        }
+      ],
+      "priority": 2,
+      "status": "active"
+    },
+    {
+      "targets": [
+        {
+          "target": "url",
+          "constraint": {
+            "operator": "matches",
+            "value": "*paintbox-app.com/api/*"
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "cache_level",
+          "value": "bypass"
+        },
+        {
+          "id": "disable_performance",
+          "value": true
+        }
+      ],
+      "priority": 3,
+      "status": "active"
+    },
+    {
+      "targets": [
+        {
+          "target": "url",
+          "constraint": {
+            "operator": "matches",
+            "value": "*paintbox-app.com/api/v1/calculations/*"
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "cache_level",
+          "value": "cache_everything"
+        },
+        {
+          "id": "edge_cache_ttl",
+          "value": 300
+        },
+        {
+          "id": "browser_cache_ttl",
+          "value": 60
+        },
+        {
+          "id": "cache_key_fields",
+          "value": {
+            "query_string": {
+              "include": ["version", "params"]
+            }
+          }
+        }
+      ],
+      "priority": 4,
+      "status": "active"
+    }
+  ],
+  "firewall_rules": [
+    {
+      "filter": {
+        "expression": "(http.request.uri.path contains \"/api/\" and not http.request.method in {\"GET\" \"POST\" \"PUT\" \"DELETE\" \"PATCH\"})",
+        "description": "Block non-standard HTTP methods to API"
+      },
+      "action": "block"
+    },
+    {
+      "filter": {
+        "expression": "(cf.threat_score gt 30)",
+        "description": "Challenge high threat score visitors"
+      },
+      "action": "challenge"
+    }
+  ],
+  "workers": {
+    "routes": [
+      {
+        "pattern": "*paintbox-app.com/api/v1/excel/*",
+        "script": "excel-cache-worker"
+      }
+    ],
+    "scripts": {
+      "excel-cache-worker": {
+        "content": "// Cloudflare Worker for Excel calculation caching\naddEventListener('fetch', event => {\n  event.respondWith(handleRequest(event.request))\n})\n\nasync function handleRequest(request) {\n  const cache = caches.default\n  const cacheKey = new Request(request.url, request)\n  \n  // Check cache first\n  let response = await cache.match(cacheKey)\n  \n  if (response) {\n    // Add cache hit header\n    response = new Response(response.body, response)\n    response.headers.append('X-Cache', 'HIT')\n    return response\n  }\n  \n  // Cache miss - fetch from origin\n  response = await fetch(request)\n  \n  // Cache successful responses\n  if (response.status === 200) {\n    const headers = new Headers(response.headers)\n    headers.append('X-Cache', 'MISS')\n    headers.append('Cache-Control', 'public, max-age=300')\n    \n    const responseToCache = new Response(response.body, {\n      status: response.status,\n      statusText: response.statusText,\n      headers: headers\n    })\n    \n    // Store in cache\n    event.waitUntil(cache.put(cacheKey, responseToCache.clone()))\n    \n    return responseToCache\n  }\n  \n  return response\n}"
+      }
+    }
+  },
+  "rate_limiting": {
+    "rules": [
+      {
+        "threshold": 50,
+        "period": 60,
+        "action": {
+          "mode": "challenge",
+          "timeout": 600
+        },
+        "match": {
+          "request": {
+            "url": "*paintbox-app.com/api/*"
+          }
+        },
+        "description": "Rate limit API endpoints"
+      }
+    ]
+  },
+  "argo": {
+    "smart_routing": true,
+    "tiered_caching": true,
+    "argo_tunnel": false
+  },
+  "cache_reserve": {
+    "enabled": true,
+    "minimum_file_size": 1000
+  },
+  "images": {
+    "enabled": true,
+    "variants": {
+      "thumbnail": {
+        "width": 150,
+        "height": 150,
+        "fit": "cover"
+      },
+      "mobile": {
+        "width": 640,
+        "height": 480,
+        "fit": "contain"
+      },
+      "desktop": {
+        "width": 1920,
+        "height": 1080,
+        "fit": "contain"
+      }
+    },
+    "polish": "lossless",
+    "webp": true,
+    "avif": true
+  },
+  "analytics": {
+    "web_analytics": true,
+    "rum": true
+  },
+  "waf": {
+    "custom_rules": [
+      {
+        "name": "Block SQL Injection",
+        "expression": "(http.request.uri.query contains \"union\" and http.request.uri.query contains \"select\") or (http.request.body.raw contains \"'; DROP TABLE\")",
+        "action": "block"
+      },
+      {
+        "name": "Block XSS Attempts",
+        "expression": "(http.request.uri.query contains \"<script\") or (http.request.body.raw contains \"<script\")",
+        "action": "block"
+      }
+    ]
+  },
+  "transform_rules": {
+    "request_headers": [
+      {
+        "action": "set",
+        "header": "X-Forwarded-Proto",
+        "value": "https"
+      },
+      {
+        "action": "set",
+        "header": "X-Real-IP",
+        "value": "cf.connecting_ip"
+      }
+    ],
+    "response_headers": [
+      {
+        "action": "set",
+        "header": "X-Content-Type-Options",
+        "value": "nosniff"
+      },
+      {
+        "action": "set",
+        "header": "X-Frame-Options",
+        "value": "SAMEORIGIN"
+      },
+      {
+        "action": "set",
+        "header": "Referrer-Policy",
+        "value": "strict-origin-when-cross-origin"
+      }
+    ]
+  }
+}

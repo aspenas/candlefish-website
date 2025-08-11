@@ -1,0 +1,546 @@
+# Production values for Candlefish Collaboration System
+# This file contains production-specific overrides
+
+# Global configuration
+global:
+  imageRegistry: "123456789012.dkr.ecr.us-east-1.amazonaws.com"
+  storageClass: "gp3-csi"
+
+# Application configuration
+app:
+  environment: production
+  domain: candlefish.ai
+
+# Image configuration
+image:
+  registry: "123456789012.dkr.ecr.us-east-1.amazonaws.com/candlefish"
+  tag: "{{ .Values.image.tag | default .Chart.AppVersion }}"
+  pullPolicy: IfNotPresent
+
+# Increased replica counts for production
+replicaCount:
+  graphqlApi: 5
+  websocketService: 5
+  documentService: 5
+  collaborationEditor: 5
+
+# GraphQL API Service - Production Configuration
+graphqlApi:
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "2000m"
+
+  autoscaling:
+    enabled: true
+    minReplicas: 5
+    maxReplicas: 50
+    targetCPUUtilizationPercentage: 60
+    targetMemoryUtilizationPercentage: 70
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 300
+        policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60
+      scaleUp:
+        stabilizationWindowSeconds: 60
+        policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+        - type: Pods
+          value: 4
+          periodSeconds: 60
+        selectPolicy: Max
+
+  env:
+    LOG_LEVEL: warn
+    GRAPHQL_PLAYGROUND_ENABLED: "false"
+    GRAPHQL_INTROSPECTION_ENABLED: "false"
+    RATE_LIMIT_MAX_REQUESTS: "2000"
+    NODE_OPTIONS: "--max-old-space-size=1536"
+
+# WebSocket Service - Production Configuration
+websocketService:
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "2000m"
+
+  autoscaling:
+    enabled: true
+    minReplicas: 5
+    maxReplicas: 30
+    targetCPUUtilizationPercentage: 60
+    metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Pods
+      pods:
+        metric:
+          name: websocket_connections_per_pod
+        target:
+          type: AverageValue
+          averageValue: "1000"
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 300
+        policies:
+        - type: Percent
+          value: 30
+          periodSeconds: 60
+      scaleUp:
+        stabilizationWindowSeconds: 60
+        policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+        - type: Pods
+          value: 5
+          periodSeconds: 60
+        selectPolicy: Max
+
+  env:
+    LOG_LEVEL: warn
+    WS_MAX_CONNECTIONS_PER_IP: "20"
+    UV_THREADPOOL_SIZE: "256"
+    NODE_OPTIONS: "--max-old-space-size=1536"
+
+# Document Service - Production Configuration
+documentService:
+  resources:
+    requests:
+      memory: "1.5Gi"
+      cpu: "750m"
+    limits:
+      memory: "3Gi"
+      cpu: "3000m"
+
+  autoscaling:
+    enabled: true
+    minReplicas: 5
+    maxReplicas: 25
+    targetCPUUtilizationPercentage: 60
+    targetMemoryUtilizationPercentage: 70
+    metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Pods
+      pods:
+        metric:
+          name: document_operations_per_second
+        target:
+          type: AverageValue
+          averageValue: "200"
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 300
+        policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60
+      scaleUp:
+        stabilizationWindowSeconds: 60
+        policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+        - type: Pods
+          value: 3
+          periodSeconds: 60
+        selectPolicy: Max
+
+  persistence:
+    enabled: true
+    storageClass: "gp3-csi"
+    size: 50Gi
+
+  env:
+    LOG_LEVEL: warn
+    CRDT_HISTORY_LIMIT: "2000"
+    CRDT_BATCH_SIZE: "100"
+    MAX_FILE_SIZE: "52428800"  # 50MB
+    NODE_OPTIONS: "--max-old-space-size=2048"
+
+# Collaboration Editor - Production Configuration
+collaborationEditor:
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "2000m"
+
+  autoscaling:
+    enabled: true
+    minReplicas: 5
+    maxReplicas: 50
+    targetCPUUtilizationPercentage: 60
+    targetMemoryUtilizationPercentage: 70
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 300
+        policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60
+      scaleUp:
+        stabilizationWindowSeconds: 60
+        policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+        - type: Pods
+          value: 10
+          periodSeconds: 60
+        selectPolicy: Max
+
+  env:
+    NODE_OPTIONS: "--max-old-space-size=1536"
+
+# PostgreSQL - Production Configuration
+postgresql:
+  enabled: false  # Use external RDS in production
+  # External database configuration will be provided via secrets
+
+# Redis - Production Configuration
+redis:
+  enabled: false  # Use external ElastiCache in production
+  # External Redis configuration will be provided via secrets
+
+# Ingress - Production Configuration
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:123456789012:certificate/abcd1234-5678-90ef-ghij-klmnopqrstuv"
+    alb.ingress.kubernetes.io/wafv2-acl-arn: "arn:aws:wafv2:us-east-1:123456789012:webacl/candlefish-collaboration/12345678-1234-1234-1234-123456789012"
+    alb.ingress.kubernetes.io/security-groups: "sg-0123456789abcdef0"
+    alb.ingress.kubernetes.io/healthcheck-path: /api/health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: '15'
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: '5'
+    alb.ingress.kubernetes.io/healthy-threshold-count: '2'
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: '5'
+    alb.ingress.kubernetes.io/load-balancer-attributes: |
+      idle_timeout.timeout_seconds=60,
+      routing.http2.enabled=true,
+      access_logs.s3.enabled=true,
+      access_logs.s3.bucket=candlefish-prod-alb-logs,
+      access_logs.s3.prefix=collaboration
+    # Rate limiting
+    nginx.ingress.kubernetes.io/rate-limit-connections: "1000"
+    nginx.ingress.kubernetes.io/rate-limit-requests-per-second: "5000"
+    # Security headers
+    nginx.ingress.kubernetes.io/server-snippet: |
+      add_header X-Frame-Options "SAMEORIGIN" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+      add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' wss: https:;" always;
+
+  hosts:
+    - host: editor.candlefish.ai
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: collaboration-editor
+              port:
+                number: 3000
+    - host: api.candlefish.ai
+      paths:
+        - path: /graphql
+          pathType: Prefix
+          backend:
+            service:
+              name: graphql-api-service
+              port:
+                number: 4000
+        - path: /documents
+          pathType: Prefix
+          backend:
+            service:
+              name: document-service
+              port:
+                number: 4003
+    - host: ws.candlefish.ai
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: websocket-service
+              port:
+                number: 4001
+
+# Pod disruption budget - Production
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 3
+
+# Network policies - Production Security
+networkPolicy:
+  enabled: true
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: kube-system
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: collaboration
+    - from:
+      - podSelector:
+          matchLabels:
+            app.kubernetes.io/name: candlefish-collaboration
+  egress:
+    # Allow external APIs and services
+    - to: []
+      ports:
+      - protocol: TCP
+        port: 443
+      - protocol: TCP
+        port: 80
+    # Allow DNS
+    - to: []
+      ports:
+      - protocol: UDP
+        port: 53
+      - protocol: TCP
+        port: 53
+    # Allow database access
+    - to: []
+      ports:
+      - protocol: TCP
+        port: 5432
+    # Allow Redis access
+    - to: []
+      ports:
+      - protocol: TCP
+        port: 6379
+
+# Monitoring - Production Configuration
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 15s
+    scrapeTimeout: 10s
+    labels:
+      release: prometheus
+
+  prometheus:
+    enabled: true
+    alertmanager:
+      enabled: true
+      config:
+        global:
+          slack_api_url: "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+        route:
+          group_by: ['alertname', 'cluster', 'service']
+          group_wait: 10s
+          group_interval: 10s
+          repeat_interval: 1h
+          receiver: 'web.hook'
+        receivers:
+        - name: 'web.hook'
+          slack_configs:
+          - channel: '#alerts-production'
+            title: 'Candlefish Collaboration Alert'
+            text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+    server:
+      persistentVolume:
+        enabled: true
+        storageClass: "gp3-csi"
+        size: 100Gi
+      resources:
+        requests:
+          memory: 2Gi
+          cpu: 500m
+        limits:
+          memory: 4Gi
+          cpu: 2000m
+      retention: "30d"
+
+  grafana:
+    enabled: true
+    persistence:
+      enabled: true
+      storageClass: "gp3-csi"
+      size: 20Gi
+    resources:
+      requests:
+        memory: 512Mi
+        cpu: 250m
+      limits:
+        memory: 1Gi
+        cpu: 1000m
+    adminPassword: ""  # Set via secret
+    datasources:
+      datasources.yaml:
+        apiVersion: 1
+        datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://prometheus-server:80
+          access: proxy
+          isDefault: true
+
+# Security Context - Enhanced for Production
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  seccompProfile:
+    type: RuntimeDefault
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+  fsGroupChangePolicy: "Always"
+  supplementalGroups: [1001]
+
+# Secrets management - Production
+secrets:
+  create: false  # Secrets managed externally in production
+  externalSecrets:
+    enabled: true
+    refreshInterval: 15m
+    secretStore:
+      name: aws-secret-store
+      kind: SecretStore
+    secrets:
+      - secretKey: DATABASE_URL
+        remoteRef:
+          key: candlefish/production/collaboration/database-url
+      - secretKey: REDIS_URL
+        remoteRef:
+          key: candlefish/production/collaboration/redis-url
+      - secretKey: JWT_SECRET
+        remoteRef:
+          key: candlefish/production/collaboration/jwt-secret
+      - secretKey: ENCRYPTION_KEY
+        remoteRef:
+          key: candlefish/production/collaboration/encryption-key
+      - secretKey: AWS_ACCESS_KEY_ID
+        remoteRef:
+          key: candlefish/production/collaboration/aws-access-key-id
+      - secretKey: AWS_SECRET_ACCESS_KEY
+        remoteRef:
+          key: candlefish/production/collaboration/aws-secret-access-key
+      - secretKey: SENTRY_DSN
+        remoteRef:
+          key: candlefish/production/collaboration/sentry-dsn
+
+# Backup configuration - Production
+backup:
+  enabled: true
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  retention: "90d"
+  storageClass: "gp3-csi"
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 250m
+    limits:
+      memory: 1Gi
+      cpu: 1000m
+  destinations:
+    - s3:
+        bucket: "candlefish-prod-backups"
+        region: "us-east-1"
+        prefix: "collaboration/"
+
+# Node selector for production workloads
+nodeSelector:
+  node.kubernetes.io/instance-type: "m6i.large"
+  kubernetes.io/arch: "amd64"
+
+# Tolerations for production
+tolerations:
+- key: "production-workload"
+  operator: "Equal"
+  value: "true"
+  effect: "NoSchedule"
+
+# Enhanced affinity rules for production
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app.kubernetes.io/name
+            operator: In
+            values:
+            - candlefish-collaboration
+        topologyKey: kubernetes.io/hostname
+    requiredDuringSchedulingIgnoredDuringExecution:
+    - labelSelector:
+        matchExpressions:
+        - key: app.kubernetes.io/name
+          operator: In
+          values:
+          - candlefish-collaboration
+      topologyKey: topology.kubernetes.io/zone
+
+# Production annotations
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "4000"
+  prometheus.io/path: "/metrics"
+  cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
+
+# Priority class for production workloads
+priorityClassName: "high-priority"
+
+# Termination grace period for graceful shutdowns
+terminationGracePeriodSeconds: 60

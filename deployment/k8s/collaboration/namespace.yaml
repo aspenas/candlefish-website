@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: collaboration
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: namespace
+    app.kubernetes.io/part-of: candlefish-platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: collaboration-staging
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: namespace
+    app.kubernetes.io/part-of: candlefish-platform
+    environment: staging

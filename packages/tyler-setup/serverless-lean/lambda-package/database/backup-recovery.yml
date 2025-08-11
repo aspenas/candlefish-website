@@ -1,0 +1,582 @@
+# Backup and Disaster Recovery Configuration for Tyler Setup
+# Comprehensive backup strategy with automated recovery procedures
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Backup and disaster recovery infrastructure for Tyler Setup DynamoDB tables'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name
+
+  ProjectName:
+    Type: String
+    Default: candlefish-employee-setup-lean
+    Description: Project name for resource naming
+
+  BackupRetentionDays:
+    Type: Number
+    Default: 35
+    MinValue: 7
+    MaxValue: 365
+    Description: Backup retention period in days
+
+  CrossRegionBackup:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: Enable cross-region backup replication
+
+  SecondaryRegion:
+    Type: String
+    Default: us-west-2
+    Description: Secondary region for disaster recovery
+
+Conditions:
+  IsProduction: !Equals [!Ref Environment, 'prod']
+  EnableCrossRegion: !Equals [!Ref CrossRegionBackup, 'true']
+
+Resources:
+  # ============================================================================
+  # Backup Vault and KMS Key
+  # ============================================================================
+
+  BackupVaultKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for backup vault encryption
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow AWS Backup Service
+            Effect: Allow
+            Principal:
+              Service: backup.amazonaws.com
+            Action:
+              - kms:Decrypt
+              - kms:DescribeKey
+              - kms:Encrypt
+              - kms:GenerateDataKey
+              - kms:ReEncrypt*
+            Resource: '*'
+
+  BackupVaultKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/${ProjectName}-${Environment}-backup'
+      TargetKeyId: !Ref BackupVaultKey
+
+  BackupVault:
+    Type: AWS::Backup::BackupVault
+    Properties:
+      BackupVaultName: !Sub '${ProjectName}-${Environment}-vault'
+      EncryptionKeyArn: !GetAtt BackupVaultKey.Arn
+      Notifications:
+        BackupVaultEvents:
+          - BACKUP_JOB_STARTED
+          - BACKUP_JOB_COMPLETED
+          - BACKUP_JOB_FAILED
+          - RESTORE_JOB_COMPLETED
+          - RESTORE_JOB_FAILED
+        SNSTopicArn: !Ref BackupNotificationTopic
+
+  # ============================================================================
+  # SNS Topic for Backup Notifications
+  # ============================================================================
+
+  BackupNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${ProjectName}-${Environment}-backup-notifications'
+      DisplayName: Tyler Setup Backup Notifications
+      KmsMasterKeyId: !Ref BackupVaultKey
+
+  BackupNotificationSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      TopicArn: !Ref BackupNotificationTopic
+      Endpoint: ops@candlefish.ai # Change to your operations email
+
+  # ============================================================================
+  # IAM Role for AWS Backup
+  # ============================================================================
+
+  BackupServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${Environment}-backup-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: backup.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup
+        - arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores
+      Policies:
+        - PolicyName: DynamoDBBackupPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:CreateBackup
+                  - dynamodb:DescribeBackup
+                  - dynamodb:ListBackups
+                  - dynamodb:RestoreTableFromBackup
+                  - dynamodb:RestoreTableToPointInTime
+                  - dynamodb:DescribeTable
+                  - dynamodb:ListTables
+                  - dynamodb:DescribeContinuousBackups
+                Resource:
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ProjectName}-${Environment}-*'
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ProjectName}-${Environment}-*/backup/*'
+
+  # ============================================================================
+  # Backup Plans
+  # ============================================================================
+
+  # Primary Backup Plan (Continuous)
+  ContinuousBackupPlan:
+    Type: AWS::Backup::BackupPlan
+    Properties:
+      BackupPlan:
+        BackupPlanName: !Sub '${ProjectName}-${Environment}-continuous'
+        BackupPlanRule:
+          - RuleName: DailyBackups
+            TargetBackupVault: !Ref BackupVault
+            ScheduleExpression: cron(0 5 ? * * *)  # Daily at 5 AM UTC
+            StartWindowMinutes: 480  # 8 hours window
+            CompletionWindowMinutes: 10080  # 7 days to complete
+            Lifecycle:
+              DeleteAfterDays: !Ref BackupRetentionDays
+              MoveToColdStorageAfterDays: 7
+            RecoveryPointTags:
+              BackupType: Daily
+              Environment: !Ref Environment
+              Project: !Ref ProjectName
+            CopyActions: !If
+              - EnableCrossRegion
+              - - DestinationBackupVaultArn: !Sub
+                    - 'arn:aws:backup:${SecondaryRegion}:${AWS::AccountId}:backup-vault/${ProjectName}-${Environment}-vault'
+                    - SecondaryRegion: !Ref SecondaryRegion
+                  Lifecycle:
+                    DeleteAfterDays: !Ref BackupRetentionDays
+              - !Ref AWS::NoValue
+
+          - RuleName: WeeklyBackups
+            TargetBackupVault: !Ref BackupVault
+            ScheduleExpression: cron(0 3 ? * SUN *)  # Weekly on Sunday at 3 AM UTC
+            StartWindowMinutes: 480
+            CompletionWindowMinutes: 10080
+            Lifecycle:
+              DeleteAfterDays: 90  # Keep weekly backups longer
+              MoveToColdStorageAfterDays: 14
+            RecoveryPointTags:
+              BackupType: Weekly
+              Environment: !Ref Environment
+              Project: !Ref ProjectName
+
+          - RuleName: MonthlyBackups
+            TargetBackupVault: !Ref BackupVault
+            ScheduleExpression: cron(0 2 1 * ? *)  # Monthly on 1st at 2 AM UTC
+            StartWindowMinutes: 480
+            CompletionWindowMinutes: 10080
+            Lifecycle:
+              DeleteAfterDays: 365  # Keep monthly backups for 1 year
+              MoveToColdStorageAfterDays: 30
+            RecoveryPointTags:
+              BackupType: Monthly
+              Environment: !Ref Environment
+              Project: !Ref ProjectName
+
+  # Critical Data Backup Plan (More frequent for production)
+  CriticalBackupPlan:
+    Type: AWS::Backup::BackupPlan
+    Condition: IsProduction
+    Properties:
+      BackupPlan:
+        BackupPlanName: !Sub '${ProjectName}-${Environment}-critical'
+        BackupPlanRule:
+          - RuleName: HourlyBackups
+            TargetBackupVault: !Ref BackupVault
+            ScheduleExpression: cron(0 * ? * * *)  # Every hour
+            StartWindowMinutes: 60
+            CompletionWindowMinutes: 120
+            Lifecycle:
+              DeleteAfterDays: 3  # Keep hourly backups for 3 days
+            RecoveryPointTags:
+              BackupType: Hourly
+              Environment: !Ref Environment
+              Project: !Ref ProjectName
+              Critical: 'true'
+
+  # ============================================================================
+  # Backup Selections
+  # ============================================================================
+
+  # Main Tables Backup Selection
+  MainTablesBackupSelection:
+    Type: AWS::Backup::BackupSelection
+    Properties:
+      BackupPlanId: !Ref ContinuousBackupPlan
+      BackupSelection:
+        SelectionName: !Sub '${ProjectName}-${Environment}-main-tables'
+        IamRoleArn: !GetAtt BackupServiceRole.Arn
+        Resources:
+          - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ProjectName}-${Environment}-entities'
+          - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ProjectName}-${Environment}-events'
+        Conditions:
+          StringEquals:
+            aws:ResourceTag/Environment: [!Ref Environment]
+            aws:ResourceTag/Project: [!Ref ProjectName]
+
+  # Critical Tables Backup Selection (Production only)
+  CriticalTablesBackupSelection:
+    Type: AWS::Backup::BackupSelection
+    Condition: IsProduction
+    Properties:
+      BackupPlanId: !Ref CriticalBackupPlan
+      BackupSelection:
+        SelectionName: !Sub '${ProjectName}-${Environment}-critical-tables'
+        IamRoleArn: !GetAtt BackupServiceRole.Arn
+        Resources:
+          - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ProjectName}-${Environment}-entities'
+        Conditions:
+          StringEquals:
+            aws:ResourceTag/TableType: ['primary-entities']
+
+  # ============================================================================
+  # Lambda Functions for Automated Recovery
+  # ============================================================================
+
+  RecoveryLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${Environment}-recovery-lambda-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: RecoveryPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - backup:*
+                  - dynamodb:*
+                  - sns:Publish
+                  - cloudwatch:PutMetricData
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+  # Health Check Lambda
+  HealthCheckLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-${Environment}-health-check'
+      Runtime: nodejs18.x
+      Handler: index.handler
+      Role: !GetAtt RecoveryLambdaRole.Arn
+      Timeout: 300
+      Environment:
+        Variables:
+          ENTITY_TABLE: !Sub '${ProjectName}-${Environment}-entities'
+          EVENT_TABLE: !Sub '${ProjectName}-${Environment}-events'
+          SNS_TOPIC: !Ref BackupNotificationTopic
+          ENVIRONMENT: !Ref Environment
+      Code:
+        ZipFile: |
+          const AWS = require('aws-sdk');
+          const dynamodb = new AWS.DynamoDB.DocumentClient();
+          const sns = new AWS.SNS();
+          const cloudwatch = new AWS.CloudWatch();
+
+          exports.handler = async (event) => {
+              const results = [];
+              const tables = [
+                  process.env.ENTITY_TABLE,
+                  process.env.EVENT_TABLE
+              ];
+
+              for (const tableName of tables) {
+                  try {
+                      // Health check: Try to read a dummy record
+                      await dynamodb.get({
+                          TableName: tableName,
+                          Key: { PK: 'HEALTH_CHECK', SK: 'PING' }
+                      }).promise();
+
+                      results.push({
+                          table: tableName,
+                          status: 'healthy',
+                          timestamp: new Date().toISOString()
+                      });
+
+                      // Send healthy metric
+                      await cloudwatch.putMetricData({
+                          Namespace: 'Tyler-Setup/Database',
+                          MetricData: [{
+                              MetricName: 'TableHealth',
+                              Dimensions: [
+                                  { Name: 'TableName', Value: tableName },
+                                  { Name: 'Environment', Value: process.env.ENVIRONMENT }
+                              ],
+                              Value: 1,
+                              Unit: 'Count',
+                              Timestamp: new Date()
+                          }]
+                      }).promise();
+
+                  } catch (error) {
+                      console.error(`Health check failed for ${tableName}:`, error);
+
+                      results.push({
+                          table: tableName,
+                          status: 'unhealthy',
+                          error: error.message,
+                          timestamp: new Date().toISOString()
+                      });
+
+                      // Send unhealthy metric
+                      await cloudwatch.putMetricData({
+                          Namespace: 'Tyler-Setup/Database',
+                          MetricData: [{
+                              MetricName: 'TableHealth',
+                              Dimensions: [
+                                  { Name: 'TableName', Value: tableName },
+                                  { Name: 'Environment', Value: process.env.ENVIRONMENT }
+                              ],
+                              Value: 0,
+                              Unit: 'Count',
+                              Timestamp: new Date()
+                          }]
+                      }).promise();
+
+                      // Send alert
+                      await sns.publish({
+                          TopicArn: process.env.SNS_TOPIC,
+                          Message: JSON.stringify({
+                              alert: 'Database Health Check Failed',
+                              table: tableName,
+                              error: error.message,
+                              timestamp: new Date().toISOString(),
+                              environment: process.env.ENVIRONMENT
+                          }),
+                          Subject: `ALERT: Database Health Check Failed - ${tableName}`
+                      }).promise();
+                  }
+              }
+
+              return {
+                  statusCode: 200,
+                  body: JSON.stringify({
+                      status: results.every(r => r.status === 'healthy') ? 'healthy' : 'unhealthy',
+                      checks: results
+                  })
+              };
+          };
+
+  # Automated Recovery Lambda
+  AutoRecoveryLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-${Environment}-auto-recovery'
+      Runtime: nodejs18.x
+      Handler: index.handler
+      Role: !GetAtt RecoveryLambdaRole.Arn
+      Timeout: 900  # 15 minutes
+      Environment:
+        Variables:
+          BACKUP_VAULT: !Ref BackupVault
+          SNS_TOPIC: !Ref BackupNotificationTopic
+          ENVIRONMENT: !Ref Environment
+      Code:
+        ZipFile: |
+          const AWS = require('aws-sdk');
+          const backup = new AWS.Backup();
+          const dynamodb = new AWS.DynamoDB();
+          const sns = new AWS.SNS();
+
+          exports.handler = async (event) => {
+              console.log('Auto recovery triggered:', JSON.stringify(event, null, 2));
+
+              try {
+                  // Parse the event (could be from CloudWatch alarm)
+                  const { tableName, recoveryPointArn, targetTableName } = event;
+
+                  if (!tableName || !recoveryPointArn) {
+                      throw new Error('Missing required parameters: tableName, recoveryPointArn');
+                  }
+
+                  const restoreTargetName = targetTableName || `${tableName}-recovery-${Date.now()}`;
+
+                  // Start restore job
+                  const restoreJob = await backup.startRestoreJob({
+                      RecoveryPointArn: recoveryPointArn,
+                      Metadata: {
+                          'target-table-name': restoreTargetName
+                      },
+                      IamRoleArn: 'arn:aws:iam::' + event.accountId + ':role/' + process.env.PROJECT_NAME + '-' + process.env.ENVIRONMENT + '-backup-role',
+                      ResourceType: 'DynamoDB'
+                  }).promise();
+
+                  // Send notification
+                  await sns.publish({
+                      TopicArn: process.env.SNS_TOPIC,
+                      Message: JSON.stringify({
+                          event: 'Automated Recovery Started',
+                          originalTable: tableName,
+                          targetTable: restoreTargetName,
+                          restoreJobId: restoreJob.RestoreJobId,
+                          timestamp: new Date().toISOString()
+                      }),
+                      Subject: `AUTO-RECOVERY: Started for ${tableName}`
+                  }).promise();
+
+                  return {
+                      statusCode: 200,
+                      body: JSON.stringify({
+                          message: 'Recovery job started',
+                          restoreJobId: restoreJob.RestoreJobId,
+                          targetTable: restoreTargetName
+                      })
+                  };
+
+              } catch (error) {
+                  console.error('Auto recovery failed:', error);
+
+                  // Send failure notification
+                  await sns.publish({
+                      TopicArn: process.env.SNS_TOPIC,
+                      Message: JSON.stringify({
+                          event: 'Automated Recovery Failed',
+                          error: error.message,
+                          timestamp: new Date().toISOString()
+                      }),
+                      Subject: 'AUTO-RECOVERY: Failed'
+                  }).promise();
+
+                  throw error;
+              }
+          };
+
+  # ============================================================================
+  # CloudWatch Events and Alarms
+  # ============================================================================
+
+  # Schedule health checks
+  HealthCheckSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}-health-check'
+      Description: 'Run database health checks every 5 minutes'
+      ScheduleExpression: 'rate(5 minutes)'
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt HealthCheckLambda.Arn
+          Id: HealthCheckTarget
+
+  HealthCheckPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref HealthCheckLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt HealthCheckSchedule.Arn
+
+  # Alarm for backup job failures
+  BackupFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-backup-failures'
+      AlarmDescription: 'Alert when backup jobs fail'
+      MetricName: BackupJobsFailed
+      Namespace: AWS/Backup
+      Statistic: Sum
+      Period: 3600  # 1 hour
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref BackupNotificationTopic
+
+  # Alarm for table health
+  TableHealthAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-table-health'
+      AlarmDescription: 'Alert when database health checks fail'
+      MetricName: TableHealth
+      Namespace: Tyler-Setup/Database
+      Statistic: Average
+      Period: 300  # 5 minutes
+      EvaluationPeriods: 2
+      Threshold: 0.5
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref BackupNotificationTopic
+
+Outputs:
+  BackupVaultName:
+    Description: Name of the backup vault
+    Value: !Ref BackupVault
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-backup-vault'
+
+  BackupVaultArn:
+    Description: ARN of the backup vault
+    Value: !GetAtt BackupVault.BackupVaultArn
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-backup-vault-arn'
+
+  ContinuousBackupPlanId:
+    Description: ID of the continuous backup plan
+    Value: !Ref ContinuousBackupPlan
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-backup-plan-continuous'
+
+  CriticalBackupPlanId:
+    Condition: IsProduction
+    Description: ID of the critical backup plan
+    Value: !Ref CriticalBackupPlan
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-backup-plan-critical'
+
+  HealthCheckLambdaArn:
+    Description: ARN of the health check Lambda function
+    Value: !GetAtt HealthCheckLambda.Arn
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-health-check-lambda'
+
+  AutoRecoveryLambdaArn:
+    Description: ARN of the auto recovery Lambda function
+    Value: !GetAtt AutoRecoveryLambda.Arn
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-auto-recovery-lambda'
+
+  BackupNotificationTopicArn:
+    Description: ARN of the backup notification SNS topic
+    Value: !Ref BackupNotificationTopic
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-backup-notifications'

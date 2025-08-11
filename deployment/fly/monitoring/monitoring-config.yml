@@ -1,0 +1,361 @@
+# Candlefish AI Monitoring and Alerting Configuration
+# Comprehensive monitoring for PostgreSQL, Redis, and API services
+
+version: "1.0"
+project: "candlefish-ai-collaboration"
+
+# Global monitoring settings
+global:
+  scrape_interval: "30s"
+  evaluation_interval: "30s"
+  retention: "30d"
+
+# Service monitoring configurations
+services:
+  # PostgreSQL Monitoring
+  postgresql:
+    app_name: "candlefish-postgres"
+    host: "candlefish-postgres.internal"
+    port: 5432
+
+    # Health checks
+    health_checks:
+      - name: "connection_test"
+        interval: "30s"
+        timeout: "10s"
+        query: "SELECT 1"
+
+      - name: "replication_lag"
+        interval: "60s"
+        timeout: "15s"
+        threshold: "5s"
+
+    # Performance metrics
+    metrics:
+      # Connection metrics
+      - name: "pg_stat_activity"
+        query: "SELECT state, count(*) FROM pg_stat_activity GROUP BY state"
+        interval: "30s"
+
+      - name: "pg_connections"
+        query: "SELECT count(*) as connections FROM pg_stat_activity"
+        interval: "30s"
+        alert_threshold: 80  # Alert when >80 connections (out of 100 max)
+
+      # Database size metrics
+      - name: "pg_database_size"
+        query: "SELECT pg_database_size('candlefish_collaboration') as size_bytes"
+        interval: "300s"  # 5 minutes
+
+      # Query performance metrics
+      - name: "pg_slow_queries"
+        query: |
+          SELECT count(*) as slow_queries
+          FROM pg_stat_statements
+          WHERE mean_time > 1000  -- Queries slower than 1 second
+        interval: "60s"
+        alert_threshold: 10  # Alert if >10 slow queries per minute
+
+      # Lock monitoring
+      - name: "pg_locks"
+        query: "SELECT mode, count(*) FROM pg_locks GROUP BY mode"
+        interval: "30s"
+
+      # Table statistics
+      - name: "pg_table_stats"
+        query: |
+          SELECT
+            schemaname,
+            tablename,
+            n_tup_ins + n_tup_upd + n_tup_del as total_operations
+          FROM pg_stat_user_tables
+        interval: "300s"
+
+    # Alert rules
+    alerts:
+      - name: "PostgreSQL Connection High"
+        condition: "pg_connections > 80"
+        severity: "warning"
+        duration: "2m"
+
+      - name: "PostgreSQL Connection Critical"
+        condition: "pg_connections > 95"
+        severity: "critical"
+        duration: "30s"
+
+      - name: "PostgreSQL Slow Queries"
+        condition: "pg_slow_queries > 10"
+        severity: "warning"
+        duration: "5m"
+
+      - name: "PostgreSQL Down"
+        condition: "up == 0"
+        severity: "critical"
+        duration: "30s"
+
+  # Redis Monitoring
+  redis:
+    app_name: "candlefish-redis"
+    host: "candlefish-redis.internal"
+    port: 6379
+
+    # Health checks
+    health_checks:
+      - name: "ping_test"
+        interval: "15s"
+        timeout: "5s"
+        command: "PING"
+
+      - name: "memory_usage"
+        interval: "30s"
+        timeout: "10s"
+        threshold: "90%"
+
+    # Performance metrics
+    metrics:
+      # Memory metrics
+      - name: "redis_memory_usage"
+        command: "INFO MEMORY"
+        interval: "30s"
+        fields: ["used_memory", "used_memory_peak", "maxmemory"]
+
+      # Connection metrics
+      - name: "redis_connections"
+        command: "INFO CLIENTS"
+        interval: "30s"
+        fields: ["connected_clients", "blocked_clients"]
+
+      # Command statistics
+      - name: "redis_commands"
+        command: "INFO COMMANDSTATS"
+        interval: "60s"
+
+      # Keyspace statistics
+      - name: "redis_keyspace"
+        command: "INFO KEYSPACE"
+        interval: "60s"
+
+      # Persistence metrics
+      - name: "redis_persistence"
+        command: "INFO PERSISTENCE"
+        interval: "300s"  # 5 minutes
+        fields: ["rdb_last_save_time", "aof_last_rewrite_time"]
+
+    # Alert rules
+    alerts:
+      - name: "Redis Memory High"
+        condition: "redis_memory_usage > 85"
+        severity: "warning"
+        duration: "2m"
+
+      - name: "Redis Memory Critical"
+        condition: "redis_memory_usage > 95"
+        severity: "critical"
+        duration: "30s"
+
+      - name: "Redis Connection High"
+        condition: "redis_connections > 80"
+        severity: "warning"
+        duration: "2m"
+
+      - name: "Redis Down"
+        condition: "up == 0"
+        severity: "critical"
+        duration: "30s"
+
+  # RTPM API Monitoring
+  api:
+    app_name: "rtpm-api-candlefish"
+    host: "rtpm-api-candlefish.fly.dev"
+
+    # Health checks
+    health_checks:
+      - name: "health_endpoint"
+        url: "https://rtpm-api-candlefish.fly.dev/health"
+        interval: "30s"
+        timeout: "10s"
+        expected_status: 200
+
+      - name: "api_status"
+        url: "https://rtpm-api-candlefish.fly.dev/api/v1/status"
+        interval: "30s"
+        timeout: "15s"
+        expected_status: 200
+
+      - name: "websocket_endpoint"
+        url: "wss://rtpm-api-candlefish.fly.dev/ws/metrics"
+        interval: "60s"
+        timeout: "10s"
+
+    # Performance metrics
+    metrics:
+      # HTTP metrics
+      - name: "http_requests_total"
+        endpoint: "/metrics"
+        interval: "30s"
+
+      - name: "http_request_duration"
+        endpoint: "/metrics"
+        interval: "30s"
+
+      # Application metrics
+      - name: "active_websocket_connections"
+        endpoint: "/metrics"
+        interval: "30s"
+
+      - name: "database_query_duration"
+        endpoint: "/metrics"
+        interval: "30s"
+
+    # Alert rules
+    alerts:
+      - name: "API Response Time High"
+        condition: "http_request_duration_p95 > 2"  # 2 seconds
+        severity: "warning"
+        duration: "5m"
+
+      - name: "API Error Rate High"
+        condition: "rate(http_requests_total{status=~'5..'}[5m]) > 0.1"  # >10% error rate
+        severity: "critical"
+        duration: "2m"
+
+      - name: "API Down"
+        condition: "up == 0"
+        severity: "critical"
+        duration: "30s"
+
+# Collaboration-specific monitoring
+collaboration:
+  # Real-time collaboration metrics
+  realtime:
+    metrics:
+      - name: "active_document_sessions"
+        query: "SELECT COUNT(DISTINCT document_id) FROM presence_sessions WHERE ended_at IS NULL"
+        interval: "60s"
+
+      - name: "concurrent_users"
+        query: "SELECT COUNT(DISTINCT user_id) FROM presence_sessions WHERE last_ping > NOW() - INTERVAL '5 minutes'"
+        interval: "30s"
+
+      - name: "document_operations_per_minute"
+        query: "SELECT COUNT(*) FROM crdt_operations WHERE applied_at > NOW() - INTERVAL '1 minute'"
+        interval: "60s"
+
+      - name: "unresolved_comments"
+        query: "SELECT COUNT(*) FROM comments WHERE status != 'resolved' AND deleted_at IS NULL"
+        interval: "300s"  # 5 minutes
+
+    # Collaboration alerts
+    alerts:
+      - name: "High Concurrent Users"
+        condition: "concurrent_users > 50"  # Adjust based on expected scale
+        severity: "warning"
+        duration: "5m"
+
+      - name: "Document Operation Spike"
+        condition: "document_operations_per_minute > 1000"
+        severity: "warning"
+        duration: "2m"
+
+# Notification channels
+alerting:
+  # Slack notifications
+  slack:
+    webhook_url: "${SLACK_WEBHOOK_URL}"
+    channel: "#alerts"
+    username: "Candlefish Monitor"
+    templates:
+      warning: |
+        ⚠️ *Warning Alert*
+        *Service*: {{ .GroupLabels.service }}
+        *Alert*: {{ .GroupLabels.alertname }}
+        *Description*: {{ .CommonAnnotations.description }}
+        *Duration*: {{ .CommonAnnotations.duration }}
+
+      critical: |
+        🚨 *CRITICAL Alert*
+        *Service*: {{ .GroupLabels.service }}
+        *Alert*: {{ .GroupLabels.alertname }}
+        *Description*: {{ .CommonAnnotations.description }}
+        *Duration*: {{ .CommonAnnotations.duration }}
+        *Runbook*: {{ .CommonAnnotations.runbook }}
+
+  # Email notifications
+  email:
+    smtp_host: "${SMTP_HOST}"
+    smtp_port: 587
+    smtp_username: "${SMTP_USERNAME}"
+    smtp_password: "${SMTP_PASSWORD}"
+    from: "alerts@candlefish.ai"
+    to:
+      - "ops@candlefish.ai"
+      - "admin@candlefish.ai"
+    subject: "[{{ .Status | toUpper }}] Candlefish Alert: {{ .GroupLabels.alertname }}"
+
+  # PagerDuty integration (for critical alerts)
+  pagerduty:
+    service_key: "${PAGERDUTY_SERVICE_KEY}"
+    severity_mapping:
+      critical: "critical"
+      warning: "warning"
+
+# Grafana Dashboard Configuration
+dashboards:
+  - name: "Candlefish Overview"
+    file: "dashboards/overview.json"
+
+  - name: "PostgreSQL Performance"
+    file: "dashboards/postgresql.json"
+
+  - name: "Redis Performance"
+    file: "dashboards/redis.json"
+
+  - name: "API Performance"
+    file: "dashboards/api.json"
+
+  - name: "Collaboration Analytics"
+    file: "dashboards/collaboration.json"
+
+# Log monitoring
+logging:
+  # Centralized logging
+  fluentd:
+    host: "logs.internal"
+    port: 24224
+
+  # Log-based alerts
+  log_alerts:
+    - name: "Database Connection Errors"
+      pattern: "could not connect to database"
+      severity: "critical"
+      threshold: 5  # 5 occurrences in evaluation window
+
+    - name: "Redis Connection Errors"
+      pattern: "redis connection failed"
+      severity: "critical"
+      threshold: 5
+
+    - name: "API 5xx Errors"
+      pattern: "HTTP/1.1\" 5[0-9][0-9]"
+      severity: "warning"
+      threshold: 10
+
+# Synthetic monitoring
+synthetic:
+  checks:
+    - name: "User Registration Flow"
+      url: "https://candlefish.ai/register"
+      interval: "300s"  # 5 minutes
+      timeout: "30s"
+
+    - name: "Document Creation Flow"
+      url: "https://candlefish.ai/documents/new"
+      interval: "600s"  # 10 minutes
+      timeout: "45s"
+      auth_required: true
+
+    - name: "Collaboration Features"
+      url: "https://candlefish.ai/collaborate/test"
+      interval: "600s"  # 10 minutes
+      timeout: "60s"
+      websocket_test: true

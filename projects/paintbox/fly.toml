@@ -1,0 +1,111 @@
+# Fly.io configuration for Paintbox
+app = "paintbox-app"
+primary_region = "sjc"
+kill_signal = "SIGINT"
+kill_timeout = "5s"
+
+[build]
+  dockerfile = "Dockerfile.fly.simple"
+
+# [deploy]
+#   release_command = "npx prisma migrate deploy"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "8080"
+  # Next.js specific
+  NEXT_TELEMETRY_DISABLED = "1"
+
+  # App Configuration
+  NEXT_PUBLIC_APP_VERSION = "1.0.0"
+  NEXT_PUBLIC_API_URL = "https://paintbox-app.fly.dev"
+  NEXT_PUBLIC_WEBSOCKET_URL = "wss://paintbox-app.fly.dev"
+
+  # Database Configuration
+  DATABASE_URL = "postgres://postgres:EPpCzXjR6sn8Xlq@paintbox-prod-db.flycast:5432/paintbox"
+
+  # Redis Configuration
+  REDIS_URL = "redis://paintbox-redis.internal:6379"
+
+  # Feature Flags
+  ENABLE_WEBSOCKETS = "true"
+  ENABLE_REAL_TIME_CALCULATIONS = "true"
+  ENABLE_SALESFORCE_SYNC = "true"
+  ENABLE_COMPANYCAM_INTEGRATION = "true"
+  ENABLE_OFFLINE_MODE = "true"
+  ENABLE_PERFORMANCE_MONITORING = "true"
+  ENABLE_EXCEL_FORMULA_VALIDATION = "true"
+
+[experimental]
+  auto_rollback = true
+  enable_consul = false
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8080
+  processes = ["app"]
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 1000
+    soft_limit = 900
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "5s"
+    restart_limit = 0
+
+[[services.http_checks]]
+    interval = "10s"
+    timeout = "5s"
+    grace_period = "60s"
+    method = "get"
+    path = "/api/health"
+    protocol = "http"
+    restart_limit = 0
+
+    [services.http_checks.headers]
+      X-Health-Check = "fly-io"
+
+# WebSocket and Redis are now separate services
+
+# Autoscaling configuration
+[metrics]
+  port = 9091
+  path = "/metrics"
+
+# VM Resources - Optimized for production
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 4
+  memory_mb = 1024
+
+# Auto-scaling configuration
+[services.autoscaling]
+  min_machines_running = 2
+  max_machines_running = 10
+  target_cpu = 70
+  target_memory = 80
+
+# Scale configuration for production
+# [processes]
+#   app = "node .next/standalone/server.js"
+
+# Statics configuration
+[[statics]]
+  guest_path = "/app/public"
+  url_prefix = "/public"
+
+[[statics]]
+  guest_path = "/app/.next/static"
+  url_prefix = "/_next/static"

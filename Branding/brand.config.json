@@ -1,0 +1,10 @@
+{
+  "activeBrand": "candlefish",
+  "assetSource": "Branding/assets",
+  "distributionTargets": [
+    "apps/website/public/logo",
+    "apps/analytics-dashboard/public/logo",
+    "apps/brand-portal/public/logo",
+    "public/logo"
+  ]
+}

@@ -1,0 +1,373 @@
+{
+  "monitoring": {
+    "services": {
+      "newrelic": {
+        "enabled": false,
+        "appName": "Paintbox Production",
+        "licenseKey": "${NEW_RELIC_LICENSE_KEY}",
+        "logging": {
+          "level": "info",
+          "enabled": true
+        },
+        "distributed_tracing": {
+          "enabled": true
+        },
+        "error_collector": {
+          "enabled": true,
+          "ignore_status_codes": [404]
+        },
+        "transaction_tracer": {
+          "enabled": true,
+          "transaction_threshold": 0.5,
+          "record_sql": "obfuscated"
+        }
+      },
+
+      "datadog": {
+        "enabled": false,
+        "apiKey": "${DATADOG_API_KEY}",
+        "appKey": "${DATADOG_APP_KEY}",
+        "site": "datadoghq.com",
+        "env": "production",
+        "service": "paintbox",
+        "version": "1.0.0",
+        "tags": {
+          "team": "engineering",
+          "product": "paintbox",
+          "environment": "production"
+        },
+        "profiling": {
+          "enabled": true
+        },
+        "runtime_metrics": {
+          "enabled": true
+        },
+        "trace_sample_rate": 0.1
+      },
+
+      "sentry": {
+        "enabled": true,
+        "dsn": "${SENTRY_DSN}",
+        "environment": "production",
+        "tracesSampleRate": 0.1,
+        "profilesSampleRate": 0.1,
+        "integrations": [
+          "Http",
+          "Console",
+          "LinkedErrors",
+          "OnUncaughtException",
+          "OnUnhandledRejection"
+        ],
+        "beforeSend": "filter_sensitive_data",
+        "ignoreErrors": [
+          "ResizeObserver loop limit exceeded",
+          "Non-Error promise rejection captured"
+        ]
+      },
+
+      "prometheus": {
+        "enabled": true,
+        "port": 9091,
+        "path": "/metrics",
+        "defaultLabels": {
+          "app": "paintbox",
+          "env": "production"
+        },
+        "metrics": {
+          "http_request_duration_seconds": {
+            "type": "histogram",
+            "help": "HTTP request latencies in seconds",
+            "buckets": [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
+          },
+          "http_requests_total": {
+            "type": "counter",
+            "help": "Total number of HTTP requests"
+          },
+          "calculation_duration_seconds": {
+            "type": "histogram",
+            "help": "Excel calculation duration in seconds",
+            "buckets": [0.01, 0.05, 0.1, 0.5, 1, 2, 5]
+          },
+          "pdf_generation_duration_seconds": {
+            "type": "histogram",
+            "help": "PDF generation duration in seconds",
+            "buckets": [0.5, 1, 2, 5, 10, 20, 30]
+          },
+          "database_query_duration_seconds": {
+            "type": "histogram",
+            "help": "Database query duration in seconds",
+            "buckets": [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1]
+          },
+          "redis_operation_duration_seconds": {
+            "type": "histogram",
+            "help": "Redis operation duration in seconds",
+            "buckets": [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05]
+          },
+          "websocket_connections": {
+            "type": "gauge",
+            "help": "Number of active WebSocket connections"
+          },
+          "cache_hit_ratio": {
+            "type": "gauge",
+            "help": "Cache hit ratio"
+          },
+          "memory_usage_bytes": {
+            "type": "gauge",
+            "help": "Process memory usage in bytes"
+          },
+          "cpu_usage_percent": {
+            "type": "gauge",
+            "help": "CPU usage percentage"
+          }
+        }
+      },
+
+      "grafana": {
+        "enabled": true,
+        "url": "https://grafana.paintbox-app.com",
+        "dashboards": [
+          {
+            "name": "Paintbox Overview",
+            "uid": "paintbox-overview",
+            "panels": [
+              {
+                "title": "Request Rate",
+                "query": "rate(http_requests_total[5m])"
+              },
+              {
+                "title": "Response Time P95",
+                "query": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))"
+              },
+              {
+                "title": "Error Rate",
+                "query": "rate(http_requests_total{status=~\"5..\"}[5m])"
+              },
+              {
+                "title": "Active Users",
+                "query": "websocket_connections"
+              },
+              {
+                "title": "Calculation Performance",
+                "query": "histogram_quantile(0.95, rate(calculation_duration_seconds_bucket[5m]))"
+              },
+              {
+                "title": "Cache Hit Ratio",
+                "query": "cache_hit_ratio"
+              },
+              {
+                "title": "Memory Usage",
+                "query": "memory_usage_bytes / 1024 / 1024"
+              },
+              {
+                "title": "CPU Usage",
+                "query": "cpu_usage_percent"
+              }
+            ]
+          }
+        ]
+      },
+
+      "opentelemetry": {
+        "enabled": true,
+        "serviceName": "paintbox",
+        "exporters": {
+          "jaeger": {
+            "endpoint": "http://jaeger:14268/api/traces"
+          },
+          "zipkin": {
+            "endpoint": "http://zipkin:9411/api/v2/spans"
+          },
+          "otlp": {
+            "endpoint": "http://otel-collector:4317"
+          }
+        },
+        "propagators": ["tracecontext", "baggage"],
+        "sampling": {
+          "strategy": "probability",
+          "rate": 0.1
+        }
+      }
+    },
+
+    "alerts": {
+      "channels": {
+        "slack": {
+          "webhook": "${SLACK_WEBHOOK_URL}",
+          "channel": "#paintbox-alerts",
+          "username": "Paintbox Monitor"
+        },
+        "pagerduty": {
+          "integrationKey": "${PAGERDUTY_INTEGRATION_KEY}",
+          "serviceId": "paintbox-production"
+        },
+        "email": {
+          "smtp": {
+            "host": "smtp.sendgrid.net",
+            "port": 587,
+            "user": "apikey",
+            "pass": "${SENDGRID_API_KEY}"
+          },
+          "from": "alerts@paintbox-app.com",
+          "to": ["team@paintbox-app.com"]
+        }
+      },
+
+      "rules": [
+        {
+          "name": "High Error Rate",
+          "condition": "rate(http_requests_total{status=~\"5..\"}[5m]) > 0.05",
+          "duration": "5m",
+          "severity": "critical",
+          "channels": ["slack", "pagerduty"],
+          "message": "Error rate exceeds 5% threshold"
+        },
+        {
+          "name": "Slow Response Time",
+          "condition": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2",
+          "duration": "10m",
+          "severity": "warning",
+          "channels": ["slack"],
+          "message": "P95 response time exceeds 2 seconds"
+        },
+        {
+          "name": "High Memory Usage",
+          "condition": "memory_usage_bytes / 1024 / 1024 > 900",
+          "duration": "5m",
+          "severity": "warning",
+          "channels": ["slack"],
+          "message": "Memory usage exceeds 900MB"
+        },
+        {
+          "name": "Database Connection Pool Exhausted",
+          "condition": "pg_pool_available_connections < 2",
+          "duration": "2m",
+          "severity": "critical",
+          "channels": ["slack", "pagerduty"],
+          "message": "Database connection pool nearly exhausted"
+        },
+        {
+          "name": "Redis Connection Issues",
+          "condition": "redis_connected == 0",
+          "duration": "1m",
+          "severity": "critical",
+          "channels": ["slack", "pagerduty"],
+          "message": "Redis connection lost"
+        },
+        {
+          "name": "Low Cache Hit Ratio",
+          "condition": "cache_hit_ratio < 0.7",
+          "duration": "15m",
+          "severity": "info",
+          "channels": ["slack"],
+          "message": "Cache hit ratio below 70%"
+        },
+        {
+          "name": "Calculation Performance Degradation",
+          "condition": "histogram_quantile(0.95, rate(calculation_duration_seconds_bucket[5m])) > 0.5",
+          "duration": "10m",
+          "severity": "warning",
+          "channels": ["slack"],
+          "message": "Excel calculations taking longer than 500ms at P95"
+        },
+        {
+          "name": "PDF Generation Timeout",
+          "condition": "histogram_quantile(0.95, rate(pdf_generation_duration_seconds_bucket[5m])) > 30",
+          "duration": "5m",
+          "severity": "critical",
+          "channels": ["slack", "pagerduty"],
+          "message": "PDF generation exceeding 30 second timeout"
+        }
+      ]
+    },
+
+    "healthchecks": {
+      "endpoints": [
+        {
+          "name": "API Health",
+          "url": "/api/health",
+          "interval": 30,
+          "timeout": 5,
+          "expectedStatus": 200,
+          "expectedBody": "healthy"
+        },
+        {
+          "name": "Database Health",
+          "url": "/api/health/db",
+          "interval": 60,
+          "timeout": 10,
+          "expectedStatus": 200
+        },
+        {
+          "name": "Redis Health",
+          "url": "/api/health/redis",
+          "interval": 60,
+          "timeout": 5,
+          "expectedStatus": 200
+        },
+        {
+          "name": "Salesforce Integration",
+          "url": "/api/health/salesforce",
+          "interval": 300,
+          "timeout": 15,
+          "expectedStatus": 200
+        }
+      ]
+    },
+
+    "performance_budgets": {
+      "metrics": {
+        "firstContentfulPaint": 1500,
+        "largestContentfulPaint": 2500,
+        "firstInputDelay": 100,
+        "cumulativeLayoutShift": 0.1,
+        "timeToInteractive": 3500,
+        "totalBlockingTime": 300,
+        "speedIndex": 3000
+      },
+      "resources": {
+        "javascript": 500000,
+        "css": 100000,
+        "images": 2000000,
+        "fonts": 150000,
+        "total": 3000000
+      },
+      "api": {
+        "health": 100,
+        "calculations": 200,
+        "estimates": 500,
+        "pdf": 5000,
+        "salesforce": 2000
+      }
+    },
+
+    "logging": {
+      "level": "info",
+      "format": "json",
+      "destinations": [
+        {
+          "type": "console",
+          "level": "info"
+        },
+        {
+          "type": "file",
+          "path": "/var/log/paintbox/app.log",
+          "level": "debug",
+          "maxSize": "100m",
+          "maxFiles": 10
+        },
+        {
+          "type": "syslog",
+          "host": "logs.paintbox-app.com",
+          "port": 514,
+          "protocol": "udp",
+          "level": "warning"
+        }
+      ],
+      "fields": {
+        "app": "paintbox",
+        "env": "production",
+        "version": "1.0.0"
+      }
+    }
+  }
+}

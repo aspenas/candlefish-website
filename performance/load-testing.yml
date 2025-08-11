@@ -1,0 +1,296 @@
+# K6 Load Testing Configuration
+# Multi-tenant Analytics Dashboard Performance Testing
+
+import:
+  - ./scenarios/api-load.js
+  - ./scenarios/graphql-load.js
+  - ./scenarios/websocket-load.js
+  - ./scenarios/dashboard-load.js
+
+# Test Scenarios
+scenarios:
+  # 1. Baseline Load Test
+  baseline:
+    executor: 'ramping-vus'
+    startVUs: 10
+    stages:
+      - duration: '2m', target: 50    # Ramp up to 50 users
+      - duration: '5m', target: 50    # Stay at 50 users
+      - duration: '2m', target: 100   # Ramp up to 100 users
+      - duration: '5m', target: 100   # Stay at 100 users
+      - duration: '2m', target: 0     # Ramp down to 0 users
+    gracefulRampDown: '30s'
+    tags:
+      scenario: 'baseline'
+    exec: 'baselineTest'
+
+  # 2. Stress Test
+  stress:
+    executor: 'ramping-vus'
+    startVUs: 10
+    stages:
+      - duration: '2m', target: 100   # Ramp up to 100 users
+      - duration: '5m', target: 100   # Stay at 100 users
+      - duration: '2m', target: 300   # Ramp up to 300 users
+      - duration: '5m', target: 300   # Stay at 300 users
+      - duration: '2m', target: 500   # Ramp up to 500 users
+      - duration: '5m', target: 500   # Stay at 500 users
+      - duration: '5m', target: 0     # Ramp down to 0 users
+    gracefulRampDown: '1m'
+    tags:
+      scenario: 'stress'
+    exec: 'stressTest'
+
+  # 3. Spike Test
+  spike:
+    executor: 'ramping-vus'
+    startVUs: 10
+    stages:
+      - duration: '1m', target: 100   # Warm up
+      - duration: '30s', target: 1000 # Spike to 1000 users
+      - duration: '3m', target: 1000  # Stay at 1000 users
+      - duration: '30s', target: 100  # Scale down
+      - duration: '3m', target: 100   # Recovery
+      - duration: '1m', target: 0     # Ramp down
+    tags:
+      scenario: 'spike'
+    exec: 'spikeTest'
+
+  # 4. Soak Test (Endurance)
+  soak:
+    executor: 'constant-vus'
+    vus: 200
+    duration: '2h'
+    tags:
+      scenario: 'soak'
+    exec: 'soakTest'
+
+  # 5. Breakpoint Test
+  breakpoint:
+    executor: 'ramping-arrival-rate'
+    startRate: 100
+    timeUnit: '1s'
+    preAllocatedVUs: 500
+    maxVUs: 2000
+    stages:
+      - duration: '5m', target: 500   # 500 RPS
+      - duration: '5m', target: 1000  # 1000 RPS
+      - duration: '5m', target: 1500  # 1500 RPS
+      - duration: '5m', target: 2000  # 2000 RPS
+      - duration: '5m', target: 2500  # 2500 RPS
+    tags:
+      scenario: 'breakpoint'
+    exec: 'breakpointTest'
+
+  # 6. GraphQL Specific Load Test
+  graphql_load:
+    executor: 'ramping-vus'
+    startVUs: 5
+    stages:
+      - duration: '1m', target: 20
+      - duration: '3m', target: 20
+      - duration: '1m', target: 50
+      - duration: '3m', target: 50
+      - duration: '1m', target: 0
+    tags:
+      scenario: 'graphql'
+    exec: 'graphqlLoadTest'
+
+  # 7. WebSocket Connection Test
+  websocket_load:
+    executor: 'ramping-vus'
+    startVUs: 10
+    stages:
+      - duration: '2m', target: 100   # 100 concurrent connections
+      - duration: '5m', target: 100   # Maintain connections
+      - duration: '2m', target: 500   # Scale to 500 connections
+      - duration: '5m', target: 500   # Maintain high load
+      - duration: '2m', target: 0     # Disconnect
+    tags:
+      scenario: 'websocket'
+    exec: 'websocketLoadTest'
+
+  # 8. Mixed Workload Test
+  mixed_workload:
+    executor: 'constant-arrival-rate'
+    rate: 100
+    timeUnit: '1s'
+    duration: '10m'
+    preAllocatedVUs: 50
+    maxVUs: 200
+    tags:
+      scenario: 'mixed'
+    exec: 'mixedWorkloadTest'
+
+# Thresholds
+thresholds:
+  # Response time thresholds
+  http_req_duration:
+    - 'p(95)<500'  # 95% of requests must complete below 500ms
+    - 'p(99)<1000' # 99% of requests must complete below 1000ms
+    - 'max<5000'   # No request should take more than 5 seconds
+
+  # GraphQL specific thresholds
+  'http_req_duration{endpoint:graphql}':
+    - 'p(95)<1000' # GraphQL queries can be slower
+    - 'p(99)<2000'
+
+  # API endpoint thresholds
+  'http_req_duration{endpoint:api}':
+    - 'p(95)<300'
+    - 'p(99)<500'
+
+  # WebSocket thresholds
+  'ws_connecting':
+    - 'p(95)<1000' # 95% of WebSocket connections under 1 second
+
+  'ws_msgs_received':
+    - 'rate>100'   # Receive at least 100 messages per second
+
+  # Error rate thresholds
+  http_req_failed:
+    - 'rate<0.01'  # Error rate must be below 1%
+
+  # Request rate
+  http_reqs:
+    - 'rate>100'   # At least 100 requests per second
+
+  # Virtual user thresholds
+  vus:
+    - 'min>10'     # Always have at least 10 VUs
+
+  # Custom metrics
+  'custom_dashboard_load_time':
+    - 'p(95)<2000' # Dashboard load time under 2 seconds
+
+  'custom_widget_render_time':
+    - 'p(95)<500'  # Widget render time under 500ms
+
+# Options
+options:
+  # Cloud configuration (if using k6 Cloud)
+  cloud:
+    projectID: ${__ENV.K6_PROJECT_ID}
+    name: 'Candlefish Analytics Dashboard Load Test'
+
+  # Result output
+  summaryTrendStats:
+    - 'min'
+    - 'med'
+    - 'avg'
+    - 'max'
+    - 'p(90)'
+    - 'p(95)'
+    - 'p(99)'
+
+  # Network configuration
+  noConnectionReuse: false
+  userAgent: 'K6LoadTest/1.0'
+
+  # DNS configuration
+  dns:
+    ttl: '5m'
+    select: 'roundRobin'
+
+  # TLS configuration
+  tlsVersion:
+    min: 'tls1.2'
+    max: 'tls1.3'
+
+  # Batch configuration
+  batch: 10
+  batchPerHost: 5
+
+# Environment variables
+env:
+  BASE_URL: 'https://api.candlefish.ai'
+  WS_URL: 'wss://ws.candlefish.ai'
+  GRAPHQL_URL: 'https://api.candlefish.ai/graphql'
+
+  # Test data
+  TEST_TENANT_ID: 'test-tenant-001'
+  TEST_USER_TOKEN: '${__ENV.TEST_USER_TOKEN}'
+
+  # Performance targets
+  TARGET_RPS: '1000'
+  TARGET_CONCURRENT_USERS: '500'
+  TARGET_P95_LATENCY: '500'
+
+# Data generation
+data:
+  users:
+    type: 'csv'
+    file: './data/users.csv'
+
+  dashboards:
+    type: 'json'
+    file: './data/dashboards.json'
+
+  queries:
+    type: 'shared-array'
+    file: './data/graphql-queries.json'
+
+# Extensions
+extensions:
+  # InfluxDB output for real-time monitoring
+  influxdb:
+    addr: 'http://localhost:8086'
+    db: 'k6_metrics'
+    precision: 's'
+    tagsAsFields:
+      - 'scenario'
+      - 'endpoint'
+      - 'method'
+
+  # Datadog integration
+  datadog:
+    apiKey: '${__ENV.DD_API_KEY}'
+    appKey: '${__ENV.DD_APP_KEY}'
+    metrics:
+      - 'http_req_duration'
+      - 'http_req_failed'
+      - 'vus'
+      - 'data_received'
+      - 'data_sent'
+
+# Custom metrics definitions
+metrics:
+  dashboard_load_time:
+    type: 'trend'
+    contains: 'time'
+
+  widget_render_time:
+    type: 'trend'
+    contains: 'time'
+
+  graphql_complexity:
+    type: 'histogram'
+    contains: 'value'
+
+  cache_hit_ratio:
+    type: 'rate'
+    contains: 'rate'
+
+  database_query_time:
+    type: 'trend'
+    contains: 'time'
+
+  websocket_message_latency:
+    type: 'trend'
+    contains: 'time'
+
+# Test lifecycle hooks
+lifecycle:
+  setup:
+    script: |
+      console.log('Setting up test environment...');
+      // Initialize test data
+      // Warm up cache
+      // Create test tenants
+
+  teardown:
+    script: |
+      console.log('Cleaning up test environment...');
+      // Clean up test data
+      // Generate reports
+      // Send notifications

@@ -1,6 +1,6 @@
-# Candlefish Analytics - Mobile Dashboard
+# Tyler Setup Mobile Dashboard
 
-A comprehensive React Native mobile application for the multi-tenant analytics dashboard system, providing native mobile experiences while maintaining feature parity with the web frontend.
+A comprehensive React Native mobile application for the Tyler Setup platform, providing native iOS and Android experiences with full feature parity to the web dashboard including contractor management, real-time analytics, and QR code scanning.
 
 ## 📱 Features
 
@@ -121,10 +121,10 @@ apps/mobile-dashboard/
 
 Create a `.env` file in the app root:
 ```env
-GRAPHQL_ENDPOINT=https://api.candlefish.ai/graphql
-GRAPHQL_WS_ENDPOINT=wss://api.candlefish.ai/graphql
+GRAPHQL_ENDPOINT=https://5x6gs2o6b6.execute-api.us-east-1.amazonaws.com/prod/graphql
+GRAPHQL_WS_ENDPOINT=wss://5x6gs2o6b6.execute-api.us-east-1.amazonaws.com/prod/graphql
 API_VERSION=v1
-ENVIRONMENT=development
+ENVIRONMENT=production
 ```
 
 ## 📊 Data Visualization

@@ -1,0 +1,481 @@
+# Production Environment Values for Candlefish AI
+# Optimized for high availability, performance, and security
+
+global:
+  environment: production
+  namespace: candlefish-prod
+  registry: ghcr.io/candlefish-ai
+  imagePullPolicy: IfNotPresent
+  color: blue
+
+# High availability configuration
+website:
+  replicaCount: 3
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 15
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  env:
+    NODE_ENV: production
+    NEXT_TELEMETRY_DISABLED: "1"
+    LOG_LEVEL: info
+
+backendApi:
+  replicaCount: 5
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+  autoscaling:
+    enabled: true
+    minReplicas: 5
+    maxReplicas: 25
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  env:
+    PYTHONUNBUFFERED: "1"
+    WORKERS: "4"
+    LOG_LEVEL: info
+    TIMEOUT: "120"
+
+analytics:
+  replicaCount: 3
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+
+paintbox:
+  replicaCount: 4
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+  autoscaling:
+    enabled: true
+    minReplicas: 4
+    maxReplicas: 15
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  env:
+    NODE_ENV: production
+    PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
+    CHROME_ARGS: "--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage"
+
+brandPortal:
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+
+gateway:
+  replicaCount: 3
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 12
+    targetCPUUtilizationPercentage: 70
+
+# Production ingress with SSL and advanced features
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-west-2:ACCOUNT:certificate/CERT-ID"
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80,"HTTPS":443}]'
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: '15'
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: '5'
+    alb.ingress.kubernetes.io/healthy-threshold-count: '2'
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: '2'
+    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=60
+    # WAF association
+    alb.ingress.kubernetes.io/wafv2-acl-arn: "arn:aws:wafv2:us-west-2:ACCOUNT:regional/webacl/candlefish-prod-waf/WAF-ID"
+    # Rate limiting
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+  hosts:
+    - host: candlefish.ai
+      paths:
+        - path: /
+          pathType: Prefix
+          service: website
+    - host: api.candlefish.ai
+      paths:
+        - path: /
+          pathType: Prefix
+          service: backend-api
+    - host: analytics.candlefish.ai
+      paths:
+        - path: /
+          pathType: Prefix
+          service: analytics-dashboard
+    - host: paintbox.candlefish.ai
+      paths:
+        - path: /
+          pathType: Prefix
+          service: paintbox-service
+    - host: brand.candlefish.ai
+      paths:
+        - path: /
+          pathType: Prefix
+          service: brand-portal
+  tls:
+    - secretName: candlefish-tls-prod
+      hosts:
+        - candlefish.ai
+        - api.candlefish.ai
+        - analytics.candlefish.ai
+        - paintbox.candlefish.ai
+        - brand.candlefish.ai
+
+# Production database with high availability
+postgresql:
+  enabled: true
+  auth:
+    database: candlefish
+  architecture: replication
+  primary:
+    resources:
+      requests:
+        cpu: 1000m
+        memory: 2Gi
+      limits:
+        cpu: 4000m
+        memory: 8Gi
+    persistence:
+      enabled: true
+      size: 200Gi
+      storageClass: gp3
+    pdb:
+      create: true
+      minAvailable: 1
+  readReplicas:
+    replicaCount: 2
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+    persistence:
+      enabled: true
+      size: 200Gi
+      storageClass: gp3
+    pdb:
+      create: true
+      minAvailable: 1
+  metrics:
+    enabled: true
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+  backup:
+    enabled: true
+    schedule: "0 2 * * *"  # Daily at 2 AM
+    retention: 30  # 30 days
+
+# Production Redis with high availability
+redis:
+  enabled: true
+  architecture: replication
+  auth:
+    enabled: true
+  master:
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+    persistence:
+      enabled: true
+      size: 20Gi
+      storageClass: gp3
+    pdb:
+      create: true
+      minAvailable: 1
+  replica:
+    replicaCount: 2
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+    persistence:
+      enabled: true
+      size: 20Gi
+      storageClass: gp3
+    pdb:
+      create: true
+      minAvailable: 1
+  sentinel:
+    enabled: true
+    masterSet: candlefish-redis
+  metrics:
+    enabled: true
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+
+# Production monitoring with full observability
+monitoring:
+  prometheus:
+    enabled: true
+    server:
+      resources:
+        requests:
+          cpu: 1000m
+          memory: 2Gi
+        limits:
+          cpu: 4000m
+          memory: 8Gi
+      persistentVolume:
+        enabled: true
+        size: 100Gi
+        storageClass: gp3
+      retention: 30d
+      retentionSize: 80GB
+    alertmanager:
+      enabled: true
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+      persistentVolume:
+        enabled: true
+        size: 2Gi
+        storageClass: gp3
+    nodeExporter:
+      enabled: true
+    kubeStateMetrics:
+      enabled: true
+    pushgateway:
+      enabled: true
+  grafana:
+    enabled: true
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClass: gp3
+    replicas: 2  # High availability
+    admin:
+      existingSecret: grafana-admin-secret
+    sidecar:
+      dashboards:
+        enabled: true
+        searchNamespace: ALL
+      datasources:
+        enabled: true
+    plugins:
+      - grafana-piechart-panel
+      - grafana-worldmap-panel
+      - grafana-clock-panel
+      - camptocamp-prometheus-alertmanager-datasource
+
+# Production security
+podSecurityPolicy:
+  enabled: true
+
+networkPolicy:
+  enabled: true
+
+# Service account with IRSA
+serviceAccount:
+  create: true
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT:role/candlefish-prod-service-role
+
+# External Secrets Operator for production
+externalSecrets:
+  enabled: true
+  secretStore:
+    provider: aws
+    region: us-west-2
+    service: SecretsManager
+    auth:
+      secretRef:
+        accessKeyId:
+          name: aws-secret
+          key: access-key-id
+        secretAccessKey:
+          name: aws-secret
+          key: secret-access-key
+
+secrets:
+  database:
+    enabled: true
+    name: candlefish-database-secret
+    external: true
+    secretStore: aws-secrets-manager
+    data:
+      - secretKey: candlefish/database/production
+        remoteRef:
+          key: candlefish/database/production
+  redis:
+    enabled: true
+    name: candlefish-redis-secret
+    external: true
+    secretStore: aws-secrets-manager
+    data:
+      - secretKey: candlefish/redis/production
+        remoteRef:
+          key: candlefish/redis/production
+  api:
+    enabled: true
+    name: candlefish-api-secret
+    external: true
+    secretStore: aws-secrets-manager
+    data:
+      - secretKey: candlefish/api/production
+        remoteRef:
+          key: candlefish/api/production
+
+# Production-specific node preferences
+nodeSelector:
+  node-type: production
+  instance-class: compute-optimized
+
+# Production tolerations and affinity
+tolerations:
+  - key: "production"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - website
+                  - backend-api
+                  - paintbox-service
+          topologyKey: kubernetes.io/hostname
+
+# Production disruption budgets
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 50%
+
+# Backup and disaster recovery
+backup:
+  enabled: true
+  schedule: "0 2 * * *"  # Daily at 2 AM UTC
+  retention: 30  # 30 days
+  destinations:
+    - s3://candlefish-backups-prod/database
+    - s3://candlefish-backups-prod/redis
+
+# Performance and optimization
+performance:
+  caching:
+    enabled: true
+    redis: true
+    memcached: false
+  cdn:
+    enabled: true
+    cloudfront: true
+  compression:
+    enabled: true
+    gzip: true
+    brotli: true
+
+# Security scanning and compliance
+security:
+  scanning:
+    enabled: true
+    twistlock: true
+    falco: true
+  compliance:
+    enabled: true
+    pci: false
+    sox: false
+    gdpr: true
+
+# Rate limiting and DDoS protection
+rateLimit:
+  enabled: true
+  global: 1000  # requests per minute
+  perIP: 100    # requests per minute per IP
+  burst: 20     # burst capacity
+
+# Logging configuration
+logging:
+  enabled: true
+  level: info
+  structured: true
+  destinations:
+    - cloudwatch
+    - elasticsearch
+  retention: 90  # days

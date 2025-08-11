@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  postgres-test:
+    image: postgres:15-alpine
+    container_name: collaboration-postgres-test
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: collaboration_test
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test -d collaboration_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - collaboration-test
+
+  redis-test:
+    image: redis:7-alpine
+    container_name: collaboration-redis-test
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_test_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - collaboration-test
+
+  # WebSocket server for real-time testing
+  websocket-test:
+    build:
+      context: .
+      dockerfile: __tests__/collaboration/setup/Dockerfile.websocket
+    container_name: collaboration-websocket-test
+    ports:
+      - "8081:8081"
+    depends_on:
+      redis-test:
+        condition: service_healthy
+    environment:
+      REDIS_URL: redis://redis-test:6379
+      PORT: 8081
+    networks:
+      - collaboration-test
+
+  # GraphQL server for integration testing
+  graphql-test:
+    build:
+      context: .
+      dockerfile: __tests__/collaboration/setup/Dockerfile.graphql
+    container_name: collaboration-graphql-test
+    ports:
+      - "4001:4001"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://test:test@postgres-test:5432/collaboration_test
+      REDIS_URL: redis://redis-test:6379
+      PORT: 4001
+      NODE_ENV: test
+    networks:
+      - collaboration-test
+
+networks:
+  collaboration-test:
+    driver: bridge
+
+volumes:
+  postgres_test_data:
+  redis_test_data:

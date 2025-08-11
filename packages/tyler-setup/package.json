@@ -1,0 +1,107 @@
+{
+  "name": "tyler-setup-platform",
+  "version": "1.0.0",
+  "description": "Comprehensive testing suite for Tyler Setup employee onboarding platform",
+  "main": "test-runner.js",
+  "scripts": {
+    "test": "node test-runner.js unit",
+    "test:all": "node test-runner.js --all",
+    "test:unit": "node test-runner.js unit",
+    "test:integration": "node test-runner.js integration",
+    "test:e2e": "node test-runner.js e2e",
+    "test:load": "node test-runner.js load",
+    "test:security": "node test-runner.js security",
+    "test:smoke": "node test-runner.js smoke",
+    "test:coverage": "node test-runner.js unit integration --coverage",
+    "test:ci": "node test-runner.js unit integration e2e --bail --coverage",
+    "test:watch": "nodemon --watch serverless-lean/src --watch frontend/src --exec 'npm run test:unit'",
+    "test:debug": "node --inspect-brk test-runner.js unit --verbose",
+    "test:parallel": "node test-runner.js unit integration --parallel",
+    "test:sequential": "node test-runner.js --all --parallel=false",
+
+    "lint": "npm run lint:backend && npm run lint:frontend",
+    "lint:backend": "cd serverless-lean && npm run lint",
+    "lint:frontend": "cd frontend && npm run lint",
+    "lint:fix": "npm run lint:backend -- --fix && npm run lint:frontend -- --fix",
+
+    "format": "prettier --write '**/*.{js,jsx,ts,tsx,json,md,yml,yaml}'",
+    "format:check": "prettier --check '**/*.{js,jsx,ts,tsx,json,md,yml,yaml}'",
+
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "cd serverless-lean && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+
+    "deploy": "npm run test:ci && npm run build && npm run deploy:backend && npm run deploy:frontend",
+    "deploy:backend": "cd serverless-lean && npm run deploy",
+    "deploy:frontend": "cd frontend && npm run deploy",
+
+    "security:audit": "npm audit --audit-level=moderate",
+    "security:scan": "npm run test:security",
+    "security:fix": "npm audit fix",
+
+    "docs:generate": "typedoc --out docs/ --exclude '**/__tests__/**' --exclude '**/node_modules/**'",
+    "docs:serve": "http-server docs/ -p 8080",
+
+    "clean": "npm run clean:backend && npm run clean:frontend && rimraf test-results coverage",
+    "clean:backend": "cd serverless-lean && npm run clean",
+    "clean:frontend": "cd frontend && npm run clean",
+
+    "setup": "npm run setup:backend && npm run setup:frontend && npm run setup:tools",
+    "setup:backend": "cd serverless-lean && npm install",
+    "setup:frontend": "cd frontend && npm install",
+    "setup:tools": "npm install -g k6 artillery playwright-cli",
+
+    "start:dev": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "start:backend": "cd serverless-lean && npm run dev",
+    "start:frontend": "cd frontend && npm run dev",
+
+    "health": "node scripts/health-check.js",
+    "validate": "npm run lint && npm run test:smoke && npm run security:audit"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "yargs": "^17.7.2",
+    "concurrently": "^8.2.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.25",
+    "dynamodb-local": "^2.0.0",
+    "http-server": "^14.1.1",
+    "nodemon": "^3.1.0",
+    "prettier": "^3.2.5",
+    "rimraf": "^5.0.5",
+    "typedoc": "^0.25.12"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aspenas/candlefish-ai.git"
+  },
+  "keywords": [
+    "testing",
+    "automation",
+    "ci-cd",
+    "quality-assurance",
+    "employee-onboarding",
+    "serverless",
+    "react",
+    "graphql"
+  ],
+  "author": "Candlefish AI Team",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/aspenas/candlefish-ai/issues"
+  },
+  "homepage": "https://github.com/aspenas/candlefish-ai/packages/tyler-setup#readme",
+  "workspaces": [
+    "serverless-lean",
+    "frontend"
+  ],
+  "volta": {
+    "node": "18.19.1",
+    "npm": "10.2.4"
+  }
+}

@@ -1,0 +1,5 @@
+# Paintbox Health Checks - Run every 5 minutes
+*/5 * * * * /path/to/health-check.sh >> /var/log/paintbox-health.log 2>&1
+
+# Daily SSL certificate check
+0 0 * * * /path/to/health-check.sh check_ssl >> /var/log/paintbox-ssl.log 2>&1

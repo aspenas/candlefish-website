@@ -1,0 +1,293 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: collaboration-ingress
+  namespace: collaboration
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: ingress
+  annotations:
+    # AWS Load Balancer Controller
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/load-balancer-name: candlefish-collaboration-alb
+
+    # SSL/TLS
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:ACCOUNT:certificate/CERTIFICATE-ID
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+
+    # Health checks
+    alb.ingress.kubernetes.io/healthcheck-path: /api/health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: '30'
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: '5'
+    alb.ingress.kubernetes.io/healthy-threshold-count: '2'
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: '3'
+
+    # Performance optimizations
+    alb.ingress.kubernetes.io/load-balancer-attributes: |
+      idle_timeout.timeout_seconds=60,
+      routing.http2.enabled=true,
+      access_logs.s3.enabled=true,
+      access_logs.s3.bucket=candlefish-alb-logs,
+      access_logs.s3.prefix=collaboration
+
+    # Security
+    alb.ingress.kubernetes.io/security-groups: sg-SECURITY-GROUP-ID
+    alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:us-east-1:ACCOUNT:webacl/candlefish-collaboration/WAF-ID
+
+    # CORS for GraphQL endpoints
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://editor.candlefish.ai,https://app.candlefish.ai"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
+    nginx.ingress.kubernetes.io/cors-expose-headers: "Content-Length,Content-Range"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+
+    # Rate limiting
+    nginx.ingress.kubernetes.io/rate-limit-connections: "100"
+    nginx.ingress.kubernetes.io/rate-limit-requests-per-second: "1000"
+
+    # WebSocket support
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "3600"
+
+spec:
+  rules:
+  # Collaboration Editor Frontend
+  - host: editor.candlefish.ai
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: collaboration-editor-service
+            port:
+              number: 3000
+
+  # API Gateway
+  - host: api.candlefish.ai
+    http:
+      paths:
+      # GraphQL API
+      - path: /graphql
+        pathType: Prefix
+        backend:
+          service:
+            name: graphql-api-service
+            port:
+              number: 4000
+      # Document API
+      - path: /documents
+        pathType: Prefix
+        backend:
+          service:
+            name: document-service
+            port:
+              number: 4003
+      # File uploads
+      - path: /upload
+        pathType: Prefix
+        backend:
+          service:
+            name: document-service
+            port:
+              number: 4003
+
+  # WebSocket Gateway
+  - host: ws.candlefish.ai
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: websocket-service
+            port:
+              number: 4001
+
+  # Static Assets CDN
+  - host: cdn.candlefish.ai
+    http:
+      paths:
+      - path: /static
+        pathType: Prefix
+        backend:
+          service:
+            name: collaboration-assets-service
+            port:
+              number: 80
+
+---
+# Separate ingress for internal metrics and monitoring
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: collaboration-monitoring-ingress
+  namespace: collaboration
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: monitoring-ingress
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/load-balancer-name: candlefish-collaboration-monitoring-alb
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:ACCOUNT:certificate/CERTIFICATE-ID
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    # IP allowlist for monitoring access
+    alb.ingress.kubernetes.io/inbound-cidrs: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+spec:
+  rules:
+  - host: monitoring.collaboration.internal
+    http:
+      paths:
+      # Prometheus metrics endpoints
+      - path: /metrics/graphql
+        pathType: Prefix
+        backend:
+          service:
+            name: graphql-api-service
+            port:
+              number: 4000
+      - path: /metrics/websocket
+        pathType: Prefix
+        backend:
+          service:
+            name: websocket-service
+            port:
+              number: 4002
+      - path: /metrics/document
+        pathType: Prefix
+        backend:
+          service:
+            name: document-service
+            port:
+              number: 4003
+      - path: /metrics/postgres
+        pathType: Prefix
+        backend:
+          service:
+            name: postgres-service
+            port:
+              number: 9187
+      - path: /metrics/redis
+        pathType: Prefix
+        backend:
+          service:
+            name: redis-service
+            port:
+              number: 9121
+
+---
+# Network policy for ingress traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: collaboration-ingress-policy
+  namespace: collaboration
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow ingress from ALB
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: TCP
+      port: 3000
+    - protocol: TCP
+      port: 4000
+    - protocol: TCP
+      port: 4001
+    - protocol: TCP
+      port: 4003
+  # Allow internal communication
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: collaboration
+    ports:
+    - protocol: TCP
+      port: 3000
+    - protocol: TCP
+      port: 4000
+    - protocol: TCP
+      port: 4001
+    - protocol: TCP
+      port: 4003
+    - protocol: TCP
+      port: 5432
+    - protocol: TCP
+      port: 6379
+  egress:
+  # Allow outbound to internet (for external APIs)
+  - {}
+
+---
+# HorizontalPodAutoscaler for ALB Target Groups
+apiVersion: v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: collaboration-ingress-hpa
+  namespace: collaboration
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: ingress-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: collaboration-editor
+  minReplicas: 3
+  maxReplicas: 50
+  metrics:
+  # ALB request count per target
+  - type: External
+    external:
+      metric:
+        name: aws_alb_request_count_per_target
+        selector:
+          matchLabels:
+            load_balancer: "candlefish-collaboration-alb"
+      target:
+        type: AverageValue
+        averageValue: "1000"
+  # ALB target response time
+  - type: External
+    external:
+      metric:
+        name: aws_alb_target_response_time
+        selector:
+          matchLabels:
+            load_balancer: "candlefish-collaboration-alb"
+      target:
+        type: AverageValue
+        averageValue: "500m"  # 500ms
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 20
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 10
+        periodSeconds: 60
+      selectPolicy: Max

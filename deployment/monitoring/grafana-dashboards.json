@@ -1,0 +1,448 @@
+{
+  "candlefish-overview": {
+    "dashboard": {
+      "id": null,
+      "title": "Candlefish AI - System Overview",
+      "tags": ["candlefish", "overview"],
+      "style": "dark",
+      "timezone": "browser",
+      "refresh": "30s",
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Service Health Status",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "up{job=~\"candlefish-.*\"}",
+              "legendFormat": "{{job}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "options": {
+                    "0": {
+                      "text": "DOWN",
+                      "color": "red"
+                    },
+                    "1": {
+                      "text": "UP",
+                      "color": "green"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "id": 2,
+          "title": "Request Rate",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total[5m])) by (job)",
+              "legendFormat": "{{job}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "color": {
+                "mode": "palette-classic"
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          }
+        },
+        {
+          "id": 3,
+          "title": "Error Rate",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m])) by (job) / sum(rate(http_requests_total[5m])) by (job) * 100",
+              "legendFormat": "{{job}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  },
+                  {
+                    "color": "red",
+                    "value": 5
+                  }
+                ]
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 8
+          }
+        },
+        {
+          "id": 4,
+          "title": "Response Time (95th percentile)",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (job, le))",
+              "legendFormat": "{{job}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "color": {
+                "mode": "palette-classic"
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 16
+          }
+        },
+        {
+          "id": 5,
+          "title": "CPU Usage",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "sum(rate(container_cpu_usage_seconds_total{container!=\"\"}[5m])) by (pod) * 100",
+              "legendFormat": "{{pod}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "color": {
+                "mode": "palette-classic"
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 16
+          }
+        },
+        {
+          "id": 6,
+          "title": "Memory Usage",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "sum(container_memory_usage_bytes{container!=\"\"}) by (pod) / 1024 / 1024",
+              "legendFormat": "{{pod}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "MiB",
+              "color": {
+                "mode": "palette-classic"
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 24
+          }
+        }
+      ]
+    }
+  },
+  "candlefish-cost-optimization": {
+    "dashboard": {
+      "id": null,
+      "title": "Candlefish AI - Cost Optimization",
+      "tags": ["candlefish", "cost", "optimization"],
+      "style": "dark",
+      "timezone": "browser",
+      "refresh": "5m",
+      "time": {
+        "from": "now-24h",
+        "to": "now"
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Estimated Daily Costs",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "sum(aws_ec2_instance_pricing_hourly) * 24",
+              "legendFormat": "EC2 Instances"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "currencyUSD",
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 50
+                  },
+                  {
+                    "color": "red",
+                    "value": 100
+                  }
+                ]
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "id": 2,
+          "title": "Resource Utilization",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "avg(rate(container_cpu_usage_seconds_total{container!=\"\"}[5m])) * 100",
+              "legendFormat": "CPU %"
+            },
+            {
+              "expr": "avg(container_memory_usage_bytes{container!=\"\"}) / avg(container_spec_memory_limit_bytes{container!=\"\"}) * 100",
+              "legendFormat": "Memory %"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "max": 100
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 18,
+            "x": 6,
+            "y": 0
+          }
+        },
+        {
+          "id": 3,
+          "title": "Underutilized Pods",
+          "type": "table",
+          "targets": [
+            {
+              "expr": "avg_over_time((rate(container_cpu_usage_seconds_total{container!=\"\"}[5m]) * 100)[1h:5m]) < 5",
+              "legendFormat": "{{namespace}}/{{pod}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent"
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          }
+        },
+        {
+          "id": 4,
+          "title": "Node Utilization",
+          "type": "heatmap",
+          "targets": [
+            {
+              "expr": "avg(rate(node_cpu_seconds_total{mode!=\"idle\"}[5m])) by (instance) * 100",
+              "legendFormat": "{{instance}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent"
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          }
+        }
+      ]
+    }
+  },
+  "candlefish-business-metrics": {
+    "dashboard": {
+      "id": null,
+      "title": "Candlefish AI - Business Metrics",
+      "tags": ["candlefish", "business", "metrics"],
+      "style": "dark",
+      "timezone": "browser",
+      "refresh": "1m",
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Active Users",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "count(increase(http_requests_total{endpoint=~\"/api/auth/.*\"}[5m]) > 0)",
+              "legendFormat": "Active Users"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {
+                "mode": "thresholds"
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "id": 2,
+          "title": "Estimates Created",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "sum(increase(http_requests_total{endpoint=\"/api/estimate/create\", status=\"201\"}[1h]))",
+              "legendFormat": "Estimates/Hour"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {
+                "mode": "thresholds"
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 6,
+            "y": 0
+          }
+        },
+        {
+          "id": 3,
+          "title": "PDF Generations",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{endpoint=\"/api/pdf/generate\", status=\"200\"}[5m]))",
+              "legendFormat": "PDF/sec"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps"
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          }
+        },
+        {
+          "id": 4,
+          "title": "User Journey Funnel",
+          "type": "piechart",
+          "targets": [
+            {
+              "expr": "sum(increase(http_requests_total{endpoint=\"/api/estimate/create\", status=\"200\"}[1h]))",
+              "legendFormat": "Estimates Started"
+            },
+            {
+              "expr": "sum(increase(http_requests_total{endpoint=\"/api/estimate/submit\", status=\"200\"}[1h]))",
+              "legendFormat": "Estimates Completed"
+            },
+            {
+              "expr": "sum(increase(http_requests_total{endpoint=\"/api/pdf/generate\", status=\"200\"}[1h]))",
+              "legendFormat": "PDFs Generated"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 8
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,140 @@
+# Fly.io configuration for Paintbox - SECURE VERSION
+# All sensitive credentials are managed via AWS Secrets Manager
+app = "paintbox-app"
+primary_region = "sjc"
+kill_signal = "SIGINT"
+kill_timeout = "5s"
+
+[build]
+  dockerfile = "Dockerfile.fly.optimized"
+
+[deploy]
+  strategy = "bluegreen"
+  max_unavailable = 0.2
+  wait_timeout = "10m"
+
+[env]
+  # Application Settings
+  NODE_ENV = "production"
+  PORT = "8080"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+  # Public URLs (safe to expose)
+  NEXT_PUBLIC_APP_VERSION = "1.0.0"
+  NEXT_PUBLIC_API_URL = "https://paintbox-app.fly.dev"
+  NEXT_PUBLIC_WEBSOCKET_URL = "wss://paintbox-app.fly.dev"
+
+  # AWS Configuration for Secrets Manager
+  AWS_REGION = "us-west-2"
+  AWS_SECRETS_PREFIX = "paintbox/production"
+
+  # Feature Flags (safe to expose)
+  ENABLE_WEBSOCKETS = "true"
+  ENABLE_REAL_TIME_CALCULATIONS = "true"
+  ENABLE_SALESFORCE_SYNC = "true"
+  ENABLE_COMPANYCAM_INTEGRATION = "true"
+  ENABLE_OFFLINE_MODE = "true"
+  ENABLE_PERFORMANCE_MONITORING = "true"
+  ENABLE_EXCEL_FORMULA_VALIDATION = "true"
+
+  # Performance Settings
+  DATABASE_POOL_MIN = "5"
+  DATABASE_POOL_MAX = "20"
+  REDIS_MAX_RETRIES = "3"
+  REDIS_RETRY_DELAY = "500"
+
+[experimental]
+  auto_rollback = true
+  enable_consul = false
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8080
+  processes = ["app"]
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 1000
+    soft_limit = 900
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "5s"
+    restart_limit = 0
+
+[[services.http_checks]]
+    interval = "10s"
+    timeout = "5s"
+    grace_period = "60s"
+    method = "get"
+    path = "/api/health"
+    protocol = "http"
+    restart_limit = 0
+
+    [services.http_checks.headers]
+      X-Health-Check = "fly-io"
+
+# Metrics configuration
+[metrics]
+  port = 9091
+  path = "/metrics"
+
+# VM Configuration - OPTIMIZED
+[[vm]]
+  cpu_kind = "performance"
+  cpus = 4
+  memory_mb = 1024
+
+# Auto-scaling configuration
+[autoscaling]
+  enabled = true
+  min_machines_running = 2
+  max_machines_running = 10
+
+  [[autoscaling.metrics]]
+    source = "http"
+    path = "/metrics"
+    metric = "requests_per_second"
+    threshold = 1000
+
+  [[autoscaling.metrics]]
+    source = "http"
+    path = "/metrics"
+    metric = "response_time_p99"
+    threshold = 500
+
+# Multi-region configuration
+[[regions]]
+  region = "sjc"
+  count = 2
+
+[[regions]]
+  region = "ord"
+  count = 1
+
+# Statics configuration with CDN hints
+[[statics]]
+  guest_path = "/app/public"
+  url_prefix = "/public"
+  cache_control = "public, max-age=31536000, immutable"
+
+[[statics]]
+  guest_path = "/app/.next/static"
+  url_prefix = "/_next/static"
+  cache_control = "public, max-age=31536000, immutable"
+
+# Backup configuration
+[backup]
+  enabled = true
+  schedule = "0 2 * * *"
+  retention_days = 30

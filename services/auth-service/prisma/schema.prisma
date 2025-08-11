@@ -1,0 +1,188 @@
+// Candlefish AI Authentication Service - Database Schema
+// Production-ready multi-tenant authentication system
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Organization/Tenant Model
+model Organization {
+  id          String   @id @default(cuid())
+  name        String   @db.VarChar(255)
+  slug        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  domain      String?  @unique @db.VarChar(255)
+  settings    Json     @default("{}")
+
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  users       User[]
+  apiKeys     ApiKey[]
+
+  // Indexes
+  @@map("organizations")
+}
+
+// User Model
+model User {
+  id               String    @id @default(cuid())
+  email            String    @unique @db.VarChar(320)
+  emailVerified    Boolean   @default(false)
+  emailVerifiedAt  DateTime?
+
+  // Authentication
+  password         String    @db.VarChar(255)
+  passwordResetToken String?  @unique @db.VarChar(255)
+  passwordResetExpiresAt DateTime?
+
+  // Profile
+  firstName        String    @db.VarChar(100)
+  lastName         String    @db.VarChar(100)
+  avatar          String?   @db.Text
+
+  // Status & Security
+  isActive         Boolean   @default(true)
+  isEmailVerified  Boolean   @default(false)
+  lastLoginAt      DateTime?
+  failedLoginAttempts Int    @default(0)
+  lockedUntil      DateTime?
+
+  // Multi-tenant
+  organizationId   String
+  role             UserRole  @default(MEMBER)
+  permissions      Json      @default("[]")
+
+  // Timestamps
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Relationships
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  refreshTokens    RefreshToken[]
+  sessions         Session[]
+  auditLogs        AuditLog[]
+
+  // Indexes
+  @@map("users")
+  @@index([organizationId])
+  @@index([email, organizationId])
+}
+
+// JWT Refresh Tokens
+model RefreshToken {
+  id          String   @id @default(cuid())
+  token       String   @unique @db.VarChar(500)
+  userId      String
+  expiresAt   DateTime
+  revoked     Boolean  @default(false)
+  revokedAt   DateTime?
+  deviceId    String?  @db.VarChar(255)
+  userAgent   String?  @db.Text
+  ipAddress   String?  @db.VarChar(45)
+
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@map("refresh_tokens")
+  @@index([userId])
+  @@index([token])
+}
+
+// Session Management (Redis backup)
+model Session {
+  id          String   @id @default(cuid())
+  sessionId   String   @unique @db.VarChar(255)
+  userId      String
+  data        Json     @default("{}")
+  expiresAt   DateTime
+  ipAddress   String?  @db.VarChar(45)
+  userAgent   String?  @db.Text
+
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@map("sessions")
+  @@index([userId])
+  @@index([sessionId])
+}
+
+// API Keys for Service-to-Service Authentication
+model ApiKey {
+  id             String    @id @default(cuid())
+  name           String    @db.VarChar(255)
+  keyPrefix      String    @unique @db.VarChar(20)
+  hashedKey      String    @unique @db.VarChar(255)
+  organizationId String
+  permissions    Json      @default("[]")
+  lastUsedAt     DateTime?
+  expiresAt      DateTime?
+  isActive       Boolean   @default(true)
+
+  // Rate Limiting
+  rateLimit      Int       @default(1000)
+  rateLimitWindow Int      @default(3600) // seconds
+
+  // Timestamps
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relationships
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@map("api_keys")
+  @@index([organizationId])
+  @@index([keyPrefix])
+}
+
+// Audit Logging
+model AuditLog {
+  id             String   @id @default(cuid())
+  userId         String?
+  organizationId String?
+  action         String   @db.VarChar(100)
+  resourceType   String?  @db.VarChar(100)
+  resourceId     String?  @db.VarChar(100)
+  details        Json     @default("{}")
+  ipAddress      String?  @db.VarChar(45)
+  userAgent      String?  @db.Text
+
+  // Timestamps
+  createdAt      DateTime @default(now())
+
+  // Relationships
+  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Indexes
+  @@map("audit_logs")
+  @@index([userId])
+  @@index([organizationId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// Enums
+enum UserRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}

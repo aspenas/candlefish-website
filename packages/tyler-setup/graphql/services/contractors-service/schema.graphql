@@ -1,0 +1,497 @@
+# Contractors Service Schema Extension
+# Handles contractor management, temporary access, and contractor-specific operations
+
+extend schema @link(url: "https://specs.apollo.dev/federation/v2.3")
+
+"""
+Contractor access template for reusable contractor configurations
+"""
+type ContractorTemplate @key(fields: "id") {
+  id: ID!
+  name: String!
+  description: String!
+
+  # Default settings
+  defaultDuration: Int!
+  defaultPermissions: [Permission!]!
+  defaultAllowedSecrets: [String!]!
+
+  # Template metadata
+  category: String!
+  isActive: Boolean!
+
+  # Usage statistics
+  usageCount: Int!
+  lastUsed: Date
+
+  # Timestamps
+  createdAt: Date!
+  createdBy: User!
+  updatedAt: Date!
+
+  # Relationships
+  contractors: [Contractor!]!
+}
+
+"""
+Contractor access session tracking
+"""
+type ContractorSession @key(fields: "id") {
+  id: ID!
+  contractorId: ID!
+
+  # Session details
+  startTime: Date!
+  endTime: Date
+  duration: Int
+
+  # Access details
+  ip: String!
+  userAgent: String!
+  location: String
+
+  # Activity tracking
+  secretsAccessed: [String!]!
+  actionsPerformed: [ContractorAction!]!
+  pagesVisited: [String!]!
+
+  # Risk assessment
+  riskScore: Float!
+  anomalousActivity: Boolean!
+
+  # Relationships
+  contractor: Contractor!
+
+  # Computed fields
+  isActive: Boolean!
+  sessionSummary: String!
+}
+
+"""
+Contractor action tracking
+"""
+type ContractorAction @key(fields: "id") {
+  id: ID!
+  contractorId: ID!
+  sessionId: ID!
+
+  # Action details
+  action: String!
+  resource: String!
+  resourceId: String
+
+  # Context
+  timestamp: Date!
+  ip: String!
+  endpoint: String!
+  method: String!
+
+  # Result
+  success: Boolean!
+  errorMessage: String
+  responseTime: Int!
+
+  # Risk assessment
+  riskLevel: String!
+  flagged: Boolean!
+
+  # Relationships
+  contractor: Contractor!
+  session: ContractorSession!
+}
+
+"""
+Contractor notification system
+"""
+type ContractorNotification @key(fields: "id") {
+  id: ID!
+  contractorId: ID!
+
+  # Notification details
+  type: ContractorNotificationType!
+  title: String!
+  message: String!
+
+  # Status
+  status: NotificationStatus!
+  priority: NotificationPriority!
+
+  # Delivery
+  channels: [NotificationChannel!]!
+  sentAt: Date
+  readAt: Date
+
+  # Expiration
+  expiresAt: Date
+
+  # Relationships
+  contractor: Contractor!
+
+  # Computed fields
+  isRead: Boolean!
+  isExpired: Boolean!
+}
+
+enum ContractorNotificationType {
+  ACCESS_GRANTED
+  ACCESS_EXPIRING
+  ACCESS_EXPIRED
+  ACCESS_REVOKED
+  SECURITY_ALERT
+  SYSTEM_MAINTENANCE
+  POLICY_UPDATE
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  IN_APP
+  WEBHOOK
+}
+
+"""
+Contractor compliance tracking
+"""
+type ContractorCompliance @key(fields: "contractorId") {
+  contractorId: ID!
+
+  # Compliance status
+  overallStatus: ComplianceStatus!
+  lastReview: Date
+  nextReview: Date!
+
+  # Requirements
+  agreements: [ComplianceAgreement!]!
+  certifications: [ContractorCertification!]!
+  backgroundChecks: [BackgroundCheck!]!
+
+  # Training
+  trainingCompleted: [String!]!
+  mandatoryTraining: [String!]!
+  trainingScore: Float
+
+  # Violations
+  violations: [ComplianceViolation!]!
+  violationCount: Int!
+
+  # Relationships
+  contractor: Contractor!
+
+  # Computed fields
+  complianceScore: Float!
+  riskLevel: String!
+  isCompliant: Boolean!
+}
+
+enum ComplianceStatus {
+  COMPLIANT
+  NON_COMPLIANT
+  UNDER_REVIEW
+  PENDING
+}
+
+type ComplianceAgreement {
+  id: ID!
+  name: String!
+  version: String!
+  signedAt: Date
+  expiresAt: Date
+  status: String!
+}
+
+type ContractorCertification {
+  id: ID!
+  name: String!
+  issuer: String!
+  issuedAt: Date!
+  expiresAt: Date!
+  verificationUrl: String
+  status: String!
+}
+
+type BackgroundCheck {
+  id: ID!
+  type: String!
+  performedAt: Date!
+  result: String!
+  verifiedBy: String!
+  expiresAt: Date
+}
+
+type ComplianceViolation {
+  id: ID!
+  type: String!
+  description: String!
+  severity: String!
+  occurredAt: Date!
+  resolvedAt: Date
+  status: String!
+}
+
+# Input Types
+
+"""
+Contractor template creation input
+"""
+input CreateContractorTemplateInput {
+  name: String!
+  description: String!
+  defaultDuration: Int!
+  defaultPermissions: [Permission!]!
+  defaultAllowedSecrets: [String!]
+  category: String!
+}
+
+"""
+Enhanced contractor invitation input
+"""
+input EnhancedInviteContractorInput {
+  email: String!
+  name: String!
+  company: String!
+
+  # Access configuration
+  templateId: ID
+  accessDuration: Int = 7
+  permissions: [Permission!]! = [READ]
+  allowedSecrets: [String!] = []
+
+  # Security requirements
+  requireTwoFactor: Boolean = false
+  requireVPN: Boolean = false
+  ipWhitelist: [String!] = []
+
+  # Compliance
+  backgroundCheckRequired: Boolean = false
+  trainingRequired: [String!] = []
+  agreementsRequired: [String!] = []
+
+  # Communication
+  reason: String!
+  notifyEmail: Boolean = true
+  customMessage: String
+
+  # Scheduling
+  startDate: Date
+  endDate: Date
+  timezoneRestrictions: [String!] = []
+}
+
+"""
+Contractor session filter
+"""
+input ContractorSessionFilter {
+  contractorId: ID
+  active: Boolean
+  dateFrom: Date
+  dateTo: Date
+  minDuration: Int
+  maxDuration: Int
+  riskLevel: String
+}
+
+"""
+Contractor action filter
+"""
+input ContractorActionFilter {
+  contractorId: ID
+  sessionId: ID
+  action: String
+  resource: String
+  success: Boolean
+  flagged: Boolean
+  dateFrom: Date
+  dateTo: Date
+}
+
+"""
+Contractor notification input
+"""
+input ContractorNotificationInput {
+  contractorIds: [ID!]!
+  type: ContractorNotificationType!
+  title: String!
+  message: String!
+  priority: NotificationPriority = MEDIUM
+  channels: [NotificationChannel!]! = [EMAIL]
+  expiresAt: Date
+}
+
+# Extend Root Types
+
+extend type Query {
+  # Contractor templates
+  contractorTemplates: [ContractorTemplate!]! @auth(requires: ADMIN)
+  contractorTemplate(id: ID!): ContractorTemplate @auth(requires: ADMIN)
+
+  # Contractor sessions
+  contractorSessions(
+    pagination: PaginationInput
+    filter: ContractorSessionFilter
+  ): [ContractorSession!]! @auth(requires: ADMIN)
+
+  contractorSession(id: ID!): ContractorSession @auth(requires: ADMIN)
+  activeContractorSessions: [ContractorSession!]! @auth(requires: ADMIN)
+
+  # Contractor actions
+  contractorActions(
+    pagination: PaginationInput
+    filter: ContractorActionFilter
+  ): [ContractorAction!]! @auth(requires: ADMIN)
+
+  # Contractor notifications
+  contractorNotifications(
+    pagination: PaginationInput
+    contractorId: ID
+    unreadOnly: Boolean
+  ): [ContractorNotification!]! @auth(requires: ADMIN)
+
+  # Contractor compliance
+  contractorCompliance(contractorId: ID!): ContractorCompliance @auth(requires: ADMIN)
+  nonCompliantContractors: [Contractor!]! @auth(requires: ADMIN)
+  expiringCompliance: [ContractorCompliance!]! @auth(requires: ADMIN)
+
+  # Analytics
+  contractorAnalytics(
+    dateFrom: Date
+    dateTo: Date
+  ): ContractorAnalytics! @auth(requires: ADMIN)
+}
+
+extend type Mutation {
+  # Contractor templates
+  createContractorTemplate(input: CreateContractorTemplateInput!): ContractorTemplate! @auth(requires: ADMIN)
+  updateContractorTemplate(id: ID!, input: CreateContractorTemplateInput!): ContractorTemplate! @auth(requires: ADMIN)
+  deleteContractorTemplate(id: ID!): OperationResponse! @auth(requires: ADMIN)
+
+  # Enhanced contractor management
+  enhancedInviteContractor(input: EnhancedInviteContractorInput!): Contractor! @auth(requires: ADMIN)
+  extendContractorAccess(id: ID!, days: Int!): Contractor! @auth(requires: ADMIN)
+  suspendContractorAccess(id: ID!, reason: String!): OperationResponse! @auth(requires: ADMIN)
+  reactivateContractorAccess(id: ID!): OperationResponse! @auth(requires: ADMIN)
+
+  # Session management
+  terminateContractorSession(sessionId: ID!): OperationResponse! @auth(requires: ADMIN)
+  terminateAllContractorSessions(contractorId: ID!): OperationResponse! @auth(requires: ADMIN)
+
+  # Notifications
+  sendContractorNotification(input: ContractorNotificationInput!): OperationResponse! @auth(requires: ADMIN)
+  markNotificationAsRead(notificationId: ID!): OperationResponse!
+
+  # Compliance
+  updateContractorCompliance(contractorId: ID!, compliance: JSON!): ContractorCompliance! @auth(requires: ADMIN)
+  approveContractorCompliance(contractorId: ID!): OperationResponse! @auth(requires: ADMIN)
+  flagComplianceViolation(contractorId: ID!, violation: JSON!): OperationResponse! @auth(requires: ADMIN)
+}
+
+extend type Subscription {
+  # Contractor events
+  contractorSessionStarted: ContractorSession! @auth(requires: ADMIN)
+  contractorSessionEnded: ContractorSession! @auth(requires: ADMIN)
+  contractorActionPerformed: ContractorAction! @auth(requires: ADMIN)
+
+  # Security events
+  suspiciousContractorActivity: ContractorAction! @auth(requires: ADMIN)
+  contractorComplianceChanged: ContractorCompliance! @auth(requires: ADMIN)
+
+  # Notifications
+  contractorNotificationSent: ContractorNotification! @auth(requires: ADMIN)
+}
+
+# Extend existing types
+
+extend type Contractor @key(fields: "id") {
+  # Enhanced contractor fields
+  template: ContractorTemplate
+  sessions: [ContractorSession!]!
+  activeSessions: [ContractorSession!]!
+  actions: [ContractorAction!]!
+  notifications: [ContractorNotification!]!
+  compliance: ContractorCompliance!
+
+  # Security enhancements
+  requireTwoFactor: Boolean!
+  requireVPN: Boolean!
+  ipWhitelist: [String!]!
+  timezoneRestrictions: [String!]!
+
+  # Computed fields
+  totalSessionTime: Int!
+  averageSessionDuration: Float!
+  lastActivityAt: Date!
+  securityScore: Float!
+  complianceScore: Float!
+
+  # Activity summary
+  dailyActivity: [DailyActivity!]!
+  topActions: [ActionSummary!]!
+  secretsAccessFrequency: [SecretAccess!]!
+}
+
+type ContractorAnalytics {
+  totalContractors: Int!
+  activeContractors: Int!
+  expiredContractors: Int!
+  revokedContractors: Int!
+
+  # Usage metrics
+  totalSessions: Int!
+  averageSessionDuration: Float!
+  totalActions: Int!
+
+  # Compliance metrics
+  compliantContractors: Int!
+  nonCompliantContractors: Int!
+  pendingCompliance: Int!
+
+  # Risk metrics
+  highRiskContractors: Int!
+  securityIncidents: Int!
+  flaggedActions: Int!
+
+  # Trends
+  contractorGrowth: [GrowthMetric!]!
+  usageTrends: [UsageMetric!]!
+  complianceTrends: [ComplianceMetric!]!
+}
+
+type DailyActivity {
+  date: Date!
+  sessionCount: Int!
+  actionCount: Int!
+  duration: Int!
+}
+
+type ActionSummary {
+  action: String!
+  count: Int!
+  lastPerformed: Date!
+}
+
+type SecretAccess {
+  secretName: String!
+  accessCount: Int!
+  lastAccess: Date!
+}
+
+type ComplianceMetric {
+  period: String!
+  compliant: Int!
+  nonCompliant: Int!
+  pending: Int!
+}

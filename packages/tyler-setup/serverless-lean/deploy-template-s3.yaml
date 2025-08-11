@@ -1,0 +1,374 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'GraphQL Backend for Tyler Setup - Production Ready'
+
+Parameters:
+  Stage:
+    Type: String
+    Default: prod
+    Description: Deployment stage
+  ServiceName:
+    Type: String
+    Default: candlefish-employee-setup-lean
+    Description: Service name for resource naming
+
+Globals:
+  Function:
+    Runtime: nodejs18.x
+    MemorySize: 512
+    Timeout: 30
+    Environment:
+      Variables:
+        STAGE: !Ref Stage
+        AWS_REGION: !Ref AWS::Region
+        NODE_ENV: production
+        CORS_ORIGIN: "*"
+        GRAPHQL_ENDPOINT: "/graphql"
+
+Resources:
+  # DynamoDB Tables
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${ServiceName}-${Stage}-users"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: email-index
+          KeySchema:
+            - AttributeName: email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+
+  ContractorsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${ServiceName}-${Stage}-contractors"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: token
+          AttributeType: S
+        - AttributeName: expiresAt
+          AttributeType: N
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: token-index
+          KeySchema:
+            - AttributeName: token
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: expiry-index
+          KeySchema:
+            - AttributeName: expiresAt
+              KeyType: HASH
+          Projection:
+            ProjectionType: KEYS_ONLY
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  RefreshTokensTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${ServiceName}-${Stage}-refresh-tokens"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: token
+          AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: expiresAt
+          AttributeType: N
+      KeySchema:
+        - AttributeName: token
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: userId-index
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: expiresAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      SSESpecification:
+        SSEEnabled: true
+
+  AuditTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${ServiceName}-${Stage}-audit"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
+        - AttributeName: userId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: timestamp-index
+          KeySchema:
+            - AttributeName: timestamp
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: user-index
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  ConfigTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${ServiceName}-${Stage}-config"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: key
+          AttributeType: S
+      KeySchema:
+        - AttributeName: key
+          KeyType: HASH
+      SSESpecification:
+        SSEEnabled: true
+
+  # Lambda Execution Role
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                Resource:
+                  - !GetAtt UsersTable.Arn
+                  - !GetAtt ContractorsTable.Arn
+                  - !GetAtt RefreshTokensTable.Arn
+                  - !GetAtt AuditTable.Arn
+                  - !GetAtt ConfigTable.Arn
+                  - !Sub "${UsersTable.Arn}/index/*"
+                  - !Sub "${ContractorsTable.Arn}/index/*"
+                  - !Sub "${RefreshTokensTable.Arn}/index/*"
+                  - !Sub "${AuditTable.Arn}/index/*"
+        - PolicyName: SecretsManagerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:CreateSecret
+                  - secretsmanager:UpdateSecret
+                  - secretsmanager:RotateSecret
+                  - secretsmanager:ListSecrets
+                Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${ServiceName}-${Stage}/*"
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                  - kms:Encrypt
+                Resource: "*"
+        - PolicyName: ApiGatewayAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - execute-api:ManageConnections
+                Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:*/*/*"
+
+  # GraphQL Lambda Function
+  GraphQLFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${ServiceName}-${Stage}-graphql"
+      CodeUri: s3://candlefish-deployment-artifacts-1754845432/deployment-package.zip
+      Handler: src/handlers/graphql.handler
+      MemorySize: 1024
+      Timeout: 30
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Environment:
+        Variables:
+          USERS_TABLE: !Ref UsersTable
+          CONTRACTORS_TABLE: !Ref ContractorsTable
+          REFRESH_TOKENS_TABLE: !Ref RefreshTokensTable
+          AUDIT_TABLE: !Ref AuditTable
+          CONFIG_TABLE: !Ref ConfigTable
+          SECRETS_PREFIX: !Sub "${ServiceName}-${Stage}"
+          CACHE_TTL: 300
+          MAX_QUERY_COMPLEXITY: 1000
+          MAX_QUERY_DEPTH: 10
+      Events:
+        GraphQLApi:
+          Type: Api
+          Properties:
+            Path: /graphql
+            Method: ANY
+            RestApiId: !Ref ApiGateway
+
+  # Health Check Function
+  HealthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${ServiceName}-${Stage}-health"
+      CodeUri: s3://candlefish-deployment-artifacts-1754845432/deployment-package.zip
+      Handler: src/handlers/health.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        HealthApi:
+          Type: Api
+          Properties:
+            Path: /health
+            Method: GET
+            RestApiId: !Ref ApiGateway
+
+  # Auth Function
+  AuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${ServiceName}-${Stage}-auth"
+      CodeUri: s3://candlefish-deployment-artifacts-1754845432/deployment-package.zip
+      Handler: src/handlers/auth.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Environment:
+        Variables:
+          USERS_TABLE: !Ref UsersTable
+          REFRESH_TOKENS_TABLE: !Ref RefreshTokensTable
+      Events:
+        LoginApi:
+          Type: Api
+          Properties:
+            Path: /auth/login
+            Method: POST
+            RestApiId: !Ref ApiGateway
+        RefreshApi:
+          Type: Api
+          Properties:
+            Path: /auth/refresh
+            Method: POST
+            RestApiId: !Ref ApiGateway
+        LogoutApi:
+          Type: Api
+          Properties:
+            Path: /auth/logout
+            Method: POST
+            RestApiId: !Ref ApiGateway
+
+  # API Gateway
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Stage
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+
+  # WebSocket API for GraphQL Subscriptions
+  WebSocketApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub "${ServiceName}-${Stage}-websocket"
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: $request.body.action
+
+  WebSocketConnectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${ServiceName}-${Stage}-websocket-connect"
+      CodeUri: s3://candlefish-deployment-artifacts-1754845432/deployment-package.zip
+      Handler: src/handlers/websocket.connect
+      Role: !GetAtt LambdaExecutionRole.Arn
+
+  WebSocketDisconnectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${ServiceName}-${Stage}-websocket-disconnect"
+      CodeUri: s3://candlefish-deployment-artifacts-1754845432/deployment-package.zip
+      Handler: src/handlers/websocket.disconnect
+      Role: !GetAtt LambdaExecutionRole.Arn
+
+  WebSocketMessageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${ServiceName}-${Stage}-websocket-message"
+      CodeUri: s3://candlefish-deployment-artifacts-1754845432/deployment-package.zip
+      Handler: src/handlers/websocket.message
+      Role: !GetAtt LambdaExecutionRole.Arn
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+    Export:
+      Name: !Sub "${ServiceName}-${Stage}-api-endpoint"
+
+  GraphQLEndpoint:
+    Description: GraphQL endpoint URL
+    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/graphql"
+    Export:
+      Name: !Sub "${ServiceName}-${Stage}-graphql-endpoint"
+
+  WebSocketEndpoint:
+    Description: WebSocket endpoint URL
+    Value: !Sub "wss://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+    Export:
+      Name: !Sub "${ServiceName}-${Stage}-websocket-endpoint"
+
+  UsersTableName:
+    Description: DynamoDB Users table name
+    Value: !Ref UsersTable
+    Export:
+      Name: !Sub "${ServiceName}-${Stage}-users-table"
+
+  ContractorsTableName:
+    Description: DynamoDB Contractors table name
+    Value: !Ref ContractorsTable
+    Export:
+      Name: !Sub "${ServiceName}-${Stage}-contractors-table"

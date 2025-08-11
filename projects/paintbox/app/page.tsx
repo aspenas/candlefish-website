@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Paintbrush2, Home, Building2, ArrowRight, CheckCircle, Phone, Mail, Clock, Shield, Users, Award } from 'lucide-react';
-import PaintboxLogo from '@/components/ui/PaintboxLogo';
+// import PaintboxLogo from '@/components/ui/PaintboxLogo'; // Temporarily removed for deployment
 
 const ServiceCard = ({ icon: Icon, title, description }: any) => {
   return (
@@ -49,7 +49,10 @@ export default function Home() {
       <header className="bg-white shadow-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <PaintboxLogo size="desktop" showText priority className="flex items-center space-x-3" />
+            <div className="flex items-center space-x-3">
+              <div className="text-4xl">🎨</div>
+              <span className="text-2xl font-bold text-gray-900">Paintbox</span>
+            </div>
             <div className="flex items-center space-x-6">
               <a href="tel:720-903-0002" className="flex items-center space-x-2 text-gray-700 hover:text-red-600 transition-colors">
                 <Phone className="w-4 h-4" />
@@ -252,7 +255,10 @@ export default function Home() {
           <div className="grid md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center space-x-2 mb-4">
-                <PaintboxLogo size="mobile" showText />
+                <div className="flex items-center space-x-2">
+                  <div className="text-2xl">🎨</div>
+                  <span className="text-lg font-bold">Paintbox</span>
+                </div>
               </div>
               <p className="text-sm">Professional painting services in Colorado since 2015.</p>
             </div>

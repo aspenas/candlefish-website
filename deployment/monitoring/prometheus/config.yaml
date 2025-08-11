@@ -1,0 +1,328 @@
+# Prometheus configuration for Candlefish Collaboration System
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'candlefish-collaboration'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      - alertmanager:9093
+    scheme: http
+    timeout: 10s
+    api_version: v2
+
+# Rules files
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+    - targets:
+      - localhost:9090
+
+  # Kubernetes API server
+  - job_name: 'kubernetes-apiservers'
+    kubernetes_sd_configs:
+    - role: endpoints
+      namespaces:
+        names:
+        - default
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      insecure_skip_verify: true
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+      action: keep
+      regex: default;kubernetes;https
+
+  # Kubernetes nodes
+  - job_name: 'kubernetes-nodes'
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    kubernetes_sd_configs:
+    - role: node
+    relabel_configs:
+    - action: labelmap
+      regex: __meta_kubernetes_node_label_(.+)
+    - target_label: __address__
+      replacement: kubernetes.default.svc:443
+    - source_labels: [__meta_kubernetes_node_name]
+      regex: (.+)
+      target_label: __metrics_path__
+      replacement: /api/v1/nodes/${1}/proxy/metrics
+
+  # Kubernetes node exporter
+  - job_name: 'kubernetes-nodes-exporter'
+    kubernetes_sd_configs:
+    - role: endpoints
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_endpoints_name]
+      action: keep
+      regex: node-exporter
+    - source_labels: [__meta_kubernetes_endpoint_address_target_kind, __meta_kubernetes_endpoint_address_target_name]
+      action: drop
+      regex: Node;(.*)
+      target_label: __tmp_node_name
+    - source_labels: [__address__]
+      action: replace
+      target_label: __tmp_node_ip
+      regex: ([^:]+)(?::\d+)?
+      replacement: $1
+    - target_label: __address__
+      replacement: ${__tmp_node_ip}:9100
+    - action: labelmap
+      regex: __meta_kubernetes_node_label_(.+)
+
+  # Kubernetes Pods
+  - job_name: 'kubernetes-pods'
+    kubernetes_sd_configs:
+    - role: pod
+    relabel_configs:
+    # Only scrape pods with prometheus.io/scrape annotation
+    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+      action: keep
+      regex: true
+    # Use custom path if specified
+    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+      action: replace
+      target_label: __metrics_path__
+      regex: (.+)
+    # Use custom port if specified
+    - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+      action: replace
+      regex: ([^:]+)(?::\d+)?;(\d+)
+      replacement: $1:$2
+      target_label: __address__
+    # Add namespace, pod name labels
+    - action: labelmap
+      regex: __meta_kubernetes_pod_label_(.+)
+    - source_labels: [__meta_kubernetes_namespace]
+      action: replace
+      target_label: kubernetes_namespace
+    - source_labels: [__meta_kubernetes_pod_name]
+      action: replace
+      target_label: kubernetes_pod_name
+
+  # GraphQL API Service
+  - job_name: 'collaboration-graphql-api'
+    kubernetes_sd_configs:
+    - role: endpoints
+      namespaces:
+        names:
+        - collaboration
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_service_name]
+      action: keep
+      regex: graphql-api-service
+    - source_labels: [__meta_kubernetes_endpoint_port_name]
+      action: keep
+      regex: http
+    - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+      action: keep
+      regex: true
+    - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
+      action: replace
+      target_label: __metrics_path__
+      regex: (.+)
+    - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+      action: replace
+      target_label: __address__
+      regex: ([^:]+)(?::\d+)?;(\d+)
+      replacement: $1:$2
+    - action: labelmap
+      regex: __meta_kubernetes_service_label_(.+)
+    - source_labels: [__meta_kubernetes_namespace]
+      action: replace
+      target_label: kubernetes_namespace
+    - source_labels: [__meta_kubernetes_service_name]
+      action: replace
+      target_label: kubernetes_name
+    metric_relabel_configs:
+    - source_labels: [__name__]
+      regex: 'graphql_(.*)'
+      target_label: __name__
+      replacement: 'collaboration_graphql_${1}'
+
+  # WebSocket Service
+  - job_name: 'collaboration-websocket'
+    kubernetes_sd_configs:
+    - role: endpoints
+      namespaces:
+        names:
+        - collaboration
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_service_name]
+      action: keep
+      regex: websocket-service
+    - source_labels: [__meta_kubernetes_endpoint_port_name]
+      action: keep
+      regex: metrics
+    - source_labels: [__address__]
+      action: replace
+      target_label: __address__
+      regex: ([^:]+)(?::\d+)?
+      replacement: $1:4002
+    - action: labelmap
+      regex: __meta_kubernetes_service_label_(.+)
+    - source_labels: [__meta_kubernetes_namespace]
+      action: replace
+      target_label: kubernetes_namespace
+    - source_labels: [__meta_kubernetes_service_name]
+      action: replace
+      target_label: kubernetes_name
+    metric_relabel_configs:
+    - source_labels: [__name__]
+      regex: 'websocket_(.*)'
+      target_label: __name__
+      replacement: 'collaboration_websocket_${1}'
+
+  # Document Service
+  - job_name: 'collaboration-document'
+    kubernetes_sd_configs:
+    - role: endpoints
+      namespaces:
+        names:
+        - collaboration
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_service_name]
+      action: keep
+      regex: document-service
+    - source_labels: [__meta_kubernetes_endpoint_port_name]
+      action: keep
+      regex: http
+    - source_labels: [__address__]
+      action: replace
+      target_label: __address__
+      regex: ([^:]+)(?::\d+)?
+      replacement: $1:4003
+    - target_label: __metrics_path__
+      replacement: /metrics
+    - action: labelmap
+      regex: __meta_kubernetes_service_label_(.+)
+    - source_labels: [__meta_kubernetes_namespace]
+      action: replace
+      target_label: kubernetes_namespace
+    - source_labels: [__meta_kubernetes_service_name]
+      action: replace
+      target_label: kubernetes_name
+    metric_relabel_configs:
+    - source_labels: [__name__]
+      regex: 'document_(.*)'
+      target_label: __name__
+      replacement: 'collaboration_document_${1}'
+
+  # PostgreSQL Exporter
+  - job_name: 'postgresql-exporter'
+    kubernetes_sd_configs:
+    - role: endpoints
+      namespaces:
+        names:
+        - collaboration
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_service_name]
+      action: keep
+      regex: postgres-service
+    - source_labels: [__meta_kubernetes_endpoint_port_name]
+      action: keep
+      regex: metrics
+    - action: labelmap
+      regex: __meta_kubernetes_service_label_(.+)
+    - source_labels: [__meta_kubernetes_namespace]
+      action: replace
+      target_label: kubernetes_namespace
+    - source_labels: [__meta_kubernetes_service_name]
+      action: replace
+      target_label: kubernetes_name
+
+  # Redis Exporter
+  - job_name: 'redis-exporter'
+    kubernetes_sd_configs:
+    - role: endpoints
+      namespaces:
+        names:
+        - collaboration
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_service_name]
+      action: keep
+      regex: redis-service
+    - source_labels: [__meta_kubernetes_endpoint_port_name]
+      action: keep
+      regex: metrics
+    - action: labelmap
+      regex: __meta_kubernetes_service_label_(.+)
+    - source_labels: [__meta_kubernetes_namespace]
+      action: replace
+      target_label: kubernetes_namespace
+    - source_labels: [__meta_kubernetes_service_name]
+      action: replace
+      target_label: kubernetes_name
+
+  # Kubernetes services
+  - job_name: 'kubernetes-services'
+    kubernetes_sd_configs:
+    - role: endpoints
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+      action: keep
+      regex: true
+    - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]
+      action: replace
+      target_label: __scheme__
+      regex: (https?)
+    - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
+      action: replace
+      target_label: __metrics_path__
+      regex: (.+)
+    - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+      action: replace
+      target_label: __address__
+      regex: ([^:]+)(?::\d+)?;(\d+)
+      replacement: $1:$2
+    - action: labelmap
+      regex: __meta_kubernetes_service_label_(.+)
+    - source_labels: [__meta_kubernetes_namespace]
+      action: replace
+      target_label: kubernetes_namespace
+    - source_labels: [__meta_kubernetes_service_name]
+      action: replace
+      target_label: kubernetes_name
+
+  # Next.js application metrics
+  - job_name: 'nextjs-app'
+    kubernetes_sd_configs:
+    - role: endpoints
+      namespaces:
+        names:
+        - collaboration
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_service_name]
+      action: keep
+      regex: collaboration-editor-service
+    - source_labels: [__address__]
+      action: replace
+      target_label: __address__
+      regex: ([^:]+)(?::\d+)?
+      replacement: $1:3000
+    - target_label: __metrics_path__
+      replacement: /api/metrics
+    - action: labelmap
+      regex: __meta_kubernetes_service_label_(.+)
+    - source_labels: [__meta_kubernetes_namespace]
+      action: replace
+      target_label: kubernetes_namespace
+    - source_labels: [__meta_kubernetes_service_name]
+      action: replace
+      target_label: kubernetes_name

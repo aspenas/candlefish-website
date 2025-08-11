@@ -1,0 +1,238 @@
+# Document Mutations for Mobile Collaboration
+
+mutation CreateDocument($input: CreateDocumentInput!) {
+  createDocument(input: $input) {
+    id
+    name
+    description
+    type
+    status
+    content {
+      format
+      data
+      blocks {
+        id
+        type
+        content
+        position {
+          index
+          offset
+          length
+          depth
+        }
+      }
+    }
+    owner {
+      id
+      name
+      avatar
+    }
+    permissions {
+      canRead
+      canWrite
+      canComment
+      canShare
+      canManage
+    }
+    createdAt
+  }
+}
+
+mutation UpdateDocument($input: UpdateDocumentInput!) {
+  updateDocument(input: $input) {
+    id
+    name
+    description
+    content {
+      format
+      data
+      blocks {
+        id
+        type
+        content
+        position {
+          index
+          offset
+          length
+          depth
+        }
+        updatedAt
+      }
+    }
+    crdtState {
+      type
+      state
+      vectorClock {
+        clocks
+        version
+      }
+    }
+    updatedAt
+    lastEditedAt
+  }
+}
+
+mutation ApplyDocumentOperations($documentId: UUID!, $operations: [CreateOperationInput!]!) {
+  applyDocumentOperations(documentId: $documentId, operations: $operations) {
+    id
+    operations {
+      id
+      type
+      position
+      length
+      content
+      timestamp
+      applied
+    }
+    crdtState {
+      type
+      state
+      vectorClock {
+        clocks
+        version
+      }
+    }
+    content {
+      blocks {
+        id
+        type
+        content
+        position {
+          index
+          offset
+          length
+          depth
+        }
+        updatedAt
+      }
+    }
+    updatedAt
+  }
+}
+
+mutation CreateComment($input: CreateCommentInput!) {
+  createComment(input: $input) {
+    id
+    content {
+      text
+      html
+      format
+    }
+    position {
+      blockId
+      startOffset
+      endOffset
+      x
+      y
+    }
+    author {
+      id
+      name
+      avatar
+    }
+    status
+    priority
+    type
+    mentions {
+      id
+      name
+    }
+    createdAt
+  }
+}
+
+mutation UpdateComment($input: UpdateCommentInput!) {
+  updateComment(input: $input) {
+    id
+    content {
+      text
+      html
+      format
+    }
+    status
+    priority
+    updatedAt
+    editedAt
+  }
+}
+
+mutation ResolveComment($id: UUID!, $resolved: Boolean!) {
+  resolveComment(id: $id, resolved: $resolved) {
+    id
+    isResolved
+    resolvedBy {
+      id
+      name
+      avatar
+    }
+    resolvedAt
+  }
+}
+
+mutation AddCommentReaction($commentId: UUID!, $type: ReactionType!, $emoji: String) {
+  addCommentReaction(commentId: $commentId, type: $type, emoji: $emoji) {
+    id
+    type
+    emoji
+    user {
+      id
+      name
+    }
+    createdAt
+  }
+}
+
+mutation JoinDocument($input: JoinDocumentInput!) {
+  joinDocument(input: $input) {
+    id
+    user {
+      id
+      name
+      avatar
+    }
+    document {
+      id
+      name
+    }
+    status
+    permissions {
+      canRead
+      canWrite
+      canComment
+    }
+    joinedAt
+  }
+}
+
+mutation LeaveDocument($documentId: UUID!) {
+  leaveDocument(documentId: $documentId) {
+    success
+    leftAt
+  }
+}
+
+mutation UpdatePresence($input: UpdatePresenceInput!) {
+  updatePresence(input: $input) {
+    id
+    cursor {
+      blockId
+      offset
+      x
+      y
+    }
+    selection {
+      start {
+        blockId
+        offset
+      }
+      end {
+        blockId
+        offset
+      }
+      isCollapsed
+    }
+    isTyping
+    currentAction
+    lastSeenAt
+  }
+}

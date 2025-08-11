@@ -26,25 +26,32 @@ import { ChartRenderer } from '@/components/charts/ChartRenderer';
 
 interface WidgetCardProps {
   widget: Widget;
-  width: number;
-  height: number;
-  isDragging?: boolean;
-  showTitle?: boolean;
-  interactive?: boolean;
+  layout?: {
+    width: number;
+    height: number;
+    x: number;
+    y: number;
+    row: number;
+    col: number;
+  };
+  isSelected?: boolean;
+  optimizeForMobile?: boolean;
   onPress?: () => void;
   onLongPress?: () => void;
 }
 
 export const WidgetCard: React.FC<WidgetCardProps> = ({
   widget,
-  width,
-  height,
-  isDragging = false,
-  showTitle = true,
-  interactive = true,
+  layout,
+  isSelected = false,
+  optimizeForMobile = false,
   onPress,
   onLongPress,
 }) => {
+  const width = layout?.width || 300;
+  const height = layout?.height || 200;
+  const showTitle = true;
+  const interactive = true;
   const { colorScheme } = useSelector((state: RootState) => state.ui);
   const [isPressed, setIsPressed] = useState(false);
 
@@ -117,10 +124,10 @@ export const WidgetCard: React.FC<WidgetCardProps> = ({
     }
   };
 
-  // Update drag opacity
+  // Update selection opacity
   React.useEffect(() => {
-    dragOpacity.value = isDragging ? withTiming(0.7) : withTiming(1);
-  }, [isDragging]);
+    dragOpacity.value = isSelected ? withTiming(0.9) : withTiming(1);
+  }, [isSelected]);
 
   // Animated styles
   const animatedStyle = useAnimatedStyle(() => {
@@ -187,6 +194,7 @@ export const WidgetCard: React.FC<WidgetCardProps> = ({
         height={height - (showTitle ? 80 : 40)}
         showLabels={true}
         interactive={interactive}
+        optimizeForMobile={optimizeForMobile}
       />
     );
   };
@@ -220,7 +228,7 @@ export const WidgetCard: React.FC<WidgetCardProps> = ({
             shadowColor: isDarkMode ? '#000000' : '#000000',
             elevation,
           },
-          isDragging && styles.dragging,
+          isSelected && styles.selected,
         ]}
       >
         <LinearGradient
@@ -337,13 +345,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  dragging: {
+  selected: {
     shadowOpacity: 0.3,
     shadowRadius: 8,
     shadowOffset: {
       width: 0,
       height: 4,
     },
+    borderWidth: 2,
   },
   header: {
     flexDirection: 'row',

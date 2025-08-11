@@ -61,7 +61,9 @@ class AuthService {
       issuer: config.issuer || 'paintbox-app',
       audience: config.audience || 'paintbox-api',
       allowedRoles: config.allowedRoles || ['admin', 'user', 'estimator'],
-      requireMFA: config.requireMFA || false,
+      requireMFA: typeof config.requireMFA === 'boolean'
+        ? config.requireMFA
+        : (process.env.ADMIN_REQUIRE_MFA === 'true'),
       sessionTimeout: config.sessionTimeout || 3600, // 1 hour
       maxConcurrentSessions: config.maxConcurrentSessions || 3,
     };
@@ -76,55 +78,42 @@ class AuthService {
         const secretsManager = getSecretsManager();
         const secrets = await secretsManager.getSecrets();
 
-        if (secrets.encryption?.key) {
-          // Generate RSA keys if not provided
-          if (!this.config.publicKey || !this.config.privateKey) {
-            await this.generateRSAKeys();
-          } else {
-            this.publicKey = Buffer.from(this.config.publicKey, 'utf8');
-            this.privateKey = Buffer.from(this.config.privateKey, 'utf8');
-          }
+        // Prefer stored JWT keys. Fall back to env if present. Do NOT generate ephemeral keys without persisting.
+        const publicKey = secrets.jwt?.publicKey || this.config.publicKey || process.env.JWT_PUBLIC_KEY;
+        const privateKey = secrets.jwt?.privateKey || this.config.privateKey || process.env.JWT_PRIVATE_KEY;
+
+        if (publicKey && privateKey) {
+          this.publicKey = Buffer.from(publicKey, 'utf8');
+          this.privateKey = Buffer.from(privateKey, 'utf8');
         } else {
-          // Fall back to generating new keys
-          await this.generateRSAKeys();
+          // Generate once, then persist to AWS Secrets Manager
+          const { publicKey: pub, privateKey: priv } = this.generateRSAKeypairSync();
+          await secretsManager.storeJwtKeys(pub, priv);
+          this.publicKey = Buffer.from(pub, 'utf8');
+          this.privateKey = Buffer.from(priv, 'utf8');
         }
       }
     } catch (error) {
       logger.error('Failed to initialize JWT keys', {
         error: error instanceof Error ? error.message : String(error)
       });
-
-      // Generate new keys as fallback
-      if (this.config.algorithm === 'RS256') {
-        await this.generateRSAKeys();
-      }
+      throw new Error('JWT keys unavailable');
     }
   }
 
-  private async generateRSAKeys(): Promise<void> {
-    try {
-      const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
-        modulusLength: 2048,
-        publicKeyEncoding: {
-          type: 'spki',
-          format: 'pem',
-        },
-        privateKeyEncoding: {
-          type: 'pkcs8',
-          format: 'pem',
-        },
-      });
-
-      this.publicKey = Buffer.from(publicKey, 'utf8');
-      this.privateKey = Buffer.from(privateKey, 'utf8');
-
-      logger.info('Generated new RSA key pair for JWT authentication');
-    } catch (error) {
-      logger.error('Failed to generate RSA keys', {
-        error: error instanceof Error ? error.message : String(error)
-      });
-      throw new Error('Cannot initialize JWT authentication without keys');
-    }
+  private generateRSAKeypairSync(): { publicKey: string; privateKey: string } {
+    const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+      publicKeyEncoding: {
+        type: 'spki',
+        format: 'pem',
+      },
+      privateKeyEncoding: {
+        type: 'pkcs8',
+        format: 'pem',
+      },
+    });
+    return { publicKey, privateKey };
   }
 
   async generateToken(payload: Omit<AuthenticatedUser, 'iat' | 'exp' | 'iss' | 'aud' | 'jti'>): Promise<string> {

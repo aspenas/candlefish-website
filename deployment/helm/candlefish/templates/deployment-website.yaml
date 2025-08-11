@@ -1,0 +1,138 @@
+{{- if .Values.website.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.website.name }}{{ if .Values.global.canary }}-canary{{ end }}{{ if ne .Values.global.color "blue" }}-{{ .Values.global.color }}{{ end }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Values.website.name }}
+    component: frontend
+    environment: {{ .Values.global.environment }}
+    {{- if .Values.global.canary }}
+    version: canary
+    {{- end }}
+    {{- if .Values.global.color }}
+    color: {{ .Values.global.color }}
+    {{- end }}
+spec:
+  {{- if not .Values.website.autoscaling.enabled }}
+  replicas: {{ .Values.website.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: {{ .Values.website.name }}
+      {{- if .Values.global.canary }}
+      version: canary
+      {{- end }}
+      {{- if .Values.global.color }}
+      color: {{ .Values.global.color }}
+      {{- end }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.website.name }}
+        component: frontend
+        environment: {{ .Values.global.environment }}
+        {{- if .Values.global.canary }}
+        version: canary
+        {{- end }}
+        {{- if .Values.global.color }}
+        color: {{ .Values.global.color }}
+        {{- end }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: {{ include "candlefish.serviceAccountName" . }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: website
+          image: "{{ .Values.global.registry }}/{{ .Values.website.image.repository }}:{{ .Values.website.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.website.service.targetPort }}
+              protocol: TCP
+          env:
+            {{- range $key, $value := .Values.website.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.database.name }}
+                  key: url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.redis.name }}
+                  key: url
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.website.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1001
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: nextjs-cache
+              mountPath: /app/.next/cache
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: nextjs-cache
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: {{ .Values.website.name }}
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: {{ .Values.website.name }}
+{{- end }}

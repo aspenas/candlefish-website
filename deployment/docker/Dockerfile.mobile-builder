@@ -1,0 +1,131 @@
+# Multi-stage build for React Native Mobile App
+FROM node:20-buster AS base
+WORKDIR /app
+
+# Install system dependencies for React Native
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    ruby \
+    ruby-dev \
+    build-essential \
+    default-jdk \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install React Native dependencies
+RUN npm install -g @react-native-community/cli pnpm expo-cli eas-cli
+
+# Android SDK setup
+ENV ANDROID_HOME="/opt/android-sdk"
+ENV ANDROID_SDK_ROOT=$ANDROID_HOME
+ENV PATH="$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools:$ANDROID_HOME/tools/bin"
+
+# Install Android SDK
+RUN mkdir -p $ANDROID_HOME && \
+    wget -q https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip && \
+    unzip commandlinetools-linux-*_latest.zip -d $ANDROID_HOME && \
+    mv $ANDROID_HOME/cmdline-tools $ANDROID_HOME/tools && \
+    rm commandlinetools-linux-*_latest.zip
+
+# Accept Android licenses
+RUN yes | $ANDROID_HOME/tools/bin/sdkmanager --licenses
+
+# Install Android build tools
+RUN $ANDROID_HOME/tools/bin/sdkmanager \
+    "platform-tools" \
+    "platforms;android-33" \
+    "build-tools;33.0.0" \
+    "extras;android;m2repository" \
+    "extras;google;m2repository"
+
+# Dependencies stage
+FROM base AS deps
+COPY apps/mobile-collaboration/package.json apps/mobile-collaboration/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+# Build stage for Android
+FROM base AS android-builder
+WORKDIR /app
+COPY apps/mobile-collaboration/. .
+COPY --from=deps /app/node_modules ./node_modules
+
+# Set up environment for Android build
+ENV ANDROID_HOME="/opt/android-sdk"
+ENV ANDROID_SDK_ROOT=$ANDROID_HOME
+ENV PATH="$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools"
+
+# Generate Android bundle
+RUN cd android && ./gradlew assembleRelease
+RUN cd android && ./gradlew bundleRelease
+
+# Build stage for iOS (macOS required)
+FROM base AS ios-builder
+WORKDIR /app
+COPY apps/mobile-collaboration/. .
+COPY --from=deps /app/node_modules ./node_modules
+
+# This stage would only work on macOS runners
+# For cross-platform builds, use EAS Build service
+RUN echo "iOS build requires macOS environment or EAS Build service"
+
+# Expo/EAS Build stage
+FROM base AS expo-builder
+WORKDIR /app
+COPY apps/mobile-collaboration/. .
+COPY --from=deps /app/node_modules ./node_modules
+
+# Configure EAS
+COPY --chown=node:node deployment/mobile/eas.json ./eas.json
+COPY --chown=node:node deployment/mobile/app.config.js ./app.config.js
+
+# Build with EAS
+RUN eas build --platform all --non-interactive --clear-cache
+
+# OTA Updates builder
+FROM base AS ota-builder
+WORKDIR /app
+COPY apps/mobile-collaboration/. .
+COPY --from=deps /app/node_modules ./node_modules
+
+# Prepare OTA update
+RUN expo export --platform all --dev false --clear
+
+# Runtime stage for mobile app server/CDN
+FROM nginx:alpine AS mobile-server
+
+# Create non-root user
+RUN addgroup --system --gid 1001 mobile
+RUN adduser --system --uid 1001 mobile
+
+# Copy built mobile assets
+COPY --from=ota-builder --chown=mobile:mobile /app/dist ./usr/share/nginx/html/mobile
+COPY --from=android-builder --chown=mobile:mobile /app/android/app/build/outputs ./usr/share/nginx/html/builds
+
+# Nginx configuration for mobile assets
+COPY deployment/docker/nginx-mobile.conf /etc/nginx/nginx.conf
+
+# Health check
+COPY deployment/docker/healthcheck-nginx.sh /healthcheck.sh
+RUN chmod +x /healthcheck.sh
+
+USER mobile
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD /healthcheck.sh
+
+CMD ["nginx", "-g", "daemon off;"]
+
+# Development stage
+FROM base AS dev
+WORKDIR /app
+COPY apps/mobile-collaboration/package.json apps/mobile-collaboration/pnpm-lock.yaml ./
+RUN pnpm install
+
+COPY apps/mobile-collaboration/. .
+
+# Expo development server
+EXPOSE 19000 19001 19002
+
+CMD ["expo", "start", "--tunnel"]

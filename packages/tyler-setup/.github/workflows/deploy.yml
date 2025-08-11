@@ -1,0 +1,668 @@
+# CI/CD Pipeline for Tyler Setup Platform
+# Blue-Green Deployment with Zero Downtime
+
+name: Deploy Tyler Setup Platform
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+      force_deploy:
+        description: 'Force deployment (skip tests)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: tyler-setup-app
+  PROJECT_NAME: tyler-setup
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # Security and Code Quality
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Install dependencies
+        run: |
+          cd backend-production && npm ci
+          cd ../frontend && npm ci
+
+      - name: Run npm audit
+        run: |
+          cd backend-production && npm audit --audit-level=high
+          cd ../frontend && npm audit --audit-level=high
+
+      - name: Run ESLint security scan
+        run: |
+          cd backend-production && npx eslint . --ext .js,.ts --format=sarif --output-file=backend-eslint-results.sarif || true
+          cd ../frontend && npx eslint . --ext .js,.ts,.tsx --format=sarif --output-file=frontend-eslint-results.sarif || true
+
+  # Backend Tests
+  backend-tests:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    needs: security-scan
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: test_user
+          POSTGRES_DB: tyler_setup_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'backend-production/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: backend-production
+        run: npm ci
+
+      - name: Run database migrations
+        working-directory: backend-production
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/tyler_setup_test
+          NODE_ENV: test
+        run: npm run migrate
+
+      - name: Run unit tests
+        working-directory: backend-production
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/tyler_setup_test
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+          JWT_SECRET: test_jwt_secret
+          CLAUDE_API_KEY: test_claude_key
+        run: npm test -- --coverage
+
+      - name: Run integration tests
+        working-directory: backend-production
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/tyler_setup_test
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+          JWT_SECRET: test_jwt_secret
+          CLAUDE_API_KEY: test_claude_key
+        run: npm run test:integration
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          directory: backend-production/coverage
+          flags: backend
+
+  # Frontend Tests
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    needs: security-scan
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run TypeScript check
+        working-directory: frontend
+        run: npm run typecheck
+
+      - name: Run unit tests
+        working-directory: frontend
+        run: npm test -- --coverage
+
+      - name: Run build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          directory: frontend/coverage
+          flags: frontend
+
+  # E2E Tests
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright
+        working-directory: frontend
+        run: npx playwright install --with-deps
+
+      - name: Start test services
+        run: |
+          cd backend-production && npm start &
+          cd frontend && npm run dev &
+          sleep 30  # Wait for services to start
+
+      - name: Run E2E tests
+        working-directory: frontend
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/tyler_setup_test
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+          JWT_SECRET: test_jwt_secret
+          CLAUDE_API_KEY: test_claude_key
+        run: npm run test:e2e
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+
+  # Build and Push Docker Images
+  build-and-push:
+    name: Build and Push Images
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix=main-{{date 'YYYYMMDD'}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./backend-production/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Sign container image
+        run: |
+          # Install cosign
+          curl -sLO https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64
+          sudo mv cosign-linux-amd64 /usr/local/bin/cosign
+          sudo chmod +x /usr/local/bin/cosign
+
+          # Sign the image
+          cosign sign --yes ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}@${{ steps.build.outputs.digest }}
+
+  # Deploy Infrastructure
+  deploy-infrastructure:
+    name: Deploy Infrastructure
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production' || 'staging') }}
+
+    outputs:
+      alb-dns: ${{ steps.terraform.outputs.alb_dns_name }}
+      cloudfront-domain: ${{ steps.terraform.outputs.cloudfront_distribution_domain_name }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        working-directory: infrastructure/terraform
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: infrastructure/terraform
+        env:
+          TF_VAR_environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production' || 'staging') }}
+          TF_VAR_domain_name: ${{ github.ref == 'refs/heads/main' && 'setup.candlefish.ai' || 'staging.setup.candlefish.ai' }}
+          TF_VAR_api_domain_name: ${{ github.ref == 'refs/heads/main' && 'api.setup.candlefish.ai' || 'api-staging.setup.candlefish.ai' }}
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        id: terraform
+        working-directory: infrastructure/terraform
+        env:
+          TF_VAR_environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production' || 'staging') }}
+          TF_VAR_domain_name: ${{ github.ref == 'refs/heads/main' && 'setup.candlefish.ai' || 'staging.setup.candlefish.ai' }}
+          TF_VAR_api_domain_name: ${{ github.ref == 'refs/heads/main' && 'api.setup.candlefish.ai' || 'api-staging.setup.candlefish.ai' }}
+        run: |
+          terraform apply tfplan
+          echo "alb_dns_name=$(terraform output -raw alb_dns_name)" >> $GITHUB_OUTPUT
+          echo "cloudfront_distribution_domain_name=$(terraform output -raw cloudfront_distribution_domain_name)" >> $GITHUB_OUTPUT
+
+  # Blue-Green Deployment
+  blue-green-deploy:
+    name: Blue-Green Deployment
+    runs-on: ubuntu-latest
+    needs: [deploy-infrastructure, build-and-push]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production' || 'staging') }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update secrets
+        run: |
+          # Update Claude API Key
+          aws secretsmanager update-secret \
+            --secret-id "${{ env.PROJECT_NAME }}/claude/api-key" \
+            --secret-string "{\"api_key\":\"${{ secrets.CLAUDE_API_KEY }}\",\"model\":\"claude-3-5-sonnet-20241022\",\"max_tokens\":4096,\"rate_limit\":\"2000000\"}" \
+            --region ${{ env.AWS_REGION }} || true
+
+          # Update OAuth configuration
+          aws secretsmanager update-secret \
+            --secret-id "${{ env.PROJECT_NAME }}/auth/oauth-config" \
+            --secret-string "{\"google_client_id\":\"${{ secrets.GOOGLE_CLIENT_ID }}\",\"google_client_secret\":\"${{ secrets.GOOGLE_CLIENT_SECRET }}\",\"microsoft_client_id\":\"${{ secrets.MICROSOFT_CLIENT_ID }}\",\"microsoft_client_secret\":\"${{ secrets.MICROSOFT_CLIENT_SECRET }}\",\"redirect_uri\":\"https://${{ needs.deploy-infrastructure.outputs.cloudfront-domain }}/auth/callback\"}" \
+            --region ${{ env.AWS_REGION }} || true
+
+      - name: Deploy to Green Environment
+        id: deploy-green
+        run: |
+          # Get current task definition
+          TASK_DEF=$(aws ecs describe-task-definition --task-definition "${{ env.PROJECT_NAME }}-app" --region ${{ env.AWS_REGION }})
+
+          # Update task definition with new image
+          NEW_TASK_DEF=$(echo $TASK_DEF | jq --arg IMAGE "${{ needs.build-and-push.outputs.image-tag }}" '.taskDefinition | .containerDefinitions[0].image = $IMAGE | del(.taskDefinitionArn) | del(.revision) | del(.status) | del(.requiresAttributes) | del(.placementConstraints) | del(.compatibilities) | del(.registeredAt) | del(.registeredBy)')
+
+          # Register new task definition
+          NEW_TASK_DEF_ARN=$(aws ecs register-task-definition --region ${{ env.AWS_REGION }} --cli-input-json "$NEW_TASK_DEF" --query 'taskDefinition.taskDefinitionArn' --output text)
+
+          # Update green service
+          aws ecs update-service \
+            --cluster "${{ env.PROJECT_NAME }}-cluster" \
+            --service "${{ env.PROJECT_NAME }}-green" \
+            --task-definition "$NEW_TASK_DEF_ARN" \
+            --region ${{ env.AWS_REGION }} || \
+          aws ecs create-service \
+            --cluster "${{ env.PROJECT_NAME }}-cluster" \
+            --service-name "${{ env.PROJECT_NAME }}-green" \
+            --task-definition "$NEW_TASK_DEF_ARN" \
+            --desired-count 2 \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$(aws ec2 describe-subnets --filters 'Name=tag:Name,Values=*-private-*' --query 'Subnets[].SubnetId' --output text | tr '\t' ',')],securityGroups=[$(aws ec2 describe-security-groups --filters 'Name=tag:Name,Values=*-app-*' --query 'SecurityGroups[0].GroupId' --output text)],assignPublicIp=DISABLED}" \
+            --load-balancers targetGroupArn=$(aws elbv2 describe-target-groups --names "${{ env.PROJECT_NAME }}-green-tg" --query 'TargetGroups[0].TargetGroupArn' --output text),containerName="${{ env.PROJECT_NAME }}-app",containerPort=3000 \
+            --region ${{ env.AWS_REGION }}
+
+          echo "green-task-def-arn=$NEW_TASK_DEF_ARN" >> $GITHUB_OUTPUT
+
+      - name: Wait for Green Deployment
+        run: |
+          # Wait for green service to become stable
+          aws ecs wait services-stable \
+            --cluster "${{ env.PROJECT_NAME }}-cluster" \
+            --services "${{ env.PROJECT_NAME }}-green" \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Health Check Green Environment
+        id: health-check
+        run: |
+          # Get ALB target group ARN for green
+          GREEN_TG_ARN=$(aws elbv2 describe-target-groups --names "${{ env.PROJECT_NAME }}-green-tg" --query 'TargetGroups[0].TargetGroupArn' --output text)
+
+          # Wait for targets to be healthy
+          for i in {1..30}; do
+            HEALTHY_COUNT=$(aws elbv2 describe-target-health --target-group-arn $GREEN_TG_ARN --query 'TargetHealthDescriptions[?TargetHealth.State==`healthy`] | length(@)')
+            if [ "$HEALTHY_COUNT" -ge 2 ]; then
+              echo "Green environment is healthy"
+              echo "health-check=passed" >> $GITHUB_OUTPUT
+              break
+            fi
+            echo "Waiting for green environment to be healthy... ($i/30)"
+            sleep 30
+          done
+
+          if [ "$HEALTHY_COUNT" -lt 2 ]; then
+            echo "Green environment failed health check"
+            echo "health-check=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Smoke Tests
+        run: |
+          # Run smoke tests against green environment
+          ALB_DNS="${{ needs.deploy-infrastructure.outputs.alb-dns }}"
+
+          # Test API endpoint
+          curl -f "https://$ALB_DNS/health" || exit 1
+          curl -f "https://$ALB_DNS/api/health" || exit 1
+
+          # Test GraphQL endpoint
+          curl -X POST -H "Content-Type: application/json" -d '{"query":"query{__typename}"}' "https://$ALB_DNS/graphql" || exit 1
+
+      - name: Switch Traffic to Green
+        if: steps.health-check.outputs.health-check == 'passed'
+        run: |
+          # Get target group ARNs
+          BLUE_TG_ARN=$(aws elbv2 describe-target-groups --names "${{ env.PROJECT_NAME }}-blue-tg" --query 'TargetGroups[0].TargetGroupArn' --output text)
+          GREEN_TG_ARN=$(aws elbv2 describe-target-groups --names "${{ env.PROJECT_NAME }}-green-tg" --query 'TargetGroups[0].TargetGroupArn' --output text)
+
+          # Get listener ARN
+          LISTENER_ARN=$(aws elbv2 describe-listeners --load-balancer-arn $(aws elbv2 describe-load-balancers --names "${{ env.PROJECT_NAME }}-alb" --query 'LoadBalancers[0].LoadBalancerArn' --output text) --query 'Listeners[?Port==`443`].ListenerArn' --output text)
+
+          # Switch traffic to green
+          aws elbv2 modify-listener \
+            --listener-arn $LISTENER_ARN \
+            --default-actions Type=forward,TargetGroupArn=$GREEN_TG_ARN \
+            --region ${{ env.AWS_REGION }}
+
+          echo "Traffic switched to green environment"
+
+      - name: Monitor New Deployment
+        run: |
+          # Monitor for 10 minutes
+          for i in {1..20}; do
+            ERROR_COUNT=$(aws logs filter-log-events \
+              --log-group-name "/ecs/${{ env.PROJECT_NAME }}" \
+              --start-time $(date -d '5 minutes ago' +%s)000 \
+              --filter-pattern "ERROR" \
+              --query 'events | length(@)' \
+              --region ${{ env.AWS_REGION }})
+
+            if [ "$ERROR_COUNT" -gt 10 ]; then
+              echo "High error count detected: $ERROR_COUNT"
+              exit 1
+            fi
+
+            echo "Monitoring... Error count: $ERROR_COUNT ($i/20)"
+            sleep 30
+          done
+
+      - name: Scale Down Blue Environment
+        if: success()
+        run: |
+          # Scale down blue environment
+          aws ecs update-service \
+            --cluster "${{ env.PROJECT_NAME }}-cluster" \
+            --service "${{ env.PROJECT_NAME }}-blue" \
+            --desired-count 0 \
+            --region ${{ env.AWS_REGION }} || true
+
+          echo "Blue environment scaled down"
+
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          # Switch traffic back to blue
+          BLUE_TG_ARN=$(aws elbv2 describe-target-groups --names "${{ env.PROJECT_NAME }}-blue-tg" --query 'TargetGroups[0].TargetGroupArn' --output text)
+          LISTENER_ARN=$(aws elbv2 describe-listeners --load-balancer-arn $(aws elbv2 describe-load-balancers --names "${{ env.PROJECT_NAME }}-alb" --query 'LoadBalancers[0].LoadBalancerArn' --output text) --query 'Listeners[?Port==`443`].ListenerArn' --output text)
+
+          aws elbv2 modify-listener \
+            --listener-arn $LISTENER_ARN \
+            --default-actions Type=forward,TargetGroupArn=$BLUE_TG_ARN \
+            --region ${{ env.AWS_REGION }}
+
+          # Scale down green environment
+          aws ecs update-service \
+            --cluster "${{ env.PROJECT_NAME }}-cluster" \
+            --service "${{ env.PROJECT_NAME }}-green" \
+            --desired-count 0 \
+            --region ${{ env.AWS_REGION }}
+
+          echo "Rolled back to blue environment"
+
+  # Deploy Frontend
+  deploy-frontend:
+    name: Deploy Frontend
+    runs-on: ubuntu-latest
+    needs: [deploy-infrastructure, blue-green-deploy]
+    if: (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && success()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          VITE_API_URL: https://${{ needs.deploy-infrastructure.outputs.alb-dns }}
+          VITE_GRAPHQL_URL: https://${{ needs.deploy-infrastructure.outputs.alb-dns }}/graphql
+          VITE_WS_URL: wss://${{ needs.deploy-infrastructure.outputs.alb-dns }}:8080
+          VITE_ENVIRONMENT: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production' || 'staging') }}
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy to S3
+        working-directory: frontend
+        run: |
+          BUCKET_NAME=$(aws s3api list-buckets --query 'Buckets[?contains(Name, `${{ env.PROJECT_NAME }}-frontend`)].Name' --output text)
+          aws s3 sync dist/ s3://$BUCKET_NAME --delete --region ${{ env.AWS_REGION }}
+
+      - name: Invalidate CloudFront
+        run: |
+          DISTRIBUTION_ID=$(aws cloudfront list-distributions --query 'DistributionList.Items[?contains(Comment, `${{ env.PROJECT_NAME }}`)].Id' --output text)
+          aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/*" --region ${{ env.AWS_REGION }}
+
+  # Mobile App Deployment (Optional)
+  deploy-mobile:
+    name: Deploy Mobile Apps
+    runs-on: macos-latest
+    needs: [backend-tests, deploy-infrastructure]
+    if: (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && success()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup React Native environment
+        run: |
+          # Install dependencies for React Native
+          npm install -g @react-native-community/cli
+
+      # Add mobile app build and deployment steps here
+      # This is a placeholder for mobile deployment
+
+  # Post-deployment validation
+  post-deployment-validation:
+    name: Post-Deployment Validation
+    runs-on: ubuntu-latest
+    needs: [blue-green-deploy, deploy-frontend]
+    if: (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && success()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Run production validation tests
+        run: |
+          # Add comprehensive validation tests
+          echo "Running post-deployment validation..."
+
+          # Test all endpoints
+          DOMAIN="${{ github.ref == 'refs/heads/main' && 'setup.candlefish.ai' || 'staging.setup.candlefish.ai' }}"
+
+          # Test main site
+          curl -f "https://$DOMAIN" || exit 1
+
+          # Test API
+          curl -f "https://api.$DOMAIN/health" || exit 1
+
+          # Test GraphQL
+          curl -X POST -H "Content-Type: application/json" -d '{"query":"query{__typename}"}' "https://api.$DOMAIN/graphql" || exit 1
+
+          echo "All validation tests passed!"
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          # Send notification (Slack, email, etc.)
+          echo "Deployment completed successfully!"
+
+      - name: Notify deployment failure
+        if: failure()
+        run: |
+          # Send failure notification
+          echo "Deployment validation failed!"

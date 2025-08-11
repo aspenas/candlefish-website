@@ -1,0 +1,403 @@
+name: Infrastructure Deployment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infrastructure/**'
+      - 'fly.secure.toml'
+      - 'scripts/setup-aws-secrets.sh'
+      - '.github/workflows/infrastructure-deploy.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'infrastructure/**'
+      - 'fly.secure.toml'
+      - 'scripts/setup-aws-secrets.sh'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      force_deploy:
+        description: 'Force deployment even if no changes'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  AWS_REGION: us-east-1
+  TERRAFORM_VERSION: 1.6.0
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+jobs:
+  # Plan Terraform changes
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    outputs:
+      plan-exists: ${{ steps.plan.outputs.plan-exists }}
+      plan-summary: ${{ steps.plan.outputs.plan-summary }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Terraform Init
+        run: |
+          cd infrastructure/terraform
+          terraform init
+
+      - name: Terraform Validate
+        run: |
+          cd infrastructure/terraform
+          terraform validate
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          cd infrastructure/terraform
+
+          # Set environment
+          ENVIRONMENT="${{ github.event.inputs.environment || 'staging' }}"
+
+          # Create plan
+          terraform plan \
+            -var="environment=$ENVIRONMENT" \
+            -var="project_name=paintbox" \
+            -out=tfplan \
+            -detailed-exitcode
+
+          exit_code=$?
+
+          if [[ $exit_code -eq 2 ]]; then
+            echo "plan-exists=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in Terraform plan"
+
+            # Generate human-readable summary
+            terraform show -json tfplan | jq -r '
+              .planned_values.root_module.resources[] |
+              select(.type != "random_string") |
+              "\(.type).\(.name): \(.values.tags.Name // .address)"
+            ' > plan-summary.txt
+
+            echo "plan-summary<<EOF" >> $GITHUB_OUTPUT
+            cat plan-summary.txt >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "plan-exists=false" >> $GITHUB_OUTPUT
+            echo "No changes detected in Terraform plan"
+          fi
+
+      - name: Save Terraform Plan
+        if: steps.plan.outputs.plan-exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: infrastructure/terraform/tfplan
+          retention-days: 5
+
+      - name: Comment PR with Plan
+        if: github.event_name == 'pull_request' && steps.plan.outputs.plan-exists == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const planSummary = `${{ steps.plan.outputs.plan-summary }}`;
+
+            const comment = `
+            ## Terraform Plan Summary
+
+            The following infrastructure changes are planned:
+
+            \`\`\`
+            ${planSummary}
+            \`\`\`
+
+            **Note**: This is a summary. Review the full plan in the workflow logs.
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  # Deploy to staging automatically on main branch
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    if: |
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push'
+    environment: staging
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Infrastructure Tools
+        uses: ./.github/actions/setup-tools
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Secrets
+        run: |
+          # Setup AWS secrets for staging
+          ENVIRONMENT=staging ./scripts/setup-aws-secrets.sh
+
+      - name: Deploy Terraform Infrastructure
+        run: |
+          cd infrastructure/terraform
+          terraform init
+          terraform apply -auto-approve \
+            -var="environment=staging" \
+            -var="project_name=paintbox"
+
+      - name: Deploy Application to Staging
+        run: |
+          ENVIRONMENT=staging \
+          FLY_APP_NAME=paintbox-staging \
+          DEPLOYMENT_STRATEGY=rolling \
+          ./scripts/deploy-flyio-comprehensive.sh deploy
+
+      - name: Run Integration Tests
+        run: |
+          # Wait for deployment to stabilize
+          sleep 60
+
+          # Run comprehensive tests against staging
+          npm run test:integration -- --env=staging
+
+      - name: Notify Deployment Success
+        if: success()
+        run: |
+          echo "✅ Staging deployment completed successfully"
+
+      - name: Notify Deployment Failure
+        if: failure()
+        run: |
+          echo "❌ Staging deployment failed"
+
+  # Deploy to production with manual approval
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    if: |
+      (github.ref == 'refs/heads/main' && github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    needs: [deploy-staging]
+    environment: production
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Infrastructure Tools
+        uses: ./.github/actions/setup-tools
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_PRODUCTION_ROLE_ARN }}
+          role-duration-seconds: 3600
+
+      - name: Download Terraform Plan
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan
+          path: infrastructure/terraform/
+
+      - name: Pre-deployment Backup
+        run: |
+          # Create backup before production deployment
+          ./scripts/backup-manager.sh backup-all
+
+      - name: Deploy Terraform Infrastructure
+        run: |
+          cd infrastructure/terraform
+          terraform init
+
+          if [[ -f "tfplan" ]]; then
+            # Apply the planned changes
+            terraform apply tfplan
+          else
+            # Generate and apply plan
+            terraform apply -auto-approve \
+              -var="environment=production" \
+              -var="project_name=paintbox"
+          fi
+
+      - name: Deploy Application to Production
+        run: |
+          ENVIRONMENT=production \
+          FLY_APP_NAME=paintbox-app \
+          DEPLOYMENT_STRATEGY=bluegreen \
+          ./scripts/deploy-flyio-comprehensive.sh deploy
+
+      - name: Post-deployment Verification
+        run: |
+          # Wait for deployment to stabilize
+          sleep 120
+
+          # Run smoke tests
+          ./scripts/deploy-flyio-comprehensive.sh health
+
+          # Run performance validation
+          npm run test:performance -- --env=production
+
+      - name: Update Monitoring
+        run: |
+          # Update monitoring dashboards and alerts
+          ./scripts/setup-monitoring.sh
+
+      - name: Create Deployment Report
+        run: |
+          # Generate deployment report
+          DEPLOYMENT_ID=$(date +%Y%m%d_%H%M%S)
+          echo "# Production Deployment Report - $DEPLOYMENT_ID" > deployment-report.md
+          echo "" >> deployment-report.md
+          echo "## Summary" >> deployment-report.md
+          echo "- Environment: production" >> deployment-report.md
+          echo "- Completed: $(date -u)" >> deployment-report.md
+          echo "- Git Commit: $GITHUB_SHA" >> deployment-report.md
+          echo "" >> deployment-report.md
+          echo "## URLs" >> deployment-report.md
+          echo "- Application: https://paintbox-app.fly.dev" >> deployment-report.md
+          echo "- Health Check: https://paintbox-app.fly.dev/api/health" >> deployment-report.md
+
+      - name: Archive Deployment Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-deployment-report
+          path: deployment-report.md
+          retention-days: 90
+
+      - name: Notify Success
+        if: success()
+        run: |
+          echo "🚀 Production deployment completed successfully!"
+
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "❌ Production deployment failed, attempting rollback..."
+          ./scripts/deploy-flyio-comprehensive.sh rollback
+
+  # Drift detection job
+  drift-detection:
+    name: Infrastructure Drift Detection
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    strategy:
+      matrix:
+        environment: [staging, production]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Check for Drift
+        run: |
+          cd infrastructure/terraform
+          terraform init
+
+          # Check for configuration drift
+          terraform plan \
+            -var="environment=${{ matrix.environment }}" \
+            -var="project_name=paintbox" \
+            -detailed-exitcode
+
+          exit_code=$?
+
+          if [[ $exit_code -eq 2 ]]; then
+            echo "⚠️ Infrastructure drift detected in ${{ matrix.environment }}"
+
+            # Create issue for drift
+            gh issue create \
+              --title "Infrastructure Drift Detected - ${{ matrix.environment }}" \
+              --body "Terraform plan detected configuration drift in ${{ matrix.environment }} environment. Please review and apply necessary changes." \
+              --label "infrastructure,drift,${{ matrix.environment }}" \
+              --assignee "${{ github.actor }}"
+          else
+            echo "✅ No infrastructure drift detected in ${{ matrix.environment }}"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Security scanning
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'pull_request' ||
+      github.event_name == 'push'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Terraform Security Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: 'infrastructure/'
+          format: 'sarif'
+          output: 'terraform-security.sarif'
+
+      - name: Upload Security Results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'terraform-security.sarif'
+
+      - name: Run Infrastructure Secrets Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD

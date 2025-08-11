@@ -1,0 +1,127 @@
+# Multi-stage build for Document service with CRDT support
+FROM node:20-alpine AS base
+WORKDIR /app
+RUN apk add --no-cache libc6-compat python3 make g++
+RUN npm install -g pnpm
+
+# Dependencies stage
+FROM base AS deps
+COPY package.json pnpm-lock.yaml ./
+COPY services/document/package.json ./services/document/
+# Install native dependencies for CRDT libraries
+RUN pnpm install --frozen-lockfile --prod=false
+
+# Build stage
+FROM base AS builder
+COPY . .
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/services/document/node_modules ./services/document/node_modules
+
+# Build document service
+RUN pnpm build:document
+RUN pnpm prune --prod
+
+# Runtime stage
+FROM node:20-alpine AS runtime
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 document
+
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    dumb-init \
+    curl \
+    && rm -rf /var/cache/apk/*
+
+# Copy built application
+COPY --from=builder --chown=document:nodejs /app/services/document/dist ./dist
+COPY --from=builder --chown=document:nodejs /app/services/document/package.json ./
+COPY --from=builder --chown=document:nodejs /app/node_modules ./node_modules
+
+# Copy CRDT algorithms and conflict resolution
+COPY --from=builder --chown=document:nodejs /app/services/document/crdt ./crdt
+COPY --from=builder --chown=document:nodejs /app/services/document/algorithms ./algorithms
+
+# Health check and utility scripts
+COPY --chown=document:nodejs deployment/docker/healthcheck-document.js ./healthcheck.js
+COPY --chown=document:nodejs deployment/docker/scripts/cleanup.js ./scripts/cleanup.js
+COPY --chown=document:nodejs deployment/docker/scripts/migrate.js ./scripts/migrate.js
+
+# Document processing configuration
+COPY --chown=document:nodejs deployment/docker/document-config.json ./config.json
+
+# Create necessary directories
+RUN mkdir -p /app/storage /app/cache /app/logs
+RUN chown -R document:nodejs /app
+RUN chmod +x /app/healthcheck.js /app/scripts/*.js
+
+USER document
+
+# Environment variables
+ENV NODE_ENV=production
+ENV PORT=4003
+ENV STORAGE_PORT=4004
+ENV NODE_OPTIONS="--max-old-space-size=1536"
+
+# CRDT Configuration
+ENV CRDT_CONFLICT_RESOLUTION=last-writer-wins
+ENV CRDT_HISTORY_LIMIT=1000
+ENV CRDT_BATCH_SIZE=50
+ENV CRDT_SYNC_INTERVAL=1000
+
+# File processing limits
+ENV MAX_FILE_SIZE=10485760
+ENV MAX_DOCUMENT_SIZE=52428800
+ENV CACHE_SIZE=104857600
+
+EXPOSE 4003 4004
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD node /app/healthcheck.js
+
+# Use dumb-init for proper signal handling
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "dist/server.js"]
+
+# Multi-stage build for version storage sidecar
+FROM node:20-alpine AS version-storage
+
+# Create non-root user for sidecar
+RUN addgroup --system --gid 1002 storage
+RUN adduser --system --uid 1002 storage
+
+WORKDIR /app
+
+# Install minimal dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    dumb-init \
+    && rm -rf /var/cache/apk/*
+
+# Copy version storage service
+COPY --from=builder --chown=storage:storage /app/services/document/version-storage ./
+COPY --chown=storage:storage deployment/docker/healthcheck-storage.js ./healthcheck.js
+
+# Create storage directories
+RUN mkdir -p /app/versions /app/snapshots
+RUN chown -R storage:storage /app
+RUN chmod +x /app/healthcheck.js
+
+USER storage
+
+ENV NODE_ENV=production
+ENV STORAGE_PORT=4004
+ENV SNAPSHOT_INTERVAL=300000
+ENV MAX_VERSIONS_PER_DOCUMENT=100
+
+EXPOSE 4004
+
+HEALTHCHECK --interval=60s --timeout=10s --start-period=10s --retries=2 \
+    CMD node /app/healthcheck.js
+
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "server.js"]

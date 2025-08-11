@@ -1,0 +1,33 @@
+name: SLOs and Alerts
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  slo-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check staging health
+        id: health
+        run: |
+          set -e
+          RESP=$(curl -sS https://paintbox-staging.fly.dev/api/health)
+          echo "resp=$RESP" >> $GITHUB_OUTPUT
+          STATUS=$(echo "$RESP" | jq -r '.status')
+          DURATION=$(echo "$RESP" | jq -r '.durationMs')
+          if [ "$STATUS" != "healthy" ]; then
+            echo "Health degraded: $STATUS"
+            exit 2
+          fi
+          if [ "$DURATION" -gt 300 ]; then
+            echo "TTFB over 300ms: $DURATION"
+            exit 3
+          fi
+      - name: Notify Slack on failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_ALERTS_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"Paintbox staging SLO check failed. See GitHub Actions run for details."}' "$SLACK_WEBHOOK"

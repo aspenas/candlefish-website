@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "commonjs",
+    "declaration": true,
+    "outDir": "./dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/index.ts",
+    "src/components/ui/Button.tsx",
+    "src/components/layouts/PublicLayout.tsx",
+    "src/lib/utils.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

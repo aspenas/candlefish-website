@@ -1,0 +1,18 @@
+# PgBouncer User List
+# Format: "username" "password_hash"
+# Generate password hash with: echo -n "md5$(echo -n 'passwordusername' | md5sum | cut -d' ' -f1)"
+
+# Main database user
+"postgres" "md5EPpCzXjR6sn8Xlq"
+
+# Application user
+"paintbox_app" "SCRAM-SHA-256$4096:paintbox_app_hash"
+
+# Read-only user for analytics
+"paintbox_readonly" "SCRAM-SHA-256$4096:paintbox_readonly_hash"
+
+# Admin user
+"admin" "SCRAM-SHA-256$4096:admin_hash"
+
+# Stats user
+"stats" "SCRAM-SHA-256$4096:stats_hash"

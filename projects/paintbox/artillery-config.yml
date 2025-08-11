@@ -1,6 +1,14 @@
-# Artillery Load Testing Configuration for Security Endpoints
+# Artillery Load Testing Configuration for Paintbox Production
 config:
-  target: 'http://localhost:3000'
+  target: 'https://paintbox-app.fly.dev'
+  # Fallback targets for different environments
+  environments:
+    local:
+      target: 'http://localhost:3000'
+    staging:
+      target: 'https://paintbox-staging.fly.dev'
+    production:
+      target: 'https://paintbox-app.fly.dev'
   phases:
     - duration: 60
       arrivalRate: 10

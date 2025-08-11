@@ -1,0 +1,814 @@
+# Tyler Setup Platform - Complete GraphQL Schema
+# Comprehensive federated schema with all microservices integration
+
+extend schema
+  @link(url: "https://specs.apollo.dev/federation/v2.3")
+  @link(url: "https://specs.apollo.dev/authentication/v1.0")
+
+# Custom Scalar Types
+scalar Date
+scalar JSON
+scalar Upload
+
+# Authentication & Authorization Directives
+directive @auth(
+  requires: UserRole = USER
+) on FIELD_DEFINITION | OBJECT
+
+directive @rateLimit(
+  max: Int!
+  window: Int!
+  message: String = "Too many requests"
+) on FIELD_DEFINITION
+
+directive @cache(
+  maxAge: Int!
+  scopes: [String!]
+) on FIELD_DEFINITION
+
+directive @deprecated(
+  reason: String = "This field is deprecated"
+) on FIELD_DEFINITION | ENUM_VALUE
+
+# Enums
+enum UserRole {
+  ADMIN
+  USER
+  CONTRACTOR
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+  SUSPENDED
+}
+
+enum ContractorStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+enum AuditAction {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGOUT
+  USER_CREATED
+  USER_UPDATED
+  USER_DELETED
+  CONTRACTOR_INVITED
+  CONTRACTOR_ACCESS
+  CONTRACTOR_REVOKED
+  SECRET_CREATED
+  SECRET_READ
+  SECRET_UPDATED
+  SECRET_DELETED
+  SECRET_ROTATED
+  CONFIG_UPDATED
+  WEBSOCKET_CONNECTED
+  WEBSOCKET_DISCONNECTED
+  RATE_LIMIT_EXCEEDED
+}
+
+enum SecretType {
+  API_KEY
+  DATABASE_PASSWORD
+  JWT_SECRET
+  ENCRYPTION_KEY
+  OAUTH_CLIENT_SECRET
+  WEBHOOK_SECRET
+  CUSTOM
+}
+
+enum Permission {
+  READ
+  WRITE
+  DELETE
+  ADMIN
+}
+
+enum WebSocketEventType {
+  USER_CONNECTED
+  USER_DISCONNECTED
+  AUDIT_EVENT
+  SECRET_ROTATION
+  SYSTEM_NOTIFICATION
+  REAL_TIME_UPDATE
+}
+
+# Core Types
+
+"""
+User entity representing employees and administrators
+"""
+type User @key(fields: "id") {
+  id: ID!
+  email: String! @auth(requires: USER)
+  name: String!
+  role: UserRole!
+  status: UserStatus!
+  lastLogin: Date
+  lastLoginIP: String @auth(requires: ADMIN)
+  createdAt: Date!
+  createdBy: ID
+  updatedAt: Date
+
+  # Computed fields
+  isActive: Boolean!
+  fullName: String!
+  initials: String!
+
+  # Relationships
+  createdUsers: [User!]! @auth(requires: ADMIN)
+  auditLogs: [AuditLog!]! @auth(requires: ADMIN)
+  refreshTokens: [RefreshToken!]! @auth(requires: ADMIN)
+  invitedContractors: [Contractor!]! @auth(requires: ADMIN)
+
+  # Aggregations
+  stats: UserStats! @auth(requires: ADMIN)
+
+  # Cache directive for performance
+  profile: UserProfile! @cache(maxAge: 300, scopes: ["user"])
+}
+
+"""
+Contractor entity for temporary access management
+"""
+type Contractor @key(fields: "id") {
+  id: ID!
+  email: String!
+  name: String!
+  company: String!
+  status: ContractorStatus!
+  permissions: [Permission!]!
+  allowedSecrets: [String!]!
+  reason: String!
+  accessDuration: Int!
+
+  # Timestamps
+  createdAt: Date!
+  expiresAt: Date!
+  lastAccess: Date
+  revokedAt: Date
+
+  # Security
+  accessCount: Int!
+
+  # Relationships
+  invitedBy: User!
+  revokedBy: User
+  auditLogs: [AuditLog!]!
+
+  # Computed fields
+  isExpired: Boolean!
+  isActive: Boolean!
+  remainingDays: Int!
+  accessUrl: String! @auth(requires: ADMIN)
+
+  # Statistics
+  stats: ContractorStats!
+}
+
+"""
+Secret entity for AWS Secrets Manager integration
+"""
+type Secret @key(fields: "name") {
+  name: String!
+  description: String
+  type: SecretType!
+
+  # Metadata
+  createdAt: Date!
+  lastRotated: Date
+  nextRotation: Date
+  version: String!
+
+  # Security
+  isEncrypted: Boolean!
+  kmsKeyId: String
+
+  # Access control
+  allowedUsers: [User!]! @auth(requires: ADMIN)
+  allowedContractors: [Contractor!]! @auth(requires: ADMIN)
+
+  # Value (sensitive data)
+  value: String @auth(requires: ADMIN)
+
+  # Relationships
+  auditLogs: [AuditLog!]! @auth(requires: ADMIN)
+  rotationHistory: [SecretRotation!]! @auth(requires: ADMIN)
+
+  # Statistics
+  stats: SecretStats! @auth(requires: ADMIN)
+}
+
+"""
+Configuration management
+"""
+type Config @key(fields: "key") {
+  key: String!
+  value: JSON!
+  description: String
+  isSecret: Boolean!
+
+  # Metadata
+  createdAt: Date!
+  updatedAt: Date!
+  updatedBy: User
+
+  # Validation
+  schema: JSON
+  isValid: Boolean!
+
+  # Environment-specific
+  environment: String!
+  category: String!
+}
+
+"""
+Audit logging for compliance and security
+"""
+type AuditLog @key(fields: "id") {
+  id: ID!
+  action: AuditAction!
+  userId: ID
+  resource: String
+  resourceId: String
+
+  # Request details
+  ip: String
+  userAgent: String
+  endpoint: String
+
+  # Timestamps
+  timestamp: Date!
+
+  # Additional context
+  details: JSON
+  success: Boolean!
+  errorMessage: String
+
+  # Relationships
+  user: User
+
+  # Computed fields
+  formattedTimestamp: String!
+  riskLevel: String!
+  category: String!
+}
+
+"""
+WebSocket connection management
+"""
+type WebSocketConnection @key(fields: "connectionId") {
+  connectionId: String!
+  userId: ID
+
+  # Connection details
+  connectedAt: Date!
+  lastPing: Date
+  endpoint: String!
+
+  # Metadata
+  userAgent: String
+  ip: String
+
+  # Relationships
+  user: User
+
+  # Status
+  isActive: Boolean!
+  events: [WebSocketEvent!]!
+}
+
+"""
+Real-time events for WebSocket subscriptions
+"""
+type WebSocketEvent @key(fields: "id") {
+  id: ID!
+  type: WebSocketEventType!
+  connectionId: String!
+  data: JSON!
+  timestamp: Date!
+
+  # Relationships
+  connection: WebSocketConnection!
+}
+
+"""
+JWT Refresh tokens management
+"""
+type RefreshToken @key(fields: "token") {
+  token: String! @auth(requires: ADMIN)
+  userId: ID!
+
+  # Timestamps
+  createdAt: Date!
+  expiresAt: Date!
+  lastUsed: Date
+
+  # Security
+  ip: String
+  userAgent: String
+
+  # Relationships
+  user: User!
+
+  # Computed
+  isExpired: Boolean!
+  remainingTime: Int!
+}
+
+"""
+Secret rotation tracking
+"""
+type SecretRotation @key(fields: "id") {
+  id: ID!
+  secretName: String!
+
+  # Rotation details
+  rotatedAt: Date!
+  rotatedBy: User
+  oldVersion: String!
+  newVersion: String!
+
+  # Status
+  success: Boolean!
+  errorMessage: String
+
+  # Relationships
+  secret: Secret!
+
+  # Metadata
+  rotationType: String!
+  scheduledRotation: Boolean!
+}
+
+# Statistics Types
+
+"""
+User statistics and analytics
+"""
+type UserStats {
+  totalLogins: Int!
+  lastLoginDaysAgo: Int
+  createdUsersCount: Int! @auth(requires: ADMIN)
+  invitedContractorsCount: Int! @auth(requires: ADMIN)
+  secretsAccessedCount: Int! @auth(requires: ADMIN)
+
+  # Activity trends
+  loginHistory: [LoginEvent!]!
+  activityScore: Float!
+}
+
+"""
+Contractor statistics
+"""
+type ContractorStats {
+  totalAccesses: Int!
+  lastAccessDaysAgo: Int
+  secretsAccessedCount: Int!
+  averageSessionDuration: Float!
+
+  # Usage patterns
+  dailyUsage: [ContractorUsage!]!
+  accessPattern: String!
+}
+
+"""
+Secret statistics
+"""
+type SecretStats {
+  accessCount: Int!
+  rotationCount: Int!
+  lastAccessDaysAgo: Int
+  daysSinceRotation: Int!
+
+  # Access patterns
+  topAccessors: [SecretAccessor!]!
+  accessTrend: [SecretAccess!]!
+}
+
+# Helper Types
+
+type UserProfile {
+  displayName: String!
+  avatar: String
+  preferences: JSON!
+  timezone: String!
+  lastActivity: Date!
+}
+
+type LoginEvent {
+  timestamp: Date!
+  ip: String!
+  success: Boolean!
+  userAgent: String
+}
+
+type ContractorUsage {
+  date: Date!
+  accessCount: Int!
+  secretsAccessed: Int!
+  duration: Float!
+}
+
+type SecretAccessor {
+  user: User
+  contractor: Contractor
+  accessCount: Int!
+  lastAccess: Date!
+}
+
+type SecretAccess {
+  date: Date!
+  accessCount: Int!
+  uniqueUsers: Int!
+}
+
+# Input Types
+
+"""
+User creation input
+"""
+input CreateUserInput {
+  email: String!
+  name: String!
+  password: String!
+  role: UserRole = USER
+  sendWelcomeEmail: Boolean = true
+}
+
+"""
+User update input
+"""
+input UpdateUserInput {
+  name: String
+  email: String
+  role: UserRole
+  status: UserStatus
+}
+
+"""
+Login credentials
+"""
+input LoginInput {
+  email: String!
+  password: String!
+  rememberMe: Boolean = false
+}
+
+"""
+Contractor invitation input
+"""
+input InviteContractorInput {
+  email: String!
+  name: String!
+  company: String!
+  accessDuration: Int = 7
+  permissions: [Permission!]! = [READ]
+  allowedSecrets: [String!] = []
+  reason: String!
+  notifyEmail: Boolean = true
+}
+
+"""
+Secret creation input
+"""
+input CreateSecretInput {
+  name: String!
+  value: String!
+  description: String
+  type: SecretType!
+  rotationEnabled: Boolean = false
+  rotationDays: Int = 90
+}
+
+"""
+Secret update input
+"""
+input UpdateSecretInput {
+  value: String
+  description: String
+  rotationEnabled: Boolean
+  rotationDays: Int
+}
+
+"""
+Configuration input
+"""
+input ConfigInput {
+  key: String!
+  value: JSON!
+  description: String
+  isSecret: Boolean = false
+  environment: String = "production"
+  category: String = "general"
+}
+
+"""
+Audit log filtering
+"""
+input AuditFilter {
+  userId: ID
+  action: AuditAction
+  resource: String
+  dateFrom: Date
+  dateTo: Date
+  success: Boolean
+  ip: String
+}
+
+"""
+Pagination input
+"""
+input PaginationInput {
+  limit: Int = 20
+  offset: Int = 0
+  cursor: String
+}
+
+"""
+Sort input
+"""
+input SortInput {
+  field: String!
+  direction: SortDirection = ASC
+}
+
+enum SortDirection {
+  ASC
+  DESC
+}
+
+# Response Types
+
+"""
+Authentication response
+"""
+type AuthResponse {
+  success: Boolean!
+  token: String
+  refreshToken: String
+  expiresIn: Int
+  user: User
+  message: String
+}
+
+"""
+Generic operation response
+"""
+type OperationResponse {
+  success: Boolean!
+  message: String!
+  errors: [String!]
+}
+
+"""
+Paginated response wrapper
+"""
+type PaginatedResponse {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  totalCount: Int!
+  cursor: String
+}
+
+"""
+Paginated users response
+"""
+type PaginatedUsers {
+  users: [User!]!
+  pagination: PaginatedResponse!
+}
+
+"""
+Paginated contractors response
+"""
+type PaginatedContractors {
+  contractors: [Contractor!]!
+  pagination: PaginatedResponse!
+}
+
+"""
+Paginated secrets response
+"""
+type PaginatedSecrets {
+  secrets: [Secret!]!
+  pagination: PaginatedResponse!
+}
+
+"""
+Paginated audit logs response
+"""
+type PaginatedAuditLogs {
+  logs: [AuditLog!]!
+  pagination: PaginatedResponse!
+}
+
+"""
+System health status
+"""
+type HealthStatus {
+  status: String!
+  timestamp: Date!
+  services: [ServiceHealth!]!
+  version: String!
+  uptime: Int!
+}
+
+"""
+Individual service health
+"""
+type ServiceHealth {
+  name: String!
+  status: String!
+  responseTime: Float
+  lastCheck: Date!
+  message: String
+}
+
+"""
+Dashboard analytics
+"""
+type DashboardAnalytics {
+  totalUsers: Int!
+  activeUsers: Int!
+  totalContractors: Int!
+  activeContractors: Int!
+  totalSecrets: Int!
+  secretsNeedingRotation: Int!
+  recentAuditEvents: Int!
+
+  # Trends
+  userGrowth: [GrowthMetric!]!
+  contractorUsage: [UsageMetric!]!
+  secretAccess: [AccessMetric!]!
+  securityAlerts: [SecurityAlert!]!
+}
+
+type GrowthMetric {
+  period: String!
+  count: Int!
+  change: Float!
+}
+
+type UsageMetric {
+  period: String!
+  count: Int!
+  duration: Float!
+}
+
+type AccessMetric {
+  period: String!
+  reads: Int!
+  writes: Int!
+  errors: Int!
+}
+
+type SecurityAlert {
+  id: ID!
+  type: String!
+  severity: String!
+  message: String!
+  timestamp: Date!
+  resolved: Boolean!
+}
+
+# Root Types
+
+"""
+Query root type with all read operations
+"""
+type Query {
+  # Health check
+  health: HealthStatus! @cache(maxAge: 30, scopes: ["public"])
+
+  # Authentication
+  me: User @auth(requires: USER)
+  refreshToken(token: String!): AuthResponse!
+
+  # Users
+  users(
+    pagination: PaginationInput
+    sort: SortInput
+    filter: String
+  ): PaginatedUsers! @auth(requires: ADMIN)
+
+  user(id: ID!): User @auth(requires: USER)
+
+  # Contractors
+  contractors(
+    pagination: PaginationInput
+    sort: SortInput
+    status: ContractorStatus
+  ): PaginatedContractors! @auth(requires: ADMIN)
+
+  contractor(id: ID!): Contractor @auth(requires: ADMIN)
+  contractorByToken(token: String!): Contractor
+
+  # Secrets
+  secrets(
+    pagination: PaginationInput
+    sort: SortInput
+    type: SecretType
+  ): PaginatedSecrets! @auth(requires: USER)
+
+  secret(name: String!): Secret @auth(requires: USER)
+  secretsNeedingRotation: [Secret!]! @auth(requires: ADMIN)
+
+  # Configuration
+  configs(category: String): [Config!]! @auth(requires: ADMIN)
+  config(key: String!): Config @auth(requires: ADMIN)
+
+  # Audit
+  auditLogs(
+    pagination: PaginationInput
+    sort: SortInput
+    filter: AuditFilter
+  ): PaginatedAuditLogs! @auth(requires: ADMIN) @rateLimit(max: 100, window: 300)
+
+  # Analytics
+  dashboardAnalytics(
+    dateFrom: Date
+    dateTo: Date
+  ): DashboardAnalytics! @auth(requires: ADMIN) @cache(maxAge: 300, scopes: ["analytics"])
+
+  # WebSocket connections
+  activeConnections: [WebSocketConnection!]! @auth(requires: ADMIN)
+}
+
+"""
+Mutation root type with all write operations
+"""
+type Mutation {
+  # Authentication
+  login(input: LoginInput!): AuthResponse! @rateLimit(max: 5, window: 300)
+  logout(refreshToken: String): OperationResponse!
+
+  # Users
+  createUser(input: CreateUserInput!): User! @auth(requires: ADMIN)
+  updateUser(id: ID!, input: UpdateUserInput!): User! @auth(requires: USER)
+  deleteUser(id: ID!): OperationResponse! @auth(requires: ADMIN)
+
+  # Contractors
+  inviteContractor(input: InviteContractorInput!): Contractor! @auth(requires: ADMIN)
+  revokeContractorAccess(id: ID!): OperationResponse! @auth(requires: ADMIN)
+
+  # Secrets
+  createSecret(input: CreateSecretInput!): Secret! @auth(requires: ADMIN)
+  updateSecret(name: String!, input: UpdateSecretInput!): Secret! @auth(requires: ADMIN)
+  deleteSecret(name: String!): OperationResponse! @auth(requires: ADMIN)
+  rotateSecret(name: String!): Secret! @auth(requires: ADMIN)
+
+  # Configuration
+  setConfig(input: ConfigInput!): Config! @auth(requires: ADMIN)
+  deleteConfig(key: String!): OperationResponse! @auth(requires: ADMIN)
+
+  # WebSocket
+  disconnectUser(userId: ID!): OperationResponse! @auth(requires: ADMIN)
+
+  # System operations
+  triggerSecretRotation: OperationResponse! @auth(requires: ADMIN)
+  cleanupExpiredTokens: OperationResponse! @auth(requires: ADMIN)
+
+  # Batch operations
+  bulkUpdateUsers(ids: [ID!]!, input: UpdateUserInput!): [User!]! @auth(requires: ADMIN)
+  bulkRevokeContractors(ids: [ID!]!): OperationResponse! @auth(requires: ADMIN)
+}
+
+"""
+Subscription root type for real-time updates
+"""
+type Subscription {
+  # Real-time audit events
+  auditEvents(
+    userId: ID
+    actions: [AuditAction!]
+  ): AuditLog! @auth(requires: ADMIN)
+
+  # User activity
+  userStatusChanged(userId: ID): User! @auth(requires: ADMIN)
+  userLoggedIn: User! @auth(requires: ADMIN)
+  userLoggedOut: User! @auth(requires: ADMIN)
+
+  # Contractor activity
+  contractorStatusChanged: Contractor! @auth(requires: ADMIN)
+  contractorAccessed: Contractor! @auth(requires: ADMIN)
+
+  # Secret events
+  secretRotated: Secret! @auth(requires: ADMIN)
+  secretAccessed(secretName: String): Secret! @auth(requires: ADMIN)
+
+  # System notifications
+  securityAlert: SecurityAlert! @auth(requires: ADMIN)
+  systemNotification: JSON! @auth(requires: ADMIN)
+
+  # Dashboard updates
+  dashboardUpdated: DashboardAnalytics! @auth(requires: ADMIN)
+
+  # WebSocket connection events
+  connectionEvent: WebSocketEvent! @auth(requires: ADMIN)
+}

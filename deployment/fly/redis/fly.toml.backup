@@ -1,0 +1,77 @@
+# Redis Cache for Candlefish AI Collaboration System
+app = "candlefish-redis"
+primary_region = "sjc"
+
+[build]
+  image = "redis:7-alpine"
+
+[env]
+  REDIS_APPENDONLY = "yes"
+  REDIS_MAXMEMORY = "256mb"
+  REDIS_MAXMEMORY_POLICY = "allkeys-lru"
+  REDIS_SAVE = "900 1 300 10 60 10000"
+  REDIS_TCP_KEEPALIVE = "60"
+  REDIS_TIMEOUT = "300"
+
+# Redis service configuration
+[http_service]
+  internal_port = 6379
+  protocol = "tcp"
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[processes]
+  app = "redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru --save 900 1 --save 300 10 --save 60 10000 --tcp-keepalive 60 --timeout 300"
+
+# Volume configuration for persistent data
+[[mounts]]
+  source = "redis_data"
+  destination = "/data"
+  initial_size = "2gb"
+  snapshot_retention = 3
+
+# VM configuration optimized for Redis
+[[vm]]
+  memory = '512mb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+# Redis service with TLS
+[[services]]
+  internal_port = 6379
+  protocol = "tcp"
+
+  [[services.ports]]
+    port = 6379
+
+  [[services.tcp_checks]]
+    interval = "10s"
+    timeout = "5s"
+
+# Redis Sentinel for high availability (optional)
+[[services]]
+  internal_port = 26379
+  protocol = "tcp"
+
+  [[services.ports]]
+    port = 26379
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "10s"
+
+# Health monitoring configuration
+[[services]]
+  internal_port = 8080
+  protocol = "http"
+
+  [[services.ports]]
+    port = 8080
+    handlers = ["http"]
+
+  [[services.http_checks]]
+    interval = "10s"
+    timeout = "5s"
+    method = "get"
+    path = "/health"

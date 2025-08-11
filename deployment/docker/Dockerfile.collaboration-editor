@@ -1,0 +1,89 @@
+# Multi-stage build for Next.js Collaboration Editor
+FROM node:20-alpine AS base
+RUN apk add --no-cache libc6-compat
+RUN npm install -g pnpm
+WORKDIR /app
+
+# Dependencies stage
+FROM base AS deps
+COPY apps/collaboration-editor/package.json apps/collaboration-editor/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+# Build stage
+FROM base AS builder
+WORKDIR /app
+COPY apps/collaboration-editor/. .
+COPY --from=deps /app/node_modules ./node_modules
+
+# Build environment variables
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Build the application
+RUN pnpm build
+
+# Production image
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    dumb-init \
+    && rm -rf /var/cache/apk/*
+
+# Copy built application
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+# Health check script
+COPY --chown=nextjs:nodejs deployment/docker/healthcheck-nextjs.js ./healthcheck.js
+RUN chmod +x ./healthcheck.js
+
+# Set up proper permissions
+RUN chown -R nextjs:nodejs /app
+RUN mkdir -p /app/.next/cache
+RUN chown -R nextjs:nodejs /app/.next/cache
+
+USER nextjs
+
+# Environment variables
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Performance optimizations
+ENV NODE_OPTIONS="--max-old-space-size=1024"
+
+# Next.js configuration
+ENV NEXT_SHARP=0
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD node /app/healthcheck.js
+
+# Use dumb-init for proper signal handling
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "server.js"]
+
+# Development stage (optional)
+FROM base AS dev
+WORKDIR /app
+COPY apps/collaboration-editor/package.json apps/collaboration-editor/pnpm-lock.yaml ./
+RUN pnpm install
+
+COPY apps/collaboration-editor/. .
+
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+
+EXPOSE 3000
+
+CMD ["pnpm", "dev"]

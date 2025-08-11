@@ -1,0 +1,37 @@
+# Redis Cache for Candlefish AI
+app = "candlefish-redis"
+primary_region = "sjc"
+
+[build]
+  image = "redis:7-alpine"
+
+[env]
+  REDIS_APPENDONLY = "yes"
+  REDIS_MAXMEMORY = "256mb"
+  REDIS_MAXMEMORY_POLICY = "allkeys-lru"
+
+# Volume configuration for persistent data
+[[mounts]]
+  source = "redis_data"
+  destination = "/data"
+
+# VM configuration
+[vm]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+# Redis service
+[[services]]
+  internal_port = 6379
+  protocol = "tcp"
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[services.ports]]
+    port = 6379
+
+  [[services.tcp_checks]]
+    interval = "10s"
+    timeout = "5s"

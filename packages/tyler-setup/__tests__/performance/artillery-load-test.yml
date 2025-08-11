@@ -1,0 +1,354 @@
+# Artillery.js Load Testing Configuration for Tyler Setup Platform
+config:
+  target: 'https://5x6gs2o6b6.execute-api.us-east-1.amazonaws.com/prod'
+  plugins:
+    expect: {}
+    metrics-by-endpoint: {}
+  phases:
+    # Warm-up phase
+    - duration: 120
+      arrivalRate: 5
+      name: "Warm-up"
+
+    # Ramp-up phase
+    - duration: 300
+      arrivalRate: 5
+      rampTo: 20
+      name: "Ramp-up load"
+
+    # Sustained load
+    - duration: 600
+      arrivalRate: 20
+      name: "Sustained load"
+
+    # Peak load
+    - duration: 300
+      arrivalRate: 20
+      rampTo: 50
+      name: "Peak load"
+
+    # Cool-down
+    - duration: 180
+      arrivalRate: 50
+      rampTo: 5
+      name: "Cool-down"
+
+  # Request timeout and other settings
+  timeout: 30
+
+  # Custom variables
+  variables:
+    frontendUrl: "http://candlefish-employee-setup-lean-prod-web.s3-website-us-east-1.amazonaws.com"
+
+  # Test users
+  payload:
+    - path: "./test-users.csv"
+      fields:
+        - email
+        - password
+        - role
+      order: sequence
+      skipHeader: true
+
+  processor: "./load-test-processor.js"
+
+# Test scenarios
+scenarios:
+  # Authentication flow scenario (40% of traffic)
+  - name: "Authentication Flow"
+    weight: 40
+    flow:
+      - post:
+          url: "/auth/login"
+          headers:
+            Content-Type: "application/json"
+          json:
+            email: "{{ email }}"
+            password: "{{ password }}"
+          capture:
+            - json: "$.token"
+              as: "authToken"
+            - json: "$.user.role"
+              as: "userRole"
+          expect:
+            - statusCode: 200
+            - hasProperty: "token"
+
+      # Dashboard access after login
+      - post:
+          url: "/graphql"
+          headers:
+            Content-Type: "application/json"
+            Authorization: "Bearer {{ authToken }}"
+          json:
+            query: |
+              query GetDashboardStats {
+                dashboardStats {
+                  totalUsers
+                  activeUsers
+                  totalContractors
+                  totalSecrets
+                  systemHealth {
+                    status
+                    uptime
+                    memory
+                    cpu
+                  }
+                }
+              }
+          expect:
+            - statusCode: 200
+            - hasProperty: "data.dashboardStats"
+
+      # Logout
+      - post:
+          url: "/auth/logout"
+          headers:
+            Content-Type: "application/json"
+            Authorization: "Bearer {{ authToken }}"
+          json:
+            refreshToken: "{{ refreshToken }}"
+          expect:
+            - statusCode: 200
+
+  # Contractor management scenario (30% of traffic)
+  - name: "Contractor Management"
+    weight: 30
+    flow:
+      # Login first
+      - function: "authenticateUser"
+
+      # Get contractors list
+      - post:
+          url: "/graphql"
+          headers:
+            Content-Type: "application/json"
+            Authorization: "Bearer {{ authToken }}"
+          json:
+            query: |
+              query GetContractors($pagination: PaginationInput) {
+                contractors(pagination: $pagination) {
+                  contractors {
+                    id
+                    name
+                    email
+                    phone
+                    company
+                    skills
+                    status
+                    rating
+                    createdAt
+                  }
+                  total
+                  hasMore
+                }
+              }
+            variables:
+              pagination:
+                page: 1
+                limit: 20
+          expect:
+            - statusCode: 200
+            - hasProperty: "data.contractors"
+
+      # Search contractors by skills (50% chance)
+      - post:
+          url: "/graphql"
+          headers:
+            Content-Type: "application/json"
+            Authorization: "Bearer {{ authToken }}"
+          json:
+            query: |
+              query SearchContractors($filter: ContractorFilter) {
+                contractors(filter: $filter) {
+                  contractors {
+                    id
+                    name
+                    skills
+                    status
+                  }
+                  total
+                }
+              }
+            variables:
+              filter:
+                skills: ["plumbing"]
+          weight: 50
+          expect:
+            - statusCode: 200
+
+      # Create new contractor (only for admin users, 20% chance)
+      - post:
+          url: "/graphql"
+          headers:
+            Content-Type: "application/json"
+            Authorization: "Bearer {{ authToken }}"
+          json:
+            query: |
+              mutation CreateContractor($input: CreateContractorInput!) {
+                createContractor(input: $input) {
+                  id
+                  name
+                  email
+                  status
+                }
+              }
+            variables:
+              input:
+                name: "Load Test Contractor {{ $randomString() }}"
+                email: "contractor-{{ $randomString() }}@example.com"
+                phone: "+1{{ $randomInt(2000000000, 9999999999) }}"
+                company: "Test Company {{ $randomString() }}"
+                skills: ["testing", "load-testing"]
+          weight: 20
+          ifTrue: "userRole === 'admin'"
+          expect:
+            - statusCode: 200
+            - hasProperty: "data.createContractor.id"
+
+  # User management scenario (20% of traffic)
+  - name: "User Management"
+    weight: 20
+    flow:
+      # Login as admin
+      - function: "authenticateAdminUser"
+
+      # Get users list
+      - post:
+          url: "/graphql"
+          headers:
+            Content-Type: "application/json"
+            Authorization: "Bearer {{ authToken }}"
+          json:
+            query: |
+              query GetUsers($filter: UserFilter, $pagination: PaginationInput) {
+                users(filter: $filter, pagination: $pagination) {
+                  users {
+                    id
+                    email
+                    name
+                    role
+                    isActive
+                    lastLogin
+                  }
+                  total
+                  hasMore
+                }
+              }
+            variables:
+              filter:
+                role: "employee"
+              pagination:
+                page: 1
+                limit: 10
+          expect:
+            - statusCode: 200
+            - hasProperty: "data.users"
+
+      # Create new user (10% chance)
+      - post:
+          url: "/graphql"
+          headers:
+            Content-Type: "application/json"
+            Authorization: "Bearer {{ authToken }}"
+          json:
+            query: |
+              mutation CreateUser($input: CreateUserInput!) {
+                createUser(input: $input) {
+                  id
+                  email
+                  name
+                  role
+                }
+              }
+            variables:
+              input:
+                email: "loadtest-user-{{ $randomString() }}@example.com"
+                name: "Load Test User {{ $randomString() }}"
+                role: "employee"
+                password: "LoadTest123!"
+          weight: 10
+          expect:
+            - statusCode: 200
+
+  # Secrets management scenario (10% of traffic)
+  - name: "Secrets Management"
+    weight: 10
+    flow:
+      # Login as admin
+      - function: "authenticateAdminUser"
+
+      # Get secrets list
+      - post:
+          url: "/graphql"
+          headers:
+            Content-Type: "application/json"
+            Authorization: "Bearer {{ authToken }}"
+          json:
+            query: |
+              query GetSecrets($filter: SecretFilter) {
+                secrets(filter: $filter) {
+                  id
+                  name
+                  description
+                  type
+                  category
+                  createdAt
+                  updatedAt
+                }
+              }
+            variables:
+              filter:
+                category: "database"
+          expect:
+            - statusCode: 200
+            - hasProperty: "data.secrets"
+
+      # Create new secret (5% chance)
+      - post:
+          url: "/graphql"
+          headers:
+            Content-Type: "application/json"
+            Authorization: "Bearer {{ authToken }}"
+          json:
+            query: |
+              mutation CreateSecret($input: CreateSecretInput!) {
+                createSecret(input: $input) {
+                  id
+                  name
+                  type
+                  category
+                }
+              }
+            variables:
+              input:
+                name: "loadtest-secret-{{ $randomString() }}"
+                description: "Load test secret"
+                type: "password"
+                category: "testing"
+                value: "load-test-secret-value-{{ $randomString() }}"
+                tags: ["load-test"]
+          weight: 5
+          expect:
+            - statusCode: 200
+
+# Performance expectations
+expect:
+  # Response time expectations
+  - statusCode: 200
+  - responseTime: 2000  # All requests should complete within 2 seconds
+
+  # Header expectations
+  - hasHeader: "content-type"
+
+  # JSON response expectations
+  - contentType: json
+
+# Custom metrics and monitoring
+metrics:
+  - name: "login_success_rate"
+    unit: "percent"
+  - name: "api_errors"
+    unit: "count"
+  - name: "database_response_time"
+    unit: "milliseconds"

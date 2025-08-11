@@ -1,0 +1,296 @@
+# Artillery Load Testing Configuration
+# Performance testing for Candlefish AI Platform
+
+config:
+  target: "http://localhost:3000"
+  phases:
+    # Warm-up phase
+    - duration: 60
+      arrivalRate: 5
+      name: "Warm-up"
+
+    # Ramp-up phase
+    - duration: 120
+      arrivalRate: 5
+      rampTo: 50
+      name: "Ramp-up"
+
+    # Sustained load
+    - duration: 300
+      arrivalRate: 50
+      name: "Sustained Load"
+
+    # Spike test
+    - duration: 60
+      arrivalRate: 100
+      name: "Spike Test"
+
+    # Cool-down
+    - duration: 60
+      arrivalRate: 10
+      name: "Cool-down"
+
+  payload:
+    - path: "./test-data/customers.csv"
+      fields:
+        - "customerId"
+        - "customerName"
+        - "email"
+    - path: "./test-data/estimates.csv"
+      fields:
+        - "estimateId"
+        - "projectId"
+        - "amount"
+
+  variables:
+    authToken: "{{ $processEnvironment.TEST_AUTH_TOKEN }}"
+
+  processor: "./performance/load-test-processor.js"
+
+  plugins:
+    expect: {}
+    metrics-by-endpoint: {}
+    hdr: {}
+
+  ensure:
+    thresholds:
+      - http.response_time.p95: 200
+      - http.response_time.p99: 500
+      - http.codes.200: 90
+      - http.request_rate: 50
+
+scenarios:
+  # ==================================
+  # 1. API ENDPOINT TESTING
+  # ==================================
+
+  - name: "API Read Operations"
+    weight: 40
+    flow:
+      - get:
+          url: "/api/v1/estimates"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: data
+          capture:
+            - json: "$.data[0].id"
+              as: "estimateId"
+
+      - get:
+          url: "/api/v1/estimates/{{ estimateId }}"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+            - responseTime: 150
+
+      - get:
+          url: "/api/v1/projects"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+            - responseTime: 200
+
+  - name: "API Write Operations"
+    weight: 20
+    flow:
+      - post:
+          url: "/api/v1/estimates"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+            Content-Type: "application/json"
+          json:
+            customerId: "{{ customerId }}"
+            projectName: "Load Test Project {{ $randomNumber() }}"
+            items:
+              - description: "Test Item 1"
+                quantity: 2
+                price: 100
+              - description: "Test Item 2"
+                quantity: 1
+                price: 250
+          expect:
+            - statusCode: 201
+            - responseTime: 300
+          capture:
+            - json: "$.data.id"
+              as: "newEstimateId"
+
+      - put:
+          url: "/api/v1/estimates/{{ newEstimateId }}"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+            Content-Type: "application/json"
+          json:
+            status: "approved"
+          expect:
+            - statusCode: 200
+            - responseTime: 250
+
+  # ==================================
+  # 2. PDF GENERATION TESTING
+  # ==================================
+
+  - name: "PDF Generation Load"
+    weight: 10
+    flow:
+      - post:
+          url: "/api/v1/pdf/generate"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+            Content-Type: "application/json"
+          json:
+            estimateId: "{{ estimateId }}"
+            template: "standard"
+            includePhotos: true
+          expect:
+            - statusCode: 200
+            - responseTime: 2000
+          capture:
+            - json: "$.pdfUrl"
+              as: "pdfUrl"
+
+      - get:
+          url: "{{ pdfUrl }}"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+            - contentType: "application/pdf"
+
+  # ==================================
+  # 3. BATCH OPERATIONS TESTING
+  # ==================================
+
+  - name: "Batch API Requests"
+    weight: 5
+    flow:
+      - post:
+          url: "/api/v1/batch"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+            Content-Type: "application/json"
+          json:
+            requests:
+              - id: "req1"
+                method: "GET"
+                endpoint: "/estimates"
+              - id: "req2"
+                method: "GET"
+                endpoint: "/projects"
+              - id: "req3"
+                method: "GET"
+                endpoint: "/customers"
+          expect:
+            - statusCode: 200
+            - responseTime: 500
+            - hasProperty: "responses[0].data"
+            - hasProperty: "responses[1].data"
+            - hasProperty: "responses[2].data"
+
+  # ==================================
+  # 4. FRONTEND ASSET LOADING
+  # ==================================
+
+  - name: "Frontend Page Load"
+    weight: 15
+    flow:
+      - get:
+          url: "/"
+          expect:
+            - statusCode: 200
+            - responseTime: 600
+
+      - get:
+          url: "/_next/static/css/main.css"
+          expect:
+            - statusCode: 200
+            - responseTime: 100
+            - hasHeader: "cache-control"
+
+      - get:
+          url: "/_next/static/js/main.js"
+          expect:
+            - statusCode: 200
+            - responseTime: 150
+            - hasHeader: "cache-control"
+
+  # ==================================
+  # 5. WEBSOCKET CONNECTIONS
+  # ==================================
+
+  - name: "WebSocket Real-time Updates"
+    weight: 10
+    engine: "ws"
+    flow:
+      - connect:
+          url: "ws://localhost:3000/socket.io"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+
+      - send:
+          data:
+            type: "subscribe"
+            channel: "estimates"
+
+      - think: 5
+
+      - send:
+          data:
+            type: "ping"
+
+      - think: 10
+
+      - send:
+          data:
+            type: "unsubscribe"
+            channel: "estimates"
+
+# ==================================
+# CUSTOM METRICS
+# ==================================
+
+customMetrics:
+  - name: "API Response Time by Endpoint"
+    type: "histogram"
+
+  - name: "PDF Generation Time"
+    type: "histogram"
+
+  - name: "Cache Hit Rate"
+    type: "counter"
+
+  - name: "Database Query Time"
+    type: "histogram"
+
+# ==================================
+# REPORTING
+# ==================================
+
+reporting:
+  - type: "json"
+    path: "./performance/reports/load-test-{{ $timestamp }}.json"
+
+  - type: "html"
+    path: "./performance/reports/load-test-{{ $timestamp }}.html"
+
+  - type: "junit"
+    path: "./performance/reports/junit-{{ $timestamp }}.xml"
+
+# ==================================
+# HOOKS
+# ==================================
+
+hooks:
+  beforeScenario:
+    - "node ./performance/hooks/setup-test-data.js"
+
+  afterScenario:
+    - "node ./performance/hooks/cleanup-test-data.js"
+
+  afterTest:
+    - "node ./performance/hooks/generate-report.js"

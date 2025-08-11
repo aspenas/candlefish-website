@@ -1,0 +1,480 @@
+name: Monorepo CI Pipeline
+
+on:
+  push:
+    branches: [main, develop, 'feat/**', 'fix/**']
+  pull_request:
+    types: [opened, synchronize, reopened]
+  merge_group:
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+  id-token: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.12'
+  PNPM_VERSION: '9'
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+
+jobs:
+  # ============================================
+  # STAGE 1: Detect Changes
+  # ============================================
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      node: ${{ steps.filter.outputs.node }}
+      python: ${{ steps.filter.outputs.python }}
+      mobile: ${{ steps.filter.outputs.mobile }}
+      docs: ${{ steps.filter.outputs.docs }}
+      affected: ${{ steps.affected.outputs.affected }}
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            node:
+              - '**/*.{ts,tsx,js,jsx}'
+              - '**/package.json'
+              - '**/pnpm-lock.yaml'
+              - '**/.npmrc'
+            python:
+              - '**/*.py'
+              - '**/requirements*.txt'
+              - '**/pyproject.toml'
+              - '**/poetry.lock'
+            mobile:
+              - 'apps/mobile-*/**'
+              - '**/*.{swift,kt,java}'
+            docs:
+              - '**/*.md'
+              - 'docs/**'
+
+      - name: Detect affected packages
+        id: affected
+        run: |
+          # Get list of changed files
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          else
+            CHANGED=$(git diff --name-only HEAD~1...HEAD)
+          fi
+
+          # Detect affected packages
+          AFFECTED_PACKAGES=()
+
+          # Check each app/package
+          for dir in apps/* packages/* projects/*; do
+            if [ -d "$dir" ]; then
+              if echo "$CHANGED" | grep -q "^${dir}/"; then
+                AFFECTED_PACKAGES+=("${dir##*/}")
+              fi
+            fi
+          done
+
+          # Output as JSON array
+          if [ ${#AFFECTED_PACKAGES[@]} -eq 0 ]; then
+            echo "affected=[]" >> $GITHUB_OUTPUT
+          else
+            JSON=$(printf '"%s",' "${AFFECTED_PACKAGES[@]}" | sed 's/,$//')
+            echo "affected=[$JSON]" >> $GITHUB_OUTPUT
+          fi
+
+          echo "Affected packages: ${AFFECTED_PACKAGES[*]}"
+
+      - name: Generate test matrix
+        id: matrix
+        run: |
+          # Create dynamic matrix based on affected packages
+          matrix='{"include":[]}'
+
+          if [[ "${{ steps.filter.outputs.node }}" == "true" ]]; then
+            matrix=$(echo $matrix | jq '.include += [
+              {"type":"lint","runner":"ubuntu-latest"},
+              {"type":"typecheck","runner":"ubuntu-latest"},
+              {"type":"test-unit","runner":"ubuntu-latest"},
+              {"type":"test-integration","runner":"ubuntu-latest"},
+              {"type":"build","runner":"ubuntu-latest"}
+            ]')
+          fi
+
+          if [[ "${{ steps.filter.outputs.python }}" == "true" ]]; then
+            matrix=$(echo $matrix | jq '.include += [
+              {"type":"python-lint","runner":"ubuntu-latest"},
+              {"type":"python-test","runner":"ubuntu-latest"}
+            ]')
+          fi
+
+          if [[ "${{ steps.filter.outputs.mobile }}" == "true" ]]; then
+            matrix=$(echo $matrix | jq '.include += [
+              {"type":"mobile-ios","runner":"macos-latest"},
+              {"type":"mobile-android","runner":"ubuntu-latest"}
+            ]')
+          fi
+
+          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+
+  # ============================================
+  # STAGE 2: Setup & Cache
+  # ============================================
+  setup:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.node == 'true' || needs.detect-changes.outputs.python == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: needs.detect-changes.outputs.node == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        if: needs.detect-changes.outputs.node == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Get pnpm store directory
+        if: needs.detect-changes.outputs.node == 'true'
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        if: needs.detect-changes.outputs.node == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Setup Turbo cache
+        if: needs.detect-changes.outputs.node == 'true'
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
+      - name: Install dependencies
+        if: needs.detect-changes.outputs.node == 'true'
+        run: |
+          pnpm install --frozen-lockfile
+
+          # Install turbo globally for caching
+          pnpm add -g turbo
+
+      - name: Setup Python
+        if: needs.detect-changes.outputs.python == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        if: needs.detect-changes.outputs.python == 'true'
+        run: |
+          pip install --upgrade pip
+          pip install ruff pytest pytest-cov pytest-xdist
+
+  # ============================================
+  # STAGE 3: Parallel Quality Checks
+  # ============================================
+  quality-checks:
+    needs: [detect-changes, setup]
+    if: needs.detect-changes.outputs.matrix != '{"include":[]}'
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: contains(matrix.type, 'lint') || contains(matrix.type, 'typecheck') || contains(matrix.type, 'test') || contains(matrix.type, 'build')
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        if: contains(matrix.type, 'lint') || contains(matrix.type, 'typecheck') || contains(matrix.type, 'test') || contains(matrix.type, 'build')
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Restore caches
+        if: contains(matrix.type, 'lint') || contains(matrix.type, 'typecheck') || contains(matrix.type, 'test') || contains(matrix.type, 'build')
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pnpm-store
+            .turbo
+            **/node_modules
+            **/.next/cache
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/pnpm-lock.yaml') }}
+
+      - name: Install dependencies
+        if: contains(matrix.type, 'lint') || contains(matrix.type, 'typecheck') || contains(matrix.type, 'test') || contains(matrix.type, 'build')
+        run: pnpm install --frozen-lockfile
+
+      # Node.js/TypeScript checks
+      - name: Lint
+        if: matrix.type == 'lint'
+        run: |
+          pnpm turbo lint --cache-dir=.turbo
+
+      - name: Type Check
+        if: matrix.type == 'typecheck'
+        run: |
+          pnpm turbo typecheck --cache-dir=.turbo
+
+      - name: Unit Tests
+        if: matrix.type == 'test-unit'
+        run: |
+          pnpm turbo test:unit --cache-dir=.turbo -- --coverage
+
+      - name: Integration Tests
+        if: matrix.type == 'test-integration'
+        run: |
+          pnpm turbo test:integration --cache-dir=.turbo
+
+      - name: Build
+        if: matrix.type == 'build'
+        run: |
+          pnpm turbo build --cache-dir=.turbo
+
+      # Python checks
+      - name: Setup Python
+        if: contains(matrix.type, 'python')
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Python Lint
+        if: matrix.type == 'python-lint'
+        run: |
+          pip install ruff
+          ruff check .
+          ruff format --check .
+
+      - name: Python Tests
+        if: matrix.type == 'python-test'
+        run: |
+          pip install pytest pytest-cov
+          # Find and install requirements
+          find . -name "requirements*.txt" -exec pip install -r {} \;
+          # Run tests
+          pytest --cov --cov-report=xml
+
+      # Mobile checks
+      - name: Setup Expo
+        if: contains(matrix.type, 'mobile')
+        run: |
+          pnpm add -g expo-cli eas-cli
+
+      - name: iOS Build Check
+        if: matrix.type == 'mobile-ios'
+        run: |
+          cd apps/mobile-dashboard
+          npx expo prebuild --platform ios
+          cd ios && xcodebuild -workspace *.xcworkspace -scheme * -configuration Debug -sdk iphonesimulator -derivedDataPath build
+
+      - name: Android Build Check
+        if: matrix.type == 'mobile-android'
+        run: |
+          cd apps/mobile-dashboard
+          npx expo prebuild --platform android
+          cd android && ./gradlew assembleDebug
+
+      # Upload test results
+      - name: Upload coverage
+        if: contains(matrix.type, 'test') && always()
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: ${{ matrix.type }}
+
+  # ============================================
+  # STAGE 4: Security Scanning
+  # ============================================
+  security:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Check for secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.pull_request.base.sha || github.event.before }}
+          head: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: License scan
+        run: |
+          pnpm add -g license-checker
+          license-checker --production --summary
+
+  # ============================================
+  # STAGE 5: Performance Testing
+  # ============================================
+  performance:
+    needs: [detect-changes, quality-checks]
+    if: needs.detect-changes.outputs.node == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build for performance testing
+        run: pnpm turbo build --filter="./apps/*"
+
+      - name: Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v11
+        with:
+          urls: |
+            http://localhost:3000
+            http://localhost:3001
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+      - name: Bundle size check
+        run: |
+          pnpm add -g bundlewatch
+          pnpm turbo build:analyze
+
+  # ============================================
+  # STAGE 6: E2E Testing
+  # ============================================
+  e2e:
+    needs: [quality-checks]
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Run E2E tests
+        run: |
+          pnpm turbo e2e --cache-dir=.turbo -- --project=${{ matrix.browser }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results-${{ matrix.browser }}
+          path: |
+            **/test-results/
+            **/playwright-report/
+
+  # ============================================
+  # STAGE 7: Final Status Check
+  # ============================================
+  ci-status:
+    needs: [detect-changes, quality-checks, security, performance]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check CI Status
+        run: |
+          if [[ "${{ needs.quality-checks.result }}" == "failure" ]] || \
+             [[ "${{ needs.security.result }}" == "failure" ]] || \
+             [[ "${{ needs.performance.result }}" == "failure" ]]; then
+            echo "CI checks failed"
+            exit 1
+          fi
+          echo "All CI checks passed!"
+
+      - name: Comment PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = {
+              quality: '${{ needs.quality-checks.result }}',
+              security: '${{ needs.security.result }}',
+              performance: '${{ needs.performance.result }}'
+            };
+
+            const allPassed = Object.values(status).every(s => s === 'success' || s === 'skipped');
+            const icon = allPassed ? '✅' : '❌';
+
+            const body = `## ${icon} CI Status
+
+            | Check | Status |
+            |-------|--------|
+            | Quality Checks | ${status.quality} |
+            | Security Scan | ${status.security} |
+            | Performance | ${status.performance} |
+
+            [View full CI results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });

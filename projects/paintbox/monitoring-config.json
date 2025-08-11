@@ -1,0 +1,85 @@
+{
+  "app": "paintbox-app",
+  "checks": [
+    {
+      "name": "Application Health",
+      "type": "http",
+      "interval": "60s",
+      "timeout": "10s",
+      "method": "GET",
+      "path": "/api/health",
+      "expected_status": 200,
+      "alert_threshold": 2
+    },
+    {
+      "name": "Database Connectivity",
+      "type": "tcp",
+      "interval": "60s",
+      "timeout": "5s",
+      "port": 5432,
+      "alert_threshold": 1
+    },
+    {
+      "name": "Redis Cache",
+      "type": "tcp",
+      "interval": "60s",
+      "timeout": "5s",
+      "port": 6379,
+      "alert_threshold": 1
+    },
+    {
+      "name": "Response Time",
+      "type": "http",
+      "interval": "120s",
+      "timeout": "5s",
+      "method": "GET",
+      "path": "/",
+      "max_response_time_ms": 2000,
+      "alert_threshold": 3
+    },
+    {
+      "name": "Excel Engine",
+      "type": "http",
+      "interval": "300s",
+      "timeout": "30s",
+      "method": "POST",
+      "path": "/api/v1/build/validate",
+      "expected_status": 200,
+      "alert_threshold": 2
+    }
+  ],
+  "alerts": {
+    "channels": [
+      {
+        "type": "email",
+        "enabled": true,
+        "recipients": ["alerts@candlefish.ai"]
+      },
+      {
+        "type": "webhook",
+        "enabled": false,
+        "url": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+      }
+    ],
+    "rules": [
+      {
+        "name": "Application Down",
+        "condition": "health_check_failed",
+        "duration": "2m",
+        "severity": "critical"
+      },
+      {
+        "name": "High Response Time",
+        "condition": "response_time > 2000",
+        "duration": "5m",
+        "severity": "warning"
+      },
+      {
+        "name": "Database Unreachable",
+        "condition": "tcp_check_failed",
+        "duration": "1m",
+        "severity": "critical"
+      }
+    ]
+  }
+}

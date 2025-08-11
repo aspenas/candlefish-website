@@ -1,0 +1,12 @@
+{
+  "brand": "candlefish",
+  "version": 1,
+  "logo": {
+    "defaultPath": "/logo/candlefish_original.png",
+    "variants": {
+      "horizontal": { "showText": true },
+      "stacked": { "showText": true },
+      "icon": { "showText": false }
+    }
+  }
+}

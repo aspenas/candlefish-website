@@ -587,10 +587,10 @@ describe('DashboardScreen', () => {
 
       await waitFor(() => {
         const widget = getByTestId('widget-widget-1');
-        
+
         // Widget should initially show loading
         expect(getByTestId('widget-loading')).toBeTruthy();
-        
+
         // Scroll widget into view to trigger loading
         fireEvent.scroll(getByTestId('dashboard-scroll-view'), {
           nativeEvent: {
@@ -641,7 +641,7 @@ describe('DashboardScreen', () => {
       await waitFor(() => {
         const firstWidget = getByTestId('widget-widget-1');
         fireEvent(firstWidget, 'focus');
-        
+
         // Should highlight focused widget
         expect(getByTestId('focused-widget-highlight')).toBeTruthy();
       });
@@ -740,7 +740,7 @@ describe('DashboardScreen', () => {
 
       await waitFor(() => {
         const chartWidget = getByTestId('widget-widget-2');
-        
+
         // Should use cached images for chart rendering
         expect(chartWidget.props.source).toEqual({
           uri: expect.stringContaining('cache'),

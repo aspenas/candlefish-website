@@ -1,0 +1,568 @@
+# Tyler Setup GraphQL Schema - Optimized for Performance
+# This schema is designed for 1000+ concurrent users with efficient batching and caching
+
+scalar DateTime
+scalar JSON
+
+# Interfaces for consistent pagination
+interface Node {
+  id: ID!
+}
+
+interface Connection {
+  edges: [Edge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+interface Edge {
+  node: Node!
+  cursor: String!
+}
+
+# Pagination info following Relay spec
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+# =======================
+# Core Entity Types
+# =======================
+
+type User implements Node {
+  id: ID!
+  email: String!
+  name: String!
+  role: UserRole!
+  isActive: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime
+  lastLogin: DateTime
+  lastLoginIP: String
+
+  # Relationship fields (optimized with DataLoader)
+  auditLogs(
+    first: Int
+    after: String
+    last: Int
+    before: String
+    filter: AuditLogFilter
+  ): AuditLogConnection!
+
+  contractorsInvited(
+    first: Int
+    after: String
+    status: ContractorStatus
+  ): ContractorConnection!
+}
+
+type Contractor implements Node {
+  id: ID!
+  email: String!
+  name: String!
+  company: String!
+  status: ContractorStatus!
+  permissions: [Permission!]!
+  allowedSecrets: [String!]!
+  createdAt: DateTime!
+  expiresAt: DateTime!
+  lastAccess: DateTime
+  accessCount: Int!
+  reason: String!
+
+  # Relationship fields
+  invitedBy: User!
+  auditLogs(
+    first: Int
+    after: String
+    filter: AuditLogFilter
+  ): AuditLogConnection!
+}
+
+type Secret implements Node {
+  id: ID!
+  name: String!
+  description: String
+  createdAt: DateTime!
+  updatedAt: DateTime
+  version: String!
+  tags: [String!]!
+
+  # Value is only exposed to authorized users
+  # Contractors see masked values
+  value: JSON
+
+  # Metadata
+  createdBy: User!
+  lastModifiedBy: User
+  accessCount: Int!
+}
+
+type AuditLog implements Node {
+  id: ID!
+  timestamp: DateTime!
+  action: AuditAction!
+  userId: String!
+  resource: String
+  details: JSON
+  ip: String
+  userAgent: String
+
+  # Relationship field
+  user: User
+}
+
+type Config implements Node {
+  id: ID!
+  key: String!
+  value: JSON!
+  description: String
+  category: String!
+  isPublic: Boolean!
+  updatedAt: DateTime!
+  updatedBy: User!
+}
+
+# =======================
+# Connection Types
+# =======================
+
+type UserConnection implements Connection {
+  edges: [UserEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type UserEdge implements Edge {
+  node: User!
+  cursor: String!
+}
+
+type ContractorConnection implements Connection {
+  edges: [ContractorEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type ContractorEdge implements Edge {
+  node: Contractor!
+  cursor: String!
+}
+
+type SecretConnection implements Connection {
+  edges: [SecretEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type SecretEdge implements Edge {
+  node: Secret!
+  cursor: String!
+}
+
+type AuditLogConnection implements Connection {
+  edges: [AuditLogEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type AuditLogEdge implements Edge {
+  node: AuditLog!
+  cursor: String!
+}
+
+type ConfigConnection implements Connection {
+  edges: [ConfigEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type ConfigEdge implements Edge {
+  node: Config!
+  cursor: String!
+}
+
+# =======================
+# Enums
+# =======================
+
+enum UserRole {
+  ADMIN
+  USER
+  READONLY
+}
+
+enum ContractorStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+enum Permission {
+  READ
+  WRITE
+  DELETE
+  ADMIN
+}
+
+enum AuditAction {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGOUT
+  USER_CREATED
+  USER_UPDATED
+  USER_DELETED
+  SECRET_RETRIEVED
+  SECRET_CREATED
+  SECRET_UPDATED
+  SECRET_DELETED
+  CONTRACTOR_INVITED
+  CONTRACTOR_ACCESS
+  CONTRACTOR_REVOKED
+  CONFIG_UPDATED
+  RATE_LIMIT_EXCEEDED
+}
+
+enum SortOrder {
+  ASC
+  DESC
+}
+
+# =======================
+# Input Types
+# =======================
+
+input UserFilter {
+  role: UserRole
+  isActive: Boolean
+  search: String # Search in name/email
+  createdAfter: DateTime
+  createdBefore: DateTime
+}
+
+input ContractorFilter {
+  status: ContractorStatus
+  company: String
+  search: String
+  expiresAfter: DateTime
+  expiresBefore: DateTime
+}
+
+input SecretFilter {
+  tags: [String!]
+  search: String
+  createdAfter: DateTime
+  createdBefore: DateTime
+}
+
+input AuditLogFilter {
+  action: AuditAction
+  resource: String
+  startDate: DateTime
+  endDate: DateTime
+}
+
+input ConfigFilter {
+  category: String
+  isPublic: Boolean
+  search: String
+}
+
+input CreateUserInput {
+  email: String!
+  name: String!
+  password: String!
+  role: UserRole = USER
+}
+
+input UpdateUserInput {
+  name: String
+  email: String
+  role: UserRole
+  isActive: Boolean
+}
+
+input InviteContractorInput {
+  email: String!
+  name: String!
+  company: String
+  accessDuration: Int = 7
+  allowedSecrets: [String!] = []
+  permissions: [Permission!] = [READ]
+  reason: String!
+  notifyEmail: Boolean = true
+}
+
+input CreateSecretInput {
+  name: String!
+  value: JSON!
+  description: String
+  tags: [String!] = []
+}
+
+input UpdateSecretInput {
+  value: JSON
+  description: String
+  tags: [String!]
+}
+
+input UpdateConfigInput {
+  value: JSON!
+  description: String
+}
+
+# =======================
+# Response Types
+# =======================
+
+type AuthPayload {
+  token: String!
+  refreshToken: String!
+  expiresIn: Int!
+  user: User!
+}
+
+type ContractorAccessPayload {
+  token: String!
+  contractor: Contractor!
+  expiresAt: DateTime!
+}
+
+type HealthCheck {
+  status: String!
+  timestamp: DateTime!
+  version: String!
+  database: DatabaseHealth!
+  cache: CacheHealth!
+}
+
+type DatabaseHealth {
+  connected: Boolean!
+  latency: Int
+  operations: DatabaseOperations!
+}
+
+type CacheHealth {
+  layers: CacheLayers!
+  hitRatio: Float!
+  operations: Int!
+}
+
+type CacheLayers {
+  memory: CacheLayerStatus!
+  dax: CacheLayerStatus!
+  dynamodb: CacheLayerStatus!
+}
+
+type CacheLayerStatus {
+  connected: Boolean!
+  hitRatio: Float!
+  size: Int
+}
+
+type DatabaseOperations {
+  reads: Int!
+  writes: Int!
+  errors: Int!
+  avgLatency: Float!
+}
+
+# Performance metrics for monitoring
+type PerformanceMetrics {
+  queryCount: Int!
+  avgExecutionTime: Float!
+  slowQueries: [SlowQuery!]!
+  cacheStats: CacheStats!
+  connectionPool: ConnectionPoolStats!
+}
+
+type SlowQuery {
+  operation: String!
+  executionTime: Float!
+  timestamp: DateTime!
+  complexity: Int
+}
+
+type CacheStats {
+  hits: Int!
+  misses: Int!
+  hitRatio: Float!
+  evictions: Int!
+}
+
+type ConnectionPoolStats {
+  active: Int!
+  idle: Int!
+  waiting: Int!
+  maxConnections: Int!
+}
+
+# =======================
+# Root Types
+# =======================
+
+type Query {
+  # Health check
+  health: HealthCheck!
+
+  # Current user
+  me: User
+
+  # Node interface for global object identification
+  node(id: ID!): Node
+
+  # Users (admin only)
+  users(
+    first: Int
+    after: String
+    last: Int
+    before: String
+    filter: UserFilter
+    orderBy: String
+    sortOrder: SortOrder = DESC
+  ): UserConnection!
+
+  user(id: ID!): User
+
+  # Contractors (admin only)
+  contractors(
+    first: Int
+    after: String
+    last: Int
+    before: String
+    filter: ContractorFilter
+    orderBy: String = "createdAt"
+    sortOrder: SortOrder = DESC
+  ): ContractorConnection!
+
+  contractor(id: ID!): Contractor
+
+  # Secrets (role-based access)
+  secrets(
+    first: Int
+    after: String
+    last: Int
+    before: String
+    filter: SecretFilter
+    orderBy: String = "updatedAt"
+    sortOrder: SortOrder = DESC
+  ): SecretConnection!
+
+  secret(name: String!): Secret
+
+  # Audit logs (admin only)
+  auditLogs(
+    first: Int
+    after: String
+    last: Int
+    before: String
+    filter: AuditLogFilter
+    orderBy: String = "timestamp"
+    sortOrder: SortOrder = DESC
+  ): AuditLogConnection!
+
+  # Configuration (role-based access)
+  configs(
+    first: Int
+    after: String
+    filter: ConfigFilter
+    orderBy: String = "key"
+    sortOrder: SortOrder = ASC
+  ): ConfigConnection!
+
+  config(key: String!): Config
+
+  # Performance monitoring (admin only)
+  performanceMetrics(timeRange: Int = 3600): PerformanceMetrics!
+}
+
+type Mutation {
+  # Authentication
+  login(email: String!, password: String!): AuthPayload!
+  refreshToken(refreshToken: String!): AuthPayload!
+  logout(refreshToken: String): Boolean!
+
+  # Contractor access
+  accessWithToken(token: String!): ContractorAccessPayload!
+
+  # User management (admin only)
+  createUser(input: CreateUserInput!): User!
+  updateUser(id: ID!, input: UpdateUserInput!): User!
+  deleteUser(id: ID!): Boolean!
+
+  # Contractor management (admin only)
+  inviteContractor(input: InviteContractorInput!): Contractor!
+  revokeContractorAccess(id: ID!): Boolean!
+
+  # Secret management (role-based)
+  createSecret(input: CreateSecretInput!): Secret!
+  updateSecret(name: String!, input: UpdateSecretInput!): Secret!
+  deleteSecret(name: String!): Boolean!
+
+  # Configuration management (admin only)
+  updateConfig(key: String!, input: UpdateConfigInput!): Config!
+
+  # Cache management (admin only)
+  clearCache(pattern: String): Boolean!
+  warmupCache(keys: [String!]!): Boolean!
+}
+
+type Subscription {
+  # Real-time audit log updates
+  auditLogAdded(filter: AuditLogFilter): AuditLog!
+
+  # User status changes
+  userStatusChanged: User!
+
+  # Contractor access events
+  contractorAccessChanged: Contractor!
+
+  # Secret changes (role-based)
+  secretChanged(name: String): Secret!
+
+  # Configuration changes
+  configChanged(key: String): Config!
+
+  # Performance alerts
+  performanceAlert: PerformanceMetrics!
+}
+
+# =======================
+# Directives for optimization
+# =======================
+
+directive @cacheControl(
+  maxAge: Int
+  scope: CacheControlScope
+) on FIELD_DEFINITION | OBJECT | INTERFACE
+
+directive @requireAuth(
+  role: UserRole
+) on FIELD_DEFINITION
+
+directive @rateLimit(
+  max: Int!
+  window: Int!
+) on FIELD_DEFINITION
+
+directive @complexity(
+  value: Int!
+) on FIELD_DEFINITION
+
+enum CacheControlScope {
+  PUBLIC
+  PRIVATE
+}
+
+# =======================
+# Schema Configuration
+# =======================
+
+# Query depth limit: 10 levels
+# Query complexity limit: 1000 points
+# Rate limiting: 1000 requests per minute per user
+# Cache TTL: 5 minutes for frequently accessed data

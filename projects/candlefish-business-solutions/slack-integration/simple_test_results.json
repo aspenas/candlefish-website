@@ -1,0 +1,21 @@
+{
+  "timestamp": "2025-08-08T11:26:25.507685",
+  "total_tests": 3,
+  "passed_tests": 2,
+  "failed_tests": 1,
+  "success_rate": 66.66666666666666,
+  "test_details": [
+    {
+      "name": "Config Loading",
+      "passed": true
+    },
+    {
+      "name": "Authentication",
+      "passed": true
+    },
+    {
+      "name": "API Access",
+      "passed": false
+    }
+  ]
+}

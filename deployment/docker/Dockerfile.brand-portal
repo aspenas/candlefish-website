@@ -1,0 +1,122 @@
+# Multi-stage Dockerfile for Brand Portal
+# Static site with templating engine
+
+# Stage 1: Dependencies and Builder
+FROM node:20-alpine AS builder
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Copy package files
+COPY package.json pnpm-lock.yaml ./
+COPY pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
+
+# Copy source code
+COPY apps/brand-portal ./apps/brand-portal
+COPY Branding ./Branding
+COPY public ./public
+
+# Build brand portal assets
+WORKDIR /app/apps/brand-portal
+RUN pnpm build
+
+# Stage 2: Runtime with Nginx
+FROM nginx:1.25-alpine AS runtime
+
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Create non-root user
+RUN addgroup -g 1001 -S appuser && \
+    adduser -S -D -H -u 1001 -h /var/cache/nginx -s /sbin/nologin -G appuser -g appuser appuser
+
+# Copy built assets
+COPY --from=builder /app/apps/brand-portal/dist /usr/share/nginx/html
+COPY --from=builder /app/Branding /usr/share/nginx/html/branding
+COPY --from=builder /app/public/logo /usr/share/nginx/html/assets/logo
+
+# Nginx configuration for brand portal
+RUN echo 'user appuser; \
+worker_processes auto; \
+error_log /var/log/nginx/error.log warn; \
+pid /var/run/nginx.pid; \
+\
+events { \
+    worker_connections 1024; \
+} \
+\
+http { \
+    include /etc/nginx/mime.types; \
+    default_type application/octet-stream; \
+    \
+    log_format main '\''$remote_addr - $remote_user [$time_local] "$request" '' \
+                    '\''$status $body_bytes_sent "$http_referer" '' \
+                    '\''"$http_user_agent" "$http_x_forwarded_for"'\''; \
+    access_log /var/log/nginx/access.log main; \
+    \
+    sendfile on; \
+    tcp_nopush on; \
+    keepalive_timeout 65; \
+    \
+    # Security headers \
+    add_header X-Frame-Options SAMEORIGIN always; \
+    add_header X-Content-Type-Options nosniff always; \
+    add_header X-XSS-Protection "1; mode=block" always; \
+    add_header Referrer-Policy strict-origin-when-cross-origin always; \
+    \
+    # Gzip compression \
+    gzip on; \
+    gzip_vary on; \
+    gzip_min_length 1024; \
+    gzip_comp_level 6; \
+    gzip_types text/plain text/css text/xml text/javascript application/json application/javascript application/xml+rss application/atom+xml image/svg+xml; \
+    \
+    server { \
+        listen 80; \
+        root /usr/share/nginx/html; \
+        index index.html; \
+        \
+        location /health { \
+            access_log off; \
+            return 200 "healthy\\n"; \
+            add_header Content-Type text/plain; \
+        } \
+        \
+        # Brand assets with long cache \
+        location /branding/ { \
+            expires 30d; \
+            add_header Cache-Control "public, no-transform"; \
+        } \
+        \
+        location /assets/ { \
+            expires 1y; \
+            add_header Cache-Control "public, immutable"; \
+        } \
+        \
+        # HTML templates with short cache \
+        location ~* \.html$ { \
+            expires 1h; \
+            add_header Cache-Control "public, must-revalidate"; \
+        } \
+        \
+        location / { \
+            try_files $uri $uri/ /index.html; \
+        } \
+    } \
+}' > /etc/nginx/nginx.conf
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost/health || exit 1
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 80
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]

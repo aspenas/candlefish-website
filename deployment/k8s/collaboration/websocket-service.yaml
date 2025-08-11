@@ -1,0 +1,271 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: websocket-service
+  namespace: collaboration
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: websocket-service
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: websocket-service
+      component: websocket
+  template:
+    metadata:
+      labels:
+        app: websocket-service
+        component: websocket
+        app.kubernetes.io/name: candlefish-collaboration
+        app.kubernetes.io/component: websocket-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "4001"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: websocket-service
+        image: candlefish/collaboration-websocket:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 4001
+          name: websocket
+          protocol: TCP
+        - containerPort: 4002
+          name: metrics
+          protocol: TCP
+        env:
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: collaboration-config
+              key: NODE_ENV
+        - name: WS_PORT
+          value: "4001"
+        - name: METRICS_PORT
+          value: "4002"
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: collaboration-secrets
+              key: REDIS_URL
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: collaboration-secrets
+              key: JWT_SECRET
+        - name: WS_AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: collaboration-secrets
+              key: WS_AUTH_SECRET
+        - name: WS_HEARTBEAT_INTERVAL
+          valueFrom:
+            configMapKeyRef:
+              name: collaboration-config
+              key: WS_HEARTBEAT_INTERVAL
+        - name: WS_MAX_CONNECTIONS_PER_IP
+          valueFrom:
+            configMapKeyRef:
+              name: collaboration-config
+              key: WS_MAX_CONNECTIONS_PER_IP
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: collaboration-config
+              key: LOG_LEVEL
+        - name: SENTRY_DSN
+          valueFrom:
+            secretKeyRef:
+              name: collaboration-secrets
+              key: SENTRY_DSN
+              optional: true
+        # Performance optimizations for WebSocket connections
+        - name: UV_THREADPOOL_SIZE
+          value: "128"
+        - name: NODE_OPTIONS
+          value: "--max-old-space-size=1024"
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: app-logs
+          mountPath: /app/logs
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 4002
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 4002
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 4002
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
+          successThreshold: 1
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: app-logs
+        emptyDir: {}
+
+      # Session affinity for WebSocket connections
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - websocket-service
+              topologyKey: kubernetes.io/hostname
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: websocket-service
+  namespace: collaboration
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: websocket-service
+  annotations:
+    # AWS Load Balancer configuration for WebSocket
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: "3600"
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+spec:
+  type: LoadBalancer
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 3600
+  ports:
+  - port: 4001
+    targetPort: 4001
+    name: websocket
+    protocol: TCP
+  - port: 4002
+    targetPort: 4002
+    name: metrics
+    protocol: TCP
+  selector:
+    app: websocket-service
+    component: websocket
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: websocket-service-hpa
+  namespace: collaboration
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: websocket-service
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: websocket-service
+  minReplicas: 3
+  maxReplicas: 15
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  # Custom metric for WebSocket connections
+  - type: Pods
+    pods:
+      metric:
+        name: websocket_connections_per_pod
+      target:
+        type: AverageValue
+        averageValue: "500"
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 30
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 3
+        periodSeconds: 60
+      selectPolicy: Max
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: websocket-service-pdb
+  namespace: collaboration
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: websocket-service
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: websocket-service
+      component: websocket

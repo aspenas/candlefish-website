@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { headers } from 'next/headers';
 import "./globals.css";
 import { PWAInstallPrompt } from "@/components/ui/PWAInstallPrompt";
 import { Toaster } from "sonner";
+import { AuthProvider } from "@/components/providers/SessionProvider";
+import { AuthWrapper } from "@/components/auth/AuthWrapper";
 
-const inter = Inter({ subsets: ["latin"] });
+// Use system fonts to avoid network fetch at build time
 
 export const metadata: Metadata = {
   title: {
@@ -101,10 +103,11 @@ export const viewport: Viewport = {
   viewportFit: "cover"
 };
 
-// Service Worker Registration Component
-function PWASetup() {
+// Service Worker Registration Component with nonce support
+function PWASetup({ nonce }: { nonce?: string }) {
   return (
     <script
+      nonce={nonce}
       dangerouslySetInnerHTML={{
         __html: `
           if ('serviceWorker' in navigator && typeof window !== 'undefined') {
@@ -112,8 +115,6 @@ function PWASetup() {
               navigator.serviceWorker
                 .register('/sw.js', { scope: '/' })
                 .then(function (registration) {
-                  console.log('SW registered: ', registration);
-
                   // Check for updates
                   registration.addEventListener('updatefound', () => {
                     const newWorker = registration.installing;
@@ -129,26 +130,22 @@ function PWASetup() {
                     }
                   });
                 })
-                .catch(function (registrationError) {
-                  console.log('SW registration failed: ', registrationError);
-                });
+                .catch(function () {});
             });
           }
 
           // Handle install prompt
           window.addEventListener('beforeinstallprompt', function(e) {
             e.preventDefault();
+            // @ts-ignore
             window.deferredPrompt = e;
           });
 
           // Track PWA install
           window.addEventListener('appinstalled', function() {
-            console.log('PWA was installed');
             if (typeof gtag !== 'undefined') {
-              gtag('event', 'pwa_install', {
-                event_category: 'engagement',
-                event_label: 'PWA Installation'
-              });
+              // @ts-ignore
+              gtag('event', 'pwa_install', { event_category: 'engagement', event_label: 'PWA Installation' });
             }
           });
         `
@@ -162,6 +159,9 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Read nonce from header set by middleware for inline scripts
+  const nonce = headers().get('x-csp-nonce');
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -189,9 +189,13 @@ export default function RootLayout({
         <meta name="format-detection" content="telephone=no, date=no, email=no, address=no" />
       </head>
 
-      <body className={`${inter.className} antialiased`}>
-        {/* Main App Content */}
-        {children}
+      <body className={`antialiased`}>
+        <AuthProvider>
+          <AuthWrapper>
+            {/* Main App Content */}
+            {children}
+          </AuthWrapper>
+        </AuthProvider>
 
         {/* PWA Install Prompt */}
         <PWAInstallPrompt />
@@ -205,12 +209,13 @@ export default function RootLayout({
           duration={4000}
         />
 
-        {/* Service Worker Registration */}
-        <PWASetup />
+        {/* Service Worker Registration with CSP nonce */}
+        <PWASetup nonce={nonce || undefined} />
 
         {/* Performance monitoring (only in production) */}
         {process.env.NODE_ENV === 'production' && (
           <script
+            nonce={nonce || undefined}
             dangerouslySetInnerHTML={{
               __html: `
                 // Performance monitoring

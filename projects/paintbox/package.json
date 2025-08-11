@@ -6,6 +6,7 @@
     "dev": "NODE_ENV=development ts-node -r tsconfig-paths/register --project tsconfig.server.json server/websocket-server.ts",
     "dev:next": "next dev --turbopack",
     "build": "NODE_OPTIONS='--max-old-space-size=8192' next build",
+    "build:deploy": "NODE_OPTIONS='--max-old-space-size=8192' SKIP_STATIC_OPTIMIZATION=1 next build",
     "export": "next export",
     "build:full": "next build && npx tsc server/websocket-server.ts --outDir dist --esModuleInterop --module commonjs",
     "build:websocket": "npx tsc server/websocket-server.ts --outDir dist --esModuleInterop --module commonjs",
@@ -31,6 +32,9 @@
     "test:salesforce": "ts-node scripts/test-salesforce.ts",
     "test:salesforce:integration": "ts-node -r tsconfig-paths/register scripts/test-salesforce-integration.ts",
     "test:calculations": "ts-node scripts/test-calculations.ts",
+    "test:excel-basic": "tsx scripts/test-excel-engine-basic.ts",
+    "test:excel-integration": "tsx scripts/test-excel-engine-integration.ts",
+    "test:excel-parity": "tsx scripts/excel-parity-test.ts",
     "test:all": "npm run test && npm run test:e2e && npm run test:load",
     "sync:start": "ts-node scripts/start-sync.ts",
     "sync:stop": "ts-node scripts/stop-sync.ts",
@@ -47,6 +51,7 @@
     "@anthropic-ai/sdk": "^0.57.0",
     "@apollo/client": "^3.13.9",
     "@aws-sdk/client-secrets-manager": "^3.857.0",
+    "graphql": "^16.10.0",
     "@bull-board/express": "^6.12.0",
     "@heroicons/react": "^2.1.5",
     "@infisical/sdk": "^4.0.4",
@@ -115,7 +120,10 @@
     "winston-daily-rotate-file": "^5.0.0",
     "xlsx-populate": "^1.21.0",
     "zod": "^4.0.14",
-    "zustand": "^5.0.7"
+    "isomorphic-dompurify": "2.15.0",
+    "zustand": "^5.0.7",
+    "next-auth": "^4.24.10",
+    "@auth/prisma-adapter": "^1.7.4"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

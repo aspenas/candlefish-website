@@ -229,10 +229,28 @@ GET /api/v1/salesforce/search?q=John+Doe
 
 ## 🚀 Deployment
 
-### Vercel (Recommended)
+### Staging on Fly.io (Canonical)
+
+Requirements:
+
+- App: `paintbox-staging`
+- Health path: `/api/health` (10s interval, 60s grace)
+- Node 20
+
+Secrets (stored in AWS Secrets Manager and synced to Fly):
+
+- `NEXT_PUBLIC_COMPANYCAM_API_TOKEN`
+- `SALESFORCE_CLIENT_ID`, `SALESFORCE_CLIENT_SECRET`, `SALESFORCE_USERNAME`, `SALESFORCE_PASSWORD`, `SALESFORCE_SECURITY_TOKEN`
+- `DATABASE_URL`, `REDIS_URL`
+- `SENTRY_DSN`
+- `JWT_PUBLIC_KEY`, `JWT_PRIVATE_KEY`
+- `SLACK_ALERTS_WEBHOOK_URL`
+
+Deploy:
 
 ```bash
-./scripts/deploy.sh vercel
+flyctl apps create paintbox-staging || true
+flyctl deploy -c fly.toml --remote-only
 ```
 
 ### Docker
@@ -264,6 +282,15 @@ Recommended:
 - `REDIS_URL` - Redis for caching
 - `SENTRY_DSN` - Error tracking
 - `AWS_SECRETS_MANAGER_SECRET_NAME` - For secure secrets
+- `JWT_PUBLIC_KEY`, `JWT_PRIVATE_KEY` - RS256 keys stored in AWS Secrets
+- `SLACK_ALERTS_WEBHOOK_URL` - Slack notifications for alerts
+
+### Security Notes
+
+- RS256 keys are persisted via AWS Secrets Manager; no ephemeral fallback.
+- CSP hardened with per-request nonces; no `unsafe-inline`/`unsafe-eval`.
+- Input sanitization added to `POST /api/v1/build/validate`.
+- Rate limiter uses in-memory fallback when Redis unavailable; fails-closed on algorithm decisions.
 
 ## 🧪 Testing
 

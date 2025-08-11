@@ -13,6 +13,11 @@ provider:
     SECRETS_PREFIX: ${self:service}-${self:provider.stage}
     ENABLE_CONTRACTOR_ACCESS: true
     MAX_TEAM_SIZE: 20
+    AWS_REGION: ${self:provider.region}
+    CORS_ORIGIN: "*"
+    NODE_ENV: production
+    GRAPHQL_ENDPOINT: /graphql
+    WEBSOCKET_ENDPOINT: !Ref WebSocketApi
 
   iam:
     role:
@@ -45,6 +50,30 @@ provider:
             - dynamodb:DeleteItem
           Resource:
             - arn:aws:dynamodb:${self:provider.region}:*:table/${self:service}-${self:provider.stage}-*
+        - Effect: Allow
+          Action:
+            - dax:GetItem
+            - dax:PutItem
+            - dax:UpdateItem
+            - dax:DeleteItem
+            - dax:Query
+            - dax:Scan
+            - dax:BatchGetItem
+            - dax:BatchWriteItem
+          Resource:
+            - arn:aws:dax:${self:provider.region}:*:cache/${self:service}-${self:provider.stage}-dax
+        - Effect: Allow
+          Action:
+            - execute-api:ManageConnections
+          Resource:
+            - arn:aws:execute-api:${self:provider.region}:*:*/prod/*/*
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource:
+            - arn:aws:logs:${self:provider.region}:*:log-group:/aws/lambda/*
 
 functions:
   # Health check - Always free tier
@@ -53,6 +82,41 @@ functions:
     events:
       - http:
           path: /health
+          method: get
+          cors: true
+
+  # GraphQL API - Main endpoint for all GraphQL operations
+  graphql:
+    handler: src/handlers/graphql.handler
+    memorySize: 1024  # Higher memory for GraphQL processing
+    timeout: 30
+    reservedConcurrency: 50  # Allow up to 50 concurrent GraphQL requests
+    events:
+      - http:
+          path: /graphql
+          method: post
+          cors: true
+      - http:
+          path: /graphql
+          method: get
+          cors: true
+    environment:
+      USERS_TABLE: ${self:service}-${self:provider.stage}-users
+      CONTRACTORS_TABLE: ${self:service}-${self:provider.stage}-contractors
+      REFRESH_TOKENS_TABLE: ${self:service}-${self:provider.stage}-refresh-tokens
+      AUDIT_TABLE: ${self:service}-${self:provider.stage}-audit
+      CONFIG_TABLE: ${self:service}-${self:provider.stage}-config
+      DAX_ENDPOINT: !GetAtt DaxCluster.ClusterDiscoveryEndpoint
+      CACHE_TTL: 300
+      MAX_QUERY_COMPLEXITY: 1000
+      MAX_QUERY_DEPTH: 10
+
+  # GraphQL Health Check
+  graphqlHealth:
+    handler: src/handlers/graphql.health
+    events:
+      - http:
+          path: /graphql/health
           method: get
           cors: true
 
@@ -214,6 +278,31 @@ functions:
           rate: rate(1 day)
           description: Clean up expired contractor access
 
+  # WebSocket Functions for GraphQL Subscriptions
+  websocketConnect:
+    handler: src/handlers/websocket.connect
+    events:
+      - websocket:
+          route: $connect
+
+  websocketDisconnect:
+    handler: src/handlers/websocket.disconnect
+    events:
+      - websocket:
+          route: $disconnect
+
+  websocketMessage:
+    handler: src/handlers/websocket.message
+    events:
+      - websocket:
+          route: $default
+
+  websocketPing:
+    handler: src/handlers/websocket.ping
+    events:
+      - websocket:
+          route: ping
+
 resources:
   Resources:
     # DynamoDB Tables (Pay-per-request for cost optimization)
@@ -351,6 +440,88 @@ resources:
         SSESpecification:
           SSEEnabled: true
 
+    # DynamoDB DAX Cluster for caching
+    DaxSubnetGroup:
+      Type: AWS::DAX::SubnetGroup
+      Properties:
+        SubnetGroupName: ${self:service}-${self:provider.stage}-dax-subnet-group
+        Description: DAX subnet group for GraphQL caching
+        SubnetIds:
+          - !Ref DaxSubnet1
+          - !Ref DaxSubnet2
+
+    DaxCluster:
+      Type: AWS::DAX::Cluster
+      Properties:
+        ClusterName: ${self:service}-${self:provider.stage}-dax
+        Description: DAX cluster for GraphQL caching
+        NodeType: dax.t3.small  # Cost-optimized node type
+        ReplicationFactor: 1  # Single node for cost savings
+        IAMRoleARN: !GetAtt DaxServiceRole.Arn
+        SubnetGroupName: !Ref DaxSubnetGroup
+        SecurityGroupIds:
+          - !Ref DaxSecurityGroup
+
+    DaxServiceRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: dax.amazonaws.com
+              Action: sts:AssumeRole
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+
+    DaxSecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Security group for DAX cluster
+        VpcId: !Ref DaxVPC
+        SecurityGroupIngress:
+          - IpProtocol: tcp
+            FromPort: 8111
+            ToPort: 8111
+            SourceSecurityGroupId: !Ref DaxClientSecurityGroup
+
+    DaxVPC:
+      Type: AWS::EC2::VPC
+      Properties:
+        CidrBlock: 10.0.0.0/16
+        EnableDnsHostnames: true
+        EnableDnsSupport: true
+
+    DaxSubnet1:
+      Type: AWS::EC2::Subnet
+      Properties:
+        VpcId: !Ref DaxVPC
+        CidrBlock: 10.0.1.0/24
+        AvailabilityZone: !Select [0, !GetAZs ""]
+
+    DaxSubnet2:
+      Type: AWS::EC2::Subnet
+      Properties:
+        VpcId: !Ref DaxVPC
+        CidrBlock: 10.0.2.0/24
+        AvailabilityZone: !Select [1, !GetAZs ""]
+
+    DaxClientSecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Security group for DAX clients
+        VpcId: !Ref DaxVPC
+
+    # WebSocket API for GraphQL Subscriptions
+    WebSocketApi:
+      Type: AWS::ApiGatewayV2::Api
+      Properties:
+        Name: ${self:service}-${self:provider.stage}-websocket
+        ProtocolType: WEBSOCKET
+        RouteSelectionExpression: $request.body.action
+        Description: WebSocket API for GraphQL subscriptions
+
     # S3 Bucket for static hosting (frontend)
     WebsiteBucket:
       Type: AWS::S3::Bucket
@@ -416,10 +587,44 @@ resources:
       Export:
         Name: ${self:service}-${self:provider.stage}-bucket
 
-plugins:
-  - serverless-webpack
-  - serverless-offline
-  - serverless-dynamodb-local
+    GraphQLEndpoint:
+      Description: GraphQL endpoint URL
+      Value:
+        Fn::Join:
+          - ''
+          - - 'https://'
+            - Ref: ApiGatewayRestApi
+            - '.execute-api.'
+            - ${self:provider.region}
+            - '.amazonaws.com/'
+            - ${self:provider.stage}
+            - '/graphql'
+      Export:
+        Name: ${self:service}-${self:provider.stage}-graphql-endpoint
+
+    WebSocketEndpoint:
+      Description: WebSocket API endpoint for GraphQL subscriptions
+      Value:
+        Fn::Join:
+          - ''
+          - - 'wss://'
+            - Ref: WebSocketApi
+            - '.execute-api.'
+            - ${self:provider.region}
+            - '.amazonaws.com/'
+            - ${self:provider.stage}
+      Export:
+        Name: ${self:service}-${self:provider.stage}-websocket-endpoint
+
+    DaxEndpoint:
+      Description: DAX cluster endpoint
+      Value: !GetAtt DaxCluster.ClusterDiscoveryEndpoint
+      Export:
+        Name: ${self:service}-${self:provider.stage}-dax-endpoint
+
+# plugins:
+#   - serverless-webpack
+#   - serverless-offline
 
 custom:
   webpack:
@@ -431,11 +636,3 @@ custom:
   serverless-offline:
     httpPort: 3000
     lambdaPort: 3001
-
-  dynamodb:
-    stages:
-      - dev
-    start:
-      port: 8000
-      inMemory: true
-      migrate: true

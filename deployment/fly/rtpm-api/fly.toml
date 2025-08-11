@@ -2,32 +2,47 @@ app = "rtpm-api-candlefish"
 primary_region = "sjc"
 
 [build]
-  dockerfile = "../../../apps/rtpm-api/Dockerfile"
-  context = "../../../apps/rtpm-api"
+  dockerfile = "Dockerfile"
 
 [env]
   ENVIRONMENT = "production"
+  PY_ENV = "production"
   LOG_LEVEL = "INFO"
+  PYTHONPATH = "/app/src"
+  # CORS origins for production - will be set via secrets
+  CORS_ORIGINS = "https://dashboard.candlefish.ai,https://candlefish.ai,https://www.candlefish.ai"
 
-[[services]]
+[http_service]
   internal_port = 8000
-  protocol = "tcp"
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
 
-  [[services.ports]]
-    handlers = ["http"]
-    port = 80
-  [[services.ports]]
-    handlers = ["tls", "http"]
-    port = 443
-
-  [services.concurrency]
+  [http_service.concurrency]
     type = "requests"
     soft_limit = 50
     hard_limit = 100
 
-  [[services.http_checks]]
+  [[http_service.checks]]
     interval = "10s"
     timeout = "2s"
     method = "get"
     path = "/health"
     protocol = "http"
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    method = "get"
+    path = "/api/v1/status"
+    protocol = "http"
+
+[processes]
+  app = "gunicorn src.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --workers 2 --worker-connections 1000 --max-requests 1000 --max-requests-jitter 50 --preload --access-logfile - --error-logfile - --log-level info"
+
+[[vm]]
+  memory = '512mb'
+  cpu_kind = 'shared'
+  cpus = 1

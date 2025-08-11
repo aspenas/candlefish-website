@@ -1,0 +1,53 @@
+apiVersion: v2
+name: candlefish-collaboration
+description: A Helm chart for Candlefish Real-time Collaboration System
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+home: https://candlefish.ai
+sources:
+  - https://github.com/candlefish/collaboration-system
+maintainers:
+  - name: Candlefish Engineering
+    email: engineering@candlefish.ai
+    url: https://candlefish.ai
+keywords:
+  - collaboration
+  - real-time
+  - editor
+  - websocket
+  - graphql
+  - crdt
+annotations:
+  category: Collaboration
+  images: |
+    - name: graphql-api
+      image: candlefish/collaboration-graphql-api:1.0.0
+    - name: websocket-service
+      image: candlefish/collaboration-websocket:1.0.0
+    - name: document-service
+      image: candlefish/collaboration-document:1.0.0
+    - name: collaboration-editor
+      image: candlefish/collaboration-editor:1.0.0
+    - name: postgres
+      image: postgres:15-alpine
+    - name: redis
+      image: redis:7.2-alpine
+
+dependencies:
+  - name: postgresql
+    version: "12.12.10"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: redis
+    version: "18.1.5"
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+  - name: prometheus
+    version: "25.1.0"
+    repository: https://prometheus-community.github.io/helm-charts
+    condition: monitoring.prometheus.enabled
+  - name: grafana
+    version: "7.0.11"
+    repository: https://grafana.github.io/helm-charts
+    condition: monitoring.grafana.enabled

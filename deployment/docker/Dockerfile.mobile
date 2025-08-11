@@ -1,0 +1,128 @@
+# React Native mobile app builder
+FROM node:18-bullseye AS base
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    openjdk-11-jdk \
+    android-sdk \
+    unzip \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set JAVA_HOME
+ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+
+# Install Android SDK
+ENV ANDROID_HOME=/opt/android-sdk
+ENV PATH=${PATH}:${ANDROID_HOME}/tools:${ANDROID_HOME}/tools/bin:${ANDROID_HOME}/platform-tools
+
+# Download Android SDK
+RUN wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O android-sdk.zip && \
+    mkdir -p ${ANDROID_HOME}/cmdline-tools && \
+    unzip -q android-sdk.zip -d ${ANDROID_HOME}/cmdline-tools && \
+    mv ${ANDROID_HOME}/cmdline-tools/cmdline-tools ${ANDROID_HOME}/cmdline-tools/latest && \
+    rm android-sdk.zip
+
+# Accept Android SDK licenses
+RUN yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses
+
+# Install required Android SDK packages
+RUN ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager \
+    "platform-tools" \
+    "platforms;android-33" \
+    "build-tools;33.0.0" \
+    "extras;android;m2repository" \
+    "extras;google;m2repository"
+
+# Development stage
+FROM base AS development
+WORKDIR /app
+
+# Install React Native CLI and Expo CLI
+RUN npm install -g @react-native-community/cli expo-cli
+
+# Copy package files
+COPY package.json package-lock.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Expose Metro bundler port
+EXPOSE 8081
+
+# Start Metro bundler
+CMD ["npm", "start"]
+
+# Build stage for Android
+FROM base AS build-android
+WORKDIR /app
+
+# Copy dependencies and source
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
+
+# Build Android APK
+RUN cd android && ./gradlew assembleRelease
+
+# Extract APK
+RUN mkdir -p /app/dist && \
+    cp android/app/build/outputs/apk/release/app-release.apk /app/dist/
+
+# iOS build stage (requires macOS runner in CI)
+FROM base AS build-ios
+WORKDIR /app
+
+# Note: iOS builds require macOS environment
+# This stage is for reference and would run on macOS runners
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
+
+# Install iOS dependencies (would require CocoaPods)
+# RUN cd ios && pod install
+
+# Build iOS app (would require Xcode)
+# RUN xcodebuild -workspace ios/CandlefishMobile.xcworkspace \
+#     -scheme CandlefishMobile \
+#     -configuration Release \
+#     -destination generic/platform=iOS \
+#     -archivePath build/CandlefishMobile.xcarchive \
+#     archive
+
+# Test stage
+FROM development AS test
+WORKDIR /app
+
+# Run tests
+RUN npm test -- --watchAll=false --coverage
+
+# Run linting
+RUN npm run lint
+
+# Run type checking
+RUN npm run typecheck
+
+# Production artifact stage
+FROM alpine:latest AS artifacts
+
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+WORKDIR /app
+
+# Copy built artifacts
+COPY --from=build-android /app/dist/ ./android/
+# COPY --from=build-ios /app/build/ ./ios/
+
+# Create metadata file
+RUN echo "Built at: $(date)" > build-info.txt
+
+# Health check endpoint for container orchestration
+EXPOSE 8080
+CMD ["sh", "-c", "echo 'Mobile artifacts ready' && sleep infinity"]

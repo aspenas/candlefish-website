@@ -46,6 +46,13 @@ const SecretsSchema = z.object({
       dsn: z.string().url(),
     })
     .optional(),
+  // New: JWT keys for RS256 auth
+  jwt: z
+    .object({
+      publicKey: z.string().min(1),
+      privateKey: z.string().min(1),
+    })
+    .optional(),
   encryption: z
     .object({
       key: z.string().min(32),
@@ -119,17 +126,22 @@ export class SecretsManagerService {
 
       // Check Redis cache
       if (!forceRefresh && this.cache) {
-        const cached = await this.cache.get(this.cacheKey);
-        if (cached) {
-          logger.debug("Returning cached secrets");
-          this.secrets = JSON.parse(cached);
-          return this.secrets!;
+        try {
+          const cached = await this.cache.get(this.cacheKey);
+          if (cached) {
+            logger.debug("Returning cached secrets");
+            this.secrets = SecretsSchema.parse(JSON.parse(cached));
+            return this.secrets!;
+          }
+        } catch (cacheError) {
+          logger.warn("Failed to retrieve secrets from cache", { error: cacheError });
         }
       }
 
       // Fetch from AWS Secrets Manager
       logger.info("Fetching secrets from AWS Secrets Manager", {
         secretName: this.secretName,
+        region: this.client.config.region,
       });
 
       const command = new GetSecretValueCommand({ SecretId: this.secretName });
@@ -144,29 +156,44 @@ export class SecretsManagerService {
       // Validate and parse secrets
       this.secrets = SecretsSchema.parse(rawSecrets);
 
-      // Cache in Redis
+      // Cache in Redis (with error handling)
       if (this.cache) {
-        await this.cache.set(
-          this.cacheKey,
-          JSON.stringify(this.secrets),
-          this.cacheTTL,
-        );
+        try {
+          await this.cache.set(
+            this.cacheKey,
+            JSON.stringify(this.secrets),
+            this.cacheTTL,
+          );
+        } catch (cacheError) {
+          logger.warn("Failed to cache secrets", { error: cacheError });
+        }
       }
 
       logger.info("Successfully fetched and cached secrets");
       return this.secrets;
     } catch (error) {
       if (error instanceof ResourceNotFoundException) {
-        logger.warn("Secret not found, creating new secret", {
+        logger.warn("Secret not found, attempting to create new secret", {
           secretName: this.secretName,
         });
-        await this.createDefaultSecret();
-        return this.getSecrets();
+
+        // Only create default secret in development
+        if (process.env.NODE_ENV !== "production") {
+          await this.createDefaultSecret();
+          return this.getSecrets();
+        } else {
+          logger.error("Secret not found in production - manual creation required");
+          throw new Error(`Production secret not found: ${this.secretName}`);
+        }
       }
 
-      logger.error("Failed to fetch secrets", { error });
+      logger.error("Failed to fetch secrets from AWS Secrets Manager", {
+        error: error instanceof Error ? error.message : error,
+        secretName: this.secretName,
+      });
 
-      // Fallback to environment variables
+      // Fallback to environment variables with warning
+      logger.warn("Falling back to environment variables for secrets");
       return this.getSecretsFromEnv();
     }
   }
@@ -194,6 +221,7 @@ export class SecretsManagerService {
       redis: {
         url: process.env.REDIS_URL || "redis://localhost:6379",
       },
+      // JWT keys intentionally omitted by default; set via CI/Secrets rotation
     };
 
     try {
@@ -236,6 +264,9 @@ export class SecretsManagerService {
       redis: {
         url: process.env.REDIS_URL || "redis://localhost:6379",
       },
+      jwt: (process.env.JWT_PUBLIC_KEY && process.env.JWT_PRIVATE_KEY)
+        ? { publicKey: process.env.JWT_PUBLIC_KEY, privateKey: process.env.JWT_PRIVATE_KEY }
+        : undefined,
     };
   }
 
@@ -268,6 +299,29 @@ export class SecretsManagerService {
     logger.info("Rotating secret", { secretType });
     // Implement secret rotation logic here
     // This would involve generating new credentials and updating both AWS and the service
+  }
+
+  /**
+   * Store JWT keypair in AWS Secrets Manager under the `jwt` object, merging with existing secrets.
+   */
+  async storeJwtKeys(publicKey: string, privateKey: string): Promise<void> {
+    const current = await this.getSecrets();
+    const updated: Secrets = {
+      ...current,
+      jwt: { publicKey, privateKey },
+    };
+
+    const command = new UpdateSecretCommand({
+      SecretId: this.secretName,
+      SecretString: JSON.stringify(updated),
+    });
+    await this.client.send(command);
+
+    if (this.cache) {
+      await this.cache.del(this.cacheKey);
+    }
+    this.secrets = null;
+    logger.info("Persisted JWT keypair to AWS Secrets Manager");
   }
 }
 

@@ -16,6 +16,7 @@
     "preview:serve": "vite preview --outDir dist --port 4173 --strictPort"
   },
   "dependencies": {
+    "@candlefish-ai/ui-components": "^1.0.0",
     "@react-spring/web": "^10.0.1",
     "@types/three": "^0.178.1",
     "class-variance-authority": "^0.7.0",

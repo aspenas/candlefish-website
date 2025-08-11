@@ -1,7 +1,6 @@
 'use client'
 
 import React from 'react'
-import PaintboxLogo from '@/components/ui/PaintboxLogo'
 
 export default function Error({
   error,
@@ -14,7 +13,8 @@ export default function Error({
     <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-gray-50">
       <div className="text-center max-w-md">
         <div className="mb-8">
-          <PaintboxLogo size="large" showText className="flex flex-col items-center space-y-3" />
+          <div className="text-6xl mb-4">⚠️</div>
+          <h1 className="text-2xl font-bold text-gray-900">Paintbox</h1>
         </div>
         <h2 className="mb-4 text-2xl font-bold text-gray-900">
           Something went wrong!

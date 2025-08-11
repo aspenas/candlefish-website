@@ -1,0 +1,145 @@
+# Candlefish AI Database Backup Configuration
+# Automated backup strategy for PostgreSQL and Redis on Fly.io
+
+version: "1.0"
+project: "candlefish-ai-collaboration"
+
+# PostgreSQL Backup Configuration
+postgresql:
+  primary:
+    app_name: "candlefish-postgres"
+    database: "candlefish_collaboration"
+    host: "candlefish-postgres.internal"
+    port: 5432
+
+    # Backup schedule (cron format)
+    schedules:
+      full_backup: "0 2 * * 0"    # Weekly full backup on Sundays at 2 AM
+      incremental: "0 2 * * 1-6"  # Daily incremental backups at 2 AM
+      point_in_time: "*/15 * * * *" # WAL archiving every 15 minutes
+
+    # Retention policies
+    retention:
+      full_backups: 30        # Keep full backups for 30 days
+      incremental: 7          # Keep incremental for 7 days
+      point_in_time: 3        # Keep WAL files for 3 days
+
+    # Backup destinations
+    destinations:
+      primary: "s3://candlefish-backups/postgresql/"
+      secondary: "s3://candlefish-backups-replica/postgresql/"
+
+    # Compression and encryption
+    compression: "gzip"
+    encryption: "aes256"
+
+    # Backup validation
+    validate_restore: true
+    test_restore_schedule: "0 4 * * 0"  # Test restore weekly
+
+    # Performance settings
+    parallel_jobs: 2
+    bandwidth_limit: "50MB/s"
+
+    # Monitoring
+    alerts:
+      backup_failure: true
+      backup_duration_threshold: "30m"
+      storage_usage_threshold: "85%"
+
+# Redis Backup Configuration
+redis:
+  primary:
+    app_name: "candlefish-redis"
+    host: "candlefish-redis.internal"
+    port: 6379
+
+    # Backup schedule
+    schedules:
+      rdb_snapshot: "0 3 * * *"   # Daily RDB snapshot at 3 AM
+      aof_backup: "0 */6 * * *"   # AOF backup every 6 hours
+
+    # Retention policies
+    retention:
+      rdb_snapshots: 7        # Keep RDB snapshots for 7 days
+      aof_backups: 3          # Keep AOF backups for 3 days
+
+    # Backup destinations
+    destinations:
+      primary: "s3://candlefish-backups/redis/"
+
+    # Compression and encryption
+    compression: "gzip"
+    encryption: "aes256"
+
+    # Performance settings
+    bandwidth_limit: "25MB/s"
+
+    # Monitoring
+    alerts:
+      backup_failure: true
+      backup_duration_threshold: "10m"
+      memory_usage_threshold: "90%"
+
+# Backup Scripts Configuration
+scripts:
+  postgresql:
+    backup_script: "/app/scripts/backup-postgresql.sh"
+    restore_script: "/app/scripts/restore-postgresql.sh"
+    validate_script: "/app/scripts/validate-postgresql-backup.sh"
+
+  redis:
+    backup_script: "/app/scripts/backup-redis.sh"
+    restore_script: "/app/scripts/restore-redis.sh"
+    validate_script: "/app/scripts/validate-redis-backup.sh"
+
+# S3 Configuration
+storage:
+  s3:
+    primary_bucket: "candlefish-backups"
+    replica_bucket: "candlefish-backups-replica"
+    region: "us-west-2"
+    storage_class: "STANDARD_IA"  # Infrequent Access for cost optimization
+    lifecycle_policy:
+      transition_to_glacier: 90   # Move to Glacier after 90 days
+      delete_after: 2555          # Delete after 7 years (compliance)
+
+# Monitoring and Alerting
+monitoring:
+  slack:
+    webhook_url: "${SLACK_WEBHOOK_URL}"
+    channel: "#ops-alerts"
+
+  email:
+    smtp_host: "${SMTP_HOST}"
+    smtp_port: 587
+    recipients:
+      - "ops@candlefish.ai"
+      - "admin@candlefish.ai"
+
+  metrics:
+    prometheus_endpoint: "http://prometheus.internal:9090"
+    grafana_dashboard: "candlefish-backup-status"
+
+  healthchecks:
+    backup_success_url: "${HEALTHCHECKS_BACKUP_URL}"
+    restore_test_url: "${HEALTHCHECKS_RESTORE_URL}"
+
+# Disaster Recovery Configuration
+disaster_recovery:
+  rto: "4h"    # Recovery Time Objective: 4 hours
+  rpo: "15m"   # Recovery Point Objective: 15 minutes
+
+  recovery_locations:
+    primary: "sjc"     # San Jose
+    secondary: "iad"   # Washington D.C.
+
+  automated_failover:
+    enabled: true
+    health_check_interval: "30s"
+    failure_threshold: 3
+
+  recovery_procedures:
+    postgresql: "/docs/recovery/postgresql-recovery.md"
+    redis: "/docs/recovery/redis-recovery.md"
+    application: "/docs/recovery/application-recovery.md"
