@@ -210,7 +210,8 @@ jobs:
           # Generate cache key
           cache_key="${{ github.sha }}-${ENVIRONMENT}-$(date +%Y%m%d)"
 
-          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+          # Output as single line JSON
+          echo "matrix=$(echo $matrix | jq -c .)" >> $GITHUB_OUTPUT
           echo "projects=${project_list[*]}" >> $GITHUB_OUTPUT
           echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
           echo "cache_key=$cache_key" >> $GITHUB_OUTPUT
@@ -768,12 +769,13 @@ jobs:
           fi
 
       - name: Send Slack notification
-        if: always()
+        if: always() && env.SLACK_WEBHOOK != ''
         uses: 8398a7/action-slack@v3
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
         with:
           status: ${{ job.status }}
           text: |
             Candlefish Deployment ${{ needs.deploy.result == 'success' && '✅' || '❌' }}
             Environment: ${{ needs.project-discovery.outputs.environment }}
             Projects: ${{ needs.project-discovery.outputs.projects }}
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
