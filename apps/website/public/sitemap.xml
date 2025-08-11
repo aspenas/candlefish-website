@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+  
+  <!-- Homepage -->
+  <url>
+    <loc>https://candlefish.ai/</loc>
+    <lastmod>2025-08-11</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  
+  <!-- V2 Homepage (A/B Test) -->
+  <url>
+    <loc>https://candlefish.ai/v2</loc>
+    <lastmod>2025-08-11</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <!-- V1 Homepage (A/B Test) -->
+  <url>
+    <loc>https://candlefish.ai/v1</loc>
+    <lastmod>2025-08-11</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <!-- About Page (when created) -->
+  <url>
+    <loc>https://candlefish.ai/about</loc>
+    <lastmod>2025-08-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Contact Page (when created) -->
+  <url>
+    <loc>https://candlefish.ai/contact</loc>
+    <lastmod>2025-08-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Services -->
+  <url>
+    <loc>https://candlefish.ai/services</loc>
+    <lastmod>2025-08-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Case Studies / Projects -->
+  <url>
+    <loc>https://candlefish.ai/projects</loc>
+    <lastmod>2025-08-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  
+  <!-- Privacy Policy -->
+  <url>
+    <loc>https://candlefish.ai/privacy</loc>
+    <lastmod>2025-08-11</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  
+  <!-- Terms of Service -->
+  <url>
+    <loc>https://candlefish.ai/terms</loc>
+    <lastmod>2025-08-11</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+</urlset>
