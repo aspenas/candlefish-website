@@ -14,15 +14,15 @@ sync_secret() {
     local aws_secret_name=$1
     local github_secret_name=$2
     local description=$3
-    
+
     echo "📦 Syncing $github_secret_name..."
-    
+
     # Try to get secret from AWS
     secret_value=$(aws secretsmanager get-secret-value \
         --secret-id "$aws_secret_name" \
         --query SecretString \
         --output text 2>/dev/null || echo "")
-    
+
     if [ -n "$secret_value" ]; then
         echo "$secret_value" | gh secret set "$github_secret_name"
         echo "✅ $github_secret_name synced from AWS"

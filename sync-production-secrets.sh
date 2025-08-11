@@ -13,15 +13,15 @@ echo ""
 sync_secret() {
     local aws_secret_name=$1
     local github_secret_name=$2
-    
+
     echo -n "📦 Syncing $github_secret_name... "
-    
+
     # Try to get secret from AWS
     secret_value=$(aws secretsmanager get-secret-value \
         --secret-id "$aws_secret_name" \
         --query SecretString \
         --output text 2>/dev/null || echo "")
-    
+
     if [ -n "$secret_value" ]; then
         # Check if it's JSON and extract specific field if needed
         if [[ "$secret_value" == "{"* ]]; then
@@ -31,7 +31,7 @@ sync_secret() {
                 secret_value="$extracted"
             fi
         fi
-        
+
         echo "$secret_value" | gh secret set "$github_secret_name" 2>/dev/null && echo "✅" || echo "⚠️ (already set or error)"
     else
         echo "❌ (not found)"
@@ -60,7 +60,7 @@ sync_secret "candlefish/upstash-redis-rest-token" "UPSTASH_REDIS_TOKEN"
 
 # Deployment platforms
 sync_secret "candlefish/vercel" "VERCEL_TOKEN"
-sync_secret "candlefish/netlify" "NETLIFY_AUTH_TOKEN" 
+sync_secret "candlefish/netlify" "NETLIFY_AUTH_TOKEN"
 sync_secret "netlify/candlefish-deploy-key" "NETLIFY_DEPLOY_KEY"
 sync_secret "candlefish/fly-api-token" "FLY_API_TOKEN"
 sync_secret "candlefish/expo-token" "EXPO_TOKEN"

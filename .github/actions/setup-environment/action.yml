@@ -19,6 +19,14 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    # Setup pnpm first (required for Node.js caching)
+    - name: Setup pnpm
+      if: inputs.project-type != 'python-only'
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8.15.6
+        run_install: false
+
     # Node.js setup with caching
     - name: Setup Node.js
       if: inputs.project-type != 'python-only'
@@ -27,13 +35,6 @@ runs:
         node-version: ${{ inputs.node-version }}
         cache: 'pnpm'
         cache-dependency-path: '**/pnpm-lock.yaml'
-
-    - name: Setup pnpm
-      if: inputs.project-type != 'python-only'
-      uses: pnpm/action-setup@v4
-      with:
-        version: 9
-        run_install: false
 
     # Python setup with caching
     - name: Setup Python
