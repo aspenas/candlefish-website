@@ -37,7 +37,9 @@ jobs:
           sessions='${{ github.event.inputs.sessions }}'
           # Create proper JSON format with compact output
           matrix=$(echo "[$(seq -s, 1 $sessions)]" | jq -c '{session: .}')
-          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+          echo "matrix<<EOF" >> $GITHUB_OUTPUT
+          echo "$matrix" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
           echo "Generated matrix: $matrix"
 
   parallel-claude:

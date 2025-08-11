@@ -1,0 +1,759 @@
+name: Unified Candlefish AI Deployment
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  NAMESPACE: candlefish-ai
+  AWS_REGION: us-west-2
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  # Matrix strategy for parallel builds and tests
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      website: ${{ steps.changes.outputs.website }}
+      backend-api: ${{ steps.changes.outputs.backend-api }}
+      analytics: ${{ steps.changes.outputs.analytics }}
+      paintbox: ${{ steps.changes.outputs.paintbox }}
+      brand-portal: ${{ steps.changes.outputs.brand-portal }}
+      mobile: ${{ steps.changes.outputs.mobile }}
+      infrastructure: ${{ steps.changes.outputs.infrastructure }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changes
+        id: changes
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            website:
+              - 'apps/website/**'
+              - 'components/**'
+            backend-api:
+              - 'apps/rtpm-api/**'
+              - 'apps/otter-gateway/**'
+            analytics:
+              - 'apps/analytics-dashboard/**'
+            paintbox:
+              - 'projects/paintbox/**'
+            brand-portal:
+              - 'apps/brand-portal/**'
+            mobile:
+              - 'apps/mobile-dashboard/**'
+            infrastructure:
+              - 'infrastructure/**'
+              - 'deployment/**'
+              - '.github/workflows/**'
+
+  # Security and Quality Gates
+  security-scan:
+    name: Security & Quality Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run CodeQL Analysis
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript, python, typescript
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+      - name: Docker Scout scan
+        uses: docker/scout-action@v1
+        with:
+          command: cves
+          image: local://candlefish-ai:latest
+          format: sarif
+          output: scout-results.sarif
+        continue-on-error: true
+
+  # Test Jobs - Run in parallel for each service
+  test-website:
+    name: Test Website
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.website == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install dependencies
+        run: |
+          cd apps/website
+          pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: |
+          cd apps/website
+          pnpm typecheck
+
+      - name: Lint code
+        run: |
+          cd apps/website
+          pnpm lint
+
+      - name: Run tests
+        run: |
+          cd apps/website
+          pnpm test --coverage
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: apps/website/coverage/lcov.info
+          flags: website
+          name: website-coverage
+
+  test-backend-api:
+    name: Test Backend APIs
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.backend-api == 'true'
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          cd apps/rtpm-api
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-asyncio
+
+      - name: Run database migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+        run: |
+          cd apps/rtpm-api
+          python -c "print('Database migrations placeholder')"
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379
+          TESTING: true
+        run: |
+          cd apps/rtpm-api
+          pytest --cov=src --cov-report=xml --cov-report=html -v
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: apps/rtpm-api/coverage.xml
+          flags: backend
+          name: backend-coverage
+
+  test-analytics:
+    name: Test Analytics Dashboard
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.analytics == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install dependencies
+        run: |
+          cd apps/analytics-dashboard
+          pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: |
+          cd apps/analytics-dashboard
+          pnpm test --coverage
+
+  test-paintbox:
+    name: Test Paintbox Service
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.paintbox == 'true'
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: paintbox_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install dependencies
+        run: |
+          cd projects/paintbox
+          pnpm install --frozen-lockfile
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/paintbox_test
+          NODE_ENV: test
+        run: |
+          cd projects/paintbox
+          pnpm test --coverage
+
+  # Build Docker Images
+  build-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [security-scan, test-website, test-backend-api, test-analytics, test-paintbox]
+    if: |
+      always() &&
+      (needs.security-scan.result == 'success') &&
+      (needs.test-website.result == 'success' || needs.test-website.result == 'skipped') &&
+      (needs.test-backend-api.result == 'success' || needs.test-backend-api.result == 'skipped') &&
+      (needs.test-analytics.result == 'success' || needs.test-analytics.result == 'skipped') &&
+      (needs.test-paintbox.result == 'success' || needs.test-paintbox.result == 'skipped') &&
+      github.event_name == 'push'
+    outputs:
+      website-image: ${{ steps.meta-website.outputs.tags }}
+      backend-api-image: ${{ steps.meta-backend.outputs.tags }}
+      analytics-image: ${{ steps.meta-analytics.outputs.tags }}
+      paintbox-image: ${{ steps.meta-paintbox.outputs.tags }}
+      brand-portal-image: ${{ steps.meta-brand.outputs.tags }}
+      gateway-image: ${{ steps.meta-gateway.outputs.tags }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Website Frontend
+      - name: Extract Website metadata
+        id: meta-website
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/website-frontend
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Website image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: deployment/docker/Dockerfile.website
+          push: true
+          tags: ${{ steps.meta-website.outputs.tags }}
+          labels: ${{ steps.meta-website.outputs.labels }}
+          cache-from: type=gha,scope=website
+          cache-to: type=gha,mode=max,scope=website
+          platforms: linux/amd64,linux/arm64
+
+      # Backend API
+      - name: Extract Backend API metadata
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/backend-api
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Backend API image
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/rtpm-api
+          file: apps/rtpm-api/Dockerfile
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+          platforms: linux/amd64,linux/arm64
+
+      # Analytics Dashboard
+      - name: Extract Analytics metadata
+        id: meta-analytics
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/analytics-dashboard
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Analytics image
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/analytics-dashboard
+          file: deployment/docker/Dockerfile.analytics
+          push: true
+          tags: ${{ steps.meta-analytics.outputs.tags }}
+          labels: ${{ steps.meta-analytics.outputs.labels }}
+          cache-from: type=gha,scope=analytics
+          cache-to: type=gha,mode=max,scope=analytics
+          platforms: linux/amd64,linux/arm64
+
+      # Paintbox Service
+      - name: Extract Paintbox metadata
+        id: meta-paintbox
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/paintbox-service
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Paintbox image
+        uses: docker/build-push-action@v5
+        with:
+          context: projects/paintbox
+          file: projects/paintbox/Dockerfile.production
+          push: true
+          tags: ${{ steps.meta-paintbox.outputs.tags }}
+          labels: ${{ steps.meta-paintbox.outputs.labels }}
+          cache-from: type=gha,scope=paintbox
+          cache-to: type=gha,mode=max,scope=paintbox
+          platforms: linux/amd64,linux/arm64
+
+      # Brand Portal
+      - name: Extract Brand Portal metadata
+        id: meta-brand
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/brand-portal
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Brand Portal image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: deployment/docker/Dockerfile.brand-portal
+          push: true
+          tags: ${{ steps.meta-brand.outputs.tags }}
+          labels: ${{ steps.meta-brand.outputs.labels }}
+          cache-from: type=gha,scope=brand
+          cache-to: type=gha,mode=max,scope=brand
+          platforms: linux/amd64,linux/arm64
+
+      # API Gateway
+      - name: Extract Gateway metadata
+        id: meta-gateway
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/api-gateway
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Gateway image
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/otter-gateway
+          file: apps/otter-gateway/Dockerfile
+          push: true
+          tags: ${{ steps.meta-gateway.outputs.tags }}
+          labels: ${{ steps.meta-gateway.outputs.labels }}
+          cache-from: type=gha,scope=gateway
+          cache-to: type=gha,mode=max,scope=gateway
+          platforms: linux/amd64,linux/arm64
+
+  # Deploy to Development
+  deploy-dev:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    needs: [detect-changes, build-images]
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment: development
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'v3.13.0'
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name candlefish-dev
+
+      - name: Deploy to Development
+        run: |
+          # Update Helm values with new image tags
+          helm upgrade --install candlefish-dev deployment/helm/candlefish \
+            --namespace candlefish-dev \
+            --create-namespace \
+            --set global.environment=development \
+            --set website.image.tag=${{ needs.build-images.outputs.website-image }} \
+            --set backendApi.image.tag=${{ needs.build-images.outputs.backend-api-image }} \
+            --set analytics.image.tag=${{ needs.build-images.outputs.analytics-image }} \
+            --set paintbox.image.tag=${{ needs.build-images.outputs.paintbox-image }} \
+            --set brandPortal.image.tag=${{ needs.build-images.outputs.brand-portal-image }} \
+            --set gateway.image.tag=${{ needs.build-images.outputs.gateway-image }} \
+            --values deployment/helm/candlefish/values-dev.yaml \
+            --timeout 10m \
+            --wait
+
+      - name: Run smoke tests
+        run: |
+          # Wait for all deployments to be ready
+          kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=candlefish-dev -n candlefish-dev --timeout=600s
+
+          # Run health checks
+          kubectl exec -n candlefish-dev deployment/website -- curl -f http://localhost:3000/api/health || echo "Website health check failed"
+          kubectl exec -n candlefish-dev deployment/backend-api -- curl -f http://localhost:8000/health || echo "Backend health check failed"
+
+  # Deploy to Staging with Blue-Green
+  deploy-staging:
+    name: Deploy to Staging (Blue-Green)
+    runs-on: ubuntu-latest
+    needs: [build-images, deploy-dev]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name candlefish-staging
+
+      - name: Blue-Green Deployment
+        run: |
+          # Determine current active color
+          CURRENT_COLOR=$(kubectl get service website-service -n candlefish-staging -o jsonpath='{.metadata.labels.color}' 2>/dev/null || echo "blue")
+          NEW_COLOR=$([ "$CURRENT_COLOR" = "blue" ] && echo "green" || echo "blue")
+
+          echo "Current color: $CURRENT_COLOR, New color: $NEW_COLOR"
+
+          # Deploy new version with new color
+          helm upgrade --install candlefish-staging-$NEW_COLOR deployment/helm/candlefish \
+            --namespace candlefish-staging \
+            --create-namespace \
+            --set global.environment=staging \
+            --set global.color=$NEW_COLOR \
+            --set website.image.tag=${{ needs.build-images.outputs.website-image }} \
+            --set backendApi.image.tag=${{ needs.build-images.outputs.backend-api-image }} \
+            --set analytics.image.tag=${{ needs.build-images.outputs.analytics-image }} \
+            --set paintbox.image.tag=${{ needs.build-images.outputs.paintbox-image }} \
+            --set brandPortal.image.tag=${{ needs.build-images.outputs.brand-portal-image }} \
+            --set gateway.image.tag=${{ needs.build-images.outputs.gateway-image }} \
+            --values deployment/helm/candlefish/values-staging.yaml \
+            --timeout 15m \
+            --wait
+
+          # Health check new deployment
+          kubectl wait --for=condition=ready pod -l color=$NEW_COLOR -n candlefish-staging --timeout=600s
+
+      - name: Integration Tests
+        run: |
+          # Run comprehensive integration tests
+          cd __tests__/integration
+          npm install
+          npm run test:staging
+
+      - name: Switch Traffic
+        run: |
+          # Update service selectors to point to new color
+          kubectl patch service website-service -n candlefish-staging -p '{"metadata":{"labels":{"color":"'$NEW_COLOR'"}},"spec":{"selector":{"color":"'$NEW_COLOR'"}}}'
+          kubectl patch service backend-api-service -n candlefish-staging -p '{"metadata":{"labels":{"color":"'$NEW_COLOR'"}},"spec":{"selector":{"color":"'$NEW_COLOR'"}}}'
+
+          # Verify traffic switch
+          sleep 30
+          kubectl exec -n candlefish-staging deployment/website-$NEW_COLOR -- curl -f http://localhost:3000/api/health
+
+      - name: Cleanup Old Deployment
+        run: |
+          # Remove old color deployment after successful switch
+          OLD_COLOR=$([ "$NEW_COLOR" = "blue" ] && echo "green" || echo "blue")
+          helm uninstall candlefish-staging-$OLD_COLOR -n candlefish-staging --ignore-not-found
+
+  # Deploy to Production with Canary
+  deploy-production:
+    name: Deploy to Production (Canary)
+    runs-on: ubuntu-latest
+    needs: [build-images, deploy-staging]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name candlefish-prod
+
+      - name: Deploy Canary (10% Traffic)
+        run: |
+          # Deploy canary version with 10% traffic split
+          helm upgrade --install candlefish-canary deployment/helm/candlefish \
+            --namespace candlefish-prod \
+            --create-namespace \
+            --set global.environment=production \
+            --set global.canary=true \
+            --set global.trafficSplit.canary=10 \
+            --set website.image.tag=${{ needs.build-images.outputs.website-image }} \
+            --set backendApi.image.tag=${{ needs.build-images.outputs.backend-api-image }} \
+            --set analytics.image.tag=${{ needs.build-images.outputs.analytics-image }} \
+            --set paintbox.image.tag=${{ needs.build-images.outputs.paintbox-image }} \
+            --set brandPortal.image.tag=${{ needs.build-images.outputs.brand-portal-image }} \
+            --set gateway.image.tag=${{ needs.build-images.outputs.gateway-image }} \
+            --values deployment/helm/candlefish/values-prod.yaml \
+            --timeout 20m \
+            --wait
+
+      - name: Canary Health Monitoring
+        run: |
+          # Monitor canary for 10 minutes
+          for i in {1..20}; do
+            echo "Canary health check iteration $i"
+            kubectl exec -n candlefish-prod deployment/website-canary -- curl -f http://localhost:3000/api/health
+            kubectl exec -n candlefish-prod deployment/backend-api-canary -- curl -f http://localhost:8000/health
+            sleep 30
+          done
+
+      - name: Production Smoke Tests
+        run: |
+          cd __tests__/integration
+          npm run test:production:smoke
+
+      - name: Full Production Rollout
+        run: |
+          # Update main production deployment with gradual traffic shift
+          helm upgrade candlefish-prod deployment/helm/candlefish \
+            --namespace candlefish-prod \
+            --set global.environment=production \
+            --set global.canary=false \
+            --set website.image.tag=${{ needs.build-images.outputs.website-image }} \
+            --set backendApi.image.tag=${{ needs.build-images.outputs.backend-api-image }} \
+            --set analytics.image.tag=${{ needs.build-images.outputs.analytics-image }} \
+            --set paintbox.image.tag=${{ needs.build-images.outputs.paintbox-image }} \
+            --set brandPortal.image.tag=${{ needs.build-images.outputs.brand-portal-image }} \
+            --set gateway.image.tag=${{ needs.build-images.outputs.gateway-image }} \
+            --values deployment/helm/candlefish/values-prod.yaml \
+            --timeout 30m \
+            --wait
+
+      - name: Cleanup Canary
+        run: |
+          helm uninstall candlefish-canary -n candlefish-prod
+
+      - name: Post-deployment Validation
+        run: |
+          # Comprehensive validation
+          kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=candlefish-prod -n candlefish-prod --timeout=600s
+
+          # Performance baseline validation
+          cd __tests__/performance
+          npm run test:baseline:production
+
+  # Rollback on Failure
+  rollback:
+    name: Emergency Rollback
+    runs-on: ubuntu-latest
+    if: failure() && github.ref == 'refs/heads/main'
+    needs: [deploy-production]
+    environment: production
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name candlefish-prod
+
+      - name: Rollback Production
+        run: |
+          # Rollback to previous Helm release
+          helm rollback candlefish-prod -n candlefish-prod
+
+          # Wait for rollback to complete
+          kubectl rollout status deployment/website -n candlefish-prod --timeout=600s
+          kubectl rollout status deployment/backend-api -n candlefish-prod --timeout=600s
+
+      - name: Notify Rollback
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: "🚨 Production deployment failed and was automatically rolled back"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Notifications
+  notify:
+    name: Notify Deployment Status
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [deploy-production]
+    steps:
+      - name: Notify Success
+        if: needs.deploy-production.result == 'success'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          text: "✅ Candlefish AI unified deployment completed successfully"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify Failure
+        if: needs.deploy-production.result == 'failure'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: "❌ Candlefish AI deployment failed"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
