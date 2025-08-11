@@ -13,6 +13,72 @@
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://candlefish.ai" />
     <link rel="icon" type="image/png" href="/logo/candlefish_original.png" />
+    
+    <!-- Additional SEO Meta Tags -->
+    <meta name="author" content="Candlefish AI" />
+    <meta name="keywords" content="AI consulting, business automation, AI transformation, machine learning, enterprise AI, AI implementation, process automation" />
+    <meta name="theme-color" content="#00CED1" />
+    <link rel="apple-touch-icon" href="/logo/candlefish_original.png" />
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Open Graph Additional Tags -->
+    <meta property="og:site_name" content="Candlefish AI" />
+    <meta property="og:locale" content="en_US" />
+    
+    <!-- Twitter Additional Tags -->
+    <meta name="twitter:site" content="@candlefishai" />
+    <meta name="twitter:creator" content="@candlefishai" />
+    
+    <!-- Structured Data (JSON-LD) for SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Candlefish AI",
+      "alternateName": "Candlefish",
+      "url": "https://candlefish.ai",
+      "logo": "https://candlefish.ai/logo/candlefish_original.png",
+      "description": "Enterprise AI consulting through discrete, composable modules. We turn your slowest business processes into your fastest competitive advantages.",
+      "address": {
+        "@type": "PostalAddress",
+        "addressCountry": "US"
+      },
+      "sameAs": [
+        "https://twitter.com/candlefishai",
+        "https://linkedin.com/company/candlefish-ai",
+        "https://github.com/candlefish-ai"
+      ],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "sales",
+        "email": "hello@candlefish.ai",
+        "availableLanguage": ["English"]
+      },
+      "offers": {
+        "@type": "Offer",
+        "itemOffered": {
+          "@type": "Service",
+          "name": "AI Consulting Services",
+          "description": "AI transformation, automation, and implementation services"
+        }
+      }
+    }
+    </script>
+    
+    <!-- Website Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Candlefish AI",
+      "url": "https://candlefish.ai",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://candlefish.ai/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
 
     <!-- Resource Hints for Optimal Performance -->
     <!-- DNS Prefetch for third-party domains -->
@@ -69,6 +135,11 @@
         @keyframes pulse {
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.8; transform: scale(1.05); }
+        }
+
+        .loading-screen.fade-out {
+            opacity: 0;
+            transition: opacity 0.3s ease-out;
         }
 
         .loading-text {

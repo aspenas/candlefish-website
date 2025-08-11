@@ -1,0 +1,406 @@
+name: Monitoring & Observability
+# Comprehensive monitoring for Candlefish infrastructure
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+  workflow_run:
+    workflows: ["Candlefish Orchestrator"]
+    types: [completed]
+
+permissions:
+  contents: read
+  id-token: write
+  issues: write
+
+env:
+  AWS_REGION: us-east-1
+  DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
+  SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
+jobs:
+  collect-metrics:
+    name: 📊 Collect Metrics
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      cost_estimate: ${{ steps.costs.outputs.monthly_estimate }}
+      workflow_minutes: ${{ steps.usage.outputs.minutes_used }}
+      service_health: ${{ steps.health.outputs.status }}
+    steps:
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-monitoring
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Collect AWS costs
+        id: costs
+        run: |
+          # Get current month costs
+          START_DATE=$(date -d "$(date +%Y-%m-01)" +%Y-%m-%d)
+          END_DATE=$(date +%Y-%m-%d)
+
+          COSTS=$(aws ce get-cost-and-usage \
+            --time-period Start=$START_DATE,End=$END_DATE \
+            --granularity MONTHLY \
+            --metrics UnblendedCost \
+            --group-by Type=DIMENSION,Key=SERVICE \
+            --query 'ResultsByTime[0].Total.UnblendedCost.Amount' \
+            --output text)
+
+          # Project monthly estimate
+          DAYS_IN_MONTH=$(date -d "$(date +%Y-%m-01) +1 month -1 day" +%d)
+          DAYS_ELAPSED=$(date +%d)
+          MONTHLY_ESTIMATE=$(echo "scale=2; $COSTS * $DAYS_IN_MONTH / $DAYS_ELAPSED" | bc)
+
+          echo "monthly_estimate=$MONTHLY_ESTIMATE" >> $GITHUB_OUTPUT
+          echo "💰 Projected monthly cost: \$$MONTHLY_ESTIMATE"
+
+      - name: Check GitHub Actions usage
+        id: usage
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const usage = await github.rest.actions.getActionsBillingUsage({
+              owner: context.repo.owner
+            });
+
+            const minutesUsed = usage.data.total_minutes_used;
+            const minutesIncluded = usage.data.included_minutes;
+            const minutesRemaining = 50000 - minutesUsed; // Enterprise plan
+
+            core.setOutput('minutes_used', minutesUsed);
+            core.setOutput('minutes_remaining', minutesRemaining);
+            core.setOutput('usage_percent', (minutesUsed / 50000 * 100).toFixed(1));
+
+            console.log(`🕒 GitHub Actions: ${minutesUsed} / 50000 minutes used`);
+            return minutesUsed;
+
+      - name: Check service health
+        id: health
+        run: |
+          # Check all services health
+          UNHEALTHY_SERVICES=()
+
+          # Check ECS services
+          for env in dev staging production; do
+            CLUSTER="candlefish-$env"
+            
+            SERVICES=$(aws ecs list-services \
+              --cluster $CLUSTER \
+              --query 'serviceArns[]' \
+              --output text 2>/dev/null || echo "")
+
+            for service in $SERVICES; do
+              RUNNING=$(aws ecs describe-services \
+                --cluster $CLUSTER \
+                --services $service \
+                --query 'services[0].runningCount' \
+                --output text 2>/dev/null || echo "0")
+
+              DESIRED=$(aws ecs describe-services \
+                --cluster $CLUSTER \
+                --services $service \
+                --query 'services[0].desiredCount' \
+                --output text 2>/dev/null || echo "1")
+
+              if [[ $RUNNING -lt $DESIRED ]]; then
+                UNHEALTHY_SERVICES+=("$service")
+              fi
+            done
+          done
+
+          if [[ ${#UNHEALTHY_SERVICES[@]} -eq 0 ]]; then
+            echo "status=healthy" >> $GITHUB_OUTPUT
+            echo "✅ All services healthy"
+          else
+            echo "status=degraded" >> $GITHUB_OUTPUT
+            echo "⚠️ Unhealthy services: ${UNHEALTHY_SERVICES[*]}"
+          fi
+
+  analyze-performance:
+    name: ⚡ Performance Analysis
+    needs: collect-metrics
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Analyze build times
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Get recent workflow runs
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'candlefish-orchestrator.yml',
+              per_page: 20
+            });
+
+            // Calculate average build time
+            const buildTimes = runs.data.workflow_runs
+              .filter(run => run.conclusion === 'success')
+              .map(run => {
+                const start = new Date(run.created_at);
+                const end = new Date(run.updated_at);
+                return (end - start) / 1000 / 60; // minutes
+              });
+
+            const avgBuildTime = buildTimes.reduce((a, b) => a + b, 0) / buildTimes.length;
+            const maxBuildTime = Math.max(...buildTimes);
+            const minBuildTime = Math.min(...buildTimes);
+
+            console.log(`🎯 Average build time: ${avgBuildTime.toFixed(1)} minutes`);
+            console.log(`🔝 Max build time: ${maxBuildTime.toFixed(1)} minutes`);
+            console.log(`🔞 Min build time: ${minBuildTime.toFixed(1)} minutes`);
+
+            // Check for performance regression
+            if (avgBuildTime > 15) {
+              core.warning(`Build times exceeding target (15 min): ${avgBuildTime.toFixed(1)} min`);
+            }
+
+      - name: Analyze cache effectiveness
+        run: |
+          # Check cache hit rates from recent runs
+          gh run list \
+            --workflow=candlefish-orchestrator.yml \
+            --limit=10 \
+            --json databaseId,status | \
+          jq -r '.[] | select(.status=="completed") | .databaseId' | \
+          while read run_id; do
+            echo "Analyzing run $run_id..."
+            
+            # Get cache hit rate from logs
+            gh run view $run_id --log 2>/dev/null | \
+              grep -c "Cache restored from key" || true
+          done
+
+  cost-optimization:
+    name: 💰 Cost Optimization
+    needs: collect-metrics
+    if: needs.collect-metrics.outputs.cost_estimate > 500
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Analyze cost drivers
+        run: |
+          # Get detailed cost breakdown
+          aws ce get-cost-and-usage \
+            --time-period Start=$(date -d "7 days ago" +%Y-%m-%d),End=$(date +%Y-%m-%d) \
+            --granularity DAILY \
+            --metrics UnblendedCost \
+            --group-by Type=DIMENSION,Key=SERVICE \
+            --filter '{
+              "Dimensions": {
+                "Key": "LINKED_ACCOUNT",
+                "Values": ["${{ secrets.AWS_ACCOUNT_ID }}"]
+              }
+            }' \
+            --query 'ResultsByTime[].Groups[].[Keys[0],Metrics.UnblendedCost.Amount]' \
+            --output table
+
+      - name: Generate optimization recommendations
+        run: |
+          cat > cost-optimizations.md <<EOF
+          # 💰 Cost Optimization Recommendations
+
+          ## Current Monthly Projection: \$${{ needs.collect-metrics.outputs.cost_estimate }}
+
+          ### Immediate Actions
+          1. **Right-size ECS tasks**: Review CPU/Memory utilization
+          2. **Enable S3 Intelligent-Tiering**: For infrequently accessed data
+          3. **Use Spot instances**: For non-production ECS tasks
+          4. **Implement CloudFront caching**: Reduce origin requests
+
+          ### Long-term Optimizations
+          1. **Reserved Instances**: Save 30-70% on predictable workloads
+          2. **Savings Plans**: Flexible pricing for compute usage
+          3. **Archive old artifacts**: Move to Glacier after 30 days
+          4. **Consolidate resources**: Merge underutilized services
+
+          ### Estimated Savings
+          - Spot instances: -\$50/month
+          - S3 optimization: -\$20/month
+          - CloudFront caching: -\$15/month
+          - **Total potential savings: \$85/month**
+          EOF
+
+  generate-dashboard:
+    name: 📦 Generate Dashboard
+    needs: [collect-metrics, analyze-performance]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Create metrics dashboard
+        run: |
+          cat > dashboard.html <<EOF
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>Candlefish Metrics Dashboard</title>
+              <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+              <style>
+                  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 20px; }
+                  .metric { display: inline-block; margin: 20px; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+                  .metric-value { font-size: 2em; font-weight: bold; color: #333; }
+                  .metric-label { color: #666; margin-top: 5px; }
+                  .chart-container { width: 45%; display: inline-block; margin: 20px; }
+                  h1 { color: #333; }
+              </style>
+          </head>
+          <body>
+              <h1>🚀 Candlefish Operations Dashboard</h1>
+              
+              <div class="metrics">
+                  <div class="metric">
+                      <div class="metric-value">\$${{ needs.collect-metrics.outputs.cost_estimate }}</div>
+                      <div class="metric-label">Monthly Cost Projection</div>
+                  </div>
+                  <div class="metric">
+                      <div class="metric-value">${{ needs.collect-metrics.outputs.workflow_minutes }}</div>
+                      <div class="metric-label">GitHub Actions Minutes</div>
+                  </div>
+                  <div class="metric">
+                      <div class="metric-value">${{ needs.collect-metrics.outputs.service_health }}</div>
+                      <div class="metric-label">Service Health</div>
+                  </div>
+              </div>
+
+              <div class="chart-container">
+                  <canvas id="costChart"></canvas>
+              </div>
+              <div class="chart-container">
+                  <canvas id="performanceChart"></canvas>
+              </div>
+
+              <script>
+                  // Cost trend chart
+                  new Chart(document.getElementById('costChart'), {
+                      type: 'line',
+                      data: {
+                          labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                          datasets: [{
+                              label: 'AWS Costs',
+                              data: [480, 495, 510, ${{ needs.collect-metrics.outputs.cost_estimate }}],
+                              borderColor: 'rgb(75, 192, 192)',
+                              tension: 0.1
+                          }]
+                      }
+                  });
+
+                  // Performance chart
+                  new Chart(document.getElementById('performanceChart'), {
+                      type: 'bar',
+                      data: {
+                          labels: ['Build Time', 'Deploy Time', 'Test Time'],
+                          datasets: [{
+                              label: 'Minutes',
+                              data: [8, 5, 3],
+                              backgroundColor: ['rgba(255, 99, 132, 0.2)', 'rgba(54, 162, 235, 0.2)', 'rgba(255, 206, 86, 0.2)']
+                          }]
+                      }
+                  });
+              </script>
+          </body>
+          </html>
+          EOF
+
+      - name: Upload dashboard
+        uses: actions/upload-artifact@v4
+        with:
+          name: metrics-dashboard-${{ github.run_id }}
+          path: dashboard.html
+          retention-days: 30
+
+  alert-notifications:
+    name: 🔔 Send Alerts
+    needs: [collect-metrics, analyze-performance, cost-optimization]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check alert conditions
+        id: alerts
+        run: |
+          ALERTS=()
+
+          # Cost alert
+          if (( $(echo "${{ needs.collect-metrics.outputs.cost_estimate }} > 1000" | bc -l) )); then
+            ALERTS+=("COST")
+          fi
+
+          # Usage alert
+          USAGE_PERCENT=$(echo "${{ needs.collect-metrics.outputs.workflow_minutes }} / 50000 * 100" | bc -l)
+          if (( $(echo "$USAGE_PERCENT > 80" | bc -l) )); then
+            ALERTS+=("USAGE")
+          fi
+
+          # Health alert
+          if [[ "${{ needs.collect-metrics.outputs.service_health }}" != "healthy" ]]; then
+            ALERTS+=("HEALTH")
+          fi
+
+          echo "alerts=${ALERTS[*]}" >> $GITHUB_OUTPUT
+
+      - name: Send Slack notification
+        if: steps.alerts.outputs.alerts != ''
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              "attachments": [{
+                "color": "warning",
+                "title": "🚨 Candlefish Monitoring Alert",
+                "fields": [
+                  {
+                    "title": "Monthly Cost",
+                    "value": "\$${{ needs.collect-metrics.outputs.cost_estimate }}",
+                    "short": true
+                  },
+                  {
+                    "title": "GitHub Actions Usage",
+                    "value": "${{ needs.collect-metrics.outputs.workflow_minutes }} / 50000",
+                    "short": true
+                  },
+                  {
+                    "title": "Service Health",
+                    "value": "${{ needs.collect-metrics.outputs.service_health }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Alerts",
+                    "value": "${{ steps.alerts.outputs.alerts }}",
+                    "short": true
+                  }
+                ],
+                "footer": "Candlefish Monitoring",
+                "ts": ${{ github.event.repository.updated_at }}
+              }]
+            }
+          webhook_url: ${{ env.SLACK_WEBHOOK }}
+
+      - name: Create summary
+        if: always()
+        run: |
+          echo "# 📊 Monitoring Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Key Metrics" >> $GITHUB_STEP_SUMMARY
+          echo "- **Monthly Cost Projection:** \$${{ needs.collect-metrics.outputs.cost_estimate }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **GitHub Actions Usage:** ${{ needs.collect-metrics.outputs.workflow_minutes }} / 50000 minutes" >> $GITHUB_STEP_SUMMARY
+          echo "- **Service Health:** ${{ needs.collect-metrics.outputs.service_health }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ -n "${{ steps.alerts.outputs.alerts }}" ]]; then
+            echo "## 🚨 Active Alerts" >> $GITHUB_STEP_SUMMARY
+            echo "${{ steps.alerts.outputs.alerts }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ✅ No Active Alerts" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[View Dashboard](dashboard.html) | [Cost Report](cost-optimizations.md)" >> $GITHUB_STEP_SUMMARY

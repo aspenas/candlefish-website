@@ -9,10 +9,11 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
-    github = {
-      source  = "integrations/github"
-      version = "~> 5.0"
-    }
+    # Temporarily commented due to provider issues
+    # github = {
+    #   source  = "integrations/github"
+    #   version = "~> 5.0"
+    # }
   }
 
   backend "s3" {
@@ -38,9 +39,10 @@ provider "aws" {
   }
 }
 
-provider "github" {
-  owner = var.github_org
-}
+# Temporarily commented due to provider issues
+# provider "github" {
+#   owner = var.github_org
+# }
 
 # Variables
 variable "aws_region" {

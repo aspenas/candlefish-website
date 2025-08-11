@@ -14,7 +14,9 @@
     "family:dev": "vite --config vite.family.config.ts",
     "family:build": "vite build --config vite.family.config.ts",
     "preview:serve": "vite preview --outDir dist --port 4173 --strictPort",
-    "test:figma": "node scripts/test-figma-api.mjs"
+    "test:figma": "node scripts/test-figma-api.mjs",
+    "test:performance": "node scripts/performance-test.js",
+    "analyze": "ANALYZE=true vite build"
   },
   "dependencies": {
     "@candlefish-ai/ui-components": "^1.0.0",
