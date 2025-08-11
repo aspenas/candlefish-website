@@ -131,7 +131,9 @@ jobs:
           fi
 
           echo "deploy_targets=$deploy_targets" >> $GITHUB_OUTPUT
-          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+          echo "matrix<<EOF" >> $GITHUB_OUTPUT
+          echo "$matrix" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
           echo "Deployment targets: $deploy_targets"
 
   # ============================================

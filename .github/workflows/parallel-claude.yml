@@ -35,8 +35,10 @@ jobs:
       - id: set-matrix
         run: |
           sessions='${{ github.event.inputs.sessions }}'
-          matrix=$(seq 1 $sessions | jq -R . | jq -s '{session: .}')
-          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+          matrix=$(seq 1 $sessions | jq -R . | jq -s -c '{session: .}')
+          echo "matrix<<EOF" >> $GITHUB_OUTPUT
+          echo "$matrix" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
   parallel-claude:
     needs: setup-matrix

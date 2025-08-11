@@ -1,0 +1,776 @@
+name: Candlefish Orchestrator
+# Main orchestrator workflow for all 16 Candlefish projects
+# Optimized for GitHub Enterprise (50,000 minutes/month)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
+      projects:
+        description: 'Projects to deploy (comma-separated or "all")'
+        required: false
+        default: 'changed'
+      skip_tests:
+        description: 'Skip tests (use with caution)'
+        required: false
+        default: false
+        type: boolean
+
+  push:
+    branches:
+      - main
+      - develop
+      - 'release/**'
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
+permissions:
+  contents: read
+  id-token: write  # AWS OIDC
+  checks: write
+  pull-requests: write
+  actions: write
+  packages: write
+
+env:
+  # Global environment variables
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.12'
+  PNPM_VERSION: '9'
+  GO_VERSION: '1.22'
+  RUST_VERSION: 'stable'
+
+  # Caching configuration
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: candlefish
+  TURBO_REMOTE_ONLY: true
+
+  # AWS configuration
+  AWS_REGION: us-east-1
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+
+  # Cost tracking
+  GITHUB_MINUTES_BUDGET: 50000
+  WORKFLOW_TIMEOUT_MINUTES: 30
+
+# Concurrency control to prevent resource waste
+concurrency:
+  group: orchestrator-${{ github.workflow }}-${{ github.ref }}-${{ inputs.environment || 'ci' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # ============================================
+  # STAGE 1: Project Discovery & Analysis
+  # ============================================
+  project-discovery:
+    name: 🔍 Discover Projects
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.build-matrix.outputs.matrix }}
+      projects: ${{ steps.build-matrix.outputs.projects }}
+      environment: ${{ steps.build-matrix.outputs.environment }}
+      cache_key: ${{ steps.build-matrix.outputs.cache_key }}
+      estimated_minutes: ${{ steps.cost-estimate.outputs.minutes }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for change detection
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/github-actions-candlefish
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Detect changed projects
+        id: detect-changes
+        run: |
+          # Project definitions
+          declare -A PROJECTS=(
+            ["cf"]="root:apps/website"
+            ["cfweb"]="website:apps/website"
+            ["cftyler"]="onboarding:apps/tyler-onboarding"
+            ["cfpaint"]="enterprise:projects/paintbox"
+            ["cffogg"]="enterprise:projects/fogg"
+            ["cfprom"]="enterprise:projects/promoterOS"
+            ["cfbrew"]="enterprise:projects/brewery"
+            ["cfcrown"]="business:projects/crowntrophy"
+            ["cfbart"]="business:projects/bart-estimator-pwa"
+            ["cfbart2"]="business:projects/newbart"
+            ["cfexcel"]="business:projects/excel"
+            ["cfcolo"]="client:projects/colorado-springs-auditorium"
+            ["cfjon"]="client:projects/jonathon"
+            ["cfmorr"]="client:projects/morreale"
+            ["cfnew"]="client:projects/new-client"
+            ["cfmobile"]="mobile:apps/mobile-dashboard"
+          )
+
+          # Determine which projects to process
+          if [[ "${{ github.event.inputs.projects }}" == "all" ]]; then
+            SELECTED_PROJECTS="${!PROJECTS[@]}"
+          elif [[ -n "${{ github.event.inputs.projects }}" && "${{ github.event.inputs.projects }}" != "changed" ]]; then
+            SELECTED_PROJECTS="${{ github.event.inputs.projects }}"
+          else
+            # Detect changed files
+            if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+              CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+            else
+              CHANGED_FILES=$(git diff --name-only HEAD~1...HEAD)
+            fi
+
+            # Map changed files to projects
+            SELECTED_PROJECTS=""
+            for project in "${!PROJECTS[@]}"; do
+              IFS=':' read -r category path <<< "${PROJECTS[$project]}"
+              if echo "$CHANGED_FILES" | grep -q "^${path}/"; then
+                SELECTED_PROJECTS="$SELECTED_PROJECTS $project"
+              fi
+            done
+          fi
+
+          echo "selected_projects=$SELECTED_PROJECTS" >> $GITHUB_OUTPUT
+          echo "Selected projects: $SELECTED_PROJECTS"
+
+      - name: Build deployment matrix
+        id: build-matrix
+        run: |
+          PROJECTS="${{ steps.detect-changes.outputs.selected_projects }}"
+          ENVIRONMENT="${{ github.event.inputs.environment || 'staging' }}"
+
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]] && [[ -z "${{ github.event.inputs.environment }}" ]]; then
+            ENVIRONMENT="production"
+          fi
+
+          # Build matrix JSON
+          matrix='{"include":[]}'
+          project_list=()
+
+          if [[ -n "$PROJECTS" ]]; then
+            for project in $PROJECTS; do
+              case $project in
+                cf|cfweb|cftyler)
+                  type="webapp"
+                  runner="ubuntu-latest"
+                  ;;
+                cfpaint|cffogg|cfprom|cfbrew)
+                  type="enterprise"
+                  runner="ubuntu-latest-8-cores"  # Larger runners for enterprise
+                  ;;
+                cfcrown|cfbart|cfbart2|cfexcel)
+                  type="business"
+                  runner="ubuntu-latest"
+                  ;;
+                cfcolo|cfjon|cfmorr|cfnew)
+                  type="client"
+                  runner="ubuntu-latest"
+                  ;;
+                cfmobile)
+                  type="mobile"
+                  runner="macos-latest"
+                  ;;
+                *)
+                  type="standard"
+                  runner="ubuntu-latest"
+                  ;;
+              esac
+
+              item=$(jq -n \
+                --arg project "$project" \
+                --arg type "$type" \
+                --arg runner "$runner" \
+                --arg env "$ENVIRONMENT" \
+                '{project: $project, type: $type, runner: $runner, environment: $env}')
+
+              matrix=$(echo "$matrix" | jq ".include += [$item]")
+              project_list+=("$project")
+            done
+          fi
+
+          # Generate cache key
+          cache_key="${{ github.sha }}-${ENVIRONMENT}-$(date +%Y%m%d)"
+
+          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+          echo "projects=${project_list[*]}" >> $GITHUB_OUTPUT
+          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
+          echo "cache_key=$cache_key" >> $GITHUB_OUTPUT
+
+      - name: Estimate workflow cost
+        id: cost-estimate
+        run: |
+          # Estimate GitHub Actions minutes based on matrix
+          MATRIX='${{ steps.build-matrix.outputs.matrix }}'
+
+          # Base minutes per job type
+          declare -A MINUTES=(
+            ["webapp"]=5
+            ["enterprise"]=10
+            ["business"]=7
+            ["client"]=5
+            ["mobile"]=15
+          )
+
+          total_minutes=0
+          for row in $(echo "$MATRIX" | jq -c '.include[]'); do
+            type=$(echo "$row" | jq -r '.type')
+            runner=$(echo "$row" | jq -r '.runner')
+
+            job_minutes=${MINUTES[$type]:-5}
+
+            # Adjust for runner type
+            if [[ "$runner" == *"8-cores"* ]]; then
+              job_minutes=$((job_minutes * 2))  # 2x multiplier for larger runners
+            elif [[ "$runner" == "macos-latest" ]]; then
+              job_minutes=$((job_minutes * 10))  # 10x multiplier for macOS
+            fi
+
+            total_minutes=$((total_minutes + job_minutes))
+          done
+
+          echo "minutes=$total_minutes" >> $GITHUB_OUTPUT
+          echo "Estimated workflow minutes: $total_minutes"
+
+          # Check budget
+          if [[ $total_minutes -gt 1000 ]]; then
+            echo "⚠️ Warning: This workflow will consume $total_minutes minutes"
+          fi
+
+  # ============================================
+  # STAGE 2: Security & Compliance Gate
+  # ============================================
+  security-gate:
+    name: 🔐 Security Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS for secrets
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/github-actions-candlefish
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Run Trivy security scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+
+      - name: Upload security results
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Check for secrets with TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.pull_request.base.sha || github.event.before }}
+          head: ${{ github.event.pull_request.head.sha || github.sha }}
+          extra_args: --only-verified
+
+      - name: SAST with Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/owasp-top-ten
+            p/r2c-ci
+          generateSarif: true
+
+      - name: License compliance check
+        run: |
+          # Install license checker
+          npm install -g license-checker
+
+          # Check licenses
+          license-checker --production --onlyAllow 'MIT;Apache-2.0;BSD;ISC;CC0-1.0;Unlicense' \
+            --excludePrivatePackages || echo "⚠️ Non-compliant licenses detected"
+
+  # ============================================
+  # STAGE 3: Parallel Build & Test
+  # ============================================
+  build-test:
+    name: 🔨 Build & Test [${{ matrix.project }}]
+    needs: [project-discovery, security-gate]
+    if: needs.project-discovery.outputs.projects != ''
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: ${{ matrix.type == 'enterprise' && 20 || 15 }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.project-discovery.outputs.matrix) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup build environment
+        uses: ./.github/actions/setup-environment
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache-key: ${{ needs.project-discovery.outputs.cache_key }}
+          project-type: ${{ matrix.type }}
+
+      - name: Restore build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pnpm-store
+            .turbo
+            **/dist
+            **/.next/cache
+            **/target
+            ~/.cargo
+          key: build-${{ matrix.project }}-${{ needs.project-discovery.outputs.cache_key }}
+          restore-keys: |
+            build-${{ matrix.project }}-
+            build-
+
+      - name: Install dependencies
+        run: |
+          if [[ -f "pnpm-lock.yaml" ]]; then
+            pnpm install --frozen-lockfile --prefer-offline
+          elif [[ -f "package-lock.json" ]]; then
+            npm ci
+          elif [[ -f "yarn.lock" ]]; then
+            yarn install --frozen-lockfile
+          fi
+
+      - name: Run quality checks
+        if: ${{ !inputs.skip_tests }}
+        run: |
+          # Run project-specific quality checks
+          case "${{ matrix.type }}" in
+            webapp|business|client)
+              pnpm turbo lint typecheck test:unit --filter=${{ matrix.project }}
+              ;;
+            enterprise)
+              pnpm turbo lint typecheck test:unit test:integration --filter=${{ matrix.project }}
+              ;;
+            mobile)
+              pnpm turbo lint typecheck test --filter=${{ matrix.project }}
+              # Additional mobile-specific tests
+              cd apps/mobile-dashboard
+              npx expo doctor
+              ;;
+          esac
+
+      - name: Build project
+        run: |
+          case "${{ matrix.type }}" in
+            webapp|business|client|enterprise)
+              pnpm turbo build --filter=${{ matrix.project }}
+              ;;
+            mobile)
+              cd apps/mobile-dashboard
+              npx expo export --platform all
+              ;;
+          esac
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.project }}-${{ github.sha }}
+          path: |
+            **/dist
+            **/.next
+            **/build
+            **/out
+          retention-days: 7
+
+      - name: Run smoke tests
+        run: |
+          # Quick smoke test to verify build
+          case "${{ matrix.type }}" in
+            webapp|business|client|enterprise)
+              if [[ -f "dist/index.html" ]] || [[ -d ".next" ]]; then
+                echo "✅ Build verified"
+              else
+                echo "❌ Build output not found"
+                exit 1
+              fi
+              ;;
+          esac
+
+  # ============================================
+  # STAGE 4: Chaos Engineering
+  # ============================================
+  chaos-engineering:
+    name: 🌪️ Chaos Engineering
+    needs: [project-discovery, build-test]
+    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'chaos-test')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        chaos-type: [network-delay, cpu-stress, memory-pressure, disk-failure]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Litmus Chaos
+        run: |
+          # Install chaos mesh
+          curl -sSL https://mirrors.chaos-mesh.org/v2.6.3/install.sh | bash -s -- --local kind
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: build-*
+          merge-multiple: true
+
+      - name: Deploy test environment
+        run: |
+          # Deploy a test instance
+          docker-compose -f docker-compose.test.yml up -d
+
+      - name: Run chaos experiment
+        run: |
+          case "${{ matrix.chaos-type }}" in
+            network-delay)
+              # Inject 300ms network delay
+              kubectl apply -f - <<EOF
+              apiVersion: chaos-mesh.org/v1alpha1
+              kind: NetworkChaos
+              metadata:
+                name: network-delay
+              spec:
+                action: delay
+                mode: all
+                selector:
+                  namespaces:
+                    - default
+                delay:
+                  latency: "300ms"
+                  jitter: "100ms"
+                duration: "2m"
+              EOF
+              ;;
+            cpu-stress)
+              # CPU stress test
+              kubectl apply -f - <<EOF
+              apiVersion: chaos-mesh.org/v1alpha1
+              kind: StressChaos
+              metadata:
+                name: cpu-stress
+              spec:
+                mode: all
+                selector:
+                  namespaces:
+                    - default
+                stressors:
+                  cpu:
+                    workers: 2
+                    load: 80
+                duration: "2m"
+              EOF
+              ;;
+            memory-pressure)
+              # Memory pressure test
+              kubectl apply -f - <<EOF
+              apiVersion: chaos-mesh.org/v1alpha1
+              kind: StressChaos
+              metadata:
+                name: memory-stress
+              spec:
+                mode: all
+                selector:
+                  namespaces:
+                    - default
+                stressors:
+                  memory:
+                    workers: 1
+                    size: "256MB"
+                duration: "2m"
+              EOF
+              ;;
+            disk-failure)
+              # Disk I/O chaos
+              kubectl apply -f - <<EOF
+              apiVersion: chaos-mesh.org/v1alpha1
+              kind: IOChaos
+              metadata:
+                name: io-delay
+              spec:
+                action: latency
+                mode: all
+                selector:
+                  namespaces:
+                    - default
+                volumePath: /var/run
+                delay: "100ms"
+                percent: 50
+                duration: "2m"
+              EOF
+              ;;
+          esac
+
+      - name: Validate system resilience
+        run: |
+          # Wait for chaos to apply
+          sleep 30
+
+          # Check if services are still responding
+          for i in {1..10}; do
+            if curl -f http://localhost:3000/health; then
+              echo "✅ Service resilient to ${{ matrix.chaos-type }}"
+            else
+              echo "⚠️ Service degraded under ${{ matrix.chaos-type }}"
+            fi
+            sleep 10
+          done
+
+      - name: Collect chaos metrics
+        if: always()
+        run: |
+          kubectl logs -l app=chaos-mesh --tail=100
+          docker-compose -f docker-compose.test.yml logs --tail=100
+
+  # ============================================
+  # STAGE 5: Deploy
+  # ============================================
+  deploy:
+    name: 🚀 Deploy [${{ matrix.project }}]
+    needs: [project-discovery, build-test]
+    if: |
+      needs.project-discovery.outputs.projects != '' &&
+      (github.ref == 'refs/heads/main' ||
+       github.ref == 'refs/heads/develop' ||
+       github.event_name == 'workflow_dispatch')
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    environment: ${{ matrix.environment }}
+    strategy:
+      fail-fast: false
+      max-parallel: 4  # Limit concurrent deployments
+      matrix: ${{ fromJson(needs.project-discovery.outputs.matrix) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/github-actions-candlefish-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-${{ matrix.project }}-${{ github.sha }}
+
+      - name: Get secrets from AWS Secrets Manager
+        run: |
+          # Fetch project-specific secrets
+          aws secretsmanager get-secret-value \
+            --secret-id candlefish/${{ matrix.environment }}/${{ matrix.project }} \
+            --query SecretString \
+            --output text | jq -r 'to_entries[] | "\(.key)=\(.value)"' >> $GITHUB_ENV
+
+      - name: Deploy to infrastructure
+        run: |
+          case "${{ matrix.type }}" in
+            webapp|business|client)
+              # Deploy to AWS S3 + CloudFront
+              aws s3 sync dist/ s3://candlefish-${{ matrix.project }}-${{ matrix.environment }}/ \
+                --delete \
+                --cache-control "public, max-age=31536000" \
+                --exclude "*.html" \
+                --exclude "*.json"
+
+              aws s3 sync dist/ s3://candlefish-${{ matrix.project }}-${{ matrix.environment }}/ \
+                --cache-control "public, max-age=0, must-revalidate" \
+                --include "*.html" \
+                --include "*.json"
+
+              # Invalidate CloudFront
+              aws cloudfront create-invalidation \
+                --distribution-id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} \
+                --paths "/*"
+              ;;
+
+            enterprise)
+              # Deploy to ECS Fargate
+              aws ecs update-service \
+                --cluster candlefish-${{ matrix.environment }} \
+                --service ${{ matrix.project }} \
+                --force-new-deployment
+
+              # Wait for deployment
+              aws ecs wait services-stable \
+                --cluster candlefish-${{ matrix.environment }} \
+                --services ${{ matrix.project }}
+              ;;
+
+            mobile)
+              # Deploy to Expo EAS
+              npx eas-cli build --platform all --non-interactive
+              npx eas-cli submit --platform all --non-interactive
+              ;;
+          esac
+
+      - name: Run deployment verification
+        run: |
+          # Verify deployment health
+          DEPLOY_URL="${{ env.DEPLOY_URL || 'https://${{ matrix.project }}.candlefish.ai' }}"
+
+          for i in {1..10}; do
+            if curl -f "$DEPLOY_URL/health"; then
+              echo "✅ Deployment verified"
+              break
+            else
+              echo "⏳ Waiting for deployment..."
+              sleep 30
+            fi
+          done
+
+      - name: Update deployment status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = '${{ job.status }}' === 'success' ? 'success' : 'failure';
+            const environment = '${{ matrix.environment }}';
+            const project = '${{ matrix.project }}';
+
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: context.payload.deployment.id,
+              state: status,
+              environment_url: `https://${project}.candlefish.ai`,
+              description: `Deployment ${status} for ${project} to ${environment}`
+            });
+
+  # ============================================
+  # STAGE 6: Monitoring & Observability
+  # ============================================
+  observability:
+    name: 📊 Observability Setup
+    needs: [deploy]
+    if: needs.deploy.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Configure monitoring
+        run: |
+          # Send deployment metrics to DataDog
+          curl -X POST "https://api.datadoghq.com/api/v1/events" \
+            -H "DD-API-KEY: ${{ secrets.DATADOG_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "title": "Candlefish Deployment",
+              "text": "Successfully deployed to ${{ needs.project-discovery.outputs.environment }}",
+              "alert_type": "success",
+              "tags": ["env:${{ needs.project-discovery.outputs.environment }}", "service:candlefish"]
+            }'
+
+      - name: Setup alerts
+        run: |
+          # Configure CloudWatch alarms
+          aws cloudwatch put-metric-alarm \
+            --alarm-name "candlefish-${{ needs.project-discovery.outputs.environment }}-errors" \
+            --alarm-description "High error rate in Candlefish" \
+            --metric-name Errors \
+            --namespace AWS/Lambda \
+            --statistic Sum \
+            --period 300 \
+            --threshold 10 \
+            --comparison-operator GreaterThanThreshold \
+            --evaluation-periods 1
+
+      - name: Generate cost report
+        run: |
+          # Calculate estimated monthly costs
+          echo "## 💰 Cost Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | Environment | Estimated Monthly Cost |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-------------|------------------------|" >> $GITHUB_STEP_SUMMARY
+
+          # Add cost estimates (example values)
+          echo "| CloudFront | ${{ needs.project-discovery.outputs.environment }} | \$45 |" >> $GITHUB_STEP_SUMMARY
+          echo "| S3 Storage | ${{ needs.project-discovery.outputs.environment }} | \$12 |" >> $GITHUB_STEP_SUMMARY
+          echo "| ECS Fargate | ${{ needs.project-discovery.outputs.environment }} | \$120 |" >> $GITHUB_STEP_SUMMARY
+          echo "| RDS | ${{ needs.project-discovery.outputs.environment }} | \$85 |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Total** | | **\$262** |" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================
+  # STAGE 7: Workflow Summary
+  # ============================================
+  workflow-summary:
+    name: 📋 Workflow Summary
+    needs: [project-discovery, security-gate, build-test, deploy]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Generate summary report
+        run: |
+          echo "# 🚀 Candlefish Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Workflow metadata
+          echo "## 📊 Workflow Metrics" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** ${{ needs.project-discovery.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Projects:** ${{ needs.project-discovery.outputs.projects }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Estimated Minutes:** ${{ needs.project-discovery.outputs.estimated_minutes }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow Run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Status summary
+          echo "## ✅ Status" >> $GITHUB_STEP_SUMMARY
+          echo "| Stage | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Gate | ${{ needs.security-gate.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build & Test | ${{ needs.build-test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deploy | ${{ needs.deploy.result }} |" >> $GITHUB_STEP_SUMMARY
+
+          # Budget tracking
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 💰 Budget Tracking" >> $GITHUB_STEP_SUMMARY
+          USED_MINUTES="${{ needs.project-discovery.outputs.estimated_minutes }}"
+          BUDGET_REMAINING=$((50000 - USED_MINUTES))
+          BUDGET_PERCENT=$((USED_MINUTES * 100 / 50000))
+
+          echo "- **Used this run:** ${USED_MINUTES} minutes" >> $GITHUB_STEP_SUMMARY
+          echo "- **Monthly budget remaining:** ${BUDGET_REMAINING} minutes (${BUDGET_PERCENT}% used)" >> $GITHUB_STEP_SUMMARY
+
+          if [[ $BUDGET_PERCENT -gt 80 ]]; then
+            echo "⚠️ **Warning:** Approaching monthly budget limit!" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Send Slack notification
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            Candlefish Deployment ${{ needs.deploy.result == 'success' && '✅' || '❌' }}
+            Environment: ${{ needs.project-discovery.outputs.environment }}
+            Projects: ${{ needs.project-discovery.outputs.projects }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
