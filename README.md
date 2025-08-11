@@ -1,5 +1,11 @@
 # Candlefish.ai - Coherent Vertical Automation Platform
 
+[![CI/CD](https://github.com/aspenas/candlefish-ai/actions/workflows/monorepo-ci.yml/badge.svg)](https://github.com/aspenas/candlefish-ai/actions/workflows/monorepo-ci.yml)
+[![Security](https://github.com/aspenas/candlefish-ai/actions/workflows/auto-security.yml/badge.svg)](https://github.com/aspenas/candlefish-ai/actions/workflows/auto-security.yml)
+[![Dependencies](https://github.com/aspenas/candlefish-ai/actions/workflows/auto-dependencies.yml/badge.svg)](https://github.com/aspenas/candlefish-ai/actions/workflows/auto-dependencies.yml)
+[![Performance](https://github.com/aspenas/candlefish-ai/actions/workflows/auto-performance.yml/badge.svg)](https://github.com/aspenas/candlefish-ai/actions/workflows/auto-performance.yml)
+[![License](https://img.shields.io/badge/license-Proprietary-blue.svg)](LICENSE)
+
 > Converting messy, Excel-bound operations into durable, AI-native systems for real-world industries
 
 ## Vision

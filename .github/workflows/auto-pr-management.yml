@@ -1,0 +1,686 @@
+name: Automated PR Management
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, ready_for_review]
+  pull_request_review:
+    types: [submitted]
+  issue_comment:
+    types: [created]
+  schedule:
+    # Run every hour to check stale PRs
+    - cron: '0 * * * *'
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  # ============================================
+  # Auto Label PRs
+  # ============================================
+  auto-label:
+    name: 🏷️ Auto Label PR
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Label based on files changed
+        uses: actions/labeler@v5
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml
+
+      - name: Label based on PR size
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const additions = pr.additions;
+            const deletions = pr.deletions;
+            const changes = additions + deletions;
+
+            let sizeLabel = '';
+            if (changes < 10) {
+              sizeLabel = 'size/XS';
+            } else if (changes < 50) {
+              sizeLabel = 'size/S';
+            } else if (changes < 200) {
+              sizeLabel = 'size/M';
+            } else if (changes < 500) {
+              sizeLabel = 'size/L';
+            } else if (changes < 1000) {
+              sizeLabel = 'size/XL';
+            } else {
+              sizeLabel = 'size/XXL';
+            }
+
+            // Remove old size labels
+            const labels = await github.rest.issues.listLabelsOnIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number
+            });
+
+            for (const label of labels.data) {
+              if (label.name.startsWith('size/')) {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  name: label.name
+                });
+              }
+            }
+
+            // Add new size label
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              labels: [sizeLabel]
+            });
+
+      - name: Label based on PR title
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const title = pr.title.toLowerCase();
+            const labels = [];
+
+            // Conventional commit types
+            if (title.startsWith('feat:') || title.startsWith('feature:')) {
+              labels.push('enhancement');
+            } else if (title.startsWith('fix:') || title.startsWith('bugfix:')) {
+              labels.push('bug');
+            } else if (title.startsWith('docs:')) {
+              labels.push('documentation');
+            } else if (title.startsWith('style:')) {
+              labels.push('style');
+            } else if (title.startsWith('refactor:')) {
+              labels.push('refactor');
+            } else if (title.startsWith('perf:')) {
+              labels.push('performance');
+            } else if (title.startsWith('test:')) {
+              labels.push('testing');
+            } else if (title.startsWith('chore:')) {
+              labels.push('chore');
+            } else if (title.startsWith('ci:')) {
+              labels.push('ci/cd');
+            } else if (title.includes('breaking')) {
+              labels.push('breaking-change');
+            }
+
+            // Priority indicators
+            if (title.includes('urgent') || title.includes('critical')) {
+              labels.push('priority/critical');
+            } else if (title.includes('high priority')) {
+              labels.push('priority/high');
+            }
+
+            // Add labels if any were identified
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                labels: labels
+              });
+            }
+
+  # ============================================
+  # Auto Assign Reviewers
+  # ============================================
+  auto-assign:
+    name: 👥 Auto Assign Reviewers
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Auto assign reviewers
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const author = pr.user.login;
+
+            // Get CODEOWNERS file
+            let codeowners = {};
+            try {
+              const content = await github.rest.repos.getContent({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                path: 'CODEOWNERS'
+              });
+
+              const codeownersContent = Buffer.from(content.data.content, 'base64').toString();
+              // Parse CODEOWNERS (simplified)
+              codeownersContent.split('\n').forEach(line => {
+                if (!line.startsWith('#') && line.trim()) {
+                  const [path, ...owners] = line.split(/\s+/);
+                  codeowners[path] = owners;
+                }
+              });
+            } catch (e) {
+              console.log('No CODEOWNERS file found');
+            }
+
+            // Get files changed
+            const files = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number
+            });
+
+            const reviewers = new Set();
+
+            // Match files to code owners
+            for (const file of files.data) {
+              for (const [pattern, owners] of Object.entries(codeowners)) {
+                // Simple pattern matching (can be improved)
+                if (file.filename.includes(pattern.replace('*', ''))) {
+                  owners.forEach(owner => {
+                    const username = owner.replace('@', '');
+                    if (username !== author) {
+                      reviewers.add(username);
+                    }
+                  });
+                }
+              }
+            }
+
+            // Assign based on expertise if no code owners matched
+            if (reviewers.size === 0) {
+              const expertiseMap = {
+                'frontend': ['frontend-team'],
+                'backend': ['backend-team'],
+                'mobile': ['mobile-team'],
+                'devops': ['devops-team']
+              };
+
+              for (const file of files.data) {
+                if (file.filename.includes('apps/website') || file.filename.includes('apps/analytics')) {
+                  expertiseMap.frontend.forEach(r => reviewers.add(r));
+                } else if (file.filename.includes('apps/rtpm-api')) {
+                  expertiseMap.backend.forEach(r => reviewers.add(r));
+                } else if (file.filename.includes('apps/mobile')) {
+                  expertiseMap.mobile.forEach(r => reviewers.add(r));
+                } else if (file.filename.includes('.github') || file.filename.includes('infrastructure')) {
+                  expertiseMap.devops.forEach(r => reviewers.add(r));
+                }
+              }
+            }
+
+            // Request reviews
+            if (reviewers.size > 0) {
+              await github.rest.pulls.requestReviewers({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                reviewers: Array.from(reviewers).slice(0, 3) // Max 3 reviewers
+              });
+            }
+
+  # ============================================
+  # PR Description Enhancement
+  # ============================================
+  enhance-description:
+    name: 📝 Enhance PR Description
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate PR description
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+
+            // Skip if description already exists
+            if (pr.body && pr.body.length > 50) {
+              return;
+            }
+
+            // Get commits
+            const commits = await github.rest.pulls.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number
+            });
+
+            // Get files changed
+            const files = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number
+            });
+
+            // Categorize changes
+            const categories = {
+              added: [],
+              modified: [],
+              removed: []
+            };
+
+            files.data.forEach(file => {
+              if (file.status === 'added') {
+                categories.added.push(file.filename);
+              } else if (file.status === 'modified') {
+                categories.modified.push(file.filename);
+              } else if (file.status === 'removed') {
+                categories.removed.push(file.filename);
+              }
+            });
+
+            // Generate description
+            let description = `## 📋 Description
+
+            ${pr.title}
+
+            ## 🔄 Changes
+
+            ### Files Modified
+            - **Added**: ${categories.added.length} files
+            - **Modified**: ${categories.modified.length} files
+            - **Removed**: ${categories.removed.length} files
+
+            ### Commits
+            ${commits.data.map(c => `- ${c.commit.message}`).join('\n')}
+
+            ## ✅ Checklist
+            - [ ] Code follows project style guidelines
+            - [ ] Self-review completed
+            - [ ] Tests added/updated
+            - [ ] Documentation updated
+            - [ ] No console.log or debug code
+            - [ ] Breaking changes documented
+
+            ## 🧪 Testing
+            - [ ] Unit tests pass
+            - [ ] Integration tests pass
+            - [ ] Manual testing completed
+
+            ## 📸 Screenshots
+            <!-- Add screenshots if UI changes -->
+
+            ## 🔗 Related Issues
+            <!-- Link related issues -->
+
+            ---
+            *This PR description was auto-generated and should be updated by the author*`;
+
+            // Update PR description
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              body: description
+            });
+
+  # ============================================
+  # Merge Conflict Detection
+  # ============================================
+  conflict-check:
+    name: ⚠️ Check Merge Conflicts
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for conflicts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+
+            // Check mergeable status
+            const pullRequest = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number
+            });
+
+            if (pullRequest.data.mergeable === false) {
+              // Add conflict label
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                labels: ['has-conflicts']
+              });
+
+              // Comment on PR
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body: `⚠️ **Merge Conflict Detected**
+
+                This PR has merge conflicts that must be resolved before it can be merged.
+
+                To resolve conflicts:
+                \`\`\`bash
+                git fetch origin
+                git checkout ${pr.head.ref}
+                git merge origin/${pr.base.ref}
+                # Resolve conflicts
+                git add .
+                git commit
+                git push
+                \`\`\`
+
+                Need help? Check out [GitHub's guide on resolving merge conflicts](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/addressing-merge-conflicts).`
+              });
+            } else if (pullRequest.data.mergeable === true) {
+              // Remove conflict label if it exists
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  name: 'has-conflicts'
+                });
+              } catch (e) {
+                // Label might not exist
+              }
+            }
+
+  # ============================================
+  # Stale PR Management
+  # ============================================
+  manage-stale:
+    name: 🕰️ Manage Stale PRs
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - name: Mark stale PRs
+        uses: actions/stale@v9
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          stale-pr-message: |
+            👋 This PR has been inactive for 7 days.
+
+            Please update it or it will be marked as stale in 7 more days.
+            If you're still working on this, please push a new commit or leave a comment.
+          close-pr-message: |
+            This PR has been closed due to inactivity.
+            Feel free to reopen it when you're ready to continue working on it.
+          days-before-pr-stale: 7
+          days-before-pr-close: 14
+          stale-pr-label: 'stale'
+          exempt-pr-labels: 'work-in-progress,blocked,priority/critical'
+
+  # ============================================
+  # Auto Merge
+  # ============================================
+  auto-merge:
+    name: 🤖 Auto Merge
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request_review' && github.event.review.state == 'approved'
+    steps:
+      - name: Auto merge if conditions met
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+
+            // Check if PR has auto-merge label
+            const labels = await github.rest.issues.listLabelsOnIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number
+            });
+
+            const hasAutoMerge = labels.data.some(l => l.name === 'auto-merge');
+            if (!hasAutoMerge) {
+              console.log('PR does not have auto-merge label');
+              return;
+            }
+
+            // Check if all checks passed
+            const checks = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: pr.head.sha
+            });
+
+            const allChecksPassed = checks.data.check_runs.every(
+              check => check.conclusion === 'success' || check.conclusion === 'skipped'
+            );
+
+            if (!allChecksPassed) {
+              console.log('Not all checks have passed');
+              return;
+            }
+
+            // Check if PR is approved
+            const reviews = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number
+            });
+
+            const approved = reviews.data.some(r => r.state === 'APPROVED');
+            if (!approved) {
+              console.log('PR is not approved');
+              return;
+            }
+
+            // Merge PR
+            try {
+              await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                merge_method: 'squash'
+              });
+
+              console.log(`✅ Auto-merged PR #${pr.number}`);
+            } catch (e) {
+              console.log(`Failed to auto-merge: ${e.message}`);
+            }
+
+  # ============================================
+  # Command Handler
+  # ============================================
+  command-handler:
+    name: 💬 Handle PR Commands
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issue_comment' && github.event.issue.pull_request
+    steps:
+      - name: Parse and execute commands
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = context.payload.comment;
+            const body = comment.body.trim();
+
+            // Only respond to commands (starting with /)
+            if (!body.startsWith('/')) {
+              return;
+            }
+
+            const pr = context.payload.issue;
+            const command = body.split(' ')[0].toLowerCase();
+
+            switch (command) {
+              case '/rebase':
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: '🔄 Rebasing PR...'
+                });
+                // Trigger rebase workflow
+                break;
+
+              case '/merge':
+                await github.rest.pulls.merge({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number,
+                  merge_method: 'squash'
+                });
+                break;
+
+              case '/approve':
+                await github.rest.pulls.createReview({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number,
+                  event: 'APPROVE'
+                });
+                break;
+
+              case '/update':
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: '🔄 Updating branch with base...'
+                });
+                // Trigger update workflow
+                break;
+
+              case '/ready':
+                // Mark as ready for review
+                await github.rest.pulls.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number,
+                  draft: false
+                });
+                break;
+
+              case '/wip':
+                // Convert to draft
+                await github.rest.pulls.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number,
+                  draft: true
+                });
+                break;
+
+              default:
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: `❓ Unknown command: ${command}
+
+                  Available commands:
+                  - \`/rebase\` - Rebase PR on base branch
+                  - \`/merge\` - Merge PR
+                  - \`/approve\` - Approve PR
+                  - \`/update\` - Update branch with base
+                  - \`/ready\` - Mark PR as ready for review
+                  - \`/wip\` - Convert to draft PR`
+                });
+            }
+
+  # ============================================
+  # Create Labeler Config
+  # ============================================
+  create-labeler-config:
+    name: 📝 Create Labeler Config
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create labeler.yml
+        run: |
+          cat > .github/labeler.yml << 'EOF'
+          # Frontend changes
+          frontend:
+            - apps/website/**
+            - apps/analytics-dashboard/**
+            - apps/brand-portal/**
+            - '**/*.tsx'
+            - '**/*.jsx'
+            - '**/*.css'
+            - '**/*.scss'
+
+          # Backend changes
+          backend:
+            - apps/rtpm-api/**
+            - apps/otter-gateway/**
+            - '**/*.py'
+            - '**/api/**'
+
+          # Mobile changes
+          mobile:
+            - apps/mobile-dashboard/**
+            - apps/mobile-collaboration/**
+            - '**/*.swift'
+            - '**/*.kt'
+            - '**/*.java'
+
+          # Documentation
+          documentation:
+            - '**/*.md'
+            - docs/**
+            - README.md
+
+          # CI/CD changes
+          ci/cd:
+            - .github/**
+            - .gitlab-ci.yml
+            - Jenkinsfile
+            - '**/*.yml'
+            - '**/*.yaml'
+
+          # Docker changes
+          docker:
+            - '**/Dockerfile*'
+            - docker-compose*.yml
+            - .dockerignore
+
+          # Infrastructure
+          infrastructure:
+            - infrastructure/**
+            - terraform/**
+            - '**/*.tf'
+            - '**/*.tfvars'
+
+          # Dependencies
+          dependencies:
+            - package.json
+            - pnpm-lock.yaml
+            - requirements.txt
+            - Pipfile
+            - go.mod
+            - Cargo.toml
+
+          # Tests
+          testing:
+            - '**/*.test.*'
+            - '**/*.spec.*'
+            - __tests__/**
+            - tests/**
+            - test/**
+
+          # Config files
+          configuration:
+            - '**/*.config.*'
+            - .env*
+            - '**/*.json'
+            - '**/*.toml'
+            - '**/*.ini'
+          EOF
+
+          git add .github/labeler.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: add PR labeler configuration"
+          git push
