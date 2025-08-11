@@ -1,0 +1,504 @@
+name: Automated Performance Monitoring
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    types: [opened, synchronize]
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'Target URL to test'
+        required: false
+        default: 'https://candlefish.ai'
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  deployments: read
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '9'
+
+jobs:
+  # ============================================
+  # Lighthouse Performance Testing
+  # ============================================
+  lighthouse:
+    name: 🔦 Lighthouse Analysis
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        url:
+          - https://candlefish.ai
+          - https://analytics.candlefish.ai
+        device: [mobile, desktop]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Lighthouse
+        uses: treosh/lighthouse-ci-action@v11
+        id: lighthouse
+        with:
+          urls: ${{ matrix.url }}
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+          runs: 3  # Run 3 times and take median
+          configPath: '.lighthouserc.json'
+
+      - name: Parse Lighthouse results
+        id: parse
+        run: |
+          # Extract scores from Lighthouse results
+          PERF_SCORE=$(echo '${{ steps.lighthouse.outputs.manifest }}' | jq -r '.[0].summary.performance')
+          ACCESS_SCORE=$(echo '${{ steps.lighthouse.outputs.manifest }}' | jq -r '.[0].summary.accessibility')
+          PRACTICES_SCORE=$(echo '${{ steps.lighthouse.outputs.manifest }}' | jq -r '.[0].summary["best-practices"]')
+          SEO_SCORE=$(echo '${{ steps.lighthouse.outputs.manifest }}' | jq -r '.[0].summary.seo')
+
+          echo "performance=$PERF_SCORE" >> $GITHUB_OUTPUT
+          echo "accessibility=$ACCESS_SCORE" >> $GITHUB_OUTPUT
+          echo "best_practices=$PRACTICES_SCORE" >> $GITHUB_OUTPUT
+          echo "seo=$SEO_SCORE" >> $GITHUB_OUTPUT
+
+          # Check if scores meet thresholds
+          if (( $(echo "$PERF_SCORE < 0.9" | bc -l) )); then
+            echo "⚠️ Performance score below threshold: $PERF_SCORE"
+            echo "performance_pass=false" >> $GITHUB_OUTPUT
+          else
+            echo "performance_pass=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = '${{ matrix.url }}';
+            const device = '${{ matrix.device }}';
+            const scores = {
+              performance: ${{ steps.parse.outputs.performance }},
+              accessibility: ${{ steps.parse.outputs.accessibility }},
+              bestPractices: ${{ steps.parse.outputs.best_practices }},
+              seo: ${{ steps.parse.outputs.seo }}
+            };
+
+            const emoji = scores.performance >= 0.9 ? '🟢' : scores.performance >= 0.7 ? '🟡' : '🔴';
+
+            const comment = `## ${emoji} Lighthouse Results - ${device}
+
+            **URL**: ${url}
+
+            | Metric | Score |
+            |--------|-------|
+            | Performance | ${Math.round(scores.performance * 100)} |
+            | Accessibility | ${Math.round(scores.accessibility * 100)} |
+            | Best Practices | ${Math.round(scores.bestPractices * 100)} |
+            | SEO | ${Math.round(scores.seo * 100)} |
+
+            [View full report](${{ steps.lighthouse.outputs.links }})`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+
+  # ============================================
+  # Bundle Size Analysis
+  # ============================================
+  bundle-size:
+    name: 📦 Bundle Size Analysis
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build applications
+        run: pnpm turbo build --filter="./apps/*"
+
+      - name: Analyze bundle sizes
+        id: analyze
+        run: |
+          # Install size-limit
+          pnpm add -g @size-limit/preset-app
+
+          # Create size-limit config if it doesn't exist
+          if [ ! -f .size-limit.json ]; then
+            cat > .size-limit.json << EOF
+          [
+            {
+              "path": "apps/website/dist/**/*.js",
+              "limit": "500 KB"
+            },
+            {
+              "path": "apps/analytics-dashboard/dist/**/*.js",
+              "limit": "750 KB"
+            },
+            {
+              "path": "apps/mobile-dashboard/dist/**/*.js",
+              "limit": "1 MB"
+            }
+          ]
+          EOF
+          fi
+
+          # Run size-limit
+          npx size-limit --json > size-report.json || true
+
+          # Parse results
+          cat size-report.json | jq -r '.[] | "\(.name): \(.size) (limit: \(.limit))"'
+
+      - name: Compare with base branch
+        if: github.event_name == 'pull_request'
+        run: |
+          # Checkout base branch
+          git fetch origin ${{ github.base_ref }}
+          git checkout origin/${{ github.base_ref }}
+
+          # Build base branch
+          pnpm install --frozen-lockfile
+          pnpm turbo build --filter="./apps/*"
+
+          # Get base sizes
+          npx size-limit --json > base-size-report.json || true
+
+          # Compare sizes
+          node -e "
+            const current = require('./size-report.json');
+            const base = require('./base-size-report.json');
+
+            console.log('## Bundle Size Comparison');
+            console.log('| Package | Base | Current | Diff |');
+            console.log('|---------|------|---------|------|');
+
+            current.forEach((item, i) => {
+              const baseItem = base[i] || { size: 0 };
+              const diff = item.size - baseItem.size;
+              const diffPercent = ((diff / baseItem.size) * 100).toFixed(2);
+              const emoji = diff > 0 ? '📈' : diff < 0 ? '📉' : '➡️';
+
+              console.log(\`| \${item.name} | \${baseItem.size} | \${item.size} | \${emoji} \${diff > 0 ? '+' : ''}\${diff} (\${diffPercent}%) |\`);
+            });
+          " > size-comparison.md
+
+      - name: Upload size report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-size-report
+          path: |
+            size-report.json
+            size-comparison.md
+
+  # ============================================
+  # Runtime Performance Monitoring
+  # ============================================
+  runtime-performance:
+    name: ⚡ Runtime Performance
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup test environment
+        run: |
+          # Copy test env file
+          cp .env.example .env.test
+
+          # Start services
+          pnpm turbo dev --filter="./apps/*" &
+          DEV_PID=$!
+
+          # Wait for services to be ready
+          sleep 30
+
+          echo "dev_pid=$DEV_PID" >> $GITHUB_ENV
+
+      - name: Run performance tests
+        run: |
+          # Install k6 for load testing
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+          # Create k6 test script if it doesn't exist
+          if [ ! -f performance/k6-test.js ]; then
+            mkdir -p performance
+            cat > performance/k6-test.js << 'EOF'
+          import http from 'k6/http';
+          import { check, sleep } from 'k6';
+          import { Rate } from 'k6/metrics';
+
+          export const errorRate = new Rate('errors');
+
+          export const options = {
+            stages: [
+              { duration: '30s', target: 10 },  // Ramp up
+              { duration: '1m', target: 10 },   // Stay at 10 users
+              { duration: '30s', target: 20 },  // Ramp up
+              { duration: '1m', target: 20 },   // Stay at 20 users
+              { duration: '30s', target: 0 },   // Ramp down
+            ],
+            thresholds: {
+              http_req_duration: ['p(95)<500'], // 95% of requests under 500ms
+              errors: ['rate<0.1'],              // Error rate under 10%
+            },
+          };
+
+          export default function () {
+            const urls = [
+              'http://localhost:3000',
+              'http://localhost:3000/api/health',
+            ];
+
+            urls.forEach(url => {
+              const res = http.get(url);
+              const success = check(res, {
+                'status is 200': (r) => r.status === 200,
+                'response time < 500ms': (r) => r.timings.duration < 500,
+              });
+
+              errorRate.add(!success);
+              sleep(1);
+            });
+          }
+          EOF
+          fi
+
+          # Run k6 tests
+          k6 run --out json=performance/k6-results.json performance/k6-test.js || true
+
+      - name: Kill dev server
+        if: always()
+        run: |
+          if [ ! -z "${{ env.dev_pid }}" ]; then
+            kill ${{ env.dev_pid }} || true
+          fi
+
+      - name: Analyze results
+        run: |
+          # Parse k6 results
+          if [ -f performance/k6-results.json ]; then
+            echo "## Load Test Results" > performance-report.md
+            echo "" >> performance-report.md
+
+            # Extract key metrics
+            cat performance/k6-results.json | jq -r '
+              select(.type=="Point" and .metric=="http_req_duration") |
+              "- Response Time (p95): \(.data.value)ms"
+            ' | tail -1 >> performance-report.md
+
+            cat performance/k6-results.json | jq -r '
+              select(.type=="Point" and .metric=="http_reqs") |
+              "- Requests per second: \(.data.value)"
+            ' | tail -1 >> performance-report.md
+
+            cat performance/k6-results.json | jq -r '
+              select(.type=="Point" and .metric=="errors") |
+              "- Error rate: \(.data.value)%"
+            ' | tail -1 >> performance-report.md
+          fi
+
+      - name: Upload performance report
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-report
+          path: |
+            performance/k6-results.json
+            performance-report.md
+
+  # ============================================
+  # Memory & CPU Profiling
+  # ============================================
+  profiling:
+    name: 🔍 Memory & CPU Profiling
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm add -g clinic autocannon
+
+      - name: Build applications
+        run: pnpm turbo build --filter="./apps/*"
+
+      - name: Run memory profiling
+        run: |
+          # Start server with clinic
+          cd apps/website
+          clinic doctor --on-port 'autocannon -c 10 -d 30 localhost:3000' -- node dist/server.js &
+          CLINIC_PID=$!
+
+          # Wait for profiling to complete
+          wait $CLINIC_PID
+
+          # Generate report
+          clinic doctor --visualize-only .clinic/*.clinic-doctor
+
+      - name: Check for memory leaks
+        run: |
+          # Create memory leak detection script
+          cat > check-memory-leak.js << 'EOF'
+          const v8 = require('v8');
+          const fs = require('fs');
+
+          // Take heap snapshots
+          const snapshots = [];
+          for (let i = 0; i < 5; i++) {
+            if (global.gc) global.gc();
+            const heapSnapshot = v8.getHeapSnapshot();
+            const fileName = `heap-${i}.heapsnapshot`;
+            const fileStream = fs.createWriteStream(fileName);
+            heapSnapshot.pipe(fileStream);
+            snapshots.push(fileName);
+
+            // Simulate some work
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+
+          console.log('Heap snapshots saved:', snapshots);
+          EOF
+
+          # Run with --expose-gc flag
+          node --expose-gc check-memory-leak.js
+
+      - name: Upload profiling results
+        uses: actions/upload-artifact@v4
+        with:
+          name: profiling-results
+          path: |
+            .clinic/
+            *.heapsnapshot
+
+  # ============================================
+  # Performance Regression Detection
+  # ============================================
+  regression-detection:
+    name: 📊 Performance Regression Detection
+    needs: [lighthouse, bundle-size, runtime-performance]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Analyze for regressions
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Check if any performance metrics have regressed
+            const regressions = [];
+
+            // Add regression detection logic here
+            // Compare with historical data stored in GitHub
+
+            if (regressions.length > 0) {
+              // Create an issue for performance regression
+              const issue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '⚠️ Performance Regression Detected',
+                body: `## Performance Regression Report
+
+                The following performance regressions were detected:
+
+                ${regressions.map(r => `- ${r}`).join('\n')}
+
+                ### Affected Commit
+                - SHA: ${context.sha}
+                - Author: ${context.actor}
+                - Message: ${context.payload.head_commit?.message || 'N/A'}
+
+                Please investigate and fix these regressions.
+
+                ---
+                *This issue was automatically created by the performance monitoring workflow*`,
+                labels: ['performance', 'regression', 'automated'],
+                assignees: [context.actor]
+              });
+
+              console.log(`Created issue: ${issue.data.html_url}`);
+            }
+
+      - name: Store performance data
+        run: |
+          # Store performance metrics for historical comparison
+          mkdir -p .performance-data
+          DATE=$(date +%Y%m%d-%H%M%S)
+
+          # Collect all performance data
+          cat > .performance-data/metrics-$DATE.json << EOF
+          {
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "commit": "${{ github.sha }}",
+            "branch": "${{ github.ref }}",
+            "lighthouse": $(cat lighthouse-results.json 2>/dev/null || echo '{}'),
+            "bundleSize": $(cat size-report.json 2>/dev/null || echo '{}'),
+            "runtime": $(cat performance/k6-results.json 2>/dev/null || echo '{}')
+          }
+          EOF
+
+          # Commit back to repo (optional)
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add .performance-data/
+            git commit -m "chore: update performance metrics [skip ci]" || true
+            git push || true
+          fi

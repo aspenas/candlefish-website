@@ -1,0 +1,574 @@
+name: Optimized Monorepo CI Pipeline
+
+on:
+  push:
+    branches: [main, develop, 'feat/**', 'fix/**']
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/CODEOWNERS'
+      - 'LICENSE'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  merge_group:
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+  id-token: write
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.12'
+  PNPM_VERSION: '9'
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+  FORCE_COLOR: 3
+
+jobs:
+  # ============================================
+  # STAGE 1: Fast Change Detection (30 seconds)
+  # ============================================
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      node: ${{ steps.filter.outputs.node }}
+      python: ${{ steps.filter.outputs.python }}
+      mobile: ${{ steps.filter.outputs.mobile }}
+      docs: ${{ steps.filter.outputs.docs }}
+      affected_packages: ${{ steps.affected.outputs.packages }}
+      skip_ci: ${{ steps.skip.outputs.skip }}
+      cache_key: ${{ steps.cache.outputs.key }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Check for skip CI markers
+      - name: Check skip CI
+        id: skip
+        run: |
+          if [[ "${{ github.event.head_commit.message }}" == *"[skip ci]"* ]] || \
+             [[ "${{ github.event.head_commit.message }}" == *"[ci skip]"* ]]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            node:
+              - '**/*.{ts,tsx,js,jsx,mjs,cjs}'
+              - '**/package.json'
+              - '**/pnpm-lock.yaml'
+              - '**/.npmrc'
+              - 'turbo.json'
+            python:
+              - '**/*.py'
+              - '**/requirements*.txt'
+              - '**/pyproject.toml'
+              - '**/poetry.lock'
+              - '**/Pipfile*'
+            mobile:
+              - 'apps/mobile-*/**'
+              - '**/*.{swift,kt,java}'
+              - '**/ios/**'
+              - '**/android/**'
+            docs:
+              - '**/*.md'
+              - 'docs/**'
+              - '.github/**.md'
+
+      # Use Turbo to detect affected packages
+      - name: Setup Node.js for detection
+        if: steps.filter.outputs.node == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        if: steps.filter.outputs.node == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Restore Turbo cache
+        if: steps.filter.outputs.node == 'true'
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ github.ref }}
+            turbo-
+
+      - name: Install Turbo globally
+        if: steps.filter.outputs.node == 'true'
+        run: pnpm add -g turbo
+
+      - name: Detect affected packages
+        id: affected
+        if: steps.filter.outputs.node == 'true'
+        run: |
+          # Get affected packages using Turbo
+          AFFECTED=$(turbo run build --dry-run --filter="...[origin/main]" --output-logs=none 2>/dev/null | grep -E "• Packages" | sed 's/• Packages in scope: //' || echo "all")
+          echo "packages=$AFFECTED" >> $GITHUB_OUTPUT
+          echo "Affected packages: $AFFECTED"
+
+      - name: Generate cache key
+        id: cache
+        run: |
+          # Generate a composite cache key
+          DEPS_HASH="${{ hashFiles('**/pnpm-lock.yaml', '**/package.json', '**/requirements*.txt', '**/poetry.lock') }}"
+          echo "key=deps-${{ runner.os }}-${{ env.NODE_VERSION }}-${{ env.PYTHON_VERSION }}-${DEPS_HASH}" >> $GITHUB_OUTPUT
+
+  # ============================================
+  # STAGE 2: Parallel Dependency Installation (1-2 minutes with cache)
+  # ============================================
+  install-deps:
+    name: Install Dependencies
+    needs: detect-changes
+    if: needs.detect-changes.outputs.skip_ci != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node.js dependencies
+      - name: Setup Node.js
+        if: needs.detect-changes.outputs.node == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Setup pnpm
+        if: needs.detect-changes.outputs.node == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Get pnpm store directory
+        if: needs.detect-changes.outputs.node == 'true'
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        if: needs.detect-changes.outputs.node == 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.STORE_PATH }}
+            **/node_modules
+            **/.next/cache
+            **/.turbo
+          key: ${{ needs.detect-changes.outputs.cache_key }}
+          restore-keys: |
+            deps-${{ runner.os }}-${{ env.NODE_VERSION }}-
+            deps-${{ runner.os }}-
+
+      - name: Install Node dependencies
+        if: needs.detect-changes.outputs.node == 'true'
+        run: |
+          pnpm install --frozen-lockfile --prefer-offline
+          pnpm ls --depth=0 || true
+
+      # Python dependencies
+      - name: Setup Python
+        if: needs.detect-changes.outputs.python == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Cache Python dependencies
+        if: needs.detect-changes.outputs.python == 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.local
+            .venv
+          key: python-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/requirements*.txt', '**/pyproject.toml') }}
+          restore-keys: |
+            python-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
+            python-${{ runner.os }}-
+
+      - name: Install Python dependencies
+        if: needs.detect-changes.outputs.python == 'true'
+        run: |
+          pip install --upgrade pip wheel setuptools
+          pip install ruff pytest pytest-cov pytest-xdist pytest-timeout
+          # Install all requirements files found
+          find . -name "requirements*.txt" -exec pip install -r {} \; 2>/dev/null || true
+
+      # Save installed dependencies as artifacts for other jobs
+      - name: Save dependency artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deps-cache
+          path: |
+            node_modules
+            .pnpm-store
+            ~/.cache
+            ~/.local
+          retention-days: 1
+
+  # ============================================
+  # STAGE 3: Parallel Quality Checks (2-3 minutes)
+  # ============================================
+  quality-matrix:
+    name: Quality Checks
+    needs: [detect-changes, install-deps]
+    if: needs.detect-changes.outputs.skip_ci != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: true
+      matrix:
+        check: [lint, typecheck, format]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: needs.detect-changes.outputs.node == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        if: needs.detect-changes.outputs.node == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Download dependency cache
+        uses: actions/download-artifact@v4
+        with:
+          name: deps-cache
+          path: .
+
+      - name: Restore Turbo cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ matrix.check }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ matrix.check }}-
+            turbo-
+
+      - name: Run ${{ matrix.check }}
+        run: |
+          case "${{ matrix.check }}" in
+            lint)
+              if [[ "${{ needs.detect-changes.outputs.node }}" == "true" ]]; then
+                pnpm turbo lint --cache-dir=.turbo --filter="${{ needs.detect-changes.outputs.affected_packages || '...[origin/main]' }}"
+              fi
+              if [[ "${{ needs.detect-changes.outputs.python }}" == "true" ]]; then
+                ruff check . || true
+              fi
+              ;;
+            typecheck)
+              if [[ "${{ needs.detect-changes.outputs.node }}" == "true" ]]; then
+                pnpm turbo typecheck --cache-dir=.turbo --filter="${{ needs.detect-changes.outputs.affected_packages || '...[origin/main]' }}"
+              fi
+              ;;
+            format)
+              if [[ "${{ needs.detect-changes.outputs.node }}" == "true" ]]; then
+                pnpm prettier --check . || true
+              fi
+              if [[ "${{ needs.detect-changes.outputs.python }}" == "true" ]]; then
+                ruff format --check . || true
+              fi
+              ;;
+          esac
+
+  # ============================================
+  # STAGE 4: Parallel Test Execution with Sharding (3-5 minutes)
+  # ============================================
+  test-matrix:
+    name: Tests (Shard ${{ matrix.shard }}/${{ strategy.job-total }})
+    needs: [detect-changes, install-deps]
+    if: needs.detect-changes.outputs.skip_ci != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: needs.detect-changes.outputs.node == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        if: needs.detect-changes.outputs.node == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Download dependency cache
+        uses: actions/download-artifact@v4
+        with:
+          name: deps-cache
+          path: .
+
+      - name: Setup Python
+        if: needs.detect-changes.outputs.python == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Run Node tests (sharded)
+        if: needs.detect-changes.outputs.node == 'true'
+        run: |
+          # Run tests for affected packages with sharding
+          pnpm turbo test --cache-dir=.turbo \
+            --filter="${{ needs.detect-changes.outputs.affected_packages || '...[origin/main]' }}" \
+            -- --shard=${{ matrix.shard }}/${{ strategy.job-total }} \
+            --coverage --coverageReporters=json
+
+      - name: Run Python tests (sharded)
+        if: needs.detect-changes.outputs.python == 'true'
+        run: |
+          # Run pytest with xdist for parallel execution
+          pytest -n auto --dist loadscope \
+            --cov --cov-report=xml \
+            --splits ${{ strategy.job-total }} \
+            --group ${{ matrix.shard }} \
+            || true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-shard-${{ matrix.shard }}
+          path: |
+            coverage/
+            .coverage*
+            test-results/
+          retention-days: 7
+
+  # ============================================
+  # STAGE 5: Parallel Build with Caching (2-3 minutes)
+  # ============================================
+  build:
+    name: Build
+    needs: [detect-changes, install-deps, quality-matrix]
+    if: needs.detect-changes.outputs.skip_ci != 'true' && needs.detect-changes.outputs.node == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Download dependency cache
+        uses: actions/download-artifact@v4
+        with:
+          name: deps-cache
+          path: .
+
+      - name: Restore build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/.next
+            **/dist
+            **/build
+            .turbo
+          key: build-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            build-${{ runner.os }}-
+            build-
+
+      - name: Build affected packages
+        run: |
+          # Build only affected packages using Turbo
+          pnpm turbo build --cache-dir=.turbo \
+            --filter="${{ needs.detect-changes.outputs.affected_packages || '...[origin/main]' }}"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            apps/*/dist
+            apps/*/.next
+            packages/*/dist
+            projects/*/build
+          retention-days: 7
+
+  # ============================================
+  # STAGE 6: Security Scanning (Parallel)
+  # ============================================
+  security:
+    name: Security Scan
+    needs: detect-changes
+    if: needs.detect-changes.outputs.skip_ci != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy security scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          timeout: '10m'
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Check for secrets (fast mode)
+        run: |
+          # Quick secret scan on changed files only
+          git diff --name-only origin/main...HEAD | \
+            xargs -I {} sh -c 'trufflehog filesystem {} --no-update --fail --max-depth=1' || true
+
+  # ============================================
+  # STAGE 7: Performance Testing (Optional)
+  # ============================================
+  performance:
+    name: Performance Tests
+    needs: [detect-changes, build]
+    if: |
+      needs.detect-changes.outputs.skip_ci != 'true' &&
+      needs.detect-changes.outputs.node == 'true' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: .
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v11
+        with:
+          urls: |
+            http://localhost:3000
+          budgetPath: ./lighthouse-budget.json
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+      - name: Check bundle size
+        run: |
+          # Use bundlewatch or similar tool
+          npx bundlewatch --config .bundlewatchrc.json || true
+
+  # ============================================
+  # STAGE 8: Final Status and Reporting
+  # ============================================
+  ci-complete:
+    name: CI Complete
+    needs: [quality-matrix, test-matrix, build, security]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-results-*
+          path: test-results
+          merge-multiple: true
+
+      - name: Merge coverage reports
+        run: |
+          # Merge coverage from all shards
+          npx nyc merge test-results coverage-final.json || true
+          npx nyc report --reporter=html --reporter=text || true
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const needs = ${{ toJson(needs) }};
+            const allPassed = Object.values(needs).every(
+              job => job.result === 'success' || job.result === 'skipped'
+            );
+
+            const emoji = allPassed ? '✅' : '❌';
+            const status = allPassed ? 'passed' : 'failed';
+
+            const comment = `## ${emoji} CI Status: ${status}
+
+            | Check | Status |
+            |-------|--------|
+            | Quality Checks | ${needs['quality-matrix'].result} |
+            | Tests | ${needs['test-matrix'].result} |
+            | Build | ${needs.build.result} |
+            | Security | ${needs.security.result} |
+
+            **Time**: ${Math.round((Date.now() - ${{ github.run_started_at }}) / 60000)} minutes
+            **Commit**: ${{ github.sha.substring(0, 7) }}
+
+            [View full results](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+
+      - name: Set final status
+        run: |
+          if [[ "${{ needs.quality-matrix.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-matrix.result }}" == "failure" ]] || \
+             [[ "${{ needs.build.result }}" == "failure" ]] || \
+             [[ "${{ needs.security.result }}" == "failure" ]]; then
+            echo "CI failed"
+            exit 1
+          fi
+          echo "CI passed successfully!"

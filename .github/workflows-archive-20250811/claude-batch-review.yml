@@ -1,0 +1,356 @@
+name: Claude Batch PR Review
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_numbers:
+        description: 'Comma-separated list of PR numbers to review'
+        required: true
+        type: string
+      review_type:
+        description: 'Type of review to perform'
+        required: false
+        type: choice
+        options:
+          - comprehensive
+          - security
+          - performance
+          - quick
+        default: quick
+      max_concurrent:
+        description: 'Maximum concurrent reviews (to stay within rate limits)'
+        required: false
+        type: number
+        default: 3
+
+env:
+  ANTHROPIC_MODEL: claude-opus-4-20250514
+  AWS_REGION: us-east-1
+  AWS_SECRET_NAME: candlefish-ai/anthropic/api-key
+
+jobs:
+  batch-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+      statuses: write
+      checks: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: claude-batch-review-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Python environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install anthropic>=0.39.0 boto3>=1.34.0 PyGithub>=2.4.0 \
+                      requests>=2.32.0 tenacity>=8.5.0 pydantic>=2.9.0 \
+                      rich>=13.9.0 asyncio aiohttp
+
+      - name: Create batch review script
+        run: |
+          cat > batch_review.py << 'EOF'
+          #!/usr/bin/env python3
+          import os
+          import sys
+          import json
+          import asyncio
+          import time
+          from typing import List, Dict, Tuple
+          from datetime import datetime
+          import boto3
+          from anthropic import Anthropic
+          from github import Github
+          from rich.console import Console
+          from rich.table import Table
+          from rich.progress import Progress, SpinnerColumn, TextColumn
+
+          # Import our cost tracker
+          sys.path.append('.github/scripts')
+          from claude_cost_tracker import ClaudeCostTracker
+
+          console = Console()
+
+          class BatchReviewer:
+              def __init__(self, pr_numbers: List[int], review_type: str, max_concurrent: int = 3):
+                  self.pr_numbers = pr_numbers
+                  self.review_type = review_type
+                  self.max_concurrent = max_concurrent
+                  self.anthropic = self._init_anthropic()
+                  self.github = Github(os.environ['GITHUB_TOKEN'])
+                  self.repo = self.github.get_repo(os.environ['GITHUB_REPOSITORY'])
+                  self.cost_tracker = ClaudeCostTracker()
+                  self.results = []
+
+              def _init_anthropic(self) -> Anthropic:
+                  """Initialize Anthropic client"""
+                  secrets_client = boto3.client('secretsmanager')
+                  response = secrets_client.get_secret_value(SecretId=os.environ['AWS_SECRET_NAME'])
+                  secret = json.loads(response['SecretString'])
+                  return Anthropic(api_key=secret['ANTHROPIC_API_KEY'])
+
+              async def review_pr(self, pr_number: int) -> Dict:
+                  """Review a single PR"""
+                  start_time = time.time()
+
+                  try:
+                      # Get PR data
+                      pr = self.repo.get_pull(pr_number)
+
+                      # Skip if already reviewed recently (within last hour)
+                      recent_comments = list(pr.get_issue_comments())[-10:]  # Last 10 comments
+                      for comment in recent_comments:
+                          if "🤖 Claude Code Review" in comment.body and \
+                             (datetime.utcnow() - comment.created_at).seconds < 3600:
+                              console.print(f"[yellow]PR #{pr_number} already reviewed recently, skipping[/yellow]")
+                              return {
+                                  'pr_number': pr_number,
+                                  'status': 'skipped',
+                                  'reason': 'Recently reviewed'
+                              }
+
+                      # Build diff
+                      diff = ""
+                      file_count = 0
+                      for file in pr.get_files():
+                          if file.patch:
+                              diff += f"\n--- {file.filename} ---\n"
+                              diff += file.patch + "\n"
+                              file_count += 1
+
+                      # Construct prompt based on review type
+                      prompt = self._build_prompt(pr, diff, file_count)
+
+                      # Get review with token counting
+                      input_tokens = len(prompt) // 4  # Rough estimate
+
+                      console.print(f"[blue]Reviewing PR #{pr_number}: {pr.title}[/blue]")
+
+                      # Stream the review
+                      stream = self.anthropic.messages.create(
+                          model=os.environ.get('ANTHROPIC_MODEL', 'claude-opus-4-20250514'),
+                          max_tokens=32000,
+                          temperature=0,
+                          messages=[{'role': 'user', 'content': prompt}],
+                          stream=True
+                      )
+
+                      # Collect response
+                      review_content = ""
+                      for event in stream:
+                          if hasattr(event, 'type') and event.type == 'content_block_delta':
+                              if hasattr(event.delta, 'text'):
+                                  review_content += event.delta.text
+
+                      output_tokens = len(review_content) // 4  # Rough estimate
+
+                      # Post review
+                      comment = f"""## 🤖 Claude Code Review (Batch)
+
+                      **Review Type:** {self.review_type.title()}
+                      **PR:** #{pr_number} - {pr.title}
+                      **Files Changed:** {file_count}
+
+                      {review_content}
+
+                      ---
+                      *Part of batch review run #{os.environ.get('GITHUB_RUN_ID', 'unknown')}*
+                      """
+
+                      pr.create_issue_comment(comment)
+
+                      # Track cost
+                      duration = time.time() - start_time
+                      cost_data = self.cost_tracker.track_usage(
+                          pr_number=pr_number,
+                          repository=os.environ['GITHUB_REPOSITORY'],
+                          model=os.environ.get('ANTHROPIC_MODEL', 'claude-opus-4-20250514'),
+                          input_tokens=input_tokens,
+                          output_tokens=output_tokens,
+                          review_type=self.review_type,
+                          duration_seconds=duration,
+                          metadata={
+                              'batch_run': os.environ.get('GITHUB_RUN_ID'),
+                              'files_changed': file_count
+                          }
+                      )
+
+                      console.print(f"[green]✓ PR #{pr_number} reviewed (${cost_data['total_cost']:.2f})[/green]")
+
+                      return {
+                          'pr_number': pr_number,
+                          'status': 'success',
+                          'cost': cost_data['total_cost'],
+                          'duration': duration,
+                          'tokens': {
+                              'input': input_tokens,
+                              'output': output_tokens
+                          }
+                      }
+
+                  except Exception as e:
+                      console.print(f"[red]✗ PR #{pr_number} failed: {str(e)}[/red]")
+                      return {
+                          'pr_number': pr_number,
+                          'status': 'failed',
+                          'error': str(e)
+                      }
+
+              def _build_prompt(self, pr, diff: str, file_count: int) -> str:
+                  """Build review prompt based on review type"""
+                  base = f"""
+                  Pull Request #{pr.number}: {pr.title}
+                  Author: {pr.user.login}
+                  Files Changed: {file_count}
+
+                  Description:
+                  {pr.body or 'No description provided'}
+
+                  Diff (first 500K chars):
+                  {diff[:500000]}
+                  """
+
+                  if self.review_type == 'quick':
+                      return base + "\n\nProvide a quick review focusing on obvious issues, bugs, and security concerns. Keep it concise."
+                  elif self.review_type == 'security':
+                      return base + "\n\nPerform a security-focused review. Look for vulnerabilities, exposed secrets, injection risks, and authentication issues."
+                  elif self.review_type == 'performance':
+                      return base + "\n\nReview for performance issues: inefficient algorithms, N+1 queries, memory leaks, and optimization opportunities."
+                  else:  # comprehensive
+                      return base + "\n\nProvide a comprehensive review covering code quality, bugs, security, performance, and best practices."
+
+              async def run_batch(self):
+                  """Run batch reviews with rate limiting"""
+                  semaphore = asyncio.Semaphore(self.max_concurrent)
+
+                  async def review_with_limit(pr_number):
+                      async with semaphore:
+                          # Add delay to respect rate limits
+                          await asyncio.sleep(1)  # 1 second between starts
+                          return await self.review_pr(pr_number)
+
+                  # Create tasks
+                  tasks = [review_with_limit(pr_num) for pr_num in self.pr_numbers]
+
+                  # Run with progress
+                  with Progress(
+                      SpinnerColumn(),
+                      TextColumn("[progress.description]{task.description}"),
+                      console=console
+                  ) as progress:
+                      task = progress.add_task(f"Reviewing {len(self.pr_numbers)} PRs...", total=len(self.pr_numbers))
+
+                      results = []
+                      for coro in asyncio.as_completed(tasks):
+                          result = await coro
+                          results.append(result)
+                          progress.advance(task)
+
+                  self.results = results
+                  self._print_summary()
+
+              def _print_summary(self):
+                  """Print summary table"""
+                  table = Table(title="Batch Review Summary")
+                  table.add_column("PR #", style="cyan", no_wrap=True)
+                  table.add_column("Status", style="green")
+                  table.add_column("Cost", style="yellow")
+                  table.add_column("Duration", style="blue")
+                  table.add_column("Tokens (I/O)", style="magenta")
+
+                  total_cost = 0
+                  success_count = 0
+
+                  for result in self.results:
+                      pr_num = str(result['pr_number'])
+                      status = result['status']
+
+                      if status == 'success':
+                          success_count += 1
+                          cost = f"${result['cost']:.2f}"
+                          total_cost += result['cost']
+                          duration = f"{result['duration']:.1f}s"
+                          tokens = f"{result['tokens']['input']:,}/{result['tokens']['output']:,}"
+                      elif status == 'skipped':
+                          cost = "-"
+                          duration = "-"
+                          tokens = result.get('reason', '-')
+                      else:
+                          cost = "-"
+                          duration = "-"
+                          tokens = "Failed"
+
+                      status_style = "green" if status == 'success' else "yellow" if status == 'skipped' else "red"
+                      table.add_row(pr_num, f"[{status_style}]{status}[/{status_style}]", cost, duration, tokens)
+
+                  console.print(table)
+                  console.print(f"\n[bold]Total Cost: ${total_cost:.2f}[/bold]")
+                  console.print(f"Success Rate: {success_count}/{len(self.results)} ({success_count/len(self.results)*100:.0f}%)")
+
+
+          async def main():
+              # Parse inputs
+              pr_numbers = [int(x.strip()) for x in os.environ['PR_NUMBERS'].split(',')]
+              review_type = os.environ.get('REVIEW_TYPE', 'quick')
+              max_concurrent = int(os.environ.get('MAX_CONCURRENT', '3'))
+
+              console.print(f"[bold]Starting batch review of {len(pr_numbers)} PRs[/bold]")
+              console.print(f"Review type: {review_type}")
+              console.print(f"Max concurrent: {max_concurrent}")
+
+              # Run batch review
+              reviewer = BatchReviewer(pr_numbers, review_type, max_concurrent)
+              await reviewer.run_batch()
+
+              # Generate cost report
+              tracker = ClaudeCostTracker()
+              monthly_costs = tracker.get_monthly_costs(datetime.utcnow().strftime('%Y-%m'))
+
+              console.print(f"\n[bold]Monthly costs so far:[/bold] ${monthly_costs['total_cost']:.2f}")
+              console.print(f"Total reviews this month: {monthly_costs['total_reviews']}")
+
+
+          if __name__ == '__main__':
+              asyncio.run(main())
+          EOF
+
+          chmod +x batch_review.py
+
+      - name: Run batch review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBERS: ${{ inputs.pr_numbers }}
+          REVIEW_TYPE: ${{ inputs.review_type }}
+          MAX_CONCURRENT: ${{ inputs.max_concurrent }}
+        run: |
+          # Copy cost tracker module
+          cp .github/scripts/claude_cost_tracker.py .
+
+          # Run batch review
+          python batch_review.py
+
+      - name: Post summary to workflow
+        if: always()
+        run: |
+          echo "## Batch Review Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- PRs reviewed: ${{ inputs.pr_numbers }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Review type: ${{ inputs.review_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Run ID: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
