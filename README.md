@@ -1,47 +1,169 @@
-# Candlefish AI Landing Page
+# Candlefish.ai - Coherent Vertical Automation Platform
 
-A Next.js 14 application with **Vercel AI SDK** and **Anthropic** integration.
+> Converting messy, Excel-bound operations into durable, AI-native systems for real-world industries
 
-## Setup
+## Vision
 
-1. Install dependencies
+Candlefish is building the AI control plane for blue-collar and craft industries, transforming spreadsheet chaos into intelligent automation through our "single spine, many faces" architecture.
 
+## Core Products
+
+### Vertical Applications
+- **Paintbox** - Professional paint estimation and job management
+- **Crown** - Trophy and awards inventory and production
+- **PromoterOS** - Venue booking and settlement management  
+- **Brewkit** - Brewery production planning and inventory
+
+### Platform Capabilities
+- **Excel Migration Engine** - 5-minute spreadsheet to application transformation
+- **Coherent Core** - Shared infrastructure across all verticals
+- **Operator Network** - Certified partners for implementation and support
+- **AI Alignment** - Systems that evolve with their users
+
+## Quick Start
+
+### Development Setup
+
+1. **Install dependencies**
    ```bash
-   npm install
+   pnpm install
    ```
 
-2. Copy the env template and add your **Anthropic API key**
-
+2. **Configure environment**
    ```bash
    cp .env.local.example .env.local
-   # edit .env.local
+   # Add your API keys and configuration
    ```
 
-3. Run the dev server
-
+3. **Run development server**
    ```bash
-   npm run dev
+   pnpm dev
    ```
 
-4. Open <http://localhost:3000>
+4. **Access applications**
+   - Main platform: http://localhost:3000
+   - Paintbox: http://localhost:3001
+   - Documentation: http://localhost:3002
+
+## Architecture
+
+```
+┌─────────────────────────────────────────┐
+│      VERTICAL APPLICATIONS              │
+│  Paintbox | Crown | PromoterOS | Brewkit│
+└─────────────────────────────────────────┘
+                    ▼
+┌─────────────────────────────────────────┐
+│         CANDLEFISH CORE                 │
+│  Identity | Data | Workflow | Agents    │
+└─────────────────────────────────────────┘
+                    ▼
+┌─────────────────────────────────────────┐
+│       EXCEL MIGRATION ENGINE            │
+│  Parse | Analyze | Transform | Generate │
+└─────────────────────────────────────────┘
+```
+
+## Project Structure
+
+```
+candlefish-ai/
+├── apps/                    # Applications
+│   ├── website/            # Main marketing site
+│   ├── mobile-dashboard/   # Mobile applications
+│   └── brand-portal/       # Brand assets
+├── projects/               # Vertical implementations
+│   ├── paintbox/          # Painting contractors
+│   ├── crowntrophy/       # Trophy/awards
+│   └── promoteros/        # Venue management
+├── packages/              # Shared packages
+│   ├── ui-components/     # Design system
+│   └── tyler-setup/       # Employee onboarding
+├── deployment/            # Infrastructure
+│   ├── terraform/         # IaC configurations
+│   └── k8s/              # Kubernetes manifests
+└── docs/                  # Documentation
+    └── operator-network/  # Partner resources
+```
+
+## Key Documents
+
+- [Strategic Plan 2025-2027](./STRATEGY_2025.md)
+- [Operator Network Playbook](./OPERATOR_NETWORK_PLAYBOOK.md)
+- [Excel Migration Architecture](./EXCEL_MIGRATION_ARCHITECTURE.md)
+- [Alignment Manifesto](./ALIGNMENT_MANIFESTO.md)
+
+## Technology Stack
+
+- **Frontend**: Next.js 14, React, TypeScript, TailwindCSS
+- **Backend**: Node.js, GraphQL Federation, Prisma
+- **Database**: PostgreSQL, Redis, S3
+- **AI/ML**: Anthropic Claude, OpenAI, Custom models
+- **Infrastructure**: AWS EKS, Terraform, GitHub Actions
+- **Monitoring**: Prometheus, Grafana, OpenTelemetry
+
+## Development Workflow
+
+### Running Tests
+```bash
+# Unit tests
+pnpm test
+
+# Integration tests
+pnpm test:integration
+
+# E2E tests
+pnpm test:e2e
+```
+
+### Code Quality
+```bash
+# Linting
+pnpm lint
+
+# Type checking
+pnpm typecheck
+
+# Format code
+pnpm format
+```
+
+### Deployment
+```bash
+# Deploy to staging
+pnpm deploy:staging
+
+# Deploy to production
+pnpm deploy:production
+```
+
+## Contributing
+
+We follow a structured development process:
+
+1. **Branch Naming**: `feat/description-YYYYMMDD`
+2. **Commit Style**: Present tense, concise messages
+3. **Code Review**: All PRs require approval
+4. **Testing**: Maintain 80% coverage minimum
+
+## Security
+
+- SOC 2 Type I target: Q1 2026
+- Per-tenant encryption with KMS
+- Row-level security on all data
+- Complete audit trail
+- GDPR/CCPA compliant
+
+## Support
+
+- **Documentation**: [docs.candlefish.ai](https://docs.candlefish.ai)
+- **Partner Portal**: [partners.candlefish.ai](https://partners.candlefish.ai)
+- **API Reference**: [api.candlefish.ai](https://api.candlefish.ai)
+
+## License
+
+Proprietary - Candlefish.ai © 2025
 
 ---
 
-## API
-
-### `POST /api/generate-meta`
-
-**Request**
-
-```json
-{ "industry": "Healthcare" }
-```
-
-**Response**
-
-```json
-{
-  "title": "Candlefish AI - Healthcare AI Solutions",
-  "description": "Transform healthcare with Candlefish AI's consciousness-aligned solutions..."
-}
-```
+**Building the future of work through aligned intelligence.**
