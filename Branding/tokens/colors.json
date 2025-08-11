@@ -1,0 +1,16 @@
+{
+  "brand": "candlefish",
+  "version": 1,
+  "palette": {
+    "primary": "#14b8a6",
+    "primaryForeground": "#ffffff",
+    "background": "#0b0f13",
+    "foreground": "#e6f9f6",
+    "muted": "#0f172a",
+    "mutedForeground": "#a3b3bf",
+    "accent": "#22d3ee",
+    "danger": "#ef4444",
+    "warning": "#f59e0b",
+    "success": "#10b981"
+  }
+}

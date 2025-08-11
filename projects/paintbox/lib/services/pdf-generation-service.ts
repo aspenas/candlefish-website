@@ -243,9 +243,18 @@ class PDFGenerationService {
    */
   private async saveToS3(buffer: Buffer, metadata: PDFMetadata): Promise<string> {
     try {
-      const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
-      const s3Client = new S3Client({ region: process.env.AWS_REGION });
+      // Dynamic import with error handling for missing dependencies
+      let S3Client, PutObjectCommand;
+      try {
+        const s3Module = require('@aws-sdk/client-s3');
+        S3Client = s3Module.S3Client;
+        PutObjectCommand = s3Module.PutObjectCommand;
+      } catch (importError) {
+        console.warn('AWS S3 SDK not available, falling back to local storage');
+        return this.saveLocally(buffer, metadata);
+      }
 
+      const s3Client = new S3Client({ region: process.env.AWS_REGION });
       const bucketName = process.env.AWS_S3_BUCKET_NAME;
       const key = `estimates/pdfs/${metadata.estimateId}/${metadata.id}.pdf`;
 
@@ -276,7 +285,14 @@ class PDFGenerationService {
    */
   private async saveToCloudinary(buffer: Buffer, metadata: PDFMetadata): Promise<string> {
     try {
-      const cloudinary = require('cloudinary').v2;
+      // Dynamic import with error handling for missing dependencies
+      let cloudinary;
+      try {
+        cloudinary = require('cloudinary').v2;
+      } catch (importError) {
+        console.warn('Cloudinary SDK not available, falling back to local storage');
+        return this.saveLocally(buffer, metadata);
+      }
 
       cloudinary.config({
         cloud_name: process.env.CLOUDINARY_CLOUD_NAME,

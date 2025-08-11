@@ -1,0 +1,36 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      timeInterval: "15s"
+      queryTimeout: "60s"
+      httpMethod: POST
+
+  - name: PostgreSQL
+    type: postgres
+    access: proxy
+    url: paintbox-prod-db.internal:5432
+    database: paintbox
+    user: postgres
+    secureJsonData:
+      password: "EPpCzXjR6sn8Xlq"
+    jsonData:
+      sslmode: require
+      postgresVersion: 1700
+      timescaledb: false
+
+  - name: Redis
+    type: redis-datasource
+    access: proxy
+    url: redis://paintbox-redis.internal:6379
+    jsonData:
+      poolSize: 10
+      timeout: 10
+      pingInterval: 30
+      pipelineWindow: 100

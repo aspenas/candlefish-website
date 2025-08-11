@@ -118,39 +118,84 @@ jobs:
 
           echo "review_focus=$review_focus" >> $GITHUB_OUTPUT
 
+      - name: Get PR diff
+        id: pr-diff
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ needs.should-review.outputs.pr_number }}
+        run: |
+          # Get PR information
+          PR_DATA=$(gh pr view $PR_NUMBER --json title,body,headRefName,baseRefName,files,additions,deletions)
+          echo "pr_title=$(echo "$PR_DATA" | jq -r '.title')" >> $GITHUB_OUTPUT
+          echo "pr_branch=$(echo "$PR_DATA" | jq -r '.headRefName')" >> $GITHUB_OUTPUT
+          echo "base_branch=$(echo "$PR_DATA" | jq -r '.baseRefName')" >> $GITHUB_OUTPUT
+          echo "additions=$(echo "$PR_DATA" | jq -r '.additions')" >> $GITHUB_OUTPUT
+          echo "deletions=$(echo "$PR_DATA" | jq -r '.deletions')" >> $GITHUB_OUTPUT
+
+          # Get the diff
+          gh pr diff $PR_NUMBER > pr_diff.txt || true
+
+          # Limit diff size to prevent token overflow
+          head -c 500000 pr_diff.txt > pr_diff_limited.txt
+
       - name: Automatic PR Review with Claude
-        uses: anthropics/claude-code-action@beta
-        with:
-          anthropic_api_key: ${{ steps.get-secrets.outputs.anthropic_api_key }}
-          timeout_minutes: "30"
-          direct_prompt: |
-            SYSTEM: You are Claude Opus-4 (claude-opus-4-20250514) with Tier-4 capabilities. You have access to 2,000,000 input tokens and 400,000 output tokens for this review. Use this expanded capacity to provide an exceptionally thorough and detailed code review.
+        id: claude-review
+        env:
+          ANTHROPIC_API_KEY: ${{ steps.get-secrets.outputs.anthropic_api_key }}
+        run: |
+          # Create the review request
+          cat > review_request.json << 'EOF'
+          {
+            "model": "claude-3-5-sonnet-20241022",
+            "max_tokens": 8192,
+            "temperature": 0,
+            "system": "You are a senior software engineer performing a thorough code review. Focus on: security issues, bugs, performance problems, code quality, and best practices. Be constructive and specific.",
+            "messages": [
+              {
+                "role": "user",
+                "content": "Please review this pull request:\n\nTitle: ${{ steps.pr-diff.outputs.pr_title }}\nBranch: ${{ steps.pr-diff.outputs.pr_branch }} -> ${{ steps.pr-diff.outputs.base_branch }}\nChanges: +${{ steps.pr-diff.outputs.additions }} -${{ steps.pr-diff.outputs.deletions }}\n\nReview Focus: ${{ steps.setup.outputs.review_focus }}\n\nDiff (truncated if large):\n$(cat pr_diff_limited.txt)\n\nProvide a detailed review with:\n1. Summary of changes\n2. Critical issues (must fix)\n3. Major issues (should fix)\n4. Minor suggestions\n5. Security concerns if any\n6. Performance considerations\n\nFormat your response as a GitHub comment with proper markdown."
+              }
+            ]
+          }
+          EOF
 
-            Please review this pull request with a ${{ steps.setup.outputs.review_focus }} focus.
+          # Call Claude API
+          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -d @review_request.json)
 
-            For a ${{ steps.setup.outputs.review_focus }} review, pay special attention to:
+          # Extract the review content
+          echo "$RESPONSE" | jq -r '.content[0].text' > review_comment.md
 
-            ${{ steps.setup.outputs.review_focus == 'comprehensive' && 'Code quality, best practices, potential bugs, performance, security, test coverage, and documentation. Provide specific, actionable feedback with code examples where applicable.' || '' }}
-            ${{ steps.setup.outputs.review_focus == 'security' && 'Input validation, authentication/authorization, data security, common vulnerabilities (SQL injection, XSS, CSRF), and dependency security. Rate findings by severity.' || '' }}
-            ${{ steps.setup.outputs.review_focus == 'performance' && 'Algorithm efficiency, database performance, frontend optimization, caching opportunities, and memory management. Provide before/after optimization examples.' || '' }}
-            ${{ steps.setup.outputs.review_focus == 'quick' && 'Obvious bugs, critical security issues, major code smells, and missing error handling. Keep feedback concise and actionable.' || '' }}
+          # Check if we got a valid response
+          if [ ! -s review_comment.md ] || grep -q "error" review_comment.md; then
+            echo "Error getting review from Claude"
+            echo "$RESPONSE" | jq '.'
+            exit 1
+          fi
 
-            For this Next.js/TypeScript project, also consider:
-            - TypeScript type safety and proper error handling
-            - React hooks best practices and performance optimizations
-            - Next.js App Router patterns and conventions
-            - Proper use of server/client components
-            - API route security and validation
-            - State management with Zustand
-            - Excel formula accuracy (if touching calculation logic)
+      - name: Post PR review comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ needs.should-review.outputs.pr_number }}
+        run: |
+          # Add header and footer to the review
+          cat > final_review.md << 'EOF'
+          ## 🤖 Claude Code Review
 
-            Use inline comments for specific line-by-line feedback.
-            Summarize key findings at the end with severity ratings:
-            - 🔴 Critical: Must fix before merge
-            - 🟡 Major: Should fix before merge
-            - 🟢 Minor: Nice to have improvements
+          EOF
+          cat review_comment.md >> final_review.md
+          cat >> final_review.md << 'EOF'
 
-            If the code looks good overall, provide positive feedback and suggestions for future improvements.
+          ---
+          *This review was generated by Claude 3.5 Sonnet. To trigger a new review, comment `/claude-review`*
+          *Review type: **${{ steps.setup.outputs.review_focus }}***
+          EOF
+
+          # Post the review comment
+          gh pr comment $PR_NUMBER --body-file final_review.md
 
       - name: Post review summary
         if: always()

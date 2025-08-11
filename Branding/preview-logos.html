@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Logo Preview Gallery</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; padding: 24px; background: #0b0f13; color: #e6f9f6; }
+    h1 { margin: 0 0 16px; font-weight: 600; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+    .card { background: #0f172a; border: 1px solid #1f2937; border-radius: 12px; padding: 16px; }
+    .meta { font-size: 12px; color: #a3b3bf; margin-top: 10px; word-break: break-all; }
+    .row { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+    .badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #14b8a6; color: #001b18; font-weight: 600; }
+    .preview { display: grid; gap: 10px; background: #0b0f13; padding: 12px; border-radius: 8px; }
+    .preview img { display: block; height: auto; border-radius: 6px; background: #000; }
+    .cap { font-size: 12px; color: #a3b3bf; }
+    .hr { height: 1px; background: #1f2937; margin: 8px 0 12px; }
+    .path { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; color: #93c5fd; }
+  </style>
+  <script>
+    function imgRow(src, label) {
+      return `<div class="preview">
+        <div class="cap">${label} (height: 48px)</div>
+        <img src="${src}" style="height:48px; width:auto; object-fit:contain;" />
+        <div class="cap">${label} (height: 96px)</div>
+        <img src="${src}" style="height:96px; width:auto; object-fit:contain;" />
+        <div class="cap">${label} (height: 160px)</div>
+        <img src="${src}" style="height:160px; width:auto; object-fit:contain;" />
+      </div>`
+    }
+  </script>
+</head>
+<body>
+  <h1>Logo Preview Gallery</h1>
+  <div class="grid">
+    <div class="card">
+      <div class="row"><span class="badge">website</span><div class="path">apps/website/public/logo/CANDLEFISH.png</div></div>
+      <div class="hr"></div>
+      <div id="w1"></div>
+      <div class="meta">file:///Users/patricksmith/candlefish-ai/apps/website/public/logo/CANDLEFISH.png</div>
+    </div>
+    <div class="card">
+      <div class="row"><span class="badge">website</span><div class="path">apps/website/public/logo/candlefish_original.png</div></div>
+      <div class="hr"></div>
+      <div id="w2"></div>
+      <div class="meta">file:///Users/patricksmith/candlefish-ai/apps/website/public/logo/candlefish_original.png</div>
+    </div>
+    <div class="card">
+      <div class="row"><span class="badge">website</span><div class="path">apps/website/public/logo/candlefish_highquality.webp</div></div>
+      <div class="hr"></div>
+      <div id="w3"></div>
+      <div class="meta">file:///Users/patricksmith/candlefish-ai/apps/website/public/logo/candlefish_highquality.webp</div>
+    </div>
+    <div class="card">
+      <div class="row"><span class="badge">website</span><div class="path">apps/website/public/logo/paintbox-logo.png</div></div>
+      <div class="hr"></div>
+      <div id="w4"></div>
+      <div class="meta">file:///Users/patricksmith/candlefish-ai/apps/website/public/logo/paintbox-logo.png</div>
+    </div>
+    <div class="card">
+      <div class="row"><span class="badge">analytics</span><div class="path">apps/analytics-dashboard/public/logo/candlefish_highquality.webp</div></div>
+      <div class="hr"></div>
+      <div id="a1"></div>
+      <div class="meta">file:///Users/patricksmith/candlefish-ai/apps/analytics-dashboard/public/logo/candlefish_highquality.webp</div>
+    </div>
+    <div class="card">
+      <div class="row"><span class="badge">brand-portal</span><div class="path">apps/brand-portal/public/logo/candlefish_original.png</div></div>
+      <div class="hr"></div>
+      <div id="b1"></div>
+      <div class="meta">file:///Users/patricksmith/candlefish-ai/apps/brand-portal/public/logo/candlefish_original.png</div>
+    </div>
+    <div class="card">
+      <div class="row"><span class="badge">root</span><div class="path">public/logo/candlefish_original.png</div></div>
+      <div class="hr"></div>
+      <div id="r1"></div>
+      <div class="meta">file:///Users/patricksmith/candlefish-ai/public/logo/candlefish_original.png</div>
+    </div>
+    <div class="card">
+      <div class="row"><span class="badge">root</span><div class="path">public/logo/paintbox-logo.png</div></div>
+      <div class="hr"></div>
+      <div id="r2"></div>
+      <div class="meta">file:///Users/patricksmith/candlefish-ai/public/logo/paintbox-logo.png</div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('w1').innerHTML = imgRow('file:///Users/patricksmith/candlefish-ai/apps/website/public/logo/CANDLEFISH.png', 'CANDLEFISH.png');
+    document.getElementById('w2').innerHTML = imgRow('file:///Users/patricksmith/candlefish-ai/apps/website/public/logo/candlefish_original.png', 'candlefish_original.png');
+    document.getElementById('w3').innerHTML = imgRow('file:///Users/patricksmith/candlefish-ai/apps/website/public/logo/candlefish_highquality.webp', 'candlefish_highquality.webp');
+    document.getElementById('w4').innerHTML = imgRow('file:///Users/patricksmith/candlefish-ai/apps/website/public/logo/paintbox-logo.png', 'paintbox-logo.png');
+    document.getElementById('a1').innerHTML = imgRow('file:///Users/patricksmith/candlefish-ai/apps/analytics-dashboard/public/logo/candlefish_highquality.webp', 'candlefish_highquality.webp');
+    document.getElementById('b1').innerHTML = imgRow('file:///Users/patricksmith/candlefish-ai/apps/brand-portal/public/logo/candlefish_original.png', 'candlefish_original.png');
+    document.getElementById('r1').innerHTML = imgRow('file:///Users/patricksmith/candlefish-ai/public/logo/candlefish_original.png', 'candlefish_original.png');
+    document.getElementById('r2').innerHTML = imgRow('file:///Users/patricksmith/candlefish-ai/public/logo/paintbox-logo.png', 'paintbox-logo.png');
+  </script>
+</body>
+</html>
+
+

@@ -1,0 +1,235 @@
+# Document Queries for Mobile Collaboration
+
+query GetDocument($id: UUID!) {
+  document(id: $id) {
+    id
+    name
+    description
+    type
+    status
+    content {
+      format
+      data
+      blocks {
+        id
+        type
+        content
+        position {
+          index
+          offset
+          length
+          depth
+        }
+        styles
+        attributes
+        authorId
+        createdAt
+        updatedAt
+      }
+      attachments {
+        id
+        name
+        type
+        mimeType
+        size
+        url
+        thumbnailUrl
+        uploadedBy {
+          id
+          name
+          avatar
+        }
+        uploadedAt
+      }
+    }
+    crdtState {
+      type
+      state
+      vectorClock {
+        clocks
+        version
+      }
+    }
+    permissions {
+      canRead
+      canWrite
+      canComment
+      canShare
+      canManage
+    }
+    owner {
+      id
+      name
+      avatar
+      email
+    }
+    activeUsers {
+      id
+      user {
+        id
+        name
+        avatar
+        status
+      }
+      status
+      cursor {
+        blockId
+        offset
+        x
+        y
+      }
+      selection {
+        start {
+          blockId
+          offset
+        }
+        end {
+          blockId
+          offset
+        }
+        text
+        isCollapsed
+      }
+      isTyping
+      joinedAt
+      lastSeenAt
+    }
+    comments {
+      id
+      content {
+        text
+        html
+        format
+      }
+      position {
+        blockId
+        startOffset
+        endOffset
+        x
+        y
+      }
+      author {
+        id
+        name
+        avatar
+      }
+      status
+      priority
+      type
+      replies {
+        id
+        content {
+          text
+          html
+        }
+        author {
+          id
+          name
+          avatar
+        }
+        createdAt
+      }
+      reactions {
+        id
+        type
+        emoji
+        user {
+          id
+          name
+        }
+      }
+      createdAt
+      updatedAt
+      isResolved
+    }
+    metrics {
+      totalViews
+      uniqueViewers
+      totalEdits
+      uniqueEditors
+      totalComments
+      activeThreads
+    }
+    createdAt
+    updatedAt
+    lastEditedAt
+  }
+}
+
+query GetDocuments($first: Int, $after: String, $organizationId: UUID) {
+  documents(first: $first, after: $after, organizationId: $organizationId) {
+    edges {
+      node {
+        id
+        name
+        description
+        type
+        status
+        content {
+          format
+          length
+        }
+        owner {
+          id
+          name
+          avatar
+        }
+        activeUsers {
+          id
+          user {
+            id
+            name
+            avatar
+          }
+          status
+        }
+        permissions {
+          canRead
+          canWrite
+          canComment
+        }
+        metrics {
+          totalViews
+          uniqueViewers
+          totalEdits
+          totalComments
+        }
+        createdAt
+        updatedAt
+        lastEditedAt
+      }
+      cursor
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+    totalCount
+  }
+}
+
+query GetRecentDocuments($limit: Int = 10) {
+  recentDocuments(limit: $limit) {
+    id
+    name
+    type
+    status
+    owner {
+      id
+      name
+      avatar
+    }
+    activeUsers {
+      id
+      user {
+        id
+        name
+        avatar
+      }
+    }
+    lastEditedAt
+    updatedAt
+  }
+}

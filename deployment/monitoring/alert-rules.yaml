@@ -1,0 +1,274 @@
+# Prometheus Alert Rules for Candlefish AI
+# Focused on critical issues and cost optimization
+
+groups:
+  # Infrastructure Health Alerts
+  - name: infrastructure.rules
+    rules:
+      - alert: KubernetesNodeReady
+        expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+        for: 10m
+        labels:
+          severity: critical
+          team: platform
+          environment: "{{ .Values.global.environment }}"
+        annotations:
+          summary: "Kubernetes node not ready"
+          description: "Node {{ $labels.node }} has been not ready for more than 10 minutes."
+
+      - alert: KubernetesPodCrashLooping
+        expr: rate(kube_pod_container_status_restarts_total[5m]) * 60 * 5 > 0
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Pod is crash looping"
+          description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is restarting {{ printf \"%.2f\" $value }} times / 5 minutes."
+
+      - alert: KubernetesPodNotHealthy
+        expr: min_over_time(sum by (namespace, pod) (kube_pod_status_phase{phase=~"Pending|Unknown|Failed"})[15m:1m]) > 0
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Pod has been in non-running state for more than 15 minutes"
+          description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} has been in a non-running state for more than 15 minutes."
+
+  # Application Health Alerts
+  - name: application.rules
+    rules:
+      - alert: ApplicationDown
+        expr: up{job=~"candlefish-.*"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          team: application
+        annotations:
+          summary: "Application is down"
+          description: "Application {{ $labels.job }} has been down for more than 5 minutes."
+
+      - alert: HighErrorRate
+        expr: |
+          (
+            rate(http_requests_total{status=~"5.."}[5m]) /
+            rate(http_requests_total[5m])
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          team: application
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} for {{ $labels.job }}."
+
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 10m
+        labels:
+          severity: warning
+          team: application
+        annotations:
+          summary: "High response time"
+          description: "95th percentile response time is {{ $value }}s for {{ $labels.job }}."
+
+      - alert: ApplicationHighMemoryUsage
+        expr: |
+          (
+            container_memory_usage_bytes{container!=""} /
+            container_spec_memory_limit_bytes{container!=""} * 100
+          ) > 90
+        for: 10m
+        labels:
+          severity: warning
+          team: application
+        annotations:
+          summary: "High memory usage"
+          description: "Container {{ $labels.container }} in {{ $labels.namespace }}/{{ $labels.pod }} is using {{ $value }}% of its memory limit."
+
+  # Database Alerts
+  - name: database.rules
+    rules:
+      - alert: PostgreSQLDown
+        expr: pg_up == 0
+        for: 5m
+        labels:
+          severity: critical
+          team: database
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL database is down for more than 5 minutes."
+
+      - alert: PostgreSQLHighConnections
+        expr: |
+          (
+            pg_stat_database_numbackends /
+            pg_settings_max_connections * 100
+          ) > 80
+        for: 5m
+        labels:
+          severity: warning
+          team: database
+        annotations:
+          summary: "High database connections"
+          description: "PostgreSQL connection usage is {{ $value }}%."
+
+      - alert: PostgreSQLSlowQueries
+        expr: rate(pg_stat_database_blks_read[5m]) > 1000
+        for: 10m
+        labels:
+          severity: warning
+          team: database
+        annotations:
+          summary: "PostgreSQL slow queries detected"
+          description: "PostgreSQL is experiencing slow queries with {{ $value }} blocks read per second."
+
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 5m
+        labels:
+          severity: critical
+          team: database
+        annotations:
+          summary: "Redis is down"
+          description: "Redis is down for more than 5 minutes."
+
+      - alert: RedisHighMemoryUsage
+        expr: |
+          (
+            redis_memory_used_bytes /
+            redis_memory_max_bytes * 100
+          ) > 90
+        for: 5m
+        labels:
+          severity: warning
+          team: database
+        annotations:
+          summary: "Redis high memory usage"
+          description: "Redis memory usage is {{ $value }}%."
+
+  # Cost Optimization Alerts
+  - name: cost.rules
+    rules:
+      - alert: HighCPUUsage
+        expr: |
+          (
+            rate(container_cpu_usage_seconds_total{container!=""}[5m]) * 100
+          ) > 80
+        for: 15m
+        labels:
+          severity: warning
+          team: cost-optimization
+        annotations:
+          summary: "High CPU usage - potential cost impact"
+          description: "Container {{ $labels.container }} in {{ $labels.namespace }}/{{ $labels.pod }} is using {{ $value }}% CPU."
+
+      - alert: UnderUtilizedResources
+        expr: |
+          (
+            rate(container_cpu_usage_seconds_total{container!=""}[1h]) * 100
+          ) < 5
+        for: 2h
+        labels:
+          severity: info
+          team: cost-optimization
+        annotations:
+          summary: "Underutilized resources detected"
+          description: "Container {{ $labels.container }} in {{ $labels.namespace }}/{{ $labels.pod }} has been using less than 5% CPU for 2 hours."
+
+      - alert: TooManyReplicas
+        expr: kube_deployment_status_replicas > kube_deployment_status_replicas_ready * 2
+        for: 30m
+        labels:
+          severity: info
+          team: cost-optimization
+        annotations:
+          summary: "Potentially excessive replicas"
+          description: "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} has {{ $value }} replicas but only {{ $labels.ready_replicas }} are ready."
+
+  # Security Alerts
+  - name: security.rules
+    rules:
+      - alert: UnauthorizedAPIAccess
+        expr: rate(http_requests_total{status="401"}[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "High number of unauthorized API requests"
+          description: "{{ $value }} unauthorized requests per second to {{ $labels.job }}."
+
+      - alert: SuspiciousNetworkActivity
+        expr: rate(container_network_receive_bytes_total[5m]) > 100000000  # 100MB/s
+        for: 5m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "Suspicious network activity"
+          description: "Container {{ $labels.container }} is receiving {{ $value | humanize }}B/s of network traffic."
+
+  # Business Logic Alerts
+  - name: business.rules
+    rules:
+      - alert: LowConversionRate
+        expr: |
+          (
+            rate(http_requests_total{endpoint="/api/estimate/submit",status="200"}[1h]) /
+            rate(http_requests_total{endpoint="/api/estimate/create",status="200"}[1h])
+          ) < 0.1
+        for: 30m
+        labels:
+          severity: warning
+          team: product
+        annotations:
+          summary: "Low conversion rate detected"
+          description: "Conversion rate for estimates is {{ $value | humanizePercentage }}."
+
+      - alert: PDFGenerationFailures
+        expr: rate(http_requests_total{endpoint="/api/pdf/generate",status=~"5.."}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          team: application
+        annotations:
+          summary: "PDF generation failures"
+          description: "PDF generation is failing at {{ $value }} requests per second."
+
+  # Performance Alerts
+  - name: performance.rules
+    rules:
+      - alert: DiskSpaceLow
+        expr: |
+          (
+            node_filesystem_avail_bytes{mountpoint="/"} /
+            node_filesystem_size_bytes{mountpoint="/"} * 100
+          ) < 10
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Low disk space"
+          description: "Disk space is {{ $value }}% available on {{ $labels.instance }}."
+
+      - alert: HighLoadAverage
+        expr: node_load15 / count(node_cpu_seconds_total{mode="idle"}) by (instance) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High load average"
+          description: "Load average is {{ $value }} on {{ $labels.instance }}."
+
+      - alert: NetworkLatencyHigh
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=~".*gateway.*"}[5m])) > 1
+        for: 10m
+        labels:
+          severity: warning
+          team: network
+        annotations:
+          summary: "High network latency"
+          description: "95th percentile latency is {{ $value }}s for {{ $labels.job }}."

@@ -4,7 +4,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { pdfGenerationService } from '@/lib/services/pdf-generation-service';
+// Conditional import to handle missing dependencies
+let pdfGenerationService: any = null;
+try {
+  pdfGenerationService = require('@/lib/services/pdf-generation-service').pdfGenerationService;
+} catch (error) {
+  console.warn('PDF generation service not available:', error);
+}
 import { z } from 'zod';
 import nodemailer from 'nodemailer';
 
@@ -267,6 +273,17 @@ const getEmailTemplate = (template: string, data: any) => {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if PDF service is available
+    if (!pdfGenerationService) {
+      return NextResponse.json(
+        {
+          error: 'PDF generation service not available',
+          message: 'Required dependencies are not installed. Please install @aws-sdk/client-s3 and cloudinary.'
+        },
+        { status: 503 }
+      );
+    }
+
     const body = await request.json();
 
     // Validate request data

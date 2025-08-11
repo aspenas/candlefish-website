@@ -1,0 +1,1319 @@
+# Real-time Collaboration Types
+# Multi-tenant collaborative document editing with CRDT support
+
+# =============================================================================
+# DOCUMENT TYPES
+# =============================================================================
+
+type Document @key(fields: "id") @auth(requires: USER) @tenant {
+  id: UUID!
+  name: NonEmptyString!
+  description: String
+  type: DocumentType!
+  status: DocumentStatus!
+
+  # Content and Structure
+  content: DocumentContent!
+  metadata: JSON
+  size: BigInt!
+  checksum: String!
+
+  # Collaboration Features
+  crdtState: CRDTState! @complexity(value: 15)
+  operations: [Operation!]! @complexity(value: 20) @auth(requires: EDIT)
+  conflictResolution: ConflictResolutionStrategy!
+
+  # Ownership and Permissions
+  owner: User!
+  organization: Organization!
+  permissions: DocumentPermissions!
+  sharing: DocumentSharing
+
+  # Version Control
+  currentVersion: DocumentVersion!
+  versions: [DocumentVersion!]! @complexity(value: 10)
+  branches: [DocumentBranch!]! @auth(requires: MANAGE)
+
+  # Real-time Collaboration
+  activeUsers: [PresenceSession!]! @complexity(value: 5)
+  presenceInfo: PresenceInfo!
+  lockInfo: LockInfo
+
+  # Comments and Annotations
+  comments: [Comment!]! @complexity(value: 15)
+  commentThreads: [CommentThread!]! @complexity(value: 10)
+  annotations: [Annotation!]! @complexity(value: 10)
+
+  # Integration with Existing Systems
+  paintboxEstimate: PaintboxEstimate @auth(requires: VIEW_ESTIMATES)
+  brandPortalTheme: BrandPortalTheme @auth(requires: VIEW_BRANDING)
+
+  # Analytics and Activity
+  activity: [ActivityEvent!]! @complexity(value: 20) @tenant
+  metrics: DocumentMetrics!
+
+  # Timestamps
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  lastEditedAt: DateTime
+  lastViewedAt: DateTime
+}
+
+type DocumentContent {
+  # Content Format (Rich Text, Markdown, JSON, etc.)
+  format: ContentFormat!
+  data: JSON!
+
+  # Structure for collaborative editing
+  blocks: [ContentBlock!]!
+  length: NonNegativeInt!
+
+  # Serialization formats
+  html: String
+  markdown: String
+  plainText: String
+
+  # Media and attachments
+  attachments: [Attachment!]!
+  images: [Image!]!
+}
+
+type ContentBlock {
+  id: UUID!
+  type: BlockType!
+  content: JSON!
+  position: BlockPosition!
+  styles: JSON
+  attributes: JSON
+
+  # Collaboration metadata
+  authorId: UUID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  operations: [Operation!]!
+}
+
+type BlockPosition {
+  index: NonNegativeInt!
+  offset: NonNegativeInt!
+  length: NonNegativeInt!
+  depth: NonNegativeInt!
+}
+
+# CRDT (Conflict-free Replicated Data Type) Support
+type CRDTState {
+  type: CRDTType!
+  state: JSON!
+  vectorClock: VectorClock!
+  operationLog: [CRDTOperation!]!
+  mergeable: Boolean!
+}
+
+type VectorClock {
+  clocks: JSON! # Map of client IDs to version numbers
+  version: NonNegativeInt!
+}
+
+type CRDTOperation {
+  id: UUID!
+  clientId: UUID!
+  type: CRDTOperationType!
+  position: NonNegativeInt!
+  content: JSON!
+  timestamp: DateTime!
+  dependencies: [UUID!]!
+}
+
+# Operational Transform Operations
+type Operation {
+  id: UUID!
+  type: OperationType!
+  position: NonNegativeInt!
+  length: NonNegativeInt!
+  content: JSON!
+  authorId: UUID!
+  timestamp: DateTime!
+  transformedFroms: [UUID!]!
+  applied: Boolean!
+}
+
+# Document Permissions and Sharing
+type DocumentPermissions {
+  owner: DocumentPermission!
+  collaborators: [CollaboratorPermission!]!
+  organization: OrganizationDocumentPermission!
+  public: PublicDocumentPermission
+
+  # Fine-grained permissions
+  canRead: Boolean!
+  canWrite: Boolean!
+  canComment: Boolean!
+  canShare: Boolean!
+  canManage: Boolean!
+  canDelete: Boolean!
+}
+
+type CollaboratorPermission {
+  user: User!
+  permission: DocumentPermission!
+  grantedBy: User!
+  grantedAt: DateTime!
+  expiresAt: DateTime
+}
+
+type DocumentSharing {
+  id: UUID!
+  isPublic: Boolean!
+  shareUrl: URL
+  embedUrl: URL
+  password: String @auth(requires: MANAGE)
+  allowAnonymous: Boolean!
+  allowComments: Boolean!
+  expiresAt: DateTime
+  maxViews: NonNegativeInt
+  currentViews: NonNegativeInt!
+  trackingEnabled: Boolean!
+}
+
+# =============================================================================
+# VERSION CONTROL TYPES
+# =============================================================================
+
+type DocumentVersion {
+  id: UUID!
+  document: Document!
+  version: NonEmptyString!
+  name: String
+  description: String
+
+  # Version Content
+  content: DocumentContent!
+  checksum: String!
+  size: BigInt!
+
+  # Version Metadata
+  author: User!
+  parentVersion: DocumentVersion
+  isCurrentVersion: Boolean!
+  isMajorVersion: Boolean!
+
+  # Branch Information
+  branch: DocumentBranch
+  mergeInfo: MergeInfo
+
+  # Changes and Diff
+  changes: [Change!]!
+  diffStats: DiffStats!
+
+  # Timestamps
+  createdAt: DateTime!
+  publishedAt: DateTime
+}
+
+type DocumentBranch {
+  id: UUID!
+  name: NonEmptyString!
+  document: Document!
+
+  # Branch Metadata
+  description: String
+  creator: User!
+  isMain: Boolean!
+  isActive: Boolean!
+
+  # Branch Relations
+  parentBranch: DocumentBranch
+  childBranches: [DocumentBranch!]!
+
+  # Version Information
+  headVersion: DocumentVersion!
+  versions: [DocumentVersion!]!
+
+  # Merge Information
+  canMerge: Boolean!
+  conflictsWith: [DocumentBranch!]!
+
+  # Timestamps
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  lastCommitAt: DateTime
+}
+
+type MergeInfo {
+  id: UUID!
+  sourceBranch: DocumentBranch!
+  targetBranch: DocumentBranch!
+  mergedBy: User!
+  strategy: MergeStrategy!
+  conflicts: [MergeConflict!]!
+  resolution: ConflictResolution
+  mergedAt: DateTime!
+}
+
+type MergeConflict {
+  id: UUID!
+  type: ConflictType!
+  position: BlockPosition!
+  sourceContent: JSON!
+  targetContent: JSON!
+  resolved: Boolean!
+  resolution: JSON
+  resolvedBy: User
+  resolvedAt: DateTime
+}
+
+type Change {
+  id: UUID!
+  type: ChangeType!
+  position: BlockPosition
+  oldContent: JSON
+  newContent: JSON
+  author: User!
+  timestamp: DateTime!
+
+  # Change metadata
+  description: String
+  tags: [String!]
+  reviewStatus: ReviewStatus
+  reviewer: User
+}
+
+type DiffStats {
+  totalChanges: NonNegativeInt!
+  additions: NonNegativeInt!
+  deletions: NonNegativeInt!
+  modifications: NonNegativeInt!
+  charactersAdded: NonNegativeInt!
+  charactersDeleted: NonNegativeInt!
+}
+
+# =============================================================================
+# PRESENCE AND REAL-TIME TYPES
+# =============================================================================
+
+type PresenceSession @auth(requires: USER) {
+  id: UUID!
+  user: User!
+  document: Document!
+
+  # Session Information
+  status: PresenceStatus!
+  joinedAt: DateTime!
+  lastSeenAt: DateTime!
+  sessionDuration: Duration!
+
+  # Real-time Cursor and Selection
+  cursor: CursorPosition
+  selection: TextSelection
+  viewport: ViewportInfo
+
+  # User Activity
+  isTyping: Boolean!
+  isIdle: Boolean!
+  currentAction: UserAction
+
+  # Device and Connection Info
+  device: DeviceInfo!
+  connectionQuality: ConnectionQuality!
+
+  # Permissions in this session
+  permissions: SessionPermissions!
+}
+
+type CursorPosition {
+  blockId: UUID!
+  offset: NonNegativeInt!
+  x: Decimal
+  y: Decimal
+  height: Decimal
+}
+
+type TextSelection {
+  start: CursorPosition!
+  end: CursorPosition!
+  text: String
+  isCollapsed: Boolean!
+}
+
+type ViewportInfo {
+  scrollTop: NonNegativeInt!
+  scrollLeft: NonNegativeInt!
+  visibleBlocks: [UUID!]!
+  zoom: Decimal!
+}
+
+type DeviceInfo {
+  type: DeviceType!
+  os: String!
+  browser: String
+  screenResolution: String
+  timezone: String!
+  locale: String!
+}
+
+type ConnectionQuality {
+  latency: NonNegativeInt! # milliseconds
+  bandwidth: String
+  connectionType: ConnectionType!
+  isStable: Boolean!
+  packetLoss: Decimal
+}
+
+type PresenceInfo {
+  totalUsers: NonNegativeInt!
+  activeUsers: NonNegativeInt!
+  viewers: NonNegativeInt!
+  editors: NonNegativeInt!
+
+  # User distribution
+  byRole: [PresenceByRole!]!
+  byDevice: [PresenceByDevice!]!
+
+  # Activity metrics
+  averageSessionDuration: Duration!
+  totalSessionTime: Duration!
+  peakConcurrentUsers: NonNegativeInt!
+}
+
+type PresenceByRole {
+  role: OrganizationRole!
+  count: NonNegativeInt!
+  users: [User!]!
+}
+
+type PresenceByDevice {
+  deviceType: DeviceType!
+  count: NonNegativeInt!
+}
+
+# Lock Management for Editing Conflicts
+type LockInfo {
+  id: UUID!
+  type: LockType!
+  holder: User!
+  blocks: [UUID!]!
+
+  # Lock metadata
+  acquiredAt: DateTime!
+  expiresAt: DateTime!
+  isAutoRelease: Boolean!
+
+  # Lock queue for waiting users
+  waitingUsers: [User!]!
+  estimatedWaitTime: Duration
+}
+
+# =============================================================================
+# COMMENT AND ANNOTATION TYPES
+# =============================================================================
+
+type Comment @auth(requires: USER) @tenant {
+  id: UUID!
+  document: Document!
+  thread: CommentThread
+
+  # Comment Content
+  content: CommentContent!
+  mentions: [User!]!
+
+  # Comment Position and Context
+  position: CommentPosition
+  context: CommentContext
+
+  # Comment Metadata
+  author: User!
+  status: CommentStatus!
+  priority: CommentPriority!
+  type: CommentType!
+
+  # Threading and Replies
+  parentComment: Comment
+  replies: [Comment!]! @complexity(value: 10)
+  replyCount: NonNegativeInt!
+
+  # Interaction and Reactions
+  reactions: [Reaction!]!
+  isResolved: Boolean!
+  resolvedBy: User
+  resolvedAt: DateTime
+
+  # Timestamps
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  editedAt: DateTime
+}
+
+type CommentThread @auth(requires: USER) @tenant {
+  id: UUID!
+  document: Document!
+
+  # Thread Metadata
+  subject: String
+  status: ThreadStatus!
+  priority: CommentPriority!
+
+  # Thread Content
+  rootComment: Comment!
+  comments: [Comment!]! @complexity(value: 15)
+  commentCount: NonNegativeInt!
+
+  # Thread Participants
+  participants: [User!]!
+  watchers: [User!]!
+
+  # Thread Status
+  isResolved: Boolean!
+  resolvedBy: User
+  resolvedAt: DateTime
+
+  # Timestamps
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  lastActivityAt: DateTime!
+}
+
+type CommentContent {
+  text: String!
+  html: String
+  markdown: String
+  format: ContentFormat!
+
+  # Rich content
+  attachments: [Attachment!]!
+  mentions: [Mention!]!
+  links: [Link!]!
+}
+
+type CommentPosition {
+  # Text-based positioning
+  blockId: UUID
+  startOffset: NonNegativeInt
+  endOffset: NonNegativeInt
+
+  # Visual positioning for non-text comments
+  x: Decimal
+  y: Decimal
+  width: Decimal
+  height: Decimal
+
+  # Page/section reference
+  page: NonNegativeInt
+  section: String
+}
+
+type CommentContext {
+  selectedText: String
+  surroundingText: String
+  blockContent: JSON
+  documentSection: String
+}
+
+type Annotation @auth(requires: USER) @tenant {
+  id: UUID!
+  document: Document!
+
+  # Annotation Content
+  type: AnnotationType!
+  content: AnnotationContent!
+
+  # Annotation Position
+  position: AnnotationPosition!
+
+  # Annotation Metadata
+  author: User!
+  category: String
+  tags: [String!]!
+
+  # Visibility and Permissions
+  visibility: AnnotationVisibility!
+  permissions: AnnotationPermissions!
+
+  # Timestamps
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type AnnotationContent {
+  text: String
+  data: JSON!
+  style: JSON
+
+  # Rich annotations
+  color: HexColorCode
+  icon: String
+  shape: AnnotationShape
+}
+
+type AnnotationPosition {
+  startBlock: UUID!
+  endBlock: UUID
+  startOffset: NonNegativeInt!
+  endOffset: NonNegativeInt
+
+  # Visual bounds
+  boundingBox: BoundingBox
+}
+
+type BoundingBox {
+  x: Decimal!
+  y: Decimal!
+  width: Decimal!
+  height: Decimal!
+}
+
+type Reaction {
+  id: UUID!
+  type: ReactionType!
+  emoji: String
+  user: User!
+  createdAt: DateTime!
+}
+
+type Mention {
+  id: UUID!
+  user: User!
+  position: NonNegativeInt!
+  length: NonNegativeInt!
+  notified: Boolean!
+}
+
+# =============================================================================
+# ACTIVITY AND ANALYTICS TYPES
+# =============================================================================
+
+type ActivityEvent @auth(requires: USER) @tenant {
+  id: UUID!
+  document: Document!
+
+  # Event Information
+  type: ActivityEventType!
+  action: ActivityAction!
+  description: String!
+
+  # Event Actor
+  actor: User
+  actorType: ActorType!
+
+  # Event Target
+  targetType: ActivityTargetType!
+  targetId: UUID
+  target: ActivityTarget
+
+  # Event Context
+  context: JSON
+  metadata: JSON
+
+  # Event Impact
+  impact: ActivityImpact!
+
+  # Timestamps
+  timestamp: DateTime!
+  processedAt: DateTime
+}
+
+union ActivityTarget =
+  | Document
+  | Comment
+  | DocumentVersion
+  | User
+  | PresenceSession
+
+type ActivityImpact {
+  severity: ActivitySeverity!
+  scope: ActivityScope!
+  affectedUsers: [User!]!
+  changesCount: NonNegativeInt!
+}
+
+type DocumentMetrics {
+  # Usage Metrics
+  totalViews: NonNegativeInt!
+  uniqueViewers: NonNegativeInt!
+  totalEdits: NonNegativeInt!
+  uniqueEditors: NonNegativeInt!
+
+  # Collaboration Metrics
+  totalComments: NonNegativeInt!
+  resolvedComments: NonNegativeInt!
+  activeThreads: NonNegativeInt!
+
+  # Version Metrics
+  totalVersions: NonNegativeInt!
+  branchCount: NonNegativeInt!
+  mergeCount: NonNegativeInt!
+  conflictCount: NonNegativeInt!
+
+  # Performance Metrics
+  averageLoadTime: Duration!
+  averageSaveTime: Duration!
+  syncLatency: Duration!
+
+  # Time-based metrics
+  timeInCollaboration: Duration!
+  averageSessionDuration: Duration!
+  lastActivityAt: DateTime
+}
+
+# =============================================================================
+# INTEGRATION TYPES
+# =============================================================================
+
+# Paintbox Integration
+type PaintboxEstimate @auth(requires: VIEW_ESTIMATES) {
+  id: UUID!
+  estimateNumber: String!
+  projectName: String!
+  clientName: String!
+  status: EstimateStatus!
+  totalAmount: Decimal!
+  currency: Currency!
+
+  # Integration metadata
+  syncedAt: DateTime!
+  lastModified: DateTime!
+  syncStatus: SyncStatus!
+}
+
+# Brand Portal Integration
+type BrandPortalTheme @auth(requires: VIEW_BRANDING) {
+  id: UUID!
+  name: String!
+  colors: BrandColors!
+  fonts: BrandFonts!
+  logos: BrandLogos!
+
+  # Theme application
+  appliedAt: DateTime
+  appliedBy: User
+}
+
+type BrandColors {
+  primary: HexColorCode!
+  secondary: HexColorCode!
+  accent: HexColorCode!
+  neutral: [HexColorCode!]!
+}
+
+type BrandFonts {
+  primary: String!
+  secondary: String
+  display: String
+  monospace: String!
+}
+
+type BrandLogos {
+  primary: URL!
+  secondary: URL
+  icon: URL!
+  favicon: URL
+}
+
+# =============================================================================
+# UTILITY TYPES
+# =============================================================================
+
+type Attachment {
+  id: UUID!
+  name: NonEmptyString!
+  type: AttachmentType!
+  mimeType: String!
+  size: BigInt!
+  url: URL!
+  thumbnailUrl: URL
+
+  # Upload metadata
+  uploadedBy: User!
+  uploadedAt: DateTime!
+
+  # Virus scanning and security
+  scanStatus: ScanStatus!
+  isSecure: Boolean!
+}
+
+type Image {
+  id: UUID!
+  name: String!
+  url: URL!
+  thumbnailUrl: URL
+  width: NonNegativeInt
+  height: NonNegativeInt
+  size: BigInt!
+  format: ImageFormat!
+
+  # Image metadata
+  alt: String
+  caption: String
+  uploadedBy: User!
+  uploadedAt: DateTime!
+}
+
+type Link {
+  url: URL!
+  title: String
+  description: String
+  favicon: URL
+  previewImage: URL
+
+  # Link metadata
+  isExternal: Boolean!
+  isSecure: Boolean!
+  lastChecked: DateTime
+}
+
+# =============================================================================
+# INPUT TYPES
+# =============================================================================
+
+# Document Inputs
+input CreateDocumentInput {
+  name: NonEmptyString!
+  description: String
+  type: DocumentType!
+  content: CreateDocumentContentInput
+  permissions: CreateDocumentPermissionsInput
+  sharing: CreateDocumentSharingInput
+  integrations: DocumentIntegrationsInput
+}
+
+input UpdateDocumentInput {
+  id: UUID!
+  name: NonEmptyString
+  description: String
+  content: UpdateDocumentContentInput
+  permissions: UpdateDocumentPermissionsInput
+  sharing: UpdateDocumentSharingInput
+}
+
+input CreateDocumentContentInput {
+  format: ContentFormat!
+  data: JSON!
+  blocks: [CreateContentBlockInput!]
+}
+
+input CreateContentBlockInput {
+  type: BlockType!
+  content: JSON!
+  position: CreateBlockPositionInput!
+  styles: JSON
+  attributes: JSON
+}
+
+input CreateBlockPositionInput {
+  index: NonNegativeInt!
+  offset: NonNegativeInt!
+  length: NonNegativeInt!
+  depth: NonNegativeInt!
+}
+
+input UpdateDocumentContentInput {
+  operations: [CreateOperationInput!]!
+  conflictResolution: ConflictResolutionStrategy
+}
+
+input CreateOperationInput {
+  type: OperationType!
+  position: NonNegativeInt!
+  length: NonNegativeInt
+  content: JSON
+  clientId: UUID!
+}
+
+# Permission Inputs
+input CreateDocumentPermissionsInput {
+  collaborators: [CreateCollaboratorPermissionInput!]
+  organization: OrganizationDocumentPermission
+  public: PublicDocumentPermission
+}
+
+input CreateCollaboratorPermissionInput {
+  userId: UUID!
+  permission: DocumentPermission!
+  expiresAt: DateTime
+}
+
+input UpdateDocumentPermissionsInput {
+  collaborators: [UpdateCollaboratorPermissionInput!]
+  organization: OrganizationDocumentPermission
+  public: PublicDocumentPermission
+}
+
+input UpdateCollaboratorPermissionInput {
+  userId: UUID!
+  permission: DocumentPermission
+  expiresAt: DateTime
+}
+
+# Sharing Inputs
+input CreateDocumentSharingInput {
+  isPublic: Boolean
+  allowAnonymous: Boolean
+  allowComments: Boolean
+  password: String
+  expiresAt: DateTime
+  maxViews: NonNegativeInt
+}
+
+input UpdateDocumentSharingInput {
+  isPublic: Boolean
+  allowAnonymous: Boolean
+  allowComments: Boolean
+  password: String
+  expiresAt: DateTime
+  maxViews: NonNegativeInt
+}
+
+# Integration Inputs
+input DocumentIntegrationsInput {
+  paintboxEstimateId: UUID
+  brandPortalThemeId: UUID
+}
+
+# Comment Inputs
+input CreateCommentInput {
+  documentId: UUID!
+  content: CreateCommentContentInput!
+  position: CreateCommentPositionInput
+  type: CommentType = GENERAL
+  priority: CommentPriority = NORMAL
+  mentions: [UUID!]
+  parentCommentId: UUID
+}
+
+input CreateCommentContentInput {
+  text: String!
+  format: ContentFormat = PLAIN_TEXT
+  attachments: [UUID!]
+}
+
+input CreateCommentPositionInput {
+  blockId: UUID
+  startOffset: NonNegativeInt
+  endOffset: NonNegativeInt
+  x: Decimal
+  y: Decimal
+  page: NonNegativeInt
+  section: String
+}
+
+input UpdateCommentInput {
+  id: UUID!
+  content: UpdateCommentContentInput
+  priority: CommentPriority
+  status: CommentStatus
+}
+
+input UpdateCommentContentInput {
+  text: String
+  format: ContentFormat
+}
+
+# Presence Inputs
+input JoinDocumentInput {
+  documentId: UUID!
+  permissions: [DocumentPermission!]
+}
+
+input UpdatePresenceInput {
+  cursor: UpdateCursorPositionInput
+  selection: UpdateTextSelectionInput
+  viewport: UpdateViewportInfoInput
+  isTyping: Boolean
+  currentAction: UserAction
+}
+
+input UpdateCursorPositionInput {
+  blockId: UUID!
+  offset: NonNegativeInt!
+  x: Decimal
+  y: Decimal
+  height: Decimal
+}
+
+input UpdateTextSelectionInput {
+  start: UpdateCursorPositionInput!
+  end: UpdateCursorPositionInput!
+}
+
+input UpdateViewportInfoInput {
+  scrollTop: NonNegativeInt!
+  scrollLeft: NonNegativeInt!
+  visibleBlocks: [UUID!]!
+  zoom: Decimal
+}
+
+# Version Control Inputs
+input CreateDocumentVersionInput {
+  documentId: UUID!
+  name: String
+  description: String
+  isMajorVersion: Boolean = false
+  branchId: UUID
+}
+
+input CreateDocumentBranchInput {
+  documentId: UUID!
+  name: NonEmptyString!
+  description: String
+  fromVersion: UUID
+}
+
+input MergeBranchInput {
+  sourceBranchId: UUID!
+  targetBranchId: UUID!
+  strategy: MergeStrategy!
+  resolveConflicts: [ResolveConflictInput!]
+}
+
+input ResolveConflictInput {
+  conflictId: UUID!
+  resolution: JSON!
+}
+
+# =============================================================================
+# ENUMERATIONS
+# =============================================================================
+
+enum DocumentType {
+  TEXT_DOCUMENT
+  SPREADSHEET
+  PRESENTATION
+  DIAGRAM
+  FORM
+  TEMPLATE
+  ESTIMATE # Paintbox integration
+  BRAND_GUIDE # Brand Portal integration
+  PROTOCOL
+  CONTRACT
+  PROPOSAL
+}
+
+enum DocumentStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  PUBLISHED
+  ARCHIVED
+  DELETED
+}
+
+enum DocumentPermission {
+  NONE
+  VIEW
+  COMMENT
+  SUGGEST
+  EDIT
+  MANAGE
+  ADMIN
+}
+
+enum OrganizationDocumentPermission {
+  PRIVATE # Only explicit collaborators
+  INTERNAL # All org members can view
+  RESTRICTED # Specified roles only
+}
+
+enum PublicDocumentPermission {
+  NONE
+  VIEW_ONLY
+  COMMENT_ONLY
+  SUGGEST_ONLY
+}
+
+enum ContentFormat {
+  PLAIN_TEXT
+  RICH_TEXT
+  MARKDOWN
+  HTML
+  JSON
+  XML
+  CSV
+  LATEX
+}
+
+enum BlockType {
+  PARAGRAPH
+  HEADING
+  LIST_ITEM
+  QUOTE
+  CODE_BLOCK
+  IMAGE
+  VIDEO
+  AUDIO
+  TABLE
+  DIVIDER
+  EMBED
+  CHART
+  DIAGRAM
+}
+
+enum CRDTType {
+  YATA # Yet Another Transformation Approach
+  RGA # Replicated Growable Array
+  LSEQ # LSEQ CRDT
+  TREE_DOC # TreeDoc CRDT
+  ROPE # Rope data structure
+}
+
+enum CRDTOperationType {
+  INSERT
+  DELETE
+  FORMAT
+  MOVE
+  SPLIT
+  MERGE
+}
+
+enum OperationType {
+  INSERT
+  DELETE
+  REPLACE
+  FORMAT
+  MOVE
+  ANNOTATION
+}
+
+enum ConflictResolutionStrategy {
+  MANUAL # User resolves conflicts
+  AUTO_MERGE # Automatic merge with conflict markers
+  LAST_WRITER_WINS # Most recent change wins
+  OPERATIONAL_TRANSFORM # Use OT algorithms
+  CRDT_MERGE # Use CRDT merge semantics
+}
+
+enum MergeStrategy {
+  FAST_FORWARD
+  THREE_WAY_MERGE
+  REBASE
+  SQUASH_MERGE
+}
+
+enum ConflictType {
+  CONTENT_CONFLICT
+  FORMAT_CONFLICT
+  STRUCTURE_CONFLICT
+  PERMISSION_CONFLICT
+  METADATA_CONFLICT
+}
+
+enum ChangeType {
+  TEXT_INSERT
+  TEXT_DELETE
+  TEXT_FORMAT
+  BLOCK_INSERT
+  BLOCK_DELETE
+  BLOCK_MOVE
+  BLOCK_FORMAT
+  STRUCTURE_CHANGE
+}
+
+enum ReviewStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+  NEEDS_REVISION
+}
+
+enum PresenceStatus {
+  ACTIVE
+  AWAY
+  IDLE
+  OFFLINE
+}
+
+enum UserAction {
+  VIEWING
+  TYPING
+  SELECTING
+  SCROLLING
+  COMMENTING
+  FORMATTING
+  INSERTING_MEDIA
+  COLLABORATING
+}
+
+enum DeviceType {
+  DESKTOP
+  TABLET
+  MOBILE
+  TV
+  KIOSK
+}
+
+enum ConnectionType {
+  WEBSOCKET
+  SSE # Server-Sent Events
+  POLLING
+  WEBRTC
+}
+
+enum LockType {
+  EXCLUSIVE # Only one user can edit
+  SHARED # Multiple users can edit
+  BLOCK_LEVEL # Per-block locking
+  OPTIMISTIC # No real locking, conflict resolution
+}
+
+enum CommentType {
+  GENERAL
+  SUGGESTION
+  QUESTION
+  ISSUE
+  APPROVAL
+  REVIEW
+}
+
+enum CommentStatus {
+  ACTIVE
+  RESOLVED
+  DISMISSED
+  ARCHIVED
+}
+
+enum CommentPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+  CRITICAL
+}
+
+enum ThreadStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  ARCHIVED
+}
+
+enum AnnotationType {
+  HIGHLIGHT
+  NOTE
+  BOOKMARK
+  LINK
+  DRAWING
+  STAMP
+  REDACTION
+}
+
+enum AnnotationVisibility {
+  PRIVATE
+  SHARED
+  PUBLIC
+  ORGANIZATION
+}
+
+enum AnnotationShape {
+  RECTANGLE
+  CIRCLE
+  ARROW
+  LINE
+  FREEHAND
+}
+
+enum ReactionType {
+  LIKE
+  DISLIKE
+  LOVE
+  LAUGH
+  CONFUSED
+  CELEBRATE
+  CUSTOM
+}
+
+enum ActivityEventType {
+  USER_ACTION
+  SYSTEM_EVENT
+  INTEGRATION_EVENT
+  SECURITY_EVENT
+}
+
+enum ActorType {
+  USER
+  SYSTEM
+  INTEGRATION
+  WEBHOOK
+  API
+}
+
+enum ActivityTargetType {
+  DOCUMENT
+  COMMENT
+  VERSION
+  BRANCH
+  USER
+  PRESENCE
+}
+
+enum ActivitySeverity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ActivityScope {
+  PERSONAL
+  DOCUMENT
+  ORGANIZATION
+  SYSTEM
+}
+
+enum AttachmentType {
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+  ARCHIVE
+  CODE
+  OTHER
+}
+
+enum ImageFormat {
+  JPEG
+  PNG
+  GIF
+  SVG
+  WEBP
+  AVIF
+}
+
+enum ScanStatus {
+  PENDING
+  SCANNING
+  CLEAN
+  INFECTED
+  ERROR
+}
+
+enum EstimateStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  DECLINED
+  EXPIRED
+}
+
+enum SyncStatus {
+  SYNCED
+  SYNCING
+  FAILED
+  PENDING
+}
+
+# Session-specific permissions (subset of document permissions for performance)
+enum SessionPermissions {
+  READ_ONLY
+  COMMENT_ONLY
+  EDIT_CONTENT
+  FULL_ACCESS
+}
+
+# Annotation-specific permissions
+enum AnnotationPermissions {
+  PRIVATE
+  SHARED_WITH_COLLABORATORS
+  PUBLIC_IN_DOCUMENT
+  PUBLIC_EVERYWHERE
+}

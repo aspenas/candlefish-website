@@ -1,0 +1,266 @@
+# Development Environment Values for Candlefish AI
+# Optimized for development workflow with minimal costs
+
+global:
+  environment: development
+  namespace: candlefish-dev
+  registry: ghcr.io/candlefish-ai
+  imagePullPolicy: Always  # Always pull latest for dev
+  color: blue
+
+# Reduced replicas for cost optimization
+website:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  autoscaling:
+    enabled: false  # Disable autoscaling for dev
+  env:
+    NODE_ENV: development
+    NEXT_TELEMETRY_DISABLED: "1"
+    LOG_LEVEL: debug
+
+backendApi:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  autoscaling:
+    enabled: false
+  env:
+    PYTHONUNBUFFERED: "1"
+    WORKERS: "1"  # Single worker for dev
+    DEBUG: "true"
+    LOG_LEVEL: debug
+
+analytics:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  autoscaling:
+    enabled: false
+
+paintbox:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  autoscaling:
+    enabled: false
+  env:
+    NODE_ENV: development
+    PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
+    DEBUG: "true"
+
+brandPortal:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  autoscaling:
+    enabled: false
+
+gateway:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  autoscaling:
+    enabled: false
+
+# Development ingress with HTTP (no SSL required)
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+  hosts:
+    - host: dev.candlefish.ai
+      paths:
+        - path: /
+          pathType: Prefix
+          service: website
+    - host: api-dev.candlefish.ai
+      paths:
+        - path: /
+          pathType: Prefix
+          service: backend-api
+    - host: analytics-dev.candlefish.ai
+      paths:
+        - path: /
+          pathType: Prefix
+          service: analytics-dashboard
+    - host: paintbox-dev.candlefish.ai
+      paths:
+        - path: /
+          pathType: Prefix
+          service: paintbox-service
+    - host: brand-dev.candlefish.ai
+      paths:
+        - path: /
+          pathType: Prefix
+          service: brand-portal
+
+# Minimal database configuration
+postgresql:
+  enabled: true
+  auth:
+    database: candlefish_dev
+  architecture: standalone  # No replication for dev
+  primary:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+    persistence:
+      enabled: true
+      size: 20Gi
+      storageClass: gp3
+  metrics:
+    enabled: false  # Disable metrics for cost optimization
+
+# Minimal Redis configuration
+redis:
+  enabled: true
+  architecture: standalone  # No replication for dev
+  auth:
+    enabled: true
+  master:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+    persistence:
+      enabled: true
+      size: 5Gi
+      storageClass: gp3
+  metrics:
+    enabled: false
+
+# Development monitoring (minimal)
+monitoring:
+  prometheus:
+    enabled: true
+    server:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 1Gi
+      persistentVolume:
+        enabled: true
+        size: 10Gi
+        storageClass: gp3
+      retention: 7d  # Short retention for dev
+  grafana:
+    enabled: true
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+    persistence:
+      enabled: true
+      size: 2Gi
+      storageClass: gp3
+
+# Security - relaxed for development
+podSecurityPolicy:
+  enabled: false  # Disable PSP for easier development
+
+networkPolicy:
+  enabled: false  # Disable network policies for dev
+
+# Development-specific features
+devTools:
+  enabled: true
+  debug: true
+  hotReload: true
+
+# External secrets disabled for dev (use local secrets)
+externalSecrets:
+  enabled: false
+
+# Local secret values (for development only)
+secrets:
+  database:
+    enabled: true
+    name: candlefish-database-secret-dev
+    data:
+      username: candlefish_dev
+      password: dev_password_123
+      host: candlefish-postgresql
+      port: "5432"
+      database: candlefish_dev
+      url: "postgresql://candlefish_dev:dev_password_123@candlefish-postgresql:5432/candlefish_dev"
+  redis:
+    enabled: true
+    name: candlefish-redis-secret-dev
+    data:
+      password: dev_redis_pass
+      host: candlefish-redis-master
+      port: "6379"
+      url: "redis://:dev_redis_pass@candlefish-redis-master:6379/0"
+  api:
+    enabled: true
+    name: candlefish-api-secret-dev
+    data:
+      jwt-secret: dev_jwt_secret_key_123456789
+      encryption-key: dev_encryption_key_32_chars_long
+
+# Cost optimization settings
+costOptimization:
+  enabled: true
+  spotInstances: true
+  smallerInstances: true
+  reducedRedundancy: true
+
+# Development-specific node selectors and tolerations
+nodeSelector:
+  node-type: development
+
+tolerations:
+  - key: "development"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"

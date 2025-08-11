@@ -156,8 +156,7 @@ class CalculationService {
       return response.data || { success: false, id: '' };
     } catch (error) {
       console.error('Failed to save estimate:', error);
-      // Return mock success for demo
-      return { success: true, id: `EST-${Date.now()}` };
+      throw new Error('Failed to save estimate - backend API required for production');
     }
   }
 }

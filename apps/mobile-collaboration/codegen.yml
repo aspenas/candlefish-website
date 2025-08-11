@@ -1,0 +1,33 @@
+overwrite: true
+schema: "../../graphql/schema/**/*.graphql"
+documents: "src/**/*.{ts,tsx,graphql}"
+generates:
+  src/graphql/generated/types.ts:
+    plugins:
+      - "typescript"
+      - "typescript-operations"
+      - "typescript-react-apollo"
+    config:
+      withHooks: true
+      withHOC: false
+      withComponent: false
+      apolloReactHooksImportFrom: "@apollo/client"
+      dedupeOperationSuffix: true
+      omitOperationSuffix: false
+      gqlImport: "@apollo/client#gql"
+      documentMode: "string"
+      scalars:
+        DateTime: "Date"
+        UUID: "string"
+        JSON: "any"
+        BigInt: "number"
+        Decimal: "number"
+        NonEmptyString: "string"
+        NonNegativeInt: "number"
+        URL: "string"
+        HexColorCode: "string"
+        Duration: "number"
+        Currency: "string"
+hooks:
+  afterAllFileWrite:
+    - prettier --write

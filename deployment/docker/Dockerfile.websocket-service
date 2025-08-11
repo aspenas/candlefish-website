@@ -1,0 +1,76 @@
+# Multi-stage build for WebSocket service
+FROM node:20-alpine AS base
+WORKDIR /app
+RUN apk add --no-cache libc6-compat
+RUN npm install -g pnpm
+
+# Dependencies stage
+FROM base AS deps
+COPY package.json pnpm-lock.yaml ./
+COPY services/websocket/package.json ./services/websocket/
+RUN pnpm install --frozen-lockfile --prod=false
+
+# Build stage
+FROM base AS builder
+COPY . .
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/services/websocket/node_modules ./services/websocket/node_modules
+
+# Build WebSocket service
+RUN pnpm build:websocket
+RUN pnpm prune --prod
+
+# Runtime stage
+FROM node:20-alpine AS runtime
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 websocket
+
+WORKDIR /app
+
+# Install production dependencies and system packages
+RUN apk add --no-cache \
+    ca-certificates \
+    dumb-init \
+    redis \
+    && rm -rf /var/cache/apk/*
+
+# Copy built application
+COPY --from=builder --chown=websocket:nodejs /app/services/websocket/dist ./dist
+COPY --from=builder --chown=websocket:nodejs /app/services/websocket/package.json ./
+COPY --from=builder --chown=websocket:nodejs /app/node_modules ./node_modules
+
+# Health check script
+COPY --chown=websocket:nodejs deployment/docker/healthcheck-websocket.js ./healthcheck.js
+
+# WebSocket configuration
+COPY --chown=websocket:nodejs deployment/docker/websocket-config.json ./config.json
+
+# Set permissions
+RUN chown -R websocket:nodejs /app
+RUN chmod +x /app/healthcheck.js
+
+USER websocket
+
+# Environment variables for WebSocket optimization
+ENV NODE_ENV=production
+ENV WS_PORT=4001
+ENV METRICS_PORT=4002
+ENV UV_THREADPOOL_SIZE=128
+ENV NODE_OPTIONS="--max-old-space-size=1024 --experimental-worker"
+
+# WebSocket specific optimizations
+ENV WS_HEARTBEAT_INTERVAL=30000
+ENV WS_MAX_CONNECTIONS=10000
+ENV WS_MAX_PAYLOAD=1048576
+ENV WS_COMPRESSION_THRESHOLD=1024
+
+EXPOSE 4001 4002
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD node /app/healthcheck.js
+
+# Use dumb-init for signal handling
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "dist/server.js"]

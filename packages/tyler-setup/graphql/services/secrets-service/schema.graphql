@@ -1,0 +1,488 @@
+# Secrets Service Schema Extension
+# Handles AWS Secrets Manager integration, secret rotation, and access control
+
+extend schema @link(url: "https://specs.apollo.dev/federation/v2.3")
+
+"""
+Secret version tracking
+"""
+type SecretVersion @key(fields: "id") {
+  id: ID!
+  secretName: String!
+  version: String!
+
+  # Version details
+  createdAt: Date!
+  createdBy: User!
+  description: String
+
+  # Status
+  isCurrent: Boolean!
+  isActive: Boolean!
+
+  # Security
+  encryptionMethod: String!
+  kmsKeyVersion: String
+
+  # Relationships
+  secret: Secret!
+  rotation: SecretRotation
+
+  # Computed fields
+  age: Int!
+  usageCount: Int!
+}
+
+"""
+Secret access control list
+"""
+type SecretACL @key(fields: "id") {
+  id: ID!
+  secretName: String!
+
+  # Access permissions
+  userId: ID
+  contractorId: ID
+  groupId: ID
+  roleId: ID
+
+  # Permission details
+  permissions: [Permission!]!
+  conditions: [AccessCondition!]!
+
+  # Timing
+  grantedAt: Date!
+  grantedBy: User!
+  expiresAt: Date
+  revokedAt: Date
+  revokedBy: User
+
+  # Status
+  isActive: Boolean!
+
+  # Relationships
+  secret: Secret!
+  user: User
+  contractor: Contractor
+  grantedByUser: User!
+
+  # Usage tracking
+  lastUsed: Date
+  usageCount: Int!
+}
+
+type AccessCondition {
+  type: String!
+  value: String!
+  operator: String!
+}
+
+"""
+Secret sharing and temporary access
+"""
+type SecretShare @key(fields: "id") {
+  id: ID!
+  secretName: String!
+
+  # Share details
+  shareToken: String! @auth(requires: ADMIN)
+  maxAccesses: Int!
+  currentAccesses: Int!
+
+  # Timing
+  createdAt: Date!
+  createdBy: User!
+  expiresAt: Date!
+
+  # Access tracking
+  accesses: [SecretShareAccess!]!
+
+  # Security
+  requiresPassword: Boolean!
+  ipWhitelist: [String!]!
+
+  # Relationships
+  secret: Secret!
+
+  # Status
+  isActive: Boolean!
+  isExpired: Boolean!
+  remainingAccesses: Int!
+}
+
+type SecretShareAccess {
+  id: ID!
+  accessedAt: Date!
+  ip: String!
+  userAgent: String!
+  success: Boolean!
+  errorMessage: String
+}
+
+"""
+Secret policy enforcement
+"""
+type SecretPolicy @key(fields: "id") {
+  id: ID!
+  name: String!
+  description: String!
+
+  # Policy rules
+  rules: [PolicyRule!]!
+  priority: Int!
+
+  # Scope
+  secretPattern: String!
+  appliesTo: [String!]!
+
+  # Status
+  isActive: Boolean!
+  enforced: Boolean!
+
+  # Metadata
+  createdAt: Date!
+  createdBy: User!
+  updatedAt: Date!
+
+  # Usage
+  violationCount: Int!
+  lastViolation: Date
+
+  # Relationships
+  secrets: [Secret!]!
+  violations: [PolicyViolation!]!
+}
+
+type PolicyRule {
+  type: String!
+  condition: String!
+  action: String!
+  severity: String!
+  message: String
+}
+
+type PolicyViolation {
+  id: ID!
+  policyId: ID!
+  secretName: String!
+  violatedAt: Date!
+  userId: ID
+  description: String!
+  severity: String!
+  resolved: Boolean!
+  resolvedAt: Date
+}
+
+"""
+Secret backup and recovery
+"""
+type SecretBackup @key(fields: "id") {
+  id: ID!
+  secretName: String!
+
+  # Backup details
+  backupType: BackupType!
+  createdAt: Date!
+  createdBy: User!
+
+  # Storage
+  location: String!
+  size: Int!
+  checksum: String!
+
+  # Encryption
+  encryptionKey: String! @auth(requires: ADMIN)
+  encryptionMethod: String!
+
+  # Verification
+  verified: Boolean!
+  verifiedAt: Date
+
+  # Recovery
+  recoveryCount: Int!
+  lastRecovery: Date
+
+  # Relationships
+  secret: Secret!
+
+  # Status
+  isValid: Boolean!
+  retentionExpires: Date!
+}
+
+enum BackupType {
+  AUTOMATIC
+  MANUAL
+  PRE_ROTATION
+  EMERGENCY
+}
+
+# Input Types
+
+input SecretACLInput {
+  secretName: String!
+  userId: ID
+  contractorId: ID
+  groupId: ID
+  roleId: ID
+  permissions: [Permission!]!
+  conditions: [AccessConditionInput!]
+  expiresAt: Date
+}
+
+input AccessConditionInput {
+  type: String!
+  value: String!
+  operator: String!
+}
+
+input SecretShareInput {
+  secretName: String!
+  maxAccesses: Int = 1
+  expiresIn: Int = 24 # hours
+  requiresPassword: Boolean = false
+  password: String
+  ipWhitelist: [String!]
+}
+
+input SecretPolicyInput {
+  name: String!
+  description: String!
+  rules: [PolicyRuleInput!]!
+  secretPattern: String!
+  appliesTo: [String!]
+  priority: Int = 100
+}
+
+input PolicyRuleInput {
+  type: String!
+  condition: String!
+  action: String!
+  severity: String!
+  message: String
+}
+
+input SecretBackupInput {
+  secretNames: [String!]!
+  backupType: BackupType!
+  encryptionMethod: String = "AES-256"
+  retentionDays: Int = 90
+}
+
+input SecretFilter {
+  type: SecretType
+  needsRotation: Boolean
+  hasExpiredAccess: Boolean
+  policyViolations: Boolean
+  lastRotatedBefore: Date
+  createdAfter: Date
+}
+
+# Extend Root Types
+
+extend type Query {
+  # Secret versions
+  secretVersions(secretName: String!): [SecretVersion!]! @auth(requires: USER)
+  secretVersion(id: ID!): SecretVersion @auth(requires: USER)
+
+  # Access control
+  secretACLs(secretName: String!): [SecretACL!]! @auth(requires: ADMIN)
+  secretAccess(userId: ID!, secretName: String!): SecretACL @auth(requires: ADMIN)
+
+  # Secret sharing
+  secretShares(
+    pagination: PaginationInput
+    secretName: String
+    active: Boolean
+  ): [SecretShare!]! @auth(requires: ADMIN)
+
+  secretShare(id: ID!): SecretShare @auth(requires: ADMIN)
+
+  # Policy management
+  secretPolicies: [SecretPolicy!]! @auth(requires: ADMIN)
+  secretPolicy(id: ID!): SecretPolicy @auth(requires: ADMIN)
+  policyViolations(
+    pagination: PaginationInput
+    unresolved: Boolean
+  ): [PolicyViolation!]! @auth(requires: ADMIN)
+
+  # Backups
+  secretBackups(
+    pagination: PaginationInput
+    secretName: String
+  ): [SecretBackup!]! @auth(requires: ADMIN)
+
+  # Analytics
+  secretsAnalytics(
+    filter: SecretFilter
+    dateFrom: Date
+    dateTo: Date
+  ): SecretsAnalytics! @auth(requires: ADMIN)
+
+  # Compliance
+  secretsComplianceReport: SecretsComplianceReport! @auth(requires: ADMIN)
+}
+
+extend type Mutation {
+  # Access control
+  grantSecretAccess(input: SecretACLInput!): SecretACL! @auth(requires: ADMIN)
+  revokeSecretAccess(aclId: ID!): OperationResponse! @auth(requires: ADMIN)
+  updateSecretAccess(aclId: ID!, input: SecretACLInput!): SecretACL! @auth(requires: ADMIN)
+
+  # Secret sharing
+  createSecretShare(input: SecretShareInput!): SecretShare! @auth(requires: ADMIN)
+  revokeSecretShare(shareId: ID!): OperationResponse! @auth(requires: ADMIN)
+  accessSecretShare(token: String!, password: String): JSON!
+
+  # Policy management
+  createSecretPolicy(input: SecretPolicyInput!): SecretPolicy! @auth(requires: ADMIN)
+  updateSecretPolicy(id: ID!, input: SecretPolicyInput!): SecretPolicy! @auth(requires: ADMIN)
+  deleteSecretPolicy(id: ID!): OperationResponse! @auth(requires: ADMIN)
+  resolvePolicyViolation(violationId: ID!): OperationResponse! @auth(requires: ADMIN)
+
+  # Backup and recovery
+  createSecretBackup(input: SecretBackupInput!): [SecretBackup!]! @auth(requires: ADMIN)
+  restoreSecretFromBackup(backupId: ID!): Secret! @auth(requires: ADMIN)
+  deleteSecretBackup(backupId: ID!): OperationResponse! @auth(requires: ADMIN)
+
+  # Bulk operations
+  bulkRotateSecrets(secretNames: [String!]!): OperationResponse! @auth(requires: ADMIN)
+  bulkGrantAccess(secretNames: [String!]!, input: SecretACLInput!): [SecretACL!]! @auth(requires: ADMIN)
+  bulkRevokeAccess(secretNames: [String!]!, userId: ID!): OperationResponse! @auth(requires: ADMIN)
+}
+
+extend type Subscription {
+  # Secret events
+  secretVersionCreated: SecretVersion! @auth(requires: ADMIN)
+  secretAccessGranted: SecretACL! @auth(requires: ADMIN)
+  secretAccessRevoked: SecretACL! @auth(requires: ADMIN)
+
+  # Policy events
+  policyViolationDetected: PolicyViolation! @auth(requires: ADMIN)
+  policyViolationResolved: PolicyViolation! @auth(requires: ADMIN)
+
+  # Security events
+  unauthorizedSecretAccess: AuditLog! @auth(requires: ADMIN)
+  suspiciousSecretActivity: AuditLog! @auth(requires: ADMIN)
+}
+
+# Extend existing types
+
+extend type Secret @key(fields: "name") {
+  # Enhanced secret fields
+  versions: [SecretVersion!]!
+  currentVersion: SecretVersion!
+  accessControlList: [SecretACL!]! @auth(requires: ADMIN)
+  shares: [SecretShare!]! @auth(requires: ADMIN)
+  policies: [SecretPolicy!]! @auth(requires: ADMIN)
+  backups: [SecretBackup!]! @auth(requires: ADMIN)
+
+  # Security metrics
+  accessAttempts: [SecretAccessAttempt!]! @auth(requires: ADMIN)
+  unauthorizedAttempts: Int! @auth(requires: ADMIN)
+  lastUnauthorizedAttempt: Date @auth(requires: ADMIN)
+
+  # Compliance
+  complianceStatus: String!
+  policyViolations: [PolicyViolation!]! @auth(requires: ADMIN)
+
+  # Computed fields
+  hasActiveShares: Boolean!
+  daysSinceLastAccess: Int!
+  riskScore: Float! @auth(requires: ADMIN)
+  complianceScore: Float! @auth(requires: ADMIN)
+}
+
+type SecretAccessAttempt {
+  id: ID!
+  timestamp: Date!
+  userId: ID
+  contractorId: ID
+  success: Boolean!
+  ip: String!
+  userAgent: String!
+  errorReason: String
+}
+
+type SecretsAnalytics {
+  totalSecrets: Int!
+  activeSecrets: Int!
+  expiredSecrets: Int!
+  needRotation: Int!
+
+  # Access metrics
+  totalAccesses: Int!
+  unauthorizedAttempts: Int!
+  shareCount: Int!
+
+  # Compliance metrics
+  compliantSecrets: Int!
+  policyViolations: Int!
+
+  # Risk metrics
+  highRiskSecrets: Int!
+  expiredAccess: Int!
+
+  # Trends
+  rotationTrends: [RotationTrend!]!
+  accessTrends: [AccessTrend!]!
+  complianceTrends: [ComplianceTrend!]!
+}
+
+type SecretsComplianceReport {
+  overallScore: Float!
+  secretsReviewed: Int!
+  compliantSecrets: Int!
+  nonCompliantSecrets: Int!
+
+  # Violations
+  criticalViolations: Int!
+  highViolations: Int!
+  mediumViolations: Int!
+  lowViolations: Int!
+
+  # Recommendations
+  recommendations: [ComplianceRecommendation!]!
+
+  # Trends
+  improvementAreas: [String!]!
+  complianceHistory: [ComplianceHistoryPoint!]!
+}
+
+type RotationTrend {
+  period: String!
+  rotated: Int!
+  scheduled: Int!
+  overdue: Int!
+}
+
+type AccessTrend {
+  period: String!
+  authorized: Int!
+  unauthorized: Int!
+  shared: Int!
+}
+
+type ComplianceTrend {
+  period: String!
+  compliant: Int!
+  violations: Int!
+  resolved: Int!
+}
+
+type ComplianceRecommendation {
+  id: ID!
+  category: String!
+  title: String!
+  description: String!
+  priority: String!
+  affectedSecrets: [String!]!
+  estimatedEffort: String!
+}
+
+type ComplianceHistoryPoint {
+  date: Date!
+  score: Float!
+  secretsCount: Int!
+  violationsCount: Int!
+}

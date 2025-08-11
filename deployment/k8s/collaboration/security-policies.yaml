@@ -1,0 +1,609 @@
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: collaboration-restricted-psp
+  namespace: collaboration
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: security-policy
+spec:
+  privileged: false
+  allowPrivilegeEscalation: false
+  requiredDropCapabilities:
+    - ALL
+  volumes:
+    - 'configMap'
+    - 'emptyDir'
+    - 'projected'
+    - 'secret'
+    - 'downwardAPI'
+    - 'persistentVolumeClaim'
+  runAsUser:
+    rule: 'MustRunAsNonRoot'
+  runAsGroup:
+    rule: 'MustRunAs'
+    ranges:
+      - min: 1000
+        max: 65535
+  seLinux:
+    rule: 'RunAsAny'
+  fsGroup:
+    rule: 'RunAsAny'
+  readOnlyRootFilesystem: true
+  hostNetwork: false
+  hostIPC: false
+  hostPID: false
+  hostPorts:
+    - min: 0
+      max: 0
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: collaboration-restricted-psp-user
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: security-policy
+rules:
+- apiGroups: ['policy']
+  resources: ['podsecuritypolicies']
+  verbs: ['use']
+  resourceNames:
+  - collaboration-restricted-psp
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: collaboration-restricted-psp-binding
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: security-policy
+roleRef:
+  kind: ClusterRole
+  name: collaboration-restricted-psp-user
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: collaboration
+- kind: ServiceAccount
+  name: collaboration-graphql-api
+  namespace: collaboration
+- kind: ServiceAccount
+  name: collaboration-websocket
+  namespace: collaboration
+- kind: ServiceAccount
+  name: collaboration-document
+  namespace: collaboration
+- kind: ServiceAccount
+  name: collaboration-editor
+  namespace: collaboration
+
+---
+# Network Policy for Collaboration Namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: collaboration-network-policy
+  namespace: collaboration
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: security-policy
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+
+  # Ingress rules
+  ingress:
+  # Allow ingress from ingress controller
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: TCP
+      port: 3000  # Next.js app
+    - protocol: TCP
+      port: 4000  # GraphQL API
+    - protocol: TCP
+      port: 4001  # WebSocket
+    - protocol: TCP
+      port: 4003  # Document service
+
+  # Allow internal communication within collaboration namespace
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: collaboration
+    ports:
+    - protocol: TCP
+      port: 3000
+    - protocol: TCP
+      port: 4000
+    - protocol: TCP
+      port: 4001
+    - protocol: TCP
+      port: 4002
+    - protocol: TCP
+      port: 4003
+    - protocol: TCP
+      port: 4004
+    - protocol: TCP
+      port: 5432  # PostgreSQL
+    - protocol: TCP
+      port: 6379  # Redis
+
+  # Allow monitoring from monitoring namespace
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 4000  # Metrics endpoints
+    - protocol: TCP
+      port: 4002
+    - protocol: TCP
+      port: 4003
+    - protocol: TCP
+      port: 9187  # PostgreSQL exporter
+    - protocol: TCP
+      port: 9121  # Redis exporter
+
+  # Egress rules
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+  # Allow HTTPS traffic for external APIs
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80
+
+  # Allow communication to AWS services
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+
+  # Allow internal communication
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: collaboration
+    ports:
+    - protocol: TCP
+      port: 3000
+    - protocol: TCP
+      port: 4000
+    - protocol: TCP
+      port: 4001
+    - protocol: TCP
+      port: 4002
+    - protocol: TCP
+      port: 4003
+    - protocol: TCP
+      port: 4004
+    - protocol: TCP
+      port: 5432
+    - protocol: TCP
+      port: 6379
+
+---
+# Specific Network Policy for GraphQL API
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: graphql-api-network-policy
+  namespace: collaboration
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: graphql-api-security
+spec:
+  podSelector:
+    matchLabels:
+      app: graphql-api
+  policyTypes:
+  - Ingress
+  - Egress
+
+  ingress:
+  # Allow traffic from collaboration editor
+  - from:
+    - podSelector:
+        matchLabels:
+          app: collaboration-editor
+    ports:
+    - protocol: TCP
+      port: 4000
+
+  # Allow traffic from ingress controller
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: TCP
+      port: 4000
+
+  # Allow monitoring
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 4000
+
+  egress:
+  # Allow access to database
+  - to:
+    - podSelector:
+        matchLabels:
+          app: postgres
+    ports:
+    - protocol: TCP
+      port: 5432
+
+  # Allow access to Redis
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+
+  # Allow DNS and external APIs
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+    - protocol: TCP
+      port: 443
+
+---
+# Specific Network Policy for WebSocket Service
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: websocket-service-network-policy
+  namespace: collaboration
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: websocket-security
+spec:
+  podSelector:
+    matchLabels:
+      app: websocket-service
+  policyTypes:
+  - Ingress
+  - Egress
+
+  ingress:
+  # Allow WebSocket connections from load balancer
+  - from: []
+    ports:
+    - protocol: TCP
+      port: 4001
+
+  # Allow monitoring
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 4002
+
+  egress:
+  # Allow access to Redis for pub/sub
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+---
+# Specific Network Policy for Document Service
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: document-service-network-policy
+  namespace: collaboration
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: document-security
+spec:
+  podSelector:
+    matchLabels:
+      app: document-service
+  policyTypes:
+  - Ingress
+  - Egress
+
+  ingress:
+  # Allow traffic from GraphQL API and WebSocket service
+  - from:
+    - podSelector:
+        matchLabels:
+          app: graphql-api
+    - podSelector:
+        matchLabels:
+          app: websocket-service
+    ports:
+    - protocol: TCP
+      port: 4003
+    - protocol: TCP
+      port: 4004
+
+  # Allow traffic from ingress controller
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: TCP
+      port: 4003
+
+  # Allow monitoring
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 4003
+
+  egress:
+  # Allow access to database
+  - to:
+    - podSelector:
+        matchLabels:
+          app: postgres
+    ports:
+    - protocol: TCP
+      port: 5432
+
+  # Allow access to Redis
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+
+  # Allow access to AWS S3 for file storage
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+
+  # Allow DNS
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+---
+# Specific Network Policy for Database
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-network-policy
+  namespace: collaboration
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: database-security
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres
+  policyTypes:
+  - Ingress
+  - Egress
+
+  ingress:
+  # Only allow access from application services
+  - from:
+    - podSelector:
+        matchLabels:
+          app: graphql-api
+    - podSelector:
+        matchLabels:
+          app: document-service
+    ports:
+    - protocol: TCP
+      port: 5432
+
+  # Allow monitoring
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9187  # PostgreSQL exporter
+
+  egress:
+  # Allow DNS resolution only
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+---
+# Specific Network Policy for Redis
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-network-policy
+  namespace: collaboration
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: cache-security
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+  - Ingress
+  - Egress
+
+  ingress:
+  # Only allow access from application services
+  - from:
+    - podSelector:
+        matchLabels:
+          app: graphql-api
+    - podSelector:
+        matchLabels:
+          app: websocket-service
+    - podSelector:
+        matchLabels:
+          app: document-service
+    ports:
+    - protocol: TCP
+      port: 6379
+
+  # Allow monitoring
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9121  # Redis exporter
+
+  egress:
+  # Allow DNS resolution only
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+---
+# RBAC for Collaboration Services
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: collaboration-graphql-api
+  namespace: collaboration
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: graphql-api
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: collaboration-websocket
+  namespace: collaboration
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: websocket
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: collaboration-document
+  namespace: collaboration
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: document
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: collaboration-editor
+  namespace: collaboration
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: editor
+
+---
+# Role for application services (minimal permissions)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: collaboration
+  name: collaboration-app-role
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: rbac
+rules:
+# Allow reading own pod information for health checks
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+  resourceNames: []
+# Allow reading secrets that the service accounts are authorized to access
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get"]
+  resourceNames: ["collaboration-secrets"]
+# Allow reading config maps
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list"]
+
+---
+# Bind the role to service accounts
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: collaboration-app-role-binding
+  namespace: collaboration
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: rbac
+subjects:
+- kind: ServiceAccount
+  name: collaboration-graphql-api
+  namespace: collaboration
+- kind: ServiceAccount
+  name: collaboration-websocket
+  namespace: collaboration
+- kind: ServiceAccount
+  name: collaboration-document
+  namespace: collaboration
+- kind: ServiceAccount
+  name: collaboration-editor
+  namespace: collaboration
+roleRef:
+  kind: Role
+  name: collaboration-app-role
+  apiGroup: rbac.authorization.k8s.io

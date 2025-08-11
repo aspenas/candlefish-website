@@ -1,0 +1,25 @@
+{
+  "name": "candlefish-figma-bootstrap",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Figma plugin and scripts to bootstrap the Candlefish brand system.",
+  "license": "MIT",
+  "scripts": {
+    "build": "esbuild plugin/src/main.ts --bundle --format=cjs --outfile=plugin/build/main.js",
+    "dev": "esbuild plugin/src/main.ts --bundle --format=cjs --outfile=plugin/build/main.js --watch",
+    "build:scripts": "esbuild scripts/*.ts --outdir=scripts/dist --platform=node --format=cjs",
+    "tokens": "npm run build:scripts && node scripts/dist/generate-tokens.js",
+    "export:assets": "npm run build:scripts && node scripts/dist/export-assets.js",
+    "fetch:token:cli": "bash /Users/patricksmith/candlefish-ai/scripts/fetch-figma-token.sh",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.100.1",
+    "esbuild": "^0.21.5",
+    "typescript": "^5.5.4",
+    "@types/node": "^22.5.4"
+  },
+  "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.637.0"
+  }
+}

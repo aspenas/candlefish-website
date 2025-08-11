@@ -79,11 +79,8 @@ class ApiClient {
 
   // Calculation endpoints
   async calculateEstimate(data: any) {
-    // Use mock API if backend not available
     if (!this.baseUrl) {
-      const { mockApi } = await import('./mock-api');
-      const result = await mockApi.calculatePricing(data);
-      return { data: result, success: true };
+      throw new Error('Backend API URL not configured for calculations');
     }
 
     return this.request('/api/v1/calculations/estimate', {
@@ -93,11 +90,9 @@ class ApiClient {
   }
 
   async calculatePricingTiers(measurements: any[], laborRate: number, paintPrice: number) {
-    // Use mock API if backend not available
     if (!this.baseUrl) {
-      const { mockApi } = await import('./mock-api');
-      const result = await mockApi.calculatePricing({ measurements, laborRate, paintPrice });
-      return { data: result.pricingTiers, success: true };
+      throw new Error('Backend API URL not configured for pricing calculations');
+    }
     }
 
     return this.request('/api/v1/calculations/pricing-tiers', {

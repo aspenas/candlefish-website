@@ -9,20 +9,37 @@
     "projects/*"
   ],
   "scripts": {
-    "dev": "pnpm -r --parallel --filter ./apps/* run dev",
-    "build": "pnpm -r --filter ./apps/* run build",
-    "build:website": "pnpm --filter @candlefish-ai/website build",
-    "build:dashboard": "pnpm --filter @candlefish-ai/dashboard build",
-    "dev:website": "pnpm --filter @candlefish-ai/website dev",
-    "dev:dashboard": "pnpm --filter @candlefish-ai/dashboard dev",
-    "lint": "pnpm -r run lint",
-    "typecheck": "pnpm -r run typecheck",
-    "test": "pnpm -r run test",
-    "deploy:website": "pnpm --filter @candlefish-ai/website deploy",
-    "deploy:dashboard": "pnpm --filter @candlefish-ai/dashboard deploy"
+    "prebuild": "pnpm brand:sync",
+    "brand:css": "node Branding/generate-css-vars.js",
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "build:website": "turbo build --filter=@candlefish-ai/website",
+    "build:dashboard": "turbo build --filter=@candlefish-ai/dashboard",
+    "dev:website": "turbo dev --filter=@candlefish-ai/website",
+    "dev:dashboard": "turbo dev --filter=@candlefish-ai/dashboard",
+    "brand:sync": "node Branding/sync-assets.js",
+    "brand:sync:dry": "node Branding/sync-assets.js --dry-run",
+    "brand:manifest": "node Branding/generate-archive-manifest.js",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "test:unit": "turbo test:unit",
+    "test:integration": "turbo test:integration",
+    "test:e2e": "turbo e2e",
+    "build:analyze": "turbo build:analyze",
+    "clean": "turbo clean && rm -rf node_modules",
+    "deploy:website": "turbo deploy --filter=@candlefish-ai/website",
+    "deploy:dashboard": "turbo deploy --filter=@candlefish-ai/dashboard",
+    "deploy:all": "turbo deploy",
+    "ci": "turbo build lint typecheck test"
   },
   "devDependencies": {
     "turbo": "^1.13.4"
+  },
+  "pnpm": {
+    "overrides": {
+      "react-refresh": "~0.14.0"
+    }
   },
   "engines": {
     "node": ">=18.0.0",

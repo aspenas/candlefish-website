@@ -1,0 +1,342 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Candlefish Collaboration System - Overview",
+    "tags": ["collaboration", "candlefish", "overview"],
+    "timezone": "utc",
+    "panels": [
+      {
+        "id": 1,
+        "title": "System Health Overview",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=~\"collaboration-.*\"}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "DOWN"
+                  },
+                  "1": {
+                    "text": "UP"
+                  }
+                },
+                "type": "value"
+              }
+            ],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "green",
+                  "value": 1
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Active WebSocket Connections",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(collaboration_websocket_active_connections)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "displayMode": "basic"
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "id": 3,
+        "title": "Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(collaboration_graphql_requests_total[5m])) by (service)",
+            "legendFormat": "GraphQL API",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(http_requests_total{job=\"nextjs-app\"}[5m]))",
+            "legendFormat": "Frontend",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(rate(collaboration_document_operations_total[5m]))",
+            "legendFormat": "Document Operations",
+            "refId": "C"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Requests/sec"
+          }
+        ],
+        "gridPos": {
+          "h": 9,
+          "w": 24,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 4,
+        "title": "Response Times",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(collaboration_graphql_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "GraphQL 95th percentile",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(collaboration_graphql_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "GraphQL 50th percentile",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(collaboration_document_operation_duration_seconds_bucket[5m]))",
+            "legendFormat": "Document 95th percentile",
+            "refId": "C"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Seconds"
+          }
+        ],
+        "gridPos": {
+          "h": 9,
+          "w": 24,
+          "x": 0,
+          "y": 17
+        }
+      },
+      {
+        "id": 5,
+        "title": "Error Rates",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(collaboration_graphql_errors_total[5m])) / sum(rate(collaboration_graphql_requests_total[5m])) * 100",
+            "legendFormat": "GraphQL Error Rate %",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(http_requests_total{status=~\"5..\",job=\"nextjs-app\"}[5m])) / sum(rate(http_requests_total{job=\"nextjs-app\"}[5m])) * 100",
+            "legendFormat": "Frontend Error Rate %",
+            "refId": "B"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Percentage",
+            "max": 100,
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 9,
+          "w": 24,
+          "x": 0,
+          "y": 26
+        }
+      },
+      {
+        "id": 6,
+        "title": "Database Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "pg_stat_activity_count{datname=\"collaboration_db\"}",
+            "legendFormat": "Active Connections",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(pg_stat_database_tup_inserted{datname=\"collaboration_db\"}[5m])",
+            "legendFormat": "Inserts/sec",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(pg_stat_database_tup_updated{datname=\"collaboration_db\"}[5m])",
+            "legendFormat": "Updates/sec",
+            "refId": "C"
+          }
+        ],
+        "gridPos": {
+          "h": 9,
+          "w": 12,
+          "x": 0,
+          "y": 35
+        }
+      },
+      {
+        "id": 7,
+        "title": "Redis Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "redis_connected_clients",
+            "legendFormat": "Connected Clients",
+            "refId": "A"
+          },
+          {
+            "expr": "redis_memory_used_bytes / 1024 / 1024",
+            "legendFormat": "Memory Used (MB)",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(redis_commands_processed_total[5m])",
+            "legendFormat": "Commands/sec",
+            "refId": "C"
+          }
+        ],
+        "gridPos": {
+          "h": 9,
+          "w": 12,
+          "x": 12,
+          "y": 35
+        }
+      },
+      {
+        "id": 8,
+        "title": "Collaboration Metrics",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(collaboration_active_documents)",
+            "legendFormat": "Active Documents",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(collaboration_active_users)",
+            "legendFormat": "Active Users",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(collaboration_document_operations_total[5m])",
+            "legendFormat": "Document Operations/sec",
+            "refId": "C"
+          },
+          {
+            "expr": "rate(collaboration_merge_conflicts_total[5m])",
+            "legendFormat": "Conflicts/sec",
+            "refId": "D"
+          }
+        ],
+        "gridPos": {
+          "h": 9,
+          "w": 24,
+          "x": 0,
+          "y": 44
+        }
+      },
+      {
+        "id": 9,
+        "title": "Resource Utilization",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"collaboration\"}[5m])) by (pod)",
+            "legendFormat": "CPU Usage - {{ pod }}",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(container_memory_usage_bytes{namespace=\"collaboration\"}) by (pod) / 1024 / 1024",
+            "legendFormat": "Memory Usage (MB) - {{ pod }}",
+            "refId": "B"
+          }
+        ],
+        "gridPos": {
+          "h": 9,
+          "w": 24,
+          "x": 0,
+          "y": 53
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "templating": {
+      "list": [
+        {
+          "name": "environment",
+          "type": "custom",
+          "options": [
+            {
+              "text": "Production",
+              "value": "production"
+            },
+            {
+              "text": "Staging",
+              "value": "staging"
+            }
+          ]
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Deployments",
+          "datasource": "Prometheus",
+          "expr": "changes(collaboration_build_info[1d])",
+          "textFormat": "New deployment"
+        }
+      ]
+    },
+    "refresh": "30s",
+    "schemaVersion": 30,
+    "version": 1,
+    "links": [
+      {
+        "title": "Application Logs",
+        "url": "https://kibana.candlefish.ai/app/logs",
+        "type": "link"
+      },
+      {
+        "title": "Runbooks",
+        "url": "https://runbook.candlefish.ai",
+        "type": "link"
+      }
+    ]
+  }
+}

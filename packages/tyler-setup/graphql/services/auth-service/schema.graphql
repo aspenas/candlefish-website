@@ -1,0 +1,272 @@
+# Auth Service Schema Extension
+# Handles authentication, JWT tokens, and session management
+
+extend schema @link(url: "https://specs.apollo.dev/federation/v2.3")
+
+"""
+Auth Service - Authentication and session management
+"""
+type AuthService @key(fields: "id") {
+  id: ID!
+  name: String!
+  version: String!
+  status: String!
+}
+
+"""
+Session management entity
+"""
+type Session @key(fields: "id") {
+  id: ID!
+  userId: ID!
+  token: String! @auth(requires: ADMIN)
+  refreshToken: String! @auth(requires: ADMIN)
+
+  # Session metadata
+  createdAt: Date!
+  expiresAt: Date!
+  lastActivity: Date!
+
+  # Security tracking
+  ip: String!
+  userAgent: String!
+  fingerprint: String
+
+  # Geographic info
+  country: String
+  city: String
+
+  # Device info
+  device: String
+  browser: String
+  os: String
+
+  # Relationships
+  user: User!
+
+  # Computed fields
+  isActive: Boolean!
+  remainingTime: Int!
+  isExpired: Boolean!
+  riskScore: Float!
+}
+
+"""
+Password reset token
+"""
+type PasswordResetToken @key(fields: "token") {
+  token: String!
+  userId: ID!
+  email: String!
+
+  # Lifecycle
+  createdAt: Date!
+  expiresAt: Date!
+  usedAt: Date
+
+  # Security
+  ip: String!
+  userAgent: String!
+
+  # Relationships
+  user: User!
+
+  # Status
+  isValid: Boolean!
+  isUsed: Boolean!
+}
+
+"""
+Two-factor authentication
+"""
+type TwoFactorAuth @key(fields: "userId") {
+  userId: ID!
+  secret: String! @auth(requires: ADMIN)
+  backupCodes: [String!]! @auth(requires: ADMIN)
+
+  # Status
+  isEnabled: Boolean!
+  confirmedAt: Date
+
+  # Usage
+  lastUsed: Date
+  failedAttempts: Int!
+
+  # Relationships
+  user: User!
+
+  # QR Code for setup
+  qrCodeUrl: String!
+}
+
+"""
+Login attempt tracking
+"""
+type LoginAttempt @key(fields: "id") {
+  id: ID!
+  email: String!
+
+  # Attempt details
+  success: Boolean!
+  timestamp: Date!
+
+  # Security info
+  ip: String!
+  userAgent: String!
+  fingerprint: String
+
+  # Geographic
+  country: String
+  city: String
+
+  # Risk assessment
+  riskScore: Float!
+  blocked: Boolean!
+  reason: String
+
+  # Rate limiting
+  attemptCount: Int!
+
+  # Relationships
+  user: User
+}
+
+# Input Types
+
+"""
+Two-factor setup input
+"""
+input TwoFactorSetupInput {
+  token: String!
+  backupCodes: [String!]
+}
+
+"""
+Two-factor verification input
+"""
+input TwoFactorVerifyInput {
+  token: String!
+  backupCode: String
+}
+
+"""
+Password reset request input
+"""
+input PasswordResetRequestInput {
+  email: String!
+}
+
+"""
+Password reset confirmation input
+"""
+input PasswordResetConfirmInput {
+  token: String!
+  newPassword: String!
+  confirmPassword: String!
+}
+
+"""
+Change password input
+"""
+input ChangePasswordInput {
+  currentPassword: String!
+  newPassword: String!
+  confirmPassword: String!
+}
+
+"""
+Session filter input
+"""
+input SessionFilter {
+  userId: ID
+  active: Boolean
+  dateFrom: Date
+  dateTo: Date
+  ip: String
+  country: String
+}
+
+# Extend Root Types
+
+extend type Query {
+  # Session management
+  sessions(
+    pagination: PaginationInput
+    filter: SessionFilter
+  ): [Session!]! @auth(requires: USER)
+
+  currentSession: Session @auth(requires: USER)
+
+  # Two-factor auth
+  twoFactorStatus: TwoFactorAuth @auth(requires: USER)
+
+  # Login attempts
+  loginAttempts(
+    pagination: PaginationInput
+    email: String
+    dateFrom: Date
+    dateTo: Date
+  ): [LoginAttempt!]! @auth(requires: ADMIN)
+
+  # Password reset tokens
+  passwordResetTokens(
+    pagination: PaginationInput
+    valid: Boolean
+  ): [PasswordResetToken!]! @auth(requires: ADMIN)
+}
+
+extend type Mutation {
+  # Two-factor authentication
+  setupTwoFactor: TwoFactorAuth! @auth(requires: USER)
+  confirmTwoFactor(input: TwoFactorSetupInput!): OperationResponse! @auth(requires: USER)
+  disableTwoFactor(token: String!): OperationResponse! @auth(requires: USER)
+
+  # Password management
+  changePassword(input: ChangePasswordInput!): OperationResponse! @auth(requires: USER)
+  requestPasswordReset(input: PasswordResetRequestInput!): OperationResponse! @rateLimit(max: 3, window: 3600)
+  confirmPasswordReset(input: PasswordResetConfirmInput!): OperationResponse! @rateLimit(max: 5, window: 3600)
+
+  # Session management
+  terminateSession(sessionId: ID!): OperationResponse! @auth(requires: USER)
+  terminateAllSessions: OperationResponse! @auth(requires: USER)
+
+  # Security
+  reportSuspiciousActivity(details: String!): OperationResponse! @auth(requires: USER)
+}
+
+extend type Subscription {
+  # Session events
+  sessionCreated(userId: ID): Session! @auth(requires: ADMIN)
+  sessionTerminated(userId: ID): Session! @auth(requires: ADMIN)
+
+  # Security events
+  suspiciousLoginAttempt: LoginAttempt! @auth(requires: ADMIN)
+  twoFactorEnabled(userId: ID): TwoFactorAuth! @auth(requires: ADMIN)
+  passwordChanged(userId: ID): User! @auth(requires: ADMIN)
+}
+
+# Extend existing types with auth-specific fields
+
+extend type User @key(fields: "id") {
+  # Auth-specific fields
+  sessions: [Session!]! @auth(requires: USER)
+  activeSessions: [Session!]! @auth(requires: USER)
+  twoFactorAuth: TwoFactorAuth @auth(requires: USER)
+
+  # Security metrics
+  loginAttempts: [LoginAttempt!]! @auth(requires: ADMIN)
+  lastFailedLogin: Date
+  failedLoginCount: Int!
+  accountLocked: Boolean!
+  lockoutExpires: Date
+
+  # Password management
+  passwordLastChanged: Date
+  passwordExpires: Date
+  mustChangePassword: Boolean!
+
+  # Computed security fields
+  securityScore: Float! @auth(requires: ADMIN)
+  riskLevel: String! @auth(requires: ADMIN)
+  hasTwoFactorEnabled: Boolean!
+}

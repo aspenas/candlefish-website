@@ -1,0 +1,679 @@
+# Default values for Candlefish Collaboration System
+# This is a YAML-formatted file.
+# Declare variables to be substituted into your templates.
+
+# Global configuration
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: "gp3-csi"
+  postgresql:
+    auth:
+      postgresPassword: ""
+      username: "collaboration_user"
+      password: ""
+      database: "collaboration_db"
+  redis:
+    auth:
+      enabled: true
+      password: ""
+
+# Application configuration
+app:
+  name: candlefish-collaboration
+  version: "1.0.0"
+  environment: production
+  domain: candlefish.ai
+
+# Image configuration
+image:
+  registry: "candlefish"
+  repository: collaboration
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+
+# Replica counts
+replicaCount:
+  graphqlApi: 3
+  websocketService: 3
+  documentService: 3
+  collaborationEditor: 3
+
+# GraphQL API Service
+graphqlApi:
+  enabled: true
+  name: graphql-api
+  image:
+    repository: collaboration-graphql-api
+    tag: "1.0.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 4000
+    targetPort: 4000
+    annotations: {}
+
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 4000
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /health/ready
+      port: 4000
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  env:
+    NODE_ENV: production
+    PORT: "4000"
+    LOG_LEVEL: info
+    GRAPHQL_PLAYGROUND_ENABLED: "false"
+    GRAPHQL_INTROSPECTION_ENABLED: "false"
+    CORS_ORIGINS: "https://editor.candlefish.ai,https://app.candlefish.ai"
+    RATE_LIMIT_WINDOW_MS: "60000"
+    RATE_LIMIT_MAX_REQUESTS: "1000"
+    METRICS_ENABLED: "true"
+    METRICS_PATH: "/metrics"
+
+# WebSocket Service
+websocketService:
+  enabled: true
+  name: websocket-service
+  image:
+    repository: collaboration-websocket
+    tag: "1.0.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: LoadBalancer
+    port: 4001
+    targetPort: 4001
+    metricsPort: 4002
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+      service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: "3600"
+      service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 15
+    targetCPUUtilizationPercentage: 70
+    metrics:
+    - type: Pods
+      pods:
+        metric:
+          name: websocket_connections_per_pod
+        target:
+          type: AverageValue
+          averageValue: "500"
+
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 4002
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /health/ready
+      port: 4002
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  env:
+    NODE_ENV: production
+    WS_PORT: "4001"
+    METRICS_PORT: "4002"
+    WS_HEARTBEAT_INTERVAL: "30000"
+    WS_MAX_CONNECTIONS_PER_IP: "10"
+    LOG_LEVEL: info
+    UV_THREADPOOL_SIZE: "128"
+    NODE_OPTIONS: "--max-old-space-size=1024"
+
+# Document Service
+documentService:
+  enabled: true
+  name: document-service
+  image:
+    repository: collaboration-document
+    tag: "1.0.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 4003
+    targetPort: 4003
+    storagePort: 4004
+    annotations: {}
+
+  resources:
+    requests:
+      memory: "768Mi"
+      cpu: "300m"
+    limits:
+      memory: "1.5Gi"
+      cpu: "1500m"
+
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 12
+    targetCPUUtilizationPercentage: 70
+    metrics:
+    - type: Pods
+      pods:
+        metric:
+          name: document_operations_per_second
+        target:
+          type: AverageValue
+          averageValue: "100"
+
+  # Persistent storage for document cache
+  persistence:
+    enabled: true
+    storageClass: "gp3-csi"
+    accessMode: ReadWriteOnce
+    size: 10Gi
+    annotations: {}
+
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 4003
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /health/ready
+      port: 4003
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  env:
+    NODE_ENV: production
+    PORT: "4003"
+    STORAGE_PORT: "4004"
+    LOG_LEVEL: info
+    CRDT_CONFLICT_RESOLUTION: last-writer-wins
+    CRDT_HISTORY_LIMIT: "1000"
+    CRDT_BATCH_SIZE: "50"
+    MAX_FILE_SIZE: "10485760"
+    ALLOWED_FILE_TYPES: "image/jpeg,image/png,image/gif,application/pdf,text/plain"
+    NODE_OPTIONS: "--max-old-space-size=1536"
+
+# Collaboration Editor Frontend
+collaborationEditor:
+  enabled: true
+  name: collaboration-editor
+  image:
+    repository: collaboration-editor
+    tag: "1.0.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 3000
+    targetPort: 3000
+    annotations: {}
+
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+  livenessProbe:
+    httpGet:
+      path: /api/health
+      port: 3000
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /api/health/ready
+      port: 3000
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  env:
+    NODE_ENV: production
+    PORT: "3000"
+    HOSTNAME: "0.0.0.0"
+    NEXT_TELEMETRY_DISABLED: "1"
+    NEXT_PUBLIC_GRAPHQL_URL: "https://api.candlefish.ai/graphql"
+    NEXT_PUBLIC_WS_URL: "wss://ws.candlefish.ai/graphql"
+    NEXTAUTH_URL: "https://editor.candlefish.ai"
+    NEXT_PUBLIC_ENABLE_PERFORMANCE_MONITORING: "true"
+    NEXT_PUBLIC_ENABLE_REAL_TIME_CURSORS: "true"
+    NEXT_PUBLIC_ENABLE_COLLABORATIVE_COMMENTS: "true"
+    NEXT_PUBLIC_ENABLE_VERSION_HISTORY: "true"
+    NEXT_PUBLIC_ENABLE_OFFLINE_MODE: "true"
+    NEXT_PUBLIC_CDN_URL: "https://cdn.candlefish.ai"
+
+# PostgreSQL configuration
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: ""
+    username: "collaboration_user"
+    password: ""
+    database: "collaboration_db"
+  primary:
+    persistence:
+      enabled: true
+      storageClass: "gp3-csi"
+      size: 100Gi
+    resources:
+      requests:
+        memory: 512Mi
+        cpu: 250m
+      limits:
+        memory: 2Gi
+        cpu: 1000m
+    configuration: |
+      # Performance optimizations
+      shared_buffers = 256MB
+      effective_cache_size = 1GB
+      work_mem = 4MB
+      maintenance_work_mem = 64MB
+      checkpoint_completion_target = 0.9
+      max_connections = 200
+
+      # Logging
+      log_statement = 'mod'
+      log_min_duration_statement = 1000
+      log_checkpoints = on
+      log_connections = on
+      log_disconnections = on
+      log_lock_waits = on
+
+      # Performance
+      default_statistics_target = 100
+      random_page_cost = 1.1
+      effective_io_concurrency = 200
+    initdb:
+      scripts:
+        01-extensions.sql: |
+          CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+          CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+          CREATE EXTENSION IF NOT EXISTS "btree_gin";
+          CREATE EXTENSION IF NOT EXISTS "timescaledb" CASCADE;
+
+# Redis configuration
+redis:
+  enabled: true
+  auth:
+    enabled: true
+    password: ""
+  master:
+    persistence:
+      enabled: true
+      storageClass: "gp3-csi"
+      size: 20Gi
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 100m
+      limits:
+        memory: 1Gi
+        cpu: 500m
+    configuration: |
+      # Memory management
+      maxmemory-policy allkeys-lru
+
+      # Pub/Sub optimizations
+      notify-keyspace-events Ex
+
+      # Performance
+      tcp-keepalive 60
+      timeout 300
+
+      # Persistence
+      save 900 1
+      save 300 10
+      save 60 10000
+  replica:
+    replicaCount: 2
+    persistence:
+      enabled: true
+      storageClass: "gp3-csi"
+      size: 20Gi
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/healthcheck-path: /api/health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: '30'
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: '5'
+    alb.ingress.kubernetes.io/healthy-threshold-count: '2'
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: '3'
+    alb.ingress.kubernetes.io/load-balancer-attributes: |
+      idle_timeout.timeout_seconds=60,
+      routing.http2.enabled=true,
+      access_logs.s3.enabled=true,
+      access_logs.s3.bucket=candlefish-alb-logs,
+      access_logs.s3.prefix=collaboration
+  hosts:
+    - host: editor.candlefish.ai
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: collaboration-editor
+              port:
+                number: 3000
+    - host: api.candlefish.ai
+      paths:
+        - path: /graphql
+          pathType: Prefix
+          backend:
+            service:
+              name: graphql-api-service
+              port:
+                number: 4000
+        - path: /documents
+          pathType: Prefix
+          backend:
+            service:
+              name: document-service
+              port:
+                number: 4003
+    - host: ws.candlefish.ai
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: websocket-service
+              port:
+                number: 4001
+  tls:
+    - secretName: candlefish-tls
+      hosts:
+        - editor.candlefish.ai
+        - api.candlefish.ai
+        - ws.candlefish.ai
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: http
+  annotations: {}
+
+# Security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+# Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+  automountServiceAccountToken: true
+
+# RBAC
+rbac:
+  create: true
+  rules: []
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+  # maxUnavailable: 50%
+
+# Network policies
+networkPolicy:
+  enabled: true
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: kube-system
+      ports:
+      - protocol: TCP
+        port: 3000
+      - protocol: TCP
+        port: 4000
+      - protocol: TCP
+        port: 4001
+      - protocol: TCP
+        port: 4003
+  egress:
+    - {} # Allow all outbound traffic
+
+# Monitoring configuration
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    namespace: ""
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}
+    annotations: {}
+
+  prometheus:
+    enabled: true
+    alertmanager:
+      enabled: true
+    server:
+      persistentVolume:
+        enabled: true
+        storageClass: "gp3-csi"
+        size: 50Gi
+
+  grafana:
+    enabled: true
+    persistence:
+      enabled: true
+      storageClass: "gp3-csi"
+      size: 10Gi
+    adminPassword: ""
+    dashboards:
+      default:
+        collaboration-overview:
+          gnetId: 15141
+          revision: 1
+          datasource: Prometheus
+        kubernetes-cluster:
+          gnetId: 7249
+          revision: 1
+          datasource: Prometheus
+
+# Secrets management
+secrets:
+  create: true
+  externalSecrets:
+    enabled: true
+    secretStore:
+      name: aws-secret-store
+      kind: SecretStore
+    secrets:
+      - secretKey: DATABASE_URL
+        remoteRef:
+          key: candlefish/collaboration/database-url
+      - secretKey: REDIS_URL
+        remoteRef:
+          key: candlefish/collaboration/redis-url
+      - secretKey: JWT_SECRET
+        remoteRef:
+          key: candlefish/collaboration/jwt-secret
+      - secretKey: ENCRYPTION_KEY
+        remoteRef:
+          key: candlefish/collaboration/encryption-key
+
+# Backup configuration
+backup:
+  enabled: true
+  schedule: "0 3 * * *"  # Daily at 3 AM
+  retention: "30d"
+  storageClass: "gp3-csi"
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+
+# Blue-Green deployment
+blueGreen:
+  enabled: false
+  activeSlot: blue
+  inactiveSlot: green
+
+# Canary deployment
+canary:
+  enabled: false
+  weight: 10
+  maxWeight: 50
+  weightIncrement: 10
+  interval: "1m"
+  threshold: 5
+  maxIterations: 10
+
+# Node selector and tolerations
+nodeSelector: {}
+
+tolerations: []
+
+# Affinity rules
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app.kubernetes.io/name
+            operator: In
+            values:
+            - candlefish-collaboration
+        topologyKey: kubernetes.io/hostname
+
+# Pod annotations
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "4000"
+  prometheus.io/path: "/metrics"
+
+# Pod labels
+podLabels: {}
+
+# Additional volumes
+extraVolumes: []
+
+# Additional volume mounts
+extraVolumeMounts: []
+
+# Init containers
+initContainers: []
+
+# Sidecar containers
+sidecarContainers: []
+
+# Lifecycle hooks
+lifecycle: {}
+
+# Priority class
+priorityClassName: ""
+
+# Runtime class
+runtimeClassName: ""
+
+# DNS config
+dnsConfig: {}
+
+# DNS policy
+dnsPolicy: ClusterFirst
+
+# Host aliases
+hostAliases: []
+
+# Termination grace period
+terminationGracePeriodSeconds: 30

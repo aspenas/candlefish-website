@@ -1,5 +1,4 @@
 import React from 'react';
-import Image from 'next/image';
 
 interface LogoProps {
   variant?: 'horizontal' | 'stacked' | 'icon';
@@ -16,15 +15,22 @@ export function Logo({
   showText = true,
   animated = true
 }: LogoProps) {
-  // Size mappings for different variants
+  // Height mapping only to preserve intrinsic aspect ratio of the source asset
   const sizeMap = {
-    sm: { width: 32, height: 32, fontSize: '1rem' },
-    md: { width: 48, height: 48, fontSize: '1.25rem' },
-    lg: { width: 64, height: 64, fontSize: '1.5rem' },
-    xl: { width: 160, height: 160, fontSize: '2rem' }
+    sm: { height: 24, fontSize: '1rem' },
+    md: { height: 32, fontSize: '1.25rem' },
+    lg: { height: 48, fontSize: '1.5rem' },
+    xl: { height: 80, fontSize: '2rem' }
   } as const;
 
-  const { width, height, fontSize } = sizeMap[size];
+  const { height, fontSize } = sizeMap[size];
+
+  const defaultLogoSrc = (
+    typeof window !== 'undefined'
+      ? (getComputedStyle(document.documentElement)
+          .getPropertyValue('--brand-logo-default-path') || '/logo/candlefish_original.png')
+      : '/logo/candlefish_original.png'
+  ).trim();
 
   const logoClasses = [
     'candlefish-logo',
@@ -43,12 +49,10 @@ export function Logo({
     return (
       <div className={logoClasses}>
         <div className={logoMarkClasses}>
-          <Image
-            src="/logo/candlefish_original.png"
+          <img
+            src={defaultLogoSrc}
             alt="Candlefish AI"
-            width={width}
-            height={height}
-            priority
+            style={{ height: `${height}px`, width: 'auto' }}
             className="candlefish-logo__image"
           />
         </div>
@@ -60,12 +64,10 @@ export function Logo({
     return (
       <div className={logoClasses}>
       <div className={logoMarkClasses}>
-          <Image
-            src="/logo/candlefish_original.png"
+          <img
+            src={defaultLogoSrc}
             alt="Candlefish AI"
-            width={width}
-            height={height}
-            priority
+            style={{ height: `${height}px`, width: 'auto' }}
             className="candlefish-logo__image"
           />
         </div>
@@ -82,12 +84,10 @@ export function Logo({
   return (
     <div className={logoClasses}>
       <div className={logoMarkClasses}>
-        <Image
-          src="/logo/candlefish_original.png"
+        <img
+          src={defaultLogoSrc}
           alt="Candlefish AI"
-          width={width}
-          height={height}
-          priority
+          style={{ height: `${height}px`, width: 'auto' }}
           className="candlefish-logo__image"
         />
       </div>

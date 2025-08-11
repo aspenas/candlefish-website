@@ -13,15 +13,16 @@ import { createClient } from 'graphql-ws';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { AuthService } from './auth';
+import NetInfo from '@react-native-community/netinfo';
 
 // Configuration
 const HTTP_ENDPOINT = __DEV__
   ? 'http://localhost:4000/graphql'
-  : 'https://api.candlefish.ai/graphql';
+  : 'https://5x6gs2o6b6.execute-api.us-east-1.amazonaws.com/prod/graphql';
 
 const WS_ENDPOINT = __DEV__
   ? 'ws://localhost:4000/graphql'
-  : 'wss://api.candlefish.ai/graphql';
+  : 'wss://5x6gs2o6b6.execute-api.us-east-1.amazonaws.com/prod/graphql';
 
 // HTTP Link
 const httpLink = createHttpLink({
@@ -225,6 +226,16 @@ let persistTimer: NodeJS.Timeout;
 apolloClient.onResetStore(() => {
   clearTimeout(persistTimer);
   persistTimer = setTimeout(persistCache, 1000);
+});
+
+// Network status monitoring
+NetInfo.addEventListener(state => {
+  if (state.isConnected && state.isInternetReachable) {
+    // Refetch active queries when connection is restored
+    apolloClient.refetchQueries({
+      include: 'active',
+    }).catch(console.error);
+  }
 });
 
 // Export cache utilities

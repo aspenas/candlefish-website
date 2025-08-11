@@ -4,10 +4,15 @@
  */
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
-import { getCompanyCamToken } from './secrets-manager';
 import { logger } from '@/lib/logging/simple-logger';
 import { getCacheInstance } from '@/lib/cache/cache-service';
 import { openDB, IDBPDatabase } from 'idb';
+import {
+  ExternalServiceError,
+  AuthenticationError,
+  ServiceUnavailableError,
+  companyCamCircuitBreaker
+} from '@/lib/middleware/error-handler';
 
 // Types and interfaces
 export interface CompanyCamProject {
@@ -101,16 +106,22 @@ class CompanyCamApiService {
       // Initialize offline database
       await this.initOfflineDB();
 
-      // Get API token from AWS Secrets Manager
-      this.apiToken = await getCompanyCamToken();
+      // Get API token from environment variables (production mode)
+      this.apiToken = process.env.COMPANYCAM_API_TOKEN || process.env.COMPANYCAM_API_KEY;
+
+      // Use production base URL and company ID if available
+      if (process.env.COMPANYCAM_COMPANY_ID) {
+        this.baseURL = `https://api.companycam.com/v2/companies/${process.env.COMPANYCAM_COMPANY_ID}`;
+      }
 
       if (this.apiToken) {
         this.client = axios.create({
           baseURL: this.baseURL,
           headers: {
-            'Authorization': `Bearer ${this.apiToken}`,
+            'Authorization': `Token ${this.apiToken}`,
             'Content-Type': 'application/json',
-            'User-Agent': 'Paintbox-App/1.0'
+            'User-Agent': 'Paintbox-Production/1.0',
+            'X-Company-ID': process.env.COMPANYCAM_COMPANY_ID || '179901'
           },
           timeout: 30000, // 30 second timeout
         });
@@ -193,22 +204,36 @@ class CompanyCamApiService {
   }
 
   private async withRetry<T>(operation: () => Promise<T>, context: string): Promise<T> {
-    let lastError: Error | null = null;
+    return companyCamCircuitBreaker.execute(async () => {
+      let lastError: Error | null = null;
 
-    for (let attempt = 1; attempt <= this.retryCount; attempt++) {
-      try {
-        return await operation();
-      } catch (error) {
-        lastError = error as Error;
-        logger.warn(`${context} attempt ${attempt} failed`, { error, attempt });
+      for (let attempt = 1; attempt <= this.retryCount; attempt++) {
+        try {
+          return await operation();
+        } catch (error) {
+          lastError = error as Error;
+          logger.warn(`CompanyCam ${context} attempt ${attempt} failed`, { error, attempt });
 
-        if (attempt < this.retryCount) {
-          await new Promise(resolve => setTimeout(resolve, this.retryDelay * attempt));
+          // Check for authentication errors
+          if ((error as any).response?.status === 401) {
+            throw new AuthenticationError('CompanyCam API authentication failed', {
+              context,
+              statusCode: 401,
+            });
+          }
+
+          if (attempt < this.retryCount) {
+            await new Promise(resolve => setTimeout(resolve, this.retryDelay * attempt));
+          }
         }
       }
-    }
 
-    throw lastError;
+      // Wrap as external service error
+      throw new ExternalServiceError('CompanyCam', lastError?.message || 'Unknown error', {
+        context,
+        attempts: this.retryCount,
+      });
+    }, 'CompanyCam');
   }
 
   // Project Management

@@ -76,4 +76,58 @@ export async function POST(
     }
 
     const formData = await request.formData();
-    const files = formData.getAll('photos') as File[];\n    const tags = formData.get('tags')?.toString().split(',').filter(Boolean) || [];\n    const description = formData.get('description')?.toString();\n    const autoTag = formData.get('autoTag') === 'true';\n\n    if (!files.length) {\n      return NextResponse.json(\n        {\n          success: false,\n          error: 'No photos provided',\n        },\n        { status: 400 }\n      );\n    }\n\n    // Upload each photo\n    const uploadedPhotos = [];\n    const errors = [];\n\n    for (const file of files) {\n      try {\n        const uploadedPhoto = await companyCamApi.uploadPhoto(projectId, file, {\n          tags,\n          description,\n          autoTag,\n        });\n        uploadedPhotos.push(uploadedPhoto);\n      } catch (error) {\n        logger.error('Failed to upload photo', { error, filename: file.name });\n        errors.push({\n          filename: file.name,\n          error: error instanceof Error ? error.message : 'Upload failed',\n        });\n      }\n    }\n\n    return NextResponse.json({\n      success: true,\n      data: uploadedPhotos,\n      uploaded: uploadedPhotos.length,\n      errors,\n    }, { status: 201 });\n  } catch (error) {\n    logger.error('Failed to upload CompanyCam photos', { error });\n    \n    return NextResponse.json(\n      {\n        success: false,\n        error: 'Failed to upload photos',\n        message: error instanceof Error ? error.message : 'Unknown error',\n      },\n      { status: 500 }\n    );\n  }\n}
+    const files = formData.getAll('photos') as File[];
+    const tags = formData.get('tags')?.toString().split(',').filter(Boolean) || [];
+    const description = formData.get('description')?.toString();
+    const autoTag = formData.get('autoTag') === 'true';
+
+    if (!files.length) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'No photos provided',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Upload each photo
+    const uploadedPhotos = [];
+    const errors = [];
+
+    for (const file of files) {
+      try {
+        const uploadedPhoto = await companyCamApi.uploadPhoto(projectId, file, {
+          tags,
+          description,
+          autoTag,
+        });
+        uploadedPhotos.push(uploadedPhoto);
+      } catch (error) {
+        logger.error('Failed to upload photo', { error, filename: file.name });
+        errors.push({
+          filename: file.name,
+          error: error instanceof Error ? error.message : 'Upload failed',
+        });
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: uploadedPhotos,
+      uploaded: uploadedPhotos.length,
+      errors,
+    }, { status: 201 });
+  } catch (error) {
+    logger.error('Failed to upload CompanyCam photos', { error });
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to upload photos',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
+  }
+}

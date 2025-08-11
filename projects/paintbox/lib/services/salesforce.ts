@@ -7,6 +7,12 @@ import jsforce from 'jsforce';
 import { getSecretsManager } from './secrets-manager';
 import getCacheInstance from '@/lib/cache/cache-service';
 import { logger } from '@/lib/logging/simple-logger';
+import {
+  ExternalServiceError,
+  AuthenticationError,
+  ServiceUnavailableError,
+  salesforceCircuitBreaker
+} from '@/lib/middleware/error-handler';
 
 // Core Salesforce interfaces
 export interface SalesforceContact {
@@ -153,23 +159,22 @@ class SalesforceService {
     if (this.isInitialized) return;
 
     try {
-      const secretsManager = getSecretsManager();
-      const secrets = await secretsManager.getSecrets();
+      // Get credentials from environment variables (production mode)
+      const clientId = process.env.SALESFORCE_CLIENT_ID;
+      const clientSecret = process.env.SALESFORCE_CLIENT_SECRET;
+      const username = process.env.SALESFORCE_USERNAME;
+      const password = process.env.SALESFORCE_PASSWORD;
+      const securityToken = process.env.SALESFORCE_SECURITY_TOKEN;
+      const loginUrl = process.env.SALESFORCE_LOGIN_URL || 'https://test.salesforce.com';
+      const instanceUrl = process.env.SALESFORCE_INSTANCE_URL;
 
-      if (!secrets.salesforce) {
-        logger.warn('Salesforce credentials not configured in Secrets Manager');
-        return;
-      }
-
-      const { clientId, clientSecret, username, password, securityToken, instanceUrl } = secrets.salesforce;
-
-      if (!username || !password) {
-        logger.warn('Salesforce credentials not configured');
+      if (!username || !password || !clientId || !clientSecret) {
+        logger.warn('Salesforce credentials not configured in environment variables');
         return;
       }
 
       // Try OAuth first, fallback to username/password
-      await this.initializeWithOAuth(clientId, clientSecret, username, password, securityToken, instanceUrl);
+      await this.initializeWithOAuth(clientId, clientSecret, username, password, securityToken || '', instanceUrl || loginUrl);
 
       this.isInitialized = true;
       logger.info('Salesforce connection established');
@@ -201,7 +206,7 @@ class SalesforceService {
     } else {
       // Fresh login
       this.conn = new jsforce.Connection({
-        loginUrl: instanceUrl || 'https://login.salesforce.com',
+        loginUrl: process.env.SALESFORCE_LOGIN_URL || 'https://test.salesforce.com',
         oauth2: {
           clientId,
           clientSecret,
@@ -282,23 +287,29 @@ class SalesforceService {
   }
 
   private async withRetry<T>(operation: () => Promise<T>, retries = this.MAX_RETRIES): Promise<T> {
-    try {
-      return await operation();
-    } catch (error: any) {
-      // Check for token expiration
-      if (error.name === 'INVALID_SESSION_ID' || error.errorCode === 'INVALID_SESSION_ID') {
-        await this.refreshToken();
+    return salesforceCircuitBreaker.execute(async () => {
+      try {
         return await operation();
-      }
+      } catch (error: any) {
+        // Check for token expiration
+        if (error.name === 'INVALID_SESSION_ID' || error.errorCode === 'INVALID_SESSION_ID') {
+          await this.refreshToken();
+          return await operation();
+        }
 
-      if (retries > 0) {
-        logger.warn(`Operation failed, retrying. Attempts left: ${retries}`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        return this.withRetry(operation, retries - 1);
-      }
+        if (retries > 0) {
+          logger.warn(`Salesforce operation failed, retrying. Attempts left: ${retries}`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return this.withRetry(operation, retries - 1);
+        }
 
-      throw error;
-    }
+        // Wrap external service errors
+        throw new ExternalServiceError('Salesforce', error.message, {
+          errorCode: error.errorCode,
+          statusCode: error.statusCode,
+        });
+      }
+    }, 'Salesforce');
   }
 
   // === CONTACT OPERATIONS ===

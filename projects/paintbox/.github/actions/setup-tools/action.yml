@@ -1,0 +1,43 @@
+name: 'Setup Infrastructure Tools'
+description: 'Setup Terraform, Fly CLI, and other deployment tools'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.6.0
+
+    - name: Install Fly CLI
+      uses: superfly/flyctl-actions/setup-flyctl@master
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install Dependencies
+      shell: bash
+      run: npm ci
+
+    - name: Setup AWS CLI
+      shell: bash
+      run: |
+        if ! command -v aws &> /dev/null; then
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install
+          rm -rf awscliv2.zip aws/
+        fi
+
+    - name: Install Additional Tools
+      shell: bash
+      run: |
+        # Install jq for JSON processing
+        sudo apt-get update
+        sudo apt-get install -y jq bc
+
+        # Make scripts executable
+        chmod +x scripts/*.sh

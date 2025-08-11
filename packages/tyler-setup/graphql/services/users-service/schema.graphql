@@ -1,0 +1,416 @@
+# Users Service Schema Extension
+# Handles user management, profiles, and user-related operations
+
+extend schema @link(url: "https://specs.apollo.dev/federation/v2.3")
+
+"""
+User preferences and settings
+"""
+type UserPreferences @key(fields: "userId") {
+  userId: ID!
+
+  # UI preferences
+  theme: String!
+  language: String!
+  timezone: String!
+  dateFormat: String!
+
+  # Dashboard preferences
+  dashboardLayout: JSON!
+  widgetSettings: JSON!
+
+  # Notification preferences
+  emailNotifications: Boolean!
+  pushNotifications: Boolean!
+  auditAlerts: Boolean!
+  securityAlerts: Boolean!
+
+  # Privacy settings
+  profileVisibility: String!
+  shareAnalytics: Boolean!
+
+  # Accessibility
+  highContrast: Boolean!
+  largeText: Boolean!
+  reducedMotion: Boolean!
+
+  # Timestamps
+  createdAt: Date!
+  updatedAt: Date!
+
+  # Relationships
+  user: User!
+}
+
+"""
+User activity tracking
+"""
+type UserActivity @key(fields: "id") {
+  id: ID!
+  userId: ID!
+
+  # Activity details
+  action: String!
+  resource: String
+  resourceId: String
+
+  # Context
+  endpoint: String
+  method: String
+  userAgent: String
+  ip: String
+
+  # Timing
+  timestamp: Date!
+  duration: Int
+
+  # Status
+  success: Boolean!
+  errorCode: String
+
+  # Relationships
+  user: User!
+
+  # Computed fields
+  activityType: String!
+  riskScore: Float!
+}
+
+"""
+User role management
+"""
+type UserRole @key(fields: "id") {
+  id: ID!
+  name: String!
+  description: String!
+
+  # Permissions
+  permissions: [String!]!
+  isSystemRole: Boolean!
+
+  # Hierarchy
+  parentRole: UserRole
+  childRoles: [UserRole!]!
+
+  # Usage
+  userCount: Int!
+
+  # Metadata
+  createdAt: Date!
+  createdBy: User
+  updatedAt: Date!
+  updatedBy: User
+
+  # Relationships
+  users: [User!]!
+}
+
+"""
+User groups for organization
+"""
+type UserGroup @key(fields: "id") {
+  id: ID!
+  name: String!
+  description: String!
+
+  # Group settings
+  isDefault: Boolean!
+  color: String
+  icon: String
+
+  # Access control
+  permissions: [String!]!
+  allowedSecrets: [String!]!
+
+  # Membership
+  members: [User!]!
+  memberCount: Int!
+
+  # Metadata
+  createdAt: Date!
+  createdBy: User!
+  updatedAt: Date!
+
+  # Statistics
+  activityScore: Float!
+  lastActivity: Date!
+}
+
+"""
+User invitation system
+"""
+type UserInvitation @key(fields: "id") {
+  id: ID!
+  email: String!
+
+  # Invitation details
+  role: UserRole!
+  groups: [UserGroup!]!
+  message: String
+
+  # Status
+  status: InvitationStatus!
+  token: String! @auth(requires: ADMIN)
+
+  # Timing
+  createdAt: Date!
+  expiresAt: Date!
+  acceptedAt: Date
+
+  # Relationships
+  invitedBy: User!
+  acceptedBy: User
+
+  # Computed fields
+  isExpired: Boolean!
+  remainingTime: Int!
+  invitationUrl: String! @auth(requires: ADMIN)
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+"""
+User onboarding progress
+"""
+type UserOnboarding @key(fields: "userId") {
+  userId: ID!
+
+  # Progress tracking
+  completedSteps: [String!]!
+  totalSteps: Int!
+  completionPercentage: Float!
+
+  # Step details
+  currentStep: String
+  nextStep: String
+
+  # Timing
+  startedAt: Date!
+  lastUpdated: Date!
+  completedAt: Date
+
+  # Guidance
+  hints: [String!]!
+  resources: [OnboardingResource!]!
+
+  # Relationships
+  user: User!
+
+  # Status
+  isComplete: Boolean!
+  needsAttention: Boolean!
+}
+
+type OnboardingResource {
+  title: String!
+  description: String!
+  url: String!
+  type: String!
+}
+
+# Input Types
+
+"""
+User preferences update input
+"""
+input UserPreferencesInput {
+  theme: String
+  language: String
+  timezone: String
+  dateFormat: String
+  dashboardLayout: JSON
+  widgetSettings: JSON
+  emailNotifications: Boolean
+  pushNotifications: Boolean
+  auditAlerts: Boolean
+  securityAlerts: Boolean
+  profileVisibility: String
+  shareAnalytics: Boolean
+  highContrast: Boolean
+  largeText: Boolean
+  reducedMotion: Boolean
+}
+
+"""
+User role creation input
+"""
+input CreateUserRoleInput {
+  name: String!
+  description: String!
+  permissions: [String!]!
+  parentRoleId: ID
+}
+
+"""
+User group creation input
+"""
+input CreateUserGroupInput {
+  name: String!
+  description: String!
+  color: String
+  icon: String
+  permissions: [String!]
+  allowedSecrets: [String!]
+  memberIds: [ID!]
+}
+
+"""
+User invitation input
+"""
+input UserInvitationInput {
+  email: String!
+  roleId: ID!
+  groupIds: [ID!]
+  message: String
+  expiresIn: Int = 7 # days
+}
+
+"""
+Bulk user operation input
+"""
+input BulkUserOperationInput {
+  userIds: [ID!]!
+  operation: BulkUserOperation!
+  params: JSON
+}
+
+enum BulkUserOperation {
+  ACTIVATE
+  DEACTIVATE
+  CHANGE_ROLE
+  ADD_TO_GROUP
+  REMOVE_FROM_GROUP
+  RESET_PASSWORD
+  SEND_NOTIFICATION
+}
+
+"""
+User activity filter
+"""
+input UserActivityFilter {
+  userId: ID
+  action: String
+  resource: String
+  success: Boolean
+  dateFrom: Date
+  dateTo: Date
+  ip: String
+}
+
+# Extend Root Types
+
+extend type Query {
+  # User management
+  userRoles: [UserRole!]! @auth(requires: ADMIN)
+  userRole(id: ID!): UserRole @auth(requires: ADMIN)
+
+  userGroups: [UserGroup!]! @auth(requires: ADMIN)
+  userGroup(id: ID!): UserGroup @auth(requires: ADMIN)
+
+  # User invitations
+  userInvitations(
+    pagination: PaginationInput
+    status: InvitationStatus
+  ): [UserInvitation!]! @auth(requires: ADMIN)
+
+  userInvitation(id: ID!): UserInvitation @auth(requires: ADMIN)
+
+  # User activity
+  userActivity(
+    pagination: PaginationInput
+    filter: UserActivityFilter
+  ): [UserActivity!]! @auth(requires: ADMIN)
+
+  # User onboarding
+  userOnboarding(userId: ID!): UserOnboarding @auth(requires: USER)
+
+  # Bulk operations
+  bulkOperationStatus(operationId: ID!): JSON @auth(requires: ADMIN)
+}
+
+extend type Mutation {
+  # User preferences
+  updateUserPreferences(input: UserPreferencesInput!): UserPreferences! @auth(requires: USER)
+  resetUserPreferences: UserPreferences! @auth(requires: USER)
+
+  # Role management
+  createUserRole(input: CreateUserRoleInput!): UserRole! @auth(requires: ADMIN)
+  updateUserRole(id: ID!, input: CreateUserRoleInput!): UserRole! @auth(requires: ADMIN)
+  deleteUserRole(id: ID!): OperationResponse! @auth(requires: ADMIN)
+
+  # Group management
+  createUserGroup(input: CreateUserGroupInput!): UserGroup! @auth(requires: ADMIN)
+  updateUserGroup(id: ID!, input: CreateUserGroupInput!): UserGroup! @auth(requires: ADMIN)
+  deleteUserGroup(id: ID!): OperationResponse! @auth(requires: ADMIN)
+
+  addUserToGroup(userId: ID!, groupId: ID!): OperationResponse! @auth(requires: ADMIN)
+  removeUserFromGroup(userId: ID!, groupId: ID!): OperationResponse! @auth(requires: ADMIN)
+
+  # User invitations
+  inviteUser(input: UserInvitationInput!): UserInvitation! @auth(requires: ADMIN)
+  resendUserInvitation(id: ID!): OperationResponse! @auth(requires: ADMIN)
+  revokeUserInvitation(id: ID!): OperationResponse! @auth(requires: ADMIN)
+  acceptUserInvitation(token: String!): AuthResponse!
+
+  # User onboarding
+  updateOnboardingStep(step: String!, completed: Boolean!): UserOnboarding! @auth(requires: USER)
+  resetUserOnboarding(userId: ID!): UserOnboarding! @auth(requires: ADMIN)
+
+  # Bulk operations
+  bulkUserOperation(input: BulkUserOperationInput!): OperationResponse! @auth(requires: ADMIN)
+}
+
+extend type Subscription {
+  # User events
+  userCreated: User! @auth(requires: ADMIN)
+  userUpdated: User! @auth(requires: ADMIN)
+  userDeleted: User! @auth(requires: ADMIN)
+
+  # Activity events
+  userActivity(userId: ID): UserActivity! @auth(requires: ADMIN)
+
+  # Invitation events
+  userInvited: UserInvitation! @auth(requires: ADMIN)
+  userInvitationAccepted: UserInvitation! @auth(requires: ADMIN)
+
+  # Onboarding events
+  onboardingProgress(userId: ID): UserOnboarding! @auth(requires: USER)
+}
+
+# Extend existing types with user-specific fields
+
+extend type User @key(fields: "id") {
+  # User management fields
+  preferences: UserPreferences
+  activity: [UserActivity!]! @auth(requires: ADMIN)
+  onboarding: UserOnboarding
+
+  # Role and group membership
+  roleDetails: UserRole
+  groups: [UserGroup!]!
+
+  # Invitation history
+  sentInvitations: [UserInvitation!]! @auth(requires: ADMIN)
+
+  # Computed fields
+  isOnboardingComplete: Boolean!
+  profileCompleteness: Float!
+  lastActivityAt: Date!
+  activityScore: Float!
+
+  # Aggregations
+  totalLogins: Int!
+  averageSessionDuration: Float!
+  mostUsedFeatures: [String!]!
+
+  # Security and compliance
+  complianceStatus: String!
+  dataRetentionPolicy: String!
+  consentGiven: Boolean!
+  consentDate: Date!
+}

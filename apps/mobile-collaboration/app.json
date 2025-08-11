@@ -1,0 +1,106 @@
+{
+  "expo": {
+    "name": "Candlefish Collaboration",
+    "slug": "candlefish-collaboration",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.candlefish.collaboration",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses the camera to capture and attach images to documents.",
+        "NSPhotoLibraryUsageDescription": "This app accesses the photo library to attach images to documents.",
+        "NSMicrophoneUsageDescription": "This app uses the microphone for voice notes and audio attachments.",
+        "NSLocationWhenInUseUsageDescription": "This app uses location for geo-tagging documents when enabled.",
+        "NSFaceIDUsageDescription": "Use Face ID to securely authenticate and access your documents.",
+        "UIBackgroundModes": ["background-processing", "background-fetch"]
+      },
+      "associatedDomains": ["applinks:candlefish.ai"]
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.candlefish.collaboration",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.WAKE_LOCK"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": {
+            "scheme": "https",
+            "host": "candlefish.ai"
+          },
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#ffffff",
+          "sounds": ["./assets/notification.wav"]
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Candlefish Collaboration to use your camera to capture images for documents."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow Candlefish Collaboration to use Face ID for secure authentication."
+        }
+      ],
+      [
+        "@react-native-async-storage/async-storage",
+        {
+          "useNext": true
+        }
+      ]
+    ],
+    "scheme": "candlefish-collaboration",
+    "updates": {
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/candlefish-collaboration"
+    },
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "candlefish-collaboration-id"
+      }
+    }
+  }
+}

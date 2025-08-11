@@ -1,0 +1,235 @@
+# Optimized Fly.io Production Configuration for Paintbox
+# High-performance settings for production workload
+
+app = "paintbox-app"
+primary_region = "sjc"
+kill_signal = "SIGINT"
+kill_timeout = "30s"  # Increased for graceful shutdown of calculations
+
+[build]
+  dockerfile = "Dockerfile.fly.optimized"
+
+[deploy]
+  strategy = "rolling"
+  max_unavailable = 0.33  # Keep 2/3 instances running during deploy
+  release_command = "npm run migrate:deploy"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "8080"
+
+  # Next.js Optimization
+  NEXT_TELEMETRY_DISABLED = "1"
+  NODE_OPTIONS = "--max-old-space-size=1536 --max-semi-space-size=32"
+
+  # App Configuration
+  NEXT_PUBLIC_APP_VERSION = "1.1.0"
+  NEXT_PUBLIC_API_URL = "https://paintbox-app.fly.dev"
+  NEXT_PUBLIC_WEBSOCKET_URL = "wss://paintbox-app.fly.dev"
+  NEXT_PUBLIC_CDN_URL = "https://cdn.paintbox-app.com"
+
+  # Database Configuration with Connection Pooling
+  DATABASE_URL = "postgres://postgres:EPpCzXjR6sn8Xlq@paintbox-prod-db.flycast:5432/paintbox?pool_timeout=0&connection_limit=25"
+  DATABASE_POOL_MIN = "5"
+  DATABASE_POOL_MAX = "20"
+  DATABASE_POOL_IDLE_TIMEOUT = "30000"
+  DATABASE_POOL_CONNECTION_TIMEOUT = "10000"
+
+  # Redis Configuration with Persistence
+  REDIS_URL = "redis://paintbox-redis.flycast:6379"
+  REDIS_CLUSTER_ENABLED = "true"
+  REDIS_MAX_RETRIES = "5"
+  REDIS_CONNECT_TIMEOUT = "10000"
+  REDIS_COMMAND_TIMEOUT = "5000"
+  REDIS_KEEP_ALIVE = "30000"
+
+  # Cache Configuration
+  CACHE_DEFAULT_TTL = "3600"
+  CACHE_CALCULATION_TTL = "7200"
+  CACHE_API_TTL = "1800"
+  CACHE_STATIC_TTL = "86400"
+
+  # Performance Features
+  ENABLE_WEBSOCKETS = "true"
+  ENABLE_REAL_TIME_CALCULATIONS = "true"
+  ENABLE_SALESFORCE_SYNC = "true"
+  ENABLE_COMPANYCAM_INTEGRATION = "true"
+  ENABLE_OFFLINE_MODE = "true"
+  ENABLE_PERFORMANCE_MONITORING = "true"
+  ENABLE_EXCEL_FORMULA_VALIDATION = "true"
+  ENABLE_WORKER_THREADS = "true"
+  ENABLE_CALCULATION_CACHE = "true"
+  ENABLE_QUERY_CACHE = "true"
+
+  # Worker Configuration for Excel Calculations
+  WORKER_POOL_SIZE = "4"
+  CALCULATION_BATCH_SIZE = "100"
+  CALCULATION_TIMEOUT = "5000"
+
+  # Compression
+  ENABLE_COMPRESSION = "true"
+  COMPRESSION_LEVEL = "6"
+
+  # CDN Configuration
+  CDN_ENABLED = "true"
+  CDN_PURGE_KEY = "${CDN_PURGE_KEY}"
+
+[experimental]
+  auto_rollback = true
+  enable_consul = false
+
+# Main Application Service
+[[services]]
+  protocol = "tcp"
+  internal_port = 8080
+  processes = ["app"]
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 2
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [services.concurrency]
+    type = "requests"
+    hard_limit = 2000
+    soft_limit = 1500
+
+  [[services.tcp_checks]]
+    interval = "10s"
+    timeout = "2s"
+    grace_period = "30s"
+    restart_limit = 3
+
+  [[services.http_checks]]
+    interval = "10s"
+    timeout = "5s"
+    grace_period = "60s"
+    method = "get"
+    path = "/api/health"
+    protocol = "http"
+    restart_limit = 3
+
+    [services.http_checks.headers]
+      X-Health-Check = "fly-io"
+
+# WebSocket Service
+[[services]]
+  protocol = "tcp"
+  internal_port = 3001
+  processes = ["websocket"]
+
+  [[services.ports]]
+    port = 3001
+    handlers = ["tls", "http"]
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 10000
+    soft_limit = 8000
+
+# Metrics and Monitoring
+[metrics]
+  port = 9091
+  path = "/metrics"
+
+# Optimized VM Configuration
+[[vm]]
+  size = "performance-2x"  # 2 dedicated CPUs, 4GB RAM
+  cpu_kind = "performance"
+  cpus = 2
+  memory_mb = 2048  # Increased from 512MB to 2GB
+
+# Process Groups for Scaling
+[processes]
+  app = "node server.js"
+  websocket = "node websocket-server.js"
+  worker = "node worker.js"
+
+# Auto-scaling Configuration
+[[regions]]
+  region = "sjc"
+
+  [regions.autoscaling]
+    enabled = true
+    min_machines = 2
+    max_machines = 10
+
+    [[regions.autoscaling.metrics]]
+      metric = "cpu"
+      threshold = 70
+      window = "30s"
+
+    [[regions.autoscaling.metrics]]
+      metric = "memory"
+      threshold = 80
+      window = "30s"
+
+    [[regions.autoscaling.metrics]]
+      metric = "response_time_p95"
+      threshold = 500  # 500ms
+      window = "60s"
+
+# Additional regions for geo-distribution
+[[regions]]
+  region = "iad"  # US East
+
+  [regions.autoscaling]
+    enabled = true
+    min_machines = 1
+    max_machines = 5
+
+    [[regions.autoscaling.metrics]]
+      metric = "cpu"
+      threshold = 70
+      window = "30s"
+
+[[regions]]
+  region = "lhr"  # Europe
+
+  [regions.autoscaling]
+    enabled = true
+    min_machines = 1
+    max_machines = 3
+
+    [[regions.autoscaling.metrics]]
+      metric = "cpu"
+      threshold = 70
+      window = "30s"
+
+# Static Asset Configuration
+[[statics]]
+  guest_path = "/app/public"
+  url_prefix = "/"
+  cache_control = "public, max-age=31536000, immutable"
+
+[[statics]]
+  guest_path = "/app/.next/static"
+  url_prefix = "/_next/static"
+  cache_control = "public, max-age=31536000, immutable"
+
+# Mounts for Persistent Storage
+[mounts]
+  source = "paintbox_data"
+  destination = "/data"
+  initial_size = "10gb"
+
+# Service Dependencies
+[checks]
+  [checks.redis]
+    type = "script"
+    command = "redis-cli ping"
+    interval = "10s"
+    timeout = "2s"
+
+  [checks.postgres]
+    type = "script"
+    command = "pg_isready -h paintbox-prod-db.flycast"
+    interval = "10s"
+    timeout = "2s"

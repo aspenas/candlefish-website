@@ -1,0 +1,128 @@
+# Secure Fly.io configuration for Paintbox - Production Ready
+# No hardcoded credentials - all secrets managed via AWS Secrets Manager
+
+app = "paintbox-app"
+primary_region = "sjc"
+kill_signal = "SIGINT"
+kill_timeout = "30s"
+
+[build]
+  dockerfile = "Dockerfile.fly.optimized"
+
+[deploy]
+  strategy = "bluegreen"
+  max_unavailable = 0
+  release_command = "npx prisma migrate deploy && npm run build:validation"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "8080"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+  # Application URLs (will be updated by deployment script)
+  NEXT_PUBLIC_APP_VERSION = "1.0.0"
+  NEXT_PUBLIC_API_URL = "https://paintbox-app.fly.dev"
+  NEXT_PUBLIC_WEBSOCKET_URL = "wss://paintbox-app.fly.dev"
+
+  # AWS Configuration for secrets management
+  AWS_REGION = "us-east-1"
+  AWS_SECRETS_MANAGER_SECRET_NAME = "paintbox/production/secrets"
+  SKIP_AWS_SECRETS = "false"
+
+  # Feature Flags
+  ENABLE_WEBSOCKETS = "true"
+  ENABLE_REAL_TIME_CALCULATIONS = "true"
+  ENABLE_SALESFORCE_SYNC = "true"
+  ENABLE_COMPANYCAM_INTEGRATION = "true"
+  ENABLE_OFFLINE_MODE = "true"
+  ENABLE_PERFORMANCE_MONITORING = "true"
+  ENABLE_EXCEL_FORMULA_VALIDATION = "true"
+
+  # Performance Settings
+  MAX_CONCURRENT_CALCULATIONS = "50"
+  CALCULATION_TIMEOUT_MS = "30000"
+  ENABLE_CALCULATION_CACHE = "true"
+  CACHE_TTL_SHORT = "300"
+  CACHE_TTL_MEDIUM = "3600"
+  CACHE_TTL_LONG = "86400"
+
+  # WebSocket Settings
+  WS_HEARTBEAT_INTERVAL = "30000"
+  WS_RECONNECT_INTERVAL = "5000"
+  WS_MAX_RECONNECT_ATTEMPTS = "10"
+
+  # Security Settings
+  NODE_TLS_REJECT_UNAUTHORIZED = "1"
+  HELMET_ENABLED = "true"
+  CORS_ORIGIN = "https://paintbox-app.fly.dev"
+
+[experimental]
+  auto_rollback = true
+  enable_consul = false
+
+# Main web service
+[[services]]
+  protocol = "tcp"
+  internal_port = 8080
+  processes = ["app"]
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 1000
+    soft_limit = 900
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "5s"
+    restart_limit = 3
+
+  [[services.http_checks]]
+    interval = "30s"
+    timeout = "10s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/api/health"
+    protocol = "http"
+    tls_skip_verify = false
+
+    [services.http_checks.headers]
+      X-Health-Check = "fly-production"
+
+# Metrics endpoint for monitoring
+[metrics]
+  port = 9091
+  path = "/metrics"
+
+# Production VM configuration
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 4
+  memory_mb = 2048
+
+# Processes
+[processes]
+  app = "node server.js"
+
+# Persistent storage for file uploads and cache
+[mounts]
+  source = "paintbox_data"
+  destination = "/data"
+
+# Static file serving optimization
+[[statics]]
+  guest_path = "/app/public"
+  url_prefix = "/"
+
+[[statics]]
+  guest_path = "/app/.next/static"
+  url_prefix = "/_next/static"

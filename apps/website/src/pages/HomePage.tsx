@@ -1,7 +1,5 @@
 import React, { useEffect } from 'react'
-import { gsap } from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import Navigation from '../components/Navigation'
+// import { PublicLayout } from '@candlefish-ai/ui-components'
 import HeroSection from '../components/sections/HeroSection'
 import ValueProposition from '../components/sections/ValueProposition'
 import WhatWeDo from '../components/sections/WhatWeDo'
@@ -12,61 +10,13 @@ import CTASection from '../components/sections/CTASection'
 import ContactSection from '../components/sections/ContactSection'
 import Footer from '../components/Footer'
 
-// Register GSAP plugins
-gsap.registerPlugin(ScrollTrigger)
+// Motion: keep disabled by default for a calm, intentional experience
+const ENABLE_SCROLL_ANIMATIONS = false
 
 const HomePage: React.FC = () => {
   useEffect(() => {
-    // Initialize GSAP animations after component mounts
-    const initializeAnimations = () => {
-      // Parallax effect for hero section
-      gsap.utils.toArray('.parallax-layer').forEach((layer: Element) => {
-        const speed = parseFloat((layer as HTMLElement).dataset.speed || '0.5')
-
-        gsap.to(layer, {
-          yPercent: -100 * speed,
-          ease: "none",
-          scrollTrigger: {
-            trigger: ".hero-section",
-            start: "top top",
-            end: "bottom top",
-            scrub: true
-          }
-        })
-      })
-
-      // Animate elements on scroll
-      const animateElements = document.querySelectorAll('[data-animate]')
-      animateElements.forEach(el => {
-        ScrollTrigger.create({
-          trigger: el,
-          start: "top 80%",
-          onEnter: () => el.classList.add('animate')
-        })
-      })
-
-      // Process steps animation
-      const processSteps = document.querySelectorAll('.process-step')
-      let currentStep = 0
-
-      const stepInterval = setInterval(() => {
-        processSteps.forEach(step => step.classList.remove('active'))
-        currentStep = (currentStep + 1) % processSteps.length
-        processSteps[currentStep]?.classList.add('active')
-      }, 2000)
-
-      return () => {
-        clearInterval(stepInterval)
-        ScrollTrigger.getAll().forEach((t: ScrollTrigger) => t.kill())
-      }
-    }
-
-    // Wait for DOM to be fully loaded
-    const timer = setTimeout(initializeAnimations, 100)
-
-    return () => {
-      clearTimeout(timer)
-    }
+    if (!ENABLE_SCROLL_ANIMATIONS) return
+    // Reserved for subtle, opt-in scroll animations if re-enabled later
   }, [])
 
   // Add structured data
@@ -76,7 +26,7 @@ const HomePage: React.FC = () => {
     "name": "Candlefish AI LLC",
     "description": "Enterprise AI consulting through discrete, composable modules",
     "url": "https://candlefish.ai",
-    "logo": "https://candlefish.ai/logo/candlefish_original.png",
+    "logo": "/logo/candlefish_original.png",
     "contactPoint": {
       "@type": "ContactPoint",
       "email": "hello@candlefish.ai",
@@ -103,6 +53,13 @@ const HomePage: React.FC = () => {
     ]
   }
 
+  const navigationItems = [
+    { label: 'Services', href: '#services' },
+    { label: 'How It Works', href: '#how-it-works' },
+    { label: 'Projects', href: '#projects' },
+    { label: 'Contact', href: '#contact' },
+  ]
+
   return (
     <>
       {/* Add structured data to head */}
@@ -111,16 +68,15 @@ const HomePage: React.FC = () => {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
 
-      <div className="pt-24 lg:pt-0" data-theme="dark">
-        <Navigation />
-        <HeroSection />
-        <ValueProposition />
-        <WhatWeDo />
-        <HowItWorks />
-        <PilotProjects />
-        <TechnicalExcellence />
-        <CTASection />
-        <ContactSection />
+      <div data-theme="dark">
+        <section className="spine-section"><div className="spine-container"><HeroSection /></div></section>
+        <section className="spine-section spine-rule"><div className="spine-container"><ValueProposition /></div></section>
+        <section className="spine-section spine-rule" id="services"><div className="spine-container"><WhatWeDo /></div></section>
+        <section className="spine-section spine-rule" id="how-it-works"><div className="spine-container"><HowItWorks /></div></section>
+        <section className="spine-section spine-rule" id="projects"><div className="spine-container"><PilotProjects /></div></section>
+        <section className="spine-section spine-rule"><div className="spine-container"><TechnicalExcellence /></div></section>
+        <section className="spine-section spine-rule"><div className="spine-container"><CTASection /></div></section>
+        <section className="spine-section spine-rule" id="contact"><div className="spine-container"><ContactSection /></div></section>
         <Footer />
       </div>
     </>

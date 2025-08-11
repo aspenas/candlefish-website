@@ -1,0 +1,19 @@
+{
+  "name": "graphql-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@apollo/server": "4.10.0",
+    "@as-integrations/aws-lambda": "3.0.0",
+    "@aws-sdk/client-apigatewayv2": "3.600.0",
+    "@aws-sdk/client-dynamodb": "3.600.0",
+    "@aws-sdk/client-secrets-manager": "3.600.0",
+    "@aws-sdk/lib-dynamodb": "3.600.0",
+    "@graphql-tools/schema": "10.0.0",
+    "graphql": "16.8.1",
+    "dataloader": "2.2.2",
+    "jsonwebtoken": "9.0.2",
+    "uuid": "10.0.0",
+    "argon2": "0.40.3"
+  }
+}

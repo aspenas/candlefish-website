@@ -1,0 +1,3 @@
+- Do not alter aspect ratio or color of the logo
+- Maintain minimum clear space equal to the x-height around lockups
+- Use primary on dark backgrounds; use white on noisy imagery

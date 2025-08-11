@@ -1,0 +1,56 @@
+name: Paintbox Excel Parity CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'lib/excel-engine/**'
+      - 'scripts/**'
+      - 'package.json'
+      - '.github/workflows/paintbox-excel-parity.yml'
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  parity:
+    name: Excel Parity
+    runs-on: ubuntu-latest
+    env:
+      NODE_VERSION: '20.x'
+      PARITY_MIN_RATE: '0.995'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run basic excel tests
+        run: npm run test:excel-basic
+
+      - name: Run integration excel tests
+        run: npm run test:excel-integration
+
+      - name: Run parity tests
+        id: parity
+        run: |
+          set -e
+          OUT=$(node -e "(async()=>{const { runParityTest } = await import('./scripts/excel-parity-test.ts'); const s=await runParityTest(); console.log(JSON.stringify(s));})();")
+          echo "summary=$OUT" >> $GITHUB_OUTPUT
+
+      - name: Enforce parity threshold
+        run: |
+          RATE=$(echo '${{ steps.parity.outputs.summary }}' | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const s=JSON.parse(d);console.log(s.successRate)})")
+          echo "Success rate: $RATE"
+          awk -v r="$RATE" -v min="$PARITY_MIN_RATE" 'BEGIN{ if (r+0 < min+0) { print "Parity below threshold"; exit 1 } }'
+
+      - name: Upload coverage (if any)
+        uses: actions/upload-artifact@v4
+        with:
+          name: excel-parity-report
+          path: logs/excel-parity-report.json

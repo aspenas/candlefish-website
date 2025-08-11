@@ -365,7 +365,7 @@ let cacheInstance: CacheService | null = null;
 /**
  * Get cache instance (Redis or in-memory fallback)
  */
-export default function getCacheInstance(redisUrl?: string): CacheService {
+export function getCacheInstance(redisUrl?: string): CacheService {
   if (!cacheInstance) {
     try {
       // Try Redis first
@@ -400,3 +400,6 @@ export function createCacheInstance(type: 'redis' | 'memory', redisUrl?: string)
 }
 
 export { CacheService, RedisCacheService, InMemoryCacheService };
+
+// Default export for backward compatibility
+export default getCacheInstance;

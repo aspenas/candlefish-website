@@ -1,0 +1,1152 @@
+# Tyler Setup Platform - Example GraphQL Queries and Mutations
+# Comprehensive examples for frontend integration and testing
+
+# ============================================================================
+# AUTHENTICATION QUERIES AND MUTATIONS
+# ============================================================================
+
+# User Login
+mutation LoginUser {
+  login(input: {
+    email: "admin@candlefish.ai"
+    password: "SecurePassword123!"
+    rememberMe: true
+  }) {
+    success
+    token
+    refreshToken
+    expiresIn
+    user {
+      id
+      email
+      name
+      role
+      lastLogin
+    }
+    message
+  }
+}
+
+# Refresh Authentication Token
+mutation RefreshAuthToken {
+  refreshToken(token: "refresh_token_here") {
+    success
+    token
+    refreshToken
+    expiresIn
+  }
+}
+
+# Get Current User Profile
+query GetCurrentUser {
+  me {
+    id
+    email
+    name
+    role
+    status
+    lastLogin
+    lastLoginIP
+    createdAt
+    profile {
+      displayName
+      avatar
+      preferences
+      timezone
+      lastActivity
+    }
+    preferences {
+      theme
+      language
+      emailNotifications
+      dashboardLayout
+    }
+    sessions {
+      id
+      createdAt
+      lastActivity
+      ip
+      userAgent
+      isActive
+    }
+    stats {
+      totalLogins
+      lastLoginDaysAgo
+      activityScore
+      loginHistory {
+        timestamp
+        ip
+        success
+        userAgent
+      }
+    }
+  }
+}
+
+# Enable Two-Factor Authentication
+mutation EnableTwoFactor {
+  setupTwoFactor {
+    userId
+    qrCodeUrl
+    secret
+    backupCodes
+  }
+}
+
+# Change Password
+mutation ChangeUserPassword {
+  changePassword(input: {
+    currentPassword: "OldPassword123!"
+    newPassword: "NewSecurePassword456!"
+    confirmPassword: "NewSecurePassword456!"
+  }) {
+    success
+    message
+  }
+}
+
+# ============================================================================
+# USER MANAGEMENT QUERIES AND MUTATIONS
+# ============================================================================
+
+# List All Users (Admin Only)
+query ListAllUsers($limit: Int = 20, $offset: Int = 0) {
+  users(
+    pagination: { limit: $limit, offset: $offset }
+    sort: { field: "createdAt", direction: DESC }
+  ) {
+    users {
+      id
+      email
+      name
+      role
+      status
+      lastLogin
+      createdAt
+      isOnboardingComplete
+      profileCompleteness
+      groups {
+        id
+        name
+        permissions
+      }
+      stats {
+        totalLogins
+        activityScore
+      }
+    }
+    pagination {
+      hasNextPage
+      hasPreviousPage
+      totalCount
+    }
+  }
+}
+
+# Get Single User Details
+query GetUserDetails($userId: ID!) {
+  user(id: $userId) {
+    id
+    email
+    name
+    role
+    status
+    lastLogin
+    createdAt
+    updatedAt
+
+    # Extended profile information
+    preferences {
+      theme
+      language
+      timezone
+      emailNotifications
+      dashboardLayout
+    }
+
+    # Security information
+    twoFactorAuth {
+      isEnabled
+      confirmedAt
+      lastUsed
+    }
+
+    # Activity tracking
+    activity {
+      id
+      action
+      timestamp
+      success
+      ip
+    }
+
+    # Relationships
+    createdUsers {
+      id
+      name
+      email
+    }
+    invitedContractors {
+      id
+      name
+      company
+      status
+    }
+
+    # Statistics
+    stats {
+      totalLogins
+      averageSessionDuration
+      mostUsedFeatures
+      complianceStatus
+    }
+  }
+}
+
+# Create New User
+mutation CreateNewUser {
+  createUser(input: {
+    email: "newuser@example.com"
+    name: "John Doe"
+    password: "SecurePassword123!"
+    role: USER
+    sendWelcomeEmail: true
+  }) {
+    id
+    email
+    name
+    role
+    createdAt
+  }
+}
+
+# Update User Information
+mutation UpdateUserInfo($userId: ID!) {
+  updateUser(id: $userId, input: {
+    name: "Updated Name"
+    role: ADMIN
+    status: ACTIVE
+  }) {
+    id
+    name
+    role
+    status
+    updatedAt
+  }
+}
+
+# Invite User via Email
+mutation InviteUserByEmail {
+  inviteUser(input: {
+    email: "invited@example.com"
+    roleId: "role-admin-id"
+    groupIds: ["group-1", "group-2"]
+    message: "Welcome to Tyler Setup Platform!"
+    expiresIn: 7
+  }) {
+    id
+    email
+    status
+    expiresAt
+    invitationUrl
+  }
+}
+
+# Bulk User Operations
+mutation BulkActivateUsers {
+  bulkUserOperation(input: {
+    userIds: ["user1", "user2", "user3"]
+    operation: ACTIVATE
+    params: {}
+  }) {
+    success
+    message
+  }
+}
+
+# ============================================================================
+# CONTRACTOR MANAGEMENT QUERIES AND MUTATIONS
+# ============================================================================
+
+# List Active Contractors
+query ListActiveContractors {
+  contractors(
+    pagination: { limit: 50 }
+    status: ACTIVE
+  ) {
+    contractors {
+      id
+      email
+      name
+      company
+      status
+      permissions
+      expiresAt
+      accessCount
+      lastAccess
+      remainingDays
+      isExpired
+
+      # Security info
+      requireTwoFactor
+      ipWhitelist
+
+      # Statistics
+      stats {
+        totalAccesses
+        averageSessionDuration
+        secretsAccessedCount
+        accessPattern
+      }
+
+      # Compliance
+      compliance {
+        overallStatus
+        complianceScore
+        lastReview
+        nextReview
+      }
+
+      # Relationships
+      invitedBy {
+        name
+        email
+      }
+    }
+    pagination {
+      totalCount
+      hasNextPage
+    }
+  }
+}
+
+# Get Contractor Details
+query GetContractorDetails($contractorId: ID!) {
+  contractor(id: $contractorId) {
+    id
+    email
+    name
+    company
+    status
+    permissions
+    allowedSecrets
+    reason
+    accessDuration
+
+    # Timestamps
+    createdAt
+    expiresAt
+    lastAccess
+    revokedAt
+
+    # Security
+    accessCount
+    requireTwoFactor
+    ipWhitelist
+
+    # Sessions
+    sessions {
+      id
+      startTime
+      endTime
+      duration
+      ip
+      secretsAccessed
+      riskScore
+      isActive
+    }
+
+    # Actions performed
+    actions {
+      id
+      action
+      resource
+      timestamp
+      success
+      riskLevel
+    }
+
+    # Compliance
+    compliance {
+      overallStatus
+      agreements {
+        name
+        signedAt
+        status
+      }
+      certifications {
+        name
+        issuer
+        expiresAt
+      }
+    }
+
+    # Relationships
+    invitedBy {
+      name
+      email
+    }
+  }
+}
+
+# Invite New Contractor
+mutation InviteNewContractor {
+  inviteContractor(input: {
+    email: "contractor@external.com"
+    name: "Jane Smith"
+    company: "External Consulting LLC"
+    accessDuration: 14
+    permissions: [READ]
+    allowedSecrets: ["api-keys", "database-config"]
+    reason: "Security audit and compliance review"
+    notifyEmail: true
+  }) {
+    id
+    email
+    name
+    company
+    status
+    expiresAt
+    accessUrl
+    message
+  }
+}
+
+# Enhanced Contractor Invitation with Security Requirements
+mutation InviteContractorWithSecurity {
+  enhancedInviteContractor(input: {
+    email: "security-auditor@firm.com"
+    name: "Security Expert"
+    company: "CyberSec Auditors"
+    accessDuration: 7
+    permissions: [READ, WRITE]
+    allowedSecrets: ["audit-logs", "security-configs"]
+
+    # Security requirements
+    requireTwoFactor: true
+    requireVPN: true
+    ipWhitelist: ["203.0.113.0/24"]
+
+    # Compliance
+    backgroundCheckRequired: true
+    trainingRequired: ["data-protection", "security-awareness"]
+    agreementsRequired: ["nda", "security-agreement"]
+
+    reason: "Annual security audit"
+    customMessage: "Please complete security training before accessing systems"
+  }) {
+    id
+    accessUrl
+    complianceScore
+    securityScore
+  }
+}
+
+# Revoke Contractor Access
+mutation RevokeContractorAccess($contractorId: ID!) {
+  revokeContractorAccess(id: $contractorId) {
+    success
+    message
+  }
+}
+
+# Extend Contractor Access
+mutation ExtendContractorAccess($contractorId: ID!) {
+  extendContractorAccess(id: $contractorId, days: 7) {
+    id
+    expiresAt
+    remainingDays
+  }
+}
+
+# ============================================================================
+# SECRET MANAGEMENT QUERIES AND MUTATIONS
+# ============================================================================
+
+# List All Secrets with Permissions
+query ListSecretsWithAccess {
+  secrets(
+    pagination: { limit: 25 }
+    sort: { field: "lastRotated", direction: ASC }
+  ) {
+    secrets {
+      name
+      description
+      type
+      createdAt
+      lastRotated
+      nextRotation
+      version
+      isEncrypted
+
+      # Access control
+      allowedUsers {
+        id
+        name
+        email
+      }
+
+      # Statistics
+      stats {
+        accessCount
+        rotationCount
+        lastAccessDaysAgo
+        daysSinceRotation
+        topAccessors {
+          user {
+            name
+          }
+          accessCount
+          lastAccess
+        }
+      }
+
+      # Compliance
+      complianceStatus
+      policyViolations {
+        type
+        severity
+        description
+        occurredAt
+      }
+
+      # Computed fields
+      hasActiveShares
+      daysSinceLastAccess
+      riskScore
+    }
+    pagination {
+      totalCount
+      hasNextPage
+    }
+  }
+}
+
+# Get Secret Details (without value)
+query GetSecretMetadata($secretName: String!) {
+  secret(name: $secretName) {
+    name
+    description
+    type
+    createdAt
+    lastRotated
+    nextRotation
+    version
+    isEncrypted
+    kmsKeyId
+
+    # Versions
+    versions {
+      id
+      version
+      createdAt
+      isCurrent
+      isActive
+      age
+      usageCount
+    }
+
+    # Access control
+    accessControlList {
+      id
+      permissions
+      grantedAt
+      expiresAt
+      user {
+        name
+        email
+      }
+      lastUsed
+      usageCount
+    }
+
+    # Sharing
+    shares {
+      id
+      maxAccesses
+      currentAccesses
+      expiresAt
+      isActive
+      remainingAccesses
+    }
+
+    # Policies
+    policies {
+      name
+      description
+      rules {
+        type
+        condition
+        action
+        severity
+      }
+    }
+
+    # Backups
+    backups {
+      id
+      backupType
+      createdAt
+      size
+      verified
+      retentionExpires
+    }
+  }
+}
+
+# Create New Secret
+mutation CreateNewSecret {
+  createSecret(input: {
+    name: "new-api-key"
+    value: "sk-1234567890abcdef"
+    description: "API key for external service"
+    type: API_KEY
+    rotationEnabled: true
+    rotationDays: 90
+  }) {
+    name
+    description
+    type
+    createdAt
+    nextRotation
+  }
+}
+
+# Update Secret Value
+mutation UpdateSecretValue($secretName: String!) {
+  updateSecret(name: $secretName, input: {
+    value: "new-secret-value-here"
+    description: "Updated description"
+    rotationEnabled: true
+    rotationDays: 60
+  }) {
+    name
+    version
+    lastRotated
+    nextRotation
+  }
+}
+
+# Rotate Secret
+mutation RotateSecretManually($secretName: String!) {
+  rotateSecret(name: $secretName) {
+    name
+    version
+    lastRotated
+    nextRotation
+  }
+}
+
+# Grant Secret Access
+mutation GrantSecretAccess {
+  grantSecretAccess(input: {
+    secretName: "database-credentials"
+    userId: "user123"
+    permissions: [READ]
+    expiresAt: "2024-12-31T23:59:59Z"
+    conditions: [
+      { type: "time", operator: "between", value: "09:00-17:00" }
+      { type: "ip", operator: "in", value: "192.168.1.0/24" }
+    ]
+  }) {
+    id
+    permissions
+    grantedAt
+    expiresAt
+    isActive
+  }
+}
+
+# Create Temporary Secret Share
+mutation CreateSecretShare {
+  createSecretShare(input: {
+    secretName: "temp-access-key"
+    maxAccesses: 3
+    expiresIn: 24
+    requiresPassword: true
+    password: "temp-password-123"
+    ipWhitelist: ["203.0.113.5"]
+  }) {
+    id
+    shareToken
+    expiresAt
+    remainingAccesses
+  }
+}
+
+# ============================================================================
+# AUDIT AND COMPLIANCE QUERIES
+# ============================================================================
+
+# Get Audit Logs with Advanced Filtering
+query GetAuditLogs($limit: Int = 50) {
+  auditLogs(
+    pagination: { limit: $limit }
+    sort: { field: "timestamp", direction: DESC }
+    filter: {
+      dateFrom: "2024-01-01T00:00:00Z"
+      dateTo: "2024-12-31T23:59:59Z"
+      success: true
+    }
+  ) {
+    logs {
+      id
+      action
+      timestamp
+      success
+
+      # User info
+      user {
+        name
+        email
+        role
+      }
+
+      # Request details
+      resource
+      resourceId
+      ip
+      userAgent
+      endpoint
+
+      # Context
+      details
+      errorMessage
+      riskLevel
+      category
+
+      # Computed fields
+      formattedTimestamp
+    }
+    pagination {
+      totalCount
+      hasNextPage
+    }
+  }
+}
+
+# Get Security Events
+query GetSecurityEvents {
+  auditLogs(
+    filter: {
+      action: RATE_LIMIT_EXCEEDED
+      dateFrom: "2024-01-01T00:00:00Z"
+    }
+  ) {
+    logs {
+      id
+      action
+      timestamp
+      ip
+      userAgent
+      details
+      user {
+        email
+      }
+    }
+  }
+}
+
+# Get User Activity Timeline
+query GetUserActivityTimeline($userId: ID!) {
+  auditLogs(
+    filter: { userId: $userId }
+    sort: { field: "timestamp", direction: DESC }
+    pagination: { limit: 100 }
+  ) {
+    logs {
+      id
+      action
+      timestamp
+      success
+      resource
+      ip
+      details
+    }
+  }
+}
+
+# ============================================================================
+# DASHBOARD AND ANALYTICS QUERIES
+# ============================================================================
+
+# Complete Dashboard Analytics
+query GetDashboardAnalytics {
+  dashboardAnalytics(
+    dateFrom: "2024-01-01T00:00:00Z"
+    dateTo: "2024-12-31T23:59:59Z"
+  ) {
+    # Summary metrics
+    totalUsers
+    activeUsers
+    totalContractors
+    activeContractors
+    totalSecrets
+    secretsNeedingRotation
+    recentAuditEvents
+
+    # Growth trends
+    userGrowth {
+      period
+      count
+      change
+    }
+
+    # Usage patterns
+    contractorUsage {
+      period
+      count
+      duration
+    }
+
+    # Security metrics
+    secretAccess {
+      period
+      reads
+      writes
+      errors
+    }
+
+    # Alerts
+    securityAlerts {
+      id
+      type
+      severity
+      message
+      timestamp
+      resolved
+    }
+  }
+}
+
+# System Health Check
+query GetSystemHealth {
+  health {
+    status
+    timestamp
+    uptime
+    version
+    services {
+      name
+      status
+      responseTime
+      lastCheck
+      message
+    }
+  }
+}
+
+# Get Real-time Metrics
+query GetRealTimeMetrics {
+  activeConnections {
+    connectionId
+    userId
+    connectedAt
+    lastPing
+    isActive
+    user {
+      name
+      email
+    }
+  }
+}
+
+# ============================================================================
+# CONFIGURATION MANAGEMENT
+# ============================================================================
+
+# Get All Configuration Settings
+query GetAllConfigs {
+  configs(category: "system") {
+    key
+    value
+    description
+    isSecret
+    environment
+    category
+    createdAt
+    updatedAt
+    updatedBy {
+      name
+    }
+  }
+}
+
+# Get Single Configuration
+query GetSingleConfig($key: String!) {
+  config(key: $key) {
+    key
+    value
+    description
+    isSecret
+    environment
+    category
+    createdAt
+    updatedAt
+    schema
+    isValid
+  }
+}
+
+# Update Configuration
+mutation UpdateConfig {
+  setConfig(input: {
+    key: "max_concurrent_sessions"
+    value: 10
+    description: "Maximum concurrent sessions per user"
+    isSecret: false
+    environment: "production"
+    category: "security"
+  }) {
+    key
+    value
+    updatedAt
+  }
+}
+
+# ============================================================================
+# REAL-TIME SUBSCRIPTIONS
+# ============================================================================
+
+# Subscribe to Audit Events
+subscription WatchAuditEvents {
+  auditEvents {
+    id
+    action
+    timestamp
+    user {
+      name
+      email
+    }
+    resource
+    success
+    ip
+    riskLevel
+  }
+}
+
+# Subscribe to User Status Changes
+subscription WatchUserStatusChanges {
+  userStatusChanged {
+    id
+    name
+    email
+    status
+    lastLogin
+  }
+}
+
+# Subscribe to Contractor Activity
+subscription WatchContractorActivity {
+  contractorAccessed {
+    id
+    name
+    company
+    lastAccess
+    accessCount
+  }
+}
+
+# Subscribe to Security Alerts
+subscription WatchSecurityAlerts {
+  securityAlert {
+    id
+    type
+    severity
+    message
+    timestamp
+    resolved
+  }
+}
+
+# Subscribe to Secret Rotation Events
+subscription WatchSecretRotations {
+  secretRotated {
+    name
+    version
+    lastRotated
+    nextRotation
+  }
+}
+
+# Subscribe to Dashboard Updates
+subscription WatchDashboardUpdates {
+  dashboardUpdated {
+    totalUsers
+    activeUsers
+    totalContractors
+    activeContractors
+    recentAuditEvents
+    securityAlerts {
+      type
+      severity
+      timestamp
+    }
+  }
+}
+
+# ============================================================================
+# WEBSOCKET AND REAL-TIME FEATURES
+# ============================================================================
+
+# Get Active WebSocket Connections
+query GetActiveConnections {
+  activeConnections {
+    connectionId
+    userId
+    connectedAt
+    lastPing
+    endpoint
+    ip
+    userAgent
+    isActive
+
+    user {
+      name
+      email
+      role
+    }
+
+    # Enhanced connection info
+    protocol
+    extensions
+    latency
+    messagesSent
+    messagesReceived
+    errorCount
+    lastError
+
+    # Performance metrics
+    connectionDuration
+    averageLatency
+    isHealthy
+    riskScore
+  }
+}
+
+# Create WebSocket Room
+mutation CreateWebSocketRoom {
+  createWebSocketRoom(input: {
+    name: "admin-notifications"
+    description: "Room for administrator notifications"
+    maxConnections: 50
+    isPrivate: true
+    requiresAuth: true
+    allowedRoles: [ADMIN]
+  }) {
+    id
+    name
+    connectionCount
+    isActive
+  }
+}
+
+# Send Broadcast Message
+mutation SendBroadcastMessage {
+  broadcastMessage(input: {
+    type: NOTIFICATION
+    payload: {
+      title: "System Maintenance"
+      message: "Scheduled maintenance in 30 minutes"
+      priority: "HIGH"
+    }
+    broadcast: true
+  }) {
+    success
+    message
+  }
+}
+
+# ============================================================================
+# COMPLEX QUERIES WITH FRAGMENTS
+# ============================================================================
+
+# Define reusable fragments
+fragment UserSummary on User {
+  id
+  email
+  name
+  role
+  status
+  lastLogin
+  createdAt
+}
+
+fragment ContractorSummary on Contractor {
+  id
+  email
+  name
+  company
+  status
+  expiresAt
+  accessCount
+  remainingDays
+}
+
+fragment SecretSummary on Secret {
+  name
+  description
+  type
+  lastRotated
+  nextRotation
+  complianceStatus
+}
+
+# Complex query using fragments
+query GetSystemOverview {
+  # Users overview
+  users(pagination: { limit: 5 }) {
+    users {
+      ...UserSummary
+      stats {
+        totalLogins
+        activityScore
+      }
+    }
+    pagination {
+      totalCount
+    }
+  }
+
+  # Contractors overview
+  contractors(status: ACTIVE, pagination: { limit: 5 }) {
+    contractors {
+      ...ContractorSummary
+      invitedBy {
+        name
+      }
+    }
+    pagination {
+      totalCount
+    }
+  }
+
+  # Secrets overview
+  secretsNeedingRotation {
+    ...SecretSummary
+    daysSinceRotation
+  }
+
+  # Dashboard analytics
+  dashboardAnalytics {
+    totalUsers
+    activeUsers
+    totalContractors
+    secretsNeedingRotation
+    securityAlerts {
+      type
+      severity
+      timestamp
+    }
+  }
+
+  # System health
+  health {
+    status
+    uptime
+    services {
+      name
+      status
+    }
+  }
+}

@@ -73,8 +73,25 @@ class RateLimiter {
         error: error instanceof Error ? error.message : String(error),
       });
 
-      // Fail open - allow request if rate limiting fails
-      return this.createSuccessResult();
+      // Fail closed: block request briefly to protect system
+      const headers = this.generateHeaders({
+        totalHits: this.config.maxRequests,
+        totalWindow: this.config.windowMs,
+        remainingPoints: 0,
+        msBeforeNext: this.config.windowMs,
+        isBlocked: true,
+      });
+      return {
+        success: false,
+        info: {
+          totalHits: this.config.maxRequests,
+          totalWindow: this.config.windowMs,
+          remainingPoints: 0,
+          msBeforeNext: this.config.windowMs,
+          isBlocked: true,
+        },
+        headers,
+      };
     }
   }
 

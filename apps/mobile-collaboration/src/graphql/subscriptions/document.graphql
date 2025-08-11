@@ -1,0 +1,220 @@
+# Real-time Subscriptions for Mobile Collaboration
+
+subscription DocumentUpdated($documentId: UUID!) {
+  documentUpdated(documentId: $documentId) {
+    id
+    content {
+      blocks {
+        id
+        type
+        content
+        position {
+          index
+          offset
+          length
+          depth
+        }
+        authorId
+        updatedAt
+      }
+    }
+    crdtState {
+      type
+      state
+      vectorClock {
+        clocks
+        version
+      }
+    }
+    operations {
+      id
+      type
+      position
+      length
+      content
+      authorId
+      timestamp
+    }
+    updatedAt
+    lastEditedAt
+  }
+}
+
+subscription PresenceUpdated($documentId: UUID!) {
+  presenceUpdated(documentId: $documentId) {
+    id
+    user {
+      id
+      name
+      avatar
+      status
+    }
+    document {
+      id
+    }
+    status
+    cursor {
+      blockId
+      offset
+      x
+      y
+    }
+    selection {
+      start {
+        blockId
+        offset
+      }
+      end {
+        blockId
+        offset
+      }
+      text
+      isCollapsed
+    }
+    isTyping
+    isIdle
+    currentAction
+    lastSeenAt
+  }
+}
+
+subscription UserJoined($documentId: UUID!) {
+  userJoined(documentId: $documentId) {
+    id
+    user {
+      id
+      name
+      avatar
+      status
+    }
+    document {
+      id
+      name
+    }
+    status
+    permissions {
+      canRead
+      canWrite
+      canComment
+    }
+    joinedAt
+  }
+}
+
+subscription UserLeft($documentId: UUID!) {
+  userLeft(documentId: $documentId) {
+    userId
+    documentId
+    leftAt
+  }
+}
+
+subscription CommentAdded($documentId: UUID!) {
+  commentAdded(documentId: $documentId) {
+    id
+    content {
+      text
+      html
+      format
+    }
+    position {
+      blockId
+      startOffset
+      endOffset
+      x
+      y
+    }
+    author {
+      id
+      name
+      avatar
+    }
+    status
+    priority
+    type
+    mentions {
+      id
+      name
+    }
+    parentComment {
+      id
+    }
+    createdAt
+  }
+}
+
+subscription CommentUpdated($documentId: UUID!) {
+  commentUpdated(documentId: $documentId) {
+    id
+    content {
+      text
+      html
+      format
+    }
+    status
+    priority
+    isResolved
+    resolvedBy {
+      id
+      name
+      avatar
+    }
+    resolvedAt
+    updatedAt
+  }
+}
+
+subscription CommentReactionAdded($commentId: UUID!) {
+  commentReactionAdded(commentId: $commentId) {
+    id
+    type
+    emoji
+    user {
+      id
+      name
+      avatar
+    }
+    createdAt
+  }
+}
+
+subscription DocumentOperationApplied($documentId: UUID!) {
+  documentOperationApplied(documentId: $documentId) {
+    id
+    type
+    position
+    length
+    content
+    authorId
+    timestamp
+    transformedFroms
+    applied
+  }
+}
+
+subscription DocumentActivityEvent($documentId: UUID!) {
+  documentActivityEvent(documentId: $documentId) {
+    id
+    type
+    action
+    description
+    actor {
+      id
+      name
+      avatar
+    }
+    actorType
+    targetType
+    targetId
+    context
+    impact {
+      severity
+      scope
+      affectedUsers {
+        id
+        name
+      }
+    }
+    timestamp
+  }
+}

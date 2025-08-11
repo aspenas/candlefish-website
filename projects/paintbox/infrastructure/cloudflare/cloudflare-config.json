@@ -1,0 +1,222 @@
+{
+  "name": "paintbox-app.com",
+  "description": "Cloudflare CDN Configuration for Paintbox Application",
+  "zone_settings": {
+    "ssl": "flexible",
+    "always_use_https": "on",
+    "min_tls_version": "1.2",
+    "automatic_https_rewrites": "on",
+    "browser_cache_ttl": 14400,
+    "cache_level": "aggressive",
+    "development_mode": "off",
+    "minify": {
+      "css": "on",
+      "html": "on",
+      "js": "on"
+    },
+    "brotli": "on",
+    "auto_minify": "on",
+    "polish": "lossless",
+    "webp": "on",
+    "mirage": "on",
+    "rocket_loader": "off",
+    "early_hints": "on",
+    "http2": "on",
+    "http3": "on",
+    "websockets": "on",
+    "opportunistic_encryption": "on",
+    "ipv6": "on"
+  },
+  "page_rules": [
+    {
+      "target": "*.paintbox-app.com/api/*",
+      "actions": {
+        "cache_level": "bypass",
+        "disable_apps": true,
+        "disable_performance": true
+      }
+    },
+    {
+      "target": "*.paintbox-app.com/_next/static/*",
+      "actions": {
+        "cache_level": "cache_everything",
+        "edge_cache_ttl": 31536000,
+        "browser_cache_ttl": 31536000,
+        "cache_deception_armor": "on",
+        "polish": "lossless",
+        "mirage": "on"
+      }
+    },
+    {
+      "target": "*.paintbox-app.com/images/*",
+      "actions": {
+        "cache_level": "cache_everything",
+        "edge_cache_ttl": 86400,
+        "browser_cache_ttl": 86400,
+        "polish": "lossless",
+        "webp": "on",
+        "mirage": "on"
+      }
+    },
+    {
+      "target": "*.paintbox-app.com/*.css",
+      "actions": {
+        "cache_level": "cache_everything",
+        "edge_cache_ttl": 86400,
+        "browser_cache_ttl": 86400,
+        "minify": {
+          "css": "on"
+        }
+      }
+    },
+    {
+      "target": "*.paintbox-app.com/*.js",
+      "actions": {
+        "cache_level": "cache_everything",
+        "edge_cache_ttl": 86400,
+        "browser_cache_ttl": 86400,
+        "minify": {
+          "js": "on"
+        },
+        "rocket_loader": "off"
+      }
+    },
+    {
+      "target": "*.paintbox-app.com/",
+      "actions": {
+        "cache_level": "cache_everything",
+        "edge_cache_ttl": 3600,
+        "browser_cache_ttl": 3600,
+        "cache_key_fields": {
+          "query_string": {
+            "include": "*"
+          },
+          "cookie": {
+            "include": ["session"]
+          }
+        }
+      }
+    }
+  ],
+  "workers": {
+    "routes": [
+      {
+        "pattern": "*.paintbox-app.com/api/excel/*",
+        "script": "excel-worker"
+      },
+      {
+        "pattern": "*.paintbox-app.com/api/calculations/*",
+        "script": "calculation-worker"
+      }
+    ]
+  },
+  "argo": {
+    "smart_routing": true,
+    "tiered_caching": true,
+    "argo_tunnel": false
+  },
+  "cache_reserve": {
+    "enabled": true,
+    "minimum_file_size": 1000
+  },
+  "load_balancing": {
+    "enabled": true,
+    "default_pools": ["paintbox-pool"],
+    "fallback_pool": "paintbox-fallback",
+    "region_pools": {
+      "WNAM": ["paintbox-us-west"],
+      "ENAM": ["paintbox-us-east"],
+      "WEU": ["paintbox-eu"]
+    },
+    "pop_pools": {
+      "LAX": ["paintbox-lax"],
+      "ORD": ["paintbox-ord"],
+      "LHR": ["paintbox-lhr"]
+    },
+    "session_affinity": "cookie",
+    "session_affinity_ttl": 1800,
+    "session_affinity_attributes": {
+      "samesite": "auto",
+      "secure": "auto",
+      "httponly": true
+    }
+  },
+  "pools": [
+    {
+      "name": "paintbox-pool",
+      "origins": [
+        {
+          "name": "paintbox-sjc",
+          "address": "paintbox-app.fly.dev",
+          "enabled": true,
+          "weight": 1,
+          "header": {
+            "Host": ["paintbox-app.fly.dev"]
+          }
+        }
+      ],
+      "check_regions": ["WNAM"],
+      "notification_email": "ops@paintbox-app.com",
+      "minimum_origins": 1
+    }
+  ],
+  "rate_limiting": {
+    "rules": [
+      {
+        "threshold": 100,
+        "period": 60,
+        "action": {
+          "mode": "simulate",
+          "timeout": 60,
+          "response": {
+            "content_type": "application/json",
+            "body": "{\"error\":\"Rate limit exceeded\"}"
+          }
+        },
+        "match": {
+          "request": {
+            "url": "*/api/*",
+            "methods": ["POST", "PUT", "DELETE"]
+          }
+        }
+      }
+    ]
+  },
+  "waf": {
+    "rules": [
+      {
+        "id": "block-sql-injection",
+        "expression": "(http.request.uri.query contains \"UNION\" and http.request.uri.query contains \"SELECT\") or (http.request.body.raw contains \"'; DROP TABLE\")",
+        "action": "block"
+      },
+      {
+        "id": "block-xss",
+        "expression": "http.request.uri.query contains \"<script\" or http.request.body.raw contains \"<script\"",
+        "action": "block"
+      }
+    ]
+  },
+  "analytics": {
+    "web_analytics": true,
+    "rum": true,
+    "zaraz": false
+  },
+  "performance": {
+    "apo": true,
+    "apo_settings": {
+      "cache_by_device_type": true,
+      "cache_key_query_string": ["utm_source", "utm_medium", "utm_campaign"]
+    }
+  },
+  "optimization": {
+    "image_resizing": true,
+    "image_options": {
+      "fit": "scale-down",
+      "metadata": "none",
+      "quality": 85,
+      "format": "auto",
+      "onerror": "redirect",
+      "polish": "lossless"
+    }
+  }
+}

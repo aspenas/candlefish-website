@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: collaboration-config
+  namespace: collaboration
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: config
+data:
+  # Environment Configuration
+  NODE_ENV: "production"
+  LOG_LEVEL: "info"
+
+  # GraphQL Configuration
+  GRAPHQL_ENDPOINT: "/graphql"
+  GRAPHQL_SUBSCRIPTIONS_ENDPOINT: "/graphql"
+  GRAPHQL_PLAYGROUND_ENABLED: "false"
+  GRAPHQL_INTROSPECTION_ENABLED: "false"
+
+  # WebSocket Configuration
+  WS_PATH: "/graphql"
+  WS_HEARTBEAT_INTERVAL: "30000"
+  WS_MAX_CONNECTIONS_PER_IP: "10"
+
+  # CRDT Configuration
+  CRDT_CONFLICT_RESOLUTION: "last-writer-wins"
+  CRDT_HISTORY_LIMIT: "1000"
+  CRDT_BATCH_SIZE: "50"
+
+  # Cache Configuration
+  CACHE_TTL: "300"
+  CACHE_MAX_SIZE: "1000"
+
+  # Rate Limiting
+  RATE_LIMIT_WINDOW_MS: "60000"
+  RATE_LIMIT_MAX_REQUESTS: "1000"
+
+  # Health Check
+  HEALTH_CHECK_PATH: "/health"
+  HEALTH_CHECK_TIMEOUT: "5000"
+
+  # Monitoring
+  METRICS_ENABLED: "true"
+  METRICS_PATH: "/metrics"
+
+  # CORS
+  CORS_ORIGINS: "https://app.candlefish.ai,https://editor.candlefish.ai"
+
+  # File Upload
+  MAX_FILE_SIZE: "10485760"  # 10MB
+  ALLOWED_FILE_TYPES: "image/jpeg,image/png,image/gif,application/pdf,text/plain"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: collaboration-redis-config
+  namespace: collaboration
+  labels:
+    app.kubernetes.io/name: candlefish-collaboration
+    app.kubernetes.io/component: redis-config
+data:
+  redis.conf: |
+    # Redis Configuration for Collaboration System
+
+    # Network
+    bind 0.0.0.0
+    port 6379
+
+    # Memory Management
+    maxmemory 256mb
+    maxmemory-policy allkeys-lru
+
+    # Persistence
+    save 900 1
+    save 300 10
+    save 60 10000
+
+    # Pub/Sub
+    notify-keyspace-events Ex
+
+    # Performance
+    tcp-keepalive 60
+    timeout 300
+
+    # Security
+    protected-mode yes

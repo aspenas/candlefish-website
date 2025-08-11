@@ -1,0 +1,31 @@
+app = "paintbox-redis"
+primary_region = "sjc"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  REDIS_MAXMEMORY = "256mb"
+
+[mounts]
+  source = "redis_data"
+  destination = "/data"
+
+[[services]]
+  internal_port = 6379
+  protocol = "tcp"
+
+  [[services.ports]]
+    port = 6379
+
+[checks]
+  [checks.redis]
+    grace_period = "30s"
+    interval = "15s"
+    method = "get"
+    path = "/"
+    port = 6379
+    protocol = "tcp"
+    restart_limit = 0
+    timeout = "10s"
+    type = "tcp"

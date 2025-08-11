@@ -77,6 +77,18 @@
         "LogGroupName": "/aws/lambda/candlefish-employee-setup-lean-prod-health"
       }
     },
+    "GraphqlLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/candlefish-employee-setup-lean-prod-graphql"
+      }
+    },
+    "GraphqlHealthLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/candlefish-employee-setup-lean-prod-graphqlHealth"
+      }
+    },
     "AuthLogGroup": {
       "Type": "AWS::Logs::LogGroup",
       "Properties": {
@@ -135,6 +147,30 @@
       "Type": "AWS::Logs::LogGroup",
       "Properties": {
         "LogGroupName": "/aws/lambda/candlefish-employee-setup-lean-prod-cleanupContractors"
+      }
+    },
+    "WebsocketConnectLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/candlefish-employee-setup-lean-prod-websocketConnect"
+      }
+    },
+    "WebsocketDisconnectLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/candlefish-employee-setup-lean-prod-websocketDisconnect"
+      }
+    },
+    "WebsocketMessageLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/candlefish-employee-setup-lean-prod-websocketMessage"
+      }
+    },
+    "WebsocketPingLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/candlefish-employee-setup-lean-prod-websocketPing"
       }
     },
     "IamRoleLambdaExecution": {
@@ -232,6 +268,47 @@
                     "dynamodb:DeleteItem"
                   ],
                   "Resource": "arn:aws:dynamodb:us-east-1:*:table/candlefish-employee-setup-lean-prod-*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dax:GetItem",
+                    "dax:PutItem",
+                    "dax:UpdateItem",
+                    "dax:DeleteItem",
+                    "dax:Query",
+                    "dax:Scan",
+                    "dax:BatchGetItem",
+                    "dax:BatchWriteItem"
+                  ],
+                  "Resource": "arn:aws:dax:us-east-1:*:cache/candlefish-employee-setup-lean-prod-dax"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "execute-api:ManageConnections"
+                  ],
+                  "Resource": "arn:aws:execute-api:us-east-1:*:*/prod/*/*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "arn:aws:logs:us-east-1:*:log-group:/aws/lambda/*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "execute-api:ManageConnections"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:execute-api:*:*:*/@connections/*"
+                    }
+                  ]
                 }
               ]
             }
@@ -260,19 +337,26 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754624443581-2025-08-08T03:40:43.581Z/candlefish-employee-setup-lean.zip"
+          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754874159724-2025-08-11T01:02:39.724Z/candlefish-employee-setup-lean.zip"
         },
         "Handler": "src/handlers/health.handler",
         "Runtime": "nodejs18.x",
         "FunctionName": "candlefish-employee-setup-lean-prod-health",
-        "MemorySize": 1024,
+        "MemorySize": 512,
         "Timeout": 30,
         "Environment": {
           "Variables": {
             "STAGE": "prod",
             "SECRETS_PREFIX": "candlefish-employee-setup-lean-prod",
             "ENABLE_CONTRACTOR_ACCESS": "true",
-            "MAX_TEAM_SIZE": "20"
+            "MAX_TEAM_SIZE": "20",
+            "AWS_REGION": "us-east-1",
+            "CORS_ORIGIN": "*",
+            "NODE_ENV": "production",
+            "GRAPHQL_ENDPOINT": "/graphql",
+            "WEBSOCKET_ENDPOINT": {
+              "Ref": "WebSocketApi"
+            }
           }
         },
         "Role": {
@@ -286,18 +370,18 @@
         "HealthLogGroup"
       ]
     },
-    "AuthLambdaFunction": {
+    "GraphqlLambdaFunction": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754624443581-2025-08-08T03:40:43.581Z/candlefish-employee-setup-lean.zip"
+          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754874159724-2025-08-11T01:02:39.724Z/candlefish-employee-setup-lean.zip"
         },
-        "Handler": "src/handlers/auth.handler",
+        "Handler": "src/handlers/graphql.handler",
         "Runtime": "nodejs18.x",
-        "FunctionName": "candlefish-employee-setup-lean-prod-auth",
+        "FunctionName": "candlefish-employee-setup-lean-prod-graphql",
         "MemorySize": 1024,
         "Timeout": 30,
         "Environment": {
@@ -305,7 +389,109 @@
             "STAGE": "prod",
             "SECRETS_PREFIX": "candlefish-employee-setup-lean-prod",
             "ENABLE_CONTRACTOR_ACCESS": "true",
-            "MAX_TEAM_SIZE": "20"
+            "MAX_TEAM_SIZE": "20",
+            "AWS_REGION": "us-east-1",
+            "CORS_ORIGIN": "*",
+            "NODE_ENV": "production",
+            "GRAPHQL_ENDPOINT": "/graphql",
+            "WEBSOCKET_ENDPOINT": {
+              "Ref": "WebSocketApi"
+            },
+            "USERS_TABLE": "candlefish-employee-setup-lean-prod-users",
+            "CONTRACTORS_TABLE": "candlefish-employee-setup-lean-prod-contractors",
+            "REFRESH_TOKENS_TABLE": "candlefish-employee-setup-lean-prod-refresh-tokens",
+            "AUDIT_TABLE": "candlefish-employee-setup-lean-prod-audit",
+            "CONFIG_TABLE": "candlefish-employee-setup-lean-prod-config",
+            "DAX_ENDPOINT": {
+              "Fn::GetAtt": [
+                "DaxCluster",
+                "ClusterDiscoveryEndpoint"
+              ]
+            },
+            "CACHE_TTL": "300",
+            "MAX_QUERY_COMPLEXITY": "1000",
+            "MAX_QUERY_DEPTH": "10"
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        },
+        "ReservedConcurrentExecutions": 50
+      },
+      "DependsOn": [
+        "GraphqlLogGroup"
+      ]
+    },
+    "GraphqlHealthLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754874159724-2025-08-11T01:02:39.724Z/candlefish-employee-setup-lean.zip"
+        },
+        "Handler": "src/handlers/graphql.health",
+        "Runtime": "nodejs18.x",
+        "FunctionName": "candlefish-employee-setup-lean-prod-graphqlHealth",
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Environment": {
+          "Variables": {
+            "STAGE": "prod",
+            "SECRETS_PREFIX": "candlefish-employee-setup-lean-prod",
+            "ENABLE_CONTRACTOR_ACCESS": "true",
+            "MAX_TEAM_SIZE": "20",
+            "AWS_REGION": "us-east-1",
+            "CORS_ORIGIN": "*",
+            "NODE_ENV": "production",
+            "GRAPHQL_ENDPOINT": "/graphql",
+            "WEBSOCKET_ENDPOINT": {
+              "Ref": "WebSocketApi"
+            }
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "GraphqlHealthLogGroup"
+      ]
+    },
+    "AuthLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754874159724-2025-08-11T01:02:39.724Z/candlefish-employee-setup-lean.zip"
+        },
+        "Handler": "src/handlers/auth.handler",
+        "Runtime": "nodejs18.x",
+        "FunctionName": "candlefish-employee-setup-lean-prod-auth",
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Environment": {
+          "Variables": {
+            "STAGE": "prod",
+            "SECRETS_PREFIX": "candlefish-employee-setup-lean-prod",
+            "ENABLE_CONTRACTOR_ACCESS": "true",
+            "MAX_TEAM_SIZE": "20",
+            "AWS_REGION": "us-east-1",
+            "CORS_ORIGIN": "*",
+            "NODE_ENV": "production",
+            "GRAPHQL_ENDPOINT": "/graphql",
+            "WEBSOCKET_ENDPOINT": {
+              "Ref": "WebSocketApi"
+            }
           }
         },
         "Role": {
@@ -326,19 +512,26 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754624443581-2025-08-08T03:40:43.581Z/candlefish-employee-setup-lean.zip"
+          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754874159724-2025-08-11T01:02:39.724Z/candlefish-employee-setup-lean.zip"
         },
         "Handler": "src/handlers/users.handler",
         "Runtime": "nodejs18.x",
         "FunctionName": "candlefish-employee-setup-lean-prod-manageUsers",
-        "MemorySize": 1024,
+        "MemorySize": 512,
         "Timeout": 30,
         "Environment": {
           "Variables": {
             "STAGE": "prod",
             "SECRETS_PREFIX": "candlefish-employee-setup-lean-prod",
             "ENABLE_CONTRACTOR_ACCESS": "true",
-            "MAX_TEAM_SIZE": "20"
+            "MAX_TEAM_SIZE": "20",
+            "AWS_REGION": "us-east-1",
+            "CORS_ORIGIN": "*",
+            "NODE_ENV": "production",
+            "GRAPHQL_ENDPOINT": "/graphql",
+            "WEBSOCKET_ENDPOINT": {
+              "Ref": "WebSocketApi"
+            }
           }
         },
         "Role": {
@@ -359,19 +552,26 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754624443581-2025-08-08T03:40:43.581Z/candlefish-employee-setup-lean.zip"
+          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754874159724-2025-08-11T01:02:39.724Z/candlefish-employee-setup-lean.zip"
         },
         "Handler": "src/handlers/contractors.handler",
         "Runtime": "nodejs18.x",
         "FunctionName": "candlefish-employee-setup-lean-prod-contractorAccess",
-        "MemorySize": 1024,
+        "MemorySize": 512,
         "Timeout": 30,
         "Environment": {
           "Variables": {
             "STAGE": "prod",
             "SECRETS_PREFIX": "candlefish-employee-setup-lean-prod",
             "ENABLE_CONTRACTOR_ACCESS": "true",
-            "MAX_TEAM_SIZE": "20"
+            "MAX_TEAM_SIZE": "20",
+            "AWS_REGION": "us-east-1",
+            "CORS_ORIGIN": "*",
+            "NODE_ENV": "production",
+            "GRAPHQL_ENDPOINT": "/graphql",
+            "WEBSOCKET_ENDPOINT": {
+              "Ref": "WebSocketApi"
+            }
           }
         },
         "Role": {
@@ -392,19 +592,26 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754624443581-2025-08-08T03:40:43.581Z/candlefish-employee-setup-lean.zip"
+          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754874159724-2025-08-11T01:02:39.724Z/candlefish-employee-setup-lean.zip"
         },
         "Handler": "src/handlers/secrets.handler",
         "Runtime": "nodejs18.x",
         "FunctionName": "candlefish-employee-setup-lean-prod-secrets",
-        "MemorySize": 1024,
+        "MemorySize": 512,
         "Timeout": 30,
         "Environment": {
           "Variables": {
             "STAGE": "prod",
             "SECRETS_PREFIX": "candlefish-employee-setup-lean-prod",
             "ENABLE_CONTRACTOR_ACCESS": "true",
-            "MAX_TEAM_SIZE": "20"
+            "MAX_TEAM_SIZE": "20",
+            "AWS_REGION": "us-east-1",
+            "CORS_ORIGIN": "*",
+            "NODE_ENV": "production",
+            "GRAPHQL_ENDPOINT": "/graphql",
+            "WEBSOCKET_ENDPOINT": {
+              "Ref": "WebSocketApi"
+            }
           }
         },
         "Role": {
@@ -426,19 +633,26 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754624443581-2025-08-08T03:40:43.581Z/candlefish-employee-setup-lean.zip"
+          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754874159724-2025-08-11T01:02:39.724Z/candlefish-employee-setup-lean.zip"
         },
         "Handler": "src/handlers/rotation.handler",
         "Runtime": "nodejs18.x",
         "FunctionName": "candlefish-employee-setup-lean-prod-rotateSecrets",
-        "MemorySize": 1024,
+        "MemorySize": 512,
         "Timeout": 30,
         "Environment": {
           "Variables": {
             "STAGE": "prod",
             "SECRETS_PREFIX": "candlefish-employee-setup-lean-prod",
             "ENABLE_CONTRACTOR_ACCESS": "true",
-            "MAX_TEAM_SIZE": "20"
+            "MAX_TEAM_SIZE": "20",
+            "AWS_REGION": "us-east-1",
+            "CORS_ORIGIN": "*",
+            "NODE_ENV": "production",
+            "GRAPHQL_ENDPOINT": "/graphql",
+            "WEBSOCKET_ENDPOINT": {
+              "Ref": "WebSocketApi"
+            }
           }
         },
         "Role": {
@@ -459,19 +673,26 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754624443581-2025-08-08T03:40:43.581Z/candlefish-employee-setup-lean.zip"
+          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754874159724-2025-08-11T01:02:39.724Z/candlefish-employee-setup-lean.zip"
         },
         "Handler": "src/handlers/config.handler",
         "Runtime": "nodejs18.x",
         "FunctionName": "candlefish-employee-setup-lean-prod-config",
-        "MemorySize": 1024,
+        "MemorySize": 512,
         "Timeout": 30,
         "Environment": {
           "Variables": {
             "STAGE": "prod",
             "SECRETS_PREFIX": "candlefish-employee-setup-lean-prod",
             "ENABLE_CONTRACTOR_ACCESS": "true",
-            "MAX_TEAM_SIZE": "20"
+            "MAX_TEAM_SIZE": "20",
+            "AWS_REGION": "us-east-1",
+            "CORS_ORIGIN": "*",
+            "NODE_ENV": "production",
+            "GRAPHQL_ENDPOINT": "/graphql",
+            "WEBSOCKET_ENDPOINT": {
+              "Ref": "WebSocketApi"
+            }
           }
         },
         "Role": {
@@ -492,19 +713,26 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754624443581-2025-08-08T03:40:43.581Z/candlefish-employee-setup-lean.zip"
+          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754874159724-2025-08-11T01:02:39.724Z/candlefish-employee-setup-lean.zip"
         },
         "Handler": "src/handlers/claude.handler",
         "Runtime": "nodejs18.x",
         "FunctionName": "candlefish-employee-setup-lean-prod-claudeAssist",
-        "MemorySize": 1024,
+        "MemorySize": 512,
         "Timeout": 60,
         "Environment": {
           "Variables": {
             "STAGE": "prod",
             "SECRETS_PREFIX": "candlefish-employee-setup-lean-prod",
             "ENABLE_CONTRACTOR_ACCESS": "true",
-            "MAX_TEAM_SIZE": "20"
+            "MAX_TEAM_SIZE": "20",
+            "AWS_REGION": "us-east-1",
+            "CORS_ORIGIN": "*",
+            "NODE_ENV": "production",
+            "GRAPHQL_ENDPOINT": "/graphql",
+            "WEBSOCKET_ENDPOINT": {
+              "Ref": "WebSocketApi"
+            }
           }
         },
         "Role": {
@@ -525,19 +753,26 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754624443581-2025-08-08T03:40:43.581Z/candlefish-employee-setup-lean.zip"
+          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754874159724-2025-08-11T01:02:39.724Z/candlefish-employee-setup-lean.zip"
         },
         "Handler": "src/handlers/audit.handler",
         "Runtime": "nodejs18.x",
         "FunctionName": "candlefish-employee-setup-lean-prod-auditLog",
-        "MemorySize": 1024,
+        "MemorySize": 512,
         "Timeout": 30,
         "Environment": {
           "Variables": {
             "STAGE": "prod",
             "SECRETS_PREFIX": "candlefish-employee-setup-lean-prod",
             "ENABLE_CONTRACTOR_ACCESS": "true",
-            "MAX_TEAM_SIZE": "20"
+            "MAX_TEAM_SIZE": "20",
+            "AWS_REGION": "us-east-1",
+            "CORS_ORIGIN": "*",
+            "NODE_ENV": "production",
+            "GRAPHQL_ENDPOINT": "/graphql",
+            "WEBSOCKET_ENDPOINT": {
+              "Ref": "WebSocketApi"
+            }
           }
         },
         "Role": {
@@ -558,19 +793,26 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754624443581-2025-08-08T03:40:43.581Z/candlefish-employee-setup-lean.zip"
+          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754874159724-2025-08-11T01:02:39.724Z/candlefish-employee-setup-lean.zip"
         },
         "Handler": "src/handlers/authorizer.handler",
         "Runtime": "nodejs18.x",
         "FunctionName": "candlefish-employee-setup-lean-prod-authVerify",
-        "MemorySize": 1024,
+        "MemorySize": 512,
         "Timeout": 30,
         "Environment": {
           "Variables": {
             "STAGE": "prod",
             "SECRETS_PREFIX": "candlefish-employee-setup-lean-prod",
             "ENABLE_CONTRACTOR_ACCESS": "true",
-            "MAX_TEAM_SIZE": "20"
+            "MAX_TEAM_SIZE": "20",
+            "AWS_REGION": "us-east-1",
+            "CORS_ORIGIN": "*",
+            "NODE_ENV": "production",
+            "GRAPHQL_ENDPOINT": "/graphql",
+            "WEBSOCKET_ENDPOINT": {
+              "Ref": "WebSocketApi"
+            }
           }
         },
         "Role": {
@@ -591,19 +833,26 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754624443581-2025-08-08T03:40:43.581Z/candlefish-employee-setup-lean.zip"
+          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754874159724-2025-08-11T01:02:39.724Z/candlefish-employee-setup-lean.zip"
         },
         "Handler": "src/handlers/cleanup.handler",
         "Runtime": "nodejs18.x",
         "FunctionName": "candlefish-employee-setup-lean-prod-cleanupContractors",
-        "MemorySize": 1024,
+        "MemorySize": 512,
         "Timeout": 30,
         "Environment": {
           "Variables": {
             "STAGE": "prod",
             "SECRETS_PREFIX": "candlefish-employee-setup-lean-prod",
             "ENABLE_CONTRACTOR_ACCESS": "true",
-            "MAX_TEAM_SIZE": "20"
+            "MAX_TEAM_SIZE": "20",
+            "AWS_REGION": "us-east-1",
+            "CORS_ORIGIN": "*",
+            "NODE_ENV": "production",
+            "GRAPHQL_ENDPOINT": "/graphql",
+            "WEBSOCKET_ENDPOINT": {
+              "Ref": "WebSocketApi"
+            }
           }
         },
         "Role": {
@@ -617,114 +866,334 @@
         "CleanupContractorsLogGroup"
       ]
     },
-    "HealthLambdaVersionZ7J45p2JqFjIegb8imNbK6UfFZelBRXDOtOGrbzUQ": {
+    "WebsocketConnectLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754874159724-2025-08-11T01:02:39.724Z/candlefish-employee-setup-lean.zip"
+        },
+        "Handler": "src/handlers/websocket.connect",
+        "Runtime": "nodejs18.x",
+        "FunctionName": "candlefish-employee-setup-lean-prod-websocketConnect",
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Environment": {
+          "Variables": {
+            "STAGE": "prod",
+            "SECRETS_PREFIX": "candlefish-employee-setup-lean-prod",
+            "ENABLE_CONTRACTOR_ACCESS": "true",
+            "MAX_TEAM_SIZE": "20",
+            "AWS_REGION": "us-east-1",
+            "CORS_ORIGIN": "*",
+            "NODE_ENV": "production",
+            "GRAPHQL_ENDPOINT": "/graphql",
+            "WEBSOCKET_ENDPOINT": {
+              "Ref": "WebSocketApi"
+            }
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "WebsocketConnectLogGroup"
+      ]
+    },
+    "WebsocketDisconnectLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754874159724-2025-08-11T01:02:39.724Z/candlefish-employee-setup-lean.zip"
+        },
+        "Handler": "src/handlers/websocket.disconnect",
+        "Runtime": "nodejs18.x",
+        "FunctionName": "candlefish-employee-setup-lean-prod-websocketDisconnect",
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Environment": {
+          "Variables": {
+            "STAGE": "prod",
+            "SECRETS_PREFIX": "candlefish-employee-setup-lean-prod",
+            "ENABLE_CONTRACTOR_ACCESS": "true",
+            "MAX_TEAM_SIZE": "20",
+            "AWS_REGION": "us-east-1",
+            "CORS_ORIGIN": "*",
+            "NODE_ENV": "production",
+            "GRAPHQL_ENDPOINT": "/graphql",
+            "WEBSOCKET_ENDPOINT": {
+              "Ref": "WebSocketApi"
+            }
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "WebsocketDisconnectLogGroup"
+      ]
+    },
+    "WebsocketMessageLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754874159724-2025-08-11T01:02:39.724Z/candlefish-employee-setup-lean.zip"
+        },
+        "Handler": "src/handlers/websocket.message",
+        "Runtime": "nodejs18.x",
+        "FunctionName": "candlefish-employee-setup-lean-prod-websocketMessage",
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Environment": {
+          "Variables": {
+            "STAGE": "prod",
+            "SECRETS_PREFIX": "candlefish-employee-setup-lean-prod",
+            "ENABLE_CONTRACTOR_ACCESS": "true",
+            "MAX_TEAM_SIZE": "20",
+            "AWS_REGION": "us-east-1",
+            "CORS_ORIGIN": "*",
+            "NODE_ENV": "production",
+            "GRAPHQL_ENDPOINT": "/graphql",
+            "WEBSOCKET_ENDPOINT": {
+              "Ref": "WebSocketApi"
+            }
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "WebsocketMessageLogGroup"
+      ]
+    },
+    "WebsocketPingLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/candlefish-employee-setup-lean/prod/1754874159724-2025-08-11T01:02:39.724Z/candlefish-employee-setup-lean.zip"
+        },
+        "Handler": "src/handlers/websocket.ping",
+        "Runtime": "nodejs18.x",
+        "FunctionName": "candlefish-employee-setup-lean-prod-websocketPing",
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Environment": {
+          "Variables": {
+            "STAGE": "prod",
+            "SECRETS_PREFIX": "candlefish-employee-setup-lean-prod",
+            "ENABLE_CONTRACTOR_ACCESS": "true",
+            "MAX_TEAM_SIZE": "20",
+            "AWS_REGION": "us-east-1",
+            "CORS_ORIGIN": "*",
+            "NODE_ENV": "production",
+            "GRAPHQL_ENDPOINT": "/graphql",
+            "WEBSOCKET_ENDPOINT": {
+              "Ref": "WebSocketApi"
+            }
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "WebsocketPingLogGroup"
+      ]
+    },
+    "HealthLambdaVersion8DwKO3LhfxqdXh2Tk5T7yjMbhFFikb5Y0vULiLV3H4": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "HealthLambdaFunction"
         },
-        "CodeSha256": "m55vQRoeavRWLdJwOCyYn4bU4X+G9BiBf406mH8b3aU="
+        "CodeSha256": "igb+Ofg977k9QF5NI5vTQsrVciMHYf27c5PJwYPhMPc="
       }
     },
-    "AuthLambdaVersionHk4VkIIqTEnrtu4OKZvDJcA2PsaCRMhlCKtaafWyI": {
+    "GraphqlLambdaVersion4pJ0pAu4iT0n907zaYsS44ckOJYsWEekUwxY7AY3o": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "GraphqlLambdaFunction"
+        },
+        "CodeSha256": "igb+Ofg977k9QF5NI5vTQsrVciMHYf27c5PJwYPhMPc="
+      }
+    },
+    "GraphqlHealthLambdaVersionztm2ue2LXtFQR6ZIL3i7MabOWmasqzhV6q8SqHrTX0": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "GraphqlHealthLambdaFunction"
+        },
+        "CodeSha256": "igb+Ofg977k9QF5NI5vTQsrVciMHYf27c5PJwYPhMPc="
+      }
+    },
+    "AuthLambdaVersionJqurOiIvXLO43VoOatxcjaUHaziJ5spjSJLe37UNXg": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "AuthLambdaFunction"
         },
-        "CodeSha256": "m55vQRoeavRWLdJwOCyYn4bU4X+G9BiBf406mH8b3aU="
+        "CodeSha256": "igb+Ofg977k9QF5NI5vTQsrVciMHYf27c5PJwYPhMPc="
       }
     },
-    "ManageUsersLambdaVersionNLBzuoD7vyv1Bdg8dYTZIkoaiv2whtJE6uGgqMYzY6E": {
+    "ManageUsersLambdaVersionfqgZtJO1z027b6C3qBwHYuaEjbpFCcjQakYNMUm9Xw": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "ManageUsersLambdaFunction"
         },
-        "CodeSha256": "m55vQRoeavRWLdJwOCyYn4bU4X+G9BiBf406mH8b3aU="
+        "CodeSha256": "igb+Ofg977k9QF5NI5vTQsrVciMHYf27c5PJwYPhMPc="
       }
     },
-    "ContractorAccessLambdaVersionlv1LL7xBOaH9BEff6g9zuzs7Zw5PxwDxCBLCeWb6PMI": {
+    "ContractorAccessLambdaVersione4TToZjyYbTTAg0Zz5Qwml0JMhlwtilwqmoITZDpl4": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "ContractorAccessLambdaFunction"
         },
-        "CodeSha256": "m55vQRoeavRWLdJwOCyYn4bU4X+G9BiBf406mH8b3aU="
+        "CodeSha256": "igb+Ofg977k9QF5NI5vTQsrVciMHYf27c5PJwYPhMPc="
       }
     },
-    "SecretsLambdaVersionTgLVMnHrgQHKFxGTf22sap5KeZdIwTsxWBmAgnkw": {
+    "SecretsLambdaVersion1hTU7Hq6bUvwP7ETes2KGeDKFp2ki2nO4tcJNCh8": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "SecretsLambdaFunction"
         },
-        "CodeSha256": "m55vQRoeavRWLdJwOCyYn4bU4X+G9BiBf406mH8b3aU="
+        "CodeSha256": "igb+Ofg977k9QF5NI5vTQsrVciMHYf27c5PJwYPhMPc="
       }
     },
-    "RotateSecretsLambdaVersionBxZ1iwF65gjeFy26NXxFzdirIC9c3ul122vLdVI9Es": {
+    "RotateSecretsLambdaVersionzJkXf20OZDCSCvcKEnTSEqRBayBHabhLA9qEM569Dzs": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "RotateSecretsLambdaFunction"
         },
-        "CodeSha256": "m55vQRoeavRWLdJwOCyYn4bU4X+G9BiBf406mH8b3aU="
+        "CodeSha256": "igb+Ofg977k9QF5NI5vTQsrVciMHYf27c5PJwYPhMPc="
       }
     },
-    "ConfigLambdaVersionjPeahiX225bYgkwnX3G86lW2XMr7WkCJ9yhrtHcai0": {
+    "ConfigLambdaVersionn1ijTmkbaBsh44A0Wz7bCTKNBDpzSgm3Hfn7xJVpZo": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "ConfigLambdaFunction"
         },
-        "CodeSha256": "m55vQRoeavRWLdJwOCyYn4bU4X+G9BiBf406mH8b3aU="
+        "CodeSha256": "igb+Ofg977k9QF5NI5vTQsrVciMHYf27c5PJwYPhMPc="
       }
     },
-    "ClaudeAssistLambdaVersionzl0n9FKGcLCxmCtvNG7X4Ci3KrVOP9DEaNVUuGM4": {
+    "ClaudeAssistLambdaVersionAzxCs4Z32D3eHpQMM5O3Krp0Eqeuc33D2ll8leA": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "ClaudeAssistLambdaFunction"
         },
-        "CodeSha256": "m55vQRoeavRWLdJwOCyYn4bU4X+G9BiBf406mH8b3aU="
+        "CodeSha256": "igb+Ofg977k9QF5NI5vTQsrVciMHYf27c5PJwYPhMPc="
       }
     },
-    "AuditLogLambdaVersionXCBljC0beFgDm6wnYHOzWgafSGTrsQXntHHnED7lhFg": {
+    "AuditLogLambdaVersionNf8unOPY8kbOL6X20Lqx18IxMBHdEH61jAIGIZM1I": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "AuditLogLambdaFunction"
         },
-        "CodeSha256": "m55vQRoeavRWLdJwOCyYn4bU4X+G9BiBf406mH8b3aU="
+        "CodeSha256": "igb+Ofg977k9QF5NI5vTQsrVciMHYf27c5PJwYPhMPc="
       }
     },
-    "AuthVerifyLambdaVersionFn0w82vMcyz5PtTFkp2OF2mhUtUzJIq5STlFiHy7I": {
+    "AuthVerifyLambdaVersion1bkxJp7BDW3ZZipuEtCgVg3lOZx22Es2ycbNU7acI0": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "AuthVerifyLambdaFunction"
         },
-        "CodeSha256": "m55vQRoeavRWLdJwOCyYn4bU4X+G9BiBf406mH8b3aU="
+        "CodeSha256": "igb+Ofg977k9QF5NI5vTQsrVciMHYf27c5PJwYPhMPc="
       }
     },
-    "CleanupContractorsLambdaVersion6iL8YGwd5xP4V6uAgGC5yk7E2UFgRpIL6FfZH2PYM": {
+    "CleanupContractorsLambdaVersionaLWQg8i0VGAFtS4t45qj5TgjOX3crMiL6kjOO6KXMM": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "CleanupContractorsLambdaFunction"
         },
-        "CodeSha256": "m55vQRoeavRWLdJwOCyYn4bU4X+G9BiBf406mH8b3aU="
+        "CodeSha256": "igb+Ofg977k9QF5NI5vTQsrVciMHYf27c5PJwYPhMPc="
+      }
+    },
+    "WebsocketConnectLambdaVersiongR8WHRMSvwchQRjoalHc33yJ7ZwM9t9uZO5CLTI": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "WebsocketConnectLambdaFunction"
+        },
+        "CodeSha256": "igb+Ofg977k9QF5NI5vTQsrVciMHYf27c5PJwYPhMPc="
+      }
+    },
+    "WebsocketDisconnectLambdaVersion6V5R32p4i1SxSg1uLSBf9VMATqRwowMNf9cHc6yZDJ8": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "WebsocketDisconnectLambdaFunction"
+        },
+        "CodeSha256": "igb+Ofg977k9QF5NI5vTQsrVciMHYf27c5PJwYPhMPc="
+      }
+    },
+    "WebsocketMessageLambdaVersionxvhjo8J4YAvVuqf1KytySFpg2c5Qwh7KlBKZFjndUU": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "WebsocketMessageLambdaFunction"
+        },
+        "CodeSha256": "igb+Ofg977k9QF5NI5vTQsrVciMHYf27c5PJwYPhMPc="
+      }
+    },
+    "WebsocketPingLambdaVersionHGN0jnusEzAtiVEm6TF4CDDpc1vxV6wYfUuuyiETUA": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "WebsocketPingLambdaFunction"
+        },
+        "CodeSha256": "igb+Ofg977k9QF5NI5vTQsrVciMHYf27c5PJwYPhMPc="
       }
     },
     "RotateSecretsEventsRuleSchedule1": {
@@ -823,6 +1292,33 @@
             "ApiGatewayRestApi",
             "RootResourceId"
           ]
+        },
+        "PathPart": "health",
+        "RestApiId": {
+          "Ref": "ApiGatewayRestApi"
+        }
+      }
+    },
+    "ApiGatewayResourceGraphql": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Fn::GetAtt": [
+            "ApiGatewayRestApi",
+            "RootResourceId"
+          ]
+        },
+        "PathPart": "graphql",
+        "RestApiId": {
+          "Ref": "ApiGatewayRestApi"
+        }
+      }
+    },
+    "ApiGatewayResourceGraphqlHealth": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Ref": "ApiGatewayResourceGraphql"
         },
         "PathPart": "health",
         "RestApiId": {
@@ -1118,6 +1614,96 @@
         },
         "ResourceId": {
           "Ref": "ApiGatewayResourceHealth"
+        },
+        "RestApiId": {
+          "Ref": "ApiGatewayRestApi"
+        }
+      }
+    },
+    "ApiGatewayMethodGraphqlOptions": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "MethodResponses": [
+          {
+            "StatusCode": "200",
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "ResponseModels": {}
+          }
+        ],
+        "RequestParameters": {},
+        "Integration": {
+          "Type": "MOCK",
+          "RequestTemplates": {
+            "application/json": "{statusCode:200}"
+          },
+          "ContentHandling": "CONVERT_TO_TEXT",
+          "IntegrationResponses": [
+            {
+              "StatusCode": "200",
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent,X-Amzn-Trace-Id'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,POST'"
+              },
+              "ResponseTemplates": {
+                "application/json": ""
+              }
+            }
+          ]
+        },
+        "ResourceId": {
+          "Ref": "ApiGatewayResourceGraphql"
+        },
+        "RestApiId": {
+          "Ref": "ApiGatewayRestApi"
+        }
+      }
+    },
+    "ApiGatewayMethodGraphqlHealthOptions": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "MethodResponses": [
+          {
+            "StatusCode": "200",
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "ResponseModels": {}
+          }
+        ],
+        "RequestParameters": {},
+        "Integration": {
+          "Type": "MOCK",
+          "RequestTemplates": {
+            "application/json": "{statusCode:200}"
+          },
+          "ContentHandling": "CONVERT_TO_TEXT",
+          "IntegrationResponses": [
+            {
+              "StatusCode": "200",
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent,X-Amzn-Trace-Id'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET'"
+              },
+              "ResponseTemplates": {
+                "application/json": ""
+              }
+            }
+          ]
+        },
+        "ResourceId": {
+          "Ref": "ApiGatewayResourceGraphqlHealth"
         },
         "RestApiId": {
           "Ref": "ApiGatewayRestApi"
@@ -1798,6 +2384,144 @@
       },
       "DependsOn": [
         "HealthLambdaPermissionApiGateway"
+      ]
+    },
+    "ApiGatewayMethodGraphqlPost": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "HttpMethod": "POST",
+        "RequestParameters": {},
+        "ResourceId": {
+          "Ref": "ApiGatewayResourceGraphql"
+        },
+        "RestApiId": {
+          "Ref": "ApiGatewayRestApi"
+        },
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "GraphqlLambdaFunction",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "MethodResponses": []
+      },
+      "DependsOn": [
+        "GraphqlLambdaPermissionApiGateway"
+      ]
+    },
+    "ApiGatewayMethodGraphqlGet": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "HttpMethod": "GET",
+        "RequestParameters": {},
+        "ResourceId": {
+          "Ref": "ApiGatewayResourceGraphql"
+        },
+        "RestApiId": {
+          "Ref": "ApiGatewayRestApi"
+        },
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "GraphqlLambdaFunction",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "MethodResponses": []
+      },
+      "DependsOn": [
+        "GraphqlLambdaPermissionApiGateway"
+      ]
+    },
+    "ApiGatewayMethodGraphqlHealthGet": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "HttpMethod": "GET",
+        "RequestParameters": {},
+        "ResourceId": {
+          "Ref": "ApiGatewayResourceGraphqlHealth"
+        },
+        "RestApiId": {
+          "Ref": "ApiGatewayRestApi"
+        },
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "GraphqlHealthLambdaFunction",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "MethodResponses": []
+      },
+      "DependsOn": [
+        "GraphqlHealthLambdaPermissionApiGateway"
       ]
     },
     "ApiGatewayMethodAuthLoginPost": {
@@ -2851,7 +3575,7 @@
         "Type": "TOKEN"
       }
     },
-    "ApiGatewayDeployment1754624438093": {
+    "ApiGatewayDeployment1754874156426": {
       "Type": "AWS::ApiGateway::Deployment",
       "Properties": {
         "RestApiId": {
@@ -2861,6 +3585,8 @@
       },
       "DependsOn": [
         "ApiGatewayMethodHealthOptions",
+        "ApiGatewayMethodGraphqlOptions",
+        "ApiGatewayMethodGraphqlHealthOptions",
         "ApiGatewayMethodAuthLoginOptions",
         "ApiGatewayMethodAuthRefreshOptions",
         "ApiGatewayMethodAuthLogoutOptions",
@@ -2876,6 +3602,9 @@
         "ApiGatewayMethodAssistSetupOptions",
         "ApiGatewayMethodAuditOptions",
         "ApiGatewayMethodHealthGet",
+        "ApiGatewayMethodGraphqlPost",
+        "ApiGatewayMethodGraphqlGet",
+        "ApiGatewayMethodGraphqlHealthGet",
         "ApiGatewayMethodAuthLoginPost",
         "ApiGatewayMethodAuthRefreshPost",
         "ApiGatewayMethodAuthLogoutPost",
@@ -2905,6 +3634,80 @@
         "FunctionName": {
           "Fn::GetAtt": [
             "HealthLambdaFunction",
+            "Arn"
+          ]
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":",
+              {
+                "Ref": "AWS::AccountId"
+              },
+              ":",
+              {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "/*/*"
+            ]
+          ]
+        }
+      }
+    },
+    "GraphqlLambdaPermissionApiGateway": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "GraphqlLambdaFunction",
+            "Arn"
+          ]
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":",
+              {
+                "Ref": "AWS::AccountId"
+              },
+              ":",
+              {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "/*/*"
+            ]
+          ]
+        }
+      }
+    },
+    "GraphqlHealthLambdaPermissionApiGateway": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "GraphqlHealthLambdaFunction",
             "Arn"
           ]
         },
@@ -3232,6 +4035,323 @@
         }
       }
     },
+    "WebsocketsApi": {
+      "Type": "AWS::ApiGatewayV2::Api",
+      "Properties": {
+        "Name": "prod-candlefish-employee-setup-lean-websockets",
+        "RouteSelectionExpression": "$request.body.action",
+        "Description": "Serverless Websockets",
+        "ProtocolType": "WEBSOCKET"
+      }
+    },
+    "WebsocketConnectWebsocketsIntegration": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "WebsocketsApi"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":apigateway:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":lambda:path/2015-03-31/functions/",
+              {
+                "Fn::GetAtt": [
+                  "WebsocketConnectLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "/invocations"
+            ]
+          ]
+        }
+      }
+    },
+    "WebsocketDisconnectWebsocketsIntegration": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "WebsocketsApi"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":apigateway:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":lambda:path/2015-03-31/functions/",
+              {
+                "Fn::GetAtt": [
+                  "WebsocketDisconnectLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "/invocations"
+            ]
+          ]
+        }
+      }
+    },
+    "WebsocketMessageWebsocketsIntegration": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "WebsocketsApi"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":apigateway:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":lambda:path/2015-03-31/functions/",
+              {
+                "Fn::GetAtt": [
+                  "WebsocketMessageLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "/invocations"
+            ]
+          ]
+        }
+      }
+    },
+    "WebsocketPingWebsocketsIntegration": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "WebsocketsApi"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":apigateway:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":lambda:path/2015-03-31/functions/",
+              {
+                "Fn::GetAtt": [
+                  "WebsocketPingLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "/invocations"
+            ]
+          ]
+        }
+      }
+    },
+    "WebsocketConnectLambdaPermissionWebsockets": {
+      "Type": "AWS::Lambda::Permission",
+      "DependsOn": [
+        "WebsocketsApi",
+        "WebsocketConnectLambdaFunction"
+      ],
+      "Properties": {
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "WebsocketConnectLambdaFunction",
+            "Arn"
+          ]
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com"
+      }
+    },
+    "WebsocketDisconnectLambdaPermissionWebsockets": {
+      "Type": "AWS::Lambda::Permission",
+      "DependsOn": [
+        "WebsocketsApi",
+        "WebsocketDisconnectLambdaFunction"
+      ],
+      "Properties": {
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "WebsocketDisconnectLambdaFunction",
+            "Arn"
+          ]
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com"
+      }
+    },
+    "WebsocketMessageLambdaPermissionWebsockets": {
+      "Type": "AWS::Lambda::Permission",
+      "DependsOn": [
+        "WebsocketsApi",
+        "WebsocketMessageLambdaFunction"
+      ],
+      "Properties": {
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "WebsocketMessageLambdaFunction",
+            "Arn"
+          ]
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com"
+      }
+    },
+    "WebsocketPingLambdaPermissionWebsockets": {
+      "Type": "AWS::Lambda::Permission",
+      "DependsOn": [
+        "WebsocketsApi",
+        "WebsocketPingLambdaFunction"
+      ],
+      "Properties": {
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "WebsocketPingLambdaFunction",
+            "Arn"
+          ]
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com"
+      }
+    },
+    "SconnectWebsocketsRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "WebsocketsApi"
+        },
+        "RouteKey": "$connect",
+        "AuthorizationType": "NONE",
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "WebsocketConnectWebsocketsIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "SdisconnectWebsocketsRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "WebsocketsApi"
+        },
+        "RouteKey": "$disconnect",
+        "AuthorizationType": "NONE",
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "WebsocketDisconnectWebsocketsIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "SdefaultWebsocketsRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "WebsocketsApi"
+        },
+        "RouteKey": "$default",
+        "AuthorizationType": "NONE",
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "WebsocketMessageWebsocketsIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "pingWebsocketsRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "WebsocketsApi"
+        },
+        "RouteKey": "ping",
+        "AuthorizationType": "NONE",
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "WebsocketPingWebsocketsIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "WebsocketsDeploymentStage": {
+      "Type": "AWS::ApiGatewayV2::Stage",
+      "Properties": {
+        "ApiId": {
+          "Ref": "WebsocketsApi"
+        },
+        "StageName": "prod",
+        "Description": "Serverless Websockets",
+        "DeploymentId": {
+          "Ref": "WebsocketsDeploymentoUys3sCXPfzpKvNVqqwVHljZFMxC1HN9iIdd6xuuZI0"
+        }
+      }
+    },
+    "WebsocketsDeploymentoUys3sCXPfzpKvNVqqwVHljZFMxC1HN9iIdd6xuuZI0": {
+      "Type": "AWS::ApiGatewayV2::Deployment",
+      "DependsOn": [
+        "SconnectWebsocketsRoute",
+        "SdisconnectWebsocketsRoute",
+        "SdefaultWebsocketsRoute",
+        "pingWebsocketsRoute"
+      ],
+      "Properties": {
+        "ApiId": {
+          "Ref": "WebsocketsApi"
+        },
+        "Description": "Serverless Websockets"
+      }
+    },
     "UsersTable": {
       "Type": "AWS::DynamoDB::Table",
       "Properties": {
@@ -3466,6 +4586,143 @@
         }
       }
     },
+    "DaxSubnetGroup": {
+      "Type": "AWS::DAX::SubnetGroup",
+      "Properties": {
+        "SubnetGroupName": "candlefish-employee-setup-lean-prod-dax-subnet-group",
+        "Description": "DAX subnet group for GraphQL caching",
+        "SubnetIds": [
+          {
+            "Ref": "DaxSubnet1"
+          },
+          {
+            "Ref": "DaxSubnet2"
+          }
+        ]
+      }
+    },
+    "DaxCluster": {
+      "Type": "AWS::DAX::Cluster",
+      "Properties": {
+        "ClusterName": "candlefish-employee-setup-lean-prod-dax",
+        "Description": "DAX cluster for GraphQL caching",
+        "NodeType": "dax.t3.small",
+        "ReplicationFactor": 1,
+        "IAMRoleARN": {
+          "Fn::GetAtt": [
+            "DaxServiceRole",
+            "Arn"
+          ]
+        },
+        "SubnetGroupName": {
+          "Ref": "DaxSubnetGroup"
+        },
+        "SecurityGroupIds": [
+          {
+            "Ref": "DaxSecurityGroup"
+          }
+        ]
+      }
+    },
+    "DaxServiceRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "dax.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+        ]
+      }
+    },
+    "DaxSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Security group for DAX cluster",
+        "VpcId": {
+          "Ref": "DaxVPC"
+        },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 8111,
+            "ToPort": 8111,
+            "SourceSecurityGroupId": {
+              "Ref": "DaxClientSecurityGroup"
+            }
+          }
+        ]
+      }
+    },
+    "DaxVPC": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": "10.0.0.0/16",
+        "EnableDnsHostnames": true,
+        "EnableDnsSupport": true
+      }
+    },
+    "DaxSubnet1": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "DaxVPC"
+        },
+        "CidrBlock": "10.0.1.0/24",
+        "AvailabilityZone": {
+          "Fn::Select": [
+            0,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        }
+      }
+    },
+    "DaxSubnet2": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "DaxVPC"
+        },
+        "CidrBlock": "10.0.2.0/24",
+        "AvailabilityZone": {
+          "Fn::Select": [
+            1,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        }
+      }
+    },
+    "DaxClientSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Security group for DAX clients",
+        "VpcId": {
+          "Ref": "DaxVPC"
+        }
+      }
+    },
+    "WebSocketApi": {
+      "Type": "AWS::ApiGatewayV2::Api",
+      "Properties": {
+        "Name": "candlefish-employee-setup-lean-prod-websocket",
+        "ProtocolType": "WEBSOCKET",
+        "RouteSelectionExpression": "$request.body.action",
+        "Description": "WebSocket API for GraphQL subscriptions"
+      }
+    },
     "WebsiteBucket": {
       "Type": "AWS::S3::Bucket",
       "Properties": {
@@ -3535,16 +4792,34 @@
     "HealthLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "HealthLambdaVersionZ7J45p2JqFjIegb8imNbK6UfFZelBRXDOtOGrbzUQ"
+        "Ref": "HealthLambdaVersion8DwKO3LhfxqdXh2Tk5T7yjMbhFFikb5Y0vULiLV3H4"
       },
       "Export": {
         "Name": "sls-candlefish-employee-setup-lean-prod-HealthLambdaFunctionQualifiedArn"
       }
     },
+    "GraphqlLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "GraphqlLambdaVersion4pJ0pAu4iT0n907zaYsS44ckOJYsWEekUwxY7AY3o"
+      },
+      "Export": {
+        "Name": "sls-candlefish-employee-setup-lean-prod-GraphqlLambdaFunctionQualifiedArn"
+      }
+    },
+    "GraphqlHealthLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "GraphqlHealthLambdaVersionztm2ue2LXtFQR6ZIL3i7MabOWmasqzhV6q8SqHrTX0"
+      },
+      "Export": {
+        "Name": "sls-candlefish-employee-setup-lean-prod-GraphqlHealthLambdaFunctionQualifiedArn"
+      }
+    },
     "AuthLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "AuthLambdaVersionHk4VkIIqTEnrtu4OKZvDJcA2PsaCRMhlCKtaafWyI"
+        "Ref": "AuthLambdaVersionJqurOiIvXLO43VoOatxcjaUHaziJ5spjSJLe37UNXg"
       },
       "Export": {
         "Name": "sls-candlefish-employee-setup-lean-prod-AuthLambdaFunctionQualifiedArn"
@@ -3553,7 +4828,7 @@
     "ManageUsersLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "ManageUsersLambdaVersionNLBzuoD7vyv1Bdg8dYTZIkoaiv2whtJE6uGgqMYzY6E"
+        "Ref": "ManageUsersLambdaVersionfqgZtJO1z027b6C3qBwHYuaEjbpFCcjQakYNMUm9Xw"
       },
       "Export": {
         "Name": "sls-candlefish-employee-setup-lean-prod-ManageUsersLambdaFunctionQualifiedArn"
@@ -3562,7 +4837,7 @@
     "ContractorAccessLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "ContractorAccessLambdaVersionlv1LL7xBOaH9BEff6g9zuzs7Zw5PxwDxCBLCeWb6PMI"
+        "Ref": "ContractorAccessLambdaVersione4TToZjyYbTTAg0Zz5Qwml0JMhlwtilwqmoITZDpl4"
       },
       "Export": {
         "Name": "sls-candlefish-employee-setup-lean-prod-ContractorAccessLambdaFunctionQualifiedArn"
@@ -3571,7 +4846,7 @@
     "SecretsLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "SecretsLambdaVersionTgLVMnHrgQHKFxGTf22sap5KeZdIwTsxWBmAgnkw"
+        "Ref": "SecretsLambdaVersion1hTU7Hq6bUvwP7ETes2KGeDKFp2ki2nO4tcJNCh8"
       },
       "Export": {
         "Name": "sls-candlefish-employee-setup-lean-prod-SecretsLambdaFunctionQualifiedArn"
@@ -3580,7 +4855,7 @@
     "RotateSecretsLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "RotateSecretsLambdaVersionBxZ1iwF65gjeFy26NXxFzdirIC9c3ul122vLdVI9Es"
+        "Ref": "RotateSecretsLambdaVersionzJkXf20OZDCSCvcKEnTSEqRBayBHabhLA9qEM569Dzs"
       },
       "Export": {
         "Name": "sls-candlefish-employee-setup-lean-prod-RotateSecretsLambdaFunctionQualifiedArn"
@@ -3589,7 +4864,7 @@
     "ConfigLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "ConfigLambdaVersionjPeahiX225bYgkwnX3G86lW2XMr7WkCJ9yhrtHcai0"
+        "Ref": "ConfigLambdaVersionn1ijTmkbaBsh44A0Wz7bCTKNBDpzSgm3Hfn7xJVpZo"
       },
       "Export": {
         "Name": "sls-candlefish-employee-setup-lean-prod-ConfigLambdaFunctionQualifiedArn"
@@ -3598,7 +4873,7 @@
     "ClaudeAssistLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "ClaudeAssistLambdaVersionzl0n9FKGcLCxmCtvNG7X4Ci3KrVOP9DEaNVUuGM4"
+        "Ref": "ClaudeAssistLambdaVersionAzxCs4Z32D3eHpQMM5O3Krp0Eqeuc33D2ll8leA"
       },
       "Export": {
         "Name": "sls-candlefish-employee-setup-lean-prod-ClaudeAssistLambdaFunctionQualifiedArn"
@@ -3607,7 +4882,7 @@
     "AuditLogLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "AuditLogLambdaVersionXCBljC0beFgDm6wnYHOzWgafSGTrsQXntHHnED7lhFg"
+        "Ref": "AuditLogLambdaVersionNf8unOPY8kbOL6X20Lqx18IxMBHdEH61jAIGIZM1I"
       },
       "Export": {
         "Name": "sls-candlefish-employee-setup-lean-prod-AuditLogLambdaFunctionQualifiedArn"
@@ -3616,7 +4891,7 @@
     "AuthVerifyLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "AuthVerifyLambdaVersionFn0w82vMcyz5PtTFkp2OF2mhUtUzJIq5STlFiHy7I"
+        "Ref": "AuthVerifyLambdaVersion1bkxJp7BDW3ZZipuEtCgVg3lOZx22Es2ycbNU7acI0"
       },
       "Export": {
         "Name": "sls-candlefish-employee-setup-lean-prod-AuthVerifyLambdaFunctionQualifiedArn"
@@ -3625,10 +4900,46 @@
     "CleanupContractorsLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "CleanupContractorsLambdaVersion6iL8YGwd5xP4V6uAgGC5yk7E2UFgRpIL6FfZH2PYM"
+        "Ref": "CleanupContractorsLambdaVersionaLWQg8i0VGAFtS4t45qj5TgjOX3crMiL6kjOO6KXMM"
       },
       "Export": {
         "Name": "sls-candlefish-employee-setup-lean-prod-CleanupContractorsLambdaFunctionQualifiedArn"
+      }
+    },
+    "WebsocketConnectLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "WebsocketConnectLambdaVersiongR8WHRMSvwchQRjoalHc33yJ7ZwM9t9uZO5CLTI"
+      },
+      "Export": {
+        "Name": "sls-candlefish-employee-setup-lean-prod-WebsocketConnectLambdaFunctionQualifiedArn"
+      }
+    },
+    "WebsocketDisconnectLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "WebsocketDisconnectLambdaVersion6V5R32p4i1SxSg1uLSBf9VMATqRwowMNf9cHc6yZDJ8"
+      },
+      "Export": {
+        "Name": "sls-candlefish-employee-setup-lean-prod-WebsocketDisconnectLambdaFunctionQualifiedArn"
+      }
+    },
+    "WebsocketMessageLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "WebsocketMessageLambdaVersionxvhjo8J4YAvVuqf1KytySFpg2c5Qwh7KlBKZFjndUU"
+      },
+      "Export": {
+        "Name": "sls-candlefish-employee-setup-lean-prod-WebsocketMessageLambdaFunctionQualifiedArn"
+      }
+    },
+    "WebsocketPingLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "WebsocketPingLambdaVersionHGN0jnusEzAtiVEm6TF4CDDpc1vxV6wYfUuuyiETUA"
+      },
+      "Export": {
+        "Name": "sls-candlefish-employee-setup-lean-prod-WebsocketPingLambdaFunctionQualifiedArn"
       }
     },
     "ServiceEndpoint": {
@@ -3655,6 +4966,32 @@
       },
       "Export": {
         "Name": "sls-candlefish-employee-setup-lean-prod-ServiceEndpoint"
+      }
+    },
+    "ServiceEndpointWebsocket": {
+      "Description": "URL of the service endpoint",
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "wss://",
+            {
+              "Ref": "WebsocketsApi"
+            },
+            ".execute-api.",
+            {
+              "Ref": "AWS::Region"
+            },
+            ".",
+            {
+              "Ref": "AWS::URLSuffix"
+            },
+            "/prod"
+          ]
+        ]
+      },
+      "Export": {
+        "Name": "sls-candlefish-employee-setup-lean-prod-ServiceEndpointWebsocket"
       }
     },
     "ApiEndpoint": {
@@ -3697,6 +5034,61 @@
       },
       "Export": {
         "Name": "candlefish-employee-setup-lean-prod-bucket"
+      }
+    },
+    "GraphQLEndpoint": {
+      "Description": "GraphQL endpoint URL",
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "https://",
+            {
+              "Ref": "ApiGatewayRestApi"
+            },
+            ".execute-api.",
+            "us-east-1",
+            ".amazonaws.com/",
+            "prod",
+            "/graphql"
+          ]
+        ]
+      },
+      "Export": {
+        "Name": "candlefish-employee-setup-lean-prod-graphql-endpoint"
+      }
+    },
+    "WebSocketEndpoint": {
+      "Description": "WebSocket API endpoint for GraphQL subscriptions",
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "wss://",
+            {
+              "Ref": "WebSocketApi"
+            },
+            ".execute-api.",
+            "us-east-1",
+            ".amazonaws.com/",
+            "prod"
+          ]
+        ]
+      },
+      "Export": {
+        "Name": "candlefish-employee-setup-lean-prod-websocket-endpoint"
+      }
+    },
+    "DaxEndpoint": {
+      "Description": "DAX cluster endpoint",
+      "Value": {
+        "Fn::GetAtt": [
+          "DaxCluster",
+          "ClusterDiscoveryEndpoint"
+        ]
+      },
+      "Export": {
+        "Name": "candlefish-employee-setup-lean-prod-dax-endpoint"
       }
     }
   }

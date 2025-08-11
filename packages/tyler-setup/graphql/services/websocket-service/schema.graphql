@@ -1,0 +1,529 @@
+# WebSocket Service Schema Extension
+# Handles real-time connections, event broadcasting, and WebSocket management
+
+extend schema @link(url: "https://specs.apollo.dev/federation/v2.3")
+
+"""
+WebSocket room management for grouped connections
+"""
+type WebSocketRoom @key(fields: "id") {
+  id: ID!
+  name: String!
+  description: String!
+
+  # Room configuration
+  maxConnections: Int!
+  isPrivate: Boolean!
+  requiresAuth: Boolean!
+
+  # Access control
+  allowedUsers: [ID!]!
+  allowedRoles: [UserRole!]!
+
+  # Room state
+  connectionCount: Int!
+  connections: [WebSocketConnection!]!
+  isActive: Boolean!
+
+  # Metadata
+  createdAt: Date!
+  createdBy: User!
+
+  # Activity
+  messageCount: Int!
+  lastActivity: Date!
+
+  # Events
+  events: [WebSocketEvent!]!
+}
+
+"""
+WebSocket message handling
+"""
+type WebSocketMessage @key(fields: "id") {
+  id: ID!
+  connectionId: String!
+  roomId: ID
+
+  # Message content
+  type: MessageType!
+  payload: JSON!
+
+  # Routing
+  targetConnections: [String!]
+  broadcast: Boolean!
+
+  # Timing
+  sentAt: Date!
+  deliveredAt: Date
+
+  # Status
+  status: MessageStatus!
+  deliveryAttempts: Int!
+
+  # Relationships
+  connection: WebSocketConnection!
+  room: WebSocketRoom
+
+  # Response tracking
+  responseExpected: Boolean!
+  responseReceived: Boolean!
+  responseTimeout: Int
+}
+
+enum MessageType {
+  HEARTBEAT
+  AUTH
+  SUBSCRIBE
+  UNSUBSCRIBE
+  DATA
+  NOTIFICATION
+  ERROR
+  SYSTEM
+  BROADCAST
+  DIRECT
+}
+
+enum MessageStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  TIMEOUT
+}
+
+"""
+WebSocket subscription management
+"""
+type WebSocketSubscription @key(fields: "id") {
+  id: ID!
+  connectionId: String!
+
+  # Subscription details
+  topic: String!
+  filter: JSON
+
+  # Status
+  isActive: Boolean!
+  subscribedAt: Date!
+  unsubscribedAt: Date
+
+  # Event tracking
+  eventsReceived: Int!
+  lastEventAt: Date
+
+  # Relationships
+  connection: WebSocketConnection!
+
+  # Configuration
+  options: JSON!
+  rateLimit: Int
+}
+
+"""
+WebSocket channel for organized message routing
+"""
+type WebSocketChannel @key(fields: "id") {
+  id: ID!
+  name: String!
+  description: String!
+
+  # Channel configuration
+  isPublic: Boolean!
+  maxSubscribers: Int!
+  rateLimit: Int!
+
+  # Access control
+  requiredPermissions: [Permission!]!
+  allowedRoles: [UserRole!]!
+
+  # Statistics
+  subscriberCount: Int!
+  messageCount: Int!
+
+  # Subscribers
+  subscriptions: [WebSocketSubscription!]!
+
+  # Activity
+  createdAt: Date!
+  lastActivity: Date!
+
+  # Events
+  events: [WebSocketChannelEvent!]!
+}
+
+type WebSocketChannelEvent {
+  id: ID!
+  channelId: ID!
+  type: String!
+  data: JSON!
+  timestamp: Date!
+  subscriberCount: Int!
+}
+
+"""
+WebSocket rate limiting
+"""
+type WebSocketRateLimit @key(fields: "id") {
+  id: ID!
+  connectionId: String!
+
+  # Rate limit configuration
+  maxMessages: Int!
+  windowSize: Int!
+
+  # Current usage
+  messageCount: Int!
+  windowStart: Date!
+
+  # Violations
+  violationCount: Int!
+  lastViolation: Date
+
+  # Status
+  isThrottled: Boolean!
+  resetAt: Date!
+
+  # Relationships
+  connection: WebSocketConnection!
+}
+
+"""
+WebSocket analytics and metrics
+"""
+type WebSocketMetrics @key(fields: "id") {
+  id: ID!
+  timestamp: Date!
+
+  # Connection metrics
+  totalConnections: Int!
+  activeConnections: Int!
+  newConnections: Int!
+  closedConnections: Int!
+
+  # Message metrics
+  totalMessages: Int!
+  messagesPerSecond: Float!
+  averageMessageSize: Float!
+
+  # Performance metrics
+  averageLatency: Float!
+  errorRate: Float!
+
+  # Resource usage
+  memoryUsage: Float!
+  cpuUsage: Float!
+
+  # By type
+  connectionsByType: JSON!
+  messagesByType: JSON!
+  errorsByType: JSON!
+}
+
+# Input Types
+
+input WebSocketRoomInput {
+  name: String!
+  description: String!
+  maxConnections: Int = 100
+  isPrivate: Boolean = false
+  requiresAuth: Boolean = true
+  allowedUsers: [ID!]
+  allowedRoles: [UserRole!]
+}
+
+input WebSocketMessageInput {
+  type: MessageType!
+  payload: JSON!
+  targetConnections: [String!]
+  broadcast: Boolean = false
+  roomId: ID
+  responseExpected: Boolean = false
+  responseTimeout: Int
+}
+
+input WebSocketSubscriptionInput {
+  connectionId: String!
+  topic: String!
+  filter: JSON
+  options: JSON
+  rateLimit: Int
+}
+
+input WebSocketChannelInput {
+  name: String!
+  description: String!
+  isPublic: Boolean = true
+  maxSubscribers: Int = 1000
+  rateLimit: Int = 100
+  requiredPermissions: [Permission!]
+  allowedRoles: [UserRole!]
+}
+
+input WebSocketConnectionFilter {
+  userId: ID
+  connectionId: String
+  isActive: Boolean
+  roomId: ID
+  connectedAfter: Date
+  lastPingAfter: Date
+}
+
+input WebSocketEventFilter {
+  type: WebSocketEventType
+  connectionId: String
+  roomId: ID
+  dateFrom: Date
+  dateTo: Date
+}
+
+# Extend Root Types
+
+extend type Query {
+  # Connection management
+  webSocketConnections(
+    pagination: PaginationInput
+    filter: WebSocketConnectionFilter
+  ): [WebSocketConnection!]! @auth(requires: ADMIN)
+
+  webSocketConnection(connectionId: String!): WebSocketConnection @auth(requires: ADMIN)
+  activeWebSocketConnections: [WebSocketConnection!]! @auth(requires: ADMIN)
+
+  # Room management
+  webSocketRooms: [WebSocketRoom!]! @auth(requires: ADMIN)
+  webSocketRoom(id: ID!): WebSocketRoom @auth(requires: ADMIN)
+
+  # Message tracking
+  webSocketMessages(
+    pagination: PaginationInput
+    connectionId: String
+    roomId: ID
+    type: MessageType
+  ): [WebSocketMessage!]! @auth(requires: ADMIN)
+
+  # Subscriptions
+  webSocketSubscriptions(
+    pagination: PaginationInput
+    connectionId: String
+    topic: String
+    active: Boolean
+  ): [WebSocketSubscription!]! @auth(requires: ADMIN)
+
+  # Channels
+  webSocketChannels: [WebSocketChannel!]! @auth(requires: ADMIN)
+  webSocketChannel(id: ID!): WebSocketChannel @auth(requires: ADMIN)
+
+  # Rate limiting
+  webSocketRateLimits(
+    connectionId: String
+    throttled: Boolean
+  ): [WebSocketRateLimit!]! @auth(requires: ADMIN)
+
+  # Analytics
+  webSocketMetrics(
+    dateFrom: Date
+    dateTo: Date
+    granularity: String = "hour"
+  ): [WebSocketMetrics!]! @auth(requires: ADMIN)
+
+  webSocketAnalytics: WebSocketAnalytics! @auth(requires: ADMIN)
+}
+
+extend type Mutation {
+  # Room management
+  createWebSocketRoom(input: WebSocketRoomInput!): WebSocketRoom! @auth(requires: ADMIN)
+  updateWebSocketRoom(id: ID!, input: WebSocketRoomInput!): WebSocketRoom! @auth(requires: ADMIN)
+  deleteWebSocketRoom(id: ID!): OperationResponse! @auth(requires: ADMIN)
+
+  # Connection management
+  disconnectWebSocketConnection(connectionId: String!): OperationResponse! @auth(requires: ADMIN)
+  moveConnectionToRoom(connectionId: String!, roomId: ID!): OperationResponse! @auth(requires: ADMIN)
+
+  # Message broadcasting
+  broadcastMessage(input: WebSocketMessageInput!): OperationResponse! @auth(requires: ADMIN)
+  sendDirectMessage(connectionId: String!, input: WebSocketMessageInput!): OperationResponse! @auth(requires: ADMIN)
+
+  # Channel management
+  createWebSocketChannel(input: WebSocketChannelInput!): WebSocketChannel! @auth(requires: ADMIN)
+  updateWebSocketChannel(id: ID!, input: WebSocketChannelInput!): WebSocketChannel! @auth(requires: ADMIN)
+  deleteWebSocketChannel(id: ID!): OperationResponse! @auth(requires: ADMIN)
+
+  # Subscription management
+  createWebSocketSubscription(input: WebSocketSubscriptionInput!): WebSocketSubscription! @auth(requires: USER)
+  cancelWebSocketSubscription(id: ID!): OperationResponse! @auth(requires: USER)
+
+  # Rate limiting
+  updateConnectionRateLimit(connectionId: String!, maxMessages: Int!, windowSize: Int!): OperationResponse! @auth(requires: ADMIN)
+  resetRateLimitViolations(connectionId: String!): OperationResponse! @auth(requires: ADMIN)
+
+  # System operations
+  cleanupStaleConnections: OperationResponse! @auth(requires: ADMIN)
+  restartWebSocketService: OperationResponse! @auth(requires: ADMIN)
+}
+
+extend type Subscription {
+  # Connection events
+  webSocketConnectionCreated: WebSocketConnection! @auth(requires: ADMIN)
+  webSocketConnectionClosed: WebSocketConnection! @auth(requires: ADMIN)
+  webSocketConnectionError: WebSocketConnection! @auth(requires: ADMIN)
+
+  # Room events
+  webSocketRoomCreated: WebSocketRoom! @auth(requires: ADMIN)
+  webSocketRoomUpdated: WebSocketRoom! @auth(requires: ADMIN)
+  webSocketUserJoinedRoom: WebSocketConnection! @auth(requires: ADMIN)
+  webSocketUserLeftRoom: WebSocketConnection! @auth(requires: ADMIN)
+
+  # Message events
+  webSocketMessageSent: WebSocketMessage! @auth(requires: ADMIN)
+  webSocketMessageDelivered: WebSocketMessage! @auth(requires: ADMIN)
+  webSocketMessageFailed: WebSocketMessage! @auth(requires: ADMIN)
+
+  # System events
+  webSocketRateLimitExceeded: WebSocketRateLimit! @auth(requires: ADMIN)
+  webSocketServiceHealthChanged: JSON! @auth(requires: ADMIN)
+
+  # Real-time metrics
+  webSocketMetricsUpdated: WebSocketMetrics! @auth(requires: ADMIN)
+}
+
+# Extend existing types
+
+extend type WebSocketConnection @key(fields: "connectionId") {
+  # Enhanced connection fields
+  room: WebSocketRoom
+  subscriptions: [WebSocketSubscription!]!
+  messages: [WebSocketMessage!]!
+  rateLimit: WebSocketRateLimit
+
+  # Connection state
+  protocol: String!
+  extensions: [String!]!
+
+  # Performance metrics
+  latency: Float
+  messagesSent: Int!
+  messagesReceived: Int!
+  bytesTransferred: Int!
+
+  # Error tracking
+  errorCount: Int!
+  lastError: String
+  lastErrorAt: Date
+
+  # Heartbeat
+  lastHeartbeat: Date!
+  heartbeatInterval: Int!
+  missedHeartbeats: Int!
+
+  # Computed fields
+  connectionDuration: Int!
+  averageLatency: Float!
+  isHealthy: Boolean!
+  riskScore: Float!
+}
+
+extend type WebSocketEvent @key(fields: "id") {
+  # Enhanced event fields
+  room: WebSocketRoom
+  channel: WebSocketChannel
+  subscription: WebSocketSubscription
+
+  # Event metadata
+  source: String!
+  priority: EventPriority!
+  tags: [String!]!
+
+  # Delivery tracking
+  targetCount: Int!
+  deliveredCount: Int!
+  failedCount: Int!
+
+  # Processing
+  processedAt: Date
+  processingTime: Int
+
+  # Relationships
+  relatedEvents: [WebSocketEvent!]!
+}
+
+enum EventPriority {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+  URGENT
+}
+
+type WebSocketAnalytics {
+  # Current state
+  activeConnections: Int!
+  totalRooms: Int!
+  activeSubscriptions: Int!
+
+  # Traffic metrics
+  messagesPerSecond: Float!
+  bytesPerSecond: Float!
+  averageLatency: Float!
+
+  # Error metrics
+  errorRate: Float!
+  connectionFailures: Int!
+  messageFailures: Int!
+
+  # Resource usage
+  memoryUsage: Float!
+  cpuUsage: Float!
+  networkUsage: Float!
+
+  # Top statistics
+  topRooms: [RoomStats!]!
+  topChannels: [ChannelStats!]!
+  busyConnections: [ConnectionStats!]!
+
+  # Trends
+  connectionTrends: [ConnectionTrend!]!
+  messageTrends: [MessageTrend!]!
+  errorTrends: [ErrorTrend!]!
+}
+
+type RoomStats {
+  room: WebSocketRoom!
+  connectionCount: Int!
+  messageCount: Int!
+  activityScore: Float!
+}
+
+type ChannelStats {
+  channel: WebSocketChannel!
+  subscriberCount: Int!
+  messageCount: Int!
+  activityScore: Float!
+}
+
+type ConnectionStats {
+  connection: WebSocketConnection!
+  messageCount: Int!
+  dataTransferred: Int!
+  uptime: Int!
+}
+
+type ConnectionTrend {
+  timestamp: Date!
+  active: Int!
+  new: Int!
+  closed: Int!
+}
+
+type MessageTrend {
+  timestamp: Date!
+  count: Int!
+  size: Float!
+  latency: Float!
+}
+
+type ErrorTrend {
+  timestamp: Date!
+  errors: Int!
+  connectionErrors: Int!
+  messageErrors: Int!
+}

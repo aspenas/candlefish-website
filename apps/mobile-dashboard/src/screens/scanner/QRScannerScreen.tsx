@@ -39,20 +39,23 @@ type QRScannerScreenNavigationProp = StackNavigationProp<
   'QRScanner'
 >;
 
-type QRScannerScreenRouteProp = {
-  key: string;
-  name: 'QRScanner';
-  params: { mode: 'invite' | 'dashboard' };
-};
+interface QRScannerScreenProps {
+  route: {
+    params: {
+      onScanSuccess: (data: string) => void;
+      title?: string;
+      instructions?: string;
+    };
+  };
+}
 
 const { width, height } = Dimensions.get('window');
 
-export const QRScannerScreen: React.FC = () => {
-  const route = useRoute<QRScannerScreenRouteProp>();
+export const QRScannerScreen: React.FC<QRScannerScreenProps> = ({ route }) => {
   const navigation = useNavigation<QRScannerScreenNavigationProp>();
   const dispatch = useDispatch<AppDispatch>();
 
-  const { mode } = route.params;
+  const { onScanSuccess, title = 'Scan QR Code', instructions = 'Position the QR code within the frame' } = route.params;
   const { colorScheme, hapticFeedbackEnabled } = useSelector((state: RootState) => state.ui);
 
   // State
@@ -121,11 +124,9 @@ export const QRScannerScreen: React.FC = () => {
 
   const processQRCode = async (data: string) => {
     try {
-      if (mode === 'invite') {
-        await handleInviteQR(data);
-      } else if (mode === 'dashboard') {
-        await handleDashboardQR(data);
-      }
+      // Call the provided success handler
+      onScanSuccess(data);
+      navigation.goBack();
     } catch (error) {
       console.error('Error processing QR code:', error);
 
@@ -134,8 +135,8 @@ export const QRScannerScreen: React.FC = () => {
       }
 
       Alert.alert(
-        'Invalid QR Code',
-        'The scanned QR code is not valid or has expired.',
+        'Processing Failed',
+        'Failed to process the scanned QR code.',
         [
           { text: 'Scan Again', onPress: resetScanner },
           { text: 'Cancel', onPress: () => navigation.goBack() },
@@ -144,78 +145,6 @@ export const QRScannerScreen: React.FC = () => {
     }
   };
 
-  const handleInviteQR = async (data: string) => {
-    // Extract invitation token from URL
-    const invitePattern = /(?:invite\/|invitationToken=)([a-zA-Z0-9-_]+)/;
-    const match = data.match(invitePattern);
-
-    if (!match) {
-      throw new Error('Invalid invitation QR code');
-    }
-
-    const invitationToken = match[1];
-
-    Alert.alert(
-      'Join Organization',
-      'Do you want to accept this organization invitation?',
-      [
-        { text: 'Cancel', style: 'cancel', onPress: resetScanner },
-        {
-          text: 'Accept',
-          onPress: async () => {
-            try {
-              await dispatch(acceptInvitation(invitationToken)).unwrap();
-
-              dispatch(showToast({
-                type: 'success',
-                title: 'Invitation Accepted',
-                message: 'You have successfully joined the organization',
-                duration: 3000,
-              }));
-
-              navigation.goBack();
-            } catch (error) {
-              dispatch(showToast({
-                type: 'error',
-                title: 'Failed to Accept Invitation',
-                message: error instanceof Error ? error.message : 'Unknown error',
-                duration: 3000,
-              }));
-              resetScanner();
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleDashboardQR = async (data: string) => {
-    // Extract dashboard ID from URL
-    const dashboardPattern = /dashboard\/([a-zA-Z0-9-]+)/;
-    const match = data.match(dashboardPattern);
-
-    if (!match) {
-      throw new Error('Invalid dashboard QR code');
-    }
-
-    const dashboardId = match[1];
-
-    Alert.alert(
-      'Open Dashboard',
-      'Do you want to open this shared dashboard?',
-      [
-        { text: 'Cancel', style: 'cancel', onPress: resetScanner },
-        {
-          text: 'Open',
-          onPress: () => {
-            // Handle deep link navigation
-            handleDeepLink(data);
-            navigation.goBack();
-          },
-        },
-      ]
-    );
-  };
 
   const resetScanner = () => {
     setScanned(false);
@@ -293,7 +222,7 @@ export const QRScannerScreen: React.FC = () => {
         </TouchableOpacity>
 
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {mode === 'invite' ? 'Scan Invitation' : 'Scan Dashboard'}
+          {title}
         </Text>
 
         <TouchableOpacity
@@ -355,10 +284,7 @@ export const QRScannerScreen: React.FC = () => {
       {/* Instructions */}
       <View style={styles.instructionsContainer}>
         <Text style={[styles.instructions, { color: colors.text }]}>
-          {mode === 'invite'
-            ? 'Position the invitation QR code within the frame'
-            : 'Position the dashboard QR code within the frame'
-          }
+          {instructions}
         </Text>
 
         {scanned && (
