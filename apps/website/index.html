@@ -14,9 +14,34 @@
     <link rel="canonical" href="https://candlefish.ai" />
     <link rel="icon" type="image/png" href="/logo/candlefish_original.png" />
 
-    <!-- Preconnect to external resources -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <!-- Resource Hints for Optimal Performance -->
+    <!-- DNS Prefetch for third-party domains -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+
+    <!-- Preconnect for faster connection establishment -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
+
+    <!-- Preload critical resources -->
+    <link rel="preload" as="image" href="/logo/candlefish_original.png" fetchpriority="high" />
+    <link rel="preload" as="image" href="/logo/candlefish_highquality.png" fetchpriority="high" />
+
+    <!-- Preload critical fonts if using Google Fonts -->
+    <link rel="preload" as="font" type="font/woff2" href="https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hjp-Ek-_EeA.woff2" crossorigin />
+
+    <!-- Prefetch next likely navigation targets -->
+    <link rel="prefetch" href="/about" />
+    <link rel="prefetch" href="/contact" />
+
+    <!-- Module preload for critical JavaScript -->
+    <link rel="modulepreload" href="/src/main.tsx" />
+
+    <!-- Prerender for instant navigation (if supported) -->
+    <link rel="prerender" href="/v2" />
 
     <style>
         /* Critical CSS for loading state */

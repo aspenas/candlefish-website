@@ -1,0 +1,333 @@
+name: Dependency Cache Management
+
+on:
+  schedule:
+    # Run every day at 2 AM UTC to refresh caches
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+  push:
+    paths:
+      - '**/package.json'
+      - '**/pnpm-lock.yaml'
+      - '**/requirements*.txt'
+      - '**/pyproject.toml'
+      - '**/poetry.lock'
+      - '**/go.mod'
+      - '**/go.sum'
+      - '**/Cargo.toml'
+      - '**/Cargo.lock'
+
+permissions:
+  contents: read
+
+jobs:
+  # ============================================
+  # Node.js Dependencies
+  # ============================================
+  cache-node:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ['18', '20']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '8.15.6'
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-node-${{ matrix.node }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ matrix.node }}-pnpm-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: '**/node_modules'
+          key: ${{ runner.os }}-node-${{ matrix.node }}-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+
+      - name: Cache Turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ matrix.node }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-${{ matrix.node }}-
+
+      - name: Prebuild common packages
+        run: |
+          pnpm turbo build --filter="./packages/*" --cache-dir=.turbo
+
+      - name: Cache Next.js
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/.next/cache
+            **/.next/standalone
+          key: ${{ runner.os }}-nextjs-${{ matrix.node }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+
+  # ============================================
+  # Python Dependencies
+  # ============================================
+  cache-python:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.10', '3.11', '3.12']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python ${{ matrix.python }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-python-${{ matrix.python }}-pip-${{ hashFiles('**/requirements*.txt', '**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-python-${{ matrix.python }}-pip-
+
+      - name: Install and cache Poetry dependencies
+        if: hashFiles('**/poetry.lock')
+        run: |
+          pip install poetry
+          poetry config virtualenvs.in-project true
+          poetry install --no-interaction --no-ansi
+
+      - name: Cache Poetry virtualenv
+        if: hashFiles('**/poetry.lock')
+        uses: actions/cache@v4
+        with:
+          path: '**/.venv'
+          key: ${{ runner.os }}-python-${{ matrix.python }}-poetry-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Install pip requirements
+        run: |
+          find . -name "requirements*.txt" -exec pip install -r {} \;
+
+  # ============================================
+  # Docker Layer Caching
+  # ============================================
+  cache-docker:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - rtpm-api
+          - otter-gateway
+          - auth-service
+          - analytics-service
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and cache Docker layers
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./deployment/docker/Dockerfile.${{ matrix.service }}
+          push: true
+          tags: ghcr.io/${{ github.repository }}/${{ matrix.service }}:buildcache
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}/${{ matrix.service }}:buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}/${{ matrix.service }}:buildcache,mode=max
+          target: dependencies
+
+  # ============================================
+  # Browser and Testing Tools
+  # ============================================
+  cache-browsers:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json', '**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps
+
+      - name: Cache Cypress
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/Cypress
+          key: ${{ runner.os }}-cypress-${{ hashFiles('**/package-lock.json', '**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-cypress-
+
+  # ============================================
+  # Build Tools and Compilers
+  # ============================================
+  cache-build-tools:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Rust dependencies
+        if: hashFiles('**/Cargo.lock')
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache Go modules
+        if: hashFiles('**/go.sum')
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+
+      - name: Cache Gradle
+        if: hashFiles('**/*.gradle*', '**/gradle-wrapper.properties')
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+
+      - name: Cache Maven
+        if: hashFiles('**/pom.xml')
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+
+  # ============================================
+  # Cache Cleanup
+  # ============================================
+  cleanup-old-caches:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+
+    steps:
+      - name: Cleanup old caches
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const caches = await github.rest.actions.getActionsCacheList({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            })
+
+            // Delete caches older than 7 days
+            const cutoffDate = new Date()
+            cutoffDate.setDate(cutoffDate.getDate() - 7)
+
+            for (const cache of caches.data.actions_caches) {
+              const cacheDate = new Date(cache.created_at)
+              if (cacheDate < cutoffDate) {
+                await github.rest.actions.deleteActionsCacheById({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  cache_id: cache.id,
+                })
+                console.log(`Deleted cache: ${cache.key}`)
+              }
+            }
+
+  # ============================================
+  # Cache Statistics
+  # ============================================
+  cache-report:
+    needs: [cache-node, cache-python, cache-docker, cache-browsers, cache-build-tools]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Generate cache report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const caches = await github.rest.actions.getActionsCacheList({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            })
+
+            // Calculate total cache size
+            let totalSize = 0
+            const cachesByType = {}
+
+            for (const cache of caches.data.actions_caches) {
+              totalSize += cache.size_in_bytes
+
+              // Categorize caches
+              const type = cache.key.split('-')[1] || 'other'
+              if (!cachesByType[type]) {
+                cachesByType[type] = { count: 0, size: 0 }
+              }
+              cachesByType[type].count++
+              cachesByType[type].size += cache.size_in_bytes
+            }
+
+            // Format sizes
+            const formatSize = (bytes) => {
+              const units = ['B', 'KB', 'MB', 'GB']
+              let size = bytes
+              let unitIndex = 0
+              while (size >= 1024 && unitIndex < units.length - 1) {
+                size /= 1024
+                unitIndex++
+              }
+              return `${size.toFixed(2)} ${units[unitIndex]}`
+            }
+
+            // Create report
+            console.log('## Cache Usage Report')
+            console.log(`Total cache size: ${formatSize(totalSize)}`)
+            console.log(`Total cache entries: ${caches.data.total_count}`)
+            console.log('\n### Cache by Type:')
+
+            for (const [type, data] of Object.entries(cachesByType)) {
+              console.log(`- ${type}: ${data.count} entries, ${formatSize(data.size)}`)
+            }
