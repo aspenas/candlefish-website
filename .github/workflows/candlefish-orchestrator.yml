@@ -263,7 +263,7 @@ jobs:
     name: 🔐 Security Gate
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -321,8 +321,11 @@ jobs:
   # ============================================
   build-test:
     name: 🔨 Build & Test [${{ matrix.project }}]
-    needs: [project-discovery, security-gate]
-    if: needs.project-discovery.outputs.projects != ''
+    needs: [project-discovery]
+    if: |
+      always() &&
+      needs.project-discovery.result == 'success' &&
+      needs.project-discovery.outputs.projects != ''
     runs-on: ${{ matrix.runner }}
     timeout-minutes: ${{ matrix.type == 'enterprise' && 20 || 15 }}
     strategy:
