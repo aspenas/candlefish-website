@@ -21,7 +21,7 @@ const PERFORMANCE_BUDGET = {
   'best-practices': 90,
   seo: 95,
   pwa: 80,
-  
+
   // Core Web Vitals
   'first-contentful-paint': 1800,
   'largest-contentful-paint': 2500,
@@ -79,7 +79,7 @@ function runLighthouse(url, outputPath) {
 
   return new Promise((resolve, reject) => {
     log(`Running Lighthouse test for ${url}...`, 'cyan');
-    
+
     exec(command, (error, stdout, stderr) => {
       if (error) {
         reject(error);
@@ -92,7 +92,7 @@ function runLighthouse(url, outputPath) {
 
 function parseResults(jsonPath) {
   const data = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-  
+
   const scores = {
     performance: Math.round(data.categories.performance.score * 100),
     accessibility: Math.round(data.categories.accessibility.score * 100),
@@ -102,7 +102,7 @@ function parseResults(jsonPath) {
 
   const metrics = {};
   const audits = data.audits;
-  
+
   if (audits['first-contentful-paint']) {
     metrics['first-contentful-paint'] = audits['first-contentful-paint'].numericValue;
   }
@@ -127,7 +127,7 @@ function parseResults(jsonPath) {
 
 function checkBudget(results) {
   const failures = [];
-  
+
   // Check score budgets
   for (const [key, threshold] of Object.entries(PERFORMANCE_BUDGET)) {
     if (results.scores[key] !== undefined) {
@@ -201,11 +201,11 @@ function printResults(results, failures) {
     log(`❌ ${failures.length} PERFORMANCE BUDGET(S) FAILED`, 'red');
     console.log('\nFailed metrics:');
     failures.forEach(failure => {
-      const actual = failure.type === 'score' ? 
-        `${failure.actual}/100` : 
+      const actual = failure.type === 'score' ?
+        `${failure.actual}/100` :
         formatMetricValue(failure.actual, failure.metric);
-      const threshold = failure.type === 'score' ? 
-        `${failure.threshold}/100` : 
+      const threshold = failure.type === 'score' ?
+        `${failure.threshold}/100` :
         formatMetricValue(failure.threshold, failure.metric);
       log(`  - ${failure.metric}: ${actual} (threshold: ${threshold})`, 'yellow');
     });
@@ -217,7 +217,7 @@ async function main() {
   const url = process.argv[2] || 'http://localhost:3000';
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const outputDir = path.join(__dirname, '..', 'lighthouse-reports');
-  
+
   // Create output directory if it doesn't exist
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
@@ -234,16 +234,16 @@ async function main() {
 
     // Run Lighthouse test
     await runLighthouse(url, outputPath);
-    
+
     // Parse results
     const results = parseResults(`${outputPath}.report.json`);
-    
+
     // Check performance budget
     const failures = checkBudget(results);
-    
+
     // Print results
     printResults(results, failures);
-    
+
     // Save summary
     const summary = {
       timestamp: new Date().toISOString(),
@@ -251,20 +251,20 @@ async function main() {
       ...results,
       budgetFailures: failures
     };
-    
+
     fs.writeFileSync(
       path.join(outputDir, 'latest-summary.json'),
       JSON.stringify(summary, null, 2)
     );
-    
+
     log(`Full reports saved to: ${outputDir}`, 'cyan');
     log(`HTML report: ${outputPath}.report.html`, 'cyan');
-    
+
     // Exit with error code if budget failed
     if (failures.length > 0) {
       process.exit(1);
     }
-    
+
   } catch (error) {
     log(`Error running performance test: ${error.message}`, 'red');
     process.exit(1);

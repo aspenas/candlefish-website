@@ -42,7 +42,7 @@ jobs:
     environment:
       name: ${{ inputs.environment }}
       url: https://${{ inputs.project }}.candlefish.ai
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

@@ -28,11 +28,11 @@ interface User {
 
 export class AuthenticationService {
   private jwtSecret: string
-  
+
   constructor(jwtSecret: string) {
     this.jwtSecret = jwtSecret
   }
-  
+
   /**
    * Hash password with bcrypt
    */
@@ -40,33 +40,33 @@ export class AuthenticationService {
     const saltRounds = 12
     return bcrypt.hash(password, saltRounds)
   }
-  
+
   /**
    * Verify password against hash
    */
   async verifyPassword(password: string, hash: string): Promise<boolean> {
     return bcrypt.compare(password, hash)
   }
-  
+
   /**
    * Generate JWT token
    */
   generateToken(user: User): string {
     return jwt.sign(
-      { 
-        id: user.id, 
-        email: user.email, 
-        role: user.role 
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role
       },
       this.jwtSecret,
-      { 
+      {
         expiresIn: '24h',
         issuer: 'paintbox',
         audience: 'paintbox-users'
       }
     )
   }
-  
+
   /**
    * Verify and decode JWT token
    */
@@ -80,18 +80,18 @@ export class AuthenticationService {
       throw new Error('Invalid or expired token')
     }
   }
-  
+
   /**
    * Authentication middleware
    */
   authenticate() {
     return async (req: any, res: any, next: any) => {
       const token = req.cookies?.session || req.headers?.authorization?.split(' ')[1]
-      
+
       if (!token) {
         return res.status(401).json({ error: 'Authentication required' })
       }
-      
+
       try {
         const decoded = this.verifyToken(token)
         req.user = decoded
@@ -101,7 +101,7 @@ export class AuthenticationService {
       }
     }
   }
-  
+
   /**
    * Role-based access control middleware
    */
@@ -110,11 +110,11 @@ export class AuthenticationService {
       if (!req.user) {
         return res.status(401).json({ error: 'Authentication required' })
       }
-      
+
       if (!roles.includes(req.user.role)) {
         return res.status(403).json({ error: 'Insufficient permissions' })
       }
-      
+
       next()
     }
   }
@@ -130,7 +130,7 @@ export const ValidationSchemas = {
     email: z.string().email().max(255),
     password: z.string().min(8).max(128)
   }),
-  
+
   estimate: z.object({
     clientName: z.string().min(2).max(100).regex(/^[a-zA-Z\s\-']+$/),
     email: z.string().email().max(255),
@@ -140,7 +140,7 @@ export const ValidationSchemas = {
     squareFootage: z.number().min(100).max(50000),
     notes: z.string().max(2000).optional()
   }),
-  
+
   searchQuery: z.object({
     q: z.string().min(1).max(100),
     type: z.enum(['contacts', 'accounts', 'projects']).optional(),
@@ -159,7 +159,7 @@ export class InputSanitizer {
       KEEP_CONTENT: true
     })
   }
-  
+
   /**
    * Sanitize SQL input to prevent injection
    */
@@ -168,14 +168,14 @@ export class InputSanitizer {
     const dangerous = /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER|CREATE|EXEC|SCRIPT)\b|[;'"`\\])/gi
     return input.replace(dangerous, '')
   }
-  
+
   /**
    * Validate and sanitize request data
    */
   static validateAndSanitize(schema: z.ZodSchema, data: any) {
     // First validate structure
     const validated = schema.parse(data)
-    
+
     // Then sanitize string fields
     const sanitized: any = {}
     for (const [key, value] of Object.entries(validated)) {
@@ -185,7 +185,7 @@ export class InputSanitizer {
         sanitized[key] = value
       }
     }
-    
+
     return sanitized
   }
 }
@@ -220,31 +220,31 @@ export function configureSecurityHeaders(app: express.Application) {
       preload: true
     }
   }))
-  
+
   // Additional custom headers
   app.use((req, res, next) => {
     // Generate nonce for CSP
     const nonce = require('crypto').randomBytes(16).toString('base64')
     res.locals.nonce = nonce
-    
+
     // Update CSP with nonce
     const csp = res.getHeader('Content-Security-Policy') as string
     if (csp) {
-      res.setHeader('Content-Security-Policy', 
+      res.setHeader('Content-Security-Policy',
         csp.replace('{{nonce}}', nonce))
     }
-    
+
     // Additional security headers
     res.setHeader('X-Content-Type-Options', 'nosniff')
     res.setHeader('X-Frame-Options', 'DENY')
     res.setHeader('X-XSS-Protection', '1; mode=block')
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
-    res.setHeader('Permissions-Policy', 
+    res.setHeader('Permissions-Policy',
       'geolocation=(), microphone=(), camera=(), payment=(), usb=()')
-    
+
     // Remove fingerprinting headers
     res.removeHeader('X-Powered-By')
-    
+
     next()
   })
 }
@@ -262,7 +262,7 @@ export const RateLimiters = {
     standardHeaders: true,
     legacyHeaders: false
   }),
-  
+
   // Strict rate limit for authentication
   auth: rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -272,7 +272,7 @@ export const RateLimiters = {
     standardHeaders: true,
     legacyHeaders: false
   }),
-  
+
   // Rate limit for estimate creation
   estimate: rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
@@ -281,7 +281,7 @@ export const RateLimiters = {
     standardHeaders: true,
     legacyHeaders: false
   }),
-  
+
   // Rate limit for API search
   search: rateLimit({
     windowMs: 1 * 60 * 1000, // 1 minute
@@ -304,12 +304,12 @@ export function configureCsrfProtection(app: express.Application) {
       sameSite: 'strict'
     }
   })
-  
+
   // Apply CSRF to state-changing routes
   app.use('/api/estimate', csrfProtection)
   app.use('/api/auth/logout', csrfProtection)
   app.use('/api/settings', csrfProtection)
-  
+
   // Provide CSRF token endpoint
   app.get('/api/csrf-token', csrfProtection, (req: any, res) => {
     res.json({ csrfToken: req.csrfToken() })
@@ -323,11 +323,11 @@ export function configureCsrfProtection(app: express.Application) {
 export class SecretsManager {
   private client: SecretsManagerClient
   private cache: Map<string, { value: any, expires: number }> = new Map()
-  
+
   constructor(region: string = 'us-west-2') {
     this.client = new SecretsManagerClient({ region })
   }
-  
+
   /**
    * Retrieve secret from AWS Secrets Manager with caching
    */
@@ -337,34 +337,34 @@ export class SecretsManager {
     if (cached && cached.expires > Date.now()) {
       return cached.value
     }
-    
+
     try {
       const command = new GetSecretValueCommand({ SecretId: secretId })
       const response = await this.client.send(command)
-      
-      const secret = response.SecretString 
+
+      const secret = response.SecretString
         ? JSON.parse(response.SecretString)
         : response.SecretBinary
-      
+
       // Cache for 5 minutes
       this.cache.set(secretId, {
         value: secret,
         expires: Date.now() + 5 * 60 * 1000
       })
-      
+
       return secret
     } catch (error) {
       console.error(`Failed to retrieve secret ${secretId}:`, error)
       throw new Error('Failed to retrieve configuration')
     }
   }
-  
+
   /**
    * Load all application secrets
    */
   async loadApplicationSecrets(): Promise<void> {
     const secrets = await this.getSecret('paintbox/production')
-    
+
     // Set environment variables (but don't expose them)
     process.env.JWT_SECRET = secrets.JWT_SECRET
     process.env.DATABASE_URL = secrets.DATABASE_URL
@@ -372,7 +372,7 @@ export class SecretsManager {
     process.env.SALESFORCE_CLIENT_ID = secrets.SALESFORCE_CLIENT_ID
     process.env.SALESFORCE_CLIENT_SECRET = secrets.SALESFORCE_CLIENT_SECRET
     process.env.COMPANYCAM_API_KEY = secrets.COMPANYCAM_API_KEY
-    
+
     // Clear sensitive data from memory
     Object.keys(secrets).forEach(key => {
       secrets[key] = undefined
@@ -425,7 +425,7 @@ export class SecurityMonitor {
     /(\.\.\/|\.\.\\|%2e%2e)/i, // Directory traversal
     /(\x00|\x1a)/i // Null bytes
   ]
-  
+
   /**
    * Check request for suspicious patterns
    */
@@ -436,24 +436,24 @@ export class SecurityMonitor {
       query: req.query,
       params: req.params
     })
-    
+
     for (const pattern of this.suspiciousPatterns) {
       if (pattern.test(checkString)) {
         reasons.push(`Suspicious pattern detected: ${pattern}`)
       }
     }
-    
+
     // Check for abnormal request sizes
     if (checkString.length > 100000) {
       reasons.push('Abnormally large request')
     }
-    
+
     return {
       suspicious: reasons.length > 0,
       reasons
     }
   }
-  
+
   /**
    * Log security event
    */
@@ -469,16 +469,16 @@ export class SecurityMonitor {
       ...event,
       severity: this.getSeverity(event.type)
     }
-    
+
     // Log to console (replace with proper logging service)
     console.log('[SECURITY]', JSON.stringify(logEntry))
-    
+
     // Send to monitoring service (e.g., Sentry)
     if (process.env.SENTRY_DSN) {
       // Sentry.captureMessage(JSON.stringify(logEntry))
     }
   }
-  
+
   private getSeverity(type: string): 'low' | 'medium' | 'high' | 'critical' {
     const severityMap: Record<string, 'low' | 'medium' | 'high' | 'critical'> = {
       'auth_failure': 'medium',
@@ -493,27 +493,27 @@ export class SecurityMonitor {
 // Export configured Express app with all security features
 export function createSecureApp(): express.Application {
   const app = express()
-  
+
   // Load secrets
   const secretsManager = new SecretsManager()
   secretsManager.loadApplicationSecrets()
-  
+
   // Configure security headers
   configureSecurityHeaders(app)
-  
+
   // Configure CSRF protection
   configureCsrfProtection(app)
-  
+
   // Apply rate limiting
   app.use('/api', RateLimiters.general)
   app.use('/api/auth/login', RateLimiters.auth)
   app.use('/api/estimate', RateLimiters.estimate)
   app.use('/api/search', RateLimiters.search)
-  
+
   // Initialize services
   const authService = new AuthenticationService(process.env.JWT_SECRET!)
   const securityMonitor = new SecurityMonitor()
-  
+
   // Security monitoring middleware
   app.use((req, res, next) => {
     const check = securityMonitor.checkRequest(req)
@@ -527,6 +527,6 @@ export function createSecureApp(): express.Application {
     }
     next()
   })
-  
+
   return app
 }

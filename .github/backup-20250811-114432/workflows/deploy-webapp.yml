@@ -39,10 +39,10 @@ jobs:
     name: Deploy ${{ inputs.project }} to ${{ inputs.environment }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    environment: 
+    environment:
       name: ${{ inputs.environment }}
       url: https://${{ inputs.project }}.${{ inputs.environment == 'production' && 'candlefish.ai' || format('{0}.candlefish.ai', inputs.environment) }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -81,22 +81,22 @@ jobs:
       - name: Install dependencies
         run: |
           pnpm install --frozen-lockfile --prefer-offline
-          
+
       - name: Build application
         run: |
           # Set environment variables
           export NODE_ENV=production
           export NEXT_PUBLIC_ENV=${{ inputs.environment }}
           export NEXT_PUBLIC_API_URL=https://api-${{ inputs.environment }}.candlefish.ai
-          
+
           # Build with Turbo
           pnpm turbo build --filter=${{ inputs.project }} --cache-dir=.turbo
-          
+
           # Optimize assets
           if [ -d "dist" ]; then
             # Compress HTML, CSS, JS
             find dist -type f \( -name "*.html" -o -name "*.css" -o -name "*.js" \) -exec gzip -9 -k {} \;
-            
+
             # Generate Brotli versions for modern browsers
             find dist -type f \( -name "*.html" -o -name "*.css" -o -name "*.js" \) -exec brotli -9 {} \;
           fi
@@ -108,30 +108,30 @@ jobs:
             echo "❌ Build output not found"
             exit 1
           fi
-          
+
           # Check for critical files
           if [ -d "dist" ]; then
             [ -f "dist/index.html" ] || echo "⚠️ Warning: index.html not found"
             [ -f "dist/robots.txt" ] || echo "⚠️ Warning: robots.txt not found"
           fi
-          
+
           echo "✅ Build validation passed"
 
       - name: Deploy to S3
         run: |
           BUCKET_NAME="candlefish-${{ inputs.project }}-${{ inputs.environment }}"
-          
+
           # Create bucket if it doesn't exist
           aws s3api head-bucket --bucket "$BUCKET_NAME" 2>/dev/null || \
             aws s3api create-bucket --bucket "$BUCKET_NAME" --region us-east-1
-          
+
           # Configure bucket for static website hosting
           aws s3api put-bucket-website --bucket "$BUCKET_NAME" \
             --website-configuration '{
               "IndexDocument": {"Suffix": "index.html"},
               "ErrorDocument": {"Key": "404.html"}
             }'
-          
+
           # Sync static assets with long cache
           aws s3 sync dist/ "s3://$BUCKET_NAME/" \
             --delete \
@@ -143,7 +143,7 @@ jobs:
             --exclude "sitemap.xml" \
             --content-encoding gzip \
             --metadata-directive REPLACE
-          
+
           # Sync HTML and dynamic files with short cache
           aws s3 sync dist/ "s3://$BUCKET_NAME/" \
             --cache-control "public, max-age=0, must-revalidate" \
@@ -163,9 +163,9 @@ jobs:
             --paths "/*" \
             --query 'Invalidation.Id' \
             --output text)
-          
+
           echo "Created invalidation: $INVALIDATION_ID"
-          
+
           # Wait for invalidation to complete (with timeout)
           timeout 300 aws cloudfront wait invalidation-completed \
             --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
@@ -174,12 +174,12 @@ jobs:
       - name: Verify deployment
         run: |
           DEPLOY_URL="https://${{ inputs.project }}.${{ inputs.environment == 'production' && 'candlefish.ai' || format('{0}.candlefish.ai', inputs.environment) }}"
-          
+
           echo "Verifying deployment at: $DEPLOY_URL"
-          
+
           # Wait for deployment to propagate
           sleep 10
-          
+
           # Check deployment health
           for i in {1..10}; do
             if curl -f -s -o /dev/null -w "%{http_code}" "$DEPLOY_URL" | grep -q "200\|304"; then
@@ -190,7 +190,7 @@ jobs:
               sleep 15
             fi
           done
-          
+
           # Final verification
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$DEPLOY_URL")
           if [[ "$RESPONSE" != "200" && "$RESPONSE" != "304" ]]; then
@@ -204,7 +204,7 @@ jobs:
         with:
           script: |
             const status = '${{ job.status }}' === 'success' ? 'success' : 'failure';
-            
+
             await github.rest.repos.createDeploymentStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -219,7 +219,7 @@ jobs:
         run: |
           STATUS_EMOJI="${{ job.status == 'success' && '✅' || '❌' }}"
           STATUS_TEXT="${{ job.status == 'success' && 'succeeded' || 'failed' }}"
-          
+
           echo "## $STATUS_EMOJI Deployment $STATUS_TEXT" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Project:** ${{ inputs.project }}" >> $GITHUB_STEP_SUMMARY

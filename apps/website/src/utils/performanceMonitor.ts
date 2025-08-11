@@ -10,7 +10,7 @@ interface PerformanceMetrics {
   FCP?: number; // First Contentful Paint
   TTFB?: number; // Time to First Byte
   INP?: number; // Interaction to Next Paint
-  
+
   // Custom metrics
   TTI?: number; // Time to Interactive
   TBT?: number; // Total Blocking Time
@@ -18,7 +18,7 @@ interface PerformanceMetrics {
   connectionType?: string;
   deviceMemory?: number;
   hardwareConcurrency?: number;
-  
+
   // Resource metrics
   jsHeapSize?: number;
   domNodes?: number;
@@ -146,7 +146,7 @@ class PerformanceMonitor {
     try {
       const observer = new PerformanceObserver((entryList) => {
         const entries = entryList.getEntries();
-        
+
         entries.forEach((entry: any) => {
           if (!entry.hadRecentInput) {
             clsValue += entry.value;
@@ -172,7 +172,7 @@ class PerformanceMonitor {
       const observer = new PerformanceObserver((entryList) => {
         const entries = entryList.getEntries();
         const fcpEntry = entries.find(entry => entry.name === 'first-contentful-paint');
-        
+
         if (fcpEntry) {
           this.metrics.FCP = fcpEntry.startTime;
           this.log('FCP', this.metrics.FCP);
@@ -191,7 +191,7 @@ class PerformanceMonitor {
 
     const timing = window.performance.timing;
     const ttfb = timing.responseStart - timing.navigationStart;
-    
+
     if (ttfb > 0) {
       this.metrics.TTFB = ttfb;
       this.log('TTFB', ttfb);
@@ -206,7 +206,7 @@ class PerformanceMonitor {
     try {
       const observer = new PerformanceObserver((entryList) => {
         const entries = entryList.getEntries();
-        
+
         entries.forEach((entry: any) => {
           if (entry.duration > worstINP) {
             worstINP = entry.duration;
@@ -241,7 +241,7 @@ class PerformanceMonitor {
     if (!('memory' in performance)) return;
 
     const memory = (performance as any).memory;
-    
+
     if (memory) {
       this.metrics.jsHeapSize = memory.usedJSHeapSize;
       this.metrics.memoryUsage = Math.round((memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100);
@@ -271,7 +271,7 @@ class PerformanceMonitor {
 
   private observeConnection(): void {
     const connection = (navigator as any).connection;
-    
+
     if (connection) {
       this.metrics.connectionType = connection.effectiveType;
       this.log('Connection', connection.effectiveType);
@@ -289,8 +289,8 @@ class PerformanceMonitor {
   private log(metric: string, value: any): void {
     if (!this.config.enableLogging) return;
 
-    const formattedValue = typeof value === 'number' ? 
-      `${Math.round(value)}ms` : 
+    const formattedValue = typeof value === 'number' ?
+      `${Math.round(value)}ms` :
       JSON.stringify(value);
 
     console.log(`[Performance] ${metric}:`, formattedValue);

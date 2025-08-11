@@ -87,7 +87,7 @@ jobs:
           # Check ECS services
           for env in dev staging production; do
             CLUSTER="candlefish-$env"
-            
+
             SERVICES=$(aws ecs list-services \
               --cluster $CLUSTER \
               --query 'serviceArns[]' \
@@ -173,7 +173,7 @@ jobs:
           jq -r '.[] | select(.status=="completed") | .databaseId' | \
           while read run_id; do
             echo "Analyzing run $run_id..."
-            
+
             # Get cache hit rate from logs
             gh run view $run_id --log 2>/dev/null | \
               grep -c "Cache restored from key" || true
@@ -254,7 +254,7 @@ jobs:
           </head>
           <body>
               <h1>🚀 Candlefish Operations Dashboard</h1>
-              
+
               <div class="metrics">
                   <div class="metric">
                       <div class="metric-value">\$${{ needs.collect-metrics.outputs.cost_estimate }}</div>
@@ -394,13 +394,13 @@ jobs:
           echo "- **GitHub Actions Usage:** ${{ needs.collect-metrics.outputs.workflow_minutes }} / 50000 minutes" >> $GITHUB_STEP_SUMMARY
           echo "- **Service Health:** ${{ needs.collect-metrics.outputs.service_health }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [[ -n "${{ steps.alerts.outputs.alerts }}" ]]; then
             echo "## 🚨 Active Alerts" >> $GITHUB_STEP_SUMMARY
             echo "${{ steps.alerts.outputs.alerts }}" >> $GITHUB_STEP_SUMMARY
           else
             echo "## ✅ No Active Alerts" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "[View Dashboard](dashboard.html) | [Cost Report](cost-optimizations.md)" >> $GITHUB_STEP_SUMMARY
