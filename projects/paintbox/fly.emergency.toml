@@ -1,0 +1,55 @@
+# Emergency Fly.io configuration for Paintbox
+app = "paintbox-app"
+primary_region = "sjc"
+kill_signal = "SIGINT"
+kill_timeout = "5s"
+
+[build]
+  dockerfile = "Dockerfile.emergency"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "8080"
+  HOSTNAME = "0.0.0.0"
+
+  # Next.js specific
+  NEXT_TELEMETRY_DISABLED = "1"
+
+  # App Configuration
+  NEXT_PUBLIC_APP_VERSION = "1.0.0"
+  NEXT_PUBLIC_API_URL = "https://paintbox-app.fly.dev"
+
+[experimental]
+  auto_rollback = true
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8080
+  processes = ["app"]
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "10s"
+
+  [[services.http_checks]]
+    interval = "10s"
+    timeout = "5s"
+    grace_period = "60s"
+    method = "get"
+    path = "/"
+    protocol = "http"

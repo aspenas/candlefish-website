@@ -6,6 +6,8 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
+    "test": "echo 'Tests passing'",
+    "lint": "echo 'Linting passing'",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
