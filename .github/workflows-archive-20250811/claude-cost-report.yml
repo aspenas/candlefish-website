@@ -1,0 +1,345 @@
+name: Claude Cost Report
+
+on:
+  schedule:
+    # Run daily at 9 AM UTC
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+    inputs:
+      period_days:
+        description: 'Number of days to include in report'
+        required: false
+        type: number
+        default: 30
+      send_to_slack:
+        description: 'Send report to Slack'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  AWS_REGION: us-east-1
+  DYNAMODB_TABLE: claude-review-usage
+
+jobs:
+  generate-report:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: claude-cost-report-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install boto3 matplotlib pandas plotly kaleido
+
+      - name: Generate cost report
+        run: |
+          cat > generate_report.py << 'EOF'
+          import os
+          import sys
+          import json
+          from datetime import datetime, timedelta
+          import boto3
+          import pandas as pd
+          import plotly.graph_objects as go
+          import plotly.express as px
+          from plotly.subplots import make_subplots
+
+          # Add scripts path
+          sys.path.append('.github/scripts')
+          from claude_cost_tracker import ClaudeCostTracker
+
+          def generate_visualizations(tracker, period_days):
+              """Generate cost visualizations"""
+              # Get data for the period
+              end_date = datetime.utcnow()
+              start_date = end_date - timedelta(days=period_days)
+
+              # Get all items (simplified - in production, use proper date filtering)
+              dynamodb = boto3.resource('dynamodb')
+              table = dynamodb.Table(tracker.table_name)
+
+              response = table.scan()
+              items = response.get('Items', [])
+
+              # Convert to DataFrame
+              df = pd.DataFrame(items)
+              if df.empty:
+                  return None, "No data available for the specified period."
+
+              # Convert timestamp to datetime
+              df['timestamp'] = pd.to_datetime(df['timestamp'])
+              df['date'] = df['timestamp'].dt.date
+              df['total_cost'] = df['total_cost'].astype(float)
+
+              # Filter by date
+              df = df[df['timestamp'] >= start_date]
+
+              # Create visualizations
+              fig = make_subplots(
+                  rows=2, cols=2,
+                  subplot_titles=('Daily Costs', 'Cost by Review Type',
+                                'Reviews per Day', 'Cost Distribution'),
+                  specs=[[{"type": "scatter"}, {"type": "pie"}],
+                         [{"type": "bar"}, {"type": "box"}]]
+              )
+
+              # 1. Daily costs line chart
+              daily_costs = df.groupby('date')['total_cost'].sum().reset_index()
+              fig.add_trace(
+                  go.Scatter(x=daily_costs['date'], y=daily_costs['total_cost'],
+                           mode='lines+markers', name='Daily Cost'),
+                  row=1, col=1
+              )
+
+              # 2. Cost by review type pie chart
+              by_type = df.groupby('review_type')['total_cost'].sum()
+              fig.add_trace(
+                  go.Pie(labels=by_type.index, values=by_type.values),
+                  row=1, col=2
+              )
+
+              # 3. Reviews per day bar chart
+              daily_reviews = df.groupby('date').size().reset_index(name='count')
+              fig.add_trace(
+                  go.Bar(x=daily_reviews['date'], y=daily_reviews['count'],
+                        name='Reviews'),
+                  row=2, col=1
+              )
+
+              # 4. Cost distribution box plot
+              fig.add_trace(
+                  go.Box(y=df['total_cost'], name='Cost per Review'),
+                  row=2, col=2
+              )
+
+              # Update layout
+              fig.update_layout(
+                  title_text=f"Claude Review Cost Analysis ({period_days} days)",
+                  showlegend=False,
+                  height=800
+              )
+
+              # Save as image
+              fig.write_image("cost_report.png", width=1200, height=800)
+
+              # Generate summary statistics
+              summary = {
+                  'period_days': period_days,
+                  'total_cost': df['total_cost'].sum(),
+                  'total_reviews': len(df),
+                  'average_cost': df['total_cost'].mean(),
+                  'median_cost': df['total_cost'].median(),
+                  'max_cost': df['total_cost'].max(),
+                  'min_cost': df['total_cost'].min(),
+                  'daily_average': df.groupby('date')['total_cost'].sum().mean(),
+                  'most_expensive_pr': df.loc[df['total_cost'].idxmax()]['pr_number'] if not df.empty else None,
+                  'by_repository': df.groupby('repository').agg({
+                      'total_cost': ['sum', 'count', 'mean']
+                  }).to_dict()
+              }
+
+              return summary, None
+
+          def format_report(summary):
+              """Format summary as markdown"""
+              report = f"""# 📊 Claude Review Cost Report
+
+          **Period:** Last {summary['period_days']} days
+          **Generated:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}
+
+          ## 💰 Cost Summary
+
+          - **Total Cost:** ${summary['total_cost']:.2f}
+          - **Total Reviews:** {summary['total_reviews']}
+          - **Average Cost per Review:** ${summary['average_cost']:.2f}
+          - **Median Cost:** ${summary['median_cost']:.2f}
+          - **Daily Average:** ${summary['daily_average']:.2f}
+
+          ## 📈 Statistics
+
+          - **Most Expensive Review:** ${summary['max_cost']:.2f} (PR #{summary['most_expensive_pr']})
+          - **Least Expensive Review:** ${summary['min_cost']:.2f}
+
+          ## 🏢 By Repository
+
+          | Repository | Total Cost | Reviews | Avg Cost |
+          |------------|-----------|---------|----------|
+          """
+
+              for repo, data in summary.get('by_repository', {}).items():
+                  total = data['total_cost']['sum']
+                  count = data['total_cost']['count']
+                  avg = data['total_cost']['mean']
+                  report += f"| {repo} | ${total:.2f} | {count} | ${avg:.2f} |\n"
+
+              report += "\n\n![Cost Analysis](cost_report.png)"
+
+              return report
+
+          def main():
+              period_days = int(os.environ.get('PERIOD_DAYS', '30'))
+
+              tracker = ClaudeCostTracker()
+              summary, error = generate_visualizations(tracker, period_days)
+
+              if error:
+                  print(f"Error: {error}")
+                  sys.exit(1)
+
+              # Generate markdown report
+              report = format_report(summary)
+
+              # Save report
+              with open('cost_report.md', 'w') as f:
+                  f.write(report)
+
+              # Output to workflow summary
+              with open(os.environ['GITHUB_STEP_SUMMARY'], 'w') as f:
+                  f.write(report)
+
+              # Print key metrics
+              print(f"Total cost for {period_days} days: ${summary['total_cost']:.2f}")
+              print(f"Average daily cost: ${summary['daily_average']:.2f}")
+              print(f"Projected monthly cost: ${summary['daily_average'] * 30:.2f}")
+
+          if __name__ == '__main__':
+              main()
+          EOF
+
+          # Copy cost tracker module
+          cp .github/scripts/claude_cost_tracker.py .
+
+          # Run report generation
+          python generate_report.py
+        env:
+          PERIOD_DAYS: ${{ inputs.period_days || 30 }}
+
+      - name: Create cost report issue
+        if: github.event_name == 'schedule' || inputs.send_to_slack == false
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('cost_report.md', 'utf8');
+
+            const date = new Date().toISOString().split('T')[0];
+            const title = `Claude Review Cost Report - ${date}`;
+
+            // Check if issue already exists for today
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'cost-report',
+              state: 'open'
+            });
+
+            const existingIssue = issues.data.find(i => i.title === title);
+
+            if (existingIssue) {
+              // Update existing issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: report
+              });
+            } else {
+              // Create new issue
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: report,
+                labels: ['cost-report', 'automated']
+              });
+            }
+
+      - name: Send to Slack
+        if: inputs.send_to_slack == true && env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          python << 'EOF'
+          import os
+          import json
+          import requests
+
+          # Read summary statistics
+          with open('cost_report.md', 'r') as f:
+              report = f.read()
+
+          # Extract key metrics (simplified)
+          lines = report.split('\n')
+          total_cost = next(l for l in lines if 'Total Cost:' in l).split('$')[1].split()[0]
+          total_reviews = next(l for l in lines if 'Total Reviews:' in l).split(':')[1].strip()
+          daily_avg = next(l for l in lines if 'Daily Average:' in l).split('$')[1].split()[0]
+
+          # Create Slack message
+          message = {
+              "text": f"Claude Review Cost Report",
+              "blocks": [
+                  {
+                      "type": "header",
+                      "text": {
+                          "type": "plain_text",
+                          "text": "📊 Claude Review Cost Report"
+                      }
+                  },
+                  {
+                      "type": "section",
+                      "fields": [
+                          {"type": "mrkdwn", "text": f"*Total Cost:*\n${total_cost}"},
+                          {"type": "mrkdwn", "text": f"*Reviews:*\n{total_reviews}"},
+                          {"type": "mrkdwn", "text": f"*Daily Average:*\n${daily_avg}"},
+                          {"type": "mrkdwn", "text": f"*Projected Monthly:*\n${float(daily_avg) * 30:.2f}"}
+                      ]
+                  },
+                  {
+                      "type": "section",
+                      "text": {
+                          "type": "mrkdwn",
+                          "text": f"<https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}|View Full Report>"
+                      }
+                  }
+              ]
+          }
+
+          # Send to Slack
+          response = requests.post(
+              os.environ['SLACK_WEBHOOK_URL'],
+              json=message,
+              headers={'Content-Type': 'application/json'}
+          )
+
+          if response.status_code != 200:
+              print(f"Failed to send to Slack: {response.text}")
+          else:
+              print("Report sent to Slack successfully")
+          EOF
+
+      - name: Upload report artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cost-report-${{ github.run_id }}
+          path: |
+            cost_report.md
+            cost_report.png
+          retention-days: 90

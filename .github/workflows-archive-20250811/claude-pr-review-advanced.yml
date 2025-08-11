@@ -1,0 +1,488 @@
+name: Claude PR Review Advanced
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  pull_request_review_comment:
+    types: [created, edited]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Pull Request number to review"
+        required: true
+        type: number
+      review_type:
+        description: "Type of review to perform"
+        required: false
+        type: choice
+        options:
+          - comprehensive
+          - security
+          - performance
+          - quick
+        default: comprehensive
+
+env:
+  ANTHROPIC_MODEL: claude-opus-4-20250514
+  AWS_REGION: us-east-1
+  AWS_SECRET_NAME: candlefish-ai/anthropic/api-key
+
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event.pull_request.draft == false ||
+      (github.event.issue.pull_request && contains(github.event.comment.body, '/claude-review'))
+
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+      statuses: write
+      checks: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup environment
+        run: |
+          echo "PR_NUMBER=${{ github.event.pull_request.number || github.event.issue.number || inputs.pr_number }}" >> $GITHUB_ENV
+          echo "REVIEW_TYPE=${{ inputs.review_type || 'comprehensive' }}" >> $GITHUB_ENV
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: claude-pr-review-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Python environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Create requirements file
+        run: |
+          cat > requirements.txt << 'EOF'
+          anthropic>=0.39.0
+          boto3>=1.34.0
+          PyGithub>=2.4.0
+          requests>=2.32.0
+          tenacity>=8.5.0
+          pydantic>=2.9.0
+          rich>=13.9.0
+          EOF
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Create review script
+        run: |
+          cat > claude_review.py << 'EOF'
+          #!/usr/bin/env python3
+          import os
+          import sys
+          import json
+          import boto3
+          import time
+          from typing import Dict, List, Optional, Tuple
+          from dataclasses import dataclass
+          from datetime import datetime
+
+          from anthropic import Anthropic
+          from github import Github, PullRequest
+          from tenacity import retry, stop_after_attempt, wait_exponential
+          from rich.console import Console
+          from rich.markdown import Markdown
+
+          console = Console()
+
+          @dataclass
+          class ReviewConfig:
+              pr_number: int
+              review_type: str
+              model: str
+              max_tokens: int = 32000  # Opus-4 maximum output limit
+              temperature: float = 0.0
+
+          class ClaudeReviewer:
+              def __init__(self):
+                  self.config = self._load_config()
+                  self.anthropic = self._init_anthropic()
+                  self.github = Github(os.environ['GITHUB_TOKEN'])
+                  self.repo = self.github.get_repo(os.environ['GITHUB_REPOSITORY'])
+
+              def _load_config(self) -> ReviewConfig:
+                  return ReviewConfig(
+                      pr_number=int(os.environ['PR_NUMBER']),
+                      review_type=os.environ.get('REVIEW_TYPE', 'comprehensive'),
+                      model=os.environ.get('ANTHROPIC_MODEL', 'claude-opus-4-20250514')
+                  )
+
+              @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+              def _init_anthropic(self) -> Anthropic:
+                  """Initialize Anthropic client with AWS Secrets Manager"""
+                  try:
+                      # Get API key from AWS Secrets Manager
+                      secrets_client = boto3.client('secretsmanager')
+                      secret_name = os.environ['AWS_SECRET_NAME']
+
+                      response = secrets_client.get_secret_value(SecretId=secret_name)
+                      secret = json.loads(response['SecretString'])
+
+                      api_key = secret.get('ANTHROPIC_API_KEY')
+                      if not api_key:
+                          raise ValueError("ANTHROPIC_API_KEY not found in secret")
+
+                      return Anthropic(api_key=api_key)
+
+                  except Exception as e:
+                      console.print(f"[red]Error retrieving API key: {str(e)}[/red]")
+                      raise
+
+              def get_pr_data(self) -> Tuple[PullRequest.PullRequest, str, List[Dict]]:
+                  """Get PR data, diff, and file changes"""
+                  pr = self.repo.get_pull(self.config.pr_number)
+
+                  # Get diff
+                  diff = ""
+                  for file in pr.get_files():
+                      if file.patch:
+                          diff += f"\n--- {file.filename} ---\n"
+                          diff += file.patch + "\n"
+
+                  # Get file changes summary
+                  files_changed = []
+                  for file in pr.get_files():
+                      files_changed.append({
+                          'filename': file.filename,
+                          'additions': file.additions,
+                          'deletions': file.deletions,
+                          'changes': file.changes,
+                          'status': file.status
+                      })
+
+                  return pr, diff, files_changed
+
+              def construct_prompt(self, pr: PullRequest.PullRequest, diff: str, files: List[Dict]) -> str:
+                  """Construct the review prompt based on review type"""
+                  base_context = f"""
+                  Pull Request #{pr.number}: {pr.title}
+                  Author: {pr.user.login}
+                  Base: {pr.base.ref} <- Head: {pr.head.ref}
+                  State: {pr.state}
+                  Mergeable: {pr.mergeable}
+
+                  Description:
+                  {pr.body or 'No description provided'}
+
+                  Files Changed ({len(files)} files):
+                  """
+
+                  for file in files:
+                      base_context += f"\n- {file['filename']} (+{file['additions']}/-{file['deletions']})"
+
+                  base_context += f"\n\nDiff (using Opus-4 2M input capacity):\n{diff[:2000000]}"
+
+                  prompts = {
+                      'comprehensive': """
+                      Please provide a comprehensive code review focusing on:
+
+                      1. **Code Quality**
+                         - Clean code principles
+                         - SOLID principles adherence
+                         - DRY violations
+                         - Code readability and maintainability
+
+                      2. **Bugs and Logic Issues**
+                         - Potential runtime errors
+                         - Edge cases not handled
+                         - Logic flaws
+                         - Off-by-one errors
+
+                      3. **Performance**
+                         - Algorithm efficiency
+                         - Database query optimization
+                         - Memory usage concerns
+                         - Caching opportunities
+
+                      4. **Security**
+                         - Input validation
+                         - SQL injection risks
+                         - XSS vulnerabilities
+                         - Authentication/authorization issues
+                         - Sensitive data exposure
+
+                      5. **Testing**
+                         - Test coverage
+                         - Edge case testing
+                         - Integration test needs
+
+                      6. **Documentation**
+                         - Missing or outdated docs
+                         - Complex logic needing explanation
+                         - API documentation needs
+
+                      7. **TypeScript/JavaScript Specific**
+                         - Type safety issues
+                         - Proper error handling
+                         - Async/await usage
+                         - React hooks violations
+                         - Next.js best practices
+
+                      For each issue found:
+                      - Specify the file and line number
+                      - Explain why it's an issue
+                      - Provide a concrete fix with code example
+                      - Rate severity: 🔴 Critical, 🟡 Major, 🟢 Minor
+                      """,
+
+                      'security': """
+                      Perform a security-focused review looking for:
+
+                      1. **Input Validation**
+                         - Unvalidated user inputs
+                         - Missing sanitization
+                         - Type coercion issues
+
+                      2. **Authentication & Authorization**
+                         - Missing auth checks
+                         - Privilege escalation risks
+                         - Session management issues
+
+                      3. **Data Security**
+                         - Sensitive data in logs
+                         - Unencrypted sensitive data
+                         - API key exposure
+
+                      4. **Common Vulnerabilities**
+                         - SQL Injection
+                         - XSS (Cross-Site Scripting)
+                         - CSRF (Cross-Site Request Forgery)
+                         - Path traversal
+                         - Command injection
+
+                      5. **Dependencies**
+                         - Vulnerable packages
+                         - Outdated security patches
+
+                      Rate each finding: 🔴 Critical, 🟠 High, 🟡 Medium, 🟢 Low
+                      """,
+
+                      'performance': """
+                      Review focusing on performance optimization:
+
+                      1. **Algorithm Efficiency**
+                         - Time complexity issues
+                         - Unnecessary loops
+                         - Better data structure choices
+
+                      2. **Database Performance**
+                         - N+1 query problems
+                         - Missing indexes
+                         - Inefficient queries
+
+                      3. **Frontend Performance**
+                         - Bundle size concerns
+                         - Unnecessary re-renders
+                         - Missing memoization
+                         - Large component trees
+
+                      4. **Caching Opportunities**
+                         - API response caching
+                         - Computation caching
+                         - Static asset optimization
+
+                      5. **Memory Management**
+                         - Memory leaks
+                         - Large object allocations
+                         - Circular references
+
+                      Provide specific optimization suggestions with before/after examples.
+                      """,
+
+                      'quick': """
+                      Provide a quick review focusing on:
+                      - Obvious bugs or errors
+                      - Critical security issues
+                      - Major code smells
+                      - Missing error handling
+
+                      Keep the review concise and actionable.
+                      """
+                  }
+
+                  return base_context + "\n\n" + prompts.get(self.config.review_type, prompts['comprehensive'])
+
+              @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+              def get_claude_review(self, prompt: str) -> str:
+                  """Get review from Claude with streaming to avoid timeout"""
+                  try:
+                      console.print(f"[blue]Starting Claude review with streaming[/blue]")
+                      console.print(f"[dim]Model: {self.config.model}, Max tokens: {self.config.max_tokens}[/dim]")
+                      console.print(f"[dim]Prompt length: {len(prompt)} characters[/dim]")
+
+                      # Use streaming to handle long operations
+                      stream = self.anthropic.messages.create(
+                          model=self.config.model,
+                          max_tokens=self.config.max_tokens,
+                          temperature=self.config.temperature,
+                          messages=[{
+                              "role": "user",
+                              "content": prompt
+                          }],
+                          system="You are an expert code reviewer with deep knowledge of TypeScript, React, Next.js, and web security. Provide actionable, specific feedback with code examples.",
+                          stream=True
+                      )
+
+                      # Collect the streamed response
+                      review_content = ""
+                      chunk_count = 0
+                      start_time = time.time()
+
+                      for event in stream:
+                          if hasattr(event, 'type'):
+                              if event.type == 'content_block_delta' and hasattr(event.delta, 'text'):
+                                  review_content += event.delta.text
+                                  chunk_count += 1
+                                  # Print progress every 100 chunks
+                                  if chunk_count % 100 == 0:
+                                      elapsed = time.time() - start_time
+                                      console.print(f"[dim]Progress: {chunk_count} chunks, {len(review_content)} chars, {elapsed:.1f}s elapsed[/dim]")
+                              elif event.type == 'message_stop':
+                                  elapsed = time.time() - start_time
+                                  console.print(f"[green]✓ Stream complete: {chunk_count} chunks, {len(review_content)} chars in {elapsed:.1f}s[/green]")
+                                  break
+
+                      if not review_content.strip():
+                          raise ValueError("No content received from Claude API")
+
+                      return review_content
+
+                  except Exception as e:
+                      console.print(f"[red]Error getting Claude review: {str(e)}[/red]")
+                      raise
+
+              def post_review(self, pr: PullRequest.PullRequest, review_content: str):
+                  """Post the review to GitHub"""
+                  timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+
+                  comment = f"""## 🤖 Claude Code Review
+
+          **Review Type:** {self.config.review_type.title()}
+          **Model:** {self.config.model}
+          **Timestamp:** {timestamp}
+
+          {review_content}
+
+          ---
+
+          <details>
+          <summary>📋 Review Actions</summary>
+
+          - Reply with `/claude-review` to trigger a new review
+          - Reply with `/claude-review security` for security-focused review
+          - Reply with `/claude-review performance` for performance-focused review
+          - Reply with `/claude-review quick` for a quick review
+
+          </details>
+
+          *This review was automatically generated by Claude Opus-4 (claude-opus-4-20250514) via GitHub Actions with 2M input / 32K output token limits. [View workflow run](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}})*
+          """
+
+                  try:
+                      # Post as issue comment
+                      pr.create_issue_comment(comment)
+
+                      # Also create a review if we have specific suggestions
+                      if any(marker in review_content for marker in ['```', 'suggestion:', 'fix:']):
+                          pr.create_review(
+                              body="See detailed Claude review in the comment below.",
+                              event="COMMENT"
+                          )
+
+                      console.print("[green]✅ Review posted successfully![/green]")
+
+                  except Exception as e:
+                      console.print(f"[red]Error posting review: {str(e)}[/red]")
+                      raise
+
+              def run(self):
+                  """Main review process"""
+                  try:
+                      console.print(f"[blue]Starting Claude review for PR #{self.config.pr_number}[/blue]")
+
+                      # Get PR data
+                      pr, diff, files = self.get_pr_data()
+                      console.print(f"[green]✓ Retrieved PR data: {len(files)} files changed[/green]")
+
+                      # Construct prompt
+                      prompt = self.construct_prompt(pr, diff, files)
+                      console.print(f"[green]✓ Constructed review prompt ({len(prompt)} chars)[/green]")
+
+                      # Get Claude's review
+                      console.print("[yellow]⏳ Getting Claude's review...[/yellow]")
+                      review = self.get_claude_review(prompt)
+                      console.print(f"[green]✓ Received review ({len(review)} chars)[/green]")
+
+                      # Post review
+                      self.post_review(pr, review)
+
+                      # Set commit status
+                      commit = self.repo.get_commit(pr.head.sha)
+                      commit.create_status(
+                          state="success",
+                          target_url=f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/pull/{self.config.pr_number}#issuecomment-new",
+                          description="Claude review completed",
+                          context="claude-review"
+                      )
+
+                  except Exception as e:
+                      console.print(f"[red]Review failed: {str(e)}[/red]")
+
+                      # Set failure status
+                      try:
+                          pr = self.repo.get_pull(self.config.pr_number)
+                          commit = self.repo.get_commit(pr.head.sha)
+                          commit.create_status(
+                              state="failure",
+                              description=f"Claude review failed: {str(e)[:100]}",
+                              context="claude-review"
+                          )
+                      except:
+                          pass
+
+                      sys.exit(1)
+
+          if __name__ == "__main__":
+              reviewer = ClaudeReviewer()
+              reviewer.run()
+          EOF
+
+          chmod +x claude_review.py
+
+      - name: Run Claude review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python claude_review.py
+
+      - name: Upload review artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-review-${{ github.run_id }}
+          path: |
+            claude_review.py
+            requirements.txt
+          retention-days: 7

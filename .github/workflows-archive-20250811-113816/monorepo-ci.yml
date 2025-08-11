@@ -102,30 +102,20 @@ jobs:
           matrix='{"include":[]}'
 
           if [[ "${{ steps.filter.outputs.node }}" == "true" ]]; then
-            matrix=$(echo $matrix | jq '.include += [
-              {"type":"lint","runner":"ubuntu-latest"},
-              {"type":"typecheck","runner":"ubuntu-latest"},
-              {"type":"test-unit","runner":"ubuntu-latest"},
-              {"type":"test-integration","runner":"ubuntu-latest"},
-              {"type":"build","runner":"ubuntu-latest"}
-            ]')
+            matrix=$(echo "$matrix" | jq -c '.include += [{"type":"lint","runner":"ubuntu-latest"},{"type":"typecheck","runner":"ubuntu-latest"},{"type":"test-unit","runner":"ubuntu-latest"},{"type":"test-integration","runner":"ubuntu-latest"},{"type":"build","runner":"ubuntu-latest"}]')
           fi
 
           if [[ "${{ steps.filter.outputs.python }}" == "true" ]]; then
-            matrix=$(echo $matrix | jq '.include += [
-              {"type":"python-lint","runner":"ubuntu-latest"},
-              {"type":"python-test","runner":"ubuntu-latest"}
-            ]')
+            matrix=$(echo "$matrix" | jq -c '.include += [{"type":"python-lint","runner":"ubuntu-latest"},{"type":"python-test","runner":"ubuntu-latest"}]')
           fi
 
           if [[ "${{ steps.filter.outputs.mobile }}" == "true" ]]; then
-            matrix=$(echo $matrix | jq '.include += [
-              {"type":"mobile-ios","runner":"macos-latest"},
-              {"type":"mobile-android","runner":"ubuntu-latest"}
-            ]')
+            matrix=$(echo "$matrix" | jq -c '.include += [{"type":"mobile-ios","runner":"macos-latest"},{"type":"mobile-android","runner":"ubuntu-latest"}]')
           fi
 
-          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+          echo "matrix<<EOF" >> $GITHUB_OUTPUT
+          echo "$matrix" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
   # ============================================
   # STAGE 2: Setup & Cache

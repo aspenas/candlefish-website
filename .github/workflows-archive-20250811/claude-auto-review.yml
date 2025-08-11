@@ -1,0 +1,217 @@
+name: Claude Auto Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Pull Request number to review"
+        required: false
+        type: number
+
+jobs:
+  auto-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: claude-auto-review-session
+          aws-region: us-east-1
+
+      - name: Retrieve Anthropic API Key from AWS Secrets Manager
+        id: get-api-key
+        run: |
+          API_KEY=$(aws secretsmanager get-secret-value \
+            --secret-id "candlefish-ai/anthropic/api-key" \
+            --query SecretString \
+            --output text | jq -r '.ANTHROPIC_API_KEY // .')
+
+          if [ -z "$API_KEY" ] || [ "$API_KEY" = "null" ]; then
+            echo "Failed to retrieve API key from AWS Secrets Manager"
+            exit 1
+          fi
+
+          echo "::add-mask::$API_KEY"
+          echo "api_key=$API_KEY" >> $GITHUB_OUTPUT
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install anthropic>=0.39.0 PyGithub>=2.0.0 requests>=2.31.0
+
+      - name: Get PR details
+        id: pr-details
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+        run: |
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No PR number found"
+            exit 1
+          fi
+
+          PR_DATA=$(gh pr view $PR_NUMBER --json title,body,files,author,baseRefName,headRefName,url,number)
+          echo "pr_data=$(echo $PR_DATA | jq -c .)" >> $GITHUB_OUTPUT
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+      - name: Get PR diff
+        id: pr-diff
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.pr-details.outputs.pr_number }}
+        run: |
+          # Get the diff
+          gh pr diff $PR_NUMBER > pr_diff.txt
+
+          # Also get file changes summary
+          gh pr view $PR_NUMBER --json files -q '.files[] | "\(.path) (+\(.additions)/-\(.deletions))"' > files_changed.txt
+
+      - name: Run Claude Review
+        id: claude-review
+        env:
+          ANTHROPIC_API_KEY: ${{ steps.get-api-key.outputs.api_key }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_DATA: ${{ steps.pr-details.outputs.pr_data }}
+          PR_NUMBER: ${{ steps.pr-details.outputs.pr_number }}
+        run: |
+          python3 << 'EOF'
+          import os
+          import json
+          import sys
+          from anthropic import Anthropic
+          from github import Github
+
+          # Initialize clients
+          client = Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
+          gh = Github(os.environ['GITHUB_TOKEN'])
+
+          # Get PR data
+          pr_data = json.loads(os.environ['PR_DATA'])
+          pr_number = int(os.environ['PR_NUMBER'])
+
+          # Read diff and files changed
+          with open('pr_diff.txt', 'r') as f:
+              pr_diff = f.read()
+
+          with open('files_changed.txt', 'r') as f:
+              files_changed = f.read()
+
+          # Construct the prompt
+          prompt = f"""Please review this pull request and provide comprehensive feedback.
+
+          Pull Request #{pr_number}: {pr_data['title']}
+          Author: {pr_data['author']['login']}
+          Base Branch: {pr_data['baseRefName']} <- Head Branch: {pr_data['headRefName']}
+
+          Description:
+          {pr_data['body'] or 'No description provided'}
+
+          Files Changed:
+          {files_changed}
+
+          Diff:
+          {pr_diff[:2000000]}  # Opus-4 can handle 2M input tokens
+
+          Focus on:
+          - Code quality and best practices
+          - Potential bugs or issues
+          - Performance considerations
+          - Security implications
+          - Test coverage
+          - Documentation updates if needed
+          - TypeScript type safety and proper error handling
+          - React/Next.js best practices
+          - Proper use of hooks and state management
+
+          Provide constructive feedback with specific suggestions for improvement.
+          Format your response as a structured review with sections for each area of concern.
+          Include code snippets for suggested improvements where applicable.
+          """
+
+          # Get Claude's review with streaming to avoid timeout
+          try:
+              print(f"Starting Claude review with streaming for PR #{pr_number}")
+              print(f"Prompt length: {len(prompt)} characters")
+
+              # Use streaming to handle long operations
+              stream = client.messages.create(
+                  model="claude-opus-4-20250514",
+                  max_tokens=32000,  # Opus-4 maximum output limit
+                  temperature=0,
+                  messages=[{
+                      "role": "user",
+                      "content": prompt
+                  }],
+                  stream=True
+              )
+
+              # Collect the streamed response
+              review_content = ""
+              chunk_count = 0
+              for event in stream:
+                  if hasattr(event, 'type'):
+                      if event.type == 'content_block_delta' and hasattr(event.delta, 'text'):
+                          review_content += event.delta.text
+                          chunk_count += 1
+                          # Print progress every 100 chunks
+                          if chunk_count % 100 == 0:
+                              print(f"Received {chunk_count} chunks, {len(review_content)} characters so far...")
+                      elif event.type == 'message_stop':
+                          print(f"Stream complete. Total chunks: {chunk_count}, Total length: {len(review_content)}")
+                          break
+
+              if not review_content.strip():
+                  raise ValueError("No content received from Claude API")
+
+              # Post review as a comment
+              repo = gh.get_repo(os.environ['GITHUB_REPOSITORY'])
+              pr = repo.get_pull(pr_number)
+
+              # Create the review comment
+              review_comment = f"""## 🤖 Claude Code Review
+
+              {review_content}
+
+              ---
+              *This review was automatically generated by Claude Opus-4 (claude-opus-4-20250514) via GitHub Actions with 2M input / 32K output token limits.*
+              """
+
+              # Post the review
+              pr.create_issue_comment(review_comment)
+
+              print("Review posted successfully!")
+
+          except Exception as e:
+              print(f"Error during review: {str(e)}")
+              sys.exit(1)
+          EOF
+
+      - name: Post review summary
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.pr-details.outputs.pr_number }}
+        run: |
+          if [ "${{ steps.claude-review.outcome }}" == "success" ]; then
+            gh pr comment $PR_NUMBER --body "✅ Claude Auto Review completed successfully. Check the review comment above for detailed feedback."
+          else
+            gh pr comment $PR_NUMBER --body "❌ Claude Auto Review encountered an error. Please check the workflow logs for details."
+          fi

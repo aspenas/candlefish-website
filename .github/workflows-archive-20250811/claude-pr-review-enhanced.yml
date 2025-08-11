@@ -1,0 +1,363 @@
+name: Claude PR Review Enhanced
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  pull_request_review_comment:
+    types: [created, edited]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Pull Request number to review"
+        required: true
+        type: number
+      review_type:
+        description: "Type of review to perform"
+        required: false
+        type: choice
+        options:
+          - comprehensive
+          - security
+          - performance
+          - architecture
+          - quick
+        default: comprehensive
+      review_depth:
+        description: "Depth of review"
+        required: false
+        type: choice
+        options:
+          - quick
+          - standard
+          - deep
+        default: standard
+      incremental:
+        description: "Only review changes since last Claude review"
+        required: false
+        type: boolean
+        default: false
+
+env:
+  ANTHROPIC_MODEL: claude-opus-4-20250514
+  AWS_REGION: us-east-1
+  AWS_SECRET_NAME: candlefish-ai/anthropic/api-key
+  DYNAMODB_TABLE: claude-review-usage
+
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event.pull_request.draft == false ||
+      (github.event.issue.pull_request && contains(github.event.comment.body, '/claude-review'))
+
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+      statuses: write
+      checks: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Parse review command
+        id: parse-command
+        run: |
+          # Default values
+          REVIEW_TYPE="comprehensive"
+          REVIEW_DEPTH="standard"
+          INCREMENTAL="false"
+          SKIP_PATTERNS=""
+
+          # If triggered by comment, parse the command
+          if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
+            COMMENT_BODY=$(echo '${{ github.event.comment.body }}' | tr '\n' ' ')
+
+            # Extract review type
+            if [[ "$COMMENT_BODY" =~ /claude-review[[:space:]]+([a-z]+) ]]; then
+              case "${BASH_REMATCH[1]}" in
+                security|performance|architecture|quick)
+                  REVIEW_TYPE="${BASH_REMATCH[1]}"
+                  ;;
+              esac
+            fi
+
+            # Check for depth modifiers
+            if [[ "$COMMENT_BODY" =~ quick ]]; then
+              REVIEW_DEPTH="quick"
+            elif [[ "$COMMENT_BODY" =~ deep ]]; then
+              REVIEW_DEPTH="deep"
+            fi
+
+            # Check for incremental
+            if [[ "$COMMENT_BODY" =~ incremental ]]; then
+              INCREMENTAL="true"
+            fi
+
+            # Extract skip patterns
+            if [[ "$COMMENT_BODY" =~ skip:([^[:space:]]+) ]]; then
+              SKIP_PATTERNS="${BASH_REMATCH[1]}"
+            fi
+          else
+            # Use workflow inputs
+            REVIEW_TYPE="${{ inputs.review_type || 'comprehensive' }}"
+            REVIEW_DEPTH="${{ inputs.review_depth || 'standard' }}"
+            INCREMENTAL="${{ inputs.incremental || 'false' }}"
+          fi
+
+          echo "PR_NUMBER=${{ github.event.pull_request.number || github.event.issue.number || inputs.pr_number }}" >> $GITHUB_ENV
+          echo "REVIEW_TYPE=$REVIEW_TYPE" >> $GITHUB_ENV
+          echo "REVIEW_DEPTH=$REVIEW_DEPTH" >> $GITHUB_ENV
+          echo "INCREMENTAL=$INCREMENTAL" >> $GITHUB_ENV
+          echo "SKIP_PATTERNS=$SKIP_PATTERNS" >> $GITHUB_ENV
+
+          # Output for logging
+          echo "Review configuration:"
+          echo "  Type: $REVIEW_TYPE"
+          echo "  Depth: $REVIEW_DEPTH"
+          echo "  Incremental: $INCREMENTAL"
+          echo "  Skip patterns: $SKIP_PATTERNS"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: claude-pr-review-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Python environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install anthropic>=0.39.0 boto3>=1.34.0 PyGithub>=2.4.0 \
+                      requests>=2.32.0 tenacity>=8.5.0 pydantic>=2.9.0 \
+                      rich>=13.9.0
+
+      - name: Copy enhancement modules
+        run: |
+          cp .github/scripts/claude_cost_tracker.py .
+          cp .github/scripts/claude_review_enhanced.py .
+
+      - name: Create enhanced review script
+        run: |
+          cat > enhanced_review.py << 'EOF'
+          #!/usr/bin/env python3
+          import os
+          import sys
+          import json
+          import boto3
+          import time
+          from datetime import datetime
+          from anthropic import Anthropic
+          from github import Github
+          from rich.console import Console
+
+          # Import our modules
+          from claude_cost_tracker import ClaudeCostTracker
+          from claude_review_enhanced import EnhancedReviewer
+
+          console = Console()
+
+          def main():
+              # Initialize clients
+              secrets_client = boto3.client('secretsmanager')
+              response = secrets_client.get_secret_value(SecretId=os.environ['AWS_SECRET_NAME'])
+              secret = json.loads(response['SecretString'])
+
+              anthropic = Anthropic(api_key=secret['ANTHROPIC_API_KEY'])
+              github = Github(os.environ['GITHUB_TOKEN'])
+              repo = github.get_repo(os.environ['GITHUB_REPOSITORY'])
+
+              # Get configuration
+              pr_number = int(os.environ['PR_NUMBER'])
+              review_type = os.environ.get('REVIEW_TYPE', 'comprehensive')
+              review_depth = os.environ.get('REVIEW_DEPTH', 'standard')
+              is_incremental = os.environ.get('INCREMENTAL', 'false').lower() == 'true'
+              skip_patterns = os.environ.get('SKIP_PATTERNS', '').split(',') if os.environ.get('SKIP_PATTERNS') else []
+
+              console.print(f"[bold]Enhanced PR Review[/bold]")
+              console.print(f"PR: #{pr_number}")
+              console.print(f"Type: {review_type}, Depth: {review_depth}, Incremental: {is_incremental}")
+
+              # Initialize enhanced reviewer
+              reviewer = EnhancedReviewer(anthropic, github)
+              if skip_patterns:
+                  reviewer.skip_patterns.extend(skip_patterns)
+
+              # Get PR
+              pr = repo.get_pull(pr_number)
+
+              # Get files to review
+              if is_incremental:
+                  files = reviewer.get_files_since_last_review(pr)
+                  console.print(f"[yellow]Incremental review: {len(files)} files changed since last review[/yellow]")
+              else:
+                  files = list(pr.get_files())
+                  console.print(f"[blue]Full review: {len(files)} total files[/blue]")
+
+              # Filter files
+              original_count = len(files)
+              files = reviewer.filter_files_by_depth(files, review_depth)
+              skipped_count = original_count - len(files)
+
+              if skipped_count > 0:
+                  console.print(f"[dim]Skipped {skipped_count} files based on patterns and depth[/dim]")
+
+              if not files:
+                  console.print("[yellow]No files to review![/yellow]")
+                  pr.create_issue_comment("🤖 No files to review based on current filters and changes.")
+                  return
+
+              # Build prompt
+              prompt = reviewer.build_enhanced_prompt(pr, files, review_type, review_depth, is_incremental)
+
+              # Get review
+              start_time = time.time()
+              console.print("[blue]Getting Claude's review...[/blue]")
+
+              stream = anthropic.messages.create(
+                  model=os.environ.get('ANTHROPIC_MODEL', 'claude-opus-4-20250514'),
+                  max_tokens=32000,
+                  temperature=0,
+                  messages=[{'role': 'user', 'content': prompt}],
+                  system="You are an expert code reviewer. Provide specific, actionable feedback.",
+                  stream=True
+              )
+
+              # Collect response
+              review_content = ""
+              for event in stream:
+                  if hasattr(event, 'type') and event.type == 'content_block_delta':
+                      if hasattr(event.delta, 'text'):
+                          review_content += event.delta.text
+
+              duration = time.time() - start_time
+
+              # Estimate tokens (rough approximation)
+              input_tokens = len(prompt) // 4
+              output_tokens = len(review_content) // 4
+
+              # Track cost
+              tracker = ClaudeCostTracker()
+              cost_data = tracker.track_usage(
+                  pr_number=pr_number,
+                  repository=os.environ['GITHUB_REPOSITORY'],
+                  model=os.environ.get('ANTHROPIC_MODEL', 'claude-opus-4-20250514'),
+                  input_tokens=input_tokens,
+                  output_tokens=output_tokens,
+                  review_type=f"{review_type}_{review_depth}",
+                  duration_seconds=duration,
+                  metadata={
+                      'incremental': is_incremental,
+                      'files_reviewed': len(files),
+                      'files_skipped': skipped_count,
+                      'run_id': os.environ.get('GITHUB_RUN_ID')
+                  }
+              )
+
+              # Format and post review
+              metadata = {
+                  'review_type': review_type,
+                  'depth': review_depth,
+                  'is_incremental': is_incremental,
+                  'files_reviewed': len(files),
+                  'total_files': original_count,
+                  'skipped_files': skipped_count,
+                  'input_tokens': input_tokens,
+                  'output_tokens': output_tokens,
+                  'estimated_cost': cost_data['total_cost'],
+                  'duration': duration,
+                  'head_sha': pr.head.sha,
+                  'last_review_sha': reviewer.get_previous_review_sha(pr) if is_incremental else None
+              }
+
+              formatted_review = reviewer.format_enhanced_review(review_content, pr_number, metadata)
+              pr.create_issue_comment(formatted_review)
+
+              # Set commit status
+              commit = repo.get_commit(pr.head.sha)
+              commit.create_status(
+                  state="success",
+                  target_url=f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/pull/{pr_number}#issuecomment-new",
+                  description=f"Review complete (${cost_data['total_cost']:.2f})",
+                  context="claude-review/enhanced"
+              )
+
+              console.print(f"[green]✓ Review posted successfully![/green]")
+              console.print(f"Cost: ${cost_data['total_cost']:.2f}")
+
+              # Output summary for workflow
+              print(f"::notice title=Review Complete::PR #{pr_number} reviewed. Cost: ${cost_data['total_cost']:.2f}, Files: {len(files)}/{original_count}")
+
+          if __name__ == '__main__':
+              try:
+                  main()
+              except Exception as e:
+                  console.print(f"[red]Error: {str(e)}[/red]")
+                  import traceback
+                  traceback.print_exc()
+                  sys.exit(1)
+          EOF
+
+          chmod +x enhanced_review.py
+
+      - name: Run enhanced review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python enhanced_review.py
+
+      - name: Generate cost report
+        if: always()
+        run: |
+          python << 'EOF'
+          import os
+          from datetime import datetime
+          from claude_cost_tracker import ClaudeCostTracker
+
+          tracker = ClaudeCostTracker()
+
+          # Get monthly report
+          current_month = datetime.utcnow().strftime('%Y-%m')
+          report = tracker.get_monthly_costs(current_month)
+
+          # Output to workflow summary
+          summary = f"""## 💰 Claude Review Costs
+
+          **Month:** {current_month}
+          **Total Reviews:** {report['total_reviews']}
+          **Total Cost:** ${report['total_cost']:.2f}
+          **Average per Review:** ${report['average_cost_per_review']:.2f}
+
+          ### By Repository:
+          """
+
+          for repo, data in report.get('by_repository', {}).items():
+              summary += f"- **{repo}**: {data['count']} reviews, ${data['cost']:.2f}\n"
+
+          # Write to step summary
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+              f.write(summary)
+          EOF
+
+      - name: Upload review artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-review-enhanced-${{ github.run_id }}
+          path: |
+            enhanced_review.py
+            claude_*.py
+            requirements.txt
+          retention-days: 7

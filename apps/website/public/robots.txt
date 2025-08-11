@@ -1,0 +1,7 @@
+# Robots.txt for Candlefish.ai
+# https://candlefish.ai/robots.txt
+
+User-agent: *
+Allow: /
+
+Sitemap: https://candlefish.ai/sitemap.xml

@@ -1,70 +1,87 @@
-[[redirects]]
-  from = "/docs/privileged/family/*"
-  to = "/docs/privileged/family/index.html"
-  status = 200
-  force = true
-  conditions = { Role = ["admin", "core-family", "extended-family", "sensitive-legal"] }
-
-[[redirects]]
-  from = "/docs/privileged/family/*"
-  to = "/docs/privileged/family/login.html"
-  status = 200
-  force = true
-
 [build]
+  command = "npm run build"
   publish = "dist"
-  environment = { CF_ENV = "production", NODE_ENV = "production", AWS_REGION = "us-east-1", CORS_ORIGINS = "https://candlefish.ai,https://www.candlefish.ai,https://dashboard.candlefish.ai" }
 
-# TikTok verification files - serve as static files
-[[redirects]]
-  from = "/tiktok*.txt"
-  to = "/tiktok*.txt"
-  status = 200
-  force = false
-
-# TikTok OAuth callback - serve as static files
-[[redirects]]
-  from = "/auth/tiktok/*"
-  to = "/auth/tiktok/:splat"
-  status = 200
-  force = false
-
-# .well-known directory for domain verification
-[[redirects]]
-  from = "/.well-known/*"
-  to = "/.well-known/:splat"
-  status = 200
-  force = false
-
-# Main SPA redirect - comes last with force = false to allow static files
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-  force = false
-
-[[headers]]
-  for = "/api/*"
-  [headers.values]
-    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
-    X-Content-Type-Options = "nosniff"
-    X-Frame-Options = "DENY"
-    Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+[build.environment]
+  NODE_VERSION = "18"
 
 [[headers]]
   for = "/*"
   [headers.values]
-    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    # Security Headers
+    X-Frame-Options = "SAMEORIGIN"
     X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
     Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+
+    # Content Security Policy
+    Content-Security-Policy = '''
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      font-src 'self' https://fonts.gstatic.com data:;
+      img-src 'self' data: https: blob:;
+      connect-src 'self' https://api.figma.com https://www.google-analytics.com https://vitals.vercel-insights.com;
+      frame-src 'self';
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self';
+      upgrade-insecure-requests;
+    '''
 
 [[headers]]
-  for = "/docs/privileged/family/*"
+  for = "/*.js"
   [headers.values]
-    X-Robots-Tag = "noindex, noarchive, nosnippet, noimageindex"
-    Cache-Control = "private, max-age=60"
+    Cache-Control = "public, max-age=31536000, immutable"
 
-[[edge_functions]]
-  path = "/docs/privileged/family/*"
-  function = "validate-family-auth"
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.woff2"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[functions]
+  directory = "netlify/functions"
+
+[[plugins]]
+  package = "@netlify/plugin-lighthouse"
+
+  [plugins.inputs]
+    # Performance budget
+    performance = 0.9
+    accessibility = 0.9
+    best-practices = 0.9
+    seo = 0.9
+
+    # Audit URLs
+    audits = [
+      { url = "/", name = "Homepage" },
+      { url = "/v2", name = "Homepage V2" }
+    ]
+
+    # Thresholds that will fail the build
+    [plugins.inputs.thresholds]
+      performance = 0.8
+      accessibility = 0.8
+      best-practices = 0.8
+      seo = 0.8
