@@ -56,7 +56,7 @@ export function useViewportLazyLoad<T extends HTMLElement>(
       ([entry]) => {
         const visible = entry.isIntersecting
         setIsVisible(visible)
-        
+
         // Once visible, keep it visible (for lazy loading)
         if (visible && !hasBeenVisible) {
           setHasBeenVisible(true)

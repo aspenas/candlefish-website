@@ -8,7 +8,7 @@ interface TechItemProps {
 
 const TechItem: React.FC<TechItemProps> = ({ name, description, delay = 0 }) => {
   return (
-    <div 
+    <div
       className={`card text-center hover-lift hover-glow animate-fade-in-scale delay-${delay}`}
       style={{animationDelay: `${delay}ms`}}
     >

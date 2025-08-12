@@ -6,9 +6,9 @@ const HeroSectionMinimal: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         {/* Logo */}
         <div className="mb-8">
-          <img 
-            src="/logo/candlefish-logo.png" 
-            alt="Candlefish AI" 
+          <img
+            src="/logo/candlefish-logo.png"
+            alt="Candlefish AI"
             className="w-32 h-32 mx-auto mb-8 opacity-90"
             onError={(e) => {
               // Fallback to original logo if new one doesn't exist
@@ -21,7 +21,7 @@ const HeroSectionMinimal: React.FC = () => {
         <h1 className="text-5xl md:text-7xl font-bold text-white mb-6">
           Candlefish AI
         </h1>
-        
+
         {/* Tagline */}
         <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
           Enterprise AI consulting through discrete, composable modules

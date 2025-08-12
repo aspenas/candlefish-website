@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
-import { 
-  ArrowRight, 
-  CheckCircle, 
+import {
+  ArrowRight,
+  CheckCircle,
   Calendar,
   MessageSquare,
   Rocket,
@@ -25,7 +25,7 @@ interface CTASectionProps {
   }
 }
 
-const CTASection: React.FC<CTASectionProps> = ({ 
+const CTASection: React.FC<CTASectionProps> = ({
   className = '',
   variant = 'primary',
   title,
@@ -39,10 +39,10 @@ const CTASection: React.FC<CTASectionProps> = ({
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
-    
+
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500))
-    
+
     // Here you would integrate with your API
     console.log('Email submitted:', email)
     setEmail('')
@@ -70,7 +70,7 @@ const CTASection: React.FC<CTASectionProps> = ({
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
               {title || "Ready to Transform Your Business?"}
             </h2>
-            
+
             <p className="text-xl text-primary-100 mb-8 max-w-2xl mx-auto">
               {subtitle || "Join 500+ companies already using AI to drive growth and efficiency. Start your transformation today."}
             </p>
@@ -126,39 +126,37 @@ const CTASection: React.FC<CTASectionProps> = ({
 
   if (variant === 'secondary') {
     return (
-      <section className={`py-20 bg-gray-50 ${className}`}>
-        <div className="container mx-auto px-6 text-center">
-          <div className="max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-2 bg-primary-100 text-primary-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
-              <Rocket className="w-4 h-4" />
-              Ready to Get Started?
-            </div>
-            
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
-              {title || "See Why Industry Leaders Choose Candlefish AI"}
-            </h2>
-            
-            <p className="text-lg text-gray-600 mb-8">
-              {subtitle || "Schedule a personalized demo and discover how AI can transform your business operations."}
-            </p>
+      <section className={`professional-cta ${className}`}>
+        <div className="professional-cta-container">
+          <div className="professional-hero-badge">
+            <Rocket className="w-4 h-4" />
+            <span>Ready to Get Started?</span>
+          </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button 
-                onClick={primaryAction?.onClick}
-                className="group bg-gradient-to-r from-primary-500 to-primary-600 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:from-primary-600 hover:to-primary-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1 flex items-center justify-center gap-2"
-              >
-                <Calendar className="w-5 h-5" />
-                {primaryAction?.text || 'Schedule Demo'}
-              </button>
-              
-              <button 
-                onClick={secondaryAction?.onClick}
-                className="group bg-white text-gray-700 px-8 py-4 rounded-xl font-semibold text-lg border border-gray-300 hover:bg-gray-50 hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2"
-              >
-                {secondaryAction?.text || 'Contact Sales'}
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
+          <h2 className="professional-cta-title">
+            {title || "See Why Industry Leaders Choose Candlefish AI"}
+          </h2>
+
+          <p className="professional-cta-subtitle">
+            {subtitle || "Schedule a personalized demo and discover how AI can transform your business operations."}
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={primaryAction?.onClick}
+              className="professional-btn professional-btn-primary professional-btn-large"
+            >
+              <Calendar className="w-5 h-5" />
+              {primaryAction?.text || 'Schedule Demo'}
+            </button>
+
+            <button
+              onClick={secondaryAction?.onClick}
+              className="professional-btn professional-btn-secondary professional-btn-large"
+            >
+              {secondaryAction?.text || 'Contact Sales'}
+              <ArrowRight className="w-5 h-5" />
+            </button>
           </div>
         </div>
       </section>
@@ -198,22 +196,22 @@ const CTASection: React.FC<CTASectionProps> = ({
               </>
             )}
           </h2>
-          
+
           <p className="text-xl text-primary-100 mb-8 max-w-3xl mx-auto">
             {subtitle || "Join the AI revolution. Transform your operations, delight your customers, and drive unprecedented growth with enterprise AI solutions."}
           </p>
 
           {/* Main CTAs */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <button 
+            <button
               onClick={primaryAction?.onClick}
               className="group bg-white text-primary-600 px-8 py-4 rounded-xl font-bold text-lg hover:bg-gray-50 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1 flex items-center justify-center gap-2"
             >
               {primaryAction?.text || 'Start Free Trial'}
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
-            
-            <button 
+
+            <button
               onClick={secondaryAction?.onClick}
               className="group bg-primary-700 text-white px-8 py-4 rounded-xl font-semibold text-lg border-2 border-primary-400 hover:bg-primary-800 transition-all duration-300 flex items-center justify-center gap-2"
             >

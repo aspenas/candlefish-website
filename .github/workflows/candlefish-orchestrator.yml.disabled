@@ -174,7 +174,7 @@ jobs:
 
               # Get package name from project definition
               IFS=':' read -r _ _ package_name <<< "${PROJECTS[$project]}"
-              
+
               item=$(jq -n \
                 --arg project "$project" \
                 --arg package_name "$package_name" \

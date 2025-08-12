@@ -12,14 +12,14 @@ interface NeuralNodeProps {
 
 const NeuralNode: React.FC<NeuralNodeProps> = ({ x, y, size, delay, color, id }) => {
   const [isActive, setIsActive] = useState(false)
-  
+
   useEffect(() => {
     const interval = setInterval(() => {
       setIsActive(prev => !prev)
     }, 2000 + Math.random() * 2000)
     return () => clearInterval(interval)
   }, [])
-  
+
   return (
     <>
       <motion.div
@@ -33,7 +33,7 @@ const NeuralNode: React.FC<NeuralNodeProps> = ({ x, y, size, delay, color, id })
           filter: isActive ? `drop-shadow(0 0 20px ${color})` : 'none',
         }}
         initial={{ scale: 0, opacity: 0 }}
-        animate={{ 
+        animate={{
           scale: [0.8, 1.2, 1],
           opacity: [0.6, 1, 0.8],
           boxShadow: [
@@ -82,7 +82,7 @@ interface ConnectionLineProps {
 const ConnectionLine: React.FC<ConnectionLineProps> = ({ from, to, delay }) => {
   const length = Math.sqrt(Math.pow(to.x - from.x, 2) + Math.pow(to.y - from.y, 2))
   const angle = Math.atan2(to.y - from.y, to.x - from.x) * (180 / Math.PI)
-  
+
   return (
     <>
       {/* Main connection line */}
@@ -98,7 +98,7 @@ const ConnectionLine: React.FC<ConnectionLineProps> = ({ from, to, delay }) => {
           transformOrigin: '0 50%',
         }}
         initial={{ scaleX: 0, opacity: 0 }}
-        animate={{ 
+        animate={{
           scaleX: [0, 1, 0.8],
           opacity: [0, 0.8, 0.4],
         }}
@@ -138,10 +138,10 @@ const AIAnimation: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null)
   const mouseX = useMotionValue(0)
   const mouseY = useMotionValue(0)
-  
+
   const rotateX = useTransform(mouseY, [-300, 300], [10, -10])
   const rotateY = useTransform(mouseX, [-300, 300], [-10, 10])
-  
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       const rect = containerRef.current?.getBoundingClientRect()
@@ -152,11 +152,11 @@ const AIAnimation: React.FC = () => {
         mouseY.set(e.clientY - centerY)
       }
     }
-    
+
     window.addEventListener('mousemove', handleMouseMove)
     return () => window.removeEventListener('mousemove', handleMouseMove)
   }, [])
-  
+
   // Define neural network nodes
   const nodes: NeuralNodeProps[] = [
     { id: 1, x: 50, y: 15, size: 16, delay: 0, color: '#00CED1' },
@@ -169,7 +169,7 @@ const AIAnimation: React.FC = () => {
     { id: 8, x: 70, y: 80, size: 10, delay: 2.1, color: '#007AFF' },
     { id: 9, x: 50, y: 90, size: 12, delay: 2.4, color: '#AF52DE' },
   ]
-  
+
   // Define connections between nodes
   const connections: ConnectionLineProps[] = [
     { from: { x: 50, y: 15 }, to: { x: 25, y: 35 }, delay: 0.5 },
@@ -187,8 +187,8 @@ const AIAnimation: React.FC = () => {
   ]
 
   return (
-    <motion.div 
-      className="w-full h-full flex items-center justify-center relative" 
+    <motion.div
+      className="w-full h-full flex items-center justify-center relative"
       ref={containerRef}
       style={{
         rotateX,
@@ -213,7 +213,7 @@ const AIAnimation: React.FC = () => {
           ease: "easeInOut",
         }}
       />
-      
+
       {/* Outer Ring Animation */}
       <motion.div
         className="absolute w-96 h-96 rounded-full border-2 opacity-30"
@@ -256,7 +256,7 @@ const AIAnimation: React.FC = () => {
           ease: "linear",
         }}
       />
-      
+
       {/* AI Brain Container */}
       <div className="relative w-80 h-80" style={{ transformStyle: 'preserve-3d' }}>
         {/* Connection Lines */}
@@ -268,7 +268,7 @@ const AIAnimation: React.FC = () => {
             delay={connection.delay}
           />
         ))}
-        
+
         {/* Neural Nodes */}
         {nodes.map((node) => (
           <NeuralNode
@@ -281,7 +281,7 @@ const AIAnimation: React.FC = () => {
             id={node.id}
           />
         ))}
-        
+
         {/* Central Processing Unit */}
         <motion.div
           className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full"
@@ -303,7 +303,7 @@ const AIAnimation: React.FC = () => {
             ease: "easeInOut",
           }}
         />
-        
+
         {/* Enhanced Data Flow Particles */}
         {Array.from({ length: 12 }, (_, i) => (
           <motion.div

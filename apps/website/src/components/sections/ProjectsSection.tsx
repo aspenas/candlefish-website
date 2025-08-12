@@ -45,7 +45,7 @@ export default function ProjectsSection() {
 
         <div className="grid lg:grid-cols-3 gap-8">
           {projects.map((project, index) => (
-            <div 
+            <div
               key={project.title}
               className={`animate-fade-in-up delay-${(index + 3) * 100}`}
             >
@@ -55,10 +55,10 @@ export default function ProjectsSection() {
                   <h3 className="text-xl font-semibold mb-2">{project.title}</h3>
                   <p className="text-caption">{project.client}</p>
                 </div>
-                
+
                 {/* Description */}
                 <p className="text-body text-secondary mb-6 flex-1">{project.description}</p>
-                
+
                 {/* Metrics */}
                 <div className="flex items-center gap-6 mb-6">
                   <div className="flex items-center gap-2 hover-scale">
@@ -70,14 +70,14 @@ export default function ProjectsSection() {
                     <span className="text-caption">{project.time}</span>
                   </div>
                 </div>
-                
+
                 {/* Tags */}
                 <div className="flex flex-wrap gap-2">
                   {project.tags.map(tag => (
-                    <span 
+                    <span
                       key={tag}
                       className="px-3 py-1 text-xs font-medium rounded-full hover-glow"
-                      style={{ 
+                      style={{
                         background: 'var(--bg-tertiary)',
                         color: 'var(--text-secondary)'
                       }}
@@ -93,8 +93,8 @@ export default function ProjectsSection() {
 
         {/* Case Study CTA */}
         <div className="text-center mt-12 animate-fade-in-up delay-600">
-          <a 
-            href="#contact" 
+          <a
+            href="#contact"
             className="inline-flex items-center gap-2 text-accent hover-lift text-reveal"
           >
             View More Case Studies

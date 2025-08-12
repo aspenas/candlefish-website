@@ -61,7 +61,7 @@ export function initPerformanceMonitoring() {
             loadComplete: navigationTiming.loadEventEnd - navigationTiming.loadEventStart,
             totalTime: navigationTiming.loadEventEnd - navigationTiming.fetchStart
           }
-          
+
           console.log('Performance Metrics:', metrics)
         }
       }, 0)

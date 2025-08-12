@@ -5,19 +5,19 @@ import { useIntersectionObserver } from '../hooks/useIntersectionObserver'
 type VisualizationType = '3d' | 'canvas' | 'hybrid' | 'classic'
 
 // Lazy load heavy visualization components
-const AdvancedAIVisualization = lazy(() => 
+const AdvancedAIVisualization = lazy(() =>
   import('./AdvancedAIVisualization').then(module => ({
     default: module.default
   }))
 )
 
-const NeuralNetworkCanvas = lazy(() => 
+const NeuralNetworkCanvas = lazy(() =>
   import('./NeuralNetworkCanvas').then(module => ({
     default: module.default
   }))
 )
 
-const AIAnimation = lazy(() => 
+const AIAnimation = lazy(() =>
   import('./AIAnimation').then(module => ({
     default: module.default
   }))
@@ -50,7 +50,7 @@ const OptimizedAIVisualizationHub: React.FC = () => {
   const [isLoaded, setIsLoaded] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const rotationTimerRef = useRef<NodeJS.Timeout>()
-  
+
   // Use intersection observer to only load when visible
   const { isIntersecting } = useIntersectionObserver(containerRef, {
     threshold: 0.1,
@@ -61,14 +61,14 @@ const OptimizedAIVisualizationHub: React.FC = () => {
   useEffect(() => {
     if (autoRotate && isIntersecting && isLoaded) {
       const views: VisualizationType[] = ['3d', 'canvas', 'hybrid', 'classic']
-      
+
       rotationTimerRef.current = setInterval(() => {
         setActiveView(prev => {
           const currentIndex = views.indexOf(prev)
           return views[(currentIndex + 1) % views.length]
         })
       }, 15000) // Rotate every 15 seconds
-      
+
       return () => {
         if (rotationTimerRef.current) {
           clearInterval(rotationTimerRef.current)
@@ -114,7 +114,7 @@ const OptimizedAIVisualizationHub: React.FC = () => {
       {isIntersecting && (
         <>
           {/* Visualization Controls */}
-          <motion.div 
+          <motion.div
             className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -139,7 +139,7 @@ const OptimizedAIVisualizationHub: React.FC = () => {
                   {view === 'classic' && 'Classic'}
                 </motion.button>
               ))}
-              
+
               <motion.button
                 onClick={toggleAutoRotate}
                 className={`px-3 py-2 rounded-full text-sm ${
@@ -152,7 +152,7 @@ const OptimizedAIVisualizationHub: React.FC = () => {
                 title={autoRotate ? 'Auto-rotate ON' : 'Auto-rotate OFF'}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                     d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </motion.button>
@@ -176,13 +176,13 @@ const OptimizedAIVisualizationHub: React.FC = () => {
                       <AdvancedAIVisualization />
                     </div>
                   )}
-                  
+
                   {activeView === 'canvas' && (
                     <div className="w-full h-full">
                       <NeuralNetworkCanvas />
                     </div>
                   )}
-                  
+
                   {activeView === 'hybrid' && (
                     <div className="w-full h-full relative">
                       {/* Layer 1: Canvas background */}
@@ -195,7 +195,7 @@ const OptimizedAIVisualizationHub: React.FC = () => {
                       </div>
                     </div>
                   )}
-                  
+
                   {activeView === 'classic' && (
                     <div className="w-full h-full flex items-center justify-center">
                       <AIAnimation />

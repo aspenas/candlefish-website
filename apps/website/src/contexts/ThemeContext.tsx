@@ -15,12 +15,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // Check localStorage first
     const stored = localStorage.getItem('theme') as Theme | null
     if (stored) return stored
-    
+
     // Then check system preference
     if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
       return 'dark'
     }
-    
+
     // Default to dark for Candlefish
     return 'dark'
   })
@@ -29,7 +29,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // Apply theme to document
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('theme', theme)
-    
+
     // Update meta theme-color
     const metaThemeColor = document.querySelector('meta[name="theme-color"]')
     if (metaThemeColor) {

@@ -40,7 +40,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ title, company, status, descr
   return (
     <article className="card card-elevated hover-lift hover-glow relative overflow-hidden group animate-fade-in-up">
       {/* Top accent line */}
-      <div 
+      <div
         className="absolute top-0 left-0 w-full h-1 transform scale-x-0 origin-left transition-transform duration-800 ease-out group-hover:scale-x-100"
         style={{backgroundColor: 'var(--accent-primary)'}}
       ></div>
@@ -50,7 +50,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ title, company, status, descr
           <h3 className="text-2xl font-light mb-2 text-reveal" style={{color: 'var(--text-primary)'}}>{title}</h3>
           <p className="text-sm text-caption">{company}</p>
         </div>
-        <span 
+        <span
           className="font-mono text-xs px-4 py-1 border uppercase tracking-wider text-label"
           style={{
             color: statusColors.color,

@@ -27,15 +27,15 @@ const OptimizedParticleBackground: React.FC = () => {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
     const isLowEnd = navigator.hardwareConcurrency <= 2
     const hasReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    
+
     if (hasReducedMotion) {
       return { particleCount: 0, enabled: false }
     }
-    
+
     if (isMobile || isLowEnd) {
       return { particleCount: 15, enabled: true }
     }
-    
+
     return { particleCount: 30, enabled: true }
   }, [])
 
@@ -112,7 +112,7 @@ const OptimizedParticleBackground: React.FC = () => {
       attribute vec2 a_position;
       attribute float a_size;
       attribute float a_opacity;
-      
+
       uniform vec2 u_resolution;
       varying float v_opacity;
 
@@ -126,17 +126,17 @@ const OptimizedParticleBackground: React.FC = () => {
 
     const fragmentShaderSource = `
       precision lowp float;
-      
+
       varying float v_opacity;
 
       void main() {
         vec2 coord = gl_PointCoord - vec2(0.5);
         float distance = length(coord);
-        
+
         if (distance > 0.5) {
           discard;
         }
-        
+
         float alpha = 1.0 - smoothstep(0.0, 0.5, distance);
         gl_FragColor = vec4(0.0, 0.808, 0.82, alpha * v_opacity * 0.3);
       }
@@ -148,13 +148,13 @@ const OptimizedParticleBackground: React.FC = () => {
       if (!shader) return null
       gl.shaderSource(shader, source)
       gl.compileShader(shader)
-      
+
       if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
         console.error('Shader compilation error:', gl.getShaderInfoLog(shader))
         gl.deleteShader(shader)
         return null
       }
-      
+
       return shader
     }
 

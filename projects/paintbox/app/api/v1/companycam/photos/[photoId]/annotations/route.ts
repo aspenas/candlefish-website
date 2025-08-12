@@ -17,10 +17,11 @@ const CreateAnnotationSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { photoId: string } }
+  context: { params: Promise<{ photoId: string }> }
 ) {
   try {
-    const { photoId } = params;
+    const params = await context.params;
+    const { photoId } = await params;
     logger.info('GET /api/v1/companycam/photos/:photoId/annotations', { photoId });
 
     // For now, return empty annotations since we don't have a direct method
@@ -47,10 +48,11 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { photoId: string } }
+  context: { params: Promise<{ photoId: string }> }
 ) {
   try {
-    const { photoId } = params;
+    const params = await context.params;
+    const { photoId } = await params;
     logger.info('POST /api/v1/companycam/photos/:photoId/annotations', { photoId });
 
     const body = await request.json();

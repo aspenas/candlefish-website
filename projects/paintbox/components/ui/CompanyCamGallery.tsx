@@ -39,7 +39,7 @@ export const CompanyCamGallery: React.FC<CompanyCamGalleryProps> = ({
     try {
       // TODO: Implement actual photo upload via API route
       console.log('Photo upload functionality will be implemented via API routes');
-      
+
       // Simulate upload
       setTimeout(() => {
         setIsLoading(false);

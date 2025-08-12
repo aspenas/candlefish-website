@@ -16,11 +16,11 @@ const HomePageOptimized: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       <NavigationARC />
-      
+
       <Suspense fallback={<SectionLoader />}>
         <HeroARC />
       </Suspense>
-      
+
       {/* Services Section */}
       <section id="services" className="section section-gradient">
         <div className="container mx-auto px-6">
@@ -29,8 +29,8 @@ const HomePageOptimized: React.FC = () => {
               What We Do
             </h2>
             <p className="text-xl text-gray-600">
-              We deliver AI transformation through focused, measurable implementations. 
-              Each module is designed to solve specific business challenges while 
+              We deliver AI transformation through focused, measurable implementations.
+              Each module is designed to solve specific business challenges while
               integrating seamlessly with your existing infrastructure.
             </p>
           </div>
@@ -56,7 +56,7 @@ const HomePageOptimized: React.FC = () => {
                 features: ['Performance monitoring', 'Model retraining', 'Feature expansion']
               }
             ].map((service, index) => (
-              <div 
+              <div
                 key={index}
                 className="card p-8 interactive-hover"
               >
@@ -85,7 +85,7 @@ const HomePageOptimized: React.FC = () => {
               Our Approach
             </h2>
             <p className="text-xl text-gray-600">
-              We believe in starting small, proving value, and scaling systematically. 
+              We believe in starting small, proving value, and scaling systematically.
               Our modular approach means you see results in weeks, not months.
             </p>
           </div>
@@ -140,12 +140,12 @@ const HomePageOptimized: React.FC = () => {
                       <span className="text-sm text-gray-500">{timeline.phase}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
+                      <div
                         className={`h-2 rounded-full ${
-                          timeline.animated 
-                            ? 'bg-gradient-to-r from-cyan-500 to-cyan-300 animate-pulse-slow' 
+                          timeline.animated
+                            ? 'bg-gradient-to-r from-cyan-500 to-cyan-300 animate-pulse-slow'
                             : 'bg-gradient-to-r from-cyan-500 to-cyan-400'
-                        }`} 
+                        }`}
                         style={{width: `${timeline.progress}%`}}
                       />
                     </div>
@@ -165,7 +165,7 @@ const HomePageOptimized: React.FC = () => {
               Case Studies
             </h2>
             <p className="text-xl text-gray-600">
-              Real implementations delivering measurable results for enterprises 
+              Real implementations delivering measurable results for enterprises
               across industries.
             </p>
           </div>
@@ -236,7 +236,7 @@ const HomePageOptimized: React.FC = () => {
               Technology Stack
             </h2>
             <p className="text-xl text-gray-600">
-              We use best-in-class tools and frameworks to deliver robust, 
+              We use best-in-class tools and frameworks to deliver robust,
               scalable AI solutions.
             </p>
           </div>
@@ -284,7 +284,7 @@ const HomePageOptimized: React.FC = () => {
             Ready to Transform Your Business?
           </h2>
           <p className="text-xl text-cyan-50 mb-12 max-w-2xl mx-auto">
-            Let's identify your biggest bottleneck and turn it into your 
+            Let's identify your biggest bottleneck and turn it into your
             competitive advantage in just 4 weeks.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -316,10 +316,10 @@ const HomePageOptimized: React.FC = () => {
                 Let's Start a Conversation
               </h2>
               <p className="text-xl text-gray-600 mb-8">
-                Tell us about your challenges and we'll show you how modular AI 
+                Tell us about your challenges and we'll show you how modular AI
                 can solve them.
               </p>
-              
+
               <div className="grid md:grid-cols-2 gap-8 mb-8">
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-3">Quick Contact</h3>
@@ -338,7 +338,7 @@ const HomePageOptimized: React.FC = () => {
                     </a>
                   </div>
                 </div>
-                
+
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-3">Office Locations</h3>
                   <div className="space-y-3 text-gray-600">
@@ -369,9 +369,9 @@ const HomePageOptimized: React.FC = () => {
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center space-x-2 mb-4 md:mb-0">
-              <img 
-                src="/logo/candlefish_original.png" 
-                alt="Candlefish AI" 
+              <img
+                src="/logo/candlefish_original.png"
+                alt="Candlefish AI"
                 className="w-8 h-8"
               />
               <span className="text-gray-600">© 2024 Candlefish AI LLC</span>

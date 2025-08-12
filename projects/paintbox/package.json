@@ -10,7 +10,7 @@
     "export": "next export",
     "build:full": "next build && npx tsc server/websocket-server.ts --outDir dist --esModuleInterop --module commonjs",
     "build:websocket": "npx tsc server/websocket-server.ts --outDir dist --esModuleInterop --module commonjs",
-    "start": "node scripts/start-production.js",
+    "start": "next start -p 8080 -H 0.0.0.0",
     "start:ws": "NODE_ENV=production node dist/websocket-server.js",
     "start:next": "next start",
     "postinstall": "prisma generate || true",

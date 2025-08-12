@@ -8,7 +8,7 @@ const HomePageARC: React.FC = () => {
     <div className="min-h-screen bg-white">
       <NavigationARC />
       <HeroARC />
-      
+
       {/* Services Section */}
       <section id="services" className="py-24 bg-gray-50">
         <div className="container mx-auto px-6">
@@ -17,8 +17,8 @@ const HomePageARC: React.FC = () => {
               What We Do
             </h2>
             <p className="text-xl text-gray-600">
-              We deliver AI transformation through focused, measurable implementations. 
-              Each module is designed to solve specific business challenges while 
+              We deliver AI transformation through focused, measurable implementations.
+              Each module is designed to solve specific business challenges while
               integrating seamlessly with your existing infrastructure.
             </p>
           </div>
@@ -28,7 +28,7 @@ const HomePageARC: React.FC = () => {
               <div className="text-4xl mb-4">🎯</div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Process Analysis</h3>
               <p className="text-gray-600 mb-4">
-                We identify your most time-consuming processes and design AI solutions 
+                We identify your most time-consuming processes and design AI solutions
                 that deliver immediate, measurable improvements.
               </p>
               <ul className="space-y-2 text-sm text-gray-500">
@@ -51,7 +51,7 @@ const HomePageARC: React.FC = () => {
               <div className="text-4xl mb-4">🔧</div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Modular Implementation</h3>
               <p className="text-gray-600 mb-4">
-                Custom AI modules built to your specifications, delivered as 
+                Custom AI modules built to your specifications, delivered as
                 production-ready code with full documentation.
               </p>
               <ul className="space-y-2 text-sm text-gray-500">
@@ -74,7 +74,7 @@ const HomePageARC: React.FC = () => {
               <div className="text-4xl mb-4">📈</div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Continuous Optimization</h3>
               <p className="text-gray-600 mb-4">
-                Ongoing monitoring and refinement to ensure your AI systems 
+                Ongoing monitoring and refinement to ensure your AI systems
                 continue delivering value as your business evolves.
               </p>
               <ul className="space-y-2 text-sm text-gray-500">
@@ -104,7 +104,7 @@ const HomePageARC: React.FC = () => {
               Our Approach
             </h2>
             <p className="text-xl text-gray-600">
-              We believe in starting small, proving value, and scaling systematically. 
+              We believe in starting small, proving value, and scaling systematically.
               Our modular approach means you see results in weeks, not months.
             </p>
           </div>
@@ -119,7 +119,7 @@ const HomePageARC: React.FC = () => {
                   <div className="ml-4">
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Discovery Sprint</h3>
                     <p className="text-gray-600">
-                      2-3 days analyzing your workflows to identify the highest-impact opportunities 
+                      2-3 days analyzing your workflows to identify the highest-impact opportunities
                       for AI implementation.
                     </p>
                   </div>
@@ -132,7 +132,7 @@ const HomePageARC: React.FC = () => {
                   <div className="ml-4">
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Pilot Module</h3>
                     <p className="text-gray-600">
-                      2-4 weeks building and deploying your first AI module, complete with 
+                      2-4 weeks building and deploying your first AI module, complete with
                       metrics to measure success.
                     </p>
                   </div>
@@ -145,7 +145,7 @@ const HomePageARC: React.FC = () => {
                   <div className="ml-4">
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Scale & Expand</h3>
                     <p className="text-gray-600">
-                      Add new modules based on proven ROI, building a comprehensive AI 
+                      Add new modules based on proven ROI, building a comprehensive AI
                       ecosystem tailored to your needs.
                     </p>
                   </div>
@@ -208,7 +208,7 @@ const HomePageARC: React.FC = () => {
               Case Studies
             </h2>
             <p className="text-xl text-gray-600">
-              Real implementations delivering measurable results for enterprises 
+              Real implementations delivering measurable results for enterprises
               across industries.
             </p>
           </div>
@@ -224,7 +224,7 @@ const HomePageARC: React.FC = () => {
                   Quality Control Automation
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  Reduced defect rates by 87% using computer vision models to identify 
+                  Reduced defect rates by 87% using computer vision models to identify
                   quality issues in real-time on the production line.
                 </p>
                 <div className="grid grid-cols-2 gap-4 pb-6 border-b border-gray-200">
@@ -258,7 +258,7 @@ const HomePageARC: React.FC = () => {
                   Document Processing Pipeline
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  Automated 95% of manual document review processes, reducing processing 
+                  Automated 95% of manual document review processes, reducing processing
                   time from days to minutes.
                 </p>
                 <div className="grid grid-cols-2 gap-4 pb-6 border-b border-gray-200">
@@ -293,7 +293,7 @@ const HomePageARC: React.FC = () => {
               Technology Stack
             </h2>
             <p className="text-xl text-gray-600">
-              We use best-in-class tools and frameworks to deliver robust, 
+              We use best-in-class tools and frameworks to deliver robust,
               scalable AI solutions.
             </p>
           </div>
@@ -354,7 +354,7 @@ const HomePageARC: React.FC = () => {
             Ready to Transform Your Business?
           </h2>
           <p className="text-xl text-cyan-50 mb-12 max-w-2xl mx-auto">
-            Let's identify your biggest bottleneck and turn it into your 
+            Let's identify your biggest bottleneck and turn it into your
             competitive advantage in just 4 weeks.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -386,10 +386,10 @@ const HomePageARC: React.FC = () => {
                 Let's Start a Conversation
               </h2>
               <p className="text-xl text-gray-600 mb-8">
-                Tell us about your challenges and we'll show you how modular AI 
+                Tell us about your challenges and we'll show you how modular AI
                 can solve them.
               </p>
-              
+
               <div className="grid md:grid-cols-2 gap-8 mb-8">
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-3">Quick Contact</h3>
@@ -408,7 +408,7 @@ const HomePageARC: React.FC = () => {
                     </a>
                   </div>
                 </div>
-                
+
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-3">Office Locations</h3>
                   <div className="space-y-3 text-gray-600">
@@ -439,9 +439,9 @@ const HomePageARC: React.FC = () => {
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center space-x-2 mb-4 md:mb-0">
-              <img 
-                src="/logo/candlefish_original.png" 
-                alt="Candlefish AI" 
+              <img
+                src="/logo/candlefish_original.png"
+                alt="Candlefish AI"
                 className="w-8 h-8"
               />
               <span className="text-gray-600">© 2024 Candlefish AI LLC</span>

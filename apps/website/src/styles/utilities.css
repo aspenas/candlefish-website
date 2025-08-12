@@ -86,7 +86,7 @@
   .md\:grid-cols-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  
+
   .md\:py-32 {
     padding-top: 8rem;
     padding-bottom: 8rem;
@@ -97,15 +97,15 @@
   .lg\:grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  
+
   .lg\:grid-cols-4 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
-  
+
   .lg\:flex {
     display: flex;
   }
-  
+
   .lg\:hidden {
     display: none;
   }
@@ -225,11 +225,11 @@
     font-size: 3rem;
     line-height: 1;
   }
-  
+
   .sm\:flex-row {
     flex-direction: row;
   }
-  
+
   .sm\:inline {
     display: inline;
   }
@@ -240,29 +240,29 @@
     font-size: 3.75rem;
     line-height: 1;
   }
-  
+
   .md\:text-4xl {
     font-size: 2.25rem;
     line-height: 2.5rem;
   }
-  
+
   .md\:text-xl {
     font-size: 1.25rem;
     line-height: 1.75rem;
   }
-  
+
   .md\:h-20 {
     height: 5rem;
   }
-  
+
   .md\:grid-cols-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  
+
   .md\:flex-row {
     flex-direction: row;
   }
-  
+
   .md\:py-32 {
     padding-top: 8rem;
     padding-bottom: 8rem;
@@ -274,24 +274,24 @@
     font-size: 4.5rem;
     line-height: 1;
   }
-  
+
   .lg\:text-5xl {
     font-size: 3rem;
     line-height: 1;
   }
-  
+
   .lg\:grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  
+
   .lg\:grid-cols-4 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
-  
+
   .lg\:flex {
     display: flex;
   }
-  
+
   .lg\:hidden {
     display: none;
   }

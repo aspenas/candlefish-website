@@ -1,10 +1,10 @@
 import React from 'react'
-import { 
-  Brain, 
-  Zap, 
-  Shield, 
-  BarChart3, 
-  Cpu, 
+import {
+  Brain,
+  Zap,
+  Shield,
+  BarChart3,
+  Cpu,
   Globe,
   ArrowRight
 } from 'lucide-react'
@@ -22,18 +22,18 @@ interface FeaturesGridProps {
 
 const Feature: React.FC<FeatureProps> = ({ icon: Icon, title, description, benefits }) => {
   return (
-    <div className="group relative bg-white/70 backdrop-blur-sm rounded-2xl p-8 border border-gray-200/50 hover:bg-white hover:shadow-xl transition-all duration-300 hover:-translate-y-2">
+    <div className="professional-feature-card group">
       {/* Icon */}
-      <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-accent-500 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-        <Icon className="w-6 h-6 text-white" />
+      <div className="professional-feature-icon">
+        <Icon className="w-6 h-6" />
       </div>
 
       {/* Content */}
-      <h3 className="text-xl font-bold text-gray-900 mb-4 group-hover:text-primary-600 transition-colors">
+      <h3 className="professional-feature-title">
         {title}
       </h3>
-      
-      <p className="text-gray-600 mb-6 leading-relaxed">
+
+      <p className="professional-feature-description">
         {description}
       </p>
 
@@ -54,9 +54,6 @@ const Feature: React.FC<FeatureProps> = ({ icon: Icon, title, description, benef
           <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
         </div>
       </div>
-
-      {/* Subtle Gradient Border on Hover */}
-      <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-primary-500/20 to-accent-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10" />
     </div>
   )
 }
@@ -126,35 +123,29 @@ const FeaturesGrid: React.FC<FeaturesGridProps> = ({ className = '' }) => {
   ]
 
   return (
-    <section className={`py-20 bg-gradient-to-b from-gray-50 to-white relative overflow-hidden ${className}`}>
-      {/* Background Elements */}
-      <div className="absolute top-0 left-1/4 w-72 h-72 bg-gradient-to-br from-primary-100/40 to-accent-100/40 rounded-full blur-3xl" />
-      <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-gradient-to-tl from-accent-100/40 to-primary-100/40 rounded-full blur-3xl" />
-      
-      <div className="relative z-10 container mx-auto px-6">
+    <section className={`professional-features ${className}`}>
+      <div className="professional-features-container">
         {/* Section Header */}
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 bg-primary-100/50 text-primary-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
+        <div className="professional-features-header">
+          <div className="professional-hero-badge">
             <Zap className="w-4 h-4" />
-            Enterprise AI Solutions
+            <span>Enterprise AI Solutions</span>
           </div>
-          
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+
+          <h2 className="professional-features-title">
             Everything you need to{' '}
-            <span className="bg-gradient-to-r from-primary-600 to-accent-500 bg-clip-text text-transparent">
-              accelerate
-            </span>{' '}
+            <span className="text-gradient">accelerate</span>{' '}
             with AI
           </h2>
-          
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            From intelligent automation to predictive analytics, our comprehensive AI platform 
+
+          <p className="professional-features-subtitle">
+            From intelligent automation to predictive analytics, our comprehensive AI platform
             helps enterprises unlock new levels of efficiency and innovation.
           </p>
         </div>
 
         {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="professional-features-grid">
           {features.map((feature, index) => (
             <Feature key={index} {...feature} />
           ))}
@@ -162,9 +153,9 @@ const FeaturesGrid: React.FC<FeaturesGridProps> = ({ className = '' }) => {
 
         {/* Bottom CTA */}
         <div className="text-center mt-16">
-          <button className="group bg-gradient-to-r from-primary-500 to-primary-600 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:from-primary-600 hover:to-primary-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1 flex items-center gap-2 mx-auto">
+          <button className="professional-btn professional-btn-primary professional-btn-large">
             Explore All Features
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            <ArrowRight className="w-5 h-5" />
           </button>
         </div>
       </div>

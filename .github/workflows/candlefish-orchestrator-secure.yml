@@ -53,10 +53,10 @@ env:
   PNPM_VERSION: '8.15.6'
   GO_VERSION: '1.22.0'
   RUST_VERSION: '1.75.0'
-  
+
   # AWS configuration (no account ID exposure)
   AWS_REGION: us-east-1
-  
+
   # Cost tracking
   GITHUB_MINUTES_BUDGET: 50000
   WORKFLOW_TIMEOUT_MINUTES: 30
@@ -87,27 +87,27 @@ jobs:
         id: validate
         run: |
           set -euo pipefail
-          
+
           # Define allowed values
           ALLOWED_PROJECTS="website,analytics,collab,paintbox,promoter,all,changed"
           ALLOWED_ENVIRONMENTS="dev,staging,production"
-          
+
           # Get inputs with defaults
           PROJECT_INPUT="${{ github.event.inputs.projects || 'changed' }}"
           ENV_INPUT="${{ github.event.inputs.environment || 'staging' }}"
-          
+
           # Validate environment
           if [[ ! " ${ALLOWED_ENVIRONMENTS} " =~ " ${ENV_INPUT} " ]]; then
             echo "::error::Invalid environment: ${ENV_INPUT}"
             exit 1
           fi
-          
+
           # Validate project input format (alphanumeric, comma, hyphen only)
           if [[ ! "$PROJECT_INPUT" =~ ^[a-zA-Z0-9,-]+$ ]]; then
             echo "::error::Invalid characters in project input"
             exit 1
           fi
-          
+
           # Validate each project
           IFS=',' read -ra PROJECTS_ARRAY <<< "$PROJECT_INPUT"
           for project in "${PROJECTS_ARRAY[@]}"; do
@@ -116,7 +116,7 @@ jobs:
               exit 1
             fi
           done
-          
+
           # Additional security check for production
           if [[ "$ENV_INPUT" == "production" ]]; then
             if [[ "${{ github.ref }}" != "refs/heads/main" ]] && [[ "${{ github.event_name }}" != "workflow_dispatch" ]]; then
@@ -124,11 +124,11 @@ jobs:
               exit 1
             fi
           fi
-          
+
           # Output validated values
           echo "projects=${PROJECT_INPUT}" >> $GITHUB_OUTPUT
           echo "environment=${ENV_INPUT}" >> $GITHUB_OUTPUT
-          
+
           # Log for audit
           echo "::notice title=Validated Inputs::Projects: ${PROJECT_INPUT}, Environment: ${ENV_INPUT}"
 
@@ -167,10 +167,10 @@ jobs:
         id: detect-changes
         run: |
           set -euo pipefail
-          
+
           # Use validated inputs
           VALIDATED_PROJECTS="${{ needs.validate-inputs.outputs.projects }}"
-          
+
           # Project definitions with strict typing
           declare -A PROJECTS=(
             ["website"]="webapp:apps/website:@candlefish-ai/website"
@@ -179,7 +179,7 @@ jobs:
             ["paintbox"]="enterprise:projects/paintbox:paintbox-app"
             ["promoter"]="enterprise:projects/promoterOS:promoteros"
           )
-          
+
           # Process project selection
           if [[ "$VALIDATED_PROJECTS" == "all" ]]; then
             SELECTED_PROJECTS="${!PROJECTS[@]}"
@@ -193,7 +193,7 @@ jobs:
             else
               CHANGED_FILES=$(git diff --name-only "HEAD~1...HEAD" --)
             fi
-            
+
             # Map changed files to projects
             SELECTED_PROJECTS=""
             for project in "${!PROJECTS[@]}"; do
@@ -203,9 +203,9 @@ jobs:
               fi
             done
           fi
-          
+
           echo "selected_projects=$SELECTED_PROJECTS" >> $GITHUB_OUTPUT
-          
+
           # Mask any sensitive project names
           for project in $SELECTED_PROJECTS; do
             echo "::add-mask::candlefish-${project}-secret"
@@ -215,14 +215,14 @@ jobs:
         id: build-matrix
         run: |
           set -euo pipefail
-          
+
           PROJECTS="${{ steps.detect-changes.outputs.selected_projects }}"
           ENVIRONMENT="${{ needs.validate-inputs.outputs.environment }}"
-          
+
           # Build matrix JSON securely
           matrix='{"include":[]}'
           project_list=()
-          
+
           if [[ -n "$PROJECTS" ]]; then
             for project in $PROJECTS; do
               # Determine project type
@@ -243,7 +243,7 @@ jobs:
                   timeout=15
                   ;;
               esac
-              
+
               # Build item with proper escaping
               item=$(jq -n \
                 --arg project "$project" \
@@ -258,15 +258,15 @@ jobs:
                   environment: $env,
                   timeout: ($timeout | tonumber)
                 }')
-              
+
               matrix=$(echo "$matrix" | jq ".include += [$item]")
               project_list+=("$project")
             done
           fi
-          
+
           # Generate secure cache key
           cache_key="${{ github.sha }}-${ENVIRONMENT}-$(date +%Y%m%d)-${{ github.run_id }}"
-          
+
           # Output matrix
           echo "matrix=$(echo $matrix | jq -c .)" >> $GITHUB_OUTPUT
           echo "projects=${project_list[*]}" >> $GITHUB_OUTPUT
@@ -332,10 +332,10 @@ jobs:
       - name: License compliance check
         run: |
           set -euo pipefail
-          
+
           # Install license checker with specific version
           npm install -g license-checker@25.0.1
-          
+
           # Check licenses with strict policy
           license-checker --production \
             --onlyAllow 'MIT;Apache-2.0;BSD;BSD-2-Clause;BSD-3-Clause;ISC;CC0-1.0;Unlicense' \
@@ -348,14 +348,14 @@ jobs:
       - name: Security policy compliance
         run: |
           set -euo pipefail
-          
+
           # Check for required security files
           required_files=(
             ".github/SECURITY.md"
             ".github/CODEOWNERS"
             ".github/dependabot.yml"
           )
-          
+
           for file in "${required_files[@]}"; do
             if [[ ! -f "$file" ]]; then
               echo "::warning::Missing required security file: $file"
@@ -396,7 +396,7 @@ jobs:
       - name: Install dependencies with integrity check
         run: |
           set -euo pipefail
-          
+
           # Verify lock file integrity
           if [[ -f "pnpm-lock.yaml" ]]; then
             pnpm install --frozen-lockfile --prefer-offline
@@ -405,7 +405,7 @@ jobs:
           elif [[ -f "yarn.lock" ]]; then
             yarn install --frozen-lockfile
           fi
-          
+
           # Audit dependencies
           npm audit --audit-level=high || echo "::warning::Security vulnerabilities found in dependencies"
 
@@ -416,7 +416,7 @@ jobs:
           CI: true
         run: |
           set -euo pipefail
-          
+
           # Run tests based on project type
           case "${{ matrix.type }}" in
             webapp|business|client)
@@ -430,18 +430,18 @@ jobs:
       - name: Build project with integrity
         run: |
           set -euo pipefail
-          
+
           # Set secure build flags
           export NODE_ENV=production
           export SOURCE_MAP=false  # Don't include source maps in production
-          
+
           # Build based on project type
           case "${{ matrix.type }}" in
             webapp|business|client|enterprise)
               pnpm turbo build --filter=${{ matrix.project }}
               ;;
           esac
-          
+
           # Generate build manifest for integrity checking
           find dist -type f -exec sha256sum {} \; > build-manifest.txt
 
@@ -499,7 +499,7 @@ jobs:
       - name: Verify build integrity
         run: |
           set -euo pipefail
-          
+
           # Verify build manifest
           if [[ -f "build-manifest.txt" ]]; then
             sha256sum -c build-manifest.txt || {
@@ -511,10 +511,10 @@ jobs:
       - name: Get deployment secrets securely
         run: |
           set -euo pipefail
-          
+
           # Use AWS Secrets Manager with specific project/environment scope
           SECRET_ID="candlefish/${{ matrix.environment }}/${{ matrix.project }}"
-          
+
           # Check if secret exists before attempting to retrieve
           if aws secretsmanager describe-secret --secret-id "$SECRET_ID" 2>/dev/null; then
             # Retrieve and mask secrets
@@ -533,11 +533,11 @@ jobs:
         id: deploy
         run: |
           set -euo pipefail
-          
+
           # Create deployment marker
           DEPLOYMENT_ID="deploy-${{ matrix.project }}-${{ github.sha }}-$(date +%s)"
           echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
-          
+
           # Deploy based on type
           case "${{ matrix.type }}" in
             webapp|business|client)
@@ -548,14 +548,14 @@ jobs:
                 --exclude "*.html" \
                 --exclude "*.json" \
                 --metadata "deployment-id=$DEPLOYMENT_ID"
-              
+
               # HTML files with no-cache
               aws s3 sync dist/ "s3://candlefish-${{ matrix.project }}-${{ matrix.environment }}/" \
                 --cache-control "public, max-age=0, must-revalidate" \
                 --content-type "text/html; charset=utf-8" \
                 --include "*.html" \
                 --metadata "deployment-id=$DEPLOYMENT_ID"
-              
+
               # Create CloudFront invalidation
               if [[ -n "${CLOUDFRONT_DISTRIBUTION_ID:-}" ]]; then
                 aws cloudfront create-invalidation \
@@ -564,7 +564,7 @@ jobs:
                   --output json | jq -r '.Invalidation.Id' > invalidation-id.txt
               fi
               ;;
-            
+
             enterprise)
               # Deploy to ECS with blue-green
               aws ecs update-service \
@@ -572,7 +572,7 @@ jobs:
                 --service "${{ matrix.project }}" \
                 --force-new-deployment \
                 --deployment-configuration "maximumPercent=200,minimumHealthyPercent=100"
-              
+
               # Wait for stability with timeout
               timeout 600 aws ecs wait services-stable \
                 --cluster "candlefish-${{ matrix.environment }}" \
@@ -587,14 +587,14 @@ jobs:
         id: health-check
         run: |
           set -euo pipefail
-          
+
           DEPLOY_URL="https://${{ matrix.project }}-${{ matrix.environment }}.candlefish.ai"
           MAX_RETRIES=10
           RETRY_DELAY=30
-          
+
           for i in $(seq 1 $MAX_RETRIES); do
             echo "Health check attempt $i/$MAX_RETRIES"
-            
+
             # Perform health check with timeout
             if timeout 10 curl -fsS "$DEPLOY_URL/health" > /dev/null 2>&1; then
               echo "✅ Deployment health check passed"
@@ -615,14 +615,14 @@ jobs:
         if: failure() && steps.deploy.outcome == 'success'
         run: |
           set -euo pipefail
-          
+
           echo "::error::Initiating automated rollback"
-          
+
           case "${{ matrix.type }}" in
             webapp|business|client)
               # Rollback S3 deployment using versioning
               BUCKET="candlefish-${{ matrix.project }}-${{ matrix.environment }}"
-              
+
               # List and restore previous version
               aws s3api list-object-versions \
                 --bucket "$BUCKET" \
@@ -634,7 +634,7 @@ jobs:
                     --copy-source "$BUCKET/$key?versionId=$version_id" \
                     --key "$key"
                 done
-              
+
               # Invalidate CloudFront
               if [[ -f "invalidation-id.txt" ]]; then
                 aws cloudfront create-invalidation \
@@ -642,7 +642,7 @@ jobs:
                   --paths "/*"
               fi
               ;;
-            
+
             enterprise)
               # Rollback ECS service
               aws ecs update-service \
@@ -651,7 +651,7 @@ jobs:
                 --force-new-deployment
               ;;
           esac
-          
+
           echo "::notice::Rollback completed"
 
   # ============================================
@@ -669,23 +669,23 @@ jobs:
       - name: Security headers verification
         run: |
           set -euo pipefail
-          
+
           # Check security headers for each deployed project
           for project in ${{ needs.project-discovery.outputs.projects }}; do
             URL="https://${project}-${{ needs.validate-inputs.outputs.environment }}.candlefish.ai"
-            
+
             echo "Checking security headers for $URL"
-            
+
             # Check required headers
             HEADERS=$(curl -sI "$URL")
-            
+
             required_headers=(
               "X-Frame-Options"
               "X-Content-Type-Options"
               "Strict-Transport-Security"
               "Content-Security-Policy"
             )
-            
+
             for header in "${required_headers[@]}"; do
               if ! echo "$HEADERS" | grep -qi "^$header:"; then
                 echo "::warning::Missing security header: $header for $project"
@@ -696,10 +696,10 @@ jobs:
       - name: TLS/SSL verification
         run: |
           set -euo pipefail
-          
+
           for project in ${{ needs.project-discovery.outputs.projects }}; do
             URL="https://${project}-${{ needs.validate-inputs.outputs.environment }}.candlefish.ai"
-            
+
             # Check SSL certificate
             echo | openssl s_client -connect "${URL#https://}:443" -servername "${URL#https://}" 2>/dev/null | \
               openssl x509 -noout -dates -subject || {
@@ -724,7 +724,7 @@ jobs:
           DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
         run: |
           set -euo pipefail
-          
+
           if [[ -n "${DATADOG_API_KEY:-}" ]]; then
             # Send deployment event to DataDog
             curl -X POST "https://api.datadoghq.com/api/v1/events" \
@@ -760,7 +760,7 @@ jobs:
               },
               auto_merge: false
             });
-            
+
             await github.rest.repos.createDeploymentStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -793,7 +793,7 @@ jobs:
       - name: Generate security audit trail
         run: |
           set -euo pipefail
-          
+
           # Create audit log entry
           AUDIT_LOG=$(cat <<EOF
           {
@@ -816,9 +816,9 @@ jobs:
           }
           EOF
           )
-          
+
           echo "$AUDIT_LOG" | jq .
-          
+
           # Log to CloudWatch if available
           if command -v aws &> /dev/null; then
             aws logs put-log-events \
@@ -831,14 +831,14 @@ jobs:
         run: |
           cat >> $GITHUB_STEP_SUMMARY <<EOF
           # 🚀 Candlefish Deployment Summary
-          
+
           ## 📊 Workflow Metrics
           - **Environment:** ${{ needs.validate-inputs.outputs.environment }}
           - **Projects:** ${{ needs.project-discovery.outputs.projects }}
           - **Workflow Run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
           - **Actor:** ${{ github.actor }}
           - **Commit:** ${{ github.sha }}
-          
+
           ## ✅ Pipeline Status
           | Stage | Result | Duration |
           |-------|--------|----------|
@@ -847,17 +847,17 @@ jobs:
           | Build & Test | ${{ needs.build-test.result }} | - |
           | Deploy | ${{ needs.deploy.result }} | - |
           | Post-Deploy Security | ${{ needs.post-deploy-security.result }} | - |
-          
+
           ## 🔒 Security Summary
           - ✅ Input validation completed
           - ✅ Security scans performed
           - ✅ Dependencies audited
           - ✅ Deployment integrity verified
           - ✅ Security headers checked
-          
+
           ## 🔗 Deployment URLs
           EOF
-          
+
           for project in ${{ needs.project-discovery.outputs.projects }}; do
             echo "- ${project}: https://${project}-${{ needs.validate-inputs.outputs.environment }}.candlefish.ai" >> $GITHUB_STEP_SUMMARY
           done
@@ -869,7 +869,7 @@ jobs:
         run: |
           if [[ -n "${SLACK_WEBHOOK_URL:-}" ]]; then
             STATUS_EMOJI="${{ needs.deploy.result == 'success' && '✅' || '❌' }}"
-            
+
             curl -X POST "$SLACK_WEBHOOK_URL" \
               -H 'Content-Type: application/json' \
               -d '{
