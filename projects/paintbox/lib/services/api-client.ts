@@ -93,7 +93,6 @@ class ApiClient {
     if (!this.baseUrl) {
       throw new Error('Backend API URL not configured for pricing calculations');
     }
-    }
 
     return this.request('/api/v1/calculations/pricing-tiers', {
       method: 'POST',

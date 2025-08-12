@@ -1,6 +1,7 @@
 'use client'
 
-import React from 'react'
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
 
 export default function Error({
   error,
@@ -10,24 +11,46 @@ export default function Error({
   reset: () => void
 }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-gray-50">
-      <div className="text-center max-w-md">
-        <div className="mb-8">
-          <div className="text-6xl mb-4">⚠️</div>
-          <h1 className="text-2xl font-bold text-gray-900">Paintbox</h1>
+    <div style={{
+      display: 'flex',
+      minHeight: '100vh',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '1rem',
+      backgroundColor: '#f9fafb',
+      fontFamily: 'system-ui, -apple-system, sans-serif'
+    }}>
+      <div style={{ textAlign: 'center', maxWidth: '28rem' }}>
+        <div style={{ marginBottom: '2rem' }}>
+          <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>⚠️</div>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', margin: 0 }}>
+            Paintbox
+          </h1>
         </div>
-        <h2 className="mb-4 text-2xl font-bold text-gray-900">
+        <h2 style={{ marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', margin: '0 0 1rem 0' }}>
           Something went wrong!
         </h2>
-        <p className="mb-6 text-gray-600">
+        <p style={{ marginBottom: '1.5rem', color: '#4b5563', margin: '0 0 1.5rem 0' }}>
           {error.message || 'An unexpected error occurred'}
         </p>
-        <p className="mb-8 text-sm text-gray-500">
-          {error.digest && `Error ID: ${error.digest}`}
-        </p>
+        {error.digest && (
+          <p style={{ marginBottom: '2rem', fontSize: '0.875rem', color: '#6b7280', margin: '0 0 2rem 0' }}>
+            Error ID: {error.digest}
+          </p>
+        )}
         <button
           onClick={reset}
-          className="bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-3 rounded-lg font-medium hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5"
+          style={{
+            background: 'linear-gradient(to right, #dc2626, #b91c1c)',
+            color: 'white',
+            padding: '0.75rem 1.5rem',
+            borderRadius: '0.5rem',
+            fontWeight: '500',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '1rem'
+          }}
         >
           Try again
         </button>

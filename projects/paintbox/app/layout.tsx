@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from 'next/headers';
 import "./globals.css";
+
+// Force dynamic rendering to avoid React error #31 during static generation
+export const dynamic = 'force-dynamic';
 import { PWAInstallPrompt } from "@/components/ui/PWAInstallPrompt";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/components/providers/SessionProvider";
@@ -9,6 +12,7 @@ import { AuthWrapper } from "@/components/auth/AuthWrapper";
 // Use system fonts to avoid network fetch at build time
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NODE_ENV === 'production' ? 'https://paintbox.candlefish.ai' : 'http://localhost:3004'),
   title: {
     default: "Paintbox - Professional Painting Estimator",
     template: "%s | Paintbox"
@@ -154,13 +158,14 @@ function PWASetup({ nonce }: { nonce?: string }) {
   );
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   // Read nonce from header set by middleware for inline scripts
-  const nonce = headers().get('x-csp-nonce');
+  const headersList = await headers();
+  const nonce = headersList.get('x-csp-nonce');
 
   return (
     <html lang="en" suppressHydrationWarning>
