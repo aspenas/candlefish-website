@@ -52,7 +52,7 @@ env:
   # Global environment variables
   NODE_VERSION: '20'
   PYTHON_VERSION: '3.12'
-  PNPM_VERSION: '9'
+  PNPM_VERSION: '8.15.6'
   GO_VERSION: '1.22'
   RUST_VERSION: 'stable'
 
@@ -106,24 +106,13 @@ jobs:
         id: detect-changes
         if: success() || steps.aws-creds.outcome == 'failure'
         run: |
-          # Project definitions
+          # Project definitions - Only active projects
           declare -A PROJECTS=(
-            ["cf"]="root:apps/website"
-            ["cfweb"]="website:apps/website"
-            ["cftyler"]="onboarding:apps/tyler-onboarding"
-            ["cfpaint"]="enterprise:projects/paintbox"
-            ["cffogg"]="enterprise:projects/fogg"
-            ["cfprom"]="enterprise:projects/promoterOS"
-            ["cfbrew"]="enterprise:projects/brewery"
-            ["cfcrown"]="business:projects/crowntrophy"
-            ["cfbart"]="business:projects/bart-estimator-pwa"
-            ["cfbart2"]="business:projects/newbart"
-            ["cfexcel"]="business:projects/excel"
-            ["cfcolo"]="client:projects/colorado-springs-auditorium"
-            ["cfjon"]="client:projects/jonathon"
-            ["cfmorr"]="client:projects/morreale"
-            ["cfnew"]="client:projects/new-client"
-            ["cfmobile"]="mobile:apps/mobile-dashboard"
+            ["website"]="webapp:apps/website"
+            ["analytics"]="webapp:apps/analytics-dashboard"
+            ["collab"]="webapp:apps/mobile-collaboration"
+            ["paintbox"]="enterprise:projects/paintbox"
+            ["promoter"]="enterprise:projects/promoterOS"
           )
 
           # Determine which projects to process
@@ -169,25 +158,13 @@ jobs:
           if [[ -n "$PROJECTS" ]]; then
             for project in $PROJECTS; do
               case $project in
-                cf|cfweb|cftyler)
+                website|analytics|collab)
                   type="webapp"
                   runner="ubuntu-latest"
                   ;;
-                cfpaint|cffogg|cfprom|cfbrew)
+                paintbox|promoter)
                   type="enterprise"
-                  runner="ubuntu-latest-8-cores"  # Larger runners for enterprise
-                  ;;
-                cfcrown|cfbart|cfbart2|cfexcel)
-                  type="business"
-                  runner="ubuntu-latest"
-                  ;;
-                cfcolo|cfjon|cfmorr|cfnew)
-                  type="client"
-                  runner="ubuntu-latest"
-                  ;;
-                cfmobile)
-                  type="mobile"
-                  runner="macos-latest"
+                  runner="ubuntu-latest"  # Standard runners for now
                   ;;
                 *)
                   type="standard"
