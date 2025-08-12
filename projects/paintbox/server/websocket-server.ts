@@ -315,7 +315,7 @@ class WebSocketServer {
             // Cache the result
             await this.formulaCache.set(
               { formulaId, variables: inputs },
-              result,
+              result!,
               300 // 5 minute TTL
             );
           }
@@ -331,7 +331,7 @@ class WebSocketServer {
             roomId,
             formulaId,
             inputs,
-            result: result.value,
+            result: result!.value,
             timestamp: Date.now(),
             userId: user.id,
             delta,

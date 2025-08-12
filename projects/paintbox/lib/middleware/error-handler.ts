@@ -372,10 +372,9 @@ export const salesforceCircuitBreaker = new CircuitBreaker(3, 30000, 60000);
 export const companyCamCircuitBreaker = new CircuitBreaker(3, 30000, 60000);
 export const redisCircuitBreaker = new CircuitBreaker(5, 10000, 30000);
 
-// Export everything for production use
+// Export everything for production use - classifyError already exported above
 export {
   generateRequestId,
   sanitizeErrorForProduction,
   logError,
-  classifyError,
 };

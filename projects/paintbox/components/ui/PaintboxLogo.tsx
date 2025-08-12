@@ -1,54 +1,34 @@
 'use client';
 
-import { PaintboxLogo as BasePaintboxLogo } from '@candlefish-ai/ui-components';
-import type { LogoProps } from '@candlefish-ai/ui-components';
-
-interface PaintboxLogoProps extends Omit<LogoProps, 'size'> {
+interface PaintboxLogoProps {
   size?: 'mobile' | 'desktop' | 'large' | 'splash';
   priority?: boolean;
+  className?: string;
+  showText?: boolean;
 }
-
-// Map Paintbox-specific sizes to the unified Logo component sizes
-const sizeMapping = {
-  mobile: 'sm',
-  desktop: 'md',
-  large: 'lg',
-  splash: 'xl',
-} as const;
 
 export default function PaintboxLogo({
   size = 'desktop',
-  className,
+  className = '',
   priority = false,
   showText = false,
   ...props
 }: PaintboxLogoProps) {
-  const unifiedSize = sizeMapping[size];
+  const sizeClasses = {
+    mobile: 'w-8 h-8',
+    desktop: 'w-12 h-12',
+    large: 'w-16 h-16',
+    splash: 'w-24 h-24'
+  };
 
   return (
-    <BasePaintboxLogo
-      size={unifiedSize}
-      showText={showText}
-      className={className}
-      loading={priority ? 'eager' : 'lazy'}
-      {...props}
-    />
+    <div className={`flex items-center space-x-2 ${className}`}>
+      <div className={`text-4xl ${sizeClasses[size]}`}>
+        🎨
+      </div>
+      {showText && (
+        <span className="text-xl font-bold text-gray-900">Paintbox</span>
+      )}
+    </div>
   );
 }
-
-/**
- * Responsive logo component with multiple size variants and optimized image formats
- *
- * Usage examples:
- * - <PaintboxLogo size="mobile" priority /> // For mobile header with priority loading
- * - <PaintboxLogo size="desktop" showText /> // For desktop header with brand text
- * - <PaintboxLogo size="large" className="mx-auto" /> // For landing pages
- * - <PaintboxLogo size="splash" showText className="flex-col items-center" /> // For PWA splash screens
- *
- * Features:
- * - Automatic format selection (AVIF > WebP > PNG fallback)
- * - Responsive sizing for different screen contexts
- * - Optional brand text display
- * - Proper accessibility with descriptive alt text
- * - Optimized loading with Next.js Image component
- */
