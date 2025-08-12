@@ -1,0 +1,66 @@
+# Prometheus configuration for Candlefish AI website monitoring
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+rule_files:
+  - "rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node Exporter for system metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # Website application metrics (if implemented)
+  - job_name: 'candlefish-website'
+    static_configs:
+      - targets: ['website:3000', 'website-prod:8080']
+    scrape_interval: 30s
+    metrics_path: /metrics
+    scrape_timeout: 10s
+
+  # Nginx metrics (if nginx-prometheus-exporter is used)
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:9113']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # Redis metrics (if redis-exporter is used)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    scrape_interval: 30s
+
+  # Website health checks
+  - job_name: 'website-health'
+    static_configs:
+      - targets: ['website:3000', 'website-prod:8080']
+    scrape_interval: 30s
+    metrics_path: /health
+    params:
+      format: ['prometheus']
+
+  # External website monitoring (for production)
+  - job_name: 'website-external'
+    static_configs:
+      - targets: ['candlefish.ai']
+    scrape_interval: 60s
+    metrics_path: /health
+    scheme: https

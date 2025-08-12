@@ -1,8 +1,8 @@
 import React from 'react'
-import { 
-  ArrowRight, 
-  TrendingUp, 
-  Clock, 
+import {
+  ArrowRight,
+  TrendingUp,
+  Clock,
   DollarSign,
   Building2,
   Plane,
@@ -34,9 +34,9 @@ interface CaseStudiesSectionProps {
   className?: string
 }
 
-const CaseStudyCard: React.FC<{ caseStudy: CaseStudyProps; featured?: boolean }> = ({ 
-  caseStudy, 
-  featured = false 
+const CaseStudyCard: React.FC<{ caseStudy: CaseStudyProps; featured?: boolean }> = ({
+  caseStudy,
+  featured = false
 }) => {
   const Logo = caseStudy.logo
 
@@ -72,7 +72,7 @@ const CaseStudyCard: React.FC<{ caseStudy: CaseStudyProps; featured?: boolean }>
             <h4 className="text-sm font-semibold text-gray-700 mb-2">Challenge</h4>
             <p className="text-gray-600 text-sm leading-relaxed">{caseStudy.challenge}</p>
           </div>
-          
+
           <div>
             <h4 className="text-sm font-semibold text-gray-700 mb-2">Solution</h4>
             <p className="text-gray-600 text-sm leading-relaxed">{caseStudy.solution}</p>
@@ -185,16 +185,16 @@ const CaseStudiesSection: React.FC<CaseStudiesSectionProps> = ({ className = '' 
             <TrendingUp className="w-4 h-4" />
             Customer Success Stories
           </div>
-          
+
           <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
             Real Results from{' '}
             <span className="bg-gradient-to-r from-primary-600 to-accent-500 bg-clip-text text-transparent">
               Real Companies
             </span>
           </h2>
-          
+
           <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            See how leading enterprises are transforming their operations and 
+            See how leading enterprises are transforming their operations and
             achieving breakthrough results with our AI solutions.
           </p>
         </div>
@@ -203,7 +203,7 @@ const CaseStudiesSection: React.FC<CaseStudiesSectionProps> = ({ className = '' 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
           {/* Featured Case Study */}
           <CaseStudyCard caseStudy={featuredCaseStudy} featured={true} />
-          
+
           {/* Regular Case Studies */}
           {regularCaseStudies.map((caseStudy) => (
             <CaseStudyCard key={caseStudy.id} caseStudy={caseStudy} />

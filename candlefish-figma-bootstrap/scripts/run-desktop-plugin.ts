@@ -41,5 +41,3 @@ main().catch((e) => {
   console.error(e?.message || e);
   process.exit(1);
 });
-
-

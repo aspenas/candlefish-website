@@ -17,33 +17,33 @@ fi
 analyze_workflow_runs() {
     local workflow_file=$1
     local workflow_name=$(basename "$workflow_file" .yml)
-    
+
     echo "📊 Analyzing: $workflow_name"
     echo "----------------------------------------"
-    
+
     # Get the last 10 runs of the workflow
     runs=$(gh run list --workflow="$workflow_file" --limit=10 --json databaseId,status,conclusion,createdAt,updatedAt,runStartedAt 2>/dev/null)
-    
+
     if [ -z "$runs" ] || [ "$runs" == "[]" ]; then
         echo "  ⚠️ No recent runs found for this workflow"
         echo ""
         return
     fi
-    
+
     # Calculate average duration
     total_duration=0
     successful_runs=0
-    
+
     while IFS= read -r run; do
         started=$(echo "$run" | jq -r '.runStartedAt')
         updated=$(echo "$run" | jq -r '.updatedAt')
         conclusion=$(echo "$run" | jq -r '.conclusion')
-        
+
         if [ "$conclusion" == "success" ] && [ "$started" != "null" ] && [ "$updated" != "null" ]; then
             # Calculate duration in seconds
             start_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$started" +%s 2>/dev/null || date -d "$started" +%s 2>/dev/null)
             end_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$updated" +%s 2>/dev/null || date -d "$updated" +%s 2>/dev/null)
-            
+
             if [ -n "$start_epoch" ] && [ -n "$end_epoch" ]; then
                 duration=$((end_epoch - start_epoch))
                 total_duration=$((total_duration + duration))
@@ -51,7 +51,7 @@ analyze_workflow_runs() {
             fi
         fi
     done < <(echo "$runs" | jq -c '.[]')
-    
+
     if [ $successful_runs -gt 0 ]; then
         avg_duration=$((total_duration / successful_runs))
         avg_minutes=$((avg_duration / 60))
@@ -61,7 +61,7 @@ analyze_workflow_runs() {
     else
         echo "  ⚠️ No successful runs to analyze"
     fi
-    
+
     echo ""
 }
 

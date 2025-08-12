@@ -32,9 +32,9 @@ const NavigationARC: React.FC = () => {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <a href="#" className="flex items-center space-x-2">
-            <img 
-              src="/logo/candlefish_original.png" 
-              alt="Candlefish AI" 
+            <img
+              src="/logo/candlefish_original.png"
+              alt="Candlefish AI"
               className="w-10 h-10"
             />
             <span className={`text-lg font-semibold transition-colors ${

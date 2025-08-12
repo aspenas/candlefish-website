@@ -32,7 +32,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
   const [imageError, setImageError] = useState(false)
   const imgRef = useRef<HTMLImageElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  
+
   const { isIntersecting } = useIntersectionObserver(containerRef, {
     threshold: 0.01,
     rootMargin: '50px'
@@ -45,11 +45,11 @@ const LazyImage: React.FC<LazyImageProps> = ({
     if (!shouldLoad || imageLoaded) return
 
     const img = new Image()
-    
+
     // Set sizes and srcset if provided
     if (sizes) img.sizes = sizes
     if (srcSet) img.srcset = srcSet
-    
+
     img.src = src
 
     const handleLoad = () => {
@@ -88,7 +88,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
 
   if (imageError) {
     return (
-      <div 
+      <div
         ref={containerRef}
         className={`flex items-center justify-center bg-gray-800 ${className}`}
         style={{ aspectRatio: rest.width && rest.height ? `${rest.width}/${rest.height}` : 'auto' }}
@@ -144,7 +144,7 @@ export const LazyBackgroundImage: React.FC<{
   }, [isIntersecting, src, loaded])
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className={`relative ${className}`}
       style={{

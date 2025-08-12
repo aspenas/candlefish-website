@@ -8,7 +8,7 @@ import { motion } from 'framer-motion'
 const glowVertexShader = `
   varying vec3 vNormal;
   varying vec3 vPosition;
-  
+
   void main() {
     vNormal = normalize(normalMatrix * normal);
     vPosition = position;
@@ -21,19 +21,19 @@ const glowFragmentShader = `
   uniform vec3 color;
   varying vec3 vNormal;
   varying vec3 vPosition;
-  
+
   void main() {
     float intensity = pow(0.8 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
     vec3 glow = color * intensity;
-    
+
     // Add pulsing effect
     float pulse = sin(time * 2.0) * 0.5 + 0.5;
     glow *= (0.5 + pulse * 0.5);
-    
+
     // Add noise-based variation
     float noise = sin(vPosition.x * 10.0 + time) * sin(vPosition.y * 10.0 + time) * sin(vPosition.z * 10.0 + time);
     glow += color * noise * 0.1;
-    
+
     gl_FragColor = vec4(glow, intensity);
   }
 `
@@ -50,22 +50,22 @@ const NeuralNode: React.FC<NeuralNodeProps> = ({ position, color, delay, size = 
   const meshRef = useRef<THREE.Mesh>(null)
   const materialRef = useRef<THREE.ShaderMaterial>(null)
   const [hovered, setHovered] = useState(false)
-  
+
   useFrame((state) => {
     if (meshRef.current) {
       meshRef.current.rotation.x = Math.sin(state.clock.elapsedTime + delay) * 0.1
       meshRef.current.rotation.y = Math.cos(state.clock.elapsedTime + delay) * 0.1
-      
+
       // Pulsing scale effect
       const pulse = Math.sin(state.clock.elapsedTime * 2 + delay) * 0.1 + 1
       meshRef.current.scale.setScalar(size * pulse * (hovered ? 1.3 : 1))
     }
-    
+
     if (materialRef.current) {
       materialRef.current.uniforms.time.value = state.clock.elapsedTime
     }
   })
-  
+
   return (
     <group position={position}>
       <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5}>
@@ -88,25 +88,25 @@ const NeuralNode: React.FC<NeuralNodeProps> = ({ position, color, delay, size = 
             depthWrite={false}
           />
         </mesh>
-        
+
         {/* Inner core */}
         <mesh scale={0.5}>
           <sphereGeometry args={[1, 16, 16]} />
           <meshBasicMaterial color={color} />
         </mesh>
-        
+
         {/* Outer glow */}
         <mesh scale={1.5}>
           <sphereGeometry args={[1, 16, 16]} />
-          <meshBasicMaterial 
-            color={color} 
-            transparent 
+          <meshBasicMaterial
+            color={color}
+            transparent
             opacity={0.1}
             blending={THREE.AdditiveBlending}
           />
         </mesh>
       </Float>
-      
+
       {/* Connection lines */}
       {connections.map((targetPos, i) => (
         <ConnectionLine
@@ -131,7 +131,7 @@ interface ConnectionLineProps {
 const ConnectionLine: React.FC<ConnectionLineProps> = ({ start, end, color, delay }) => {
   const lineRef = useRef<THREE.Line>(null)
   const materialRef = useRef<THREE.LineBasicMaterial>(null)
-  
+
   const points = useMemo(() => {
     const curve = new THREE.CatmullRomCurve3([
       new THREE.Vector3(...start),
@@ -144,14 +144,14 @@ const ConnectionLine: React.FC<ConnectionLineProps> = ({ start, end, color, dela
     ])
     return curve.getPoints(50)
   }, [start, end])
-  
+
   useFrame((state) => {
     if (materialRef.current) {
       const pulse = Math.sin(state.clock.elapsedTime * 3 + delay) * 0.5 + 0.5
       materialRef.current.opacity = pulse * 0.3
     }
   })
-  
+
   return (
     <line ref={lineRef}>
       <bufferGeometry>
@@ -183,22 +183,22 @@ interface DataParticleProps {
 const DataParticle: React.FC<DataParticleProps> = ({ startPos, endPos, delay, color }) => {
   const meshRef = useRef<THREE.Mesh>(null)
   const [progress, setProgress] = useState(0)
-  
+
   useFrame((state) => {
     const t = ((state.clock.elapsedTime + delay) % 3) / 3
     setProgress(t)
-    
+
     if (meshRef.current) {
       // Cubic bezier interpolation for smooth movement
       const x = startPos[0] + (endPos[0] - startPos[0]) * t
       const y = startPos[1] + (endPos[1] - startPos[1]) * t + Math.sin(t * Math.PI) * 0.5
       const z = startPos[2] + (endPos[2] - startPos[2]) * t
-      
+
       meshRef.current.position.set(x, y, z)
       meshRef.current.scale.setScalar(0.05 * (1 - Math.abs(t - 0.5) * 2))
     }
   })
-  
+
   return (
     <Trail
       width={2}
@@ -217,37 +217,37 @@ const DataParticle: React.FC<DataParticleProps> = ({ startPos, endPos, delay, co
 const ParticleField: React.FC = () => {
   const particlesRef = useRef<THREE.Points>(null)
   const particleCount = 500
-  
+
   const particleData = useMemo(() => {
     const positions = new Float32Array(particleCount * 3)
     const colors = new Float32Array(particleCount * 3)
     const sizes = new Float32Array(particleCount)
-    
+
     for (let i = 0; i < particleCount; i++) {
       const i3 = i * 3
       positions[i3] = (Math.random() - 0.5) * 10
       positions[i3 + 1] = (Math.random() - 0.5) * 10
       positions[i3 + 2] = (Math.random() - 0.5) * 10
-      
+
       const color = new THREE.Color()
       color.setHSL(Math.random() * 0.2 + 0.5, 0.8, 0.6)
       colors[i3] = color.r
       colors[i3 + 1] = color.g
       colors[i3 + 2] = color.b
-      
+
       sizes[i] = Math.random() * 0.05 + 0.01
     }
-    
+
     return { positions, colors, sizes }
   }, [])
-  
+
   useFrame((state) => {
     if (particlesRef.current) {
       particlesRef.current.rotation.y = state.clock.elapsedTime * 0.05
       particlesRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.1) * 0.1
     }
   })
-  
+
   return (
     <points ref={particlesRef}>
       <bufferGeometry>
@@ -285,7 +285,7 @@ const ParticleField: React.FC = () => {
 const AIBrain: React.FC = () => {
   const { mouse } = useThree()
   const groupRef = useRef<THREE.Group>(null)
-  
+
   useFrame((state) => {
     if (groupRef.current) {
       groupRef.current.rotation.y = state.clock.elapsedTime * 0.1
@@ -293,7 +293,7 @@ const AIBrain: React.FC = () => {
       groupRef.current.rotation.z = mouse.x * 0.2
     }
   })
-  
+
   // Define neural network structure
   const layers = [
     // Input layer
@@ -320,7 +320,7 @@ const AIBrain: React.FC = () => {
       { pos: [4, 0, 0] as [number, number, number], color: '#00CED1' },
     ],
   ]
-  
+
   return (
     <group ref={groupRef}>
       {/* Render nodes with connections */}
@@ -329,7 +329,7 @@ const AIBrain: React.FC = () => {
           const connections = layerIndex < layers.length - 1
             ? layers[layerIndex + 1].map(nextNode => nextNode.pos)
             : []
-          
+
           return (
             <NeuralNode
               key={`${layerIndex}-${nodeIndex}`}
@@ -341,7 +341,7 @@ const AIBrain: React.FC = () => {
           )
         })
       ))}
-      
+
       {/* Data flow particles */}
       {layers.slice(0, -1).map((layer, layerIndex) => (
         layer.map((node, nodeIndex) => (
@@ -366,13 +366,13 @@ const Scene: React.FC = () => {
       <ambientLight intensity={0.1} />
       <pointLight position={[10, 10, 10]} intensity={0.5} />
       <pointLight position={[-10, -10, -10]} intensity={0.3} color="#AF52DE" />
-      
+
       {/* Background particle field */}
       <ParticleField />
-      
+
       {/* Main AI brain visualization */}
       <AIBrain />
-      
+
       {/* Ambient floating shapes */}
       <Float speed={4} rotationIntensity={0.5} floatIntensity={1}>
         <Box position={[-4, 3, -2]} scale={0.3}>
@@ -386,7 +386,7 @@ const Scene: React.FC = () => {
           />
         </Box>
       </Float>
-      
+
       <Float speed={3} rotationIntensity={0.3} floatIntensity={0.8}>
         <Sphere position={[4, -3, -2]} scale={0.4}>
           <MeshDistortMaterial
@@ -399,7 +399,7 @@ const Scene: React.FC = () => {
           />
         </Sphere>
       </Float>
-      
+
       <OrbitControls
         enableZoom={false}
         enablePan={false}
@@ -423,7 +423,7 @@ const AdvancedAIVisualization: React.FC = () => {
       >
         <Scene />
       </Canvas>
-      
+
       {/* Overlay UI */}
       <motion.div
         className="absolute bottom-4 left-4 right-4 text-center"

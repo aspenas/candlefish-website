@@ -20,9 +20,9 @@ interface TestimonialsSectionProps {
   className?: string
 }
 
-const TestimonialCard: React.FC<{ testimonial: Testimonial; isActive: boolean }> = ({ 
-  testimonial, 
-  isActive 
+const TestimonialCard: React.FC<{ testimonial: Testimonial; isActive: boolean }> = ({
+  testimonial,
+  isActive
 }) => {
   return (
     <div className={`transition-all duration-500 ${
@@ -68,13 +68,13 @@ const TestimonialCard: React.FC<{ testimonial: Testimonial; isActive: boolean }>
           <div className="flex flex-col items-end">
             <div className="flex gap-1 mb-1">
               {[...Array(5)].map((_, i) => (
-                <Star 
-                  key={i} 
+                <Star
+                  key={i}
                   className={`w-4 h-4 ${
-                    i < testimonial.rating 
-                      ? 'text-yellow-400 fill-current' 
+                    i < testimonial.rating
+                      ? 'text-yellow-400 fill-current'
                       : 'text-gray-300'
-                  }`} 
+                  }`}
                 />
               ))}
             </div>
@@ -182,7 +182,7 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ className = '
       {/* Background Elements */}
       <div className="absolute top-0 right-1/4 w-72 h-72 bg-gradient-to-bl from-primary-100/30 to-accent-100/30 rounded-full blur-3xl" />
       <div className="absolute bottom-0 left-1/4 w-72 h-72 bg-gradient-to-tr from-accent-100/30 to-primary-100/30 rounded-full blur-3xl" />
-      
+
       <div className="relative z-10 container mx-auto px-6">
         {/* Section Header */}
         <div className="text-center mb-16">
@@ -190,16 +190,16 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ className = '
             <Quote className="w-4 h-4" />
             Client Testimonials
           </div>
-          
+
           <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
             Trusted by{' '}
             <span className="bg-gradient-to-r from-primary-600 to-accent-500 bg-clip-text text-transparent">
               Industry Leaders
             </span>
           </h2>
-          
+
           <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            Don't just take our word for it. Hear from the executives and teams 
+            Don't just take our word for it. Hear from the executives and teams
             who are driving transformation with our AI solutions.
           </p>
         </div>
@@ -207,15 +207,15 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ className = '
         {/* Testimonial Carousel */}
         <div className="relative">
           {/* Navigation Arrows */}
-          <button 
+          <button
             onClick={goToPrevious}
             className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-12 h-12 bg-white rounded-full shadow-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
             aria-label="Previous testimonial"
           >
             <ChevronLeft className="w-6 h-6 text-gray-600" />
           </button>
-          
-          <button 
+
+          <button
             onClick={goToNext}
             className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-12 h-12 bg-white rounded-full shadow-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
             aria-label="Next testimonial"
@@ -230,8 +230,8 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ className = '
                 key={testimonial.id}
                 className={`${index === activeIndex ? 'block' : 'hidden'}`}
               >
-                <TestimonialCard 
-                  testimonial={testimonial} 
+                <TestimonialCard
+                  testimonial={testimonial}
                   isActive={index === activeIndex}
                 />
               </div>
@@ -246,8 +246,8 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ className = '
               key={index}
               onClick={() => goToSlide(index)}
               className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                index === activeIndex 
-                  ? 'bg-primary-500 w-8' 
+                index === activeIndex
+                  ? 'bg-primary-500 w-8'
                   : 'bg-gray-300 hover:bg-gray-400'
               }`}
               aria-label={`Go to testimonial ${index + 1}`}
@@ -261,7 +261,7 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ className = '
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center opacity-60">
             {[
               'GlobalTech Manufacturing',
-              'AeroLogistics International', 
+              'AeroLogistics International',
               'MegaRetail Corporation',
               'MedTech Solutions'
             ].map((company, index) => (

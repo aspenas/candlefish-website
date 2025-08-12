@@ -75,5 +75,3 @@ main().catch((err) => {
   console.error('❌ Failed to verify secrets:', err && err.message ? err.message : err);
   process.exit(1);
 });
-
-

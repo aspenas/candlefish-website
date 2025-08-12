@@ -56,23 +56,23 @@ calc_percentage() {
 analyze_workflow() {
     local workflow_file=$1
     local workflow_name=$(basename "$workflow_file" .yml)
-    
+
     echo -e "${BLUE}📈 Analyzing: $workflow_name${NC}"
     echo "----------------------------------------"
-    
+
     # Get recent runs
     local runs=$(gh run list \
         --workflow="$workflow_file" \
         --limit=20 \
         --json databaseId,status,conclusion,createdAt,updatedAt,runStartedAt,event,headBranch \
         2>/dev/null || echo "[]")
-    
+
     if [ "$runs" = "[]" ]; then
         echo "  No recent runs found"
         echo ""
         return
     fi
-    
+
     # Calculate metrics
     local total_duration=0
     local successful_runs=0
@@ -80,20 +80,20 @@ analyze_workflow() {
     local cancelled_runs=0
     local min_duration=999999
     local max_duration=0
-    
+
     while IFS= read -r run; do
         local conclusion=$(echo "$run" | jq -r '.conclusion')
         local started=$(echo "$run" | jq -r '.runStartedAt')
         local updated=$(echo "$run" | jq -r '.updatedAt')
-        
+
         if [ "$started" != "null" ] && [ "$updated" != "null" ]; then
             # Calculate duration
             local start_epoch=$(date -d "$started" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$started" +%s 2>/dev/null || echo 0)
             local end_epoch=$(date -d "$updated" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$updated" +%s 2>/dev/null || echo 0)
-            
+
             if [ "$start_epoch" -ne 0 ] && [ "$end_epoch" -ne 0 ]; then
                 local duration=$((end_epoch - start_epoch))
-                
+
                 case "$conclusion" in
                     success)
                         total_duration=$((total_duration + duration))
@@ -111,14 +111,14 @@ analyze_workflow() {
             fi
         fi
     done < <(echo "$runs" | jq -c '.[]')
-    
+
     # Calculate averages
     if [ $successful_runs -gt 0 ]; then
         local avg_duration=$((total_duration / successful_runs))
         echo -e "  ⏱️  Average Duration: ${GREEN}$(format_duration $avg_duration)${NC}"
         echo -e "  📊 Min/Max: $(format_duration $min_duration) / $(format_duration $max_duration)"
         echo -e "  ✅ Success Rate: ${GREEN}$successful_runs${NC}/$((successful_runs + failed_runs + cancelled_runs))"
-        
+
         # Calculate cost
         local monthly_runs=$((successful_runs * 30 / DAYS_TO_ANALYZE))
         local monthly_minutes=$((avg_duration * monthly_runs / 60))
@@ -127,7 +127,7 @@ analyze_workflow() {
     else
         echo -e "  ${YELLOW}⚠️  No successful runs to analyze${NC}"
     fi
-    
+
     # Show recent trend
     echo -e "  📈 Recent Trend:"
     local recent_runs=$(echo "$runs" | jq -c '[.[:5]]')
@@ -142,7 +142,7 @@ analyze_workflow() {
         esac
     done < <(echo "$recent_runs" | jq -c '.[]')
     echo "     $trend (newest → oldest)"
-    
+
     echo ""
 }
 
@@ -155,11 +155,11 @@ echo ""
 if [ -f ".github/workflows/candlefish-orchestrator-optimized.yml" ]; then
     echo "Comparing original vs optimized orchestrator:"
     echo ""
-    
+
     # Analyze original
     echo "Original Orchestrator:"
     analyze_workflow ".github/workflows/candlefish-orchestrator.yml"
-    
+
     # Analyze optimized
     echo "Optimized Orchestrator:"
     analyze_workflow ".github/workflows/candlefish-orchestrator-optimized.yml"
@@ -199,7 +199,7 @@ echo "🔀 Parallelization:"
 matrix_workflows=$(grep -l "matrix:" .github/workflows/*.yml 2>/dev/null | wc -l)
 if [ $matrix_workflows -gt 0 ]; then
     echo -e "  ${GREEN}✅ $matrix_workflows workflows use matrix strategy${NC}"
-    
+
     # Check for max-parallel limits
     unlimited=$(grep -L "max-parallel:" $(grep -l "matrix:" .github/workflows/*.yml) 2>/dev/null | wc -l)
     if [ $unlimited -gt 0 ]; then

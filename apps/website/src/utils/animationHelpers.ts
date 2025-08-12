@@ -9,7 +9,7 @@ export const rafThrottle = (callback: (...args: any[]) => void) => {
 
   const throttled = (...args: any[]) => {
     lastArgs = args
-    
+
     if (requestId === null) {
       requestId = requestAnimationFrame(() => {
         callback(...lastArgs)
@@ -140,13 +140,13 @@ export const optimizedScrollHandler = (
       requestAnimationFrame(() => {
         const currentScrollY = window.scrollY
         const diff = currentScrollY - lastScrollY
-        
+
         if (Math.abs(diff) > threshold) {
           const direction = diff > 0 ? 'down' : 'up'
           callback(currentScrollY, direction)
           lastScrollY = currentScrollY
         }
-        
+
         ticking = false
       })
       ticking = true
@@ -164,16 +164,16 @@ export const optimizedScrollHandler = (
  * GPU-accelerated transform utility
  */
 export const gpuTransform = {
-  translate3d: (x: number, y: number, z: number = 0) => 
+  translate3d: (x: number, y: number, z: number = 0) =>
     `translate3d(${x}px, ${y}px, ${z}px)`,
-  
-  scale3d: (x: number, y: number = x, z: number = 1) => 
+
+  scale3d: (x: number, y: number = x, z: number = 1) =>
     `scale3d(${x}, ${y}, ${z})`,
-  
-  rotate3d: (x: number, y: number, z: number, angle: number) => 
+
+  rotate3d: (x: number, y: number, z: number, angle: number) =>
     `rotate3d(${x}, ${y}, ${z}, ${angle}deg)`,
-  
-  matrix3d: (values: number[]) => 
+
+  matrix3d: (values: number[]) =>
     `matrix3d(${values.join(',')})`
 }
 
@@ -210,7 +210,7 @@ export class WillChangeManager {
 
   remove(element: HTMLElement, properties?: string[]) {
     const props = this.elements.get(element)
-    
+
     if (!props) return
 
     if (properties) {
@@ -222,7 +222,7 @@ export class WillChangeManager {
     if (props.size === 0) {
       element.style.willChange = 'auto'
       this.elements.delete(element)
-      
+
       const timeout = this.timeouts.get(element)
       if (timeout) {
         clearTimeout(timeout)
@@ -259,7 +259,7 @@ export class FPSMonitor {
 
   start() {
     if (this.animationId !== null) return
-    
+
     const measure = () => {
       this.frameCount++
       const currentTime = performance.now()
@@ -269,11 +269,11 @@ export class FPSMonitor {
         this.fps = Math.round((this.frameCount * 1000) / delta)
         this.frameCount = 0
         this.lastTime = currentTime
-        
+
         if (this.callback) {
           this.callback(this.fps)
         }
-        
+
         // Log warning if FPS drops below 30
         if (this.fps < 30) {
           console.warn(`[Performance] Low FPS detected: ${this.fps}`)
@@ -318,7 +318,7 @@ export class DOMBatcher {
 
   private schedule() {
     if (this.scheduled) return
-    
+
     this.scheduled = true
     requestAnimationFrame(() => {
       this.flush()
@@ -328,14 +328,14 @@ export class DOMBatcher {
   private flush() {
     const reads = this.reads.slice()
     const writes = this.writes.slice()
-    
+
     this.reads.length = 0
     this.writes.length = 0
     this.scheduled = false
 
     // Execute all reads first
     reads.forEach(fn => fn())
-    
+
     // Then execute all writes
     writes.forEach(fn => fn())
   }
@@ -346,7 +346,7 @@ export const willChangeManager = new WillChangeManager()
 export const domBatcher = new DOMBatcher()
 
 // Export FPS monitor for development
-export const fpsMonitor = process.env.NODE_ENV === 'development' 
+export const fpsMonitor = process.env.NODE_ENV === 'development'
   ? new FPSMonitor((fps) => {
       // Could update a debug UI element here
       const debugElement = document.getElementById('fps-debug')

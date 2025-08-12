@@ -1,0 +1,407 @@
+name: Deploy Candlefish AI Website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/website/**'
+      - '.github/workflows/deploy.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/website/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deploy to environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  NODE_VERSION: '18'
+  WORKING_DIRECTORY: 'apps/website'
+
+jobs:
+  # Quality Assurance Pipeline
+  test:
+    name: Quality Assurance
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    
+    strategy:
+      matrix:
+        test-type: [lint, typecheck, unit, e2e, accessibility]
+      fail-fast: false
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Run linting
+        if: matrix.test-type == 'lint'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run lint
+
+      - name: Run type checking
+        if: matrix.test-type == 'typecheck'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run typecheck
+
+      - name: Run unit tests
+        if: matrix.test-type == 'unit'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run test:coverage
+
+      - name: Install Playwright browsers
+        if: matrix.test-type == 'e2e'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        if: matrix.test-type == 'e2e'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run test:e2e
+
+      - name: Run accessibility tests
+        if: matrix.test-type == 'accessibility'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run test:accessibility
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.test-type }}
+          path: |
+            ${{ env.WORKING_DIRECTORY }}/coverage/
+            ${{ env.WORKING_DIRECTORY }}/test-results/
+            ${{ env.WORKING_DIRECTORY }}/playwright-report/
+
+  # Build and Performance Analysis
+  build:
+    name: Build & Performance Analysis
+    runs-on: ubuntu-latest
+    needs: test
+    if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')
+    
+    outputs:
+      build-hash: ${{ steps.build-info.outputs.hash }}
+      bundle-size: ${{ steps.build-info.outputs.size }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Build application
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Analyze bundle
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run analyze
+        env:
+          ANALYZE: true
+
+      - name: Generate build info
+        id: build-info
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          BUILD_HASH=$(find dist -type f -name "*.js" -o -name "*.css" | head -1 | xargs sha256sum | cut -d' ' -f1 | head -c 8)
+          BUNDLE_SIZE=$(du -sh dist | cut -f1)
+          echo "hash=${BUILD_HASH}" >> $GITHUB_OUTPUT
+          echo "size=${BUNDLE_SIZE}" >> $GITHUB_OUTPUT
+          echo "Build hash: ${BUILD_HASH}"
+          echo "Bundle size: ${BUNDLE_SIZE}"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ steps.build-info.outputs.hash }}
+          path: ${{ env.WORKING_DIRECTORY }}/dist/
+          retention-days: 30
+
+      - name: Upload bundle analysis
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-analysis-${{ steps.build-info.outputs.hash }}
+          path: ${{ env.WORKING_DIRECTORY }}/dist/stats.html
+
+  # Lighthouse CI for Performance Monitoring
+  lighthouse:
+    name: Lighthouse CI
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-${{ needs.build.outputs.build-hash }}
+          path: ${{ env.WORKING_DIRECTORY }}/dist/
+
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli@0.12.x
+
+      - name: Run Lighthouse CI
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: lhci autorun
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+  # Security Scanning
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: ${{ env.WORKING_DIRECTORY }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Audit npm dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm audit --audit-level moderate
+
+  # Staging Deployment
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build, security]
+    if: |
+      always() && 
+      (needs.build.result == 'success') && 
+      (needs.security.result == 'success' || needs.security.result == 'skipped') &&
+      (github.ref == 'refs/heads/main' || 
+       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging'))
+    
+    environment:
+      name: staging
+      url: ${{ steps.deploy.outputs.url }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-${{ needs.build.outputs.build-hash }}
+          path: ${{ env.WORKING_DIRECTORY }}/dist/
+
+      - name: Deploy to Netlify (Staging)
+        id: deploy
+        uses: netlify/actions/deploy@master
+        with:
+          publish-dir: ${{ env.WORKING_DIRECTORY }}/dist
+          production-deploy: false
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: |
+            Deploy from GitHub Actions
+            Commit: ${{ github.sha }}
+            Bundle size: ${{ needs.build.outputs.bundle-size }}
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+
+      - name: Run post-deployment tests
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          # Wait for deployment to be ready
+          sleep 30
+          # Basic health check
+          curl -f ${{ steps.deploy.outputs.url }} || exit 1
+          echo "Staging deployment successful: ${{ steps.deploy.outputs.url }}"
+
+      - name: Comment PR with staging URL
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚀 **Staging Deployment Ready**
+              
+              **Preview URL:** ${{ steps.deploy.outputs.url }}
+              **Bundle Size:** ${{ needs.build.outputs.bundle-size }}
+              **Build Hash:** ${{ needs.build.outputs.build-hash }}
+              
+              The staging environment has been updated with your changes.`
+            })
+
+  # Production Deployment (Manual Approval Required)
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build, security, deploy-staging]
+    if: |
+      always() && 
+      (needs.build.result == 'success') && 
+      (needs.security.result == 'success' || needs.security.result == 'skipped') &&
+      (needs.deploy-staging.result == 'success') &&
+      (github.ref == 'refs/heads/main' || 
+       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'))
+    
+    environment:
+      name: production
+      url: https://candlefish.ai
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-${{ needs.build.outputs.build-hash }}
+          path: ${{ env.WORKING_DIRECTORY }}/dist/
+
+      - name: Deploy to Netlify (Production)
+        id: deploy
+        uses: netlify/actions/deploy@master
+        with:
+          publish-dir: ${{ env.WORKING_DIRECTORY }}/dist
+          production-deploy: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: |
+            Production Deploy from GitHub Actions
+            Commit: ${{ github.sha }}
+            Bundle size: ${{ needs.build.outputs.bundle-size }}
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+
+      - name: Run production health checks
+        run: |
+          # Wait for deployment to propagate
+          sleep 60
+          
+          # Health check with retries
+          for i in {1..5}; do
+            if curl -f https://candlefish.ai; then
+              echo "Health check passed"
+              break
+            else
+              echo "Health check failed, attempt $i/5"
+              sleep 30
+            fi
+          done
+
+      - name: Update deployment status
+        if: success()
+        run: |
+          echo "✅ Production deployment successful!"
+          echo "🌐 Live at: https://candlefish.ai"
+          echo "📦 Bundle size: ${{ needs.build.outputs.bundle-size }}"
+
+      - name: Notify on deployment failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Production Deployment Failed',
+              body: `Production deployment failed for commit ${{ github.sha }}.
+              
+              **Build Hash:** ${{ needs.build.outputs.build-hash }}
+              **Workflow:** ${{ github.workflow }}
+              **Run:** ${{ github.run_id }}
+              
+              Please investigate and take corrective action.`,
+              labels: ['deployment', 'production', 'urgent']
+            })
+
+  # Cleanup old artifacts
+  cleanup:
+    name: Cleanup Artifacts
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: always()
+    
+    steps:
+      - name: Delete old artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listArtifactsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100
+            });
+            
+            const oldArtifacts = artifacts.data.artifacts
+              .filter(artifact => artifact.name.startsWith('build-'))
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+              .slice(10); // Keep latest 10 builds
+            
+            for (const artifact of oldArtifacts) {
+              await github.rest.actions.deleteArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id
+              });
+              console.log(`Deleted artifact: ${artifact.name}`);
+            }

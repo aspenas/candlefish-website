@@ -2,7 +2,7 @@ import React, { lazy, Suspense } from 'react'
 import { motion } from 'framer-motion'
 
 // Lazy load the heavy AI visualization component
-const AIVisualizationHub = lazy(() => 
+const AIVisualizationHub = lazy(() =>
   import('./AIVisualizationHub').then(module => ({
     default: module.default
   }))

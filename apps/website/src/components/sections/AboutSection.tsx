@@ -35,15 +35,15 @@ export default function AboutSection() {
               Why <span className="gradient-text">Candlefish AI</span>
             </h2>
             <p className="text-body-large text-secondary mb-6">
-              We're a team of AI engineers, data scientists, and business strategists who believe 
+              We're a team of AI engineers, data scientists, and business strategists who believe
               that artificial intelligence should be accessible, practical, and immediately valuable.
             </p>
             <p className="text-body text-tertiary mb-8">
-              Founded in 2023, we've helped dozens of enterprises transform their slowest, most 
-              expensive processes into competitive advantages. Our modular approach means you can 
+              Founded in 2023, we've helped dozens of enterprises transform their slowest, most
+              expensive processes into competitive advantages. Our modular approach means you can
               start seeing results in weeks, not years.
             </p>
-            
+
             {/* Stats */}
             <div className="grid grid-cols-3 gap-6 mb-8">
               <div className="text-center lg:text-left">
@@ -68,11 +68,11 @@ export default function AboutSection() {
           {/* Values Grid */}
           <div className="grid sm:grid-cols-2 gap-6">
             {values.map((value, index) => (
-              <div 
+              <div
                 key={value.title}
                 className={`card card-elevated hover-lift animate-fade-in-up delay-${(index + 2) * 100}`}
               >
-                <div className="w-12 h-12 rounded-lg flex items-center justify-center mb-4 animate-glow" 
+                <div className="w-12 h-12 rounded-lg flex items-center justify-center mb-4 animate-glow"
                      style={{ background: 'var(--accent-subtle)' }}>
                   <value.icon className="w-6 h-6" style={{ color: 'var(--accent-primary)' }} />
                 </div>

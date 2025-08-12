@@ -5,7 +5,7 @@ const HomePageMinimal: React.FC = () => {
   return (
     <div className="min-h-screen bg-black">
       <HeroSectionMinimal />
-      
+
       {/* Services Section */}
       <section id="services" className="py-20 px-4">
         <div className="max-w-7xl mx-auto">

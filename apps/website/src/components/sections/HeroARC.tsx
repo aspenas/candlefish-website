@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 
 const HeroARC: React.FC = () => {
   const [activeModule, setActiveModule] = useState(0)
-  
+
   const modules = [
     { icon: '🔍', label: 'Analysis' },
     { icon: '🧠', label: 'Intelligence' },
@@ -22,7 +22,7 @@ const HeroARC: React.FC = () => {
   return (
     <section className="relative min-h-screen section-gradient overflow-hidden">
       {/* Subtle grid background */}
-      <div 
+      <div
         className="absolute inset-0 opacity-[0.02]"
         style={{
           backgroundImage: `
@@ -51,8 +51,8 @@ const HeroARC: React.FC = () => {
 
           {/* Description */}
           <p className="text-xl text-gray-600 mb-12 max-w-3xl animate-fade-in-up" style={{animationDelay: '0.2s'}}>
-            We deliver enterprise AI transformation through discrete, composable modules. 
-            Each implementation is production-ready, measurable, and designed to integrate 
+            We deliver enterprise AI transformation through discrete, composable modules.
+            Each implementation is production-ready, measurable, and designed to integrate
             seamlessly with your existing systems.
           </p>
 
@@ -64,15 +64,15 @@ const HeroARC: React.FC = () => {
               </h3>
               <span className="text-xs text-gray-400">Live Demo</span>
             </div>
-            
+
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               {modules.map((module, index) => (
                 <div
                   key={index}
                   className={`
                     p-4 rounded-xl text-center transition-all duration-300 cursor-pointer
-                    ${activeModule === index 
-                      ? 'bg-white shadow-lg transform scale-105 border-2 border-cyan-500' 
+                    ${activeModule === index
+                      ? 'bg-white shadow-lg transform scale-105 border-2 border-cyan-500'
                       : 'bg-gray-50 hover:bg-white hover:shadow-md border-2 border-transparent'
                     }
                   `}

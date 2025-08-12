@@ -86,9 +86,14 @@ async function loadAwsSecretsIfEnabled() {
       }
       // Monitoring
       if (aggregated.sentry?.dsn) process.env.SENTRY_DSN = aggregated.sentry.dsn;
-      // JWT keys (RS256)
+      if (aggregated.sentry?.auth_token) process.env.SENTRY_AUTH_TOKEN = aggregated.sentry.auth_token;
+      // Email (aggregated)
+      if (aggregated.email?.sendgrid_api_key) process.env.SENDGRID_API_KEY = aggregated.email.sendgrid_api_key;
+      if (aggregated.email?.from_email) process.env.SENDGRID_FROM_EMAIL = aggregated.email.from_email;
+      // JWT keys (RS256) or symmetric secret (HS256)
       if (aggregated.jwt?.publicKey) process.env.JWT_PUBLIC_KEY = aggregated.jwt.publicKey;
       if (aggregated.jwt?.privateKey) process.env.JWT_PRIVATE_KEY = aggregated.jwt.privateKey;
+      if (aggregated.jwt?.secret) process.env.JWT_SECRET = aggregated.jwt.secret;
       // Encryption
       if (aggregated.encryption?.key) process.env.ENCRYPTION_KEY = aggregated.encryption.key;
 
