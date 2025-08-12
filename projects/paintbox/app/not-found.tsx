@@ -1,56 +1,26 @@
-// Force dynamic rendering and skip layout
-export const dynamic = 'force-dynamic'
+import Link from 'next/link'
 
 export default function NotFound() {
   return (
-    <html>
-      <head>
-        <title>404 - Page Not Found | Paintbox</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </head>
-      <body style={{
-        margin: 0,
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        display: 'flex',
-        minHeight: '100vh',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#f9fafb',
-        padding: '1rem'
-      }}>
-        <div style={{ textAlign: 'center', maxWidth: '28rem' }}>
-          <div style={{ marginBottom: '2rem' }}>
-            <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🎨</div>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', margin: 0 }}>
-              Paintbox
-            </h1>
-          </div>
-          <h2 style={{ marginBottom: '1rem', fontSize: '2.5rem', fontWeight: 'bold', color: '#111827', margin: '0 0 1rem 0' }}>
-            404
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div className="text-center">
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+            404 - Page Not Found
           </h2>
-          <p style={{ marginBottom: '1.5rem', fontSize: '1.25rem', color: '#4b5563', margin: '0 0 1.5rem 0' }}>
-            Page not found
+          <p className="mt-2 text-sm text-gray-600">
+            Could not find the requested resource
           </p>
-          <p style={{ marginBottom: '2rem', color: '#6b7280', margin: '0 0 2rem 0' }}>
-            The page you're looking for doesn't exist or has been moved.
-          </p>
-          <a
+        </div>
+        <div>
+          <Link
             href="/"
-            style={{
-              display: 'inline-block',
-              background: 'linear-gradient(to right, #dc2626, #b91c1c)',
-              color: 'white',
-              padding: '0.75rem 1.5rem',
-              borderRadius: '0.5rem',
-              fontWeight: '500',
-              textDecoration: 'none',
-              transition: 'all 0.3s ease'
-            }}
+            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             Return Home
-          </a>
+          </Link>
         </div>
-      </body>
-    </html>
+      </div>
+    </div>
   )
 }

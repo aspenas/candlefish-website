@@ -108,11 +108,11 @@ jobs:
         run: |
           # Project definitions - Only active projects
           declare -A PROJECTS=(
-            ["website"]="webapp:apps/website"
-            ["analytics"]="webapp:apps/analytics-dashboard"
-            ["collab"]="webapp:apps/mobile-collaboration"
-            ["paintbox"]="enterprise:projects/paintbox"
-            ["promoter"]="enterprise:projects/promoterOS"
+            ["website"]="webapp:apps/website:@candlefish-ai/website"
+            ["analytics"]="webapp:apps/analytics-dashboard:@candlefish-ai/analytics-dashboard"
+            ["collab"]="webapp:apps/mobile-collaboration:@candlefish-ai/mobile-collaboration"
+            ["paintbox"]="enterprise:projects/paintbox:paintbox-app"
+            ["promoter"]="enterprise:projects/promoterOS:promoteros"
           )
 
           # Determine which projects to process
@@ -131,7 +131,7 @@ jobs:
             # Map changed files to projects
             SELECTED_PROJECTS=""
             for project in "${!PROJECTS[@]}"; do
-              IFS=':' read -r category path <<< "${PROJECTS[$project]}"
+              IFS=':' read -r category path package_name <<< "${PROJECTS[$project]}"
               if echo "$CHANGED_FILES" | grep -q "^${path}/"; then
                 SELECTED_PROJECTS="$SELECTED_PROJECTS $project"
               fi
@@ -172,12 +172,16 @@ jobs:
                   ;;
               esac
 
+              # Get package name from project definition
+              IFS=':' read -r _ _ package_name <<< "${PROJECTS[$project]}"
+              
               item=$(jq -n \
                 --arg project "$project" \
+                --arg package_name "$package_name" \
                 --arg type "$type" \
                 --arg runner "$runner" \
                 --arg env "$ENVIRONMENT" \
-                '{project: $project, type: $type, runner: $runner, environment: $env}')
+                '{project: $project, package_name: $package_name, type: $type, runner: $runner, environment: $env}')
 
               matrix=$(echo "$matrix" | jq ".include += [$item]")
               project_list+=("$project")
@@ -345,13 +349,13 @@ jobs:
           # Run project-specific quality checks
           case "${{ matrix.type }}" in
             webapp|business|client)
-              pnpm turbo lint typecheck test:unit --filter=${{ matrix.project }}
+              pnpm turbo lint typecheck test:unit --filter=${{ matrix.package_name }}
               ;;
             enterprise)
-              pnpm turbo lint typecheck test:unit test:integration --filter=${{ matrix.project }}
+              pnpm turbo lint typecheck test:unit test:integration --filter=${{ matrix.package_name }}
               ;;
             mobile)
-              pnpm turbo lint typecheck test --filter=${{ matrix.project }}
+              pnpm turbo lint typecheck test --filter=${{ matrix.package_name }}
               # Additional mobile-specific tests
               cd apps/mobile-dashboard
               npx expo doctor
@@ -362,7 +366,7 @@ jobs:
         run: |
           case "${{ matrix.type }}" in
             webapp|business|client|enterprise)
-              pnpm turbo build --filter=${{ matrix.project }}
+              pnpm turbo build --filter=${{ matrix.package_name }}
               ;;
             mobile)
               cd apps/mobile-dashboard
@@ -564,11 +568,16 @@ jobs:
 
       - name: Get secrets from AWS Secrets Manager
         run: |
-          # Fetch project-specific secrets
-          aws secretsmanager get-secret-value \
-            --secret-id candlefish/${{ matrix.environment }}/${{ matrix.project }} \
-            --query SecretString \
-            --output text | jq -r 'to_entries[] | "\(.key)=\(.value)"' >> $GITHUB_ENV
+          # Fetch project-specific secrets (if they exist)
+          SECRET_ID="candlefish/${{ matrix.environment }}/${{ matrix.project }}"
+          if aws secretsmanager describe-secret --secret-id "$SECRET_ID" 2>/dev/null; then
+            aws secretsmanager get-secret-value \
+              --secret-id "$SECRET_ID" \
+              --query SecretString \
+              --output text | jq -r 'to_entries[] | "\(.key)=\(.value)"' >> $GITHUB_ENV
+          else
+            echo "No specific secrets found for $SECRET_ID, using defaults"
+          fi
 
       - name: Deploy to infrastructure
         run: |

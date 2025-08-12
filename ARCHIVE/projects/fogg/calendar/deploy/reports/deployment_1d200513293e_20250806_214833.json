@@ -1,0 +1,101 @@
+{
+  "deployment_id": "1d200513293e",
+  "status": "success",
+  "start_time": "2025-08-06T21:48:32.312585",
+  "end_time": "2025-08-06T21:48:33.323691",
+  "duration_seconds": 1.011106,
+  "configuration": {
+    "agents": [
+      "security-auditor"
+    ],
+    "validation_mode": "automated",
+    "rollback_enabled": true
+  },
+  "agent_results": [
+    {
+      "agent": "security-auditor",
+      "status": "passed",
+      "duration": 1.003988,
+      "metrics": {
+        "vulnerability_scan": {
+          "check": "vulnerability_scan",
+          "status": "passed",
+          "critical_issues": 0,
+          "warnings": 0,
+          "details": [
+            "No critical vulnerabilities found"
+          ]
+        },
+        "dependency_audit": {
+          "check": "dependency_audit",
+          "status": "passed",
+          "critical_issues": 0,
+          "warnings": 0,
+          "details": []
+        },
+        "secrets_scan": {
+          "check": "secrets_scan",
+          "status": "passed",
+          "critical_issues": 0,
+          "warnings": 0,
+          "details": [
+            "No exposed secrets detected"
+          ]
+        },
+        "permission_audit": {
+          "check": "permission_audit",
+          "status": "passed",
+          "critical_issues": 0,
+          "warnings": 0,
+          "details": [
+            "Permissions properly configured"
+          ]
+        },
+        "ssl_validation": {
+          "check": "ssl_validation",
+          "status": "passed",
+          "critical_issues": 0,
+          "warnings": 0,
+          "details": []
+        },
+        "authentication_check": {
+          "check": "authentication_check",
+          "status": "passed",
+          "critical_issues": 0,
+          "warnings": 0,
+          "details": []
+        },
+        "authorization_review": {
+          "check": "authorization_review",
+          "status": "passed",
+          "critical_issues": 0,
+          "warnings": 0,
+          "details": []
+        },
+        "input_validation": {
+          "check": "input_validation",
+          "status": "passed",
+          "critical_issues": 0,
+          "warnings": 0,
+          "details": []
+        },
+        "encryption_verification": {
+          "check": "encryption_verification",
+          "status": "passed",
+          "critical_issues": 0,
+          "warnings": 0,
+          "details": []
+        }
+      },
+      "errors": [],
+      "warnings": []
+    }
+  ],
+  "metrics_summary": {
+    "success_rate": 100.0,
+    "total_agents": 1,
+    "successful_agents": 1
+  },
+  "errors": [],
+  "warnings": []
+}

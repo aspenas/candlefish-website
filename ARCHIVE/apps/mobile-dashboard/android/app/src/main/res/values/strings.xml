@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Candlefish Analytics</string>
+
+    <!-- Shortcut strings -->
+    <string name="shortcut_dashboard_short">Dashboards</string>
+    <string name="shortcut_dashboard_long">View Analytics Dashboards</string>
+    <string name="shortcut_scan_short">Scan QR</string>
+    <string name="shortcut_scan_long">Scan QR Code</string>
+    <string name="shortcut_notifications_short">Notifications</string>
+    <string name="shortcut_notifications_long">View Notifications</string>
+    <string name="shortcut_create_short">Create</string>
+    <string name="shortcut_create_long">Create New Dashboard</string>
+    <string name="shortcut_disabled_message">This shortcut is not available</string>
+
+    <!-- Widget strings -->
+    <string name="widget_name">Analytics Widget</string>
+    <string name="widget_description">Display key metrics from your analytics dashboard</string>
+
+    <!-- Notification strings -->
+    <string name="notification_channel_alerts">Alert Notifications</string>
+    <string name="notification_channel_alerts_description">Important alerts and threshold breaches</string>
+    <string name="notification_channel_system">System Notifications</string>
+    <string name="notification_channel_system_description">System updates and status messages</string>
+    <string name="notification_channel_dashboard">Dashboard Updates</string>
+    <string name="notification_channel_dashboard_description">Dashboard refresh and data updates</string>
+
+    <!-- Permission strings -->
+    <string name="permission_camera_rationale">Camera permission is required to scan QR codes for dashboard sharing and organization invitations</string>
+    <string name="permission_storage_rationale">Storage permission is required to cache dashboard data for offline viewing</string>
+    <string name="permission_notification_rationale">Notification permission is required to receive alerts and dashboard updates</string>
+</resources>

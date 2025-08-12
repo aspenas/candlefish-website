@@ -38,7 +38,7 @@ export default defineConfig({
   build: {
     target: 'es2015',
     outDir: 'dist',
-    sourcemap: process.env.NODE_ENV !== 'production',
+    sourcemap: false,
     minify: 'terser',
     terserOptions: {
       compress: {
@@ -65,24 +65,40 @@ export default defineConfig({
         manualChunks: (id) => {
           // Node modules chunking strategy
           if (id.includes('node_modules')) {
-            // React ecosystem
-            if (id.includes('react') || id.includes('react-dom')) {
+            // Three.js and 3D libraries - separate heavy 3D deps
+            if (id.includes('three') || id.includes('@react-three')) {
+              return 'three-vendor';
+            }
+            // React ecosystem core
+            if (id.includes('react/') || id.includes('react-dom/')) {
+              return 'react-core';
+            }
+            // React ecosystem extensions
+            if (id.includes('react-') && !id.includes('react-three')) {
               return 'react-vendor';
             }
             // Router
             if (id.includes('react-router')) {
               return 'router';
             }
+            // Framer Motion - separate animation library
+            if (id.includes('framer-motion')) {
+              return 'framer-motion';
+            }
+            // GSAP animations
+            if (id.includes('gsap')) {
+              return 'gsap';
+            }
+            // React Spring animations
+            if (id.includes('@react-spring') || id.includes('react-spring')) {
+              return 'react-spring';
+            }
             // UI libraries
             if (id.includes('lucide-react') || id.includes('@radix-ui')) {
               return 'ui-vendor';
             }
-            // Animation libraries
-            if (id.includes('@react-spring') || id.includes('gsap')) {
-              return 'animations';
-            }
             // Utilities
-            if (id.includes('clsx') || id.includes('zod') || id.includes('date-fns')) {
+            if (id.includes('clsx') || id.includes('zod') || id.includes('class-variance')) {
               return 'utils';
             }
             // All other vendor code
@@ -90,15 +106,27 @@ export default defineConfig({
           }
 
           // Application code chunking
-          if (id.includes('src/components/sections/v2')) {
-            return 'sections-v2';
+          // AI Visualization components - separate heavy components
+          if (id.includes('AIVisualization') || id.includes('NeuralNetwork') || id.includes('AIAnimation')) {
+            return 'ai-visualizations';
           }
-          if (id.includes('src/components/sections/v1')) {
-            return 'sections-v1';
+          // Particle effects
+          if (id.includes('Particle')) {
+            return 'particle-effects';
           }
+          // Section components
+          if (id.includes('src/components/sections')) {
+            return 'sections';
+          }
+          // Common components
+          if (id.includes('src/components')) {
+            return 'components';
+          }
+          // Hooks
           if (id.includes('src/hooks')) {
             return 'hooks';
           }
+          // Utils
           if (id.includes('src/utils')) {
             return 'app-utils';
           }
@@ -112,7 +140,7 @@ export default defineConfig({
     },
     // Performance optimizations
     reportCompressedSize: false,
-    chunkSizeWarningLimit: 500,
+    chunkSizeWarningLimit: 250,
     // CSS optimizations
     cssCodeSplit: true,
     cssMinify: true,

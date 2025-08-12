@@ -1,0 +1,199 @@
+{
+  "deployment_id": "a081c5363c40",
+  "status": "success",
+  "start_time": "2025-08-06T21:47:35.933983",
+  "end_time": "2025-08-06T21:47:43.356561",
+  "duration_seconds": 7.422578,
+  "configuration": {
+    "agents": [
+      "database-optimizer",
+      "test-automator"
+    ],
+    "validation_mode": "automated",
+    "rollback_enabled": true
+  },
+  "agent_results": [
+    {
+      "agent": "database-optimizer",
+      "status": "passed",
+      "duration": 3.411748,
+      "metrics": {
+        "initial_state": {
+          "query_time_avg_ms": 50,
+          "index_hit_rate": 0.85,
+          "cache_hit_rate": 0.7,
+          "connection_count": 100,
+          "deadlock_count": 2,
+          "table_size_mb": 1024
+        },
+        "analyze_queries": {
+          "task": "analyze_queries",
+          "success": true,
+          "duration_seconds": 0.3,
+          "changes_applied": 2
+        },
+        "optimize_indexes": {
+          "task": "optimize_indexes",
+          "success": true,
+          "duration_seconds": 0.3,
+          "changes_applied": 1
+        },
+        "vacuum_tables": {
+          "task": "vacuum_tables",
+          "success": true,
+          "duration_seconds": 0.3,
+          "changes_applied": 5
+        },
+        "update_statistics": {
+          "task": "update_statistics",
+          "success": true,
+          "duration_seconds": 0.3,
+          "changes_applied": 4
+        },
+        "configure_pooling": {
+          "task": "configure_pooling",
+          "success": true,
+          "duration_seconds": 0.3,
+          "changes_applied": 4
+        },
+        "optimize_cache": {
+          "task": "optimize_cache",
+          "success": true,
+          "duration_seconds": 0.3,
+          "changes_applied": 3
+        },
+        "check_fragmentation": {
+          "task": "check_fragmentation",
+          "success": true,
+          "duration_seconds": 0.3,
+          "changes_applied": 2
+        },
+        "validate_constraints": {
+          "task": "validate_constraints",
+          "success": true,
+          "duration_seconds": 0.3,
+          "changes_applied": 9
+        },
+        "optimized_state": {
+          "query_time_avg_ms": 50,
+          "index_hit_rate": 0.85,
+          "cache_hit_rate": 0.7,
+          "connection_count": 100,
+          "deadlock_count": 2,
+          "table_size_mb": 1024
+        },
+        "improvements": {
+          "query_time": 0.0,
+          "index_hit_rate": 0.0,
+          "cache_hit_rate": 0.0,
+          "overall_improvement": 0.0
+        }
+      },
+      "errors": [],
+      "warnings": [
+        "No significant database improvements achieved"
+      ]
+    },
+    {
+      "agent": "test-automator",
+      "status": "passed",
+      "duration": 4.010236,
+      "metrics": {
+        "unit_tests": {
+          "suite": "unit_tests",
+          "total": 72,
+          "passed": 68,
+          "failed": 4,
+          "skipped": 0,
+          "duration_seconds": 4.797296377167434
+        },
+        "integration_tests": {
+          "suite": "integration_tests",
+          "total": 57,
+          "passed": 57,
+          "failed": 0,
+          "skipped": 0,
+          "duration_seconds": 2.9677417732324303
+        },
+        "api_tests": {
+          "suite": "api_tests",
+          "total": 179,
+          "passed": 175,
+          "failed": 4,
+          "skipped": 0,
+          "duration_seconds": 1.2388237271547726
+        },
+        "load_tests": {
+          "suite": "load_tests",
+          "total": 100,
+          "passed": 95,
+          "failed": 5,
+          "skipped": 0,
+          "duration_seconds": 6.848959940015709
+        },
+        "security_tests": {
+          "suite": "security_tests",
+          "total": 189,
+          "passed": 186,
+          "failed": 3,
+          "skipped": 0,
+          "duration_seconds": 2.9839655983662703
+        },
+        "regression_tests": {
+          "suite": "regression_tests",
+          "total": 200,
+          "passed": 198,
+          "failed": 2,
+          "skipped": 0,
+          "duration_seconds": 8.28487411010044
+        },
+        "smoke_tests": {
+          "suite": "smoke_tests",
+          "total": 51,
+          "passed": 51,
+          "failed": 0,
+          "skipped": 0,
+          "duration_seconds": 7.829266304167906
+        },
+        "e2e_tests": {
+          "suite": "e2e_tests",
+          "total": 90,
+          "passed": 85,
+          "failed": 5,
+          "skipped": 0,
+          "duration_seconds": 4.803529583381523
+        },
+        "overall": {
+          "total": 938,
+          "passed": 915,
+          "failed": 23,
+          "pass_rate": 97.54797441364606
+        }
+      },
+      "errors": [],
+      "warnings": [
+        "unit_tests: 4 tests failed",
+        "api_tests: 4 tests failed",
+        "load_tests: 5 tests failed",
+        "security_tests: 3 tests failed",
+        "regression_tests: 2 tests failed",
+        "e2e_tests: 5 tests failed"
+      ]
+    }
+  ],
+  "metrics_summary": {
+    "success_rate": 100.0,
+    "total_agents": 2,
+    "successful_agents": 2
+  },
+  "errors": [],
+  "warnings": [
+    "No significant database improvements achieved",
+    "unit_tests: 4 tests failed",
+    "api_tests: 4 tests failed",
+    "load_tests: 5 tests failed",
+    "security_tests: 3 tests failed",
+    "regression_tests: 2 tests failed",
+    "e2e_tests: 5 tests failed"
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "name": "CompanyCam Event Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "paintbox/companycam",
+        "options": {
+          "responseData": "={\"ok\":true}"
+        }
+      },
+      "id": "webhook",
+      "name": "Webhook (CompanyCam)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 260]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.body.event_type}}",
+                    "operation": "equal",
+                    "rightValue": "photo.created"
+                  }
+                ]
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.body.event_type}}",
+                    "operation": "equal",
+                    "rightValue": "project.updated"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "id": "router",
+      "name": "Route by event_type",
+      "type": "n8n-nodes-base.router",
+      "typeVersion": 1,
+      "position": [500, 260]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "={{$env.PHOTO_CREATED_HANDLER_URL}}",
+        "sendBody": true,
+        "jsonBody": "={{$json.body}}"
+      },
+      "id": "photo-created",
+      "name": "Handle photo.created",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [780, 180]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "={{$env.PROJECT_UPDATED_HANDLER_URL}}",
+        "sendBody": true,
+        "jsonBody": "={{$json.body}}"
+      },
+      "id": "project-updated",
+      "name": "Handle project.updated",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [780, 340]
+    }
+  ],
+  "connections": {
+    "Webhook (CompanyCam)": {
+      "main": [
+        [
+          {
+            "node": "Route by event_type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by event_type": {
+      "main": [
+        [
+          {
+            "node": "Handle photo.created",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle project.updated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "version": 2
+}

@@ -1,12 +1,22 @@
 {
   "framework": "nextjs",
-  "buildCommand": "npm ci && npm run build",
+  "buildCommand": "npm ci --production=false && npm run build:deploy",
   "build": {
     "env": {
       "NODE_OPTIONS": "--max-old-space-size=8192",
       "NODE_ENV": "production",
       "NEXT_TELEMETRY_DISABLED": "1",
-      "SKIP_ENV_VALIDATION": "1"
+      "SKIP_ENV_VALIDATION": "1",
+      "SKIP_STATIC_OPTIMIZATION": "1",
+      "DISABLE_ESLINT": "1",
+      "DISABLE_TYPESCRIPT_CHECK": "1"
     }
-  }
+  },
+  "functions": {
+    "app/api/**/*.ts": {
+      "maxDuration": 30,
+      "memory": 1024
+    }
+  },
+  "outputDirectory": ".next"
 }

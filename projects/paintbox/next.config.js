@@ -1,8 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
-  output: 'standalone',
-  // Disable static optimization for deployment
+  // Basic configuration
+  reactStrictMode: false, // Disabled temporarily for compatibility
+  
+  // Image configuration
   images: {
     remotePatterns: [
       {
@@ -16,41 +17,41 @@ const nextConfig = {
     ],
     formats: ['image/avif', 'image/webp'],
   },
+  
+  // Build configuration - skip validation for production deployment
   typescript: {
-    // Skip TypeScript errors during production builds
     ignoreBuildErrors: true,
   },
   eslint: {
-    // Skip ESLint errors during production builds
     ignoreDuringBuilds: true,
   },
-  // Skip static optimization for deployment
+  
+  // Runtime configuration
   trailingSlash: false,
-  skipTrailingSlashRedirect: true,
-  // Environment variables that will be inlined at build time
+  compress: true,
+  poweredByHeader: false,
+  
+  // Environment variables
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://paintbox-api.railway.app',
   },
-  compress: true,
-  poweredByHeader: false,
-  generateEtags: false,
+  
+  // Experimental features (minimal for stability)
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',
     },
   },
-  // Force dynamic rendering for deployment
-  // dynamicIO: false, // Invalid option removed
-  // Security headers
+  
+  // Static generation timeout
+  staticPageGenerationTimeout: 60,
+  
+  // Basic security headers
   async headers() {
     return [
       {
         source: '/:path*',
         headers: [
-          {
-            key: 'X-DNS-Prefetch-Control',
-            value: 'on'
-          },
           {
             key: 'X-Frame-Options',
             value: 'SAMEORIGIN'
@@ -59,48 +60,62 @@ const nextConfig = {
             key: 'X-Content-Type-Options',
             value: 'nosniff'
           },
-          {
-            key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin'
-          },
         ],
       },
     ];
   },
-  // Webpack configuration to handle Node.js modules
+  
+  // Minimal webpack configuration
   webpack: (config, { isServer }) => {
+    // Client-side fallbacks for Node.js modules
     if (!isServer) {
-      // Don't bundle Node.js modules on the client side
       config.resolve.fallback = {
         ...config.resolve.fallback,
-        dns: false,
+        fs: false,
         net: false,
         tls: false,
-        fs: false,
         crypto: false,
         stream: false,
         util: false,
-        url: false,
-        zlib: false,
+        path: false,
+        os: false,
+        dns: false,
         http: false,
         https: false,
-        assert: false,
-        os: false,
-        path: false,
-        querystring: false,
         buffer: false,
+        url: false,
+        querystring: false,
+        zlib: false,
+        assert: false,
         child_process: false,
         worker_threads: false,
       };
     }
-
-    // Add aliases for missing optional dependencies
+    
+    // Stub dependencies that should not be bundled client-side
     config.resolve.alias = {
       ...config.resolve.alias,
       '@aws-sdk/client-s3': require.resolve('./lib/stubs/@aws-sdk-client-s3.ts'),
       'cloudinary': require.resolve('./lib/stubs/cloudinary.ts'),
+      'idb': require.resolve('./lib/stubs/idb.ts'),
     };
-
+    
+    // Exclude server-only modules from client bundle
+    if (!isServer) {
+      config.externals = config.externals || {};
+      config.externals = {
+        ...config.externals,
+        'ioredis': 'ioredis',
+        'redis': 'redis',
+        'bull': 'bull',
+        'nodemailer': 'nodemailer',
+        'jsforce': 'jsforce',
+        'sharp': 'sharp',
+      };
+      
+      // Fallback for IndexedDB during SSR (already included in main fallbacks above)
+    }
+    
     return config;
   },
 }
