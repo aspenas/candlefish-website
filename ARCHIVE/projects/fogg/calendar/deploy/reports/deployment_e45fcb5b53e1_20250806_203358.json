@@ -1,0 +1,191 @@
+{
+  "deployment_id": "e45fcb5b53e1",
+  "status": "success",
+  "start_time": "2025-08-06T20:33:53.585457",
+  "end_time": "2025-08-06T20:33:58.605645",
+  "duration_seconds": 5.020188,
+  "configuration": {
+    "agents": [
+      "security-auditor",
+      "test-automator"
+    ],
+    "validation_mode": "automated",
+    "rollback_enabled": true
+  },
+  "agent_results": [
+    {
+      "agent": "security-auditor",
+      "status": "passed",
+      "duration": 1.003518,
+      "metrics": {
+        "vulnerability_scan": {
+          "check": "vulnerability_scan",
+          "status": "passed",
+          "critical_issues": 0,
+          "warnings": 0,
+          "details": [
+            "No critical vulnerabilities found"
+          ]
+        },
+        "dependency_audit": {
+          "check": "dependency_audit",
+          "status": "passed",
+          "critical_issues": 0,
+          "warnings": 0,
+          "details": []
+        },
+        "secrets_scan": {
+          "check": "secrets_scan",
+          "status": "passed",
+          "critical_issues": 0,
+          "warnings": 0,
+          "details": [
+            "No exposed secrets detected"
+          ]
+        },
+        "permission_audit": {
+          "check": "permission_audit",
+          "status": "passed",
+          "critical_issues": 0,
+          "warnings": 0,
+          "details": [
+            "Permissions properly configured"
+          ]
+        },
+        "ssl_validation": {
+          "check": "ssl_validation",
+          "status": "passed",
+          "critical_issues": 0,
+          "warnings": 0,
+          "details": []
+        },
+        "authentication_check": {
+          "check": "authentication_check",
+          "status": "passed",
+          "critical_issues": 0,
+          "warnings": 0,
+          "details": []
+        },
+        "authorization_review": {
+          "check": "authorization_review",
+          "status": "passed",
+          "critical_issues": 0,
+          "warnings": 0,
+          "details": []
+        },
+        "input_validation": {
+          "check": "input_validation",
+          "status": "passed",
+          "critical_issues": 0,
+          "warnings": 0,
+          "details": []
+        },
+        "encryption_verification": {
+          "check": "encryption_verification",
+          "status": "passed",
+          "critical_issues": 0,
+          "warnings": 0,
+          "details": []
+        }
+      },
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "agent": "test-automator",
+      "status": "passed",
+      "duration": 4.009079,
+      "metrics": {
+        "unit_tests": {
+          "suite": "unit_tests",
+          "total": 78,
+          "passed": 78,
+          "failed": 0,
+          "skipped": 0,
+          "duration_seconds": 7.673954497838496
+        },
+        "integration_tests": {
+          "suite": "integration_tests",
+          "total": 112,
+          "passed": 111,
+          "failed": 1,
+          "skipped": 0,
+          "duration_seconds": 2.255841356726295
+        },
+        "api_tests": {
+          "suite": "api_tests",
+          "total": 76,
+          "passed": 71,
+          "failed": 5,
+          "skipped": 0,
+          "duration_seconds": 7.666009702009083
+        },
+        "load_tests": {
+          "suite": "load_tests",
+          "total": 189,
+          "passed": 189,
+          "failed": 0,
+          "skipped": 0,
+          "duration_seconds": 6.314432612041357
+        },
+        "security_tests": {
+          "suite": "security_tests",
+          "total": 58,
+          "passed": 58,
+          "failed": 0,
+          "skipped": 0,
+          "duration_seconds": 1.843257158754332
+        },
+        "regression_tests": {
+          "suite": "regression_tests",
+          "total": 109,
+          "passed": 105,
+          "failed": 4,
+          "skipped": 0,
+          "duration_seconds": 6.418168561449823
+        },
+        "smoke_tests": {
+          "suite": "smoke_tests",
+          "total": 193,
+          "passed": 193,
+          "failed": 0,
+          "skipped": 0,
+          "duration_seconds": 2.7895388561798367
+        },
+        "e2e_tests": {
+          "suite": "e2e_tests",
+          "total": 189,
+          "passed": 186,
+          "failed": 3,
+          "skipped": 0,
+          "duration_seconds": 2.9839655983662703
+        },
+        "overall": {
+          "total": 1004,
+          "passed": 991,
+          "failed": 13,
+          "pass_rate": 98.70517928286853
+        }
+      },
+      "errors": [],
+      "warnings": [
+        "integration_tests: 1 tests failed",
+        "api_tests: 5 tests failed",
+        "regression_tests: 4 tests failed",
+        "e2e_tests: 3 tests failed"
+      ]
+    }
+  ],
+  "metrics_summary": {
+    "success_rate": 100.0,
+    "total_agents": 2,
+    "successful_agents": 2
+  },
+  "errors": [],
+  "warnings": [
+    "integration_tests: 1 tests failed",
+    "api_tests: 5 tests failed",
+    "regression_tests: 4 tests failed",
+    "e2e_tests: 3 tests failed"
+  ]
+}

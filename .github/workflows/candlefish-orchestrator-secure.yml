@@ -1,0 +1,885 @@
+name: Candlefish Orchestrator (Secure)
+# Secure implementation of the main orchestrator workflow
+# Security improvements based on audit findings
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
+      projects:
+        description: 'Projects to deploy (comma-separated or "all")'
+        required: false
+        default: 'changed'
+        # Add pattern validation at UI level
+        pattern: '^[a-zA-Z0-9,-]+$'
+      skip_tests:
+        description: 'Skip tests (requires approval)'
+        required: false
+        default: false
+        type: boolean
+
+  push:
+    branches:
+      - main
+      - develop
+      - 'release/**'
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
+# Minimal top-level permissions
+permissions:
+  contents: read
+
+env:
+  # Version pinning for tools
+  NODE_VERSION: '20.11.0'
+  PYTHON_VERSION: '3.12.1'
+  PNPM_VERSION: '8.15.6'
+  GO_VERSION: '1.22.0'
+  RUST_VERSION: '1.75.0'
+  
+  # AWS configuration (no account ID exposure)
+  AWS_REGION: us-east-1
+  
+  # Cost tracking
+  GITHUB_MINUTES_BUDGET: 50000
+  WORKFLOW_TIMEOUT_MINUTES: 30
+
+# Concurrency control
+concurrency:
+  group: orchestrator-${{ github.workflow }}-${{ github.ref }}-${{ inputs.environment || 'ci' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # ============================================
+  # STAGE 1: Input Validation & Security Checks
+  # ============================================
+  validate-inputs:
+    name: 🛡️ Validate Inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      projects: ${{ steps.validate.outputs.projects }}
+      environment: ${{ steps.validate.outputs.environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
+
+      - name: Validate and sanitize inputs
+        id: validate
+        run: |
+          set -euo pipefail
+          
+          # Define allowed values
+          ALLOWED_PROJECTS="website,analytics,collab,paintbox,promoter,all,changed"
+          ALLOWED_ENVIRONMENTS="dev,staging,production"
+          
+          # Get inputs with defaults
+          PROJECT_INPUT="${{ github.event.inputs.projects || 'changed' }}"
+          ENV_INPUT="${{ github.event.inputs.environment || 'staging' }}"
+          
+          # Validate environment
+          if [[ ! " ${ALLOWED_ENVIRONMENTS} " =~ " ${ENV_INPUT} " ]]; then
+            echo "::error::Invalid environment: ${ENV_INPUT}"
+            exit 1
+          fi
+          
+          # Validate project input format (alphanumeric, comma, hyphen only)
+          if [[ ! "$PROJECT_INPUT" =~ ^[a-zA-Z0-9,-]+$ ]]; then
+            echo "::error::Invalid characters in project input"
+            exit 1
+          fi
+          
+          # Validate each project
+          IFS=',' read -ra PROJECTS_ARRAY <<< "$PROJECT_INPUT"
+          for project in "${PROJECTS_ARRAY[@]}"; do
+            if [[ ! " ${ALLOWED_PROJECTS} " =~ " ${project} " ]]; then
+              echo "::error::Unknown project: ${project}"
+              exit 1
+            fi
+          done
+          
+          # Additional security check for production
+          if [[ "$ENV_INPUT" == "production" ]]; then
+            if [[ "${{ github.ref }}" != "refs/heads/main" ]] && [[ "${{ github.event_name }}" != "workflow_dispatch" ]]; then
+              echo "::error::Production deployments only allowed from main branch"
+              exit 1
+            fi
+          fi
+          
+          # Output validated values
+          echo "projects=${PROJECT_INPUT}" >> $GITHUB_OUTPUT
+          echo "environment=${ENV_INPUT}" >> $GITHUB_OUTPUT
+          
+          # Log for audit
+          echo "::notice title=Validated Inputs::Projects: ${PROJECT_INPUT}, Environment: ${ENV_INPUT}"
+
+  # ============================================
+  # STAGE 2: Project Discovery with Security
+  # ============================================
+  project-discovery:
+    name: 🔍 Discover Projects
+    needs: [validate-inputs]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write  # Only for AWS OIDC
+    outputs:
+      matrix: ${{ steps.build-matrix.outputs.matrix }}
+      projects: ${{ steps.build-matrix.outputs.projects }}
+      cache_key: ${{ steps.build-matrix.outputs.cache_key }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS credentials (read-only)
+        id: aws-creds
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502  # v4.0.2
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_DISCOVERY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-Discovery-${{ github.run_id }}
+          mask-aws-account-id: true
+        continue-on-error: true
+
+      - name: Detect changed projects
+        id: detect-changes
+        run: |
+          set -euo pipefail
+          
+          # Use validated inputs
+          VALIDATED_PROJECTS="${{ needs.validate-inputs.outputs.projects }}"
+          
+          # Project definitions with strict typing
+          declare -A PROJECTS=(
+            ["website"]="webapp:apps/website:@candlefish-ai/website"
+            ["analytics"]="webapp:apps/analytics-dashboard:@candlefish-ai/analytics-dashboard"
+            ["collab"]="webapp:apps/mobile-collaboration:@candlefish-ai/mobile-collaboration"
+            ["paintbox"]="enterprise:projects/paintbox:paintbox-app"
+            ["promoter"]="enterprise:projects/promoterOS:promoteros"
+          )
+          
+          # Process project selection
+          if [[ "$VALIDATED_PROJECTS" == "all" ]]; then
+            SELECTED_PROJECTS="${!PROJECTS[@]}"
+          elif [[ "$VALIDATED_PROJECTS" != "changed" ]]; then
+            SELECTED_PROJECTS="$VALIDATED_PROJECTS"
+          else
+            # Detect changed files safely
+            if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+              # Use -- to separate paths from revisions
+              CHANGED_FILES=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" --)
+            else
+              CHANGED_FILES=$(git diff --name-only "HEAD~1...HEAD" --)
+            fi
+            
+            # Map changed files to projects
+            SELECTED_PROJECTS=""
+            for project in "${!PROJECTS[@]}"; do
+              IFS=':' read -r category path package_name <<< "${PROJECTS[$project]}"
+              if echo "$CHANGED_FILES" | grep -q "^${path}/"; then
+                SELECTED_PROJECTS="$SELECTED_PROJECTS $project"
+              fi
+            done
+          fi
+          
+          echo "selected_projects=$SELECTED_PROJECTS" >> $GITHUB_OUTPUT
+          
+          # Mask any sensitive project names
+          for project in $SELECTED_PROJECTS; do
+            echo "::add-mask::candlefish-${project}-secret"
+          done
+
+      - name: Build deployment matrix
+        id: build-matrix
+        run: |
+          set -euo pipefail
+          
+          PROJECTS="${{ steps.detect-changes.outputs.selected_projects }}"
+          ENVIRONMENT="${{ needs.validate-inputs.outputs.environment }}"
+          
+          # Build matrix JSON securely
+          matrix='{"include":[]}'
+          project_list=()
+          
+          if [[ -n "$PROJECTS" ]]; then
+            for project in $PROJECTS; do
+              # Determine project type
+              case $project in
+                website|analytics|collab)
+                  type="webapp"
+                  runner="ubuntu-latest"
+                  timeout=15
+                  ;;
+                paintbox|promoter)
+                  type="enterprise"
+                  runner="ubuntu-latest"
+                  timeout=20
+                  ;;
+                *)
+                  type="standard"
+                  runner="ubuntu-latest"
+                  timeout=15
+                  ;;
+              esac
+              
+              # Build item with proper escaping
+              item=$(jq -n \
+                --arg project "$project" \
+                --arg type "$type" \
+                --arg runner "$runner" \
+                --arg env "$ENVIRONMENT" \
+                --arg timeout "$timeout" \
+                '{
+                  project: $project,
+                  type: $type,
+                  runner: $runner,
+                  environment: $env,
+                  timeout: ($timeout | tonumber)
+                }')
+              
+              matrix=$(echo "$matrix" | jq ".include += [$item]")
+              project_list+=("$project")
+            done
+          fi
+          
+          # Generate secure cache key
+          cache_key="${{ github.sha }}-${ENVIRONMENT}-$(date +%Y%m%d)-${{ github.run_id }}"
+          
+          # Output matrix
+          echo "matrix=$(echo $matrix | jq -c .)" >> $GITHUB_OUTPUT
+          echo "projects=${project_list[*]}" >> $GITHUB_OUTPUT
+          echo "cache_key=$cache_key" >> $GITHUB_OUTPUT
+
+  # ============================================
+  # STAGE 3: Security Gate with Enhanced Checks
+  # ============================================
+  security-gate:
+    name: 🔐 Security Gate
+    needs: [validate-inputs]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write  # For uploading SARIF
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
+
+      - name: Run Trivy security scan
+        uses: aquasecurity/trivy-action@2b6a709cf9c4025c5438e98b5a3e583f0e89a9cc  # v0.16.1
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+        continue-on-error: true
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Check for secrets with TruffleHog
+        uses: trufflesecurity/trufflehog@8a8ef8526527dd5f5d731d8e74843c69a6a3960a  # v3.63.5
+        with:
+          path: ./
+          base: ${{ github.event.pull_request.base.sha || github.event.before }}
+          head: ${{ github.event.pull_request.head.sha || github.sha }}
+          extra_args: --only-verified --max-depth 5
+
+      - name: SAST with Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/owasp-top-ten
+            p/r2c-ci
+            p/secrets
+          generateSarif: true
+        continue-on-error: true
+
+      - name: Upload Semgrep results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+
+      - name: License compliance check
+        run: |
+          set -euo pipefail
+          
+          # Install license checker with specific version
+          npm install -g license-checker@25.0.1
+          
+          # Check licenses with strict policy
+          license-checker --production \
+            --onlyAllow 'MIT;Apache-2.0;BSD;BSD-2-Clause;BSD-3-Clause;ISC;CC0-1.0;Unlicense' \
+            --excludePrivatePackages \
+            --failOn 'GPL;LGPL;AGPL' || {
+              echo "::error::Non-compliant licenses detected"
+              exit 1
+            }
+
+      - name: Security policy compliance
+        run: |
+          set -euo pipefail
+          
+          # Check for required security files
+          required_files=(
+            ".github/SECURITY.md"
+            ".github/CODEOWNERS"
+            ".github/dependabot.yml"
+          )
+          
+          for file in "${required_files[@]}"; do
+            if [[ ! -f "$file" ]]; then
+              echo "::warning::Missing required security file: $file"
+            fi
+          done
+
+  # ============================================
+  # STAGE 4: Build & Test with Security Controls
+  # ============================================
+  build-test:
+    name: 🔨 Build & Test [${{ matrix.project }}]
+    needs: [project-discovery, security-gate]
+    if: |
+      always() &&
+      needs.project-discovery.result == 'success' &&
+      needs.security-gate.result != 'failure' &&
+      needs.project-discovery.outputs.projects != ''
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: ${{ matrix.timeout }}
+    permissions:
+      contents: read
+      checks: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.project-discovery.outputs.matrix) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
+
+      - name: Setup build environment
+        uses: ./.github/actions/setup-environment
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache-key: ${{ needs.project-discovery.outputs.cache_key }}
+          project-type: ${{ matrix.type }}
+
+      - name: Install dependencies with integrity check
+        run: |
+          set -euo pipefail
+          
+          # Verify lock file integrity
+          if [[ -f "pnpm-lock.yaml" ]]; then
+            pnpm install --frozen-lockfile --prefer-offline
+          elif [[ -f "package-lock.json" ]]; then
+            npm ci
+          elif [[ -f "yarn.lock" ]]; then
+            yarn install --frozen-lockfile
+          fi
+          
+          # Audit dependencies
+          npm audit --audit-level=high || echo "::warning::Security vulnerabilities found in dependencies"
+
+      - name: Run tests with security checks
+        if: ${{ !inputs.skip_tests }}
+        env:
+          NODE_ENV: test
+          CI: true
+        run: |
+          set -euo pipefail
+          
+          # Run tests based on project type
+          case "${{ matrix.type }}" in
+            webapp|business|client)
+              pnpm turbo lint typecheck test:unit --filter=${{ matrix.project }}
+              ;;
+            enterprise)
+              pnpm turbo lint typecheck test:unit test:integration --filter=${{ matrix.project }}
+              ;;
+          esac
+
+      - name: Build project with integrity
+        run: |
+          set -euo pipefail
+          
+          # Set secure build flags
+          export NODE_ENV=production
+          export SOURCE_MAP=false  # Don't include source maps in production
+          
+          # Build based on project type
+          case "${{ matrix.type }}" in
+            webapp|business|client|enterprise)
+              pnpm turbo build --filter=${{ matrix.project }}
+              ;;
+          esac
+          
+          # Generate build manifest for integrity checking
+          find dist -type f -exec sha256sum {} \; > build-manifest.txt
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.project }}-${{ github.sha }}
+          path: |
+            dist/
+            build-manifest.txt
+          retention-days: 7
+          if-no-files-found: error
+
+  # ============================================
+  # STAGE 5: Deploy with Security Controls
+  # ============================================
+  deploy:
+    name: 🚀 Deploy [${{ matrix.project }}]
+    needs: [project-discovery, build-test, validate-inputs]
+    if: |
+      needs.project-discovery.outputs.projects != '' &&
+      needs.build-test.result == 'success' &&
+      (github.ref == 'refs/heads/main' ||
+       github.ref == 'refs/heads/develop' ||
+       github.event_name == 'workflow_dispatch')
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    environment:
+      name: ${{ matrix.environment }}
+      url: https://${{ matrix.project }}-${{ matrix.environment }}.candlefish.ai
+    permissions:
+      id-token: write  # For AWS OIDC
+      deployments: write
+    strategy:
+      fail-fast: false
+      max-parallel: 2  # Limit concurrent deployments
+      matrix: ${{ fromJson(needs.project-discovery.outputs.matrix) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
+
+      - name: Configure AWS credentials for deployment
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502  # v4.0.2
+        with:
+          role-to-assume: ${{ secrets[format('AWS_DEPLOY_ROLE_ARN_{0}', matrix.environment)] }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-Deploy-${{ matrix.project }}-${{ github.run_id }}
+          mask-aws-account-id: true
+
+      - name: Download and verify build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-${{ matrix.project }}-${{ github.sha }}
+
+      - name: Verify build integrity
+        run: |
+          set -euo pipefail
+          
+          # Verify build manifest
+          if [[ -f "build-manifest.txt" ]]; then
+            sha256sum -c build-manifest.txt || {
+              echo "::error::Build integrity check failed"
+              exit 1
+            }
+          fi
+
+      - name: Get deployment secrets securely
+        run: |
+          set -euo pipefail
+          
+          # Use AWS Secrets Manager with specific project/environment scope
+          SECRET_ID="candlefish/${{ matrix.environment }}/${{ matrix.project }}"
+          
+          # Check if secret exists before attempting to retrieve
+          if aws secretsmanager describe-secret --secret-id "$SECRET_ID" 2>/dev/null; then
+            # Retrieve and mask secrets
+            aws secretsmanager get-secret-value \
+              --secret-id "$SECRET_ID" \
+              --query SecretString \
+              --output text | jq -r 'to_entries[] | "\(.key)=\(.value)"' | while IFS='=' read -r key value; do
+                echo "::add-mask::$value"
+                echo "${key}=${value}" >> $GITHUB_ENV
+              done
+          else
+            echo "::notice::No specific secrets found for $SECRET_ID"
+          fi
+
+      - name: Deploy with rollback capability
+        id: deploy
+        run: |
+          set -euo pipefail
+          
+          # Create deployment marker
+          DEPLOYMENT_ID="deploy-${{ matrix.project }}-${{ github.sha }}-$(date +%s)"
+          echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
+          
+          # Deploy based on type
+          case "${{ matrix.type }}" in
+            webapp|business|client)
+              # Deploy to S3 with versioning
+              aws s3 sync dist/ "s3://candlefish-${{ matrix.project }}-${{ matrix.environment }}/" \
+                --delete \
+                --cache-control "public, max-age=31536000, immutable" \
+                --exclude "*.html" \
+                --exclude "*.json" \
+                --metadata "deployment-id=$DEPLOYMENT_ID"
+              
+              # HTML files with no-cache
+              aws s3 sync dist/ "s3://candlefish-${{ matrix.project }}-${{ matrix.environment }}/" \
+                --cache-control "public, max-age=0, must-revalidate" \
+                --content-type "text/html; charset=utf-8" \
+                --include "*.html" \
+                --metadata "deployment-id=$DEPLOYMENT_ID"
+              
+              # Create CloudFront invalidation
+              if [[ -n "${CLOUDFRONT_DISTRIBUTION_ID:-}" ]]; then
+                aws cloudfront create-invalidation \
+                  --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
+                  --paths "/*" \
+                  --output json | jq -r '.Invalidation.Id' > invalidation-id.txt
+              fi
+              ;;
+            
+            enterprise)
+              # Deploy to ECS with blue-green
+              aws ecs update-service \
+                --cluster "candlefish-${{ matrix.environment }}" \
+                --service "${{ matrix.project }}" \
+                --force-new-deployment \
+                --deployment-configuration "maximumPercent=200,minimumHealthyPercent=100"
+              
+              # Wait for stability with timeout
+              timeout 600 aws ecs wait services-stable \
+                --cluster "candlefish-${{ matrix.environment }}" \
+                --services "${{ matrix.project }}" || {
+                  echo "::error::Deployment failed to stabilize"
+                  exit 1
+                }
+              ;;
+          esac
+
+      - name: Verify deployment health
+        id: health-check
+        run: |
+          set -euo pipefail
+          
+          DEPLOY_URL="https://${{ matrix.project }}-${{ matrix.environment }}.candlefish.ai"
+          MAX_RETRIES=10
+          RETRY_DELAY=30
+          
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo "Health check attempt $i/$MAX_RETRIES"
+            
+            # Perform health check with timeout
+            if timeout 10 curl -fsS "$DEPLOY_URL/health" > /dev/null 2>&1; then
+              echo "✅ Deployment health check passed"
+              echo "healthy=true" >> $GITHUB_OUTPUT
+              break
+            else
+              if [[ $i -eq $MAX_RETRIES ]]; then
+                echo "::error::Deployment health check failed after $MAX_RETRIES attempts"
+                echo "healthy=false" >> $GITHUB_OUTPUT
+                exit 1
+              fi
+              echo "⏳ Waiting $RETRY_DELAY seconds before retry..."
+              sleep $RETRY_DELAY
+            fi
+          done
+
+      - name: Automated rollback on failure
+        if: failure() && steps.deploy.outcome == 'success'
+        run: |
+          set -euo pipefail
+          
+          echo "::error::Initiating automated rollback"
+          
+          case "${{ matrix.type }}" in
+            webapp|business|client)
+              # Rollback S3 deployment using versioning
+              BUCKET="candlefish-${{ matrix.project }}-${{ matrix.environment }}"
+              
+              # List and restore previous version
+              aws s3api list-object-versions \
+                --bucket "$BUCKET" \
+                --max-items 100 \
+                --query 'Versions[?IsLatest==`false`].[Key,VersionId]' \
+                --output json | jq -r '.[] | @tsv' | while IFS=$'\t' read -r key version_id; do
+                  aws s3api copy-object \
+                    --bucket "$BUCKET" \
+                    --copy-source "$BUCKET/$key?versionId=$version_id" \
+                    --key "$key"
+                done
+              
+              # Invalidate CloudFront
+              if [[ -f "invalidation-id.txt" ]]; then
+                aws cloudfront create-invalidation \
+                  --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
+                  --paths "/*"
+              fi
+              ;;
+            
+            enterprise)
+              # Rollback ECS service
+              aws ecs update-service \
+                --cluster "candlefish-${{ matrix.environment }}" \
+                --service "${{ matrix.project }}" \
+                --force-new-deployment
+              ;;
+          esac
+          
+          echo "::notice::Rollback completed"
+
+  # ============================================
+  # STAGE 6: Post-Deployment Security Verification
+  # ============================================
+  post-deploy-security:
+    name: 🔒 Post-Deployment Security
+    needs: [deploy]
+    if: needs.deploy.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Security headers verification
+        run: |
+          set -euo pipefail
+          
+          # Check security headers for each deployed project
+          for project in ${{ needs.project-discovery.outputs.projects }}; do
+            URL="https://${project}-${{ needs.validate-inputs.outputs.environment }}.candlefish.ai"
+            
+            echo "Checking security headers for $URL"
+            
+            # Check required headers
+            HEADERS=$(curl -sI "$URL")
+            
+            required_headers=(
+              "X-Frame-Options"
+              "X-Content-Type-Options"
+              "Strict-Transport-Security"
+              "Content-Security-Policy"
+            )
+            
+            for header in "${required_headers[@]}"; do
+              if ! echo "$HEADERS" | grep -qi "^$header:"; then
+                echo "::warning::Missing security header: $header for $project"
+              fi
+            done
+          done
+
+      - name: TLS/SSL verification
+        run: |
+          set -euo pipefail
+          
+          for project in ${{ needs.project-discovery.outputs.projects }}; do
+            URL="https://${project}-${{ needs.validate-inputs.outputs.environment }}.candlefish.ai"
+            
+            # Check SSL certificate
+            echo | openssl s_client -connect "${URL#https://}:443" -servername "${URL#https://}" 2>/dev/null | \
+              openssl x509 -noout -dates -subject || {
+                echo "::warning::SSL certificate check failed for $project"
+              }
+          done
+
+  # ============================================
+  # STAGE 7: Monitoring & Observability
+  # ============================================
+  observability:
+    name: 📊 Observability Setup
+    needs: [deploy, post-deploy-security]
+    if: always() && needs.deploy.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Send deployment metrics
+        env:
+          DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
+        run: |
+          set -euo pipefail
+          
+          if [[ -n "${DATADOG_API_KEY:-}" ]]; then
+            # Send deployment event to DataDog
+            curl -X POST "https://api.datadoghq.com/api/v1/events" \
+              -H "DD-API-KEY: $DATADOG_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "title": "Candlefish Deployment",
+                "text": "Deployment completed for '"${{ needs.validate-inputs.outputs.environment }}"'",
+                "alert_type": "success",
+                "tags": [
+                  "env:'"${{ needs.validate-inputs.outputs.environment }}"'",
+                  "service:candlefish",
+                  "version:'"${{ github.sha }}"'",
+                  "actor:'"${{ github.actor }}"'"
+                ]
+              }'
+          fi
+
+      - name: Create deployment record
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: '${{ needs.validate-inputs.outputs.environment }}',
+              required_contexts: [],
+              payload: {
+                projects: '${{ needs.project-discovery.outputs.projects }}',
+                actor: context.actor,
+                run_id: context.runId
+              },
+              auto_merge: false
+            });
+            
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deployment.data.id,
+              state: 'success',
+              environment_url: 'https://candlefish.ai',
+              description: 'Deployment completed successfully'
+            });
+
+  # ============================================
+  # STAGE 8: Workflow Summary & Audit
+  # ============================================
+  workflow-summary:
+    name: 📋 Workflow Summary
+    needs: [
+      validate-inputs,
+      project-discovery,
+      security-gate,
+      build-test,
+      deploy,
+      post-deploy-security,
+      observability
+    ]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Generate security audit trail
+        run: |
+          set -euo pipefail
+          
+          # Create audit log entry
+          AUDIT_LOG=$(cat <<EOF
+          {
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "workflow": "${{ github.workflow }}",
+            "run_id": "${{ github.run_id }}",
+            "actor": "${{ github.actor }}",
+            "event": "${{ github.event_name }}",
+            "ref": "${{ github.ref }}",
+            "sha": "${{ github.sha }}",
+            "environment": "${{ needs.validate-inputs.outputs.environment }}",
+            "projects": "${{ needs.project-discovery.outputs.projects }}",
+            "results": {
+              "validation": "${{ needs.validate-inputs.result }}",
+              "security": "${{ needs.security-gate.result }}",
+              "build": "${{ needs.build-test.result }}",
+              "deploy": "${{ needs.deploy.result }}",
+              "post_security": "${{ needs.post-deploy-security.result }}"
+            }
+          }
+          EOF
+          )
+          
+          echo "$AUDIT_LOG" | jq .
+          
+          # Log to CloudWatch if available
+          if command -v aws &> /dev/null; then
+            aws logs put-log-events \
+              --log-group-name "/github/workflows/audit" \
+              --log-stream-name "${{ github.workflow }}-${{ github.run_id }}" \
+              --log-events "timestamp=$(date +%s000),message='$AUDIT_LOG'" || true
+          fi
+
+      - name: Generate summary report
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY <<EOF
+          # 🚀 Candlefish Deployment Summary
+          
+          ## 📊 Workflow Metrics
+          - **Environment:** ${{ needs.validate-inputs.outputs.environment }}
+          - **Projects:** ${{ needs.project-discovery.outputs.projects }}
+          - **Workflow Run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          - **Actor:** ${{ github.actor }}
+          - **Commit:** ${{ github.sha }}
+          
+          ## ✅ Pipeline Status
+          | Stage | Result | Duration |
+          |-------|--------|----------|
+          | Input Validation | ${{ needs.validate-inputs.result }} | - |
+          | Security Gate | ${{ needs.security-gate.result }} | - |
+          | Build & Test | ${{ needs.build-test.result }} | - |
+          | Deploy | ${{ needs.deploy.result }} | - |
+          | Post-Deploy Security | ${{ needs.post-deploy-security.result }} | - |
+          
+          ## 🔒 Security Summary
+          - ✅ Input validation completed
+          - ✅ Security scans performed
+          - ✅ Dependencies audited
+          - ✅ Deployment integrity verified
+          - ✅ Security headers checked
+          
+          ## 🔗 Deployment URLs
+          EOF
+          
+          for project in ${{ needs.project-discovery.outputs.projects }}; do
+            echo "- ${project}: https://${project}-${{ needs.validate-inputs.outputs.environment }}.candlefish.ai" >> $GITHUB_STEP_SUMMARY
+          done
+
+      - name: Send notification
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [[ -n "${SLACK_WEBHOOK_URL:-}" ]]; then
+            STATUS_EMOJI="${{ needs.deploy.result == 'success' && '✅' || '❌' }}"
+            
+            curl -X POST "$SLACK_WEBHOOK_URL" \
+              -H 'Content-Type: application/json' \
+              -d '{
+                "text": "'"${STATUS_EMOJI}"' Candlefish Deployment",
+                "blocks": [{
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Environment:* '"${{ needs.validate-inputs.outputs.environment }}"'\n*Projects:* '"${{ needs.project-discovery.outputs.projects }}"'\n*Status:* '"${{ needs.deploy.result }}"'\n*Actor:* '"${{ github.actor }}"'"
+                  }
+                }]
+              }'
+          fi

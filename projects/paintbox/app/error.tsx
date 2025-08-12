@@ -1,7 +1,6 @@
 'use client'
 
-// Force dynamic rendering
-export const dynamic = 'force-dynamic'
+import { useEffect } from 'react'
 
 export default function Error({
   error,
@@ -10,50 +9,30 @@ export default function Error({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  useEffect(() => {
+    // Log the error to an error reporting service
+    console.error('Application error:', error?.message || 'Unknown error')
+  }, [error])
+
   return (
-    <div style={{
-      display: 'flex',
-      minHeight: '100vh',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '1rem',
-      backgroundColor: '#f9fafb',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
-    }}>
-      <div style={{ textAlign: 'center', maxWidth: '28rem' }}>
-        <div style={{ marginBottom: '2rem' }}>
-          <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>⚠️</div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', margin: 0 }}>
-            Paintbox
-          </h1>
-        </div>
-        <h2 style={{ marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', margin: '0 0 1rem 0' }}>
-          Something went wrong!
-        </h2>
-        <p style={{ marginBottom: '1.5rem', color: '#4b5563', margin: '0 0 1.5rem 0' }}>
-          {error.message || 'An unexpected error occurred'}
-        </p>
-        {error.digest && (
-          <p style={{ marginBottom: '2rem', fontSize: '0.875rem', color: '#6b7280', margin: '0 0 2rem 0' }}>
-            Error ID: {error.digest}
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div className="text-center">
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+            Something went wrong!
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            An unexpected error occurred. Please try again.
           </p>
-        )}
-        <button
-          onClick={reset}
-          style={{
-            background: 'linear-gradient(to right, #dc2626, #b91c1c)',
-            color: 'white',
-            padding: '0.75rem 1.5rem',
-            borderRadius: '0.5rem',
-            fontWeight: '500',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '1rem'
-          }}
-        >
-          Try again
-        </button>
+        </div>
+        <div>
+          <button
+            onClick={reset}
+            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+          >
+            Try again
+          </button>
+        </div>
       </div>
     </div>
   )

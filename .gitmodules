@@ -1,24 +1,2 @@
-[submodule "projects/bart-estimator-pwa"]
-	path = projects/bart-estimator-pwa
-	url = https://github.com/aspenas/candlefish-ai.git
-	branch = main
-
-[submodule "projects/crowntrophy/candlefish-crown"]
-	path = projects/crowntrophy/candlefish-crown
-	url = https://github.com/aspenas/candlefish-ai.git
-	branch = main
-
-[submodule "projects/excel/bart-excel-deploy"]
-	path = projects/excel/bart-excel-deploy
-	url = https://github.com/aspenas/candlefish-ai.git
-	branch = main
-
-[submodule "projects/jonathon"]
-	path = projects/jonathon
-	url = https://github.com/aspenas/candlefish-ai.git
-	branch = main
-
-[submodule "projects/paintbox/paintbox-backend"]
-	path = projects/paintbox/paintbox-backend
-	url = https://github.com/aspenas/candlefish-ai.git
-	branch = main
+# Submodules temporarily disabled during restructuring
+# Re-enable specific submodules as needed for the 5-project structure
