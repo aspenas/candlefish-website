@@ -13,7 +13,7 @@ async function main() {
     const client = await createTemporalClient();
     console.log('✅ Connected to Temporal successfully');
 
-    // Example: Start an agent workflow
+    // Example: Start an agent workflow with proper timeouts
     const handle = await client.workflow.start(agentWorkflow, {
       workflowId: `agent-workflow-${Date.now()}`,
       taskQueue: 'candlefish-agent-queue',
@@ -22,6 +22,9 @@ async function main() {
         task: 'analyze_data',
         parameters: { dataset: 'user_interactions' }
       }],
+      workflowExecutionTimeout: '30 minutes', // Maximum workflow duration
+      workflowRunTimeout: '10 minutes', // Maximum single run duration
+      workflowTaskTimeout: '10 seconds', // Decision task timeout
     });
 
     console.log(`🎯 Started workflow: ${handle.workflowId}`);

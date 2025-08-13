@@ -73,41 +73,41 @@ jobs:
       - name: Run linting
         if: matrix.test-type == 'lint'
         working-directory: ${{ env.WORKING_DIRECTORY }}
-        run: npm run lint || true  # Allow lint failures for now
+        run: npm run lint
 
       - name: Run type checking
         if: matrix.test-type == 'typecheck'
         working-directory: ${{ env.WORKING_DIRECTORY }}
-        run: npx tsc --noEmit || true  # Allow type check failures for now
+        run: npx tsc --noEmit
 
       - name: Run unit tests
         if: matrix.test-type == 'unit'
         working-directory: ${{ env.WORKING_DIRECTORY }}
-        run: npm run test:coverage || true  # Allow test failures for now
+        run: npm run test:coverage
 
       - name: Run Excel parity tests
         if: matrix.test-type == 'excel-parity'
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
-          npm run test:excel-basic || true
-          npm run test:excel-integration || true
-          npm run test:excel-parity || true
-          npm run test:excel-validation || true
+          npm run test:excel-basic
+          npm run test:excel-integration
+          npm run test:excel-parity
+          npm run test:excel-validation
 
       - name: Run integration tests
         if: matrix.test-type == 'integration'
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
-          npm run test:integration || true
-          npm run test:api || true
-          npm run test:components || true
+          npm run test:integration
+          npm run test:api
+          npm run test:components
 
       - name: Run security tests
         if: matrix.test-type == 'security'
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
-          npm run test:security || true
-          npm audit --audit-level moderate || true
+          npm run test:security
+          npm audit --audit-level moderate
 
       - name: Upload test results
         if: always()
@@ -455,8 +455,7 @@ jobs:
             --assert.assertions.categories:performance=0.9 \
             --assert.assertions.categories:accessibility=0.9 \
             --assert.assertions.categories:best-practices=0.9 \
-            --assert.assertions.categories:seo=0.9 \
-            || true  # Allow failures for now
+            --assert.assertions.categories:seo=0.9
 
       - name: Upload Lighthouse results
         if: always()

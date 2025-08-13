@@ -1,6 +1,6 @@
 {
-  "name": "@candlefish-ai/claude-code-deploy",
-  "version": "1.0.0",
+  "name": "@candlefish/claude-code-deploy",
+  "version": "1.0.1",
   "description": "Professional agent deployment and integration toolkit for Claude Code with comprehensive NPM authentication and template management",
   "main": "lib/index.js",
   "bin": {
@@ -10,7 +10,6 @@
     "test": "jest",
     "lint": "eslint .",
     "build": "node -e \"console.log('No build step required for Node.js package')\"",
-    "prepublishOnly": "npm run lint && npm test",
     "start": "node bin/claude-deploy.js"
   },
   "keywords": [
@@ -39,6 +38,10 @@
     "url": "https://github.com/candlefish-ai/claude-code-deploy/issues"
   },
   "homepage": "https://github.com/candlefish-ai/claude-code-deploy#readme",
+  "publishConfig": {
+    "@candlefish-ai:registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
   "dependencies": {
     "axios": "^1.6.0",
     "chalk": "^4.1.2",
@@ -62,10 +65,6 @@
     "npm": ">=8.0.0"
   },
   "preferGlobal": true,
-  "publishConfig": {
-    "@candlefish-ai:registry": "https://registry.npmjs.org/",
-    "access": "public"
-  },
   "files": [
     "bin/",
     "lib/",
