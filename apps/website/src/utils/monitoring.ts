@@ -24,12 +24,12 @@ export const initSentry = () => {
       beforeSend(event) {
         // Filter out development errors
         if (isDevelopment) return null;
-        
+
         // Filter out known non-critical errors
         if (event.exception?.values?.[0]?.value?.includes('Non-Error promise rejection')) {
           return null;
         }
-        
+
         return event;
       },
     });
@@ -39,20 +39,20 @@ export const initSentry = () => {
 // Google Analytics 4 configuration
 export const initGoogleAnalytics = () => {
   const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID;
-  
+
   if (isProduction && GA_MEASUREMENT_ID) {
     // Load gtag script
     const script = document.createElement('script');
     script.async = true;
     script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
     document.head.appendChild(script);
-    
+
     // Initialize gtag
     window.dataLayer = window.dataLayer || [];
     window.gtag = function() {
       window.dataLayer.push(arguments);
     };
-    
+
     window.gtag('js', new Date());
     window.gtag('config', GA_MEASUREMENT_ID, {
       page_title: 'Candlefish AI',
@@ -65,7 +65,7 @@ export const initGoogleAnalytics = () => {
 // Performance monitoring
 export const initPerformanceMonitoring = () => {
   if (!isProduction) return;
-  
+
   // Core Web Vitals
   if ('PerformanceObserver' in window) {
     const observer = new PerformanceObserver((list) => {
@@ -73,20 +73,20 @@ export const initPerformanceMonitoring = () => {
         if (entry.entryType === 'largest-contentful-paint') {
           trackMetric('LCP', entry.startTime);
         }
-        
+
         if (entry.entryType === 'first-input') {
           trackMetric('FID', entry.processingStart - entry.startTime);
         }
-        
+
         if (entry.entryType === 'layout-shift' && !entry.hadRecentInput) {
           trackMetric('CLS', entry.value);
         }
       }
     });
-    
+
     observer.observe({ entryTypes: ['largest-contentful-paint', 'first-input', 'layout-shift'] });
   }
-  
+
   // Time to Interactive (TTI)
   window.addEventListener('load', () => {
     setTimeout(() => {
@@ -110,7 +110,7 @@ export const trackMetric = (name: string, value: number, unit = 'ms') => {
         custom_parameter_3: unit,
       });
     }
-    
+
     // Send to Sentry as performance data
     if (window.Sentry) {
       window.Sentry.addBreadcrumb({
@@ -121,7 +121,7 @@ export const trackMetric = (name: string, value: number, unit = 'ms') => {
       });
     }
   }
-  
+
   if (isDevelopment) {
     console.log(`Performance Metric - ${name}: ${value}${unit}`);
   }
@@ -137,15 +137,15 @@ export const trackError = (error: Error, errorInfo?: ErrorInfo, context?: Record
             scope.setTag(key, context[key]);
           });
         }
-        
+
         if (errorInfo) {
           scope.setContext('errorInfo', errorInfo);
         }
-        
+
         window.Sentry.captureException(error);
       });
     }
-    
+
     if (window.gtag) {
       window.gtag('event', 'exception', {
         description: error.message,
@@ -153,7 +153,7 @@ export const trackError = (error: Error, errorInfo?: ErrorInfo, context?: Record
       });
     }
   }
-  
+
   if (isDevelopment) {
     console.error('Error tracked:', error, errorInfo, context);
   }
@@ -164,7 +164,7 @@ export const trackEvent = (eventName: string, parameters?: Record<string, any>) 
   if (isProduction && window.gtag) {
     window.gtag('event', eventName, parameters);
   }
-  
+
   if (isDevelopment) {
     console.log(`Event tracked: ${eventName}`, parameters);
   }
@@ -178,7 +178,7 @@ export const trackPageView = (path: string, title?: string) => {
       page_title: title || document.title,
     });
   }
-  
+
   if (isDevelopment) {
     console.log(`Page view tracked: ${path}`, title);
   }
@@ -199,7 +199,7 @@ export const reportHealthStatus = () => {
       navigation: performance.getEntriesByType('navigation')[0],
     },
   };
-  
+
   if (isProduction) {
     // Send health data to monitoring endpoint
     fetch('/api/health', {
@@ -210,7 +210,7 @@ export const reportHealthStatus = () => {
       // Silently handle failures
     });
   }
-  
+
   return healthData;
 };
 
@@ -219,7 +219,7 @@ export const initMonitoring = () => {
   initSentry();
   initGoogleAnalytics();
   initPerformanceMonitoring();
-  
+
   // Report health status every 5 minutes
   if (isProduction) {
     setInterval(reportHealthStatus, 5 * 60 * 1000);

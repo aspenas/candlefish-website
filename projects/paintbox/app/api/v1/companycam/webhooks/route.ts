@@ -136,7 +136,7 @@ async function handlePhotoUploaded(event: CompanyCamWebhookEvent): Promise<void>
         // Auto-tag the photo if it doesn't have tags
         if (photo.tags.length === 0 && data.filename) {
           const autoTags = detectWoodworkTagsFromFilename(data.filename);
-          if (autoTags.length > 0) {
+          if (autoTags.length > 0 && photoId) {
             await companyCamApi.addTags(photoId, autoTags);
             logger.info('Auto-tagged photo', { photoId, tags: autoTags });
           }

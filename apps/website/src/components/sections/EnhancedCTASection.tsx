@@ -106,7 +106,7 @@ const EnhancedCTASection: React.FC = () => {
                 <span className="relative z-10">Get Started Free</span>
                 <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-orange-400 opacity-0 group-hover:opacity-10 transition-opacity duration-300" />
               </button>
-              
+
               <button className="group px-8 py-4 text-lg font-semibold text-white border-2 border-white/30 rounded-xl backdrop-blur-sm transition-all duration-300 hover:bg-white/10 hover:border-white/50">
                 <span className="flex items-center gap-2">
                   Schedule Demo

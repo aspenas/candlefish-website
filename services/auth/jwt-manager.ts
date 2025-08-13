@@ -27,13 +27,13 @@ export class JWTManager {
       // Try to retrieve existing keys
       const command = new GetSecretValueCommand({ SecretId: this.secretName });
       const response = await this.client.send(command);
-      
+
       if (response.SecretString) {
         const secrets = JSON.parse(response.SecretString);
         this.jwtSecret = secrets.jwtSecret;
         this.publicKey = secrets.publicKey;
         this.privateKey = secrets.privateKey;
-        
+
         console.log('✅ JWT keys loaded from AWS Secrets Manager');
       }
     } catch (error: any) {
@@ -228,7 +228,7 @@ export class JWTManager {
     expiresIn: number;
   }> {
     const decoded = await this.verifyToken(refreshToken);
-    
+
     if (decoded.type !== 'refresh') {
       throw new Error('Invalid token type');
     }

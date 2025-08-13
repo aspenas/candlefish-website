@@ -7,11 +7,11 @@ import { createTemporalWorker } from './setup';
 
 async function main() {
   console.log('🚀 Starting Candlefish Temporal Worker...');
-  
+
   try {
     const worker = await createTemporalWorker();
     console.log('✅ Worker created successfully');
-    
+
     // Start the worker
     await worker.run();
     console.log('🔄 Worker is running and processing tasks...');

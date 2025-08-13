@@ -6,7 +6,7 @@
   NODE_VERSION = "18"
   VITE_ENVIRONMENT = "production"
   VITE_BUILD_MODE = "production"
-  
+
 [build.processing]
   skip_processing = false
 

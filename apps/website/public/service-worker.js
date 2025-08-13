@@ -28,7 +28,7 @@ const CACHE_STRATEGIES = {
 // Install event - cache core assets
 self.addEventListener('install', event => {
   console.log('Service Worker installing...')
-  
+
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then(cache => {
@@ -50,13 +50,13 @@ self.addEventListener('install', event => {
 // Activate event - clean old caches
 self.addEventListener('activate', event => {
   console.log('Service Worker activating...')
-  
+
   event.waitUntil(
     Promise.all([
       // Clean up old caches
       caches.keys().then(cacheNames => {
         const validCaches = [CACHE_NAME, STATIC_CACHE, DYNAMIC_CACHE, API_CACHE]
-        
+
         return Promise.all(
           cacheNames.map(cacheName => {
             if (!validCaches.includes(cacheName)) {
@@ -80,7 +80,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const { request } = event
   const url = new URL(request.url)
-  
+
   // Skip cross-origin requests and non-GET requests
   if (url.origin !== self.location.origin || request.method !== 'GET') {
     return
@@ -102,25 +102,25 @@ self.addEventListener('fetch', event => {
 async function handleApiRequest(request) {
   try {
     const response = await fetch(request)
-    
+
     if (response.ok) {
       const cache = await caches.open(API_CACHE)
       cache.put(request, response.clone())
     }
-    
+
     return response
   } catch (error) {
     console.log('API request failed, checking cache:', error)
     const cachedResponse = await caches.match(request)
-    
+
     if (cachedResponse) {
       return cachedResponse
     }
-    
+
     // Return offline response for API calls
     return new Response(
       JSON.stringify({ error: 'Offline', message: 'Request failed and no cached version available' }),
-      { 
+      {
         status: 503,
         statusText: 'Service Unavailable',
         headers: { 'Content-Type': 'application/json' }
@@ -132,19 +132,19 @@ async function handleApiRequest(request) {
 // Static assets: Cache first with network fallback
 async function handleStaticAsset(request) {
   const cachedResponse = await caches.match(request)
-  
+
   if (cachedResponse) {
     return cachedResponse
   }
-  
+
   try {
     const response = await fetch(request)
-    
+
     if (response.ok) {
       const cache = await caches.open(STATIC_CACHE)
       cache.put(request, response.clone())
     }
-    
+
     return response
   } catch (error) {
     console.log('Static asset request failed:', error)
@@ -156,27 +156,27 @@ async function handleStaticAsset(request) {
 async function handlePageRequest(request) {
   try {
     const response = await fetch(request)
-    
+
     if (response.ok) {
       const cache = await caches.open(DYNAMIC_CACHE)
       cache.put(request, response.clone())
     }
-    
+
     return response
   } catch (error) {
     console.log('Page request failed, checking cache:', error)
     const cachedResponse = await caches.match(request)
-    
+
     if (cachedResponse) {
       return cachedResponse
     }
-    
+
     // Fallback to main page for navigation
     const mainPage = await caches.match('/index.html')
     if (mainPage) {
       return mainPage
     }
-    
+
     throw error
   }
 }
@@ -185,7 +185,7 @@ async function handlePageRequest(request) {
 async function handleDynamicRequest(request) {
   try {
     const response = await fetch(request)
-    
+
     // Cache successful responses with short TTL
     if (response.ok) {
       const cache = await caches.open(DYNAMIC_CACHE)
@@ -194,7 +194,7 @@ async function handleDynamicRequest(request) {
       responseWithTimestamp.headers.set('sw-cache-timestamp', Date.now().toString())
       cache.put(request, responseWithTimestamp)
     }
-    
+
     return response
   } catch (error) {
     console.log('Dynamic request failed, checking cache:', error)
@@ -205,7 +205,7 @@ async function handleDynamicRequest(request) {
 // Background sync for offline operations
 self.addEventListener('sync', event => {
   console.log('Background sync triggered:', event.tag)
-  
+
   switch (event.tag) {
     case 'sync-forms':
       event.waitUntil(syncForms())
@@ -252,15 +252,15 @@ async function cleanupExpiredCache() {
     console.log('Cleaning up expired cache entries...')
     const cacheNames = await caches.keys()
     const maxAge = 7 * 24 * 60 * 60 * 1000 // 7 days
-    
+
     for (const cacheName of cacheNames) {
       const cache = await caches.open(cacheName)
       const requests = await cache.keys()
-      
+
       for (const request of requests) {
         const response = await cache.match(request)
         const timestamp = response?.headers.get('sw-cache-timestamp')
-        
+
         if (timestamp && (Date.now() - parseInt(timestamp)) > maxAge) {
           await cache.delete(request)
           console.log('Deleted expired cache entry:', request.url)
@@ -276,7 +276,7 @@ async function cleanupExpiredCache() {
 // Handle push notifications (future enhancement)
 self.addEventListener('push', event => {
   if (!event.data) return
-  
+
   const data = event.data.json()
   const options = {
     body: data.body,
@@ -300,7 +300,7 @@ self.addEventListener('push', event => {
       }
     ]
   }
-  
+
   event.waitUntil(
     self.registration.showNotification(data.title, options)
   )
@@ -309,7 +309,7 @@ self.addEventListener('push', event => {
 // Handle notification clicks
 self.addEventListener('notificationclick', event => {
   event.notification.close()
-  
+
   if (event.action === 'explore') {
     event.waitUntil(
       clients.openWindow('/')
@@ -320,7 +320,7 @@ self.addEventListener('notificationclick', event => {
 // Message handling for communication with main thread
 self.addEventListener('message', event => {
   const { type, payload } = event.data
-  
+
   switch (type) {
     case 'SKIP_WAITING':
       self.skipWaiting()
@@ -340,7 +340,7 @@ self.addEventListener('message', event => {
 async function cacheUrls(urls) {
   const cache = await caches.open(DYNAMIC_CACHE)
   return Promise.all(
-    urls.map(url => 
+    urls.map(url =>
       fetch(url).then(response => {
         if (response.ok) {
           return cache.put(url, response)

@@ -11,8 +11,8 @@ export class SecretsManager {
   private cacheTTL: number = 5 * 60 * 1000; // 5 minutes
 
   constructor(region?: string) {
-    this.client = new SecretsManagerClient({ 
-      region: region || process.env.AWS_REGION || 'us-east-1' 
+    this.client = new SecretsManagerClient({
+      region: region || process.env.AWS_REGION || 'us-east-1'
     });
   }
 
@@ -31,7 +31,7 @@ export class SecretsManager {
     try {
       const command = new GetSecretValueCommand({ SecretId: secretId });
       const response = await this.client.send(command);
-      
+
       if (!response.SecretString) {
         throw new Error(`Secret ${secretId} has no string value`);
       }
@@ -67,13 +67,13 @@ export class SecretsManager {
    * Create a new secret
    */
   async createSecret(
-    name: string, 
-    value: string | object, 
-    description?: string, 
+    name: string,
+    value: string | object,
+    description?: string,
     tags?: { Key: string; Value: string }[]
   ): Promise<void> {
     const secretString = typeof value === 'string' ? value : JSON.stringify(value);
-    
+
     const command = new CreateSecretCommand({
       Name: name,
       Description: description,
@@ -98,17 +98,17 @@ export class SecretsManager {
    */
   async updateSecret(secretId: string, value: string | object): Promise<void> {
     const secretString = typeof value === 'string' ? value : JSON.stringify(value);
-    
+
     const command = new UpdateSecretCommand({
       SecretId: secretId,
       SecretString: secretString,
     });
 
     await this.client.send(command);
-    
+
     // Clear cache for this secret
     this.cache.delete(secretId);
-    
+
     console.log(`✅ Secret ${secretId} updated successfully`);
   }
 
@@ -129,8 +129,8 @@ export class SecretsManager {
   async healthCheck(): Promise<boolean> {
     try {
       // Try to list secrets (limited permissions)
-      await this.client.send(new GetSecretValueCommand({ 
-        SecretId: 'candlefish/health-check-secret' 
+      await this.client.send(new GetSecretValueCommand({
+        SecretId: 'candlefish/health-check-secret'
       }));
       return true;
     } catch (error: any) {
