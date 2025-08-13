@@ -1,0 +1,75 @@
+{
+  "name": "@candlefish-ai/claude-code-deploy",
+  "version": "1.0.0",
+  "description": "Professional agent deployment and integration toolkit for Claude Code with comprehensive NPM authentication and template management",
+  "main": "lib/index.js",
+  "bin": {
+    "claude-deploy": "bin/claude-deploy.js"
+  },
+  "scripts": {
+    "test": "jest",
+    "lint": "eslint .",
+    "build": "node -e \"console.log('No build step required for Node.js package')\"",
+    "prepublishOnly": "npm run lint && npm test",
+    "start": "node bin/claude-deploy.js"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "ai",
+    "agent",
+    "deployment",
+    "automation",
+    "npm",
+    "cli",
+    "candlefish",
+    "templates"
+  ],
+  "author": {
+    "name": "Candlefish AI",
+    "email": "hello@candlefish.ai",
+    "url": "https://candlefish.ai"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/candlefish-ai/claude-code-deploy.git"
+  },
+  "bugs": {
+    "url": "https://github.com/candlefish-ai/claude-code-deploy/issues"
+  },
+  "homepage": "https://github.com/candlefish-ai/claude-code-deploy#readme",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "chalk": "^4.1.2",
+    "commander": "^11.1.0",
+    "inquirer": "^8.2.6",
+    "fs-extra": "^11.1.1",
+    "node-fetch": "^3.3.2",
+    "ora": "^5.4.1",
+    "semver": "^7.5.4",
+    "yaml": "^2.3.4",
+    "tar": "^6.2.0",
+    "glob": "^10.3.10"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "eslint": "^8.54.0",
+    "eslint-config-standard": "^17.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "preferGlobal": true,
+  "publishConfig": {
+    "@candlefish-ai:registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "README.md",
+    "LICENSE"
+  ]
+}
