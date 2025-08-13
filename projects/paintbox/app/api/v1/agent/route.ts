@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { authMiddleware } from '@/lib/middleware/auth';
+import { withCors, getCorsConfig } from '@/lib/middleware/cors';
 
 // Request validation schema
 const AgentRequestSchema = z.object({
@@ -12,9 +14,20 @@ const AgentRequestSchema = z.object({
   }).optional(),
 });
 
-// Internal agent API for Paintbox-specific AI tasks
-export async function POST(request: NextRequest) {
+// Internal agent API handler
+async function handlePost(request: NextRequest) {
   try {
+    // Authenticate request
+    const authResult = await authMiddleware(request, {
+      allowedRoles: ['admin', 'user', 'estimator'],
+    });
+
+    if ('status' in authResult) {
+      return authResult; // Return error response
+    }
+
+    const { user } = authResult;
+
     const body = await request.json();
     const validation = AgentRequestSchema.safeParse(body);
 
@@ -28,7 +41,11 @@ export async function POST(request: NextRequest) {
     const { action, data, context } = validation.data;
 
     // Route to main agent platform API (internal only)
-    const agentResponse = await fetch(`${process.env.AGENT_PLATFORM_URL || 'http://localhost:3000'}/api/agent`, {
+    if (!process.env.AGENT_PLATFORM_URL) {
+      throw new Error('AGENT_PLATFORM_URL environment variable is required');
+    }
+
+    const agentResponse = await fetch(`${process.env.AGENT_PLATFORM_URL}/api/agent`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -40,6 +57,9 @@ export async function POST(request: NextRequest) {
         metadata: {
           service: 'paintbox',
           action,
+          userId: user.sub,
+          userEmail: user.email,
+          userRole: user.role,
           ...context,
         },
         config: {
@@ -265,3 +285,9 @@ function extractRationale(text: string): string {
   }
   return text.split('\n')[0]; // Use first line as fallback
 }
+
+// Export wrapped with CORS
+export const POST = withCors(handlePost, getCorsConfig());
+
+// Handle OPTIONS requests for CORS preflight
+export const OPTIONS = withCors(async () => new NextResponse(null, { status: 204 }), getCorsConfig());

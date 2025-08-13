@@ -25,12 +25,14 @@ const {
   performExcelTransformation,
   callLLM,
 } = proxyActivities<typeof activities>({
-  startToCloseTimeout: '5 minutes',
+  startToCloseTimeout: '2 minutes', // Reduced from 5 minutes for faster failures
+  scheduleToCloseTimeout: '10 minutes', // Total timeout including retries
   retry: {
     initialInterval: '1 second',
     maximumInterval: '30 seconds',
     backoffCoefficient: 2,
     maximumAttempts: 3,
+    nonRetryableErrorTypes: ['ValidationError', 'AuthenticationError'],
   },
 });
 

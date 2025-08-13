@@ -5,13 +5,21 @@ import { TextEncoder, TextDecoder } from 'util'
 global.TextEncoder = TextEncoder
 global.TextDecoder = TextDecoder
 
-// Mock window.location for tests
-delete window.location
-window.location = {
-  ...window.location,
-  assign: jest.fn(),
-  replace: jest.fn(),
-  reload: jest.fn(),
+// Mock window.location for tests (only if not already defined)
+if (!window.location || window.location.href === 'about:blank') {
+  delete window.location;
+  window.location = {
+    assign: jest.fn(),
+    replace: jest.fn(),
+    reload: jest.fn(),
+    href: 'http://localhost:3000',
+    hostname: 'localhost',
+    origin: 'http://localhost:3000',
+    pathname: '/',
+    port: '3000',
+    protocol: 'http:',
+    search: '',
+  };
 }
 
 // Mock fetch globally
@@ -138,5 +146,7 @@ jest.mock('ioredis', () => {
 // Clean up after each test
 afterEach(() => {
   jest.clearAllMocks()
-  fetch.mockClear()
+  if (global.fetch && typeof global.fetch.mockClear === 'function') {
+    global.fetch.mockClear()
+  }
 })
