@@ -80,7 +80,7 @@ export const mockDemoRequest = (overrides = {}) => ({
 })
 
 // Mock API responses
-export const mockApiResponse = <T>(data: T) => ({
+export const mockApiResponse = <T,>(data: T) => ({
   success: true,
   data,
   message: 'Success'

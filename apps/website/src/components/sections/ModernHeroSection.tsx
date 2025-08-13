@@ -70,7 +70,7 @@ const ModernHeroSection: React.FC = () => {
             transition={{ duration: 0.8, delay: 0.4 }}
             className="max-w-3xl mx-auto text-xl md:text-2xl text-gray-300 mb-12"
           >
-            Harness the power of cutting-edge artificial intelligence to automate workflows, 
+            Harness the power of cutting-edge artificial intelligence to automate workflows,
             enhance decision-making, and accelerate innovation across your organization.
           </motion.p>
 
@@ -85,7 +85,7 @@ const ModernHeroSection: React.FC = () => {
               <span className="relative z-10">Start Free Trial</span>
               <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </button>
-            
+
             <button className="group px-8 py-4 text-lg font-semibold text-white border-2 border-white/20 rounded-xl backdrop-blur-sm transition-all duration-300 hover:bg-white/10 hover:border-white/40 hover:scale-105">
               <span className="flex items-center gap-2">
                 Watch Demo

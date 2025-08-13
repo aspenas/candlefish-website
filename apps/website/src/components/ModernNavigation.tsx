@@ -35,8 +35,8 @@ const ModernNavigation: React.FC = () => {
         animate={{ y: 0 }}
         transition={{ duration: 0.5 }}
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          isScrolled 
-            ? 'bg-white/80 backdrop-blur-xl shadow-lg' 
+          isScrolled
+            ? 'bg-white/80 backdrop-blur-xl shadow-lg'
             : 'bg-transparent'
         }`}
       >
@@ -98,8 +98,8 @@ const ModernNavigation: React.FC = () => {
               className="hidden lg:flex items-center gap-4"
             >
               <button className={`px-5 py-2.5 font-medium rounded-lg transition-all duration-200 ${
-                isScrolled 
-                  ? 'text-gray-700 hover:bg-gray-100' 
+                isScrolled
+                  ? 'text-gray-700 hover:bg-gray-100'
                   : 'text-white hover:bg-white/10'
               }`}>
                 Sign In

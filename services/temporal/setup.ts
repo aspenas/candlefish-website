@@ -25,7 +25,7 @@ export interface TemporalConfig {
  */
 export async function createTemporalClient(): Promise<Client> {
   const secretsManager = new SecretsManager();
-  
+
   // Get Temporal Cloud credentials from AWS Secrets Manager
   const temporalSecret = await secretsManager.getSecret('temporal/cloud/credentials');
   const config: TemporalConfig = JSON.parse(temporalSecret);

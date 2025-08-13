@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const FIGMA_TOKEN = 'FIGMA_TOKEN_PLACEHOLDER';
+const FIGMA_TOKEN = process.env.FIGMA_TOKEN || 'FIGMA_TOKEN_PLACEHOLDER';
 const FIGMA_BASE_URL = 'https://api.figma.com/v1';
 
 // Extract file ID from the Figma share URL
@@ -38,11 +38,11 @@ async function fetchFigmaData() {
     if (teamsResponse.ok) {
       const teamsData = await teamsResponse.json();
       console.log('📁 Available teams:', teamsData.teams?.length || 0);
-      
+
       if (teamsData.teams && teamsData.teams.length > 0) {
         for (const team of teamsData.teams.slice(0, 3)) { // Check first 3 teams
           console.log(`\n🏢 Team: ${team.name}`);
-          
+
           // Get projects for this team
           const projectsResponse = await fetch(`${FIGMA_BASE_URL}/teams/${team.id}/projects`, {
             headers: {
@@ -57,7 +57,7 @@ async function fetchFigmaData() {
             if (projectsData.projects && projectsData.projects.length > 0) {
               for (const project of projectsData.projects.slice(0, 2)) { // Check first 2 projects
                 console.log(`  📁 ${project.name}`);
-                
+
                 // Get files for this project
                 const filesResponse = await fetch(`${FIGMA_BASE_URL}/projects/${project.id}/files`, {
                   headers: {
@@ -68,17 +68,17 @@ async function fetchFigmaData() {
                 if (filesResponse.ok) {
                   const filesData = await filesResponse.json();
                   console.log(`    📄 Files: ${filesData.files?.length || 0}`);
-                  
+
                   if (filesData.files && filesData.files.length > 0) {
                     for (const file of filesData.files.slice(0, 3)) { // Check first 3 files
                       console.log(`      📄 ${file.name} (${file.key})`);
-                      
+
                       // If this looks like a template or design system, analyze it
-                      if (file.name.toLowerCase().includes('template') || 
+                      if (file.name.toLowerCase().includes('template') ||
                           file.name.toLowerCase().includes('design') ||
                           file.name.toLowerCase().includes('system') ||
                           file.name.toLowerCase().includes('candlefish')) {
-                        
+
                         console.log(`\n🎯 Analyzing file: ${file.name}`);
                         await analyzeFigmaFile(file.key);
                         return; // Stop after analyzing first relevant file
@@ -105,7 +105,7 @@ async function fetchFigmaData() {
 async function analyzeFigmaFile(fileKey) {
   try {
     console.log(`\n🔍 Analyzing Figma file: ${fileKey}`);
-    
+
     // Get file data
     const fileResponse = await fetch(`${FIGMA_BASE_URL}/files/${fileKey}`, {
       headers: {
@@ -127,23 +127,23 @@ async function analyzeFigmaFile(fileKey) {
       console.log('\n📋 Page analysis:');
       for (const page of fileData.document.children) {
         console.log(`  📑 ${page.name} (${page.children?.length || 0} elements)`);
-        
+
         // Analyze top-level elements
         if (page.children) {
           const frames = page.children.filter(child => child.type === 'FRAME');
           const components = page.children.filter(child => child.type === 'COMPONENT');
           const instances = page.children.filter(child => child.type === 'INSTANCE');
-          
+
           console.log(`    🖼️  Frames: ${frames.length}`);
           console.log(`    🧩 Components: ${components.length}`);
           console.log(`    📎 Instances: ${instances.length}`);
-          
+
           // Extract color information
           extractColors(page.children);
-          
+
           // Extract typography information
           extractTypography(page.children);
-          
+
           // Extract layout patterns
           extractLayoutPatterns(page.children);
         }
@@ -172,63 +172,63 @@ async function analyzeFigmaFile(fileKey) {
 
 function extractColors(children, depth = 0) {
   const colors = new Set();
-  
+
   function traverse(node) {
     if (node.fills && Array.isArray(node.fills)) {
       node.fills.forEach(fill => {
         if (fill.type === 'SOLID' && fill.color) {
           const { r, g, b } = fill.color;
-          const hex = '#' + [r, g, b].map(c => 
+          const hex = '#' + [r, g, b].map(c =>
             Math.round(c * 255).toString(16).padStart(2, '0')
           ).join('');
           colors.add(hex);
         }
       });
     }
-    
+
     if (node.strokes && Array.isArray(node.strokes)) {
       node.strokes.forEach(stroke => {
         if (stroke.type === 'SOLID' && stroke.color) {
           const { r, g, b } = stroke.color;
-          const hex = '#' + [r, g, b].map(c => 
+          const hex = '#' + [r, g, b].map(c =>
             Math.round(c * 255).toString(16).padStart(2, '0')
           ).join('');
           colors.add(hex);
         }
       });
     }
-    
+
     if (node.children) {
       node.children.forEach(traverse);
     }
   }
-  
+
   children.forEach(traverse);
-  
+
   if (depth === 0 && colors.size > 0) {
     console.log(`    🎨 Colors found: ${Array.from(colors).slice(0, 10).join(', ')}${colors.size > 10 ? '...' : ''}`);
   }
-  
+
   return Array.from(colors);
 }
 
 function extractTypography(children) {
   const fonts = new Set();
   const fontSizes = new Set();
-  
+
   function traverse(node) {
     if (node.style && node.type === 'TEXT') {
       if (node.style.fontFamily) fonts.add(node.style.fontFamily);
       if (node.style.fontSize) fontSizes.add(node.style.fontSize);
     }
-    
+
     if (node.children) {
       node.children.forEach(traverse);
     }
   }
-  
+
   children.forEach(traverse);
-  
+
   if (fonts.size > 0) {
     console.log(`    📝 Fonts: ${Array.from(fonts).join(', ')}`);
   }
@@ -243,19 +243,19 @@ function extractLayoutPatterns(children) {
     grids: 0,
     constraints: 0
   };
-  
+
   function traverse(node) {
     if (node.layoutMode) layouts.autoLayout++;
     if (node.layoutGrids && node.layoutGrids.length > 0) layouts.grids++;
     if (node.constraints) layouts.constraints++;
-    
+
     if (node.children) {
       node.children.forEach(traverse);
     }
   }
-  
+
   children.forEach(traverse);
-  
+
   console.log(`    📐 Auto Layout: ${layouts.autoLayout}, Grids: ${layouts.grids}, Constraints: ${layouts.constraints}`);
 }
 

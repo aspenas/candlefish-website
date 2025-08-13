@@ -63,7 +63,7 @@ Return your analysis as JSON.`;
       const parsed = JSON.parse(content.text);
       return {
         ...parsed,
-        cost: response.usage ? 
+        cost: response.usage ?
           (response.usage.input_tokens * 0.015 + response.usage.output_tokens * 0.075) / 1000 : 0,
       };
     } catch (error) {
@@ -98,7 +98,7 @@ export async function selectTool(params: {
   };
 
   const selectedToolName = toolMap[params.intent.type];
-  
+
   if (selectedToolName && params.availableTools.includes(selectedToolName)) {
     return {
       name: selectedToolName,
@@ -109,7 +109,7 @@ export async function selectTool(params: {
 
   // Fallback: Use LLM to select tool
   await initializeLLMClients();
-  
+
   const prompt = `Given the user intent: ${JSON.stringify(params.intent)}
 And available tools: ${params.availableTools.join(', ')}
 Which tool should be used? Return just the tool name or null if none apply.`;
@@ -146,14 +146,14 @@ export async function executeTool(params: {
   try {
     // Get tool from registry
     const tool = toolRegistry.get(params.tool);
-    
+
     if (!tool) {
       throw new Error(`Tool ${params.tool} not found in registry`);
     }
 
     // Execute tool with parameters
     const result = await tool.execute(params.params);
-    
+
     return {
       success: true,
       toolName: params.tool,
@@ -203,7 +203,7 @@ Please format a response for the user.`;
   });
 
   const content = response.content[0];
-  const cost = response.usage ? 
+  const cost = response.usage ?
     (response.usage.input_tokens * 0.015 + response.usage.output_tokens * 0.075) / 1000 : 0;
 
   if (content.type === 'text') {
@@ -254,7 +254,7 @@ export async function performExcelTransformation(params: {
   features: string[];
 }): Promise<{ response: string; duration: number }> {
   const startTime = Date.now();
-  
+
   const transformer = new ExcelTransformationTool();
   const result = await transformer.execute({
     file: params.fileData,
@@ -265,7 +265,7 @@ export async function performExcelTransformation(params: {
   const duration = Date.now() - startTime;
 
   return {
-    response: `Successfully transformed your Excel file into a ${params.targetFramework} application in ${(duration / 1000).toFixed(2)} seconds. 
+    response: `Successfully transformed your Excel file into a ${params.targetFramework} application in ${(duration / 1000).toFixed(2)} seconds.
 
 Preview URL: ${result.preview}
 Download: ${result.app.downloadUrl}
@@ -297,7 +297,7 @@ export async function callLLM(params: {
   });
 
   const content = response.content[0];
-  const cost = response.usage ? 
+  const cost = response.usage ?
     (response.usage.input_tokens * 0.015 + response.usage.output_tokens * 0.075) / 1000 : 0;
 
   if (content.type === 'text') {

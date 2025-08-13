@@ -32,12 +32,12 @@ jobs:
     name: Quality Assurance
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
-    
+
     strategy:
       matrix:
         test-type: [lint, typecheck, unit, e2e, accessibility]
       fail-fast: false
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -101,11 +101,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')
-    
+
     outputs:
       build-hash: ${{ steps.build-info.outputs.hash }}
       bundle-size: ${{ steps.build-info.outputs.size }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -163,7 +163,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     if: github.event_name == 'pull_request'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -199,7 +199,7 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -228,16 +228,16 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build, security]
     if: |
-      always() && 
-      (needs.build.result == 'success') && 
+      always() &&
+      (needs.build.result == 'success') &&
       (needs.security.result == 'success' || needs.security.result == 'skipped') &&
-      (github.ref == 'refs/heads/main' || 
+      (github.ref == 'refs/heads/main' ||
        (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging'))
-    
+
     environment:
       name: staging
       url: ${{ steps.deploy.outputs.url }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -282,11 +282,11 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: `🚀 **Staging Deployment Ready**
-              
+
               **Preview URL:** ${{ steps.deploy.outputs.url }}
               **Bundle Size:** ${{ needs.build.outputs.bundle-size }}
               **Build Hash:** ${{ needs.build.outputs.build-hash }}
-              
+
               The staging environment has been updated with your changes.`
             })
 
@@ -296,17 +296,17 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build, security, deploy-staging]
     if: |
-      always() && 
-      (needs.build.result == 'success') && 
+      always() &&
+      (needs.build.result == 'success') &&
       (needs.security.result == 'success' || needs.security.result == 'skipped') &&
       (needs.deploy-staging.result == 'success') &&
-      (github.ref == 'refs/heads/main' || 
+      (github.ref == 'refs/heads/main' ||
        (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'))
-    
+
     environment:
       name: production
       url: https://candlefish.ai
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -336,7 +336,7 @@ jobs:
         run: |
           # Wait for deployment to propagate
           sleep 60
-          
+
           # Health check with retries
           for i in {1..5}; do
             if curl -f https://candlefish.ai; then
@@ -365,11 +365,11 @@ jobs:
               repo: context.repo.repo,
               title: '🚨 Production Deployment Failed',
               body: `Production deployment failed for commit ${{ github.sha }}.
-              
+
               **Build Hash:** ${{ needs.build.outputs.build-hash }}
               **Workflow:** ${{ github.workflow }}
               **Run:** ${{ github.run_id }}
-              
+
               Please investigate and take corrective action.`,
               labels: ['deployment', 'production', 'urgent']
             })
@@ -380,7 +380,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [deploy-production]
     if: always()
-    
+
     steps:
       - name: Delete old artifacts
         uses: actions/github-script@v7
@@ -391,12 +391,12 @@ jobs:
               repo: context.repo.repo,
               per_page: 100
             });
-            
+
             const oldArtifacts = artifacts.data.artifacts
               .filter(artifact => artifact.name.startsWith('build-'))
               .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
               .slice(10); // Keep latest 10 builds
-            
+
             for (const artifact of oldArtifacts) {
               await github.rest.actions.deleteArtifact({
                 owner: context.repo.owner,

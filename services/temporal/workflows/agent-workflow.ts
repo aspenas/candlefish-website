@@ -3,10 +3,10 @@
  * Main workflow for processing agent requests
  */
 
-import { 
-  proxyActivities, 
-  sleep, 
-  defineSignal, 
+import {
+  proxyActivities,
+  sleep,
+  defineSignal,
   setHandler,
   condition,
   uuid4,
@@ -69,7 +69,7 @@ export const updateContextSignal = defineSignal<[Record<string, any>]>('updateCo
 export async function AgentWorkflow(input: AgentWorkflowInput): Promise<AgentWorkflowOutput> {
   const startTime = Date.now();
   const { workflowId, runId } = workflowInfo();
-  
+
   // Initialize workflow state
   let isCancelled = false;
   let context = input.context || {};
@@ -111,7 +111,7 @@ export async function AgentWorkflow(input: AgentWorkflowInput): Promise<AgentWor
     // Step 3: Check if this is an Excel transformation request
     if (intent.type === 'excel_transformation') {
       toolsUsed.push('excel-transformer');
-      
+
       const transformationResult = await performExcelTransformation({
         fileData: intent.fileData,
         targetFramework: intent.targetFramework || 'react',
@@ -156,7 +156,7 @@ export async function AgentWorkflow(input: AgentWorkflowInput): Promise<AgentWor
       ],
       context,
     });
-    
+
     if (selectedTool) {
       toolsUsed.push(selectedTool.name);
     }
@@ -266,7 +266,7 @@ export async function AgentWorkflow(input: AgentWorkflowInput): Promise<AgentWor
  * Child workflow for parallel tool execution
  */
 export async function ParallelToolExecutionWorkflow(tools: string[]): Promise<any[]> {
-  const promises = tools.map(tool => 
+  const promises = tools.map(tool =>
     executeTool({
       tool,
       params: {},

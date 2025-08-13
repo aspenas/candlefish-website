@@ -14,6 +14,8 @@ alias cfa='cd /Users/patricksmith/candlefish-ai'
 # Sub-project navigation
 alias cfweb='cd /Users/patricksmith/candlefish-ai/apps/website'
 alias cfpaint='cd /Users/patricksmith/candlefish-ai/projects/paintbox'
+alias cftemporal='cd /Users/patricksmith/candlefish-ai/candlefish-temporal-platform'
+alias cftemp='cd /Users/patricksmith/candlefish-ai/candlefish-temporal-platform'
 alias cffogg='cd /Users/patricksmith/candlefish-ai/projects/fogg/calendar'
 alias cfprom='cd /Users/patricksmith/candlefish-ai/projects/promoterOS'
 alias cfbrew='cd /Users/patricksmith/candlefish-ai/projects/brewkit'
@@ -212,7 +214,8 @@ cfhelp() {
     echo "cf      → root         cc      → claude"
     echo "cfweb   → website      cct     → thinking mode"
     echo "cfpaint → paintbox     ccmax   → max power"
-    echo "cffogg  → fogg         cc200k  → 200k context"
+    echo "cftemp  → temporal     cc200k  → 200k context"
+    echo "cffogg  → fogg"
     echo ""
     echo "🌳 GIT                 🐙 GITHUB"
     echo "gs      → status       ghpr    → create PR"
@@ -238,6 +241,7 @@ cfprojects() {
     echo ""
     echo "🎯 CORE APPLICATIONS"
     echo "├─ cfweb    → Website         Main candlefish.ai site"
+    echo "├─ cftemp   → Temporal        Workflow orchestration platform"
     echo "└─ cf       → Root            Project root & configs"
     echo ""
     echo "💼 ENTERPRISE TOOLS"
@@ -265,7 +269,7 @@ alias cfh='cfhelp'
 # Show welcome message on terminal start (optional)
 candlefish_welcome() {
     echo "🐠 Candlefish AI Environment Loaded"
-    echo "   Quick nav: cf, cfweb, cfpaint, cffogg"
+    echo "   Quick nav: cf, cfweb, cfpaint, cftemporal, cffogg"
     echo "   Git: glog, gtree, gs, gd"
     echo "   GitHub: ghpr, ghw, ghrun"
     echo "   Claude: cc, ccmax, cct"

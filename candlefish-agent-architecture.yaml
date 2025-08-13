@@ -3,12 +3,12 @@
 # Generated: August 2025
 
 candlefish-agent-platform:
-  
+
   # ============================================
   # LAYER 1: Conversation & Trigger Layer
   # ============================================
   trigger-layer:
-    api-gateway: 
+    api-gateway:
       service: Kong on AWS API Gateway
       features:
         - Rate limiting
@@ -19,41 +19,41 @@ candlefish-agent-platform:
         - /api/agent/invoke
         - /api/agent/status
         - /api/agent/history
-    
-    webhooks: 
+
+    webhooks:
       service: Existing Otter Gateway
       integrations:
         - Slack commands
         - GitHub webhooks
         - Jira webhooks
         - Custom webhooks
-    
-    email: 
+
+    email:
       service: AWS SES integration
       features:
         - Inbound processing
         - Auto-response
         - Threading support
-    
-    mobile: 
+
+    mobile:
       service: React Native direct
       features:
         - Push notifications
         - In-app triggers
         - Offline queue
-    
+
     web-forms:
       service: React components
       features:
         - Embedded widgets
         - Chat interfaces
         - Form submissions
-  
+
   # ============================================
   # LAYER 2: Agent Orchestrator Layer
   # ============================================
   orchestrator:
-    engine: 
+    engine:
       service: Temporal.io
       features:
         - Workflow orchestration
@@ -64,8 +64,8 @@ candlefish-agent-platform:
         max_workflow_duration: 24h
         max_retry_attempts: 3
         default_timeout: 5m
-    
-    llm-router: 
+
+    llm-router:
       service: Custom TypeScript service
       location: /services/llm-orchestrator
       features:
@@ -73,16 +73,16 @@ candlefish-agent-platform:
         - Cost optimization
         - Fallback routing
         - Load balancing
-    
+
     models:
-      primary: 
+      primary:
         provider: Anthropic
         model: claude-opus-4.1-20250805
         use_cases:
           - Complex reasoning
           - Code generation
           - Analysis tasks
-      
+
       secondary:
         provider: OpenAI
         model: gpt-4o
@@ -90,7 +90,7 @@ candlefish-agent-platform:
           - Fallback
           - Specific capabilities
           - Cost optimization
-      
+
       tertiary:
         provider: Together AI
         model: llama-3-70b
@@ -98,8 +98,8 @@ candlefish-agent-platform:
           - High-volume tasks
           - Cost-sensitive operations
           - Open-source requirements
-    
-    fallback: 
+
+    fallback:
       service: Deterministic rule engine
       rules:
         - pattern: /^deploy/
@@ -108,7 +108,7 @@ candlefish-agent-platform:
           action: testing-workflow
         - pattern: /^analyze/
           action: analysis-workflow
-  
+
   # ============================================
   # LAYER 3: Tool/Workflow Layer
   # ============================================
@@ -124,7 +124,7 @@ candlefish-agent-platform:
       performance:
         target_time: 5 minutes
         max_file_size: 100MB
-    
+
     connectors:
       salesforce:
         type: Custom adapter
@@ -134,7 +134,7 @@ candlefish-agent-platform:
           - create_opportunity
           - update_contact
           - sync_data
-      
+
       quickbooks:
         type: REST wrapper
         location: /connectors/quickbooks
@@ -143,7 +143,7 @@ candlefish-agent-platform:
           - create_payment
           - sync_customers
           - generate_reports
-      
+
       stripe:
         type: Official SDK
         version: ^12.0.0
@@ -152,7 +152,7 @@ candlefish-agent-platform:
           - create_subscription
           - manage_customers
           - handle_webhooks
-      
+
       aws:
         type: Existing integration
         services:
@@ -161,7 +161,7 @@ candlefish-agent-platform:
           - DynamoDB
           - SES
           - Secrets Manager
-      
+
       github:
         type: GraphQL client
         operations:
@@ -169,7 +169,7 @@ candlefish-agent-platform:
           - manage_issues
           - trigger_workflow
           - fetch_code
-      
+
       slack:
         type: WebAPI SDK
         operations:
@@ -177,7 +177,7 @@ candlefish-agent-platform:
           - create_channel
           - upload_file
           - interactive_messages
-    
+
     internal-tools:
       deployment:
         location: /tools/deployment
@@ -186,7 +186,7 @@ candlefish-agent-platform:
           - canary_release
           - rollback
           - health_check
-      
+
       testing:
         location: /tools/testing
         workflows:
@@ -194,7 +194,7 @@ candlefish-agent-platform:
           - integration_test
           - load_test
           - security_scan
-      
+
       monitoring:
         location: /tools/monitoring
         workflows:
@@ -202,7 +202,7 @@ candlefish-agent-platform:
           - alert_management
           - log_aggregation
           - performance_tracking
-  
+
   # ============================================
   # LAYER 4: Memory & Context Layer
   # ============================================
@@ -216,7 +216,7 @@ candlefish-agent-platform:
           - Full-text search
           - JSON storage
           - Partitioning
-      
+
       cache:
         service: Redis
         ttl: 24 hours
@@ -224,7 +224,7 @@ candlefish-agent-platform:
           - Session state
           - Recent context
           - Quick lookups
-    
+
     vectors:
       service: pgvector
       dimensions: 1536
@@ -235,18 +235,18 @@ candlefish-agent-platform:
         - Semantic search
         - Similar documents
         - Context retrieval
-    
+
     documents:
       storage:
         service: S3
         bucket: candlefish-documents
         encryption: AES-256
-      
+
       cdn:
         service: CloudFront
         cache_control: max-age=31536000
         signed_urls: true
-    
+
     audit-trail:
       service: PostgreSQL
       schema: audit_logs
@@ -259,7 +259,7 @@ candlefish-agent-platform:
         - Immutable logs
         - Cryptographic hashing
         - Timestamp verification
-  
+
   # ============================================
   # LAYER 5: Governance & Control Layer
   # ============================================
@@ -275,7 +275,7 @@ candlefish-agent-platform:
         - developer: Tool creation
         - operator: Workflow execution
         - viewer: Read-only access
-    
+
     audit:
       service: PostgreSQL with immutable logs
       features:
@@ -287,13 +287,13 @@ candlefish-agent-platform:
         - Hot: 90 days in PostgreSQL
         - Warm: 1 year in S3
         - Cold: 7 years in Glacier
-    
+
     monitoring:
       metrics:
         service: Prometheus
         scrape_interval: 15s
         retention: 30d
-      
+
       visualization:
         service: Grafana
         dashboards:
@@ -301,30 +301,30 @@ candlefish-agent-platform:
           - System health
           - Cost tracking
           - User analytics
-      
+
       alerting:
         service: AlertManager
         channels:
           - Slack
           - PagerDuty
           - Email
-    
+
     rate-limiting:
       service: Redis
       policies:
         - per_user: 100/minute
         - per_tenant: 1000/minute
         - per_endpoint: Variable
-      
+
     cost-control:
       llm-usage:
         daily_budget: $500
         alert_threshold: 80%
-      
+
       compute:
         auto_scaling_max: 10 nodes
         spot_instances: true
-  
+
   # ============================================
   # LAYER 6: Deployment & Scaling Layer
   # ============================================
@@ -337,7 +337,7 @@ candlefish-agent-platform:
           - general: t3.medium (2-10 nodes)
           - compute: c5.xlarge (0-5 nodes)
           - memory: r5.large (0-3 nodes)
-      
+
       serverless:
         service: AWS Lambda
         runtime: Node.js 20.x
@@ -345,7 +345,7 @@ candlefish-agent-platform:
           - Webhook handlers
           - Async processing
           - Scheduled tasks
-    
+
     edge:
       service: Cloudflare Workers
       locations: Global
@@ -354,7 +354,7 @@ candlefish-agent-platform:
         - Request routing
         - Authentication
         - Rate limiting
-    
+
     storage:
       database:
         primary:
@@ -363,24 +363,24 @@ candlefish-agent-platform:
           instance: db.r6g.xlarge
           storage: 500GB SSD
           backups: Daily, 30-day retention
-        
+
         replicas:
           read_replicas: 2
           regions: [us-east-1, us-west-2]
-      
+
       cache:
         service: Redis
         version: "7.0"
         instance: cache.t3.medium
         cluster_mode: true
-      
+
       object_storage:
         service: S3
         storage_class:
           - Standard: Active data
           - Infrequent: Archives
           - Glacier: Long-term
-    
+
     cdn:
       service: CloudFront
       origins:
@@ -391,7 +391,7 @@ candlefish-agent-platform:
           cache: false
         - path: /static/*
           cache: max-age=31536000
-    
+
     networking:
       vpc:
         cidr: 10.0.0.0/16
@@ -400,12 +400,12 @@ candlefish-agent-platform:
           - public: ALB, NAT Gateway
           - private: EKS, RDS, ElastiCache
           - database: RDS only
-      
+
       security_groups:
         - web: 80, 443 from anywhere
         - api: 8080 from ALB
         - database: 5432 from private subnet
-      
+
       load_balancing:
         service: AWS ALB
         features:
@@ -425,7 +425,7 @@ candlefish-agent-platform:
         - Basic orchestrator
         - Core tool registry
         - PostgreSQL + Redis
-      
+
     phase2_core_platform:
       duration: 4 weeks
       deliverables:
@@ -433,7 +433,7 @@ candlefish-agent-platform:
         - LLM router service
         - 5 key connectors
         - Basic governance
-    
+
     phase3_production:
       duration: 4 weeks
       deliverables:
@@ -441,7 +441,7 @@ candlefish-agent-platform:
         - Security hardening
         - Auto-scaling
         - Documentation
-    
+
     phase4_optimization:
       duration: 4 weeks
       deliverables:
@@ -461,17 +461,17 @@ candlefish-agent-platform:
         networking: $150
         monitoring: $50
         total: $1200
-    
+
     services:
       llm_apis: $500/month
       temporal_cloud: $200/month
       monitoring: $100/month
       total: $800/month
-    
+
     development:
       initial: $40000
       maintenance: $1000/month
-    
+
     total_year_one: $56000
     savings_vs_trayai: $64000
 
@@ -483,16 +483,16 @@ candlefish-agent-platform:
       p50: < 100ms
       p95: < 500ms
       p99: < 1000ms
-    
+
     throughput:
       requests_per_second: 1000
       concurrent_workflows: 500
       concurrent_users: 1200
-    
+
     availability:
       target: 99.9%
       max_downtime: 43min/month
-    
+
     scalability:
       horizontal: 10x current load
       vertical: 4x current resources
@@ -506,25 +506,25 @@ candlefish-agent-platform:
       at_rest: AES-256
       in_transit: TLS 1.3
       key_management: AWS KMS
-    
+
     authentication:
       methods:
         - JWT tokens
         - API keys
         - OAuth 2.0
         - SAML 2.0
-    
+
     authorization:
       model: RBAC + ABAC
       enforcement: API Gateway + Service level
-    
+
     compliance:
       standards:
         - SOC2 Type II
         - GDPR
         - CCPA
         - HIPAA ready
-    
+
     monitoring:
       - Security events
       - Access logs

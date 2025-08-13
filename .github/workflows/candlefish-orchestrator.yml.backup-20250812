@@ -61,11 +61,11 @@ jobs:
         if: steps.check.outputs.skip == 'false'
         run: |
           PROJECTS=""
-          
+
           # Only check changed files for PRs
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             CHANGED=$(git diff --name-only HEAD^ HEAD)
-            
+
             # Check each project directory
             for project in apps/website projects/paintbox apps/analytics-dashboard; do
               if echo "$CHANGED" | grep -q "^$project/"; then
@@ -76,7 +76,7 @@ jobs:
             # Build all for main branch
             PROJECTS="apps/website projects/paintbox apps/analytics-dashboard"
           fi
-          
+
           echo "projects=$PROJECTS" >> $GITHUB_OUTPUT
 
       - name: Setup pnpm
@@ -102,7 +102,7 @@ jobs:
         if: steps.check.outputs.skip == 'false'
         run: |
           pnpm run lint --cache --cache-location=.eslintcache
-          
+
       - name: Type checking
         if: steps.check.outputs.skip == 'false'
         run: pnpm run typecheck
@@ -179,7 +179,7 @@ jobs:
     name: Deploy
     needs: build-test
     if: |
-      github.ref == 'refs/heads/main' || 
+      github.ref == 'refs/heads/main' ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment)
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -200,7 +200,7 @@ jobs:
       - name: Deploy to environment
         run: |
           ENVIRONMENT="${{ github.event.inputs.environment || 'staging' }}"
-          
+
           # Simple S3 sync for static sites
           for project in apps/website projects/paintbox; do
             if [ -d "build-$project-${{ github.sha }}" ]; then
@@ -210,7 +210,7 @@ jobs:
                 --cache-control "public, max-age=31536000, immutable"
             fi
           done
-          
+
           # Invalidate CloudFront
           if [ "$ENVIRONMENT" = "production" ]; then
             aws cloudfront create-invalidation \
@@ -222,7 +222,7 @@ jobs:
         run: |
           ENVIRONMENT="${{ github.event.inputs.environment || 'staging' }}"
           URL="https://${ENVIRONMENT}.candlefish.ai"
-          
+
           # Simple health check
           for i in {1..5}; do
             if curl -f "$URL/health" > /dev/null 2>&1; then
@@ -231,7 +231,7 @@ jobs:
             fi
             sleep 10
           done
-          
+
           echo "❌ Health check failed"
           exit 1
 

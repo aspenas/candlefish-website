@@ -39,18 +39,18 @@ create_dns_record() {
     local name=$2
     local content=$3
     local ttl=${4:-600}
-    
+
     # Handle subdomain vs root domain
     if [ "$name" == "@" ] || [ "$name" == "$DOMAIN" ]; then
         subdomain=""
     else
         # Remove the domain from the full hostname to get just the subdomain
-        subdomain="${name%.${DOMAIN}}"
-        subdomain="${subdomain%.www.${DOMAIN}}"
+        subdomain="${name%."${DOMAIN}"}"
+        subdomain="${subdomain%.www."${DOMAIN}"}"
     fi
-    
+
     echo -e "${YELLOW}Creating $type record: $name -> $content${NC}"
-    
+
     response=$(curl -s -X POST "${API_BASE}/create/${DOMAIN}" \
         -H "Content-Type: application/json" \
         -d "{
@@ -61,9 +61,9 @@ create_dns_record() {
             \"content\": \"${content}\",
             \"ttl\": \"${ttl}\"
         }")
-    
+
     status=$(echo $response | jq -r '.status')
-    
+
     if [ "$status" == "SUCCESS" ]; then
         echo -e "${GREEN}✓ $type record created successfully${NC}"
     else
@@ -78,24 +78,24 @@ create_dns_record() {
 check_record_exists() {
     local type=$1
     local name=$2
-    
+
     response=$(curl -s -X POST "${API_BASE}/retrieve/${DOMAIN}" \
         -H "Content-Type: application/json" \
         -d "{
             \"apikey\": \"${PORKBUN_API_KEY}\",
             \"secretapikey\": \"${PORKBUN_SECRET_KEY}\"
         }")
-    
+
     # Check if the record already exists
     if [ "$name" == "@" ] || [ "$name" == "$DOMAIN" ]; then
         check_name=""
     else
-        check_name="${name%.${DOMAIN}}"
-        check_name="${check_name%.www.${DOMAIN}}"
+        check_name="${name%."${DOMAIN}"}"
+        check_name="${check_name%.www."${DOMAIN}"}"
     fi
-    
+
     exists=$(echo $response | jq -r ".records[] | select(.type == \"${type}\" and .name == \"${check_name}\") | .id" | head -1)
-    
+
     if [ -n "$exists" ]; then
         return 0
     else
@@ -121,7 +121,7 @@ declare -a records=(
 failed_records=0
 for record in "${records[@]}"; do
     IFS='|' read -r type name content <<< "$record"
-    
+
     # Check if record already exists
     if check_record_exists "$type" "$name"; then
         echo -e "${YELLOW}⚠ $type record for $name already exists, skipping...${NC}"
@@ -130,7 +130,7 @@ for record in "${records[@]}"; do
             ((failed_records++))
         fi
     fi
-    
+
     # Small delay to avoid rate limiting
     sleep 1
 done
@@ -161,7 +161,7 @@ if [[ "$verify" =~ ^[Yy]$ ]]; then
     echo ""
     echo "Verifying DNS records (may not show immediately due to propagation delay):"
     echo "==========================================================================="
-    
+
     for record in "${records[@]}"; do
         IFS='|' read -r type name content <<< "$record"
         echo ""

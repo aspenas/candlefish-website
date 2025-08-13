@@ -58,11 +58,11 @@ async function ensureOutputDir() {
 // Run Lighthouse audit
 async function runLighthouseAudit(url) {
   log.info(`Running Lighthouse audit for ${url}`);
-  
+
   try {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const outputFile = path.join(CONFIG.outputDir, `lighthouse-${timestamp}.json`);
-    
+
     const command = [
       'lighthouse',
       url,
@@ -71,12 +71,12 @@ async function runLighthouseAudit(url) {
       '--chrome-flags="--headless --no-sandbox"',
       '--quiet'
     ].join(' ');
-    
+
     execSync(command, { timeout: CONFIG.timeout });
-    
+
     const reportData = JSON.parse(await fs.readFile(outputFile, 'utf8'));
     return reportData;
-    
+
   } catch (error) {
     log.error(`Lighthouse audit failed for ${url}: ${error.message}`);
     throw error;
@@ -87,7 +87,7 @@ async function runLighthouseAudit(url) {
 function extractMetrics(report) {
   const categories = report.categories;
   const audits = report.audits;
-  
+
   return {
     performance: Math.round(categories.performance.score * 100),
     accessibility: Math.round(categories.accessibility.score * 100),
@@ -122,12 +122,12 @@ async function analyzePerformanceTrends() {
       .filter(file => file.startsWith('lighthouse-') && file.endsWith('.json'))
       .sort()
       .slice(-10); // Get last 10 reports
-    
+
     if (lighthouseFiles.length < 2) {
       log.warning('Not enough historical data for trend analysis');
       return null;
     }
-    
+
     const reports = await Promise.all(
       lighthouseFiles.map(async file => {
         const data = JSON.parse(await fs.readFile(path.join(CONFIG.outputDir, file), 'utf8'));
@@ -138,26 +138,26 @@ async function analyzePerformanceTrends() {
         };
       })
     );
-    
+
     // Calculate trends
     const trends = {};
     const metrics = ['performance', 'accessibility', 'bestPractices', 'seo'];
-    
+
     metrics.forEach(metric => {
       const values = reports.map(r => r.metrics[metric]);
       const first = values[0];
       const last = values[values.length - 1];
       const trend = last - first;
-      
+
       trends[metric] = {
         current: last,
         change: trend,
         direction: trend > 0 ? 'improving' : trend < 0 ? 'declining' : 'stable'
       };
     });
-    
+
     return trends;
-    
+
   } catch (error) {
     log.error(`Failed to analyze trends: ${error.message}`);
     return null;
@@ -167,7 +167,7 @@ async function analyzePerformanceTrends() {
 // Generate performance report
 async function generatePerformanceReport(url, metrics, trends) {
   const timestamp = new Date().toISOString();
-  
+
   const report = {
     timestamp,
     url,
@@ -181,28 +181,28 @@ async function generatePerformanceReport(url, metrics, trends) {
       seo: metrics.seo >= CONFIG.metrics.seoThreshold
     }
   };
-  
+
   // Save detailed report
   const reportFile = path.join(CONFIG.outputDir, `performance-report-${timestamp.replace(/[:.]/g, '-')}.json`);
   await fs.writeFile(reportFile, JSON.stringify(report, null, 2));
-  
+
   return report;
 }
 
 // Display results in console
 function displayResults(report) {
   const { metrics, status, trends } = report;
-  
+
   log.info(`Performance Report for ${report.url}`);
   console.log('='.repeat(60));
-  
+
   // Core Web Vitals
   log.data('Core Metrics:');
   console.log(`  Performance:     ${status.performance ? '✓' : '✗'} ${metrics.performance}/100`);
   console.log(`  Accessibility:   ${status.accessibility ? '✓' : '✗'} ${metrics.accessibility}/100`);
   console.log(`  Best Practices:  ${status.bestPractices ? '✓' : '✗'} ${metrics.bestPractices}/100`);
   console.log(`  SEO:             ${status.seo ? '✓' : '✗'} ${metrics.seo}/100`);
-  
+
   // Web Vitals
   log.data('Web Vitals:');
   console.log(`  First Contentful Paint:    ${metrics.metrics.firstContentfulPaint}`);
@@ -211,20 +211,20 @@ function displayResults(report) {
   console.log(`  Cumulative Layout Shift:   ${metrics.metrics.cumulativeLayoutShift}`);
   console.log(`  Total Blocking Time:       ${metrics.metrics.totalBlockingTime}`);
   console.log(`  Speed Index:               ${metrics.metrics.speedIndex}`);
-  
+
   // Trends (if available)
   if (trends) {
     log.data('Trends:');
     Object.entries(trends).forEach(([key, trend]) => {
-      const arrow = trend.direction === 'improving' ? '↗' : 
+      const arrow = trend.direction === 'improving' ? '↗' :
                    trend.direction === 'declining' ? '↘' : '→';
-      const color = trend.direction === 'improving' ? colors.green : 
+      const color = trend.direction === 'improving' ? colors.green :
                    trend.direction === 'declining' ? colors.red : colors.yellow;
-      
+
       console.log(`  ${key}: ${color}${arrow} ${trend.change > 0 ? '+' : ''}${trend.change}${colors.reset} (${trend.current})`);
     });
   }
-  
+
   // Performance Opportunities
   if (metrics.opportunities.length > 0) {
     log.data('Top Performance Opportunities:');
@@ -232,9 +232,9 @@ function displayResults(report) {
       console.log(`  ${index + 1}. ${opp.title} (${opp.savings}ms savings)`);
     });
   }
-  
+
   console.log('='.repeat(60));
-  
+
   // Overall status
   const allPassed = Object.values(status).every(s => s);
   if (allPassed) {
@@ -249,10 +249,10 @@ async function sendAlerts(report) {
   const failedMetrics = Object.entries(report.status)
     .filter(([_, passed]) => !passed)
     .map(([metric]) => metric);
-  
+
   if (failedMetrics.length > 0) {
     log.warning(`Performance alert: ${failedMetrics.join(', ')} below threshold`);
-    
+
     // Create alert file for external monitoring systems
     const alertFile = path.join(CONFIG.outputDir, 'performance-alert.json');
     const alert = {
@@ -262,7 +262,7 @@ async function sendAlerts(report) {
       metrics: report.metrics,
       severity: failedMetrics.includes('performance') ? 'high' : 'medium'
     };
-    
+
     await fs.writeFile(alertFile, JSON.stringify(alert, null, 2));
   }
 }
@@ -270,26 +270,26 @@ async function sendAlerts(report) {
 // Main monitoring function
 async function monitorPerformance(url) {
   log.info(`Starting performance monitoring for ${url}`);
-  
+
   try {
     // Run Lighthouse audit
     const lighthouseReport = await runLighthouseAudit(url);
     const metrics = extractMetrics(lighthouseReport);
-    
+
     // Analyze trends
     const trends = await analyzePerformanceTrends();
-    
+
     // Generate report
     const report = await generatePerformanceReport(url, metrics, trends);
-    
+
     // Display results
     displayResults(report);
-    
+
     // Send alerts if needed
     await sendAlerts(report);
-    
+
     return report;
-    
+
   } catch (error) {
     log.error(`Performance monitoring failed for ${url}: ${error.message}`);
     throw error;
@@ -300,14 +300,14 @@ async function monitorPerformance(url) {
 async function main() {
   const args = process.argv.slice(2);
   const urls = args.length > 0 ? args : CONFIG.urls;
-  
+
   try {
     await ensureOutputDir();
-    
+
     log.info('Starting performance monitoring...');
-    
+
     const results = [];
-    
+
     for (const url of urls) {
       try {
         const result = await monitorPerformance(url);
@@ -317,18 +317,18 @@ async function main() {
         results.push({ url, error: error.message });
       }
     }
-    
+
     // Summary
     const successful = results.filter(r => !r.error).length;
     const failed = results.filter(r => r.error).length;
-    
+
     log.info(`Monitoring complete: ${successful} successful, ${failed} failed`);
-    
+
     // Exit with error code if any monitoring failed
     if (failed > 0) {
       process.exit(1);
     }
-    
+
   } catch (error) {
     log.error(`Performance monitoring script failed: ${error.message}`);
     process.exit(1);
