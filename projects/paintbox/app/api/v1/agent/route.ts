@@ -4,7 +4,7 @@ import { z } from 'zod';
 // Request validation schema
 const AgentRequestSchema = z.object({
   action: z.enum(['calculate', 'analyze', 'optimize', 'suggest']),
-  data: z.record(z.any()),
+  data: z.record(z.string(), z.any()),
   context: z.object({
     estimateId: z.string().optional(),
     userId: z.string().optional(),
