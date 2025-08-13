@@ -400,7 +400,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'Failed to send email',
-        message: error.message,
+        message: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString()
       },
       { status: 500 }
