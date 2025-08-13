@@ -89,7 +89,7 @@ const createEmailTransporter = () => {
 
   switch (emailProvider) {
     case 'sendgrid':
-      return nodemailer.createTransporter({
+      return nodemailer.createTransport({
         service: 'SendGrid',
         auth: {
           user: 'apikey',
@@ -98,7 +98,7 @@ const createEmailTransporter = () => {
       });
 
     case 'mailgun':
-      return nodemailer.createTransporter({
+      return nodemailer.createTransport({
         service: 'Mailgun',
         auth: {
           user: process.env.MAILGUN_USER,
@@ -114,12 +114,12 @@ const createEmailTransporter = () => {
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
       });
 
-      return nodemailer.createTransporter({
+      return nodemailer.createTransport({
         SES: new aws.SES({ apiVersion: '2010-12-01' })
       });
 
     default: // SMTP
-      return nodemailer.createTransporter({
+      return nodemailer.createTransport({
         host: process.env.SMTP_HOST,
         port: parseInt(process.env.SMTP_PORT || '587'),
         secure: process.env.SMTP_SECURE === 'true',
