@@ -217,7 +217,7 @@ jobs:
       - name: Generate Prisma Client
         run: |
           cd services/auth-service
-          npm ci --prefer-offline --no-audit
+          npm install --prefer-offline --no-audit
           npx prisma generate
 
       - name: Test Temporal workflows
