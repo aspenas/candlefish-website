@@ -120,10 +120,18 @@ jobs:
       - name: Setup test environment
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
-          cp .env.example .env.test
-          echo "DATABASE_URL=${{ secrets.TEST_DATABASE_URL }}" >> .env.test
-          echo "REDIS_URL=${{ secrets.TEST_REDIS_URL }}" >> .env.test
-          echo "NODE_ENV=test" >> .env.test
+          # Create .env.test file for testing
+          cat > .env.test << EOF
+          NODE_ENV=test
+          DATABASE_URL=${{ secrets.TEST_DATABASE_URL }}
+          REDIS_URL=${{ secrets.TEST_REDIS_URL }}
+          AGENT_PLATFORM_URL=${{ secrets.AGENT_PLATFORM_URL }}
+          SALESFORCE_CLIENT_ID=${{ secrets.SALESFORCE_CLIENT_ID }}
+          SALESFORCE_CLIENT_SECRET=${{ secrets.SALESFORCE_CLIENT_SECRET }}
+          COMPANYCAM_API_KEY=${{ secrets.COMPANYCAM_API_KEY }}
+          JWT_SECRET=test-jwt-secret-key-for-testing-only
+          ENCRYPTION_KEY=test-encryption-key-32-characters
+          EOF
 
       - name: Run linting
         if: matrix.test-type == 'lint'
