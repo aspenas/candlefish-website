@@ -956,7 +956,7 @@ async function main() {
 }
 
 // Export for programmatic use
-export { ValidationConfig, ValidationSummary };
+export type { ValidationConfig, ValidationSummary };
 
 // Run CLI if executed directly
 if (require.main === module) {

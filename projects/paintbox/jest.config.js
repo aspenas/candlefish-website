@@ -19,15 +19,19 @@ const customJestConfig = {
   testPathIgnorePatterns: [
     '<rootDir>/.next/',
     '<rootDir>/node_modules/',
-    '<rootDir>/e2e/'
+    '<rootDir>/__tests__/e2e/'
   ],
   collectCoverageFrom: [
     'app/**/*.{js,jsx,ts,tsx}',
     'components/**/*.{js,jsx,ts,tsx}',
     'lib/**/*.{js,jsx,ts,tsx}',
     'hooks/**/*.{js,jsx,ts,tsx}',
+    'stores/**/*.{js,jsx,ts,tsx}',
     '!**/*.d.ts',
     '!**/node_modules/**',
+    '!**/__tests__/**',
+    '!**/coverage/**',
+    '!**/dist/**',
   ],
   coverageThreshold: {
     global: {
@@ -36,8 +40,30 @@ const customJestConfig = {
       lines: 80,
       statements: 80,
     },
+    // Specific thresholds for production features
+    'components/production/**/*.{js,jsx,ts,tsx}': {
+      branches: 85,
+      functions: 85,
+      lines: 85,
+      statements: 85,
+    },
+    'app/api/v1/**/*.{js,jsx,ts,tsx}': {
+      branches: 90,
+      functions: 90,
+      lines: 90,
+      statements: 90,
+    },
   },
+  coverageReporters: [
+    'text',
+    'text-summary',
+    'html',
+    'lcov',
+    'clover',
+    'json-summary'
+  ],
   testTimeout: 30000,
+  maxWorkers: process.env.CI ? 2 : '50%',
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

@@ -6,20 +6,24 @@ global.TextEncoder = TextEncoder
 global.TextDecoder = TextDecoder
 
 // Mock window.location for tests (only if not already defined)
-if (!window.location || window.location.href === 'about:blank') {
-  delete window.location;
-  window.location = {
-    assign: jest.fn(),
-    replace: jest.fn(),
-    reload: jest.fn(),
-    href: 'http://localhost:3000',
-    hostname: 'localhost',
-    origin: 'http://localhost:3000',
-    pathname: '/',
-    port: '3000',
-    protocol: 'http:',
-    search: '',
-  };
+if (typeof window !== 'undefined' && (!window.location || window.location.href === 'about:blank')) {
+  Object.defineProperty(window, 'location', {
+    value: {
+      assign: jest.fn(),
+      replace: jest.fn(),
+      reload: jest.fn(),
+      href: 'http://localhost:3000',
+      hostname: 'localhost',
+      origin: 'http://localhost:3000',
+      pathname: '/',
+      port: '3000',
+      protocol: 'http:',
+      search: '',
+      hash: '',
+      host: 'localhost:3000',
+    },
+    writable: true,
+  });
 }
 
 // Mock fetch globally
