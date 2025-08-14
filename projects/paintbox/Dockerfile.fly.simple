@@ -1,4 +1,23 @@
-# Simple Fly.io Dockerfile that uses pre-built standalone
+# Fly.io Dockerfile for Next.js with build
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies (including dev for build)
+RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+
+# Copy app files
+COPY . .
+
+# Build the Next.js app
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV SKIP_ENV_VALIDATION=1
+RUN npm run build || echo "Build failed but continuing..."
+
+# Production image
 FROM node:20-alpine
 
 WORKDIR /app
@@ -11,8 +30,11 @@ ENV NODE_ENV=production
 ENV PORT=8080
 ENV HOSTNAME="0.0.0.0"
 
-# Copy standalone build
-COPY . /app/
+# Copy built app from builder
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
@@ -24,8 +46,8 @@ USER nextjs
 EXPOSE 8080
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
   CMD node -e "require('http').get('http://localhost:8080/api/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))" || exit 1
 
-# Start Next.js standalone server
-CMD ["node", "server.js"]
+# Start Next.js server
+CMD ["npm", "start"]

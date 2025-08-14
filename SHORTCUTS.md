@@ -6,6 +6,7 @@
 |---------|-------------|-----------|
 | `cf` | Go to Candlefish root | `/Users/patricksmith/candlefish-ai` |
 | `cfweb` | Go to website project | `.../apps/website` |
+| `cftemp` / `cftemporal` | Go to Temporal platform | `.../candlefish-temporal-platform` |
 | `cfpaint` | Go to Paintbox project | `.../projects/paintbox` |
 | `cffogg` | Go to Fogg Calendar | `.../projects/fogg/calendar` |
 | `cfprom` | Go to PromoterOS | `.../projects/promoterOS` |
@@ -134,6 +135,15 @@ gp                      # Push
 ghpr                    # Create PR
 ghprv                   # View in browser
 ghprm                   # Merge when ready
+```
+
+### Work with Temporal workflows
+
+```bash
+cftemp                  # Go to Temporal platform
+npm run start.watch     # Start Temporal worker
+npm run workflow        # Execute workflow
+npm test               # Run tests
 ```
 
 ### Debug with Claude

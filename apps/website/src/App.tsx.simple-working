@@ -1,0 +1,147 @@
+import React from 'react'
+
+function App() {
+  console.log('🚀 Candlefish AI App Loading - Website should display content now!')
+
+  return (
+    <div className="min-h-screen">
+      {/* Navigation */}
+      <nav className="nav-header">
+        <div className="nav-container">
+          <div className="text-2xl font-bold text-white">Candlefish AI</div>
+          <div className="nav-menu">
+            <a href="#services" className="nav-link hover-lift">Services</a>
+            <a href="#about" className="nav-link hover-lift">About</a>
+            <a href="#contact" className="nav-link hover-lift">Contact</a>
+            <a href="#contact" className="btn btn-primary hover-lift" style={{padding: '8px 16px', fontSize: '14px', marginLeft: '16px'}}>
+              Get Started
+            </a>
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <section className="hero-section">
+        <div className="hero-container">
+          <div className="hero-title">
+            <h1>Illuminating the path to AI transformation</h1>
+          </div>
+          <div className="hero-subtitle">
+            <p>We turn your slowest business processes into your fastest competitive advantages through discrete, composable AI modules.</p>
+          </div>
+          <div className="hero-cta">
+            <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
+              <a href="#contact" className="btn btn-primary btn-lg hover-lift">
+                Explore Partnership
+              </a>
+              <a href="#services" className="btn btn-secondary btn-lg hover-lift">
+                View Our Services
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* About Section */}
+      <section id="about" className="section bg-gradient-to-br from-gray-900 to-gray-800 py-24">
+        <div className="container text-center">
+          <h2 className="text-5xl font-bold text-white mb-8">Why Candlefish AI?</h2>
+          <p className="text-xl text-gray-300 max-w-4xl mx-auto leading-relaxed">
+            We specialize in enterprise AI consulting through discrete, composable modules that integrate seamlessly with your existing workflows. Our approach transforms your business processes without disrupting your operations.
+          </p>
+        </div>
+      </section>
+
+      {/* Services Section */}
+      <section id="services" className="section py-24">
+        <div className="container">
+          <h2 className="text-5xl font-bold text-center text-white mb-16">Our Services</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="card hover-lift">
+              <h3 className="text-2xl font-bold text-white mb-4">AI Strategy Consulting</h3>
+              <p className="text-gray-300 mb-6">Develop comprehensive AI strategies tailored to your business objectives and technical infrastructure.</p>
+              <ul className="text-sm text-gray-400 space-y-2">
+                <li>• Strategic roadmap development</li>
+                <li>• Technical feasibility assessment</li>
+                <li>• ROI analysis and planning</li>
+              </ul>
+            </div>
+            <div className="card hover-lift">
+              <h3 className="text-2xl font-bold text-white mb-4">Custom AI Solutions</h3>
+              <p className="text-gray-300 mb-6">Build and deploy custom AI modules that integrate seamlessly with your existing systems.</p>
+              <ul className="text-sm text-gray-400 space-y-2">
+                <li>• Machine learning model development</li>
+                <li>• API integration and deployment</li>
+                <li>• Performance optimization</li>
+              </ul>
+            </div>
+            <div className="card hover-lift">
+              <h3 className="text-2xl font-bold text-white mb-4">AI Implementation</h3>
+              <p className="text-gray-300 mb-6">End-to-end implementation support ensuring smooth adoption and optimal performance.</p>
+              <ul className="text-sm text-gray-400 space-y-2">
+                <li>• System integration</li>
+                <li>• Team training and support</li>
+                <li>• Ongoing maintenance</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Contact Section */}
+      <section id="contact" className="section bg-gradient-to-br from-gray-900 to-black py-24">
+        <div className="container text-center">
+          <h2 className="text-5xl font-bold text-white mb-8">Ready to Transform Your Business?</h2>
+          <p className="text-xl text-gray-300 mb-12 max-w-2xl mx-auto">
+            Let's discuss how AI can accelerate your most critical business processes.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
+            <a href="mailto:hello@candlefish.ai" className="btn btn-primary btn-lg hover-lift">
+              Start the Conversation
+            </a>
+            <a href="tel:+1234567890" className="btn btn-secondary btn-lg hover-lift">
+              Schedule a Call
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-black py-16">
+        <div className="container">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+            <div className="col-span-1 md:col-span-2">
+              <div className="text-3xl font-bold text-white mb-4">Candlefish AI</div>
+              <p className="text-gray-400 max-w-md leading-relaxed">
+                Enterprise AI consulting through discrete, composable modules.
+                We illuminate the path to AI transformation.
+              </p>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4">Services</h4>
+              <ul className="space-y-2 text-gray-400">
+                <li><a href="#services" className="hover:text-white transition-colors">AI Strategy</a></li>
+                <li><a href="#services" className="hover:text-white transition-colors">Custom Solutions</a></li>
+                <li><a href="#services" className="hover:text-white transition-colors">Implementation</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4">Contact</h4>
+              <ul className="space-y-2 text-gray-400">
+                <li><a href="mailto:hello@candlefish.ai" className="hover:text-white transition-colors">hello@candlefish.ai</a></li>
+                <li><a href="#contact" className="hover:text-white transition-colors">Get in Touch</a></li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-gray-800 pt-8 text-center">
+            <p className="text-sm text-gray-500">
+              © 2025 Candlefish AI LLC. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
+    </div>
+  )
+}
+
+export default App

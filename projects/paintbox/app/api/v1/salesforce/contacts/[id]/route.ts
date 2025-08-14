@@ -23,7 +23,7 @@ const ContactUpdateSchema = z.object({
 // GET /api/v1/salesforce/contacts/[id] - Get contact by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const contact = await salesforceService.getContact(params.id);
@@ -56,7 +56,7 @@ export async function GET(
 // PUT /api/v1/salesforce/contacts/[id] - Update contact
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json();
@@ -92,7 +92,7 @@ export async function PUT(
 // DELETE /api/v1/salesforce/contacts/[id] - Delete contact
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await salesforceService.deleteContact(params.id);

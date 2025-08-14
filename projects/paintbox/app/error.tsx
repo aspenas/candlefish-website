@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import { useEffect } from 'react'
 
 export default function Error({
   error,
@@ -9,28 +9,30 @@ export default function Error({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  useEffect(() => {
+    // Log the error to an error reporting service
+    console.error('Application error:', error?.message || 'Unknown error')
+  }, [error])
+
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-gray-50">
-      <div className="text-center max-w-md">
-        <div className="mb-8">
-          <div className="text-6xl mb-4">⚠️</div>
-          <h1 className="text-2xl font-bold text-gray-900">Paintbox</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div className="text-center">
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+            Something went wrong!
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            An unexpected error occurred. Please try again.
+          </p>
         </div>
-        <h2 className="mb-4 text-2xl font-bold text-gray-900">
-          Something went wrong!
-        </h2>
-        <p className="mb-6 text-gray-600">
-          {error.message || 'An unexpected error occurred'}
-        </p>
-        <p className="mb-8 text-sm text-gray-500">
-          {error.digest && `Error ID: ${error.digest}`}
-        </p>
-        <button
-          onClick={reset}
-          className="bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-3 rounded-lg font-medium hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5"
-        >
-          Try again
-        </button>
+        <div>
+          <button
+            onClick={reset}
+            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+          >
+            Try again
+          </button>
+        </div>
       </div>
     </div>
   )

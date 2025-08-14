@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Quick Dashboard Access -->
+    <shortcut
+        android:shortcutId="quick_dashboard"
+        android:enabled="true"
+        android:icon="@drawable/ic_dashboard"
+        android:shortcutShortLabel="@string/shortcut_dashboard_short"
+        android:shortcutLongLabel="@string/shortcut_dashboard_long"
+        android:shortcutDisabledMessage="@string/shortcut_disabled_message">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="ai.candlefish.analytics"
+            android:targetClass="ai.candlefish.analytics.MainActivity"
+            android:data="candlefish-analytics://dashboards" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <!-- Scan QR Code -->
+    <shortcut
+        android:shortcutId="scan_qr"
+        android:enabled="true"
+        android:icon="@drawable/ic_qr_scanner"
+        android:shortcutShortLabel="@string/shortcut_scan_short"
+        android:shortcutLongLabel="@string/shortcut_scan_long"
+        android:shortcutDisabledMessage="@string/shortcut_disabled_message">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="ai.candlefish.analytics"
+            android:targetClass="ai.candlefish.analytics.MainActivity"
+            android:data="candlefish-analytics://scan?mode=dashboard" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <!-- Notifications -->
+    <shortcut
+        android:shortcutId="notifications"
+        android:enabled="true"
+        android:icon="@drawable/ic_notifications"
+        android:shortcutShortLabel="@string/shortcut_notifications_short"
+        android:shortcutLongLabel="@string/shortcut_notifications_long"
+        android:shortcutDisabledMessage="@string/shortcut_disabled_message">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="ai.candlefish.analytics"
+            android:targetClass="ai.candlefish.analytics.MainActivity"
+            android:data="candlefish-analytics://notifications" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <!-- Create Dashboard -->
+    <shortcut
+        android:shortcutId="create_dashboard"
+        android:enabled="true"
+        android:icon="@drawable/ic_add_dashboard"
+        android:shortcutShortLabel="@string/shortcut_create_short"
+        android:shortcutLongLabel="@string/shortcut_create_long"
+        android:shortcutDisabledMessage="@string/shortcut_disabled_message">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="ai.candlefish.analytics"
+            android:targetClass="ai.candlefish.analytics.MainActivity"
+            android:data="candlefish-analytics://dashboard/create" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+</shortcuts>

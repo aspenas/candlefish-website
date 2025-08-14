@@ -360,4 +360,5 @@ if (require.main === module) {
   });
 }
 
-export { ProductionValidator, ValidationResult, DeploymentValidation };
+export { ProductionValidator };
+export type { ValidationResult, DeploymentValidation };

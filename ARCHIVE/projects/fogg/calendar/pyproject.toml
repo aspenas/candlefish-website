@@ -1,0 +1,46 @@
+[project]
+name = "calendar"
+version = "0.1.0"
+description = "FOGG Calendar Automation with Google Groups Integration"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic[vertex]>=0.58.2",
+    "google-api-python-client>=2.176.0",
+    "google-api-python-client-stubs>=1.30.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-auth-oauthlib>=1.2.2",
+    "google-cloud-logging>=3.12.1",
+    "mcp>=1.12.0",
+    "mypy>=1.17.0",
+    "opentelemetry-api>=1.35.0",
+    "opentelemetry-exporter-gcp-monitoring>=1.9.0a0",
+    "opentelemetry-instrumentation-grpc>=0.56b0",
+    "opentelemetry-instrumentation-requests>=0.56b0",
+    "opentelemetry-sdk>=1.35.0",
+    "pydantic>=2.11.7",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "pytest-cov>=6.2.1",
+    "python-dateutil>=2.9.0.post0",
+    "structlog>=25.4.0",
+    "tenacity>=9.1.2",
+    "types-python-dateutil>=2.9.0.20250708",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.2.0",
+    "ruff>=0.12.4",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

@@ -22,10 +22,10 @@ const UpdateProjectSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { projectId } = params;
+    const { projectId } = await params;
     logger.info('GET /api/v1/companycam/projects/:projectId', { projectId });
 
     const project = await companyCamApi.getProject(projectId);
@@ -60,10 +60,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { projectId } = params;
+    const { projectId } = await params;
     logger.info('PUT /api/v1/companycam/projects/:projectId', { projectId });
 
     const body = await request.json();
@@ -103,7 +103,7 @@ export async function PUT(
         {
           success: false,
           error: 'Validation error',
-          details: error.errors,
+          details: error.issues,
         },
         { status: 400 }
       );
@@ -122,10 +122,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { projectId } = params;
+    const { projectId } = await params;
     logger.info('DELETE /api/v1/companycam/projects/:projectId', { projectId });
 
     // Check if project exists
