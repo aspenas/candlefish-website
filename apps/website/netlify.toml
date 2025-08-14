@@ -133,6 +133,11 @@
     X-Content-Type-Options = "nosniff"
 
 [[redirects]]
+  from = "/onboarding"
+  to = "/onboarding.html"
+  status = 200
+
+[[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
