@@ -309,7 +309,7 @@ describe('Production Components Accessibility Tests', () => {
         expect(errorMessages.length).toBeGreaterThanOrEqual(0);
 
         errorMessages.forEach(error => {
-          expect(error).toHaveTextContent();
+          expect(error.textContent).toBeTruthy();
         });
       }
     });
@@ -380,7 +380,7 @@ describe('Production Components Accessibility Tests', () => {
         // Check for row headers if present
         const rowHeaders = screen.queryAllByRole('rowheader');
         rowHeaders.forEach(header => {
-          expect(header).toHaveTextContent();
+          expect(header.textContent).toBeTruthy();
         });
       });
     });
