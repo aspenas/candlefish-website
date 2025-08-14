@@ -1,0 +1,612 @@
+openapi: 3.0.3
+info:
+  title: Candlefish AI Platform API
+  description: |
+    Comprehensive API documentation for the Candlefish AI Platform, including GraphQL endpoints,
+    webhook management, deployment operations, and monitoring capabilities.
+  version: 1.0.0
+  contact:
+    name: Candlefish AI Support
+    email: support@candlefish.ai
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.candlefish.ai
+    description: Production server
+  - url: https://staging-api.candlefish.ai
+    description: Staging server
+  - url: http://localhost:4000
+    description: Local development
+
+tags:
+  - name: GraphQL
+    description: GraphQL API endpoint
+  - name: Webhooks
+    description: Webhook management operations
+  - name: Deployments
+    description: Deployment and release management
+  - name: Monitoring
+    description: System monitoring and metrics
+  - name: Health
+    description: Health check endpoints
+
+paths:
+  /graphql:
+    post:
+      tags:
+        - GraphQL
+      summary: GraphQL endpoint
+      description: Main GraphQL endpoint for all queries, mutations, and subscriptions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - query
+              properties:
+                query:
+                  type: string
+                  description: GraphQL query string
+                variables:
+                  type: object
+                  description: GraphQL variables
+                operationName:
+                  type: string
+                  description: Operation name for multi-operation documents
+            examples:
+              getWebhooks:
+                value:
+                  query: |
+                    query GetWebhooks($filter: WebhookFilter) {
+                      webhooks(filter: $filter) {
+                        edges {
+                          node {
+                            id
+                            name
+                            url
+                            active
+                            events
+                          }
+                        }
+                      }
+                    }
+                  variables:
+                    filter:
+                      active: true
+              createWebhook:
+                value:
+                  query: |
+                    mutation CreateWebhook($input: CreateWebhookInput!) {
+                      createWebhook(input: $input) {
+                        id
+                        name
+                        url
+                        secret
+                      }
+                    }
+                  variables:
+                    input:
+                      name: "Salesforce Integration"
+                      url: "https://api.salesforce.com/webhook"
+                      events: ["deployment.completed", "alert.created"]
+      responses:
+        '200':
+          description: Successful GraphQL response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    description: Query/mutation result data
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        message:
+                          type: string
+                        locations:
+                          type: array
+                          items:
+                            type: object
+                        path:
+                          type: array
+                          items:
+                            type: string
+        '400':
+          description: Invalid GraphQL query
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+  /api/webhooks/test:
+    post:
+      tags:
+        - Webhooks
+      summary: Test webhook endpoint
+      description: Send a test payload to a webhook configuration
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - webhookId
+              properties:
+                webhookId:
+                  type: string
+                  format: uuid
+                  description: ID of the webhook to test
+                payload:
+                  type: object
+                  description: Custom test payload (optional)
+      responses:
+        '200':
+          description: Test successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  statusCode:
+                    type: integer
+                  responseTime:
+                    type: integer
+                    description: Response time in milliseconds
+                  response:
+                    type: object
+                    description: Response from webhook endpoint
+        '404':
+          description: Webhook not found
+        '500':
+          description: Test failed
+
+  /api/webhooks/validate:
+    post:
+      tags:
+        - Webhooks
+      summary: Validate webhook signature
+      description: Validate incoming webhook payload signature
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - payload
+                - signature
+                - secret
+              properties:
+                payload:
+                  type: string
+                  description: Raw webhook payload
+                signature:
+                  type: string
+                  description: HMAC signature from webhook header
+                secret:
+                  type: string
+                  description: Webhook secret for validation
+      responses:
+        '200':
+          description: Signature validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  algorithm:
+                    type: string
+                    enum: [sha256, sha512]
+
+  /api/deployments/trigger:
+    post:
+      tags:
+        - Deployments
+      summary: Trigger deployment
+      description: Trigger a new deployment to specified environment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - releaseId
+                - environment
+              properties:
+                releaseId:
+                  type: string
+                  format: uuid
+                environment:
+                  type: string
+                  enum: [development, staging, production]
+                strategy:
+                  type: string
+                  enum: [blue-green, canary, rolling]
+                  default: blue-green
+                config:
+                  type: object
+                  properties:
+                    canaryPercentage:
+                      type: integer
+                      minimum: 1
+                      maximum: 100
+                    autoPromote:
+                      type: boolean
+                    promotionDelay:
+                      type: integer
+                      description: Delay in seconds before auto-promotion
+      responses:
+        '201':
+          description: Deployment triggered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deployment'
+        '400':
+          description: Invalid deployment configuration
+        '409':
+          description: Deployment already in progress
+
+  /api/deployments/{deploymentId}/rollback:
+    post:
+      tags:
+        - Deployments
+      summary: Rollback deployment
+      description: Rollback a deployment to previous version
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deploymentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reason
+              properties:
+                reason:
+                  type: string
+                  description: Reason for rollback
+                targetVersion:
+                  type: string
+                  description: Specific version to rollback to (optional)
+      responses:
+        '200':
+          description: Rollback initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rollback'
+        '404':
+          description: Deployment not found
+
+  /metrics:
+    get:
+      tags:
+        - Monitoring
+      summary: Prometheus metrics endpoint
+      description: Export metrics in Prometheus format
+      responses:
+        '200':
+          description: Metrics in Prometheus format
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  # HELP candlefish_http_requests_total Total number of HTTP requests
+                  # TYPE candlefish_http_requests_total counter
+                  candlefish_http_requests_total{method="GET",route="/health",status="200"} 1234
+
+                  # HELP candlefish_http_request_duration_seconds Duration of HTTP requests in seconds
+                  # TYPE candlefish_http_request_duration_seconds histogram
+                  candlefish_http_request_duration_seconds_bucket{le="0.1"} 950
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check endpoint
+      description: Check overall system health
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded, unhealthy]
+                  version:
+                    type: string
+                  uptime:
+                    type: integer
+                    description: Uptime in seconds
+                  services:
+                    type: object
+                    properties:
+                      database:
+                        $ref: '#/components/schemas/ServiceHealth'
+                      temporal:
+                        $ref: '#/components/schemas/ServiceHealth'
+                      redis:
+                        $ref: '#/components/schemas/ServiceHealth'
+                      graphql:
+                        $ref: '#/components/schemas/ServiceHealth'
+        '503':
+          description: System is unhealthy
+
+  /health/live:
+    get:
+      tags:
+        - Health
+      summary: Liveness probe
+      description: Kubernetes liveness probe endpoint
+      responses:
+        '200':
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  alive:
+                    type: boolean
+                    example: true
+
+  /health/ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness probe
+      description: Kubernetes readiness probe endpoint
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ready:
+                    type: boolean
+                  checks:
+                    type: object
+                    properties:
+                      database:
+                        type: boolean
+                      temporal:
+                        type: boolean
+                      cache:
+                        type: boolean
+        '503':
+          description: Service not ready
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    Webhook:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+          format: uri
+        method:
+          type: string
+          enum: [GET, POST, PUT, PATCH, DELETE]
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        events:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+        retryPolicy:
+          type: object
+          properties:
+            maxRetries:
+              type: integer
+            retryDelay:
+              type: integer
+            backoffMultiplier:
+              type: number
+        authentication:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [NONE, BEARER, BASIC, API_KEY, SIGNATURE]
+            config:
+              type: object
+        successRate:
+          type: number
+          format: float
+        lastTriggered:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Deployment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        releaseId:
+          type: string
+          format: uuid
+        environment:
+          type: string
+          enum: [development, staging, production]
+        status:
+          type: string
+          enum: [pending, in_progress, completed, failed, rolled_back]
+        strategy:
+          type: string
+          enum: [blue-green, canary, rolling]
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          properties:
+            version:
+              type: string
+            commit:
+              type: string
+            branch:
+              type: string
+            triggeredBy:
+              type: string
+
+    Rollback:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        deploymentId:
+          type: string
+          format: uuid
+        targetVersion:
+          type: string
+        reason:
+          type: string
+        status:
+          type: string
+          enum: [pending, in_progress, completed, failed]
+        initiatedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+
+    ServiceHealth:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        latency:
+          type: integer
+          description: Response time in milliseconds
+        lastCheck:
+          type: string
+          format: date-time
+        error:
+          type: string
+          description: Error message if unhealthy
+
+    Alert:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        status:
+          type: string
+          enum: [firing, resolved]
+        startedAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: string
+          format: date-time
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+
+    Metric:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: number
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+        traceId:
+          type: string

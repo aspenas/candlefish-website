@@ -1,0 +1,8 @@
+# Subdomain handling for claude.candlefish.ai
+https://claude.candlefish.ai/* /claude.html 200!
+
+# API redirects
+/api/* /.netlify/functions/:splat 200
+
+# SPA fallback
+/* /index.html 200
