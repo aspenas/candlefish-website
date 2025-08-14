@@ -10,8 +10,9 @@ function hexToRgb(hex: string): RGB {
 }
 
 async function ensurePage(name: string): Promise<PageNode> {
-  const existing = figma.root.children.find((p) => p.name === name);
-  if (existing) return existing as PageNode;
+  for (const p of figma.root.children) {
+    if (p.name === name) return p as PageNode;
+  }
   const page = figma.createPage();
   page.name = name;
   return page;
@@ -29,29 +30,33 @@ function makePaintStyle(name: string, hex: string): PaintStyle {
   return style;
 }
 
-async function importLogoToComponent(imgBytes: Uint8Array, name = 'Logo/Primary'): Promise<ComponentNode> {
-  const image = figma.createImage(imgBytes);
+async function importLogoToComponent(imgBytes: Uint8Array | undefined, name = 'Logo/Primary'): Promise<ComponentNode> {
   const component = figma.createComponent();
   component.name = name;
   component.resizeWithoutConstraints(600, 240);
 
   const rect = figma.createRectangle();
-  rect.fills = [
-    {
-      type: 'IMAGE',
-      imageHash: image.hash,
-      scaleMode: 'FIT',
-    } as ImagePaint,
-  ];
   rect.resize(600, 240);
-  component.appendChild(rect);
 
-  // Export settings: SVG and PDF presets
+  if (imgBytes && imgBytes.length > 0) {
+    const image = figma.createImage(imgBytes);
+    rect.fills = [
+      {
+        type: 'IMAGE',
+        imageHash: image.hash,
+        scaleMode: 'FIT',
+      } as ImagePaint,
+    ];
+  } else {
+    // Fallback placeholder so plugin never hangs on missing bytes
+    rect.fills = [{ type: 'SOLID', color: hexToRgb('#11D9E6') }];
+  }
+
+  component.appendChild(rect);
   component.exportSettings = [
     { format: 'SVG', contentsOnly: true, useAbsoluteBounds: false },
     { format: 'PDF' },
   ];
-
   return component;
 }
 
@@ -169,7 +174,7 @@ function createBaseComponents() {
   return { container, stack, card, btnPrimary, btnQuiet };
 }
 
-async function run(bytes: Uint8Array) {
+async function run(bytes?: Uint8Array) {
   // Create required pages
   await ensurePage('Cover');
   const assetsPage = await ensurePage('01 Brand Assets');
@@ -202,7 +207,7 @@ async function run(bytes: Uint8Array) {
     text.letterSpacing = { unit: 'PERCENT', value: 1 } as LetterSpacing; // +1%
     text.lineHeight = { unit: 'AUTO' } as LineHeight;
     wordmark.appendChild(text);
-  } catch {}
+  } catch (e) {}
   // Export presets
   wordmark.exportSettings = [
     { format: 'SVG', contentsOnly: true, useAbsoluteBounds: false },
@@ -355,8 +360,23 @@ async function run(bytes: Uint8Array) {
 
 figma.showUI('<html><body></body></html>', { visible: false });
 
+// Prefer embedded logo bytes if available; otherwise run without bytes
+(() => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require('./logo-bytes');
+    const b64: string | undefined = mod?.LOGO_BASE64 || mod?.LOGO;
+    if (b64) {
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      run(bytes);
+      return;
+    }
+  } catch (e) {}
+  run();
+})();
+
 figma.ui.onmessage = async (msg) => {
-  if (msg?.type === 'bootstrap' && msg.bytes) {
+  if (msg && msg.type === 'bootstrap' && msg.bytes) {
     await run(new Uint8Array(msg.bytes as ArrayBuffer));
   }
 };
