@@ -1,0 +1,562 @@
+directive @contact(
+  "Contact title of the subgraph owner"
+  name: String!
+  "URL where the subgraph's owner can be reached"
+  url: String
+  "Other relevant notes can be included here; supports markdown links"
+  description: String
+) on SCHEMA
+
+extend schema
+  @contact(
+    name: "Paintbox Project Management Team"
+    url: "https://paintbox.candlefish.ai/support"
+    description: "Manages project lifecycle and Company Cam integration for photo documentation"
+  )
+  @link(
+    url: "https://specs.apollo.dev/federation/v2.3",
+    import: [
+      "@key", "@extends", "@shareable", "@inaccessible", "@override", "@external", "@provides", "@requires", "@tag",
+      "@composeDirective", "@interfaceObject"
+    ]
+  )
+
+type Query {
+  project(id: ID!): Project
+  projects(filter: ProjectFilter, limit: Int = 20, offset: Int = 0): ProjectConnection!
+  searchProjects(query: String!, limit: Int = 10): [Project!]!
+  projectPhotos(projectId: ID!, category: PhotoCategory): [ProjectPhoto!]!
+  projectTimeline(projectId: ID!): [TimelineEvent!]!
+}
+
+type Mutation {
+  createProject(input: CreateProjectInput!): Project!
+  updateProject(id: ID!, input: UpdateProjectInput!): Project!
+  deleteProject(id: ID!): Boolean!
+
+  # Company Cam Integration
+  syncProjectFromCompanyCam(companyCamId: String!): Project!
+  uploadProjectPhoto(projectId: ID!, input: PhotoUploadInput!): ProjectPhoto!
+  deleteProjectPhoto(projectId: ID!, photoId: ID!): Boolean!
+  bulkSyncPhotos(projectId: ID!): BulkPhotoSyncResult!
+
+  # Project Lifecycle
+  startProject(id: ID!): Project!
+  pauseProject(id: ID!, reason: String): Project!
+  completeProject(id: ID!, input: CompleteProjectInput!): Project!
+  archiveProject(id: ID!): Project!
+}
+
+type Subscription {
+  projectUpdated(id: ID!): Project!
+  projectPhotoAdded(projectId: ID!): ProjectPhoto!
+  projectStatusChanged(id: ID!): ProjectStatusUpdate!
+  photoSyncProgress(projectId: ID!): SyncProgress!
+}
+
+# Federation Entity
+type Project @key(fields: "id") {
+  id: ID!
+  customerId: ID!
+  companyCamId: String
+
+  # Basic Information
+  name: String!
+  description: String
+  type: ProjectType!
+  priority: ProjectPriority!
+
+  # Timeline & Scheduling
+  status: ProjectStatus!
+  scheduledStartDate: String
+  actualStartDate: String
+  scheduledEndDate: String
+  actualEndDate: String
+  estimatedDuration: Int # in days
+
+  # Location
+  serviceAddress: Address!
+  jobSite: JobSite
+
+  # Team & Resources
+  assignedCrew: [CrewMember!]!
+  projectManager: ProjectManager
+
+  # Financial
+  budgetAmount: Float
+  actualCost: Float
+  profitMargin: Float
+
+  # Company Cam Integration
+  photos: [ProjectPhoto!]!
+  photoCount: Int!
+  lastPhotoSync: String
+
+  # Weather & Conditions
+  weatherRestrictions: [WeatherRestriction!]!
+  optimalConditions: WeatherConditions
+
+  # Documentation
+  notes: String
+  specifications: JSON
+  permits: [Permit!]!
+
+  # Metadata
+  createdAt: String!
+  updatedAt: String!
+  createdBy: String!
+
+  # Federation Relationships
+  customer: Customer! @external
+  estimates: [Estimate!]! @external
+
+  # Computed Fields
+  daysUntilDeadline: Int
+  completionPercentage: Float!
+  isOverdue: Boolean!
+  weatherRisk: WeatherRisk!
+}
+
+# Company Cam Integration Types
+type ProjectPhoto {
+  id: ID!
+  projectId: ID!
+  companyCamId: String
+
+  # Photo Details
+  url: String!
+  thumbnailUrl: String
+  originalFileName: String
+  fileSize: Int
+  mimeType: String!
+
+  # Metadata
+  category: PhotoCategory!
+  tags: [String!]!
+  description: String
+  capturedAt: String!
+  uploadedAt: String!
+
+  # Location
+  coordinates: Coordinates
+  location: PhotoLocation
+
+  # Organization
+  phase: ProjectPhase
+  room: String
+  surface: String
+
+  # Company Cam Specific
+  companyCamMetadata: JSON
+  syncStatus: PhotoSyncStatus!
+
+  # AI Analysis (if available)
+  aiAnalysis: PhotoAIAnalysis
+}
+
+type PhotoLocation {
+  address: String
+  floor: String
+  room: String
+  coordinates: Coordinates
+}
+
+type PhotoAIAnalysis {
+  detectedObjects: [String!]!
+  surfaceType: String
+  conditionAssessment: String
+  qualityScore: Float
+  suggestedTags: [String!]!
+  confidence: Float!
+}
+
+# Project Management Types
+type CrewMember {
+  id: ID!
+  name: String!
+  role: CrewRole!
+  email: String
+  phone: String
+  skillLevel: SkillLevel!
+  hourlyRate: Float
+  availableFrom: String
+  availableUntil: String
+}
+
+type ProjectManager {
+  id: ID!
+  name: String!
+  email: String!
+  phone: String
+  territory: String
+  experienceYears: Int
+}
+
+type JobSite {
+  id: ID!
+  name: String!
+  address: Address!
+  accessInstructions: String
+  keyLocation: String
+  emergencyContact: ContactInfo
+  restrictions: [String!]!
+  utilities: UtilitiesInfo
+}
+
+type UtilitiesInfo {
+  electricalShutoff: String
+  waterShutoff: String
+  gasShutoff: String
+  internetAccess: Boolean
+  parkingAvailable: Boolean
+}
+
+type ContactInfo {
+  name: String!
+  phone: String!
+  email: String
+  relationship: String
+}
+
+type Permit {
+  id: ID!
+  type: PermitType!
+  number: String!
+  issuer: String!
+  issuedDate: String!
+  expirationDate: String!
+  status: PermitStatus!
+  cost: Float
+  documentUrl: String
+}
+
+type WeatherRestriction {
+  condition: WeatherCondition!
+  threshold: Float
+  unit: WeatherUnit!
+  severity: RestrictionSeverity!
+}
+
+type WeatherConditions {
+  minTemperature: Float
+  maxTemperature: Float
+  maxWindSpeed: Float
+  maxHumidity: Float
+  precipitationAllowed: Boolean
+}
+
+# Timeline & History
+type TimelineEvent {
+  id: ID!
+  projectId: ID!
+  type: TimelineEventType!
+  title: String!
+  description: String
+  timestamp: String!
+  user: String!
+  metadata: JSON
+}
+
+# Status Updates
+type ProjectStatusUpdate {
+  projectId: ID!
+  oldStatus: ProjectStatus!
+  newStatus: ProjectStatus!
+  reason: String
+  changedBy: String!
+  changedAt: String!
+}
+
+# Sync Operations
+type BulkPhotoSyncResult {
+  projectId: ID!
+  totalPhotos: Int!
+  syncedPhotos: Int!
+  failedPhotos: Int!
+  errors: [PhotoSyncError!]!
+  duration: Float!
+}
+
+type PhotoSyncError {
+  companyCamId: String!
+  error: String!
+  retryable: Boolean!
+}
+
+type SyncProgress {
+  projectId: ID!
+  totalItems: Int!
+  processedItems: Int!
+  currentPhase: String!
+  estimatedTimeRemaining: Float
+  errors: [String!]!
+}
+
+# Connection Types
+type ProjectConnection {
+  edges: [ProjectEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type ProjectEdge {
+  node: Project!
+  cursor: String!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+# Input Types
+input CreateProjectInput {
+  customerId: ID!
+  name: String!
+  description: String
+  type: ProjectType!
+  priority: ProjectPriority!
+  serviceAddress: AddressInput!
+  scheduledStartDate: String
+  scheduledEndDate: String
+  estimatedDuration: Int
+  budgetAmount: Float
+  companyCamId: String
+  notes: String
+  specifications: JSON
+}
+
+input UpdateProjectInput {
+  name: String
+  description: String
+  type: ProjectType
+  priority: ProjectPriority
+  status: ProjectStatus
+  serviceAddress: AddressInput
+  scheduledStartDate: String
+  scheduledEndDate: String
+  actualStartDate: String
+  actualEndDate: String
+  estimatedDuration: Int
+  budgetAmount: Float
+  actualCost: Float
+  notes: String
+  specifications: JSON
+}
+
+input CompleteProjectInput {
+  actualEndDate: String!
+  actualCost: Float
+  finalNotes: String
+  customerSatisfactionScore: Int
+}
+
+input PhotoUploadInput {
+  file: Upload!
+  category: PhotoCategory!
+  description: String
+  tags: [String!]
+  phase: ProjectPhase
+  room: String
+  surface: String
+  coordinates: CoordinatesInput
+}
+
+input AddressInput {
+  street: String!
+  city: String!
+  state: String!
+  postalCode: String!
+  country: String!
+  latitude: Float
+  longitude: Float
+}
+
+input CoordinatesInput {
+  latitude: Float!
+  longitude: Float!
+}
+
+input ProjectFilter {
+  customerId: ID
+  status: ProjectStatus
+  type: ProjectType
+  priority: ProjectPriority
+  assignedCrewId: ID
+  projectManagerId: ID
+  scheduledAfter: String
+  scheduledBefore: String
+  isOverdue: Boolean
+  hasPhotos: Boolean
+}
+
+# Enums
+enum ProjectStatus {
+  PLANNING
+  SCHEDULED
+  IN_PROGRESS
+  ON_HOLD
+  REVIEW
+  COMPLETED
+  CANCELLED
+  ARCHIVED
+}
+
+enum ProjectType {
+  INTERIOR_PAINTING
+  EXTERIOR_PAINTING
+  CABINET_REFINISHING
+  DECK_STAINING
+  PRESSURE_WASHING
+  DRYWALL_REPAIR
+  WALLPAPER_REMOVAL
+  TOUCH_UP
+  MAINTENANCE
+}
+
+enum ProjectPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+  EMERGENCY
+}
+
+enum ProjectPhase {
+  PREPARATION
+  PRIMER
+  BASE_COAT
+  FINAL_COAT
+  TOUCH_UP
+  CLEANUP
+  COMPLETION
+}
+
+enum PhotoCategory {
+  BEFORE
+  PROGRESS
+  AFTER
+  DAMAGE
+  PREPARATION
+  MATERIALS
+  TEAM
+  SITE_CONDITIONS
+  QUALITY_CONTROL
+}
+
+enum PhotoSyncStatus {
+  PENDING
+  SYNCING
+  SYNCED
+  FAILED
+  DELETED
+}
+
+enum CrewRole {
+  LEAD_PAINTER
+  PAINTER
+  PREP_WORKER
+  HELPER
+  SUPERVISOR
+  SPECIALIST
+}
+
+enum SkillLevel {
+  TRAINEE
+  APPRENTICE
+  JOURNEYMAN
+  EXPERT
+  MASTER
+}
+
+enum PermitType {
+  BUILDING
+  ELECTRICAL
+  PLUMBING
+  ENVIRONMENTAL
+  SAFETY
+  PARKING
+}
+
+enum PermitStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+enum WeatherCondition {
+  TEMPERATURE
+  HUMIDITY
+  WIND_SPEED
+  PRECIPITATION
+  UV_INDEX
+}
+
+enum WeatherUnit {
+  FAHRENHEIT
+  CELSIUS
+  PERCENTAGE
+  MPH
+  KPH
+  INCHES
+  MM
+}
+
+enum RestrictionSeverity {
+  ADVISORY
+  MODERATE
+  SEVERE
+  CRITICAL
+}
+
+enum WeatherRisk {
+  NONE
+  LOW
+  MODERATE
+  HIGH
+  EXTREME
+}
+
+enum TimelineEventType {
+  CREATED
+  STATUS_CHANGED
+  CREW_ASSIGNED
+  PHOTO_UPLOADED
+  NOTE_ADDED
+  PERMIT_OBTAINED
+  WEATHER_DELAY
+  CUSTOMER_CONTACT
+  QUALITY_CHECK
+  COMPLETION
+}
+
+# External Types for Federation
+type Customer @key(fields: "id") @extends {
+  id: ID! @external
+}
+
+type Estimate @key(fields: "id") @extends {
+  id: ID! @external
+  projectId: ID @external
+}
+
+type Address {
+  street: String!
+  city: String!
+  state: String!
+  postalCode: String!
+  country: String!
+  coordinates: Coordinates
+}
+
+type Coordinates {
+  latitude: Float!
+  longitude: Float!
+}
+
+scalar Upload
+scalar JSON

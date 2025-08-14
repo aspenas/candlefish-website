@@ -1,0 +1,677 @@
+directive @contact(
+  "Contact title of the subgraph owner"
+  name: String!
+  "URL where the subgraph's owner can be reached"
+  url: String
+  "Other relevant notes can be included here; supports markdown links"
+  description: String
+) on SCHEMA
+
+extend schema
+  @contact(
+    name: "Paintbox Integrations Team"
+    url: "https://paintbox.candlefish.ai/support"
+    description: "Manages external API integrations including Salesforce, Company Cam, and third-party services"
+  )
+  @link(
+    url: "https://specs.apollo.dev/federation/v2.3",
+    import: [
+      "@key", "@extends", "@shareable", "@inaccessible", "@override", "@external", "@provides", "@requires", "@tag",
+      "@composeDirective", "@interfaceObject"
+    ]
+  )
+
+type Query {
+  # Integration Status & Health
+  integrationStatus(service: IntegrationService!): IntegrationHealth!
+  allIntegrationStatuses: [IntegrationHealth!]!
+
+  # Salesforce Queries
+  salesforceAccount(id: String!): SalesforceAccount
+  salesforceAccounts(filter: SalesforceAccountFilter, limit: Int = 50): [SalesforceAccount!]!
+  salesforceOpportunity(id: String!): SalesforceOpportunity
+  salesforceUser(id: String!): SalesforceUser
+
+  # Company Cam Queries
+  companyCamProject(id: String!): CompanyCamProject
+  companyCamProjects(filter: CompanyCamProjectFilter): [CompanyCamProject!]!
+  companyCamPhoto(id: String!): CompanyCamPhoto
+  companyCamPhotos(projectId: String!, filter: CompanyCamPhotoFilter): [CompanyCamPhoto!]!
+
+  # Weather Service
+  weatherForecast(coordinates: CoordinatesInput!, days: Int = 7): WeatherForecast!
+  weatherHistory(coordinates: CoordinatesInput!, fromDate: String!, toDate: String!): [WeatherData!]!
+
+  # Mapping Services
+  geocodeAddress(address: String!): GeocodeResult!
+  reverseGeocode(coordinates: CoordinatesInput!): ReverseGeocodeResult!
+
+  # Sync Logs & Audit
+  syncLogs(service: IntegrationService!, limit: Int = 100): [SyncLog!]!
+  auditTrail(entityType: String!, entityId: String!): [AuditEntry!]!
+}
+
+type Mutation {
+  # Salesforce Operations
+  syncSalesforceAccount(salesforceId: String!): SyncResult!
+  createSalesforceOpportunity(input: CreateSalesforceOpportunityInput!): SalesforceOpportunity!
+  updateSalesforceAccount(id: String!, input: UpdateSalesforceAccountInput!): SalesforceAccount!
+
+  # Company Cam Operations
+  syncCompanyCamProject(companyCamId: String!): SyncResult!
+  uploadToCompanyCam(projectId: String!, input: CompanyCamUploadInput!): CompanyCamPhoto!
+  createCompanyCamProject(input: CreateCompanyCamProjectInput!): CompanyCamProject!
+
+  # Bulk Operations
+  bulkSyncSalesforce(filter: SalesforceSyncFilter!): BulkSyncResult!
+  bulkSyncCompanyCam(filter: CompanyCamSyncFilter!): BulkSyncResult!
+
+  # Configuration
+  updateIntegrationConfig(service: IntegrationService!, config: JSON!): IntegrationConfig!
+  refreshIntegrationTokens(service: IntegrationService!): TokenRefreshResult!
+
+  # Manual Triggers
+  triggerSync(service: IntegrationService!, entityType: String!, entityId: String!): SyncResult!
+  retryFailedSync(syncLogId: ID!): SyncResult!
+}
+
+type Subscription {
+  integrationHealthChanged(service: IntegrationService!): IntegrationHealth!
+  syncProgress(service: IntegrationService!): SyncProgress!
+  syncCompleted(service: IntegrationService!): SyncResult!
+  bulkSyncProgress(operationId: ID!): BulkSyncProgress!
+}
+
+# Integration Health & Monitoring
+type IntegrationHealth {
+  service: IntegrationService!
+  status: IntegrationStatus!
+  lastSuccessfulSync: String
+  lastFailedSync: String
+  consecutiveFailures: Int!
+  errorRate: Float!
+  averageResponseTime: Float!
+  rateLimitStatus: RateLimitStatus!
+  uptime: Float!
+  version: String
+  configuration: IntegrationConfig!
+}
+
+type IntegrationConfig {
+  service: IntegrationService!
+  enabled: Boolean!
+  syncInterval: Int! # minutes
+  batchSize: Int!
+  retryAttempts: Int!
+  timeout: Int! # seconds
+  webhooksEnabled: Boolean!
+  configuration: JSON!
+  lastUpdated: String!
+}
+
+type RateLimitStatus {
+  remaining: Int!
+  limit: Int!
+  resetTime: String!
+  isThrottled: Boolean!
+}
+
+# Salesforce Types
+type SalesforceAccount {
+  id: String!
+  name: String!
+  type: String
+  industry: String
+  website: String
+  phone: String
+  billingAddress: SalesforceAddress
+  shippingAddress: SalesforceAddress
+  ownerId: String!
+  owner: SalesforceUser
+  createdDate: String!
+  lastModifiedDate: String!
+  customFields: JSON
+
+  # Relationships
+  opportunities: [SalesforceOpportunity!]!
+  contacts: [SalesforceContact!]!
+
+  # Sync metadata
+  lastSyncedAt: String!
+  syncVersion: String!
+}
+
+type SalesforceOpportunity {
+  id: String!
+  name: String!
+  accountId: String!
+  account: SalesforceAccount!
+  stage: String!
+  amount: Float
+  probability: Float
+  closeDate: String!
+  ownerId: String!
+  owner: SalesforceUser!
+  type: String
+  leadSource: String
+  description: String
+  customFields: JSON
+  createdDate: String!
+  lastModifiedDate: String!
+
+  # Sync metadata
+  lastSyncedAt: String!
+  syncVersion: String!
+}
+
+type SalesforceContact {
+  id: String!
+  accountId: String
+  firstName: String
+  lastName: String!
+  email: String
+  phone: String
+  title: String
+  department: String
+  mailingAddress: SalesforceAddress
+  customFields: JSON
+  createdDate: String!
+  lastModifiedDate: String!
+}
+
+type SalesforceUser {
+  id: String!
+  name: String!
+  email: String!
+  username: String!
+  isActive: Boolean!
+  userRole: String
+  territory: String
+  profile: String
+  customFields: JSON
+}
+
+type SalesforceAddress {
+  street: String
+  city: String
+  state: String
+  postalCode: String
+  country: String
+  latitude: Float
+  longitude: Float
+}
+
+# Company Cam Types
+type CompanyCamProject {
+  id: String!
+  name: String!
+  description: String
+  status: String!
+  address: CompanyCamAddress
+  startDate: String
+  endDate: String
+  tags: [String!]!
+  teamMembers: [CompanyCamUser!]!
+  photoCount: Int!
+  lastActivity: String!
+  customFields: JSON
+
+  # Photos
+  photos: [CompanyCamPhoto!]!
+
+  # Sync metadata
+  lastSyncedAt: String!
+  syncVersion: String!
+}
+
+type CompanyCamPhoto {
+  id: String!
+  projectId: String!
+  url: String!
+  thumbnailUrl: String
+  originalFileName: String!
+  fileSize: Int!
+  width: Int
+  height: Int
+  mimeType: String!
+  capturedAt: String!
+  uploadedAt: String!
+  description: String
+  tags: [String!]!
+  coordinates: CompanyCamCoordinates
+  deviceInfo: JSON
+  annotations: [CompanyCamAnnotation!]!
+
+  # User & Team
+  capturedBy: CompanyCamUser
+
+  # Sync metadata
+  lastSyncedAt: String!
+  syncVersion: String!
+}
+
+type CompanyCamUser {
+  id: String!
+  name: String!
+  email: String!
+  role: String!
+  isActive: Boolean!
+  lastSeen: String
+}
+
+type CompanyCamAddress {
+  formatted: String!
+  street: String
+  city: String
+  state: String
+  postalCode: String
+  country: String
+  coordinates: CompanyCamCoordinates
+}
+
+type CompanyCamCoordinates {
+  latitude: Float!
+  longitude: Float!
+  accuracy: Float
+  altitude: Float
+}
+
+type CompanyCamAnnotation {
+  id: String!
+  type: String!
+  coordinates: JSON!
+  text: String
+  color: String
+  createdBy: CompanyCamUser!
+  createdAt: String!
+}
+
+# Weather Service Types
+type WeatherForecast {
+  location: WeatherLocation!
+  current: WeatherData!
+  forecast: [WeatherData!]!
+  alerts: [WeatherAlert!]!
+  metadata: WeatherMetadata!
+}
+
+type WeatherData {
+  date: String!
+  temperature: Temperature!
+  humidity: Float!
+  windSpeed: Float!
+  windDirection: Float!
+  precipitation: Precipitation!
+  pressure: Float!
+  visibility: Float!
+  uvIndex: Float!
+  conditions: String!
+  description: String
+  sunrise: String
+  sunset: String
+}
+
+type Temperature {
+  current: Float!
+  min: Float!
+  max: Float!
+  feelsLike: Float!
+  unit: TemperatureUnit!
+}
+
+type Precipitation {
+  probability: Float!
+  amount: Float!
+  type: PrecipitationType!
+  unit: PrecipitationUnit!
+}
+
+type WeatherLocation {
+  name: String!
+  coordinates: WeatherCoordinates!
+  timezone: String!
+  elevation: Float
+}
+
+type WeatherCoordinates {
+  latitude: Float!
+  longitude: Float!
+}
+
+type WeatherAlert {
+  id: String!
+  title: String!
+  description: String!
+  severity: WeatherAlertSeverity!
+  startTime: String!
+  endTime: String!
+  areas: [String!]!
+}
+
+type WeatherMetadata {
+  provider: String!
+  lastUpdated: String!
+  source: String!
+  accuracy: Float!
+}
+
+# Geocoding Types
+type GeocodeResult {
+  address: String!
+  coordinates: GeoCoordinates!
+  components: AddressComponents!
+  accuracy: GeocodeAccuracy!
+  provider: String!
+}
+
+type ReverseGeocodeResult {
+  coordinates: GeoCoordinates!
+  address: String!
+  components: AddressComponents!
+  accuracy: GeocodeAccuracy!
+  provider: String!
+}
+
+type GeoCoordinates {
+  latitude: Float!
+  longitude: Float!
+}
+
+type AddressComponents {
+  streetNumber: String
+  streetName: String
+  city: String
+  state: String
+  postalCode: String
+  country: String
+  county: String
+  neighborhood: String
+}
+
+type GeocodeAccuracy {
+  level: AccuracyLevel!
+  meters: Float
+  confidence: Float!
+}
+
+# Sync & Audit Types
+type SyncResult {
+  id: ID!
+  service: IntegrationService!
+  entityType: String!
+  entityId: String!
+  status: SyncStatus!
+  startedAt: String!
+  completedAt: String
+  duration: Float
+  error: String
+  metadata: JSON
+  retryAttempt: Int!
+}
+
+type BulkSyncResult {
+  id: ID!
+  service: IntegrationService!
+  totalItems: Int!
+  processedItems: Int!
+  successfulItems: Int!
+  failedItems: Int!
+  status: BulkSyncStatus!
+  startedAt: String!
+  completedAt: String
+  duration: Float
+  errors: [BulkSyncError!]!
+  metadata: JSON
+}
+
+type BulkSyncError {
+  entityId: String!
+  error: String!
+  retryable: Boolean!
+  retryCount: Int!
+}
+
+type BulkSyncProgress {
+  operationId: ID!
+  totalItems: Int!
+  processedItems: Int!
+  currentPhase: String!
+  estimatedTimeRemaining: Float
+  throughput: Float! # items per second
+  errors: [String!]!
+}
+
+type SyncLog {
+  id: ID!
+  service: IntegrationService!
+  entityType: String!
+  entityId: String!
+  operation: SyncOperation!
+  status: SyncStatus!
+  startedAt: String!
+  completedAt: String
+  duration: Float
+  error: String
+  requestPayload: JSON
+  responsePayload: JSON
+  metadata: JSON
+}
+
+type AuditEntry {
+  id: ID!
+  entityType: String!
+  entityId: String!
+  operation: AuditOperation!
+  changes: JSON!
+  performedBy: String!
+  performedAt: String!
+  source: AuditSource!
+  metadata: JSON
+}
+
+type TokenRefreshResult {
+  service: IntegrationService!
+  success: Boolean!
+  newExpiresAt: String
+  error: String
+  refreshedAt: String!
+}
+
+# Input Types
+input CoordinatesInput {
+  latitude: Float!
+  longitude: Float!
+}
+
+input SalesforceAccountFilter {
+  type: String
+  industry: String
+  ownerId: String
+  modifiedAfter: String
+  modifiedBefore: String
+}
+
+input CompanyCamProjectFilter {
+  status: String
+  tags: [String!]
+  modifiedAfter: String
+  modifiedBefore: String
+}
+
+input CompanyCamPhotoFilter {
+  tags: [String!]
+  capturedAfter: String
+  capturedBefore: String
+  capturedBy: String
+}
+
+input CreateSalesforceOpportunityInput {
+  name: String!
+  accountId: String!
+  stage: String!
+  amount: Float
+  probability: Float
+  closeDate: String!
+  type: String
+  description: String
+  customFields: JSON
+}
+
+input UpdateSalesforceAccountInput {
+  name: String
+  type: String
+  industry: String
+  website: String
+  phone: String
+  billingAddress: SalesforceAddressInput
+  shippingAddress: SalesforceAddressInput
+  customFields: JSON
+}
+
+input SalesforceAddressInput {
+  street: String
+  city: String
+  state: String
+  postalCode: String
+  country: String
+}
+
+input CompanyCamUploadInput {
+  file: Upload!
+  description: String
+  tags: [String!]
+  coordinates: CoordinatesInput
+}
+
+input CreateCompanyCamProjectInput {
+  name: String!
+  description: String
+  address: CompanyCamAddressInput
+  startDate: String
+  endDate: String
+  tags: [String!]
+  teamMemberIds: [String!]
+}
+
+input CompanyCamAddressInput {
+  formatted: String!
+  coordinates: CoordinatesInput
+}
+
+input SalesforceSyncFilter {
+  objectType: String!
+  modifiedAfter: String
+  ownerId: String
+  limit: Int
+}
+
+input CompanyCamSyncFilter {
+  projectIds: [String!]
+  modifiedAfter: String
+  tags: [String!]
+  limit: Int
+}
+
+# Enums
+enum IntegrationService {
+  SALESFORCE
+  COMPANY_CAM
+  WEATHER_API
+  GEOCODING_API
+  EMAIL_SERVICE
+  SMS_SERVICE
+  PAYMENT_PROCESSOR
+  ACCOUNTING_SYSTEM
+}
+
+enum IntegrationStatus {
+  HEALTHY
+  DEGRADED
+  DOWN
+  MAINTENANCE
+  RATE_LIMITED
+  AUTHENTICATION_ERROR
+  CONFIGURATION_ERROR
+}
+
+enum SyncStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+  RETRYING
+}
+
+enum BulkSyncStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  PARTIALLY_COMPLETED
+  CANCELLED
+}
+
+enum SyncOperation {
+  CREATE
+  UPDATE
+  DELETE
+  SYNC
+  BULK_SYNC
+  WEBHOOK
+}
+
+enum AuditOperation {
+  CREATE
+  UPDATE
+  DELETE
+  SYNC
+  VIEW
+  EXPORT
+}
+
+enum AuditSource {
+  USER
+  SYSTEM
+  API
+  INTEGRATION
+  WEBHOOK
+  SCHEDULER
+}
+
+enum TemperatureUnit {
+  FAHRENHEIT
+  CELSIUS
+  KELVIN
+}
+
+enum PrecipitationType {
+  NONE
+  RAIN
+  SNOW
+  SLEET
+  HAIL
+  MIXED
+}
+
+enum PrecipitationUnit {
+  INCHES
+  MILLIMETERS
+}
+
+enum WeatherAlertSeverity {
+  MINOR
+  MODERATE
+  SEVERE
+  EXTREME
+}
+
+enum AccuracyLevel {
+  EXACT
+  INTERPOLATED
+  APPROXIMATE
+  UNKNOWN
+}
+
+scalar Upload
+scalar JSON

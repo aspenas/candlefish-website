@@ -1,0 +1,171 @@
+directive @contact(
+  "Contact title of the subgraph owner"
+  name: String!
+  "URL where the subgraph's owner can be reached"
+  url: String
+  "Other relevant notes can be included here; supports markdown links"
+  description: String
+) on SCHEMA
+
+extend schema
+  @contact(
+    name: "Paintbox Estimates Team"
+    url: "https://paintbox.candlefish.ai/support"
+    description: "Manages paint estimation calculations and pricing"
+  )
+  @link(
+    url: "https://specs.apollo.dev/federation/v2.3",
+    import: [
+      "@key", "@extends", "@shareable", "@inaccessible", "@override", "@external", "@provides", "@requires", "@tag",
+      "@composeDirective", "@interfaceObject"
+    ]
+  )
+
+type Query {
+  estimate(id: ID!): Estimate
+  estimates(filter: EstimateFilter, limit: Int = 10, offset: Int = 0): EstimateConnection!
+  calculatePricing(input: PricingInput!): PricingCalculation!
+}
+
+type Mutation {
+  createEstimate(input: CreateEstimateInput!): Estimate!
+  updateEstimate(id: ID!, input: UpdateEstimateInput!): Estimate!
+  deleteEstimate(id: ID!): Boolean!
+  generatePDF(estimateId: ID!): PDFResult!
+}
+
+type Subscription {
+  estimateUpdated(id: ID!): Estimate!
+  calculationProgress(estimateId: ID!): CalculationProgress!
+}
+
+type Estimate @key(fields: "id") {
+  id: ID!
+  customerId: ID!
+  projectId: ID
+
+  # Pricing tiers
+  goodPrice: Float!
+  betterPrice: Float!
+  bestPrice: Float!
+  selectedTier: PricingTier!
+
+  # Metadata
+  status: EstimateStatus!
+  createdAt: String!
+  updatedAt: String!
+  createdBy: String!
+
+  # Calculations
+  totalSquareFootage: Float!
+  laborHours: Float!
+  materialCost: Float!
+
+  # Documents
+  pdfUrl: String
+  notes: String
+}
+
+type EstimateConnection {
+  edges: [EstimateEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type EstimateEdge {
+  node: Estimate!
+  cursor: String!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+type PricingCalculation {
+  laborCost: Float!
+  materialCost: Float!
+  overheadCost: Float!
+  profitMargin: Float!
+  subtotal: Float!
+  tax: Float!
+  total: Float!
+}
+
+type PDFResult {
+  success: Boolean!
+  url: String
+  error: String
+}
+
+type CalculationProgress {
+  estimateId: ID!
+  stage: String!
+  progress: Float!
+  message: String
+  completed: Boolean!
+}
+
+# Input Types
+input CreateEstimateInput {
+  customerId: ID!
+  projectId: ID
+  notes: String
+}
+
+input UpdateEstimateInput {
+  selectedTier: PricingTier
+  status: EstimateStatus
+  notes: String
+}
+
+input EstimateFilter {
+  customerId: ID
+  projectId: ID
+  status: EstimateStatus
+  createdAfter: String
+  createdBefore: String
+}
+
+input PricingInput {
+  squareFootage: Float!
+  laborHours: Float!
+  materialType: MaterialType!
+  complexity: ComplexityLevel!
+}
+
+# Enums
+enum EstimateStatus {
+  DRAFT
+  IN_PROGRESS
+  REVIEW
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  ARCHIVED
+}
+
+enum PricingTier {
+  GOOD
+  BETTER
+  BEST
+}
+
+enum MaterialType {
+  ECONOMY
+  STANDARD
+  PREMIUM
+  LUXURY
+}
+
+enum ComplexityLevel {
+  SIMPLE
+  MODERATE
+  COMPLEX
+  HIGHLY_COMPLEX
+}
+
+scalar JSON
