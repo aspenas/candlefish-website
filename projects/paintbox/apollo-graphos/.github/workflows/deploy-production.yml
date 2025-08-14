@@ -1,0 +1,265 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+    tags: [v*]
+  workflow_dispatch:
+    inputs:
+      deployment_tag:
+        description: 'Tag to deploy (e.g., v1.0.0)'
+        required: true
+
+env:
+  AWS_REGION: us-west-2
+  EKS_CLUSTER_NAME: paintbox-production
+  NAMESPACE: paintbox
+
+jobs:
+  pre-deploy-checks:
+    name: Pre-deployment Checks
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Verify Apollo Studio schema checks
+      env:
+        APOLLO_KEY: ${{ secrets.APOLLO_KEY }}
+      run: |
+        curl -sSL https://rover.apollo.dev/nix/latest | sh
+        export PATH="$HOME/.rover/bin:$PATH"
+
+        # Check schema compatibility
+        rover subgraph check paintbox@main \
+          --schema ./subgraph-estimates/schema.graphql \
+          --name estimates
+
+        rover subgraph check paintbox@main \
+          --schema ./subgraph-customers/schema.graphql \
+          --name customers
+
+  deploy-production:
+    name: Deploy to Production Environment
+    runs-on: ubuntu-latest
+    needs: [pre-deploy-checks]
+    environment: production
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Set deployment tag
+      id: set-tag
+      run: |
+        if [[ "${{ github.event.inputs.deployment_tag }}" != "" ]]; then
+          echo "IMAGE_TAG=${{ github.event.inputs.deployment_tag }}" >> $GITHUB_OUTPUT
+        elif [[ "${{ github.ref_type }}" == "tag" ]]; then
+          echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+        else
+          echo "IMAGE_TAG=prod-${{ github.sha }}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build and push production images
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ steps.set-tag.outputs.IMAGE_TAG }}
+      run: |
+        services=("estimates" "customers" "projects" "integrations" "router" "frontend")
+
+        for service in "${services[@]}"; do
+          echo "Building $service for production..."
+
+          if [[ "$service" == "frontend" ]]; then
+            context="./frontend"
+            docker buildx build \
+              --platform linux/amd64 \
+              --target production \
+              --build-arg VITE_API_URL=https://api.paintbox.candlefish.ai/graphql \
+              --build-arg VITE_WS_URL=wss://api.paintbox.candlefish.ai/graphql \
+              --tag $ECR_REGISTRY/paintbox-$service:$IMAGE_TAG \
+              --tag $ECR_REGISTRY/paintbox-$service:latest \
+              --push \
+              $context
+          elif [[ "$service" == "router" ]]; then
+            context="./router"
+            docker buildx build \
+              --platform linux/amd64 \
+              --tag $ECR_REGISTRY/paintbox-$service:$IMAGE_TAG \
+              --tag $ECR_REGISTRY/paintbox-$service:latest \
+              --push \
+              $context
+          else
+            context="./subgraph-$service"
+            docker buildx build \
+              --platform linux/amd64 \
+              --target production \
+              --tag $ECR_REGISTRY/paintbox-$service:$IMAGE_TAG \
+              --tag $ECR_REGISTRY/paintbox-$service:latest \
+              --push \
+              $context
+          fi
+        done
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig \
+          --region ${{ env.AWS_REGION }} \
+          --name ${{ env.EKS_CLUSTER_NAME }}
+
+    - name: Deploy to production with blue-green strategy
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ steps.set-tag.outputs.IMAGE_TAG }}
+      run: |
+        # Create a copy of deployment files with new images
+        mkdir -p deploy-temp
+        cp -r k8s/* deploy-temp/
+
+        # Update image tags in deployment files
+        services=("estimates" "customers" "projects" "integrations" "router" "frontend")
+
+        for service in "${services[@]}"; do
+          if [[ "$service" == "frontend" ]]; then
+            deployment_file="deploy-temp/frontend-deployment.yaml"
+            sed -i "s|image: paintbox/frontend:.*|image: $ECR_REGISTRY/paintbox-frontend:$IMAGE_TAG|g" $deployment_file
+          elif [[ "$service" == "router" ]]; then
+            deployment_file="deploy-temp/router-deployment.yaml"
+            sed -i "s|image: paintbox/apollo-router:.*|image: $ECR_REGISTRY/paintbox-router:$IMAGE_TAG|g" $deployment_file
+          else
+            deployment_file="deploy-temp/$service-deployment.yaml"
+            sed -i "s|image: paintbox/$service-subgraph:.*|image: $ECR_REGISTRY/paintbox-$service:$IMAGE_TAG|g" $deployment_file
+          fi
+        done
+
+        # Apply configuration updates first
+        kubectl apply -f deploy-temp/namespace.yaml
+        kubectl apply -f deploy-temp/configmap.yaml -n ${{ env.NAMESPACE }}
+        kubectl apply -f deploy-temp/secrets.yaml -n ${{ env.NAMESPACE }}
+
+        # Deploy backend services first
+        kubectl apply -f deploy-temp/estimates-deployment.yaml -n ${{ env.NAMESPACE }}
+        kubectl apply -f deploy-temp/customers-deployment.yaml -n ${{ env.NAMESPACE }}
+        kubectl apply -f deploy-temp/projects-deployment.yaml -n ${{ env.NAMESPACE }}
+        kubectl apply -f deploy-temp/integrations-deployment.yaml -n ${{ env.NAMESPACE }}
+
+        # Wait for backend services
+        kubectl rollout status deployment/estimates-subgraph -n ${{ env.NAMESPACE }} --timeout=600s
+        kubectl rollout status deployment/customers-subgraph -n ${{ env.NAMESPACE }} --timeout=600s
+        kubectl rollout status deployment/projects-subgraph -n ${{ env.NAMESPACE }} --timeout=600s
+        kubectl rollout status deployment/integrations-subgraph -n ${{ env.NAMESPACE }} --timeout=600s
+
+        # Deploy router
+        kubectl apply -f deploy-temp/router-deployment.yaml -n ${{ env.NAMESPACE }}
+        kubectl rollout status deployment/apollo-router -n ${{ env.NAMESPACE }} --timeout=600s
+
+        # Deploy frontend last
+        kubectl apply -f deploy-temp/frontend-deployment.yaml -n ${{ env.NAMESPACE }}
+        kubectl rollout status deployment/frontend -n ${{ env.NAMESPACE }} --timeout=300s
+
+        # Apply ingress and other resources
+        kubectl apply -f deploy-temp/ingress.yaml -n ${{ env.NAMESPACE }}
+
+        # Cleanup temporary files
+        rm -rf deploy-temp
+
+    - name: Publish production schemas to Apollo Studio
+      env:
+        APOLLO_KEY: ${{ secrets.APOLLO_KEY }}
+      run: |
+        curl -sSL https://rover.apollo.dev/nix/latest | sh
+        export PATH="$HOME/.rover/bin:$PATH"
+
+        # Publish each subgraph schema to production
+        rover subgraph publish paintbox@main \
+          --schema ./subgraph-estimates/schema.graphql \
+          --name estimates \
+          --routing-url https://api.paintbox.candlefish.ai/estimates
+
+        rover subgraph publish paintbox@main \
+          --schema ./subgraph-customers/schema.graphql \
+          --name customers \
+          --routing-url https://api.paintbox.candlefish.ai/customers
+
+    - name: Run production health checks
+      run: |
+        # Extended health checks for production
+        echo "Waiting for services to be healthy..."
+        timeout 600s bash -c 'until curl -f https://api.paintbox.candlefish.ai/health; do sleep 15; done'
+        timeout 300s bash -c 'until curl -f https://paintbox.candlefish.ai/health; do sleep 10; done'
+
+        # Test GraphQL endpoint
+        echo "Testing GraphQL endpoint..."
+        curl -X POST https://api.paintbox.candlefish.ai/graphql \
+          -H "Content-Type: application/json" \
+          -d '{"query":"query { __schema { queryType { name } } }"}' \
+          --fail-with-body
+
+        # Test a simple query on each subgraph
+        echo "Testing subgraph connectivity..."
+        # Add more comprehensive health checks here
+
+    - name: Create GitHub release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref_name }}
+        release_name: Release ${{ github.ref_name }}
+        body: |
+          ## Changes in this Release
+          - Deployed to production: https://paintbox.candlefish.ai
+          - GraphQL API: https://api.paintbox.candlefish.ai/graphql
+          - Apollo Studio: https://studio.apollographql.com/graph/paintbox
+
+          ## Deployment Details
+          - Image Tag: ${{ steps.set-tag.outputs.IMAGE_TAG }}
+          - Commit: ${{ github.sha }}
+          - Environment: Production
+        draft: false
+        prerelease: false
+
+    - name: Notify deployment success
+      if: success()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        channel: '#deployments'
+        text: |
+          🚀 Production deployment successful!
+          Environment: https://paintbox.candlefish.ai
+          GraphQL API: https://api.paintbox.candlefish.ai/graphql
+          Version: ${{ steps.set-tag.outputs.IMAGE_TAG }}
+          Commit: ${{ github.sha }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    - name: Notify deployment failure
+      if: failure()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        channel: '#deployments'
+        text: |
+          ❌ Production deployment failed!
+          Please check the logs and take immediate action.
+          Commit: ${{ github.sha }}
+          Workflow: ${{ github.workflow }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

@@ -1,0 +1,18 @@
+federation_version: 2
+subgraphs:
+  customers:
+    routing_url: http://localhost:4003/
+    schema:
+      subgraph_url: http://localhost:4003/
+  projects:
+    routing_url: http://localhost:4004/
+    schema:
+      subgraph_url: http://localhost:4004/
+  estimates:
+    routing_url: http://localhost:4002/
+    schema:
+      subgraph_url: http://localhost:4002/
+  integrations:
+    routing_url: http://localhost:4005/
+    schema:
+      subgraph_url: http://localhost:4005/

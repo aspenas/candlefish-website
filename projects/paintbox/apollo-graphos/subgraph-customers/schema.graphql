@@ -1,0 +1,270 @@
+directive @contact(
+  "Contact title of the subgraph owner"
+  name: String!
+  "URL where the subgraph's owner can be reached"
+  url: String
+  "Other relevant notes can be included here; supports markdown links"
+  description: String
+) on SCHEMA
+
+extend schema
+  @contact(
+    name: "Paintbox Customer Success Team"
+    url: "https://paintbox.candlefish.ai/support"
+    description: "Manages customer data integration with Salesforce CRM"
+  )
+  @link(
+    url: "https://specs.apollo.dev/federation/v2.3",
+    import: [
+      "@key", "@extends", "@shareable", "@inaccessible", "@override", "@external", "@provides", "@requires", "@tag",
+      "@composeDirective", "@interfaceObject"
+    ]
+  )
+
+type Query {
+  customer(id: ID!): Customer
+  customers(filter: CustomerFilter, limit: Int = 20, offset: Int = 0): CustomerConnection!
+  searchCustomers(query: String!, limit: Int = 10): [Customer!]!
+}
+
+type Mutation {
+  createCustomer(input: CreateCustomerInput!): Customer!
+  updateCustomer(id: ID!, input: UpdateCustomerInput!): Customer!
+  syncCustomerFromSalesforce(salesforceId: String!): Customer!
+  bulkSyncCustomers(salesforceIds: [String!]!): BulkSyncResult!
+}
+
+type Subscription {
+  customerUpdated(id: ID!): Customer!
+  customerSyncStatus(id: ID!): SyncStatus!
+}
+
+# Federation Entity
+type Customer @key(fields: "id") {
+  id: ID!
+  salesforceId: String
+
+  # Basic Information
+  firstName: String!
+  lastName: String!
+  email: String!
+  phone: String
+  company: String
+
+  # Address Information
+  mailingAddress: Address
+  billingAddress: Address
+  serviceAddress: Address
+
+  # Business Information
+  accountType: AccountType!
+  leadSource: String
+  industry: String
+  website: String
+
+  # Financial Information
+  creditLimit: Float
+  paymentTerms: String
+  taxExempt: Boolean!
+
+  # Salesforce Specific
+  salesforceOwner: SalesforceUser
+  territory: String
+  accountNumber: String
+
+  # Metadata
+  status: CustomerStatus!
+  createdAt: String!
+  updatedAt: String!
+  lastSyncAt: String
+
+  # Relationships (Federation)
+  estimates: [Estimate!]! @external
+  projects: [Project!]! @external
+
+  # Computed Fields
+  totalEstimateValue: Float! @requires(fields: "estimates { goodPrice betterPrice bestPrice selectedTier }")
+  activeProjectsCount: Int! @requires(fields: "projects { status }")
+}
+
+# Address as embedded type
+type Address {
+  street: String
+  city: String
+  state: String
+  postalCode: String
+  country: String!
+  coordinates: Coordinates
+}
+
+type Coordinates {
+  latitude: Float!
+  longitude: Float!
+}
+
+# Salesforce Integration Types
+type SalesforceUser {
+  id: String!
+  name: String!
+  email: String!
+  territory: String
+}
+
+type SyncStatus {
+  customerId: ID!
+  status: SyncStatusType!
+  progress: Float!
+  message: String
+  lastSyncAt: String
+  nextSyncAt: String
+}
+
+type BulkSyncResult {
+  totalRequested: Int!
+  successful: Int!
+  failed: Int!
+  errors: [SyncError!]!
+  duration: Float!
+}
+
+type SyncError {
+  salesforceId: String!
+  error: String!
+  retryable: Boolean!
+}
+
+# Connection Types for Pagination
+type CustomerConnection {
+  edges: [CustomerEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type CustomerEdge {
+  node: Customer!
+  cursor: String!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+# Input Types
+input CreateCustomerInput {
+  firstName: String!
+  lastName: String!
+  email: String!
+  phone: String
+  company: String
+  mailingAddress: AddressInput
+  billingAddress: AddressInput
+  serviceAddress: AddressInput
+  accountType: AccountType!
+  leadSource: String
+  industry: String
+  website: String
+  salesforceId: String
+}
+
+input UpdateCustomerInput {
+  firstName: String
+  lastName: String
+  email: String
+  phone: String
+  company: String
+  mailingAddress: AddressInput
+  billingAddress: AddressInput
+  serviceAddress: AddressInput
+  accountType: AccountType
+  leadSource: String
+  industry: String
+  website: String
+  status: CustomerStatus
+  creditLimit: Float
+  paymentTerms: String
+  taxExempt: Boolean
+}
+
+input AddressInput {
+  street: String
+  city: String
+  state: String
+  postalCode: String
+  country: String!
+  latitude: Float
+  longitude: Float
+}
+
+input CustomerFilter {
+  status: CustomerStatus
+  accountType: AccountType
+  industry: String
+  territory: String
+  createdAfter: String
+  createdBefore: String
+  hasActiveProjects: Boolean
+  minCreditLimit: Float
+  maxCreditLimit: Float
+}
+
+# Enums
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  PROSPECT
+  QUALIFIED_LEAD
+  CONVERTED
+  CHURNED
+  SUSPENDED
+}
+
+enum AccountType {
+  RESIDENTIAL
+  COMMERCIAL
+  INDUSTRIAL
+  GOVERNMENT
+  NON_PROFIT
+}
+
+enum SyncStatusType {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  SCHEDULED
+}
+
+# External Types for Federation
+type Estimate @key(fields: "id") @extends {
+  id: ID! @external
+  customerId: ID! @external
+  goodPrice: Float! @external
+  betterPrice: Float! @external
+  bestPrice: Float! @external
+  selectedTier: PricingTier! @external
+}
+
+type Project @key(fields: "id") @extends {
+  id: ID! @external
+  customerId: ID! @external
+  status: ProjectStatus! @external
+}
+
+enum PricingTier {
+  GOOD
+  BETTER
+  BEST
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+scalar JSON

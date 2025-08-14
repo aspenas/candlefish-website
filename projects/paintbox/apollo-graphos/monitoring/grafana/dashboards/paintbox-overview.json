@@ -1,0 +1,154 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Paintbox - System Overview",
+    "tags": ["paintbox", "overview"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Service Health",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "up{job=~\"apollo-router|graphql-subgraphs\"}",
+            "legendFormat": "{{ job }} - {{ instance }}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"options": {"0": {"text": "DOWN", "color": "red"}},
+               "1": {"text": "UP", "color": "green"}}
+            ],
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Request Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 6, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(apollo_router_http_requests_total[5m])",
+            "legendFormat": "{{ method }} {{ endpoint }}"
+          }
+        ],
+        "yAxes": [
+          {"label": "Requests/sec", "min": 0},
+          {"show": false}
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Response Time P95",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(apollo_router_http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "P95 Response Time"
+          }
+        ],
+        "yAxes": [
+          {"label": "Seconds", "min": 0},
+          {"show": false}
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Error Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "rate(apollo_router_http_requests_total{status=~\"4..|5..\"}[5m]) / rate(apollo_router_http_requests_total[5m])",
+            "legendFormat": "Error Rate"
+          }
+        ],
+        "yAxes": [
+          {"label": "Error Rate", "min": 0, "max": 1},
+          {"show": false}
+        ]
+      },
+      {
+        "id": 5,
+        "title": "GraphQL Operations",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "rate(graphql_resolver_duration_seconds_count[5m])",
+            "legendFormat": "{{ resolver }}"
+          }
+        ],
+        "yAxes": [
+          {"label": "Operations/sec", "min": 0},
+          {"show": false}
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Database Connections",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "pg_stat_database_numbackends",
+            "legendFormat": "{{ datname }}"
+          }
+        ],
+        "yAxes": [
+          {"label": "Connections", "min": 0},
+          {"show": false}
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Redis Memory Usage",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 16},
+        "targets": [
+          {
+            "expr": "redis_memory_used_bytes / redis_memory_max_bytes",
+            "legendFormat": "Memory Usage %"
+          }
+        ],
+        "yAxes": [
+          {"label": "Usage %", "min": 0, "max": 1},
+          {"show": false}
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Pod CPU Usage",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 16},
+        "targets": [
+          {
+            "expr": "rate(container_cpu_usage_seconds_total{container!=\"\"}[5m]) * 100",
+            "legendFormat": "{{ pod }}"
+          }
+        ],
+        "yAxes": [
+          {"label": "CPU %", "min": 0},
+          {"show": false}
+        ]
+      }
+    ]
+  }
+}
