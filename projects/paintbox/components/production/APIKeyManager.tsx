@@ -110,7 +110,7 @@ export function APIKeyManager() {
     if (!confirm('Are you sure you want to rotate this API key? The old key will be invalidated.')) {
       return;
     }
-    
+
     try {
       setProcessing(`rotate-${keyId}`);
       const result = await rotateAPIKey(keyId);
@@ -126,7 +126,7 @@ export function APIKeyManager() {
     if (!confirm('Are you sure you want to revoke this API key? This action cannot be undone.')) {
       return;
     }
-    
+
     try {
       setProcessing(`revoke-${keyId}`);
       await revokeAPIKey(keyId);
@@ -687,7 +687,7 @@ export function APIKeyManager() {
             {(() => {
               const key = apiKeys.keys.find((k) => k.id === showUsageDialog);
               const usage = apiKeys.usage[showUsageDialog!] || [];
-              
+
               if (!key) return null;
 
               return (

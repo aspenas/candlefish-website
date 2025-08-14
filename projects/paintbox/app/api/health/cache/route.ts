@@ -5,22 +5,22 @@ export async function GET() {
   try {
     const startTime = Date.now();
     const cache = getCacheInstance();
-    
+
     // Test cache operations
     const testKey = `health:check:${Date.now()}`;
     const testValue = 'healthy';
-    
+
     // Set value
     await cache.set(testKey, testValue, 10);
-    
+
     // Get value
     const retrieved = await cache.get(testKey);
-    
+
     // Delete value
     await cache.delete(testKey);
-    
+
     const isHealthy = retrieved === testValue;
-    
+
     return NextResponse.json({
       status: isHealthy ? 'healthy' : 'unhealthy',
       service: 'cache',

@@ -61,21 +61,21 @@ jobs:
   database-setup:
     name: Database Setup & Migration
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || github.event.inputs.skip_tests != 'true'
-    
+    if: github.event_name != 'pull_request' && github.event.inputs.skip_tests != 'true'
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          
+
       - name: Install dependencies
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: npm ci --prefer-offline --no-audit
-        
+
       - name: Run database migrations
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
@@ -83,17 +83,16 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           NODE_ENV: test
-          
+
       - name: Verify database connection
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
           npx ts-node -e "import { createConnection } from './lib/database/connection-pool'; createConnection().then(() => console.log('✅ Database connected')).catch(e => { console.error(e); process.exit(1); })"
-  
+
   # Quality Assurance Pipeline
   test:
     name: Quality Assurance
     runs-on: ubuntu-latest
-    needs: database-setup
     if: (github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/paintbox-github-actions'))) && github.event.inputs.skip_tests != 'true'
 
     strategy:
@@ -117,7 +116,7 @@ jobs:
       - name: Install dependencies
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: npm ci --prefer-offline --no-audit
-        
+
       - name: Setup test environment
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
@@ -178,14 +177,13 @@ jobs:
           path: |
             ${{ env.WORKING_DIRECTORY }}/coverage/
             ${{ env.WORKING_DIRECTORY }}/test-results/
-  
+
   # Temporal Workflow Tests
   temporal-tests:
     name: Temporal Workflow Tests
     runs-on: ubuntu-latest
-    needs: database-setup
     if: github.event.inputs.skip_tests != 'true'
-    
+
     services:
       temporal:
         image: temporalio/auto-setup:latest
@@ -193,21 +191,21 @@ jobs:
           - 7233:7233
         env:
           TEMPORAL_BROADCAST_ADDRESS: 0.0.0.0
-          
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          
+
       - name: Install dependencies
         run: |
           cd services/temporal
           npm ci --prefer-offline --no-audit
-          
+
       - name: Test Temporal workflows
         run: |
           cd services/temporal
@@ -215,13 +213,13 @@ jobs:
         env:
           TEMPORAL_ADDRESS: localhost:7233
           NODE_ENV: test
-  
+
   # Build and Optimization
   build:
     name: Build & Optimize
     runs-on: ubuntu-latest
-    needs: [test, temporal-tests]
-    if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped') && (needs.temporal-tests.result == 'success' || needs.temporal-tests.result == 'skipped')
+    needs: [test]
+    if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')
 
     outputs:
       build-hash: ${{ steps.build-info.outputs.hash }}
@@ -291,7 +289,7 @@ jobs:
             -f Dockerfile.fly.simple .
           echo "image-tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
           echo "Docker image built: ${IMAGE_TAG}"
-          
+
       - name: Run container health check
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
@@ -384,14 +382,14 @@ jobs:
               sleep 15
             fi
           done
-          
+
           # Check agent API health
           curl -f https://paintbox-app.fly.dev/api/v1/agent/health || exit 1
-          
+
           # Check database connectivity
           curl -f https://paintbox-app.fly.dev/api/health/database || exit 1
-          
-          # Check Redis connectivity  
+
+          # Check Redis connectivity
           curl -f https://paintbox-app.fly.dev/api/health/cache || exit 1
 
       - name: Run smoke tests
@@ -400,18 +398,18 @@ jobs:
           # Test critical endpoints
           curl -f https://paintbox-app.fly.dev || exit 1
           curl -f https://paintbox-app.fly.dev/api/health || exit 1
-          
+
           # Test API endpoints
           curl -X OPTIONS https://paintbox-app.fly.dev/api/v1/agent \
             -H "Origin: https://paintbox.app" \
             -I || exit 1
-          
+
           # Test Salesforce integration endpoint
           curl -f https://paintbox-app.fly.dev/api/v1/salesforce/health || exit 1
-          
+
           # Test Company Cam integration endpoint
           curl -f https://paintbox-app.fly.dev/api/v1/companycam/health || exit 1
-          
+
           echo "Smoke tests passed"
 
   # Deploy to Staging (Vercel)
@@ -482,27 +480,27 @@ jobs:
               - Offline mode
               - Agent Platform integration`
             })
-  
+
   # Integration Tests (Post-Deploy)
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
     needs: [deploy-staging-fly]
     if: always() && needs.deploy-staging-fly.result == 'success'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          
+
       - name: Install dependencies
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: npm ci --prefer-offline --no-audit
-        
+
       - name: Run integration tests against staging
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
@@ -646,18 +644,18 @@ jobs:
         with:
           name: lighthouse-results
           path: ${{ env.WORKING_DIRECTORY }}/.lighthouseci/
-  
+
   # Security Scan
   security-scan:
     name: Security Vulnerability Scan
     runs-on: ubuntu-latest
     needs: [build]
     if: github.ref == 'refs/heads/main'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
@@ -665,12 +663,12 @@ jobs:
           scan-ref: '${{ env.WORKING_DIRECTORY }}'
           format: 'sarif'
           output: 'trivy-results.sarif'
-          
+
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results.sarif'
-          
+
       - name: Run npm audit
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
@@ -710,14 +708,14 @@ jobs:
               });
               console.log(`Deleted artifact: ${artifact.name}`);
             }
-  
+
   # Notification
   notify:
     name: Send Deployment Notification
     runs-on: ubuntu-latest
     needs: [deploy-production]
     if: always()
-    
+
     steps:
       - name: Send success notification
         if: needs.deploy-production.result == 'success'
@@ -726,16 +724,16 @@ jobs:
           script: |
             const summary = `
             ## ✅ Paintbox Deployment Successful!
-            
+
             **Environment:** Production
             **Version:** \`${{ github.sha }}\`
             **URL:** https://paintbox.vercel.app
-            
+
             ### Deployment Metrics:
             - Bundle Size: ${{ needs.build.outputs.bundle-size }}
             - Build Hash: ${{ needs.build.outputs.build-hash }}
             - Deploy Time: ${new Date().toISOString()}
-            
+
             ### Features Deployed:
             - Excel Engine: ✅
             - Salesforce Integration: ✅
@@ -744,14 +742,14 @@ jobs:
             - Database Migrations: ✅
             - Temporal Workflows: ✅
             `;
-            
+
             await github.rest.repos.createCommitComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               commit_sha: context.sha,
               body: summary
             });
-            
+
       - name: Send failure notification
         if: needs.deploy-production.result == 'failure'
         uses: actions/github-script@v7
@@ -762,11 +760,11 @@ jobs:
               repo: context.repo.repo,
               title: `🚨 Paintbox Production Deployment Failed - ${new Date().toLocaleDateString()}`,
               body: `Production deployment failed for commit ${{ github.sha }}.
-              
+
               **Workflow Run:** [View Details](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
               **Commit:** ${{ github.sha }}
               **Author:** ${{ github.actor }}
-              
+
               Please investigate immediately.`,
               labels: ['deployment', 'production', 'urgent', 'paintbox']
             })

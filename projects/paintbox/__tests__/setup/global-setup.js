@@ -53,7 +53,7 @@ function setupMockServices() {
 
   // Store original values for cleanup
   global.__ORIGINAL_ENV__ = {};
-  
+
   Object.entries(mockServices).forEach(([service, url]) => {
     const envVar = `${service.toUpperCase()}_URL`;
     global.__ORIGINAL_ENV__[envVar] = process.env[envVar];
@@ -67,10 +67,10 @@ function setupMockServices() {
 global.testUtils = {
   // Generate unique test IDs
   generateTestId: () => `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-  
+
   // Wait for async operations
   waitFor: (ms) => new Promise(resolve => setTimeout(resolve, ms)),
-  
+
   // Mock date for consistent testing
   mockDate: (dateString) => {
     const mockDate = new Date(dateString);
@@ -78,12 +78,12 @@ global.testUtils = {
     global.Date.now = jest.fn(() => mockDate.getTime());
     return mockDate;
   },
-  
+
   // Restore real date
   restoreDate: () => {
     global.Date = Date;
   },
-  
+
   // Create mock fetch responses
   createMockResponse: (data, status = 200, headers = {}) => ({
     ok: status >= 200 && status < 300,

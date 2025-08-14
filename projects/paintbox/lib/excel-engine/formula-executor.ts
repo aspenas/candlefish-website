@@ -360,7 +360,7 @@ export class FormulaExecutor {
     // String comparison
     const leftStr = String(left).toLowerCase();
     const rightStr = String(right).toLowerCase();
-    
+
     if (leftStr < rightStr) return -1;
     if (leftStr > rightStr) return 1;
     return 0;

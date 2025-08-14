@@ -6,16 +6,16 @@ export async function GET() {
   try {
     const token = await getCompanyCamToken();
     const isConfigured = Boolean(token);
-    
+
     let apiHealthy = false;
-    
+
     if (isConfigured) {
       const healthCheck = await companyCamApi.healthCheck();
       apiHealthy = healthCheck.status === 'online';
     }
-    
+
     const status = isConfigured && apiHealthy ? 'healthy' : isConfigured ? 'degraded' : 'unconfigured';
-    
+
     return NextResponse.json({
       status,
       service: 'companycam',

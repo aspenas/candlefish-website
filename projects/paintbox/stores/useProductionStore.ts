@@ -339,7 +339,7 @@ export const useProductionStore = create<ProductionStoreState>()(
           params.append('from', timeRange.from);
           params.append('to', timeRange.to);
         }
-        
+
         const response = await fetch(`/api/v1/monitoring/metrics?${params}`);
         const data = await response.json();
         if (data.success) {

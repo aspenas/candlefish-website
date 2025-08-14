@@ -44,7 +44,7 @@ is_enterprise() {
 setup_enterprise_auth() {
     if is_enterprise; then
         echo -e "${YELLOW}Setting up Enterprise authentication...${NC}"
-        
+
         # Check if already authenticated to enterprise
         if gh auth status --hostname "$ENTERPRISE_URL" 2>/dev/null; then
             echo -e "${GREEN}✓ Already authenticated to $ENTERPRISE_URL${NC}"
@@ -60,22 +60,22 @@ setup_enterprise_auth() {
 migrate_via_push() {
     local repo=$1
     local temp_dir="/tmp/migrate-$repo-$$"
-    
+
     echo -e "\n${YELLOW}Migrating $repo via clone/push method${NC}"
-    
+
     # Clone from source
     echo "  Cloning from $SOURCE_USER/$repo..."
     git clone --mirror "https://github.com/$SOURCE_USER/$repo.git" "$temp_dir"
-    
+
     cd "$temp_dir"
-    
+
     # Update remote
     if is_enterprise; then
         git remote set-url origin "https://$ENTERPRISE_URL/$TARGET_ORG/$repo.git"
     else
         git remote set-url origin "https://github.com/$TARGET_ORG/$repo.git"
     fi
-    
+
     # Create repo in target org
     echo "  Creating repository in $TARGET_ORG..."
     if is_enterprise; then
@@ -83,15 +83,15 @@ migrate_via_push() {
     else
         gh repo create "$TARGET_ORG/$repo" --private 2>/dev/null || true
     fi
-    
+
     # Push all refs
     echo "  Pushing to $TARGET_ORG/$repo..."
     git push --mirror
-    
+
     # Cleanup
     cd /
     rm -rf "$temp_dir"
-    
+
     echo -e "${GREEN}✓ Successfully migrated $repo${NC}"
 }
 
@@ -99,17 +99,17 @@ migrate_via_push() {
 update_local_remote() {
     local repo=$1
     local local_path=$2
-    
+
     if [ -d "$local_path/.git" ]; then
         echo -e "  Updating remote for $local_path"
         cd "$local_path"
-        
+
         if is_enterprise; then
             git remote set-url origin "https://$ENTERPRISE_URL/$TARGET_ORG/$repo.git"
         else
             git remote set-url origin "https://github.com/$TARGET_ORG/$repo.git"
         fi
-        
+
         echo -e "${GREEN}  ✓ Updated remote URL${NC}"
     fi
 }

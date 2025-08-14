@@ -5,11 +5,11 @@ export async function GET() {
   try {
     let credsPresent = false;
     let connectionHealthy = false;
-    
+
     try {
       const creds = await getSalesforceCredentials();
       credsPresent = Boolean(creds.clientId && creds.clientSecret && creds.username);
-      
+
       if (credsPresent) {
         // Basic check - in production you might want to actually test a connection
         connectionHealthy = true;
@@ -17,9 +17,9 @@ export async function GET() {
     } catch (error) {
       console.error('Salesforce credentials check failed:', error);
     }
-    
+
     const status = credsPresent && connectionHealthy ? 'healthy' : credsPresent ? 'degraded' : 'unconfigured';
-    
+
     return NextResponse.json({
       status,
       service: 'salesforce',

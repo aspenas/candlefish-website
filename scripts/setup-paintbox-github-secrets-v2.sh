@@ -21,7 +21,7 @@ OWNER="patricksmith" # Update if different
 get_aws_secret() {
     local secret_name=$1
     local json_key=$2
-    
+
     if [ -z "$json_key" ]; then
         # Plain text secret
         aws secretsmanager get-secret-value \
@@ -41,12 +41,12 @@ get_aws_secret() {
 set_github_secret() {
     local name=$1
     local value=$2
-    
+
     if [ -z "$value" ] || [ "$value" == "null" ]; then
         echo -e "${YELLOW}⚠️  Skipping $name (no value found)${NC}"
         return
     fi
-    
+
     echo "$value" | gh secret set "$name" --repo "$OWNER/$REPO" 2>/dev/null
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ Set $name${NC}"
@@ -64,13 +64,13 @@ PAINTBOX_SECRETS=$(aws secretsmanager get-secret-value --secret-id "paintbox/sec
 # Parse Paintbox secrets if they exist
 if [ "$PAINTBOX_SECRETS" != "{}" ] && [ -n "$PAINTBOX_SECRETS" ]; then
     echo -e "${GREEN}Found Paintbox secrets bundle${NC}"
-    
+
     # Extract individual secrets
     DATABASE_URL=$(echo "$PAINTBOX_SECRETS" | jq -r '.DATABASE_URL // empty')
     REDIS_URL=$(echo "$PAINTBOX_SECRETS" | jq -r '.REDIS_URL // empty')
     JWT_SECRET=$(echo "$PAINTBOX_SECRETS" | jq -r '.JWT_SECRET // empty')
     NEXTAUTH_SECRET=$(echo "$PAINTBOX_SECRETS" | jq -r '.NEXTAUTH_SECRET // empty')
-    
+
     set_github_secret "DATABASE_URL" "$DATABASE_URL"
     set_github_secret "REDIS_URL" "$REDIS_URL"
     set_github_secret "JWT_SECRET" "$JWT_SECRET"
@@ -86,7 +86,7 @@ VERCEL_CONFIG=$(aws secretsmanager get-secret-value --secret-id "mcp/vercel-conf
 if [ "$VERCEL_CONFIG" != "{}" ]; then
     VERCEL_ORG_ID=$(echo "$VERCEL_CONFIG" | jq -r '.orgId // empty')
     VERCEL_PROJECT_ID=$(echo "$VERCEL_CONFIG" | jq -r '.projectId // empty')
-    
+
     set_github_secret "VERCEL_TOKEN" "$VERCEL_TOKEN"
     set_github_secret "VERCEL_ORG_ID" "$VERCEL_ORG_ID"
     set_github_secret "VERCEL_PROJECT_ID_PAINTBOX" "$VERCEL_PROJECT_ID"
@@ -117,7 +117,7 @@ if [ "$SF_SANDBOX" != "{}" ]; then
     SF_PASSWORD=$(echo "$SF_SANDBOX" | jq -r '.password // empty')
     SF_SECURITY_TOKEN=$(echo "$SF_SANDBOX" | jq -r '.security_token // empty')
     SF_INSTANCE_URL=$(echo "$SF_SANDBOX" | jq -r '.instance_url // empty')
-    
+
     set_github_secret "SALESFORCE_USERNAME" "$SF_USERNAME"
     set_github_secret "SALESFORCE_PASSWORD" "$SF_PASSWORD"
     set_github_secret "SALESFORCE_SECURITY_TOKEN" "$SF_SECURITY_TOKEN"
@@ -130,7 +130,7 @@ SF_APP=$(aws secretsmanager get-secret-value --secret-id "paintbox/salesforce/co
 if [ "$SF_APP" != "{}" ]; then
     SF_CLIENT_ID=$(echo "$SF_APP" | jq -r '.client_id // empty')
     SF_CLIENT_SECRET=$(echo "$SF_APP" | jq -r '.client_secret // empty')
-    
+
     set_github_secret "SALESFORCE_CLIENT_ID" "$SF_CLIENT_ID"
     set_github_secret "SALESFORCE_CLIENT_SECRET" "$SF_CLIENT_SECRET"
 fi
@@ -147,7 +147,7 @@ if [ -z "$REDIS_URL" ]; then
     # Upstash Redis
     UPSTASH_URL=$(get_aws_secret "candlefish/upstash-redis-rest-url")
     UPSTASH_TOKEN=$(get_aws_secret "candlefish/upstash-redis-rest-token")
-    
+
     if [ -n "$UPSTASH_URL" ] && [ -n "$UPSTASH_TOKEN" ]; then
         # Create Redis URL from Upstash credentials
         REDIS_URL="redis://:${UPSTASH_TOKEN}@${UPSTASH_URL#https://}"

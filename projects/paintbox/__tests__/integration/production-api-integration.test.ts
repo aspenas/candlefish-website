@@ -52,7 +52,7 @@ describe('Production API Integration Tests', () => {
 
       // Step 2: Test the connection
       prismaMock.temporalConnection.findUnique.mockResolvedValue(createdConnection);
-      
+
       const testRequest = new NextRequest(`http://localhost:3000/api/v1/temporal/connections/${createdConnection.id}/test`);
       const { GET: GET_TEST } = await import('@/app/api/v1/temporal/connections/[id]/test/route');
       const testResponse = await GET_TEST(testRequest, { params: { id: createdConnection.id } });
@@ -164,7 +164,7 @@ describe('Production API Integration Tests', () => {
       expect(createData.data.permissions).toEqual(keyData.permissions);
 
       // Step 2: Use the API key to make requests
-      const usageData = Array.from({ length: 5 }, () => 
+      const usageData = Array.from({ length: 5 }, () =>
         ProductionTestFactory.createAPIKeyUsage()
       );
       prismaMock.apiKeyUsage.findMany.mockResolvedValue(usageData);
@@ -257,7 +257,7 @@ describe('Production API Integration Tests', () => {
   describe('Monitoring and Alerting Workflow', () => {
     it('should handle metric ingestion, alert creation, and notification flow', async () => {
       // Step 1: Ingest metrics
-      const metrics = Array.from({ length: 10 }, () => 
+      const metrics = Array.from({ length: 10 }, () =>
         ProductionTestFactory.createMonitoringMetric()
       );
 
@@ -589,10 +589,10 @@ describe('Production API Integration Tests', () => {
       expect(startScanData.data.status).toBe('running');
 
       // Step 3: Complete scan with results
-      const vulnerabilities = Array.from({ length: 5 }, () => 
+      const vulnerabilities = Array.from({ length: 5 }, () =>
         ProductionTestFactory.createVulnerability()
       );
-      
+
       const completedScan = ProductionTestFactory.createSecurityScan({
         ...createdScan,
         status: 'completed',
@@ -734,7 +734,7 @@ describe('Production API Integration Tests', () => {
     it('should handle security scan triggered by API key usage anomalies', async () => {
       // Create API key with suspicious usage
       const apiKey = ProductionTestFactory.createAPIKey();
-      const suspiciousUsage = Array.from({ length: 10 }, () => 
+      const suspiciousUsage = Array.from({ length: 10 }, () =>
         ProductionTestFactory.createAPIKeyUsage({
           errors: 100, // High error rate
           endpoints: {
@@ -779,7 +779,7 @@ describe('Production API Integration Tests', () => {
       prismaMock.temporalWorkflow.findMany.mockResolvedValue([workflow]);
 
       // Create metrics for workflow execution
-      const workflowMetrics = Array.from({ length: 5 }, () => 
+      const workflowMetrics = Array.from({ length: 5 }, () =>
         ProductionTestFactory.createMonitoringMetric({
           name: 'workflow_execution_time',
           tags: {

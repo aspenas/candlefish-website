@@ -108,7 +108,7 @@ function MetricChart({ metric, title, unit = '', color = '#3B82F6' }: MetricChar
     metric.forEach((point, index) => {
       const x = padding + (chartWidth * index) / (metric.length - 1);
       const y = padding + chartHeight - ((point.value - minValue) / range) * chartHeight;
-      
+
       if (index === 0) {
         ctx.moveTo(x, y);
       } else {
@@ -123,7 +123,7 @@ function MetricChart({ metric, title, unit = '', color = '#3B82F6' }: MetricChar
     metric.forEach((point, index) => {
       const x = padding + (chartWidth * index) / (metric.length - 1);
       const y = padding + chartHeight - ((point.value - minValue) / range) * chartHeight;
-      
+
       ctx.beginPath();
       ctx.arc(x, y, 3, 0, 2 * Math.PI);
       ctx.fill();
@@ -133,7 +133,7 @@ function MetricChart({ metric, title, unit = '', color = '#3B82F6' }: MetricChar
     ctx.fillStyle = '#6B7280';
     ctx.font = '12px sans-serif';
     ctx.textAlign = 'center';
-    
+
     // Y-axis labels
     for (let i = 0; i <= 4; i++) {
       const value = minValue + (range * (4 - i)) / 4;

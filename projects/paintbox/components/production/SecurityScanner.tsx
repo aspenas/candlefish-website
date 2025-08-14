@@ -194,10 +194,10 @@ export function SecurityScanner() {
     const matchesSeverity = vulnerabilityFilter.severity === 'all' || vuln.severity === vulnerabilityFilter.severity;
     const matchesStatus = vulnerabilityFilter.status === 'all' || vuln.status === vulnerabilityFilter.status;
     const matchesCategory = vulnerabilityFilter.category === 'all' || vuln.category === vulnerabilityFilter.category;
-    const matchesSearch = !vulnerabilityFilter.search || 
+    const matchesSearch = !vulnerabilityFilter.search ||
       vuln.title.toLowerCase().includes(vulnerabilityFilter.search.toLowerCase()) ||
       vuln.description.toLowerCase().includes(vulnerabilityFilter.search.toLowerCase());
-    
+
     return matchesSeverity && matchesStatus && matchesCategory && matchesSearch;
   });
 
@@ -215,7 +215,7 @@ export function SecurityScanner() {
     const start = new Date(startTime);
     const end = endTime ? new Date(endTime) : new Date();
     const duration = Math.floor((end.getTime() - start.getTime()) / 1000);
-    
+
     if (duration < 60) return `${duration}s`;
     if (duration < 3600) return `${Math.floor(duration / 60)}m`;
     return `${Math.floor(duration / 3600)}h ${Math.floor((duration % 3600) / 60)}m`;

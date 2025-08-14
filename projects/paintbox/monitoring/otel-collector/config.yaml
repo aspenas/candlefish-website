@@ -180,7 +180,7 @@ processors:
         metric_names:
           - ".*grpc_io.*"
           - ".*_bucket"
-        
+
   # Transform processor for metric normalization
   transform:
     metric_statements:
@@ -275,7 +275,7 @@ extensions:
 
 service:
   extensions: [health_check, memory_ballast, pprof, zpages]
-  
+
   pipelines:
     # Metrics pipeline
     metrics:
@@ -307,10 +307,10 @@ service:
       initial_fields:
         service: "otel-collector"
         version: "0.89.0"
-    
+
     metrics:
       level: "detailed"
       address: "0.0.0.0:8888"
-      
+
     traces:
       processors: [batch]

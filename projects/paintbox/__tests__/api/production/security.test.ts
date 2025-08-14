@@ -81,7 +81,7 @@ describe('/api/v1/security', () => {
     });
 
     it('should filter scans by type and status', async () => {
-      const vulnerabilityScans = mockScans.filter(scan => 
+      const vulnerabilityScans = mockScans.filter(scan =>
         scan.type === 'vulnerability' && scan.status === 'completed'
       );
       const mockPrisma = require('@/lib/db/prisma');
@@ -546,7 +546,7 @@ describe('/api/v1/security', () => {
     it('should log vulnerability status changes for audit', async () => {
       const vulnerability = mockVulnerabilities[0];
       const mockPrisma = require('@/lib/db/prisma');
-      
+
       mockPrisma.vulnerability.findUnique.mockResolvedValue(vulnerability);
       mockPrisma.vulnerability.update.mockResolvedValue(vulnerability);
       mockPrisma.auditLog.create = jest.fn();
@@ -727,10 +727,10 @@ describe('/api/v1/security', () => {
     });
 
     it('should enforce scan concurrency limits', async () => {
-      const runningScans = Array.from({ length: 10 }, () => 
+      const runningScans = Array.from({ length: 10 }, () =>
         ProductionTestFactory.createSecurityScan({ status: 'running' })
       );
-      
+
       const mockPrisma = require('@/lib/db/prisma');
       mockPrisma.securityScan.count.mockResolvedValue(10); // Max concurrent scans
 
@@ -759,10 +759,10 @@ describe('/api/v1/security', () => {
 
   describe('Performance and Scalability', () => {
     it('should handle large vulnerability datasets efficiently', async () => {
-      const largeVulnerabilityDataset = Array.from({ length: 10000 }, () => 
+      const largeVulnerabilityDataset = Array.from({ length: 10000 }, () =>
         ProductionTestFactory.createVulnerability()
       );
-      
+
       const mockPrisma = require('@/lib/db/prisma');
       mockPrisma.vulnerability.findMany.mockResolvedValue(largeVulnerabilityDataset.slice(0, 100));
       mockPrisma.vulnerability.count.mockResolvedValue(10000);
@@ -808,10 +808,10 @@ describe('/api/v1/security', () => {
     });
 
     it('should efficiently process vulnerability updates', async () => {
-      const vulnerabilities = Array.from({ length: 50 }, () => 
+      const vulnerabilities = Array.from({ length: 50 }, () =>
         ProductionTestFactory.createVulnerability()
       );
-      
+
       const updateRequests = vulnerabilities.map(vuln =>
         new NextRequest(`http://localhost:3000/api/v1/security/vulnerabilities/${vuln.id}`, {
           method: 'PUT',
@@ -835,7 +835,7 @@ describe('/api/v1/security', () => {
 
       const startTime = Date.now();
       const responses = await Promise.all(
-        updateRequests.map((req, index) => 
+        updateRequests.map((req, index) =>
           UPDATE_VULNERABILITY(req, { params: { id: vulnerabilities[index].id } })
         )
       );

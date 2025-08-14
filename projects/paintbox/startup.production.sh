@@ -47,7 +47,7 @@ handle_error() {
 # Cleanup function
 cleanup() {
     log_info "Performing cleanup..."
-    
+
     # Kill background processes if any
     if [ -n "$WS_PID" ] && kill -0 "$WS_PID" 2>/dev/null; then
         log_info "Stopping WebSocket server (PID: $WS_PID)"
@@ -55,7 +55,7 @@ cleanup() {
         sleep 2
         kill -KILL "$WS_PID" 2>/dev/null || true
     fi
-    
+
     log_info "Cleanup completed"
 }
 
@@ -66,36 +66,36 @@ trap 'log_warning "Received SIGINT, initiating graceful shutdown..."; cleanup; e
 # Validation checks
 validate_environment() {
     log_info "Validating environment configuration"
-    
+
     # Check required files
     if [ ! -f "/app/server.js" ]; then
         handle_error "server.js not found in /app"
     fi
-    
+
     if [ ! -f "/app/package.json" ]; then
         handle_error "package.json not found in /app"
     fi
-    
+
     # Check environment variables
     if [ -z "$DATABASE_URL" ]; then
         log_warning "DATABASE_URL not set, database operations may fail"
     fi
-    
+
     if [ -z "$REDIS_URL" ]; then
         log_warning "REDIS_URL not set, caching will be disabled"
     fi
-    
+
     if [ -z "$NEXTAUTH_SECRET" ]; then
         log_warning "NEXTAUTH_SECRET not set, authentication may not work properly"
     fi
-    
+
     log_success "Environment validation completed"
 }
 
 # Database connectivity check
 check_database_connection() {
     log_info "Checking database connectivity"
-    
+
     if [ -n "$DATABASE_URL" ]; then
         # Simple connection test using Node.js
         node -e "
@@ -111,7 +111,7 @@ check_database_connection() {
             process.exit(1);
           });
         " || handle_error "Database connection failed"
-        
+
         log_success "Database connectivity verified"
     else
         log_warning "Skipping database check (DATABASE_URL not set)"
@@ -121,7 +121,7 @@ check_database_connection() {
 # Redis connectivity check
 check_redis_connection() {
     log_info "Checking Redis connectivity"
-    
+
     if [ -n "$REDIS_URL" ]; then
         # Simple Redis connection test
         node -e "
@@ -141,7 +141,7 @@ check_redis_connection() {
             process.exit(1);
           });
         " || log_warning "Redis connection failed, continuing without cache"
-        
+
         log_success "Redis connectivity verified"
     else
         log_warning "Skipping Redis check (REDIS_URL not set)"
@@ -151,7 +151,7 @@ check_redis_connection() {
 # Database migrations
 run_database_migrations() {
     log_info "Running database migrations"
-    
+
     if [ -f "/app/prisma/schema.prisma" ] && [ -n "$DATABASE_URL" ]; then
         # Run Prisma migrations
         if command -v npx > /dev/null 2>&1; then
@@ -169,10 +169,10 @@ run_database_migrations() {
 # Cache warmup
 warm_cache() {
     log_info "Starting cache warmup"
-    
+
     # Give the application a moment to start
     sleep 5
-    
+
     # Warm up critical endpoints
     if command -v curl > /dev/null 2>&1; then
         curl -s "http://localhost:${APP_PORT}/api/health" > /dev/null || log_warning "Cache warmup failed for health endpoint"
@@ -189,10 +189,10 @@ start_websocket_server() {
         node /app/dist/websocket-server.js &
         WS_PID=$!
         log_success "WebSocket server started with PID: $WS_PID"
-        
+
         # Give WebSocket server time to initialize
         sleep 2
-        
+
         # Verify WebSocket server is running
         if ! kill -0 "$WS_PID" 2>/dev/null; then
             log_warning "WebSocket server failed to start"
@@ -206,10 +206,10 @@ start_websocket_server() {
 # Health check during startup
 startup_health_check() {
     log_info "Performing startup health check"
-    
+
     local max_attempts=30
     local attempt=1
-    
+
     while [ $attempt -le $max_attempts ]; do
         if command -v curl > /dev/null 2>&1; then
             if curl -f -s "http://localhost:${APP_PORT}/api/health" > /dev/null 2>&1; then
@@ -217,12 +217,12 @@ startup_health_check() {
                 return 0
             fi
         fi
-        
+
         log_info "Waiting for application to be ready... (attempt $attempt/$max_attempts)"
         sleep 2
         attempt=$((attempt + 1))
     done
-    
+
     log_warning "Application health check timeout, proceeding anyway"
 }
 
@@ -232,39 +232,39 @@ main() {
     log_info "Environment: $NODE_ENV"
     log_info "Port: $APP_PORT"
     log_info "Log Level: $LOG_LEVEL"
-    
+
     # Pre-startup checks
     validate_environment
     check_database_connection
     check_redis_connection
-    
+
     # Database setup
     run_database_migrations
-    
+
     # Start auxiliary services
     start_websocket_server
-    
+
     # Start main application
     log_info "Starting main Next.js application"
-    
+
     # Start the application in the background to allow health checks
     node server.js &
     MAIN_PID=$!
-    
+
     log_success "Main application started with PID: $MAIN_PID"
-    
+
     # Startup health check
     startup_health_check
-    
+
     # Background cache warmup
     warm_cache &
-    
+
     log_success "=== Paintbox startup completed successfully ==="
     log_info "Application is ready to serve requests on port $APP_PORT"
-    
+
     # Wait for main process
     wait $MAIN_PID
-    
+
     # If we reach here, the main process has exited
     log_warning "Main application process has exited"
     cleanup

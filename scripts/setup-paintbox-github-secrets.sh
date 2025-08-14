@@ -21,7 +21,7 @@ OWNER="patricksmith" # Update if different
 get_aws_secret() {
     local secret_name=$1
     local json_key=$2
-    
+
     if [ -z "$json_key" ]; then
         # Plain text secret
         aws secretsmanager get-secret-value \
@@ -41,12 +41,12 @@ get_aws_secret() {
 set_github_secret() {
     local name=$1
     local value=$2
-    
+
     if [ -z "$value" ]; then
         echo -e "${YELLOW}⚠️  Skipping $name (no value found)${NC}"
         return
     fi
-    
+
     echo "$value" | gh secret set "$name" --repo "$OWNER/$REPO" 2>/dev/null
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ Set $name${NC}"

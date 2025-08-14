@@ -95,7 +95,7 @@ function MetricsChart({ metrics, title, dataKey, color = '#3B82F6', unit = '' }:
       const x = padding + (chartWidth * index) / (metrics.length - 1);
       const value = point[dataKey] as number;
       const y = padding + chartHeight - ((value - minValue) / range) * chartHeight;
-      
+
       if (index === 0) {
         ctx.moveTo(x, y);
       } else {
@@ -112,7 +112,7 @@ function MetricsChart({ metrics, title, dataKey, color = '#3B82F6', unit = '' }:
       const x = padding + (chartWidth * index) / (metrics.length - 1);
       const value = point[dataKey] as number;
       const y = padding + chartHeight - ((value - minValue) / range) * chartHeight;
-      
+
       if (index === 0) {
         ctx.moveTo(x, y);
       } else {
@@ -258,9 +258,9 @@ export function CircuitBreakerPanel() {
   const getHealthScore = (breaker: CircuitBreaker) => {
     const { successCount, failureCount, timeouts } = breaker.metrics;
     const totalRequests = successCount + failureCount + timeouts;
-    
+
     if (totalRequests === 0) return 100;
-    
+
     const successRate = (successCount / totalRequests) * 100;
     return Math.round(successRate);
   };
