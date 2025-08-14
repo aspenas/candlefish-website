@@ -1,0 +1,152 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deployment even if checks fail'
+        required: false
+        default: 'false'
+
+env:
+  AWS_REGION: us-west-2
+  EKS_CLUSTER_NAME: paintbox-staging
+  NAMESPACE: paintbox-staging
+
+jobs:
+  deploy-staging:
+    name: Deploy to Staging Environment
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build and push images to ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: staging-${{ github.sha }}
+      run: |
+        services=("estimates" "customers" "projects" "integrations" "router" "frontend")
+
+        for service in "${services[@]}"; do
+          echo "Building $service..."
+
+          if [[ "$service" == "frontend" ]]; then
+            context="./frontend"
+          elif [[ "$service" == "router" ]]; then
+            context="./router"
+          else
+            context="./subgraph-$service"
+          fi
+
+          docker buildx build \
+            --platform linux/amd64 \
+            --build-arg NODE_ENV=staging \
+            --tag $ECR_REGISTRY/paintbox-$service:$IMAGE_TAG \
+            --tag $ECR_REGISTRY/paintbox-$service:staging-latest \
+            --push \
+            $context
+        done
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig \
+          --region ${{ env.AWS_REGION }} \
+          --name ${{ env.EKS_CLUSTER_NAME }}
+
+    - name: Deploy to Kubernetes
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: staging-${{ github.sha }}
+      run: |
+        # Update image tags in deployment files
+        services=("estimates" "customers" "projects" "integrations" "router" "frontend")
+
+        for service in "${services[@]}"; do
+          if [[ "$service" == "frontend" ]]; then
+            deployment_file="k8s/frontend-deployment.yaml"
+            sed -i "s|image: paintbox/frontend:.*|image: $ECR_REGISTRY/paintbox-frontend:$IMAGE_TAG|g" $deployment_file
+          elif [[ "$service" == "router" ]]; then
+            deployment_file="k8s/router-deployment.yaml"
+            sed -i "s|image: paintbox/apollo-router:.*|image: $ECR_REGISTRY/paintbox-router:$IMAGE_TAG|g" $deployment_file
+          else
+            deployment_file="k8s/$service-deployment.yaml"
+            sed -i "s|image: paintbox/$service-subgraph:.*|image: $ECR_REGISTRY/paintbox-$service:$IMAGE_TAG|g" $deployment_file
+          fi
+        done
+
+        # Apply Kubernetes manifests
+        kubectl apply -f k8s/namespace.yaml
+        kubectl apply -f k8s/configmap.yaml -n ${{ env.NAMESPACE }}
+        kubectl apply -f k8s/secrets.yaml -n ${{ env.NAMESPACE }}
+        kubectl apply -f k8s/ -n ${{ env.NAMESPACE }}
+
+        # Wait for deployment to complete
+        kubectl rollout status deployment/estimates-subgraph -n ${{ env.NAMESPACE }} --timeout=300s
+        kubectl rollout status deployment/customers-subgraph -n ${{ env.NAMESPACE }} --timeout=300s
+        kubectl rollout status deployment/projects-subgraph -n ${{ env.NAMESPACE }} --timeout=300s
+        kubectl rollout status deployment/integrations-subgraph -n ${{ env.NAMESPACE }} --timeout=300s
+        kubectl rollout status deployment/apollo-router -n ${{ env.NAMESPACE }} --timeout=300s
+        kubectl rollout status deployment/frontend -n ${{ env.NAMESPACE }} --timeout=300s
+
+    - name: Publish GraphQL schemas to Apollo Studio
+      env:
+        APOLLO_KEY: ${{ secrets.APOLLO_STAGING_KEY }}
+      run: |
+        curl -sSL https://rover.apollo.dev/nix/latest | sh
+        export PATH="$HOME/.rover/bin:$PATH"
+
+        # Publish each subgraph schema
+        rover subgraph publish paintbox@staging \
+          --schema ./subgraph-estimates/schema.graphql \
+          --name estimates \
+          --routing-url https://staging-api.paintbox.candlefish.ai/estimates
+
+        rover subgraph publish paintbox@staging \
+          --schema ./subgraph-customers/schema.graphql \
+          --name customers \
+          --routing-url https://staging-api.paintbox.candlefish.ai/customers
+
+    - name: Run smoke tests
+      run: |
+        # Wait for services to be available
+        timeout 300s bash -c 'until curl -f https://staging-api.paintbox.candlefish.ai/health; do sleep 10; done'
+        timeout 300s bash -c 'until curl -f https://staging.paintbox.candlefish.ai/health; do sleep 10; done'
+
+        # Run basic GraphQL query test
+        curl -X POST https://staging-api.paintbox.candlefish.ai/graphql \
+          -H "Content-Type: application/json" \
+          -d '{"query":"query { __schema { queryType { name } } }"}' \
+          --fail-with-body
+
+    - name: Notify deployment status
+      if: always()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        channel: '#deployments'
+        text: |
+          Staging deployment ${{ job.status }}!
+          Environment: https://staging.paintbox.candlefish.ai
+          GraphQL API: https://staging-api.paintbox.candlefish.ai/graphql
+          Commit: ${{ github.sha }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

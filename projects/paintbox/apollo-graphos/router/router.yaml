@@ -1,0 +1,79 @@
+# Apollo Router Configuration
+listen: 0.0.0.0:4100
+
+# CORS Configuration
+cors:
+  origins:
+    - "http://localhost:5173"      # Vite dev server
+    - "https://*.vercel.app"       # Vercel deployments
+    - "https://paintbox.candlefish.ai"  # Production domain
+  allow_credentials: true
+
+# Subgraph routing configuration
+supergraph:
+  introspection: true
+  defer_support: true
+
+# Health check endpoint
+health_check:
+  listen: 0.0.0.0:4100
+  path: /health
+
+# Rate limiting
+traffic_shaping:
+  all:
+    global_rate_limit:
+      capacity: 1000
+      interval: 60s
+  router:
+    timeout: 30s
+  subgraph:
+    estimates:
+      timeout: 10s
+    customers:
+      timeout: 10s
+    projects:
+      timeout: 10s
+    integrations:
+      timeout: 15s
+
+# Security headers
+headers:
+  all:
+    response:
+      - name: "X-Content-Type-Options"
+        value: "nosniff"
+      - name: "X-Frame-Options"
+        value: "DENY"
+      - name: "X-XSS-Protection"
+        value: "1; mode=block"
+      - name: "Strict-Transport-Security"
+        value: "max-age=31536000; includeSubDomains"
+
+# Telemetry
+telemetry:
+  apollo:
+    schema_reporting:
+      enabled: true
+    usage_reporting:
+      enabled: true
+  metrics:
+    common:
+      service_name: "apollo-router"
+      service_version: "1.0.0"
+
+# Authentication (placeholder for JWT validation)
+authentication:
+  router:
+    jwt:
+      header_name: "Authorization"
+      header_value_prefix: "Bearer "
+      jwks_sources:
+        - url: "https://paintbox.candlefish.ai/.well-known/jwks.json"
+
+# Caching
+apq:
+  enabled: true
+  cache:
+    in_memory:
+      limit: 512mb
