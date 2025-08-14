@@ -9,9 +9,6 @@ import { CircuitBreakerPanel } from '@/components/production/CircuitBreakerPanel
 import { SecurityScanner } from '@/components/production/SecurityScanner';
 import { ProductionTestFactory } from '../factories/productionFactory';
 
-// Extend Jest matchers
-expect.extend(toHaveNoViolations);
-
 // Mock the production store with accessible data
 const mockProductionStore = {
   temporal: {

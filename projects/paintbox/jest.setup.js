@@ -1,5 +1,9 @@
 import '@testing-library/jest-dom'
 import { TextEncoder, TextDecoder } from 'util'
+import { toHaveNoViolations } from 'jest-axe'
+
+// Extend Jest matchers with jest-axe
+expect.extend(toHaveNoViolations)
 
 // Polyfills for Node.js environment
 global.TextEncoder = TextEncoder
