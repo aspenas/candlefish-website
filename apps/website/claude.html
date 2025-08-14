@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Candlefish Team Setup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 60px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #2d3748;
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .emoji {
+            font-size: 4rem;
+            margin-bottom: 30px;
+        }
+
+        .subtitle {
+            color: #718096;
+            font-size: 1.25rem;
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+
+        .command-box {
+            background: #1a202c;
+            color: #68d391;
+            padding: 30px;
+            border-radius: 8px;
+            margin: 40px 0;
+            font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
+            font-size: 1.25rem;
+            letter-spacing: 0.5px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .command-box:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .command-prefix {
+            color: #a0aec0;
+            margin-right: 10px;
+        }
+
+        .copy-hint {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 0.75rem;
+            color: #718096;
+            background: #2d3748;
+            padding: 4px 8px;
+            border-radius: 4px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .command-box:hover .copy-hint {
+            opacity: 1;
+        }
+
+        .copied {
+            background: #48bb78 !important;
+            color: white !important;
+        }
+
+        .steps {
+            text-align: left;
+            margin: 40px 0;
+            background: #f7fafc;
+            padding: 30px;
+            border-radius: 8px;
+        }
+
+        .steps h2 {
+            color: #2d3748;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .steps ol {
+            color: #4a5568;
+            line-height: 2;
+            font-size: 1.1rem;
+            padding-left: 20px;
+        }
+
+        .steps li {
+            margin-bottom: 15px;
+        }
+
+        .steps code {
+            background: #edf2f7;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.95rem;
+            color: #2b6cb0;
+        }
+
+        .footer {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 2px solid #e2e8f0;
+            color: #718096;
+            font-size: 0.95rem;
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 40px 25px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .command-box {
+                font-size: 1rem;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="emoji">🐠</div>
+        <h1>Candlefish Team Setup</h1>
+        <p class="subtitle">
+            Get Patrick's complete terminal environment in under 60 seconds
+        </p>
+
+        <div class="command-box" onclick="copyCommand()" id="commandBox">
+            <span class="command-prefix">$</span>npx @candlefish/team-setup install
+            <span class="copy-hint" id="copyHint">Click to copy</span>
+        </div>
+
+        <div class="steps">
+            <h2>Setup Instructions</h2>
+            <ol>
+                <li>Open your terminal</li>
+                <li>Run the command above</li>
+                <li>Select your role when prompted:
+                    <ul style="list-style-type: none; margin-top: 10px;">
+                        <li>• <strong>Owner/Admin</strong> (Patrick, Tyler)</li>
+                        <li>• <strong>Developer</strong> (Aaron)</li>
+                    </ul>
+                </li>
+                <li>Restart your terminal</li>
+                <li>Run <code>candlefish_status</code> to verify</li>
+                <li>Run <code>cfhelp</code> for available commands</li>
+            </ol>
+        </div>
+
+        <div class="steps">
+            <h2>What You'll Get</h2>
+            <ol>
+                <li><strong>Navigation Aliases:</strong> <code>cf</code>, <code>cfpaint</code>, <code>cftemporal</code></li>
+                <li><strong>Development Tools:</strong> Pre-configured git, GitHub CLI, AWS functions</li>
+                <li><strong>Claude Agents:</strong> All AI agents automatically installed</li>
+                <li><strong>Project Access:</strong> Instant access to all Candlefish repositories</li>
+                <li><strong>Productivity Commands:</strong> <code>glog</code>, <code>ghpr</code>, <code>cftest</code>, <code>cfbuild</code></li>
+            </ol>
+        </div>
+
+        <div class="footer">
+            <p>
+                <strong>Package Version:</strong> 1.0.0<br>
+                <strong>NPM:</strong> <a href="https://www.npmjs.com/package/@candlefish/team-setup" target="_blank">@candlefish/team-setup</a><br>
+                <strong>Support:</strong> <a href="mailto:patrick@candlefish.ai">patrick@candlefish.ai</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        function copyCommand() {
+            const command = 'npx @candlefish/team-setup install';
+            navigator.clipboard.writeText(command).then(() => {
+                const hint = document.getElementById('copyHint');
+                const box = document.getElementById('commandBox');
+                hint.textContent = 'Copied!';
+                hint.classList.add('copied');
+
+                setTimeout(() => {
+                    hint.textContent = 'Click to copy';
+                    hint.classList.remove('copied');
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
