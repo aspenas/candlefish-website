@@ -1,0 +1,79 @@
+{
+  "name": "Estimate Approved → PDF → Email",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "paintbox/estimate-approved",
+        "options": {
+          "responseData": "={\"status\":\"ok\"}"
+        }
+      },
+      "id": "webhook",
+      "name": "Webhook (Estimate Approved)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "={{$env.PAINTBOX_BASE_URL}}/api/v1/pdf/generate",
+        "sendBody": true,
+        "jsonBody": "={ \n  \"estimateId\": {{$json.estimateId || $json.body.estimateId}},\n  \"format\": \"enhanced\"\n}",
+        "options": {
+          "headers": {
+            "Authorization": "=Bearer {{$env.PAINTBOX_BEARER_TOKEN}}",
+            "Content-Type": "application/json"
+          },
+          "timeout": 60000
+        }
+      },
+      "id": "http-generate-pdf",
+      "name": "Generate PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [520, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{$env.ALERT_FROM_EMAIL}}",
+        "toEmail": "={{$env.ALERT_TO_EMAIL}}",
+        "subject": "Estimate {{$json.estimateId || $json.body.estimateId}} PDF generated",
+        "text": "PDF generation response: {{$json | json}}"
+      },
+      "id": "email",
+      "name": "Email Notification",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [820, 300]
+    }
+  ],
+  "connections": {
+    "Webhook (Estimate Approved)": {
+      "main": [
+        [
+          {
+            "node": "Generate PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate PDF": {
+      "main": [
+        [
+          {
+            "node": "Email Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "version": 2
+}

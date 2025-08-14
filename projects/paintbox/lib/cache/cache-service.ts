@@ -368,8 +368,18 @@ let cacheInstance: CacheService | null = null;
 export function getCacheInstance(redisUrl?: string): CacheService {
   if (!cacheInstance) {
     try {
-      // Try Redis first
-      if (process.env.REDIS_URL || redisUrl) {
+      // Detect build time
+      const isBuildTime = process.env.NODE_ENV === 'production' &&
+                         (process.env.NEXT_PHASE === 'phase-production-build' ||
+                          process.env.npm_lifecycle_event === 'build' ||
+                          process.argv.includes('build'));
+
+      if (isBuildTime) {
+        // Use in-memory cache during build time
+        cacheInstance = new InMemoryCacheService();
+        logger.info('Using in-memory cache service (build time)');
+      } else if (process.env.REDIS_URL || redisUrl) {
+        // Try Redis first at runtime
         cacheInstance = new RedisCacheService(redisUrl);
         logger.info('Using Redis cache service');
       } else {

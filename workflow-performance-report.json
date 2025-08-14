@@ -1,0 +1,152 @@
+{
+  "summary": {
+    "totalWorkflows": 31,
+    "totalJobs": 146,
+    "totalSteps": 810,
+    "estimatedMonthlyMinutes": 115500,
+    "estimatedMonthlyCost": "$1296"
+  },
+  "performance": {
+    "averageJobsPerWorkflow": "4.7",
+    "averageStepsPerJob": "5.5",
+    "cacheAdoption": "16%",
+    "concurrencyAdoption": "16%",
+    "matrixUsage": "14%"
+  },
+  "bottlenecks": [
+    {
+      "workflow": "auto-dependencies.yml",
+      "issue": "No caching strategy",
+      "impact": "Increased build time",
+      "fix": "Add dependency caching"
+    },
+    {
+      "workflow": "auto-dependencies.yml",
+      "issue": "No caching strategy",
+      "impact": "Increased build time",
+      "fix": "Add dependency caching"
+    },
+    {
+      "workflow": "auto-performance.yml",
+      "issue": "No caching strategy",
+      "impact": "Increased build time",
+      "fix": "Add dependency caching"
+    },
+    {
+      "workflow": "auto-performance.yml",
+      "issue": "No caching strategy",
+      "impact": "Increased build time",
+      "fix": "Add dependency caching"
+    },
+    {
+      "workflow": "auto-pr-management.yml",
+      "issue": "No caching strategy",
+      "impact": "Increased build time",
+      "fix": "Add dependency caching"
+    },
+    {
+      "workflow": "auto-security.yml",
+      "issue": "No caching strategy",
+      "impact": "Increased build time",
+      "fix": "Add dependency caching"
+    },
+    {
+      "workflow": "auto-security.yml",
+      "issue": "No caching strategy",
+      "impact": "Increased build time",
+      "fix": "Add dependency caching"
+    },
+    {
+      "workflow": "auto-security.yml",
+      "issue": "No caching strategy",
+      "impact": "Increased build time",
+      "fix": "Add dependency caching"
+    },
+    {
+      "workflow": "auto-security.yml",
+      "issue": "No caching strategy",
+      "impact": "Increased build time",
+      "fix": "Add dependency caching"
+    },
+    {
+      "workflow": "auto-security.yml",
+      "issue": "No caching strategy",
+      "impact": "Increased build time",
+      "fix": "Add dependency caching"
+    }
+  ],
+  "optimizations": [
+    {
+      "category": "Caching",
+      "recommendation": "Implement comprehensive caching strategy",
+      "impact": "Reduce dependency installation time by 60-80%",
+      "implementation": [
+        "Use actions/cache for node_modules, pip cache",
+        "Enable built-in cache in setup-* actions",
+        "Cache build outputs between jobs"
+      ]
+    },
+    {
+      "category": "Concurrency",
+      "recommendation": "Add concurrency groups to prevent duplicate runs",
+      "impact": "Save 20-30% on Actions minutes",
+      "implementation": [
+        "Add concurrency group with cancel-in-progress for PRs",
+        "Use unique groups for different workflow types"
+      ]
+    },
+    {
+      "category": "Job Consolidation",
+      "recommendation": "Combine small jobs to reduce overhead",
+      "impact": "Save 1-2 minutes per consolidated job",
+      "details": "Found 38 jobs with ≤3 steps"
+    },
+    {
+      "category": "Runner Optimization",
+      "recommendation": "Use appropriate runner sizes",
+      "impact": "Optimize cost vs performance",
+      "implementation": [
+        "Use ubuntu-latest for most jobs (2 vCPU, 7GB RAM)",
+        "Use larger runners for heavy builds (4-8 vCPU)",
+        "Use self-hosted runners for consistent workloads"
+      ]
+    },
+    {
+      "category": "Artifact Management",
+      "recommendation": "Optimize artifact usage",
+      "impact": "Reduce storage costs and transfer time",
+      "implementation": [
+        "Set appropriate retention periods (7 days for builds)",
+        "Compress artifacts before upload",
+        "Use artifact filtering to exclude unnecessary files"
+      ]
+    }
+  ],
+  "costAnalysis": {
+    "estimatedMonthlyCost": 1296,
+    "minutesByRunner": {
+      "ubuntu-latest": 162040,
+      "windows-latest": 0,
+      "macos-latest": 0
+    },
+    "freeMinutes": 2000,
+    "paidMinutes": 160040
+  },
+  "recommendations": {
+    "immediate": [
+      "Enable caching for all dependency installation steps",
+      "Add concurrency controls to prevent duplicate runs",
+      "Implement fail-fast for matrix strategies"
+    ],
+    "shortTerm": [
+      "Consolidate small jobs to reduce overhead",
+      "Parallelize independent test suites",
+      "Optimize artifact retention policies"
+    ],
+    "longTerm": [
+      "Implement incremental builds with Turborepo",
+      "Set up self-hosted runners for heavy workloads",
+      "Implement intelligent test selection based on changes"
+    ]
+  }
+}

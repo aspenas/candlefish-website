@@ -1,0 +1,207 @@
+# Document Queries
+query GetDocument($id: UUID!) {
+  document(id: $id) {
+    id
+    name
+    description
+    type
+    status
+    content {
+      format
+      data
+      blocks {
+        id
+        type
+        content
+        position {
+          index
+          offset
+          length
+          depth
+        }
+        styles
+        attributes
+        authorId
+        createdAt
+        updatedAt
+      }
+      length
+      html
+      markdown
+      plainText
+      attachments {
+        id
+        name
+        type
+        url
+        thumbnailUrl
+        size
+        uploadedBy {
+          id
+          name
+          avatar
+        }
+      }
+    }
+    crdtState {
+      type
+      state
+      vectorClock {
+        clocks
+        version
+      }
+      mergeable
+    }
+    owner {
+      id
+      name
+      email
+      avatar
+    }
+    organization {
+      id
+      name
+    }
+    permissions {
+      canRead
+      canWrite
+      canComment
+      canShare
+      canManage
+      canDelete
+      collaborators {
+        user {
+          id
+          name
+          email
+          avatar
+        }
+        permission
+        grantedAt
+        expiresAt
+      }
+    }
+    sharing {
+      id
+      isPublic
+      shareUrl
+      allowAnonymous
+      allowComments
+      expiresAt
+      currentViews
+    }
+    currentVersion {
+      id
+      version
+      name
+      description
+      author {
+        id
+        name
+        avatar
+      }
+      createdAt
+    }
+    presenceInfo {
+      totalUsers
+      activeUsers
+      viewers
+      editors
+    }
+    lockInfo {
+      id
+      type
+      holder {
+        id
+        name
+        avatar
+      }
+      blocks
+      acquiredAt
+      expiresAt
+      waitingUsers {
+        id
+        name
+        avatar
+      }
+    }
+    metrics {
+      totalViews
+      uniqueViewers
+      totalEdits
+      uniqueEditors
+      totalComments
+      resolvedComments
+      activeThreads
+      averageLoadTime
+      averageSaveTime
+      timeInCollaboration
+      lastActivityAt
+    }
+    createdAt
+    updatedAt
+    lastEditedAt
+    lastViewedAt
+  }
+}
+
+query GetDocuments($filter: DocumentFilter, $sort: DocumentSort, $pagination: PaginationInput) {
+  documents(filter: $filter, sort: $sort, pagination: $pagination) {
+    nodes {
+      id
+      name
+      description
+      type
+      status
+      owner {
+        id
+        name
+        avatar
+      }
+      presenceInfo {
+        activeUsers
+        totalUsers
+      }
+      metrics {
+        totalViews
+        totalComments
+        lastActivityAt
+      }
+      createdAt
+      updatedAt
+      lastEditedAt
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+    totalCount
+  }
+}
+
+query SearchDocuments($query: String!, $filter: DocumentFilter) {
+  searchDocuments(query: $query, filter: $filter) {
+    id
+    name
+    description
+    type
+    status
+    owner {
+      id
+      name
+      avatar
+    }
+    content {
+      plainText
+    }
+    highlights {
+      field
+      fragments
+    }
+    score
+    createdAt
+    updatedAt
+  }
+}

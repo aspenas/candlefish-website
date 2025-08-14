@@ -1,0 +1,581 @@
+name: Collaboration System Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'graphql/**'
+      - 'apps/collaboration-editor/**'
+      - 'apps/mobile-collaboration/**'
+      - '__tests__/collaboration/**'
+      - 'jest.config.js'
+      - 'package.json'
+      - 'docker-compose.test.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'graphql/**'
+      - 'apps/collaboration-editor/**'
+      - 'apps/mobile-collaboration/**'
+      - '__tests__/collaboration/**'
+      - 'jest.config.js'
+      - 'package.json'
+      - 'docker-compose.test.yml'
+
+env:
+  NODE_VERSION: '20.x'
+  PNPM_VERSION: '8.15.6'
+  CI: true
+  DATABASE_URL: postgresql://test:test@localhost:5433/collaboration_test
+  REDIS_URL: redis://localhost:6380
+  WEBSOCKET_PORT: 8081
+  GRAPHQL_PORT: 4001
+
+jobs:
+  # Fast unit tests that run on every push
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    strategy:
+      matrix:
+        test-suite: [crdt, graphql-resolvers, frontend, mobile]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run unit tests
+        run: |
+          case "${{ matrix.test-suite }}" in
+            crdt)
+              pnpm test __tests__/collaboration/unit/crdt-operations.test.ts
+              ;;
+            graphql-resolvers)
+              pnpm test __tests__/collaboration/unit/collaboration-resolvers.test.ts
+              ;;
+            frontend)
+              pnpm test __tests__/collaboration/unit/collaborative-editor.test.tsx
+              ;;
+            mobile)
+              pnpm test __tests__/collaboration/unit/mobile-collaboration.test.tsx
+              ;;
+          esac
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: unit-test-results-${{ matrix.test-suite }}
+          path: |
+            coverage/
+            junit.xml
+          retention-days: 7
+
+  # Integration tests with real services
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: unit-tests
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: collaboration_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6380:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Wait for services
+        run: |
+          echo "Waiting for PostgreSQL..."
+          until pg_isready -h localhost -p 5433 -U test; do
+            echo "PostgreSQL is unavailable - sleeping"
+            sleep 1
+          done
+          echo "PostgreSQL is up"
+
+          echo "Waiting for Redis..."
+          until redis-cli -h localhost -p 6380 ping; do
+            echo "Redis is unavailable - sleeping"
+            sleep 1
+          done
+          echo "Redis is up"
+
+      - name: Run integration tests
+        run: pnpm test:integration
+        env:
+          NODE_ENV: test
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          REDIS_URL: ${{ env.REDIS_URL }}
+
+      - name: Upload integration test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: integration-test-results
+          path: |
+            coverage/
+            __tests__/collaboration/integration/results/
+          retention-days: 7
+
+  # E2E tests with Playwright
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: integration-tests
+    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'e2e')
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: collaboration_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6380:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Start application services
+        run: |
+          # Start the collaboration services in background
+          pnpm test:docker:up
+          sleep 10
+
+      - name: Run E2E tests
+        run: pnpm test:e2e
+        env:
+          NODE_ENV: test
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          REDIS_URL: ${{ env.REDIS_URL }}
+          HEADLESS: true
+
+      - name: Upload E2E test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: e2e-test-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+
+      - name: Stop services
+        if: always()
+        run: pnpm test:docker:down
+
+  # Performance tests (only on main branch or specific label)
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: integration-tests
+    if: github.ref == 'refs/heads/main' || contains(github.event.pull_request.labels.*.name, 'performance')
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: collaboration_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6380:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Start services
+        run: pnpm test:docker:up
+
+      - name: Run performance tests
+        run: pnpm test:performance
+        env:
+          NODE_ENV: test
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          REDIS_URL: ${{ env.REDIS_URL }}
+          SKIP_HEAVY_TESTS: true  # Skip resource-intensive tests in CI
+
+      - name: Run load tests with Artillery
+        run: |
+          pnpm load-test
+          pnpm stress-test
+        continue-on-error: true  # Don't fail the build if load tests fail
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: performance-test-results
+          path: |
+            performance-results/
+            artillery-reports/
+          retention-days: 30
+
+      - name: Comment performance results on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const path = './performance-results/summary.json';
+
+            if (fs.existsSync(path)) {
+              const results = JSON.parse(fs.readFileSync(path, 'utf8'));
+
+              const comment = `
+              ## 🚀 Performance Test Results
+
+              | Metric | Value | Threshold | Status |
+              |--------|-------|-----------|--------|
+              | Response Time (p95) | ${results.p95ResponseTime}ms | <1000ms | ${results.p95ResponseTime < 1000 ? '✅' : '❌'} |
+              | Throughput | ${results.throughput} ops/sec | >100 ops/sec | ${results.throughput > 100 ? '✅' : '❌'} |
+              | Error Rate | ${results.errorRate}% | <5% | ${results.errorRate < 5 ? '✅' : '❌'} |
+              | Memory Usage | ${results.peakMemoryUsage}MB | <500MB | ${results.peakMemoryUsage < 500 ? '✅' : '❌'} |
+
+              **Total Operations:** ${results.totalOperations}
+              **WebSocket Connections:** ${results.websocketConnections}
+              `;
+
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }
+
+      - name: Stop services
+        if: always()
+        run: pnpm test:docker:down
+
+  # Code coverage and quality checks
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [unit-tests, integration-tests]
+    if: always()
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: collaboration_test
+        ports:
+          - 5433:5432
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6380:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run all tests with coverage
+        run: pnpm test:coverage
+        env:
+          NODE_ENV: test
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          REDIS_URL: ${{ env.REDIS_URL }}
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          directory: ./coverage
+          flags: collaboration
+          name: collaboration-coverage
+          fail_ci_if_error: false
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-reports
+          path: coverage/
+          retention-days: 30
+
+      - name: Check coverage thresholds
+        run: |
+          node -e "
+          const coverage = require('./coverage/coverage-summary.json');
+          const total = coverage.total;
+
+          console.log('Coverage Summary:');
+          console.log(\`Lines: \${total.lines.pct}%\`);
+          console.log(\`Functions: \${total.functions.pct}%\`);
+          console.log(\`Branches: \${total.branches.pct}%\`);
+          console.log(\`Statements: \${total.statements.pct}%\`);
+
+          const thresholds = { lines: 80, functions: 80, branches: 80, statements: 80 };
+          let failed = false;
+
+          Object.keys(thresholds).forEach(key => {
+            if (total[key].pct < thresholds[key]) {
+              console.error(\`❌ \${key} coverage \${total[key].pct}% is below threshold \${thresholds[key]}%\`);
+              failed = true;
+            } else {
+              console.log(\`✅ \${key} coverage \${total[key].pct}% meets threshold \${thresholds[key]}%\`);
+            }
+          });
+
+          if (failed) process.exit(1);
+          "
+
+  # Security and dependency checks
+  security:
+    name: Security Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run security audit
+        run: pnpm audit --audit-level high
+        continue-on-error: true
+
+      - name: Run dependency vulnerability check
+        uses: actions/dependency-review-action@v3
+        if: github.event_name == 'pull_request'
+
+      - name: Check for sensitive data
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+
+  # Deployment readiness check
+  deployment-check:
+    name: Deployment Readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [unit-tests, integration-tests, coverage, security]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check Docker builds
+        run: |
+          docker build -f __tests__/collaboration/setup/Dockerfile.websocket -t test-websocket .
+          docker build -f __tests__/collaboration/setup/Dockerfile.graphql -t test-graphql .
+          echo "✅ All Docker images build successfully"
+
+      - name: Validate configuration files
+        run: |
+          # Validate Jest configuration
+          node -e "require('./jest.config.js')" && echo "✅ Jest config is valid"
+
+          # Validate package.json
+          pnpm install --dry-run && echo "✅ Package dependencies are valid"
+
+          # Validate Docker Compose
+          docker-compose -f docker-compose.test.yml config && echo "✅ Docker Compose config is valid"
+
+      - name: Check test file structure
+        run: |
+          required_files=(
+            "__tests__/collaboration/unit/crdt-operations.test.ts"
+            "__tests__/collaboration/unit/collaboration-resolvers.test.ts"
+            "__tests__/collaboration/unit/collaborative-editor.test.tsx"
+            "__tests__/collaboration/unit/mobile-collaboration.test.tsx"
+            "__tests__/collaboration/integration/graphql-api.test.ts"
+            "__tests__/collaboration/performance/load-test.test.ts"
+            "__tests__/collaboration/factories/test-data-factory.ts"
+          )
+
+          for file in "${required_files[@]}"; do
+            if [[ -f "$file" ]]; then
+              echo "✅ $file exists"
+            else
+              echo "❌ $file is missing"
+              exit 1
+            fi
+          done
+
+      - name: Generate deployment summary
+        run: |
+          echo "# Collaboration Test Suite Deployment Summary" > deployment-summary.md
+          echo "" >> deployment-summary.md
+          echo "## Test Coverage" >> deployment-summary.md
+          echo "- ✅ Unit Tests: CRDT, GraphQL, Frontend, Mobile" >> deployment-summary.md
+          echo "- ✅ Integration Tests: API, WebSocket, Auth" >> deployment-summary.md
+          echo "- ✅ Performance Tests: Load, Stress, Memory" >> deployment-summary.md
+          echo "- ✅ E2E Tests: Multi-user scenarios" >> deployment-summary.md
+          echo "" >> deployment-summary.md
+          echo "## Infrastructure" >> deployment-summary.md
+          echo "- ✅ Docker services configured" >> deployment-summary.md
+          echo "- ✅ CI/CD pipeline implemented" >> deployment-summary.md
+          echo "- ✅ Coverage reporting enabled" >> deployment-summary.md
+          echo "- ✅ Security checks integrated" >> deployment-summary.md
+          echo "" >> deployment-summary.md
+          echo "Generated on: $(date)" >> deployment-summary.md
+
+          cat deployment-summary.md
+
+      - name: Upload deployment summary
+        uses: actions/upload-artifact@v3
+        with:
+          name: deployment-summary
+          path: deployment-summary.md
+          retention-days: 90

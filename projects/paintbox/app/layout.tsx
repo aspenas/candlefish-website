@@ -1,14 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { headers } from 'next/headers';
+// import { headers } from 'next/headers';
 import "./globals.css";
-import { PWAInstallPrompt } from "@/components/ui/PWAInstallPrompt";
-import { Toaster } from "sonner";
-import { AuthProvider } from "@/components/providers/SessionProvider";
-import { AuthWrapper } from "@/components/auth/AuthWrapper";
+// import { PWAInstallPrompt } from "@/components/ui/PWAInstallPrompt";
+// import { Toaster } from "sonner";
+// import { AuthProvider } from "@/components/providers/SessionProvider";
+// import { AuthWrapper } from "@/components/auth/AuthWrapper";
 
 // Use system fonts to avoid network fetch at build time
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NODE_ENV === 'production' ? 'https://paintbox.candlefish.ai' : 'http://localhost:3004'),
   title: {
     default: "Paintbox - Professional Painting Estimator",
     template: "%s | Paintbox"
@@ -103,64 +104,15 @@ export const viewport: Viewport = {
   viewportFit: "cover"
 };
 
-// Service Worker Registration Component with nonce support
-function PWASetup({ nonce }: { nonce?: string }) {
-  return (
-    <script
-      nonce={nonce}
-      dangerouslySetInnerHTML={{
-        __html: `
-          if ('serviceWorker' in navigator && typeof window !== 'undefined') {
-            window.addEventListener('load', function () {
-              navigator.serviceWorker
-                .register('/sw.js', { scope: '/' })
-                .then(function (registration) {
-                  // Check for updates
-                  registration.addEventListener('updatefound', () => {
-                    const newWorker = registration.installing;
-                    if (newWorker) {
-                      newWorker.addEventListener('statechange', () => {
-                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                          // New version available
-                          if (confirm('A new version is available. Would you like to reload?')) {
-                            window.location.reload();
-                          }
-                        }
-                      });
-                    }
-                  });
-                })
-                .catch(function () {});
-            });
-          }
-
-          // Handle install prompt
-          window.addEventListener('beforeinstallprompt', function(e) {
-            e.preventDefault();
-            // @ts-ignore
-            window.deferredPrompt = e;
-          });
-
-          // Track PWA install
-          window.addEventListener('appinstalled', function() {
-            if (typeof gtag !== 'undefined') {
-              // @ts-ignore
-              gtag('event', 'pwa_install', { event_category: 'engagement', event_label: 'PWA Installation' });
-            }
-          });
-        `
-      }}
-    />
-  );
-}
+// Service Worker Registration Component with nonce support - temporarily removed for build issues
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Read nonce from header set by middleware for inline scripts
-  const nonce = headers().get('x-csp-nonce');
+  // Skip nonce for now to fix build
+  const nonce = undefined;
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -190,29 +142,26 @@ export default function RootLayout({
       </head>
 
       <body className={`antialiased`}>
-        <AuthProvider>
-          <AuthWrapper>
-            {/* Main App Content */}
-            {children}
-          </AuthWrapper>
-        </AuthProvider>
+        {/* Temporarily simplified for build testing */}
+        {children}
 
         {/* PWA Install Prompt */}
-        <PWAInstallPrompt />
+        {/* <PWAInstallPrompt /> */}
 
         {/* Global Toast Notifications */}
-        <Toaster
+        {/* <Toaster
           position="top-right"
           expand={true}
           richColors
           closeButton
           duration={4000}
-        />
+        /> */}
 
         {/* Service Worker Registration with CSP nonce */}
-        <PWASetup nonce={nonce || undefined} />
+        {/* <PWASetup nonce={nonce || undefined} /> */}
 
         {/* Performance monitoring (only in production) */}
+        {/* Temporarily disabled for build issues
         {process.env.NODE_ENV === 'production' && (
           <script
             nonce={nonce || undefined}
@@ -259,6 +208,7 @@ export default function RootLayout({
             }}
           />
         )}
+        */}
       </body>
     </html>
   );

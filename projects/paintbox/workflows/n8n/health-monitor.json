@@ -1,0 +1,99 @@
+{
+  "name": "Paintbox Health Monitor",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [220, 260]
+    },
+    {
+      "parameters": {
+        "requestMethod": "GET",
+        "url": "={{$env.PAINTBOX_BASE_URL}}/api/health",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "http-health",
+      "name": "Get Health",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [500, 260]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [],
+          "number": [],
+          "string": [
+            {
+              "value1": "={{$json.status}}",
+              "operation": "notEqual",
+              "value2": "healthy"
+            }
+          ]
+        }
+      },
+      "id": "if-degraded",
+      "name": "If Degraded",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [760, 260]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{$env.ALERT_FROM_EMAIL}}",
+        "toEmail": "={{$env.ALERT_TO_EMAIL}}",
+        "subject": "Paintbox health degraded",
+        "text": "Health response: {{$json | json}}"
+      },
+      "id": "email-alert",
+      "name": "Email Alert",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1020, 180]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Health": {
+      "main": [
+        [
+          {
+            "node": "If Degraded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Degraded": {
+      "main": [
+        [
+          {
+            "node": "Email Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "version": 2
+}

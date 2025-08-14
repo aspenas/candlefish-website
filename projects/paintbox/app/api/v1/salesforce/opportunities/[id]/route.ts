@@ -23,7 +23,7 @@ const OpportunityUpdateSchema = z.object({
 // GET /api/v1/salesforce/opportunities/[id] - Get opportunity by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const opportunity = await salesforceService.getOpportunity(params.id);
@@ -56,7 +56,7 @@ export async function GET(
 // PUT /api/v1/salesforce/opportunities/[id] - Update opportunity
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json();
@@ -92,7 +92,7 @@ export async function PUT(
 // DELETE /api/v1/salesforce/opportunities/[id] - Delete opportunity
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await salesforceService.deleteOpportunity(params.id);

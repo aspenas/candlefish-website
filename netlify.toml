@@ -4,40 +4,16 @@
 
 [build]
   base = "apps/website"
-  publish = "."
-  command = "echo 'No build step required for test page'"
+  publish = "dist"
+  command = "npm run build"
   functions = "netlify/functions"
 
-# Serve test page as the default
+# Serve React app with SPA routing
 [[redirects]]
-  from = "/"
-  to = "/test-fetch.html"
+  from = "/*"
+  to = "/index.html"
   status = 200
 
-# Serve static HTML files directly
-[[redirects]]
-  from = "/test-fetch.html"
-  to = "/test-fetch.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/claude-code-deploy.html"
-  to = "/claude-code-deploy.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/privacy.html"
-  to = "/privacy.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/terms.html"
-  to = "/terms.html"
-  status = 200
-  force = true
 
 # Guard privileged family documents behind auth entry and Edge validation
 [[redirects]]

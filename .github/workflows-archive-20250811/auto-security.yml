@@ -1,0 +1,484 @@
+name: Automated Security Scanning
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    types: [opened, synchronize]
+  schedule:
+    # Run daily at 3 AM UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+  issues: write
+  actions: read
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '9'
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  # ============================================
+  # CodeQL Analysis
+  # ============================================
+  codeql:
+    name: 🔍 CodeQL Analysis
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript, typescript, python]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  # ============================================
+  # Dependency Vulnerability Scanning
+  # ============================================
+  dependency-scan:
+    name: 📦 Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run npm audit
+        id: npm-audit
+        run: |
+          echo "## NPM Audit Results" > audit-report.md
+          echo '```' >> audit-report.md
+          pnpm audit --audit-level=moderate 2>&1 | tee -a audit-report.md || true
+          echo '```' >> audit-report.md
+
+          # Check if there are high or critical vulnerabilities
+          if pnpm audit --audit-level=high 2>&1 | grep -q "found.*high\|critical"; then
+            echo "has_high_vulns=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_high_vulns=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run Snyk scan
+        if: secrets.SNYK_TOKEN
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          npm install -g snyk
+          snyk test --all-projects --severity-threshold=high || true
+          snyk monitor --all-projects || true
+
+      - name: Run OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'candlefish-ai'
+          path: '.'
+          format: 'ALL'
+          args: >
+            --enableRetired
+            --enableExperimental
+
+      - name: Upload dependency check results
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-report
+          path: reports/
+
+  # ============================================
+  # Container Security Scanning
+  # ============================================
+  container-scan:
+    name: 🐳 Container Security Scan
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dockerfile:
+          - apps/rtpm-api/Dockerfile
+          - apps/otter-gateway/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          DOCKERFILE=${{ matrix.dockerfile }}
+          APP_NAME=$(basename $(dirname $DOCKERFILE))
+          docker build -f $DOCKERFILE -t $APP_NAME:scan .
+
+      - name: Run Trivy scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.APP_NAME }}:scan
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run Grype scan
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+          grype ${{ env.APP_NAME }}:scan -o sarif > grype-results.sarif
+
+      - name: Upload Grype results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'grype-results.sarif'
+
+  # ============================================
+  # Secret Scanning
+  # ============================================
+  secret-scan:
+    name: 🔐 Secret Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --debug --only-verified
+
+      - name: Run detect-secrets
+        run: |
+          pip install detect-secrets
+          detect-secrets scan --baseline .secrets.baseline
+          detect-secrets audit .secrets.baseline || true
+
+  # ============================================
+  # SAST - Static Application Security Testing
+  # ============================================
+  sast:
+    name: 🛡️ SAST Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/owasp-top-ten
+            p/typescript
+            p/react
+            p/nodejs
+            p/python
+
+      - name: Run Bearer
+        run: |
+          curl -sfL https://raw.githubusercontent.com/Bearer/bearer/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          bearer scan . --format sarif --output bearer-results.sarif
+
+      - name: Upload Bearer results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'bearer-results.sarif'
+
+      - name: Run ESLint security plugin
+        run: |
+          pnpm add -D eslint-plugin-security
+          npx eslint . --ext .js,.jsx,.ts,.tsx --plugin security --rule 'security/detect-object-injection: error' || true
+
+  # ============================================
+  # Infrastructure Security
+  # ============================================
+  infrastructure-scan:
+    name: 🏗️ Infrastructure Security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: .
+          framework: all
+          output_format: sarif
+          output_file_path: checkov-results.sarif
+          skip_check: CKV_DOCKER_2,CKV_DOCKER_3
+
+      - name: Upload Checkov results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'checkov-results.sarif'
+
+      - name: Run Terrascan
+        run: |
+          curl -L "$(curl -s https://api.github.com/repos/tenable/terrascan/releases/latest | grep -o -E "https://.+?_Linux_x86_64.tar.gz")" > terrascan.tar.gz
+          tar -xf terrascan.tar.gz terrascan
+          ./terrascan scan -i docker -d . || true
+
+  # ============================================
+  # Security Headers Check
+  # ============================================
+  security-headers:
+    name: 🔒 Security Headers Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    strategy:
+      matrix:
+        url:
+          - https://candlefish.ai
+          - https://analytics.candlefish.ai
+    steps:
+      - name: Check security headers
+        run: |
+          # Install securityheaders CLI
+          pip install securityheaders
+
+          # Check headers
+          securityheaders ${{ matrix.url }} > headers-report.txt
+
+          # Check for critical headers
+          HEADERS_TO_CHECK=(
+            "Strict-Transport-Security"
+            "X-Content-Type-Options"
+            "X-Frame-Options"
+            "Content-Security-Policy"
+            "X-XSS-Protection"
+            "Referrer-Policy"
+            "Permissions-Policy"
+          )
+
+          echo "## Security Headers Report for ${{ matrix.url }}" > headers-summary.md
+          echo "" >> headers-summary.md
+
+          for header in "${HEADERS_TO_CHECK[@]}"; do
+            if curl -s -I "${{ matrix.url }}" | grep -qi "$header"; then
+              echo "✅ $header: Present" >> headers-summary.md
+            else
+              echo "❌ $header: Missing" >> headers-summary.md
+            fi
+          done
+
+      - name: Upload headers report
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-headers-${{ matrix.url }}
+          path: |
+            headers-report.txt
+            headers-summary.md
+
+  # ============================================
+  # Penetration Testing
+  # ============================================
+  pentest:
+    name: 🔨 Penetration Testing
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run OWASP ZAP scan
+        uses: zaproxy/action-full-scan@v0.10.0
+        with:
+          target: 'https://candlefish.ai'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a'
+
+      - name: Run Nuclei scan
+        run: |
+          # Install Nuclei
+          curl -L https://github.com/projectdiscovery/nuclei/releases/latest/download/nuclei_Linux_x86_64.zip -o nuclei.zip
+          unzip nuclei.zip
+          chmod +x nuclei
+
+          # Run scan
+          ./nuclei -u https://candlefish.ai -severity critical,high -o nuclei-results.txt
+
+      - name: Upload pentest results
+        uses: actions/upload-artifact@v4
+        with:
+          name: pentest-results
+          path: |
+            zap-report.html
+            nuclei-results.txt
+
+  # ============================================
+  # Compliance Checks
+  # ============================================
+  compliance:
+    name: 📋 Compliance Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check license compliance
+        run: |
+          pnpm add -g license-checker
+          license-checker --production --summary --out licenses.json
+
+          # Check for problematic licenses
+          PROBLEMATIC_LICENSES=("GPL" "AGPL" "LGPL" "SSPL")
+
+          for license in "${PROBLEMATIC_LICENSES[@]}"; do
+            if grep -q "$license" licenses.json; then
+              echo "⚠️ Found potentially problematic license: $license"
+              grep "$license" licenses.json
+            fi
+          done
+
+      - name: Check GDPR compliance
+        run: |
+          # Check for personal data processing
+          echo "## GDPR Compliance Check" > gdpr-report.md
+          echo "" >> gdpr-report.md
+
+          # Search for potential PII processing
+          if grep -r "email\|phone\|address\|ssn\|birthdate" --include="*.js" --include="*.ts" .; then
+            echo "⚠️ Found potential PII processing - ensure GDPR compliance" >> gdpr-report.md
+          else
+            echo "✅ No obvious PII processing found" >> gdpr-report.md
+          fi
+
+  # ============================================
+  # Security Report Generation
+  # ============================================
+  security-report:
+    name: 📊 Generate Security Report
+    needs: [codeql, dependency-scan, container-scan, secret-scan, sast, infrastructure-scan, security-headers, compliance]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Generate consolidated report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            // Collect all security findings
+            const report = {
+              timestamp: new Date().toISOString(),
+              commit: context.sha,
+              branch: context.ref,
+              findings: {
+                critical: 0,
+                high: 0,
+                medium: 0,
+                low: 0
+              },
+              scans: {
+                codeql: 'completed',
+                dependencies: 'completed',
+                containers: 'completed',
+                secrets: 'completed',
+                sast: 'completed',
+                infrastructure: 'completed'
+              }
+            };
+
+            // Parse results from various scans
+            // Add parsing logic for each scan type
+
+            // Create markdown report
+            const markdown = `# 🔒 Security Scan Report
+
+            **Date**: ${report.timestamp}
+            **Commit**: ${report.commit}
+            **Branch**: ${report.branch}
+
+            ## Summary
+
+            | Severity | Count |
+            |----------|-------|
+            | Critical | ${report.findings.critical} |
+            | High | ${report.findings.high} |
+            | Medium | ${report.findings.medium} |
+            | Low | ${report.findings.low} |
+
+            ## Scan Results
+
+            | Scan Type | Status |
+            |-----------|--------|
+            | CodeQL | ${report.scans.codeql} |
+            | Dependencies | ${report.scans.dependencies} |
+            | Containers | ${report.scans.containers} |
+            | Secrets | ${report.scans.secrets} |
+            | SAST | ${report.scans.sast} |
+            | Infrastructure | ${report.scans.infrastructure} |
+
+            ---
+            *This report was automatically generated by the security scanning workflow*`;
+
+            // Save report
+            fs.writeFileSync('security-report.md', markdown);
+
+            // Create issue if critical/high findings
+            if (report.findings.critical > 0 || report.findings.high > 0) {
+              const issue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `🚨 Security vulnerabilities detected`,
+                body: markdown,
+                labels: ['security', 'critical', 'automated'],
+                assignees: ['${{ github.actor }}']
+              });
+
+              console.log(`Created security issue: ${issue.data.html_url}`);
+            }
+
+            // Comment on PR if applicable
+            if (context.eventName === 'pull_request') {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: markdown
+              });
+            }
+
+      - name: Upload final report
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report-final
+          path: security-report.md

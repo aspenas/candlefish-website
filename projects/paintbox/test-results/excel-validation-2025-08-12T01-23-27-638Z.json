@@ -1,0 +1,767 @@
+{
+  "summary": {
+    "totalFormulasAnalyzed": 14683,
+    "formulasProcessed": 100,
+    "passedFormulas": 96,
+    "failedFormulas": 0,
+    "skippedFormulas": 4,
+    "passRate": 96,
+    "averageCalculationTime": 0.01,
+    "categoryBreakdown": {
+      "Other": {
+        "total": 38,
+        "passed": 38,
+        "failed": 0,
+        "passRate": 100
+      },
+      "Logical": {
+        "total": 16,
+        "passed": 12,
+        "failed": 0,
+        "passRate": 75
+      },
+      "Arithmetic": {
+        "total": 44,
+        "passed": 44,
+        "failed": 0,
+        "passRate": 100
+      },
+      "Lookup": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "passRate": 100
+      },
+      "Text": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "passRate": 100
+      }
+    },
+    "criticalIssues": [],
+    "recommendations": [
+      "Create actual Excel test files for comprehensive validation",
+      "Implement full calculation engine testing"
+    ],
+    "performanceMetrics": {
+      "fastest": 0,
+      "slowest": 1,
+      "median": 0
+    }
+  },
+  "testResults": [
+    {
+      "cellId": "Ext Measure!B4",
+      "formula": "='New Client Info Page'!A2",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 1
+    },
+    {
+      "cellId": "Ext Measure!B5",
+      "formula": "='New Client Info Page'!B2",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Ext Measure!B6",
+      "formula": "='New Client Info Page'!D2",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Ext Measure!B7",
+      "formula": "='New Client Info Page'!E2",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Ext Measure!M7",
+      "formula": "='New Client Info Page'!O4",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Ext Measure!M39",
+      "formula": "='Exterior Formula Sheet'!B6",
+      "category": "Logical",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Ext Measure!P39",
+      "formula": "='Exterior Formula Sheet'!B9",
+      "category": "Logical",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Ext Measure!F43",
+      "formula": "=$J$13",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Ext Measure!F44",
+      "formula": "=$J$12",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Ext Measure!B50",
+      "formula": "=$G39",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Exterior Formula Sheet!C3",
+      "formula": "='Ext Measure'!B50",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Exterior Formula Sheet!D3",
+      "formula": "=IF($B$7=\"Yes\",'Ext Measure'!D50,)",
+      "category": "Logical",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Exterior Formula Sheet!E3",
+      "formula": "=IF($B$7=\"Yes\",IF(D3=\"Brick Unpainted\",0,'Ext Measure'!F50*'Ext Measure'!H50))",
+      "category": "Logical",
+      "status": "skipped",
+      "error": "Complex formula (complexity: 11)",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Exterior Formula Sheet!F3",
+      "formula": "='Ext Measure'!L50",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Exterior Formula Sheet!G3",
+      "formula": "=VLOOKUP(C3,$I$168:$J$171,2,FALSE)",
+      "category": "Lookup",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Exterior Formula Sheet!H3",
+      "formula": "='Ext Measure'!N50",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Exterior Formula Sheet!I3",
+      "formula": "=B8*H3",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Exterior Formula Sheet!J3",
+      "formula": "=(B8*H3)*($F$177)",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Exterior Formula Sheet!K3",
+      "formula": "='Ext Measure'!N52",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Exterior Formula Sheet!L3",
+      "formula": "=B8*K3",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Int Measure!B1",
+      "formula": "='New Client Info Page'!A2",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Int Measure!B2",
+      "formula": "='New Client Info Page'!B2",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Int Measure!F2",
+      "formula": "=_xludf.TEXTJOIN(CHAR(10), TRUE, 'Interior Pricing Table'!AK672:AK731)",
+      "category": "Logical",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Int Measure!B3",
+      "formula": "='New Client Info Page'!E2",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Int Measure!F4",
+      "formula": "=J638",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Int Measure!H4",
+      "formula": "=M638",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Int Measure!J4",
+      "formula": "=O638",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Int Measure!L4",
+      "formula": "=Q638",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Int Measure!N4",
+      "formula": "=TEXT(S648,\"$#\")",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Int Measure!P4",
+      "formula": "=TEXT(J640,\"$#\")",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Cabinet Measure!B4",
+      "formula": "='New Client Info Page'!A2",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Cabinet Measure!B5",
+      "formula": "='New Client Info Page'!B2",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Cabinet Measure!B6",
+      "formula": "='New Client Info Page'!D2",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Cabinet Measure!B7",
+      "formula": "='New Client Info Page'!E2",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Cabinet Measure!M7",
+      "formula": "='New Client Info Page'!O4",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Cabinet Measure!P33",
+      "formula": "=$E$12",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Cabinet Measure!P36",
+      "formula": "=$E$13",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Cabinet Measure!P39",
+      "formula": "=$E$12",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Cabinet Measure!P42",
+      "formula": "=$E$13",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Cabinet Measure!P45",
+      "formula": "=$E$12",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "WW!M5",
+      "formula": "='New Client Info Page'!A2",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "WW!M6",
+      "formula": "='New Client Info Page'!B2",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "WW!M7",
+      "formula": "='New Client Info Page'!D2",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "WW!M8",
+      "formula": "='New Client Info Page'!E2",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "WW!AO12",
+      "formula": "=_xludf.Image('New Client Info Page'!Q2)",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "WW!AA13",
+      "formula": "=N13",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "WW!AC13",
+      "formula": "=P13",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "WW!AE13",
+      "formula": "=R13",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "WW!AG13",
+      "formula": "=T13",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "WW!AI13",
+      "formula": "=V13",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Gutter!B5",
+      "formula": "='New Client Info Page'!A2",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Gutter!B6",
+      "formula": "='New Client Info Page'!B2",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Gutter!B7",
+      "formula": "='New Client Info Page'!D2",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Gutter!B8",
+      "formula": "='New Client Info Page'!E2",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Gutter!B11",
+      "formula": "='Ext Measure'!B39",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Gutter!B13",
+      "formula": "='Ext Measure'!P41",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Gutter!E13",
+      "formula": "='Ext Measure'!P42",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Gutter!H13",
+      "formula": "='Ext Measure'!P43",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Gutter!J13",
+      "formula": "='Ext Measure'!P44",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Gutter!M13",
+      "formula": "='Ext Measure'!P45",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Data2!F2",
+      "formula": "=D2*$F$176",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Data2!H2",
+      "formula": "=F2*$H$176",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Data2!I2",
+      "formula": "=G2*$H$176",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Data2!J2",
+      "formula": "=H2-E2",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Data2!K2",
+      "formula": "=",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Data2!L2",
+      "formula": "=IFERROR(__xludf.DUMMYFUNCTION(\"JOIN(\"\" \"\", A2:C2)\"),\"Trim 2x1 MDF\")",
+      "category": "Logical",
+      "status": "skipped",
+      "error": "Complex formula (complexity: 14)",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Data2!M2",
+      "formula": "=D2",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Data2!N2",
+      "formula": "=E2/(1-$O$1)",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Data2!O2",
+      "formula": "=N2/D2",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Data2!F3",
+      "formula": "=D3*$F$176",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "EXT - How To!C78",
+      "formula": "=$F$17",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "EXT - How To!B79",
+      "formula": "=$F$17",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "EXT - How To!C79",
+      "formula": "=$F$17",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "EXT - How To!C80",
+      "formula": "=$F$17",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "EXT - How To!C84",
+      "formula": "=$F$17",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "EXT - How To!C85",
+      "formula": "=$F$17",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "EXT - How To!C86",
+      "formula": "=$F$17",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "EXT - How To!B87",
+      "formula": "=IF(B79=\"Brick Unpainted\", \"Brick Unpainted\",IF(B79=\"Stucco\",\"Flat\",IF(B79=\"Cedar_Stain\",\"Stain\",\"Body\")))",
+      "category": "Logical",
+      "status": "skipped",
+      "error": "Complex formula (complexity: 15)",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "EXT - How To!G106",
+      "formula": "='Exterior Formula Sheet'!AW121",
+      "category": "Logical",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "EXT - How To!G107",
+      "formula": "='Exterior Formula Sheet'!AW119",
+      "category": "Logical",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "INT - How To!C11",
+      "formula": "=E42",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "INT - How To!E11",
+      "formula": "=E61",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "INT - How To!G11",
+      "formula": "=E80",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "INT - How To!I11",
+      "formula": "=E99",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "INT - How To!O11",
+      "formula": "=E118",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "INT - How To!C12",
+      "formula": "=E137",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "INT - How To!I12",
+      "formula": "=E194",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "INT - How To!O12",
+      "formula": "=E213",
+      "category": "Arithmetic",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "INT - How To!O51",
+      "formula": "=IFERROR(__xludf.DUMMYFUNCTION(\"IFerror(CONCATENATE(\n  TEXTJOIN(\"\", \"\", TRUE, FILTER(F53:F61, (G53:G61=TRUE) * (E53:E61>0))),\n  IF(AND(V58=\"\"Yes\"\", $F$649=\"\"Yes\"\"), \"\", Popcorn Removal\"\", \"\"\"\")\n),\"\"\"\")\"),\"\")",
+      "category": "Logical",
+      "status": "skipped",
+      "error": "Complex formula (complexity: 49)",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "INT - How To!C56",
+      "formula": "=CONCATENATE(\"Room \",A56+1)",
+      "category": "Text",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Ext Crew Labor!B5",
+      "formula": "='New Client Info Page'!A2",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Ext Crew Labor!B6",
+      "formula": "='New Client Info Page'!B2",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Ext Crew Labor!B7",
+      "formula": "='New Client Info Page'!D2",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Ext Crew Labor!B8",
+      "formula": "='New Client Info Page'!E2",
+      "category": "Other",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Ext Crew Labor!M41",
+      "formula": "='Exterior Formula Sheet'!B29",
+      "category": "Logical",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Ext Crew Labor!P41",
+      "formula": "='Exterior Formula Sheet'!B30",
+      "category": "Logical",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Ext Crew Labor!M57",
+      "formula": "='Exterior Formula Sheet'!B49",
+      "category": "Logical",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Ext Crew Labor!P57",
+      "formula": "='Exterior Formula Sheet'!B50",
+      "category": "Logical",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Ext Crew Labor!M73",
+      "formula": "='Exterior Formula Sheet'!B69",
+      "category": "Logical",
+      "status": "passed",
+      "calculationTime": 0
+    },
+    {
+      "cellId": "Ext Crew Labor!P73",
+      "formula": "='Exterior Formula Sheet'!B70",
+      "category": "Logical",
+      "status": "passed",
+      "calculationTime": 0
+    }
+  ],
+  "timestamp": "2025-08-12T01:23:27.639Z",
+  "configuration": {
+    "testFilesDir": "/Users/patricksmith/candlefish-ai/projects/paintbox/testcases",
+    "analysisDataPath": "/Users/patricksmith/candlefish-ai/projects/paintbox/excel_analysis.json",
+    "outputDir": "/Users/patricksmith/candlefish-ai/projects/paintbox/test-results",
+    "precision": 1e-10,
+    "sampleSize": 100
+  }
+}

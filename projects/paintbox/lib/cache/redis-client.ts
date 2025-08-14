@@ -5,6 +5,7 @@
 
 import Redis, { Cluster } from 'ioredis';
 import { logger } from '@/lib/logging/simple-logger';
+import { RedisStub } from './redis-stub';
 
 export interface RedisPoolOptions {
   minConnections?: number;
@@ -25,6 +26,7 @@ class RedisConnectionPool {
   private redisUrl: string;
   private isCluster: boolean = false;
   private clusterClient?: Cluster;
+  private isBuildTime: boolean;
 
   constructor(redisUrl?: string, options: RedisPoolOptions = {}) {
     this.redisUrl = redisUrl || process.env.REDIS_URL || 'redis://localhost:6379';
@@ -43,7 +45,19 @@ class RedisConnectionPool {
       keepAlive: options.keepAlive || 30000,
     };
 
-    this.initialize();
+    // Detect build time
+    this.isBuildTime = process.env.NODE_ENV === 'production' &&
+                      (process.env.NEXT_PHASE === 'phase-production-build' ||
+                       process.env.npm_lifecycle_event === 'build' ||
+                       process.argv.includes('build'));
+
+    if (!this.isBuildTime) {
+      this.initialize().catch(err => {
+        logger.warn('Redis initialization failed, continuing without cache', { error: err.message });
+      });
+    } else {
+      logger.info('Redis disabled during build time - using stub implementation');
+    }
   }
 
   private async initialize(): Promise<void> {
@@ -66,12 +80,6 @@ class RedisConnectionPool {
           connectTimeout: this.options.connectionTimeout,
           commandTimeout: this.options.commandTimeout,
           keepAlive: this.options.keepAlive,
-          retryStrategy: (times: number) => {
-            if (times > this.options.maxRetriesPerRequest) {
-              return null;
-            }
-            return Math.min(times * this.options.retryDelayOnFailover, 2000);
-          },
         },
         clusterRetryStrategy: (times: number) => {
           if (times > this.options.maxRetriesPerRequest) {
@@ -158,7 +166,17 @@ class RedisConnectionPool {
     }
   }
 
-  async getClient(): Promise<Redis | Cluster> {
+  async getClient(): Promise<Redis | Cluster | RedisStub> {
+    // If build time, return stub
+    if (this.isBuildTime) {
+      return new RedisStub();
+    }
+
+    // If not initialized (runtime without Redis), throw error to be caught by execute method
+    if (this.pool.length === 0 && !this.clusterClient) {
+      throw new Error('Redis not available during build time');
+    }
+
     // If using cluster, return the cluster client
     if (this.isCluster && this.clusterClient) {
       return this.clusterClient;
@@ -194,14 +212,17 @@ class RedisConnectionPool {
     });
   }
 
-  async execute<T>(operation: (client: Redis | Cluster) => Promise<T>): Promise<T> {
-    const client = await this.getClient();
+  async execute<T>(operation: (client: Redis | Cluster | RedisStub) => Promise<T>): Promise<T> {
     try {
+      const client = await this.getClient();
       return await operation(client);
     } catch (error) {
-      logger.error('Redis operation failed', {
-        error: error instanceof Error ? error.message : String(error)
-      });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('Redis not available during build time')) {
+        logger.warn('Redis operation skipped during build time');
+        throw error; // Let the caller handle gracefully
+      }
+      logger.error('Redis operation failed', { error: errorMessage });
       throw error;
     }
   }
@@ -212,6 +233,9 @@ class RedisConnectionPool {
       await client.ping();
       return true;
     } catch (error) {
+      if (this.isBuildTime) {
+        return true; // Always healthy during build time
+      }
       logger.error('Redis health check failed', {
         error: error instanceof Error ? error.message : String(error)
       });
