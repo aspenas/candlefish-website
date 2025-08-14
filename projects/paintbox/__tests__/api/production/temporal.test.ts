@@ -160,7 +160,7 @@ describe('/api/v1/temporal/connections', () => {
 
     it('should handle SQL injection attempts', async () => {
       const sqlInjectionPayload = "'; DROP TABLE temporalConnection; --";
-      
+
       const request = new NextRequest('http://localhost:3000/api/v1/temporal/connections', {
         method: 'POST',
         body: JSON.stringify({
@@ -179,7 +179,7 @@ describe('/api/v1/temporal/connections', () => {
     });
 
     it('should enforce rate limiting', async () => {
-      const requests = Array.from({ length: 10 }, () => 
+      const requests = Array.from({ length: 10 }, () =>
         new NextRequest('http://localhost:3000/api/v1/temporal/connections', {
           method: 'POST',
           body: JSON.stringify({
@@ -296,9 +296,9 @@ describe('/api/v1/temporal/connections', () => {
       const mockConnection = {
         close: jest.fn(),
         workflowService: {
-          getSystemInfo: jest.fn().mockResolvedValue({ 
+          getSystemInfo: jest.fn().mockResolvedValue({
             serverVersion: '1.20.0',
-            capabilities: {} 
+            capabilities: {}
           }),
         },
       };
@@ -365,7 +365,7 @@ describe('/api/v1/temporal/connections', () => {
       const request = new NextRequest('http://localhost:3000/api/v1/temporal/connections', {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer ' + global.securityTestHelpers.createMockJWT({ 
+          'Authorization': 'Bearer ' + global.securityTestHelpers.createMockJWT({
             permissions: ['read:temporal'] // Missing write permission
           }),
         },
@@ -389,7 +389,7 @@ describe('/api/v1/temporal/connections', () => {
       const request = new NextRequest('http://localhost:3000/api/v1/temporal/connections', {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer ' + global.securityTestHelpers.createMockJWT({ 
+          'Authorization': 'Bearer ' + global.securityTestHelpers.createMockJWT({
             permissions: ['write:temporal', 'admin:all']
           }),
         },
@@ -419,11 +419,11 @@ describe('/api/v1/temporal/connections', () => {
   describe('Input Validation and Security', () => {
     it('should sanitize XSS attempts in input fields', async () => {
       const xssPayload = "<script>alert('XSS')</script>";
-      
+
       const request = new NextRequest('http://localhost:3000/api/v1/temporal/connections', {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer ' + global.securityTestHelpers.createMockJWT({ 
+          'Authorization': 'Bearer ' + global.securityTestHelpers.createMockJWT({
             permissions: ['write:temporal']
           }),
         },
@@ -444,11 +444,11 @@ describe('/api/v1/temporal/connections', () => {
 
     it('should validate input length limits', async () => {
       const longString = 'a'.repeat(1000);
-      
+
       const request = new NextRequest('http://localhost:3000/api/v1/temporal/connections', {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer ' + global.securityTestHelpers.createMockJWT({ 
+          'Authorization': 'Bearer ' + global.securityTestHelpers.createMockJWT({
             permissions: ['write:temporal']
           }),
         },
@@ -479,7 +479,7 @@ describe('/api/v1/temporal/connections', () => {
         const request = new NextRequest('http://localhost:3000/api/v1/temporal/connections', {
           method: 'POST',
           headers: {
-            'Authorization': 'Bearer ' + global.securityTestHelpers.createMockJWT({ 
+            'Authorization': 'Bearer ' + global.securityTestHelpers.createMockJWT({
               permissions: ['write:temporal']
             }),
           },
@@ -501,10 +501,10 @@ describe('/api/v1/temporal/connections', () => {
       const mockPrisma = require('@/lib/db/prisma');
       mockPrisma.temporalConnection.findMany.mockResolvedValue(mockConnections);
 
-      const concurrentRequests = Array.from({ length: 50 }, () => 
+      const concurrentRequests = Array.from({ length: 50 }, () =>
         new NextRequest('http://localhost:3000/api/v1/temporal/connections', {
           headers: {
-            'Authorization': 'Bearer ' + global.securityTestHelpers.createMockJWT({ 
+            'Authorization': 'Bearer ' + global.securityTestHelpers.createMockJWT({
               permissions: ['read:temporal']
             }),
           },
@@ -527,7 +527,7 @@ describe('/api/v1/temporal/connections', () => {
 
       const request = new NextRequest('http://localhost:3000/api/v1/temporal/connections?limit=1000', {
         headers: {
-          'Authorization': 'Bearer ' + global.securityTestHelpers.createMockJWT({ 
+          'Authorization': 'Bearer ' + global.securityTestHelpers.createMockJWT({
             permissions: ['read:temporal']
           }),
         },

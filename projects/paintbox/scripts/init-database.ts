@@ -13,16 +13,16 @@ import path from 'path';
 config({ path: path.join(__dirname, '..', '.env.local') });
 
 async function initDatabase() {
-  
+
   try {
     console.log('🔧 Initializing Paintbox database...');
-    
+
     // Get database pool
     const pool = getPool();
-    
+
     // Create tables
     console.log('📋 Creating tables...');
-    
+
     // Users table
     await query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -39,7 +39,7 @@ async function initDatabase() {
         INDEX idx_salesforce (salesforce_id)
       )
     `);
-    
+
     // Projects table
     await query(`
       CREATE TABLE IF NOT EXISTS projects (
@@ -64,7 +64,7 @@ async function initDatabase() {
         INDEX idx_companycam (companycam_project_id)
       )
     `);
-    
+
     // Estimates table
     await query(`
       CREATE TABLE IF NOT EXISTS estimates (
@@ -93,7 +93,7 @@ async function initDatabase() {
         INDEX idx_version (project_id, version)
       )
     `);
-    
+
     // Photos table (Company Cam integration)
     await query(`
       CREATE TABLE IF NOT EXISTS photos (
@@ -114,7 +114,7 @@ async function initDatabase() {
         INDEX idx_room (room)
       )
     `);
-    
+
     // Calculations cache table
     await query(`
       CREATE TABLE IF NOT EXISTS calculation_cache (
@@ -131,7 +131,7 @@ async function initDatabase() {
         INDEX idx_expires (expires_at)
       )
     `);
-    
+
     // Audit log table
     await query(`
       CREATE TABLE IF NOT EXISTS audit_logs (
@@ -149,7 +149,7 @@ async function initDatabase() {
         INDEX idx_created (created_at)
       )
     `);
-    
+
     // Sessions table
     await query(`
       CREATE TABLE IF NOT EXISTS sessions (
@@ -167,10 +167,10 @@ async function initDatabase() {
         INDEX idx_expires (expires_at)
       )
     `);
-    
+
     // Create stored procedures for common operations
     console.log('🔄 Creating stored procedures...');
-    
+
     // Procedure to clean expired sessions
     await query(`
       CREATE PROCEDURE IF NOT EXISTS cleanup_expired_sessions()
@@ -179,7 +179,7 @@ async function initDatabase() {
         DELETE FROM calculation_cache WHERE expires_at < NOW();
       END
     `);
-    
+
     // Procedure to update project status
     await query(`
       CREATE PROCEDURE IF NOT EXISTS update_project_status(
@@ -187,24 +187,24 @@ async function initDatabase() {
         IN p_status VARCHAR(50)
       )
       BEGIN
-        UPDATE projects 
+        UPDATE projects
         SET status = p_status,
             completed_at = IF(p_status = 'completed', NOW(), NULL)
         WHERE id = p_project_id;
       END
     `);
-    
+
     // Insert default data
     console.log('📝 Inserting default data...');
-    
+
     // Create system user
     await query(`
       INSERT IGNORE INTO users (id, email, name, role)
       VALUES ('system', 'system@paintbox.app', 'System', 'admin')
     `);
-    
+
     console.log('✅ Database initialization complete!');
-    
+
   } catch (error) {
     console.error('❌ Database initialization failed:', error);
     process.exit(1);

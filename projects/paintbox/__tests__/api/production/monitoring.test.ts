@@ -197,7 +197,7 @@ describe('/api/v1/monitoring', () => {
     });
 
     it('should handle batch metric ingestion', async () => {
-      const batchMetrics = Array.from({ length: 100 }, () => 
+      const batchMetrics = Array.from({ length: 100 }, () =>
         ProductionTestFactory.createMonitoringMetric()
       );
       const mockPrisma = require('@/lib/db/prisma');
@@ -617,9 +617,9 @@ describe('/api/v1/monitoring', () => {
 
     it('should prevent metric bombing attacks', async () => {
       const rateLimitMock = require('@/lib/middleware/rate-limit');
-      
+
       // Simulate rapid requests from same IP
-      const requests = Array.from({ length: 100 }, () => 
+      const requests = Array.from({ length: 100 }, () =>
         new NextRequest('http://localhost:3000/api/v1/monitoring/metrics', {
           method: 'POST',
           headers: {
@@ -684,7 +684,7 @@ describe('/api/v1/monitoring', () => {
     it('should log all alert modifications for audit', async () => {
       const alert = mockAlerts[0];
       const mockPrisma = require('@/lib/db/prisma');
-      
+
       mockPrisma.alert.findUnique.mockResolvedValue(alert);
       mockPrisma.alert.update.mockResolvedValue(alert);
       mockPrisma.auditLog.create = jest.fn();
@@ -719,7 +719,7 @@ describe('/api/v1/monitoring', () => {
       const alert = mockAlerts[0];
       const channel = mockChannels[0];
       const mockPrisma = require('@/lib/db/prisma');
-      
+
       mockPrisma.alert.findUnique.mockResolvedValue(alert);
       mockPrisma.notificationChannel.findMany.mockResolvedValue([channel]);
       mockPrisma.notificationLog.create = jest.fn();

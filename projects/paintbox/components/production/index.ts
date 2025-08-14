@@ -1,6 +1,6 @@
 /**
  * Production deployment UI components for Paintbox
- * 
+ *
  * These components provide comprehensive management interfaces for:
  * - Temporal Cloud connections and workflow management
  * - API key creation, rotation, and usage monitoring

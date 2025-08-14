@@ -16,7 +16,7 @@ expect.extend(toHaveNoViolations);
 const mockProductionStore = {
   temporal: {
     connections: ProductionTestFactory.createTemporalConnections(3),
-    workflows: Array.from({ length: 5 }, () => 
+    workflows: Array.from({ length: 5 }, () =>
       ProductionTestFactory.createTemporalWorkflow()
     ),
     selectedConnection: undefined,
@@ -243,7 +243,7 @@ describe('Production Components Accessibility Tests', () => {
       connections.forEach(connection => {
         const connectionElement = screen.getByText(connection.name);
         expect(connectionElement).toBeInTheDocument();
-        
+
         // Status should be announced
         const statusText = screen.getByText(connection.status, { exact: false });
         expect(statusText).toHaveAttribute('aria-label');
@@ -306,11 +306,11 @@ describe('Production Components Accessibility Tests', () => {
       const createButton = screen.queryByRole('button', { name: /create/i });
       if (createButton) {
         await user.click(createButton);
-        
+
         // Validation errors should be announced
         const errorMessages = screen.queryAllByRole('alert');
         expect(errorMessages.length).toBeGreaterThanOrEqual(0);
-        
+
         errorMessages.forEach(error => {
           expect(error).toHaveTextContent();
         });
@@ -356,9 +356,9 @@ describe('Production Components Accessibility Tests', () => {
       const liveRegions = screen.queryAllByRole('status').concat(
         screen.queryAllByRole('log')
       );
-      
+
       expect(liveRegions.length).toBeGreaterThan(0);
-      
+
       liveRegions.forEach(region => {
         expect(region).toHaveAttribute('aria-live');
       });
@@ -375,11 +375,11 @@ describe('Production Components Accessibility Tests', () => {
       const tables = screen.queryAllByRole('table');
       tables.forEach(table => {
         expect(table).toHaveAccessibleName();
-        
+
         // Check for column headers
         const columnHeaders = screen.queryAllByRole('columnheader');
         expect(columnHeaders.length).toBeGreaterThan(0);
-        
+
         // Check for row headers if present
         const rowHeaders = screen.queryAllByRole('rowheader');
         rowHeaders.forEach(header => {
@@ -475,7 +475,7 @@ describe('Production Components Accessibility Tests', () => {
       if (resetButtons.length > 0) {
         resetButtons[0].focus();
         expect(resetButtons[0]).toHaveFocus();
-        
+
         await user.keyboard('{Enter}');
         // Should trigger appropriate action or dialog
       }
@@ -507,7 +507,7 @@ describe('Production Components Accessibility Tests', () => {
         if (vulnElement) {
           // Vulnerability severity should be announced
           expect(vulnElement).toHaveAccessibleDescription();
-          
+
           // Severity should be clearly indicated
           const severityElement = screen.queryByText(vuln.severity);
           if (severityElement) {
@@ -558,7 +558,7 @@ describe('Production Components Accessibility Tests', () => {
   describe('Cross-Component Accessibility', () => {
     it('should maintain focus management across components', async () => {
       const user = userEvent.setup();
-      
+
       const MultiComponentTest = () => (
         <AccessibilityTestWrapper>
           <TemporalDashboard />
@@ -573,7 +573,7 @@ describe('Production Components Accessibility Tests', () => {
       await user.tab();
       const firstFocusable = document.activeElement;
       expect(firstFocusable).toBeDefined();
-      
+
       // Tab through several elements
       for (let i = 0; i < 10; i++) {
         await user.tab();
@@ -593,18 +593,18 @@ describe('Production Components Accessibility Tests', () => {
       const createButton = screen.queryByRole('button', { name: /add connection/i });
       if (createButton) {
         await user.click(createButton);
-        
+
         // Dialog should be accessible
         const dialog = screen.queryByRole('dialog');
         if (dialog) {
           expect(dialog).toHaveAccessibleName();
           expect(dialog).toHaveAttribute('aria-modal', 'true');
-          
+
           // Focus should be trapped in dialog
           const dialogButtons = screen.queryAllByRole('button');
           const dialogInputs = screen.queryAllByRole('textbox');
           const focusableInDialog = [...dialogButtons, ...dialogInputs];
-          
+
           if (focusableInDialog.length > 0) {
             expect(focusableInDialog[0]).toHaveFocus();
           }
@@ -627,7 +627,7 @@ describe('Production Components Accessibility Tests', () => {
       const main = screen.queryByRole('main');
       const navigation = screen.queryByRole('navigation');
       const complementary = screen.queryAllByRole('complementary');
-      
+
       // Should have proper landmark structure
       expect(main || navigation || complementary.length > 0).toBe(true);
     });
@@ -642,7 +642,7 @@ describe('Production Components Accessibility Tests', () => {
       // Check for language attributes
       const rootElement = document.documentElement;
       expect(rootElement).toHaveAttribute('lang');
-      
+
       // Check for proper text direction
       const textElements = screen.queryAllByText(/./);
       textElements.slice(0, 5).forEach(element => {
@@ -708,12 +708,12 @@ describe('Production Components Accessibility Tests', () => {
       const animatedElements = screen.queryAllByRole('progressbar').concat(
         screen.queryAllByTestId('loading-spinner')
       );
-      
+
       animatedElements.forEach(element => {
         const computedStyle = window.getComputedStyle(element);
         // Should have reduced or no animation
         expect(['none', '0s', 'paused']).toContain(
-          computedStyle.animationPlayState || 
+          computedStyle.animationPlayState ||
           computedStyle.animationDuration ||
           computedStyle.animation
         );
@@ -724,7 +724,7 @@ describe('Production Components Accessibility Tests', () => {
   describe('Performance Impact of Accessibility Features', () => {
     it('should not significantly impact render performance with accessibility features', () => {
       const startTime = performance.now();
-      
+
       render(
         <AccessibilityTestWrapper>
           <TemporalDashboard />
@@ -734,10 +734,10 @@ describe('Production Components Accessibility Tests', () => {
           <SecurityScanner />
         </AccessibilityTestWrapper>
       );
-      
+
       const endTime = performance.now();
       const renderTime = endTime - startTime;
-      
+
       // Render time should be reasonable even with accessibility features
       expect(renderTime).toBeLessThan(1000); // Less than 1 second
     });
@@ -755,7 +755,7 @@ describe('Production Components Accessibility Tests', () => {
         const startTime = performance.now();
         await user.click(buttons[0]);
         const endTime = performance.now();
-        
+
         const interactionTime = endTime - startTime;
         expect(interactionTime).toBeLessThan(100); // Less than 100ms
       }

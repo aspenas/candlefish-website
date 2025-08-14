@@ -444,7 +444,7 @@ describe('/api/v1/circuit-breakers', () => {
     it('should log circuit breaker reset events', async () => {
       const openBreaker = ProductionTestFactory.createOpenCircuitBreaker();
       const mockPrisma = require('@/lib/db/prisma');
-      
+
       mockPrisma.circuitBreaker.findUnique.mockResolvedValue(openBreaker);
       mockPrisma.circuitBreaker.update.mockResolvedValue(openBreaker);
       mockPrisma.auditLog.create = jest.fn();
@@ -491,7 +491,7 @@ describe('/api/v1/circuit-breakers', () => {
     it('should enforce reset rate limiting', async () => {
       const openBreaker = ProductionTestFactory.createOpenCircuitBreaker();
       const rateLimitMock = require('@/lib/middleware/rate-limit');
-      
+
       rateLimitMock.checkRateLimit.mockResolvedValue({
         allowed: false,
         resetTime: Date.now() + 60000,
@@ -548,7 +548,7 @@ describe('/api/v1/circuit-breakers', () => {
       mockCircuitBreakerService.getMetrics.mockResolvedValue(mockMetrics);
 
       const periods = ['1h', '6h', '24h', '7d', '30d'];
-      
+
       for (const period of periods) {
         const request = new NextRequest(`http://localhost:3000/api/v1/circuit-breakers/${breaker.name}/metrics?period=${period}`, {
           headers: {
@@ -728,7 +728,7 @@ describe('/api/v1/circuit-breakers', () => {
   describe('Performance and Monitoring', () => {
     it('should handle high-frequency metric updates', async () => {
       const breaker = mockBreakers[0];
-      const requests = Array.from({ length: 1000 }, (_, i) => 
+      const requests = Array.from({ length: 1000 }, (_, i) =>
         new NextRequest(`http://localhost:3000/api/v1/circuit-breakers/${breaker.name}/metrics`, {
           headers: {
             'Authorization': 'Bearer ' + global.securityTestHelpers.createMockJWT({
@@ -791,7 +791,7 @@ describe('/api/v1/circuit-breakers', () => {
     it('should handle concurrent reset attempts', async () => {
       const openBreaker = ProductionTestFactory.createOpenCircuitBreaker();
       const mockPrisma = require('@/lib/db/prisma');
-      
+
       mockPrisma.circuitBreaker.findUnique.mockResolvedValue(openBreaker);
       mockCircuitBreakerService.resetBreaker.mockImplementation(() => {
         // Simulate concurrent modification

@@ -39,19 +39,19 @@ fi
 transfer_repo() {
     local repo=$1
     echo -e "\n${YELLOW}Processing: $repo${NC}"
-    
+
     # Check if repo exists in source
     if ! gh repo view $SOURCE_USER/$repo --json name >/dev/null 2>&1; then
         echo -e "${RED}  ✗ Repository $SOURCE_USER/$repo not found${NC}"
         return 1
     fi
-    
+
     # Check if already in target org
     if gh repo view $TARGET_ORG/$repo --json name >/dev/null 2>&1; then
         echo -e "${YELLOW}  ⚠ Repository already exists in $TARGET_ORG${NC}"
         return 0
     fi
-    
+
     # Transfer repository
     echo -e "  Transferring $repo to $TARGET_ORG..."
     if gh api repos/$SOURCE_USER/$repo/transfer \
@@ -71,7 +71,7 @@ transfer_repo() {
 update_local_remote() {
     local repo=$1
     local local_path=$2
-    
+
     if [ -d "$local_path/.git" ]; then
         echo -e "  Updating remote for local copy at $local_path"
         cd "$local_path"

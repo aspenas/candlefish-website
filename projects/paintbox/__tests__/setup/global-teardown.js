@@ -63,7 +63,7 @@ async function archiveTestResults() {
 async function generateTestSummary() {
   const testResultsDir = path.join(process.cwd(), 'test-results');
   const coverageDir = path.join(process.cwd(), 'coverage');
-  
+
   if (!fs.existsSync(testResultsDir)) {
     return;
   }
@@ -118,20 +118,20 @@ async function generateTestSummary() {
   Object.entries(summary.results).forEach(([testType, data]) => {
     console.log(`• ${testType}: ✅ ${data.file}`);
   });
-  
+
   if (summary.coverage) {
     console.log('\n📊 Coverage Summary:');
     console.log(`• Lines: ${summary.coverage.lines}%`);
     console.log(`• Functions: ${summary.coverage.functions}%`);
     console.log(`• Branches: ${summary.coverage.branches}%`);
     console.log(`• Statements: ${summary.coverage.statements}%`);
-    
+
     const meetsThreshold = Object.values(summary.coverage)
       .slice(0, 4) // Only check the percentage values
       .every(pct => pct >= summary.coverage.threshold);
-    
+
     console.log(`• Threshold (${summary.coverage.threshold}%): ${meetsThreshold ? '✅ Met' : '❌ Not Met'}`);
   }
-  
+
   console.log('===============================\n');
 }

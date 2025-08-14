@@ -4,12 +4,12 @@ import { createConnection } from '@/lib/database/connection-pool';
 export async function GET() {
   try {
     const startTime = Date.now();
-    
+
     // Test database connection
     const connection = await createConnection();
     const [result] = await connection.query('SELECT 1 as test');
     await connection.end();
-    
+
     return NextResponse.json({
       status: 'healthy',
       service: 'database',

@@ -45,9 +45,9 @@ run_test_suite() {
     local test_name="$1"
     local test_pattern="$2"
     local additional_args="$3"
-    
+
     print_status "Running $test_name..."
-    
+
     if npm run test -- --testPathPattern="$test_pattern" $additional_args; then
         print_success "$test_name completed successfully"
         return 0
@@ -60,29 +60,29 @@ run_test_suite() {
 # Function to check test coverage
 check_coverage() {
     print_status "Checking test coverage..."
-    
+
     # Extract coverage percentages from coverage report
     if [ -f "coverage/coverage-summary.json" ]; then
         local lines_coverage=$(node -p "
             const coverage = require('./coverage/coverage-summary.json');
             coverage.total.lines.pct;
         ")
-        
+
         local functions_coverage=$(node -p "
             const coverage = require('./coverage/coverage-summary.json');
             coverage.total.functions.pct;
         ")
-        
+
         local branches_coverage=$(node -p "
             const coverage = require('./coverage/coverage-summary.json');
             coverage.total.branches.pct;
         ")
-        
+
         local statements_coverage=$(node -p "
             const coverage = require('./coverage/coverage-summary.json');
             coverage.total.statements.pct;
         ")
-        
+
         echo ""
         echo -e "${BLUE}Coverage Report:${NC}"
         echo -e "Lines:      ${lines_coverage}%"
@@ -90,10 +90,10 @@ check_coverage() {
         echo -e "Branches:   ${branches_coverage}%"
         echo -e "Statements: ${statements_coverage}%"
         echo ""
-        
+
         # Check if coverage meets threshold
         local min_coverage=$(echo "$lines_coverage $functions_coverage $branches_coverage $statements_coverage" | tr ' ' '\n' | sort -n | head -1)
-        
+
         if (( $(echo "$min_coverage >= $COVERAGE_THRESHOLD" | bc -l) )); then
             print_success "Coverage threshold ($COVERAGE_THRESHOLD%) met"
             return 0
@@ -110,10 +110,10 @@ check_coverage() {
 # Function to generate test report
 generate_test_report() {
     print_status "Generating test report..."
-    
+
     local report_file="test-results/production-test-report-$(date +%Y-%m-%d-%H-%M-%S).md"
     mkdir -p test-results
-    
+
     cat > "$report_file" << EOF
 # Paintbox Production Features Test Report
 
@@ -199,45 +199,45 @@ EOF
 # Function to setup test environment
 setup_test_environment() {
     print_status "Setting up test environment..."
-    
+
     # Set environment variables
     export NODE_ENV=test
     export CI=true
     export JEST_TIMEOUT=$TIMEOUT
     export JEST_WORKERS=$PARALLEL_WORKERS
-    
+
     # Ensure test directories exist
     mkdir -p test-results
     mkdir -p coverage
-    
+
     # Clear previous test results
     rm -f test-results/*.xml
     rm -rf coverage/*
-    
+
     print_success "Test environment setup complete"
 }
 
 # Function to cleanup test environment
 cleanup_test_environment() {
     print_status "Cleaning up test environment..."
-    
+
     # Archive old test results
     if [ -d "test-results" ]; then
         local archive_dir="test-results/archive/$(date +%Y-%m-%d)"
         mkdir -p "$archive_dir"
         find test-results -name "*.xml" -mtime +7 -exec mv {} "$archive_dir" \;
     fi
-    
+
     print_success "Test environment cleanup complete"
 }
 
 # Main test execution function
 run_all_tests() {
     local failed_tests=0
-    
+
     print_status "Starting comprehensive test suite..."
     echo ""
-    
+
     # 1. Unit Tests - API Endpoints
     print_status "Phase 1: Unit Tests (API Endpoints)"
     if run_test_suite "API Unit Tests" "api/production" "--outputFile=test-results/unit-tests.xml --testTimeout=$TIMEOUT"; then
@@ -247,7 +247,7 @@ run_all_tests() {
         ((failed_tests++))
     fi
     echo ""
-    
+
     # 2. Integration Tests
     print_status "Phase 2: Integration Tests"
     if run_test_suite "Integration Tests" "integration" "--outputFile=test-results/integration-tests.xml --testTimeout=$TIMEOUT"; then
@@ -257,7 +257,7 @@ run_all_tests() {
         ((failed_tests++))
     fi
     echo ""
-    
+
     # 3. Component Tests
     print_status "Phase 3: Component Tests"
     if run_test_suite "Component Tests" "components/production" "--outputFile=test-results/component-tests.xml --testTimeout=$TIMEOUT"; then
@@ -267,7 +267,7 @@ run_all_tests() {
         ((failed_tests++))
     fi
     echo ""
-    
+
     # 4. Security Tests
     print_status "Phase 4: Security Tests"
     if run_test_suite "Security Tests" "security" "--outputFile=test-results/security-tests.xml --testTimeout=$TIMEOUT"; then
@@ -277,7 +277,7 @@ run_all_tests() {
         ((failed_tests++))
     fi
     echo ""
-    
+
     # 5. Accessibility Tests
     print_status "Phase 5: Accessibility Tests"
     if run_test_suite "Accessibility Tests" "accessibility" "--outputFile=test-results/accessibility-tests.xml --testTimeout=$TIMEOUT"; then
@@ -287,7 +287,7 @@ run_all_tests() {
         ((failed_tests++))
     fi
     echo ""
-    
+
     # 6. Generate Coverage Report
     print_status "Phase 6: Coverage Analysis"
     if npm run test:coverage -- --testPathPattern="(api/production|integration|components/production|security|accessibility)" --silent; then
@@ -302,14 +302,14 @@ run_all_tests() {
         ((failed_tests++))
     fi
     echo ""
-    
+
     return $failed_tests
 }
 
 # Function to run E2E tests separately (requires running application)
 run_e2e_tests() {
     print_status "Running E2E Tests (requires running application)..."
-    
+
     # Check if application is running
     if curl -sf http://localhost:3000/api/health > /dev/null 2>&1; then
         print_status "Application detected, running E2E tests..."
@@ -330,7 +330,7 @@ run_e2e_tests() {
 # Function to run performance tests separately
 run_performance_tests() {
     print_status "Running Performance Tests..."
-    
+
     # Check if application is running
     if curl -sf http://localhost:3000/api/health > /dev/null 2>&1; then
         print_status "Application detected, running performance tests..."
@@ -416,10 +416,10 @@ done
 main() {
     local start_time=$(date +%s)
     local total_failed=0
-    
+
     # Setup
     setup_test_environment
-    
+
     # Run tests based on options
     if [ -n "$RUN_ONLY" ]; then
         print_status "Running only tests matching: $RUN_ONLY"
@@ -433,7 +433,7 @@ main() {
         # Run core test suite
         run_all_tests
         total_failed=$?
-        
+
         # Run E2E tests if not skipped
         if [ "$SKIP_E2E" = false ]; then
             run_e2e_tests
@@ -441,7 +441,7 @@ main() {
                 ((total_failed++))
             fi
         fi
-        
+
         # Run performance tests if not skipped
         if [ "$SKIP_PERFORMANCE" = false ]; then
             run_performance_tests
@@ -450,19 +450,19 @@ main() {
             fi
         fi
     fi
-    
+
     # Generate report
     if [ "$GENERATE_REPORT" = true ]; then
         generate_test_report
     fi
-    
+
     # Cleanup
     cleanup_test_environment
-    
+
     # Final summary
     local end_time=$(date +%s)
     local duration=$((end_time - start_time))
-    
+
     echo ""
     echo -e "${BLUE}================================================${NC}"
     echo -e "${BLUE}              Test Suite Summary                ${NC}"
@@ -472,7 +472,7 @@ main() {
     echo -e "Environment: $TEST_ENV"
     echo -e "Coverage Threshold: $COVERAGE_THRESHOLD%"
     echo ""
-    
+
     if [ $total_failed -eq 0 ]; then
         print_success "🎉 All tests passed successfully!"
         echo ""

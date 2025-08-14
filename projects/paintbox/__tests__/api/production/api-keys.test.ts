@@ -55,7 +55,7 @@ describe('/api/v1/keys', () => {
         status: expect.stringMatching(/^(active|revoked|expired)$/),
         permissions: expect.any(Array),
       });
-      
+
       // Ensure sensitive key values are not returned
       data.data.forEach((key: APIKey) => {
         expect(key).not.toHaveProperty('keyValue');
@@ -171,7 +171,7 @@ describe('/api/v1/keys', () => {
         permissions: newKey.permissions,
         keyPrefix: expect.stringMatching(/^pk_/),
       });
-      
+
       // Ensure the full key value is returned only on creation
       expect(data.data.keyValue).toBeDefined();
       expect(data.data.keyValue).toMatch(/^pk_[a-zA-Z0-9]{32,}$/);
@@ -423,7 +423,7 @@ describe('/api/v1/keys', () => {
     it('should rotate API key successfully', async () => {
       const existingKey = mockAPIKeys[0];
       const newKeyValue = 'pk_new_rotated_key_value_123456789';
-      
+
       const mockPrisma = require('@/lib/db/prisma');
       const mockSecretsManager = require('@/lib/services/secrets-manager');
       const mockCrypto = require('crypto');
@@ -459,7 +459,7 @@ describe('/api/v1/keys', () => {
     it('should enforce rotation rate limits', async () => {
       const existingKey = ProductionTestFactory.createAPIKey();
       const mockPrisma = require('@/lib/db/prisma');
-      
+
       // Mock recent rotation
       mockPrisma.apiKey.findUnique.mockResolvedValue({
         ...existingKey,
@@ -482,7 +482,7 @@ describe('/api/v1/keys', () => {
     it('should log key rotation events for audit', async () => {
       const existingKey = mockAPIKeys[0];
       const mockPrisma = require('@/lib/db/prisma');
-      
+
       mockPrisma.apiKey.findUnique.mockResolvedValue(existingKey);
       mockPrisma.apiKey.update.mockResolvedValue(existingKey);
       mockPrisma.auditLog.create = jest.fn();
@@ -514,7 +514,7 @@ describe('/api/v1/keys', () => {
     it('should return usage statistics for API key', async () => {
       const apiKey = mockAPIKeys[0];
       const mockPrisma = require('@/lib/db/prisma');
-      
+
       mockPrisma.apiKey.findUnique.mockResolvedValue(apiKey);
       mockPrisma.apiKeyUsage.findMany.mockResolvedValue(mockUsageData);
 
@@ -543,12 +543,12 @@ describe('/api/v1/keys', () => {
     it('should support different time periods', async () => {
       const apiKey = mockAPIKeys[0];
       const mockPrisma = require('@/lib/db/prisma');
-      
+
       mockPrisma.apiKey.findUnique.mockResolvedValue(apiKey);
       mockPrisma.apiKeyUsage.findMany.mockResolvedValue(mockUsageData);
 
       const periods = ['1h', '24h', '7d', '30d'];
-      
+
       for (const period of periods) {
         const request = new NextRequest(`http://localhost:3000/api/v1/keys/${apiKey.id}/usage?period=${period}`, {
           headers: {
@@ -679,10 +679,10 @@ describe('/api/v1/keys', () => {
 
     it('should efficiently handle large usage data queries', async () => {
       const apiKey = mockAPIKeys[0];
-      const largeUsageDataset = Array.from({ length: 10000 }, () => 
+      const largeUsageDataset = Array.from({ length: 10000 }, () =>
         ProductionTestFactory.createAPIKeyUsage()
       );
-      
+
       const mockPrisma = require('@/lib/db/prisma');
       mockPrisma.apiKey.findUnique.mockResolvedValue(apiKey);
       mockPrisma.apiKeyUsage.findMany.mockResolvedValue(largeUsageDataset);

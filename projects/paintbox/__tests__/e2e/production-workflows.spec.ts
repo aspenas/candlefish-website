@@ -38,12 +38,12 @@ test.describe('Production Feature E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
     // Setup test environment
     await page.goto('/');
-    
+
     // Mock API responses for consistent testing
     await page.route('**/api/v1/**', async (route) => {
       const url = route.request().url();
       const method = route.request().method();
-      
+
       // Handle authentication
       if (url.includes('/api/auth')) {
         await route.fulfill({
@@ -57,7 +57,7 @@ test.describe('Production Feature E2E Tests', () => {
         });
         return;
       }
-      
+
       // Default to continue with actual request
       await route.continue();
     });
@@ -112,7 +112,7 @@ test.describe('Production Feature E2E Tests', () => {
       });
 
       await page.click(`[data-testid="test-connection-${testTemporalConnection.name}"]`);
-      
+
       // Verify test results
       await expect(page.locator('[data-testid="connection-status"]'))
         .toContainText('Connected');
@@ -172,7 +172,7 @@ test.describe('Production Feature E2E Tests', () => {
 
       // Mock existing connection
       const mockConnection = ProductionTestFactory.createTemporalConnection();
-      const mockWorkflows = Array.from({ length: 3 }, () => 
+      const mockWorkflows = Array.from({ length: 3 }, () =>
         ProductionTestFactory.createTemporalWorkflow({ connectionId: mockConnection.id })
       );
 
@@ -201,7 +201,7 @@ test.describe('Production Feature E2E Tests', () => {
 
       // Filter workflows by status
       await page.selectOption('[data-testid="workflow-status-filter"]', 'running');
-      
+
       // Verify filtering
       const runningWorkflows = mockWorkflows.filter(w => w.status === 'running');
       await expect(page.locator('[data-testid="workflow-item"]'))
@@ -239,7 +239,7 @@ test.describe('Production Feature E2E Tests', () => {
       await page.waitForSelector('[data-testid="api-key-dialog"]');
 
       await page.fill('[data-testid="api-key-name-input"]', testAPIKey.name);
-      
+
       // Select permissions
       for (const permission of testAPIKey.permissions) {
         await page.check(`[data-testid="permission-${permission}"]`);
@@ -285,7 +285,7 @@ test.describe('Production Feature E2E Tests', () => {
 
       // View usage statistics
       await page.route('**/api/v1/keys/*/usage*', async (route) => {
-        const mockUsage = Array.from({ length: 7 }, () => 
+        const mockUsage = Array.from({ length: 7 }, () =>
           ProductionTestFactory.createAPIKeyUsage()
         );
         await route.fulfill({
@@ -481,7 +481,7 @@ test.describe('Production Feature E2E Tests', () => {
       });
 
       // Mock metrics data
-      const mockMetrics = Array.from({ length: 10 }, () => 
+      const mockMetrics = Array.from({ length: 10 }, () =>
         ProductionTestFactory.createMonitoringMetric({
           name: 'cpu_usage',
           value: 85, // Above threshold
@@ -636,7 +636,7 @@ test.describe('Production Feature E2E Tests', () => {
 
       // View metrics
       await page.click('[data-testid="view-metrics-payment-service-breaker"]');
-      
+
       await page.route('**/api/v1/circuit-breakers/*/metrics*', async (route) => {
         const mockMetrics = Array.from({ length: 24 }, () => ({
           timestamp: new Date().toISOString(),
@@ -648,7 +648,7 @@ test.describe('Production Feature E2E Tests', () => {
           p95ResponseTime: Math.random() * 2000,
           p99ResponseTime: Math.random() * 3000,
         }));
-        
+
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -754,7 +754,7 @@ test.describe('Production Feature E2E Tests', () => {
         .toContainText('Running');
 
       // Simulate scan completion
-      const vulnerabilities = Array.from({ length: 5 }, () => 
+      const vulnerabilities = Array.from({ length: 5 }, () =>
         ProductionTestFactory.createVulnerability()
       );
 
@@ -856,7 +856,7 @@ test.describe('Production Feature E2E Tests', () => {
 
       // Check compliance status
       await page.click('[data-testid="compliance-tab"]');
-      
+
       await page.route('**/api/v1/security/compliance', async (route) => {
         const complianceStatuses = [
           ProductionTestFactory.createComplianceStatus({ framework: 'SOC2', score: 85 }),
@@ -884,7 +884,7 @@ test.describe('Production Feature E2E Tests', () => {
       // Start with creating a temporal connection
       await page.click('[data-testid="temporal-dashboard-tab"]');
       await page.click('[data-testid="add-connection-button"]');
-      
+
       // Create connection with monitoring enabled
       await page.fill('[data-testid="connection-name-input"]', 'Production Connection');
       await page.fill('[data-testid="connection-namespace-input"]', 'prod');
@@ -896,7 +896,7 @@ test.describe('Production Feature E2E Tests', () => {
 
       // Navigate to monitoring to see metrics
       await page.click('[data-testid="monitoring-dashboard-tab"]');
-      
+
       // Should see temporal-related metrics
       await expect(page.locator('[data-testid="temporal-metrics-section"]'))
         .toBeVisible();
@@ -904,7 +904,7 @@ test.describe('Production Feature E2E Tests', () => {
       // Create circuit breaker for the temporal service
       await page.click('[data-testid="circuit-breakers-tab"]');
       await page.click('[data-testid="create-breaker-button"]');
-      
+
       await page.fill('[data-testid="breaker-name"]', 'temporal-service-breaker');
       await page.fill('[data-testid="breaker-service"]', 'temporal-service');
       await page.click('[data-testid="create-breaker-button"]');
@@ -912,28 +912,28 @@ test.describe('Production Feature E2E Tests', () => {
       // Create API key with monitoring access
       await page.click('[data-testid="api-keys-dashboard-tab"]');
       await page.click('[data-testid="create-api-key-button"]');
-      
+
       await page.fill('[data-testid="api-key-name-input"]', 'Production Monitoring Key');
       await page.check('[data-testid="permission-read:metrics"]');
       await page.check('[data-testid="permission-read:alerts"]');
       await page.check('[data-testid="permission-read:circuit-breakers"]');
-      
+
       await page.click('[data-testid="create-api-key-button"]');
 
       // Run security scan on the entire setup
       await page.click('[data-testid="security-tab"]');
       await page.click('[data-testid="create-scan-button"]');
-      
+
       await page.fill('[data-testid="scan-name"]', 'Production Infrastructure Scan');
       await page.selectOption('[data-testid="scan-type"]', 'compliance');
       await page.selectOption('[data-testid="target-type"]', 'deployment');
-      
+
       await page.click('[data-testid="create-scan-button"]');
       await page.click('[data-testid="start-scan-Production Infrastructure Scan"]');
 
       // Verify integrated dashboard shows all components
       await page.click('[data-testid="overview-tab"]');
-      
+
       await expect(page.locator('[data-testid="temporal-connections-count"]'))
         .toContainText('1');
       await expect(page.locator('[data-testid="active-api-keys-count"]'))
@@ -945,7 +945,7 @@ test.describe('Production Feature E2E Tests', () => {
 
       // Test system health
       await page.click('[data-testid="health-check-button"]');
-      
+
       // Should check all components
       await expect(page.locator('[data-testid="temporal-health"]'))
         .toContainText('Healthy');

@@ -59,9 +59,9 @@ add_collaborator() {
     local repo=$1
     local username=$2
     local permission=${3:-admin}
-    
+
     print_color "$BLUE" "Adding $username to $GITHUB_OWNER/$repo with $permission permission..."
-    
+
     if gh api -X PUT "/repos/$GITHUB_OWNER/$repo/collaborators/$username" \
         --field permission="$permission" &> /dev/null; then
         print_color "$GREEN" "✓ Successfully added $username to $repo"
@@ -74,9 +74,9 @@ add_collaborator() {
 remove_collaborator() {
     local repo=$1
     local username=$2
-    
+
     print_color "$BLUE" "Removing $username from $GITHUB_OWNER/$repo..."
-    
+
     if gh api -X DELETE "/repos/$GITHUB_OWNER/$repo/collaborators/$username" &> /dev/null; then
         print_color "$GREEN" "✓ Successfully removed $username from $repo"
     else
@@ -88,10 +88,10 @@ remove_collaborator() {
 check_access() {
     local repo=$1
     local username=$2
-    
+
     local response=$(gh api "/repos/$GITHUB_OWNER/$repo/collaborators/$username/permission" 2>/dev/null || echo "{}")
     local permission=$(echo "$response" | jq -r '.permission // "none"')
-    
+
     if [ "$permission" != "none" ]; then
         echo "$permission"
     else
@@ -102,7 +102,7 @@ check_access() {
 # Function to list all collaborators for a repository
 list_collaborators() {
     local repo=$1
-    
+
     print_color "$BLUE" "\nCollaborators for $GITHUB_OWNER/$repo:"
     gh api "/repos/$GITHUB_OWNER/$repo/collaborators" 2>/dev/null | \
         jq -r '.[] | "\(.login) - \(.permissions)"' || \
@@ -113,11 +113,11 @@ list_collaborators() {
 grant_tyler_full_access() {
     print_color "$GREEN" "\n🚀 Granting Tyler full admin access to all Candlefish repositories..."
     print_color "$YELLOW" "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    
+
     for repo in "${REPOSITORIES[@]}"; do
         add_collaborator "$repo" "$TYLER_USERNAME" "admin"
     done
-    
+
     print_color "$GREEN" "\n✅ Tyler access setup complete!"
 }
 
@@ -125,7 +125,7 @@ grant_tyler_full_access() {
 check_tyler_status() {
     print_color "$BLUE" "\n📊 Tyler's Current Access Status:"
     print_color "$YELLOW" "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    
+
     for repo in "${REPOSITORIES[@]}"; do
         local access=$(check_access "$repo" "$TYLER_USERNAME")
         if [ "$access" = "admin" ]; then
@@ -141,16 +141,16 @@ check_tyler_status() {
 # Function to add a new repository to the list
 add_new_repo() {
     local new_repo=$1
-    
+
     print_color "$BLUE" "Adding new repository to management list: $new_repo"
-    
+
     # Add to the script itself
     sed -i '' "/^REPOSITORIES=(/a\\
     \"$new_repo\"
 " "$0"
-    
+
     print_color "$GREEN" "✓ Added $new_repo to repository list"
-    
+
     # Grant Tyler access immediately
     add_collaborator "$new_repo" "$TYLER_USERNAME" "admin"
 }
@@ -173,13 +173,13 @@ show_menu() {
 main() {
     check_gh_cli
     check_auth
-    
+
     if [ $# -eq 0 ]; then
         # Interactive mode
         while true; do
             show_menu
             read -p "Select an option (1-7): " choice
-            
+
             case $choice in
                 1)
                     grant_tyler_full_access

@@ -41,10 +41,10 @@ class LoadTestRunner {
 
     // Calculate user spawn rate
     const spawnRate = config.users / config.rampUp;
-    
+
     for (let i = 0; i < config.users; i++) {
       const delay = (i / spawnRate) * 1000; // Convert to milliseconds
-      
+
       userPromises.push(
         new Promise(async (resolve) => {
           await this.sleep(delay);
@@ -66,7 +66,7 @@ class LoadTestRunner {
   ): Promise<void> {
     while (Date.now() < endTime) {
       const requestStart = Date.now();
-      
+
       try {
         const response = await fetch(`${this.baseURL}${config.endpoint}`, {
           method: config.method,
@@ -184,7 +184,7 @@ describe('Performance Load Testing', () => {
         endpoint: '/api/v1/monitoring/metrics',
         method: 'POST',
         payload: {
-          metrics: Array.from({ length: 10 }, () => 
+          metrics: Array.from({ length: 10 }, () =>
             ProductionTestFactory.createMonitoringMetric()
           ),
         },
@@ -238,7 +238,7 @@ describe('Performance Load Testing', () => {
       // Stress test allows higher response times and error rates
       expect(metrics.responseTime).toBeLessThan(config.expectedResponseTime);
       expect(metrics.errorRate).toBeLessThan(config.maxErrorRate);
-      
+
       console.log('Stress Test Metrics:', {
         'Response Time': `${metrics.responseTime.toFixed(2)}ms`,
         'Throughput': `${metrics.throughput.toFixed(2)} req/s`,
@@ -284,10 +284,10 @@ describe('Performance Load Testing', () => {
       for (let i = 1; i < results.length; i++) {
         const previous = results[i - 1];
         const current = results[i];
-        
+
         // Response time shouldn't increase more than 200% between steps
         expect(current.responseTime).toBeLessThan(previous.responseTime * 2);
-        
+
         // Error rate shouldn't exceed 10%
         expect(current.errorRate).toBeLessThan(10);
       }
@@ -372,7 +372,7 @@ describe('Performance Load Testing', () => {
     test('should detect memory leaks during extended testing', async () => {
       // This test would need to be run with actual memory monitoring
       // For demo purposes, we'll simulate the test structure
-      
+
       const testDuration = 3600; // 1 hour
       const measurements: Array<{ time: number; memoryUsage: number }> = [];
 

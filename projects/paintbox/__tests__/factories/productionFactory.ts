@@ -40,7 +40,7 @@ export class ProductionTestFactory {
   static createTemporalWorkflow(overrides: Partial<TemporalWorkflow> = {}): TemporalWorkflow {
     const startTime = faker.date.past();
     const isCompleted = faker.datatype.boolean();
-    const status = isCompleted 
+    const status = isCompleted
       ? faker.helpers.arrayElement(['completed', 'failed', 'cancelled', 'terminated'])
       : 'running';
 
@@ -121,7 +121,7 @@ export class ProductionTestFactory {
 
   static createMonitoringMetric(overrides: Partial<MonitoringMetric> = {}): MonitoringMetric {
     const metricName = faker.helpers.arrayElement(['cpu_usage', 'memory_usage', 'disk_usage', 'response_time', 'error_rate']);
-    const value = metricName.includes('usage') 
+    const value = metricName.includes('usage')
       ? faker.number.float({ min: 0, max: 100, fractionDigits: 2 })
       : faker.number.float({ min: 0, max: 1000, fractionDigits: 2 });
 
@@ -177,7 +177,7 @@ export class ProductionTestFactory {
 
   static createNotificationChannel(overrides: Partial<NotificationChannel> = {}): NotificationChannel {
     const type = faker.helpers.arrayElement(['email', 'slack', 'webhook', 'sms']);
-    
+
     let config: NotificationChannel['config'] = {};
     switch (type) {
       case 'email':
@@ -266,7 +266,7 @@ export class ProductionTestFactory {
         ] : undefined,
       },
       results: isCompleted ? {
-        vulnerabilities: Array.from({ length: faker.number.int({ min: 0, max: 10 }) }, () => 
+        vulnerabilities: Array.from({ length: faker.number.int({ min: 0, max: 10 }) }, () =>
           this.createVulnerability()
         ),
         summary: {
@@ -479,7 +479,7 @@ export const mockDataGenerators = {
 
   // Rate limiting test data
   rateLimitingTestData: {
-    createRequests: (count: number, ip: string = '192.168.1.1') => 
+    createRequests: (count: number, ip: string = '192.168.1.1') =>
       Array.from({ length: count }, (_, i) => ({
         id: i,
         timestamp: Date.now() + i,
