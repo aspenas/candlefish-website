@@ -1,0 +1,116 @@
+# Pod Security Standards - Restricted profile
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: paintbox
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: paintbox-staging
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+# Security Context Constraints for service accounts
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: paintbox-service-account
+  namespace: paintbox
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: paintbox-pod-reader
+  namespace: paintbox
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: paintbox-pod-reader-binding
+  namespace: paintbox
+subjects:
+- kind: ServiceAccount
+  name: paintbox-service-account
+  namespace: paintbox
+roleRef:
+  kind: Role
+  name: paintbox-pod-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+# Pod Disruption Budget for high availability
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: apollo-router-pdb
+  namespace: paintbox
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: apollo-router
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: subgraphs-pdb
+  namespace: paintbox
+spec:
+  minAvailable: 1
+  selector:
+    matchExpressions:
+    - key: app
+      operator: In
+      values: ["estimates-subgraph", "customers-subgraph", "projects-subgraph", "integrations-subgraph"]
+---
+# Resource Quotas
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: paintbox-compute-quota
+  namespace: paintbox
+spec:
+  hard:
+    requests.cpu: "10"
+    requests.memory: 20Gi
+    limits.cpu: "20"
+    limits.memory: 40Gi
+    persistentvolumeclaims: "10"
+    services.loadbalancers: "2"
+---
+# Limit Ranges
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: paintbox-limit-range
+  namespace: paintbox
+spec:
+  limits:
+  - default:
+      cpu: "500m"
+      memory: "512Mi"
+    defaultRequest:
+      cpu: "100m"
+      memory: "128Mi"
+    type: Container
+  - max:
+      cpu: "2"
+      memory: "4Gi"
+    min:
+      cpu: "50m"
+      memory: "64Mi"
+    type: Container

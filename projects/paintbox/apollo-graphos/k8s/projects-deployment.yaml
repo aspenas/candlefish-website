@@ -1,0 +1,129 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: projects-subgraph
+  namespace: paintbox
+  labels:
+    app: projects-subgraph
+    version: v1
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: projects-subgraph
+  template:
+    metadata:
+      labels:
+        app: projects-subgraph
+        version: v1
+    spec:
+      containers:
+      - name: projects-subgraph
+        image: paintbox/projects-subgraph:latest
+        ports:
+        - containerPort: 4004
+          name: http
+        env:
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: paintbox-config
+              key: PROJECTS_PORT
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: paintbox-config
+              key: NODE_ENV
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: paintbox-secrets
+              key: PROJECTS_DATABASE_URL
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: paintbox-secrets
+              key: REDIS_URL
+        - name: APOLLO_KEY
+          valueFrom:
+            secretKeyRef:
+              name: paintbox-secrets
+              key: APOLLO_KEY
+        - name: APOLLO_GRAPH_REF
+          valueFrom:
+            configMapKeyRef:
+              name: paintbox-config
+              key: APOLLO_GRAPH_REF
+        - name: COMPANY_CAM_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: paintbox-secrets
+              key: COMPANY_CAM_API_KEY
+        - name: COMPANY_CAM_API_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: paintbox-secrets
+              key: COMPANY_CAM_API_SECRET
+        - name: WEATHER_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: paintbox-secrets
+              key: WEATHER_API_KEY
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /.well-known/apollo/server-health
+            port: 4004
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /.well-known/apollo/server-health
+            port: 4004
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        securityContext:
+          runAsUser: 1001
+          runAsGroup: 1001
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      securityContext:
+        fsGroup: 1001
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: projects-subgraph
+  namespace: paintbox
+  labels:
+    app: projects-subgraph
+spec:
+  type: ClusterIP
+  ports:
+  - port: 4004
+    targetPort: 4004
+    protocol: TCP
+    name: http
+  selector:
+    app: projects-subgraph
