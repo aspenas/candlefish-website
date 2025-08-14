@@ -1,0 +1,167 @@
+# Document Mutations
+mutation CreateDocument($input: CreateDocumentInput!) {
+  createDocument(input: $input) {
+    success
+    document {
+      id
+      name
+      description
+      type
+      status
+      owner {
+        id
+        name
+        avatar
+      }
+      permissions {
+        canRead
+        canWrite
+        canComment
+        canShare
+        canManage
+        canDelete
+      }
+      createdAt
+    }
+    errors {
+      field
+      message
+      code
+    }
+  }
+}
+
+mutation UpdateDocument($input: UpdateDocumentInput!) {
+  updateDocument(input: $input) {
+    success
+    document {
+      id
+      name
+      description
+      updatedAt
+    }
+    errors {
+      field
+      message
+      code
+    }
+  }
+}
+
+mutation UpdateDocumentContent($input: UpdateDocumentContentInput!) {
+  updateDocumentContent(input: $input) {
+    success
+    appliedOperations {
+      id
+      type
+      position
+      length
+      content
+      authorId
+      timestamp
+      applied
+    }
+    conflicts {
+      id
+      type
+      position {
+        index
+        offset
+        length
+        depth
+      }
+      localOperation {
+        id
+        type
+        position
+        content
+      }
+      remoteOperation {
+        id
+        type
+        position
+        content
+      }
+      suggested {
+        strategy
+        resolution
+      }
+    }
+    newCrdtState {
+      state
+      vectorClock {
+        clocks
+        version
+      }
+      mergeable
+    }
+    errors {
+      field
+      message
+      code
+    }
+  }
+}
+
+mutation DeleteDocument($id: UUID!) {
+  deleteDocument(id: $id) {
+    success
+    errors {
+      field
+      message
+      code
+    }
+  }
+}
+
+mutation UpdateDocumentPermissions($input: UpdateDocumentPermissionsInput!) {
+  updateDocumentPermissions(input: $input) {
+    success
+    permissions {
+      canRead
+      canWrite
+      canComment
+      canShare
+      canManage
+      canDelete
+      collaborators {
+        user {
+          id
+          name
+          email
+          avatar
+        }
+        permission
+        grantedAt
+        expiresAt
+      }
+    }
+    errors {
+      field
+      message
+      code
+    }
+  }
+}
+
+mutation UpdateDocumentSharing($input: UpdateDocumentSharingInput!) {
+  updateDocumentSharing(input: $input) {
+    success
+    sharing {
+      id
+      isPublic
+      shareUrl
+      embedUrl
+      allowAnonymous
+      allowComments
+      expiresAt
+      maxViews
+      currentViews
+    }
+    errors {
+      field
+      message
+      code
+    }
+  }
+}

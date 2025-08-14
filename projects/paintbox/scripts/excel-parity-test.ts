@@ -399,4 +399,5 @@ if (require.main === module) {
   main().catch(console.error);
 }
 
-export { runParityTest, ParitySummary };
+export { runParityTest };
+export type { ParitySummary };

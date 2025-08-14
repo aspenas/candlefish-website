@@ -1,0 +1,278 @@
+# Critical Deployment Workflow Configurations
+# ============================================
+# Predefined configurations for different deployment scenarios
+
+configurations:
+  # Full critical deployment with all agents
+  critical-full:
+    name: "Critical Full Deployment"
+    description: "Complete deployment with all validation agents"
+    agents:
+      - security-auditor
+      - performance-engineer
+      - test-automator
+      - database-optimizer
+    priority:
+      security: 1
+      performance: 2
+      testing: 3
+      architecture: 4
+    validation_mode: automated
+    rollback_enabled: true
+    parallel_execution: false
+    max_retries: 3
+    timeout_seconds: 600
+
+  # Security-focused deployment
+  security-priority:
+    name: "Security Priority Deployment"
+    description: "Security-first deployment with enhanced validation"
+    agents:
+      - security-auditor
+      - test-automator
+    priority:
+      security: 1
+      testing: 2
+    validation_mode: automated
+    rollback_enabled: true
+    parallel_execution: false
+    max_retries: 2
+    timeout_seconds: 450
+    security_settings:
+      vulnerability_threshold: critical
+      secrets_scan_depth: deep
+      permission_audit_level: strict
+
+  # Performance optimization deployment
+  performance-tuning:
+    name: "Performance Tuning Deployment"
+    description: "Focus on performance optimization and database tuning"
+    agents:
+      - performance-engineer
+      - database-optimizer
+      - test-automator
+    priority:
+      performance: 1
+      database: 2
+      testing: 3
+    validation_mode: automated
+    rollback_enabled: true
+    parallel_execution: true
+    max_retries: 3
+    timeout_seconds: 500
+    performance_settings:
+      baseline_capture_duration: 60
+      optimization_aggressive: true
+      cache_optimization: enabled
+
+  # Quick validation deployment
+  quick-validation:
+    name: "Quick Validation Deployment"
+    description: "Fast deployment with minimal validation"
+    agents:
+      - test-automator
+    priority:
+      testing: 1
+    validation_mode: automated
+    rollback_enabled: false
+    parallel_execution: true
+    max_retries: 1
+    timeout_seconds: 180
+    test_settings:
+      test_suites:
+        - smoke_tests
+        - critical_paths
+
+  # Database migration deployment
+  database-migration:
+    name: "Database Migration Deployment"
+    description: "Database-focused deployment with migration support"
+    agents:
+      - database-optimizer
+      - test-automator
+      - security-auditor
+    priority:
+      database: 1
+      testing: 2
+      security: 3
+    validation_mode: automated
+    rollback_enabled: true
+    parallel_execution: false
+    max_retries: 2
+    timeout_seconds: 900
+    database_settings:
+      backup_before_migration: true
+      validate_constraints: strict
+      optimize_after_migration: true
+
+  # Production hotfix deployment
+  production-hotfix:
+    name: "Production Hotfix Deployment"
+    description: "Emergency production fix with minimal disruption"
+    agents:
+      - security-auditor
+      - test-automator
+    priority:
+      security: 1
+      testing: 2
+    validation_mode: hybrid
+    rollback_enabled: true
+    parallel_execution: false
+    max_retries: 1
+    timeout_seconds: 300
+    hotfix_settings:
+      minimal_validation: true
+      skip_non_critical: true
+      immediate_rollback: true
+
+# Agent-specific configurations
+agent_configs:
+  security-auditor:
+    tools:
+      - bandit
+      - safety
+      - trufflehog
+      - semgrep
+    scan_paths:
+      - src/
+      - deploy/
+      - scripts/
+    exclude_patterns:
+      - "*.test.py"
+      - "*_test.py"
+      - "test_*.py"
+
+  performance-engineer:
+    metrics:
+      - response_time
+      - throughput
+      - cpu_usage
+      - memory_usage
+      - database_queries
+    thresholds:
+      response_time_ms: 200
+      throughput_rps: 500
+      cpu_percent: 70
+      memory_percent: 80
+
+  test-automator:
+    test_suites:
+      unit_tests:
+        command: "pytest tests/unit/"
+        required: true
+      integration_tests:
+        command: "pytest tests/integration/"
+        required: true
+      api_tests:
+        command: "pytest tests/api/"
+        required: false
+      load_tests:
+        command: "locust -f tests/load/locustfile.py"
+        required: false
+    coverage_threshold: 80
+
+  database-optimizer:
+    optimization_tasks:
+      - analyze_slow_queries
+      - optimize_indexes
+      - vacuum_analyze
+      - update_statistics
+    connection_pool:
+      min_connections: 10
+      max_connections: 100
+      idle_timeout: 300
+
+# Environment-specific overrides
+environments:
+  staging:
+    max_parallel_agents: 4
+    aggressive_optimization: true
+    detailed_logging: true
+    skip_manual_approval: true
+
+  production:
+    max_parallel_agents: 2
+    aggressive_optimization: false
+    detailed_logging: false
+    skip_manual_approval: false
+    require_approval_from:
+      - ops-team
+      - security-team
+    notification_channels:
+      - slack:#deployments
+      - email:ops@company.com
+
+# Rollback strategies
+rollback_strategies:
+  immediate:
+    description: "Rollback immediately on first failure"
+    max_attempts: 1
+    wait_between_attempts: 0
+
+  gradual:
+    description: "Attempt recovery before rollback"
+    max_attempts: 3
+    wait_between_attempts: 30
+    recovery_actions:
+      - restart_services
+      - clear_cache
+      - reset_connections
+
+  checkpoint:
+    description: "Rollback to last successful checkpoint"
+    checkpoint_retention: 5
+    verify_checkpoint: true
+
+# Notification settings
+notifications:
+  channels:
+    slack:
+      webhook_url: "${SLACK_WEBHOOK_URL}"
+      enabled: true
+      events:
+        - deployment_started
+        - deployment_completed
+        - deployment_failed
+        - rollback_initiated
+
+    email:
+      smtp_server: "smtp.gmail.com"
+      smtp_port: 587
+      from_address: "deployments@company.com"
+      enabled: false
+
+    pagerduty:
+      api_key: "${PAGERDUTY_API_KEY}"
+      enabled: false
+      events:
+        - deployment_failed
+        - rollback_failed
+
+# Validation rules
+validation_rules:
+  pre_deployment:
+    - name: "Check disk space"
+      command: "df -h | grep -E '^/dev/' | awk '{if ($5+0 > 80) exit 1}'"
+      required: true
+
+    - name: "Verify database connectivity"
+      command: "python3 -c 'import psycopg2; psycopg2.connect(...)'"
+      required: true
+
+    - name: "Check API keys"
+      command: "test -n \"$API_KEY\""
+      required: true
+
+  post_deployment:
+    - name: "Health check"
+      command: "curl -f http://localhost:8000/health"
+      required: true
+      retries: 5
+
+    - name: "Smoke test"
+      command: "pytest tests/smoke/"
+      required: true
+
+    - name: "Verify metrics"
+      command: "python3 scripts/verify_metrics.py"
+      required: false

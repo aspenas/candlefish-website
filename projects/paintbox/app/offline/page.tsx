@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 
@@ -57,7 +59,11 @@ export default function OfflinePage() {
               </Link>
             </Button>
 
-            <Button variant="outline" className="w-full" onClick={() => window.location.reload()}>
+            <Button variant="outline" className="w-full" onClick={() => {
+              if (typeof window !== 'undefined') {
+                window.location.reload();
+              }
+            }}>
               Check Connection
             </Button>
 

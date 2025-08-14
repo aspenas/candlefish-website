@@ -28,7 +28,7 @@ const AccountUpdateSchema = z.object({
 // GET /api/v1/salesforce/accounts/[id] - Get account by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const account = await salesforceService.getAccount(params.id);
@@ -61,7 +61,7 @@ export async function GET(
 // PUT /api/v1/salesforce/accounts/[id] - Update account
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json();
@@ -97,7 +97,7 @@ export async function PUT(
 // DELETE /api/v1/salesforce/accounts/[id] - Delete account
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await salesforceService.deleteAccount(params.id);

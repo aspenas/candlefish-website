@@ -1,0 +1,489 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: paintbox-service-account
+  namespace: paintbox-production
+  labels:
+    app.kubernetes.io/name: paintbox
+    app.kubernetes.io/component: service-account
+    app.kubernetes.io/part-of: candlefish-ai
+  annotations:
+    eks.amazonaws.com/role-arn: ${PAINTBOX_IAM_ROLE_ARN}
+automountServiceAccountToken: true
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: paintbox-role
+  namespace: paintbox-production
+  labels:
+    app.kubernetes.io/name: paintbox
+    app.kubernetes.io/component: rbac
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: paintbox-role-binding
+  namespace: paintbox-production
+  labels:
+    app.kubernetes.io/name: paintbox
+    app.kubernetes.io/component: rbac
+subjects:
+- kind: ServiceAccount
+  name: paintbox-service-account
+  namespace: paintbox-production
+roleRef:
+  kind: Role
+  name: paintbox-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# Pod Security Policy (if not using Pod Security Standards)
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: paintbox-psp
+  labels:
+    app.kubernetes.io/name: paintbox
+    app.kubernetes.io/component: security
+spec:
+  privileged: false
+  allowPrivilegeEscalation: false
+  requiredDropCapabilities:
+    - ALL
+  volumes:
+    - 'configMap'
+    - 'emptyDir'
+    - 'projected'
+    - 'secret'
+    - 'downwardAPI'
+    - 'persistentVolumeClaim'
+  hostNetwork: false
+  hostIPC: false
+  hostPID: false
+  runAsUser:
+    rule: 'MustRunAsNonRoot'
+  supplementalGroups:
+    rule: 'MustRunAs'
+    ranges:
+      - min: 1
+        max: 65535
+  fsGroup:
+    rule: 'MustRunAs'
+    ranges:
+      - min: 1
+        max: 65535
+  readOnlyRootFilesystem: false
+  seLinux:
+    rule: 'RunAsAny'
+---
+# Network Policy for Production Namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: paintbox-network-policy-detailed
+  namespace: paintbox-production
+  labels:
+    app.kubernetes.io/name: paintbox
+    app.kubernetes.io/component: security
+spec:
+  podSelector:
+    matchLabels:
+      app: paintbox
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow ingress from ingress controller
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 8080
+  # Allow ingress from monitoring namespace
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 8081  # metrics port
+  # Allow ingress within same namespace
+  - from:
+    - podSelector:
+        matchLabels:
+          app: paintbox
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 8081
+  egress:
+  # Allow egress to database
+  - to:
+    - podSelector:
+        matchLabels:
+          app: postgres
+    ports:
+    - protocol: TCP
+      port: 5432
+  # Allow egress to Redis
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+  # Allow egress to Kubernetes API
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+  # Allow egress for external APIs (Salesforce, CompanyCam, etc.)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+# Secret for application secrets (placeholder - actual secrets managed by External Secrets Operator)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: paintbox-secrets
+  namespace: paintbox-production
+  labels:
+    app.kubernetes.io/name: paintbox
+    app.kubernetes.io/component: security
+    app.kubernetes.io/managed-by: external-secrets
+type: Opaque
+data:
+  # These will be populated by External Secrets Operator from AWS Secrets Manager
+  database-url: ""
+  redis-url: ""
+  nextauth-secret: ""
+  aws-access-key-id: ""
+  aws-secret-access-key: ""
+  salesforce-client-id: ""
+  salesforce-client-secret: ""
+  companycam-api-key: ""
+---
+# External Secret configuration for AWS Secrets Manager
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: aws-secrets-manager
+  namespace: paintbox-production
+  labels:
+    app.kubernetes.io/name: paintbox
+    app.kubernetes.io/component: security
+spec:
+  provider:
+    aws:
+      service: SecretsManager
+      region: us-east-1
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: paintbox-service-account
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: paintbox-external-secret
+  namespace: paintbox-production
+  labels:
+    app.kubernetes.io/name: paintbox
+    app.kubernetes.io/component: security
+spec:
+  refreshInterval: 300s  # 5 minutes
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: SecretStore
+  target:
+    name: paintbox-secrets
+    creationPolicy: Owner
+    template:
+      type: Opaque
+      data:
+        database-url: "{{ .DATABASE_URL }}"
+        redis-url: "{{ .REDIS_URL }}"
+        nextauth-secret: "{{ .NEXTAUTH_SECRET }}"
+        aws-access-key-id: "{{ .AWS_ACCESS_KEY_ID }}"
+        aws-secret-access-key: "{{ .AWS_SECRET_ACCESS_KEY }}"
+        salesforce-client-id: "{{ .SALESFORCE_CLIENT_ID }}"
+        salesforce-client-secret: "{{ .SALESFORCE_CLIENT_SECRET }}"
+        companycam-api-key: "{{ .COMPANYCAM_API_KEY }}"
+        temporal-server-url: "{{ .TEMPORAL_SERVER_URL }}"
+        anthropic-api-key: "{{ .ANTHROPIC_API_KEY }}"
+        postgres-user: "{{ .POSTGRES_USER }}"
+        postgres-password: "{{ .POSTGRES_PASSWORD }}"
+        redis-password: "{{ .REDIS_PASSWORD }}"
+  data:
+  - secretKey: DATABASE_URL
+    remoteRef:
+      key: paintbox-production
+      property: DATABASE_URL
+  - secretKey: REDIS_URL
+    remoteRef:
+      key: paintbox-production
+      property: REDIS_URL
+  - secretKey: NEXTAUTH_SECRET
+    remoteRef:
+      key: paintbox-production
+      property: NEXTAUTH_SECRET
+  - secretKey: AWS_ACCESS_KEY_ID
+    remoteRef:
+      key: paintbox-production
+      property: AWS_ACCESS_KEY_ID
+  - secretKey: AWS_SECRET_ACCESS_KEY
+    remoteRef:
+      key: paintbox-production
+      property: AWS_SECRET_ACCESS_KEY
+  - secretKey: SALESFORCE_CLIENT_ID
+    remoteRef:
+      key: paintbox-production
+      property: SALESFORCE_CLIENT_ID
+  - secretKey: SALESFORCE_CLIENT_SECRET
+    remoteRef:
+      key: paintbox-production
+      property: SALESFORCE_CLIENT_SECRET
+  - secretKey: COMPANYCAM_API_KEY
+    remoteRef:
+      key: paintbox-production
+      property: COMPANYCAM_API_KEY
+  - secretKey: TEMPORAL_SERVER_URL
+    remoteRef:
+      key: paintbox-production
+      property: TEMPORAL_SERVER_URL
+  - secretKey: ANTHROPIC_API_KEY
+    remoteRef:
+      key: paintbox-production
+      property: ANTHROPIC_API_KEY
+  - secretKey: POSTGRES_USER
+    remoteRef:
+      key: paintbox-production
+      property: POSTGRES_USER
+  - secretKey: POSTGRES_PASSWORD
+    remoteRef:
+      key: paintbox-production
+      property: POSTGRES_PASSWORD
+  - secretKey: REDIS_PASSWORD
+    remoteRef:
+      key: paintbox-production
+      property: REDIS_PASSWORD
+---
+# Pod Security Standards enforcement
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: paintbox-production
+  labels:
+    name: paintbox-production
+    environment: production
+    app.kubernetes.io/name: paintbox
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/component: application
+    app.kubernetes.io/part-of: candlefish-ai
+    # Pod Security Standards
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+# Security Context Constraints (if using OpenShift)
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: paintbox-scc
+  labels:
+    app.kubernetes.io/name: paintbox
+    app.kubernetes.io/component: security
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegedContainer: false
+allowedCapabilities: null
+defaultAddCapabilities: null
+requiredDropCapabilities:
+- ALL
+fsGroup:
+  type: MustRunAs
+  ranges:
+  - min: 1001
+    max: 1001
+readOnlyRootFilesystem: false
+runAsUser:
+  type: MustRunAs
+  uid: 1001
+seLinuxContext:
+  type: MustRunAs
+supplementalGroups:
+  type: MustRunAs
+  ranges:
+  - min: 1001
+    max: 1001
+volumes:
+- configMap
+- downwardAPI
+- emptyDir
+- persistentVolumeClaim
+- projected
+- secret
+users:
+- system:serviceaccount:paintbox-production:paintbox-service-account
+---
+# Certificate for TLS
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: paintbox-tls
+  namespace: paintbox-production
+  labels:
+    app.kubernetes.io/name: paintbox
+    app.kubernetes.io/component: security
+spec:
+  secretName: paintbox-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - paintbox.candlefish.ai
+  - api.paintbox.candlefish.ai
+---
+# Falco security monitoring rules
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: paintbox-falco-rules
+  namespace: paintbox-production
+  labels:
+    app.kubernetes.io/name: paintbox
+    app.kubernetes.io/component: security
+data:
+  paintbox_rules.yaml: |
+    - rule: Paintbox Unauthorized File Access
+      desc: Detect unauthorized file access in Paintbox containers
+      condition: >
+        spawned_process and
+        k8s.ns.name = "paintbox-production" and
+        k8s.pod.label.app = "paintbox" and
+        (proc.name in (chmod, chown) or
+         fd.name contains "/etc/passwd" or
+         fd.name contains "/etc/shadow")
+      output: >
+        Unauthorized file access in Paintbox container
+        (user=%user.name command=%proc.cmdline file=%fd.name
+         pod=%k8s.pod.name container=%container.name)
+      priority: WARNING
+      tags: [paintbox, security]
+
+    - rule: Paintbox Network Connection to Suspicious Domain
+      desc: Detect network connections to suspicious domains from Paintbox
+      condition: >
+        outbound and
+        k8s.ns.name = "paintbox-production" and
+        k8s.pod.label.app = "paintbox" and
+        not fd.sip in (paintbox_allowed_ips)
+      output: >
+        Suspicious network connection from Paintbox
+        (user=%user.name command=%proc.cmdline connection=%fd.name
+         pod=%k8s.pod.name container=%container.name)
+      priority: NOTICE
+      tags: [paintbox, network]
+---
+# OPA Gatekeeper constraint template
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  name: paintboxsecurity
+  labels:
+    app.kubernetes.io/name: paintbox
+    app.kubernetes.io/component: security
+spec:
+  crd:
+    spec:
+      names:
+        kind: PaintboxSecurity
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            requiredLabels:
+              type: array
+              items:
+                type: string
+            allowedImages:
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package paintboxsecurity
+
+        violation[{"msg": msg}] {
+          required := input.parameters.requiredLabels
+          provided := input.review.object.metadata.labels
+          missing := required[_]
+          not provided[missing]
+          msg := sprintf("Missing required label: %v", [missing])
+        }
+
+        violation[{"msg": msg}] {
+          image := input.review.object.spec.template.spec.containers[_].image
+          allowed := input.parameters.allowedImages
+          not startswith(image, allowed[_])
+          msg := sprintf("Container image %v is not from allowed registry", [image])
+        }
+---
+# Gatekeeper constraint
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: PaintboxSecurity
+metadata:
+  name: paintbox-security-constraint
+  labels:
+    app.kubernetes.io/name: paintbox
+    app.kubernetes.io/component: security
+spec:
+  match:
+    kinds:
+      - apiGroups: ["apps"]
+        kinds: ["Deployment"]
+    namespaces: ["paintbox-production"]
+  parameters:
+    requiredLabels:
+      - "app.kubernetes.io/name"
+      - "app.kubernetes.io/component"
+      - "environment"
+    allowedImages:
+      - "ghcr.io/candlefish-ai/"
+      - "postgres:"
+      - "redis:"

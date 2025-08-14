@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Candlefish AI - Document Template</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Reset and Base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --black: #000000;
+            --white: #ffffff;
+            --teal: #00CED1;
+            --teal-dark: #008B8D;
+            --gray-100: #f5f5f5;
+            --gray-200: #e5e5e5;
+            --gray-300: #d4d4d8;
+            --gray-500: #71717a;
+            --gray-700: #3f3f46;
+            --gray-900: #18181b;
+        }
+
+        @media print {
+            :root {
+                --black: #000000;
+                --teal: #00CED1;
+            }
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+            font-size: 11pt;
+            line-height: 1.6;
+            color: var(--black);
+            background: var(--white);
+        }
+
+        /* Page Layout */
+        .document {
+            max-width: 8.5in;
+            margin: 0 auto;
+            background: var(--white);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+
+        @media print {
+            .document {
+                box-shadow: none;
+            }
+        }
+
+        .page {
+            padding: 1in;
+            min-height: 11in;
+            position: relative;
+        }
+
+        @media print {
+            .page {
+                page-break-after: always;
+            }
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--teal);
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-section img { height: 40px; width: auto; display:block; border-radius:8px; }
+
+        .logo-text {
+            font-size: 18pt;
+            font-weight: 300;
+            letter-spacing: 0.05em;
+            color: var(--black);
+        }
+
+        .tagline {
+            font-size: 9pt;
+            color: var(--gray-500);
+            margin-top: 4px;
+        }
+
+        .document-meta {
+            text-align: right;
+            font-size: 9pt;
+            color: var(--gray-500);
+        }
+
+        .document-type {
+            font-family: 'Space Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--teal);
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 24pt;
+            font-weight: 300;
+            margin-bottom: 1rem;
+            color: var(--black);
+            letter-spacing: -0.02em;
+        }
+
+        h2 {
+            font-size: 18pt;
+            font-weight: 400;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            color: var(--black);
+            letter-spacing: -0.01em;
+        }
+
+        h3 {
+            font-size: 14pt;
+            font-weight: 500;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            color: var(--black);
+        }
+
+        h4 {
+            font-size: 12pt;
+            font-weight: 500;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            color: var(--gray-700);
+        }
+
+        p {
+            margin-bottom: 1rem;
+            text-align: justify;
+        }
+
+        .lead {
+            font-size: 13pt;
+            font-weight: 300;
+            color: var(--gray-700);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Accent Elements */
+        .accent {
+            color: var(--teal);
+        }
+
+        .highlight {
+            background: linear-gradient(transparent 60%, rgba(0, 206, 209, 0.2) 60%);
+        }
+
+        /* Lists */
+        ul, ol {
+            margin-bottom: 1rem;
+            padding-left: 2rem;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            font-size: 10pt;
+        }
+
+        th {
+            background: var(--gray-100);
+            padding: 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--teal);
+        }
+
+        td {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        tr:hover {
+            background: var(--gray-100);
+        }
+
+        /* Callout Boxes */
+        .callout {
+            background: var(--gray-100);
+            border-left: 4px solid var(--teal);
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 4px;
+        }
+
+        .callout-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--teal-dark);
+        }
+
+        /* Quotes */
+        blockquote {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: var(--gray-100);
+            border-left: 4px solid var(--teal);
+            font-style: italic;
+            color: var(--gray-700);
+        }
+
+        blockquote cite {
+            display: block;
+            margin-top: 1rem;
+            font-style: normal;
+            font-size: 10pt;
+            color: var(--gray-500);
+        }
+
+        /* Code Blocks */
+        pre {
+            background: var(--gray-900);
+            color: var(--white);
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 1rem 0;
+            font-family: 'Space Mono', monospace;
+            font-size: 9pt;
+        }
+
+        code {
+            background: var(--gray-100);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.9em;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        /* Metrics/Stats */
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .metric {
+            text-align: center;
+            padding: 1.5rem;
+            background: var(--gray-100);
+            border-radius: 8px;
+        }
+
+        .metric-value {
+            font-size: 28pt;
+            font-weight: 300;
+            color: var(--teal);
+            line-height: 1;
+        }
+
+        .metric-label {
+            font-size: 9pt;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 0.5rem;
+        }
+
+        /* Footer */
+        .footer {
+            position: absolute;
+            bottom: 0.5in;
+            left: 1in;
+            right: 1in;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1rem;
+            border-top: 1px solid var(--gray-200);
+            font-size: 8pt;
+            color: var(--gray-500);
+        }
+
+        .page-number {
+            font-family: 'Space Mono', monospace;
+        }
+
+        /* Signature Block */
+        .signature-block {
+            margin-top: 3rem;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 3rem;
+        }
+
+        .signature {
+            border-top: 1px solid var(--gray-300);
+            padding-top: 0.5rem;
+        }
+
+        .signature-name {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .signature-title {
+            font-size: 10pt;
+            color: var(--gray-500);
+        }
+
+        /* Cover Page */
+        .cover-page {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            min-height: 11in;
+        }
+
+        .cover-logo {
+            margin-bottom: 3rem;
+        }
+
+        .cover-logo .logo-icon {
+            width: 80px;
+            height: 80px;
+            font-size: 40px;
+            margin: 0 auto 1rem;
+        }
+
+        .cover-title {
+            font-size: 36pt;
+            font-weight: 300;
+            margin-bottom: 1rem;
+            letter-spacing: -0.02em;
+        }
+
+        .cover-subtitle {
+            font-size: 18pt;
+            color: var(--gray-500);
+            margin-bottom: 3rem;
+        }
+
+        .cover-meta {
+            font-size: 11pt;
+            color: var(--gray-500);
+            line-height: 1.8;
+        }
+
+        /* Print Styles */
+        @media print {
+            body {
+                background: white;
+            }
+
+            .page {
+                box-shadow: none;
+                page-break-inside: avoid;
+            }
+
+            h2, h3 {
+                page-break-after: avoid;
+            }
+
+            table, blockquote, .callout, .metrics {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="document">
+        <!-- Cover Page -->
+        <div class="page cover-page">
+            <div class="cover-logo">
+                <img src="/logo/candlefish_original.png" width="40" height="40" alt="Candlefish" style="border-radius:8px;" />
+                <div class="logo-text">CANDLEFISH AI</div>
+                <div class="tagline">Illuminating Intelligence</div>
+            </div>
+
+            <h1 class="cover-title">AI Implementation <span class="accent">Proposal</span></h1>
+            <p class="cover-subtitle">Enterprise Process Optimization Through Modular AI</p>
+
+            <div class="cover-meta">
+                <p><strong>Prepared for:</strong> Acme Corporation</p>
+                <p><strong>Date:</strong> August 15, 2025</p>
+                <p><strong>Document ID:</strong> CF-2025-PROP-0815</p>
+            </div>
+        </div>
+
+        <!-- Content Pages -->
+        <div class="page">
+            <header class="header">
+                <div>
+                    <div class="logo-section">
+                        <img src="/logo/candlefish_original.png" alt="Candlefish" />
+                        <div>
+                            <div class="logo-text">CANDLEFISH AI</div>
+                            <div class="tagline">Illuminating Intelligence</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="document-meta">
+                    <div class="document-type">PROPOSAL</div>
+                    <div>August 15, 2025</div>
+                </div>
+            </header>
+
+            <h1>Executive <span class="accent">Summary</span></h1>
+            <p class="lead">
+                Candlefish AI proposes a transformative approach to optimize Acme Corporation's business processes through our discrete, composable AI modules. This implementation will turn your slowest workflows into competitive advantages.
+            </p>
+
+            <div class="metrics">
+                <div class="metric">
+                    <div class="metric-value">10x</div>
+                    <div class="metric-label">Process Speed</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value">60%</div>
+                    <div class="metric-label">Cost Reduction</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value">90</div>
+                    <div class="metric-label">Days to ROI</div>
+                </div>
+            </div>
+
+            <h2>Current State <span class="accent">Analysis</span></h2>
+            <p>
+                Our preliminary assessment of Acme Corporation's operations has identified several key areas where AI-driven optimization can deliver immediate and substantial impact:
+            </p>
+
+            <ul>
+                <li><span class="highlight">Order Processing</span>: Currently averaging 48-72 hours per transaction</li>
+                <li><span class="highlight">Customer Service</span>: 15-minute average response time with 23% first-call resolution</li>
+                <li><span class="highlight">Inventory Management</span>: Manual forecasting leading to 18% overstock situations</li>
+                <li><span class="highlight">Document Processing</span>: 4-6 days for contract review and approval</li>
+            </ul>
+
+            <div class="callout">
+                <div class="callout-title">Key Insight</div>
+                These inefficiencies are costing Acme Corporation an estimated $12.3M annually in lost productivity and missed opportunities.
+            </div>
+
+            <h2>Proposed <span class="accent">Solution</span></h2>
+            <p>
+                Candlefish AI's modular approach allows for rapid deployment of targeted AI solutions without disrupting existing infrastructure. Our implementation strategy focuses on:
+            </p>
+
+            <h3>Phase 1: Quick Wins (Days 1-30)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Module</th>
+                        <th>Process</th>
+                        <th>Expected Impact</th>
+                        <th>Timeline</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Document Intelligence</td>
+                        <td>Contract Processing</td>
+                        <td>80% faster review</td>
+                        <td>Week 1</td>
+                    </tr>
+                    <tr>
+                        <td>Customer Intent AI</td>
+                        <td>Service Routing</td>
+                        <td>65% FCR improvement</td>
+                        <td>Week 2</td>
+                    </tr>
+                    <tr>
+                        <td>Predictive Analytics</td>
+                        <td>Inventory Forecasting</td>
+                        <td>45% accuracy gain</td>
+                        <td>Week 3-4</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <footer class="footer">
+                <div>© 2025 Candlefish AI. Confidential and Proprietary.</div>
+                <div class="page-number">Page 1</div>
+            </footer>
+        </div>
+
+        <!-- Page 2 -->
+        <div class="page">
+            <header class="header">
+                <div>
+                    <div class="logo-section">
+                <img src="/logo/candlefish_original.png" alt="Candlefish" style="height:80px;width:auto;border-radius:12px;" />
+                        <div>
+                            <div class="logo-text">CANDLEFISH AI</div>
+                            <div class="tagline">Illuminating Intelligence</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="document-meta">
+                    <div class="document-type">PROPOSAL</div>
+                    <div>August 15, 2025</div>
+                </div>
+            </header>
+
+            <h2>Implementation <span class="accent">Methodology</span></h2>
+            <p>
+                Our proven implementation methodology ensures minimal disruption while maximizing value delivery:
+            </p>
+
+            <h3>Discovery & Analysis</h3>
+            <p>
+                Deep dive into your existing processes to identify optimization opportunities and quick wins.
+            </p>
+
+            <h3>Modular Deployment</h3>
+            <p>
+                Deploy AI modules incrementally, starting with highest-impact areas and expanding based on results.
+            </p>
+
+            <h3>Integration & Training</h3>
+            <p>
+                Seamless integration with existing systems and comprehensive training for your team.
+            </p>
+
+            <h3>Optimization & Scale</h3>
+            <p>
+                Continuous monitoring and optimization, with ability to scale successful modules across the organization.
+            </p>
+
+            <blockquote>
+                "Candlefish AI transformed our approval process from a 2-week bottleneck into a 2-hour competitive advantage. The modular approach meant we saw results in days, not months."
+                <cite>— Sarah Chen, CTO, Global Manufacturing Inc.</cite>
+            </blockquote>
+
+            <h2>Investment & <span class="accent">Timeline</span></h2>
+
+            <div class="callout">
+                <div class="callout-title">Pricing Structure</div>
+                <ul>
+                    <li><strong>Initial Implementation:</strong> $125,000</li>
+                    <li><strong>Monthly Platform Fee:</strong> $15,000</li>
+                    <li><strong>Per-Module Licensing:</strong> $5,000/month</li>
+                </ul>
+                <p style="margin-top: 1rem; margin-bottom: 0;">
+                    <strong>Estimated Year 1 ROI:</strong> 380% based on efficiency gains alone
+                </p>
+            </div>
+
+            <h2>Next <span class="accent">Steps</span></h2>
+            <ol>
+                <li>Schedule technical deep-dive session with your team</li>
+                <li>Identify priority processes for Phase 1 implementation</li>
+                <li>Finalize contract and implementation timeline</li>
+                <li>Begin deployment within 7 days of contract signing</li>
+            </ol>
+
+            <div class="signature-block">
+                <div class="signature">
+                    <div class="signature-name">Patrick Smith</div>
+                    <div class="signature-title">Chief Executive Officer</div>
+                </div>
+                <div class="signature">
+                    <div class="signature-name">Tyler Rodriguez</div>
+                    <div class="signature-title">Chief Technology Officer</div>
+                </div>
+            </div>
+
+            <footer class="footer">
+                <div>© 2025 Candlefish AI. Confidential and Proprietary.</div>
+                <div class="page-number">Page 2</div>
+            </footer>
+        </div>
+    </div>
+</body>
+</html>

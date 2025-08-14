@@ -1,12 +1,43 @@
-# Paintbox Frontend - Multi-stage Docker Build
-# Security-focused production container with enhanced optimization
+# Paintbox Production - Multi-stage Docker Build
+# Security-focused production container with enhanced optimization and monitoring
 
-# Dependencies stage - separate layer for better caching
-FROM node:20-alpine AS deps
-RUN apk add --no-cache libc6-compat
+ARG NODE_VERSION=20
+ARG BUILD_ENV=production
+
+# ================================================
+# Stage 1: Base image with security updates
+# ================================================
+FROM node:${NODE_VERSION}-alpine AS base
+
+# Install security updates and required system dependencies
+RUN apk update && apk upgrade && \
+    apk add --no-cache \
+    dumb-init \
+    curl \
+    ca-certificates \
+    tzdata \
+    && rm -rf /var/cache/apk/* && \
+    update-ca-certificates
+
+# Create non-root user early for security
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# Set up workspace
 WORKDIR /app
+
+# ================================================
+# Stage 2: Dependencies installation
+# ================================================
+FROM base AS deps
+
+# Copy package files for dependency installation
 COPY package*.json ./
-RUN npm ci --only=production --omit=dev --frozen-lockfile
+COPY prisma ./prisma/
+
+# Install production dependencies only with security optimizations
+RUN npm ci --only=production --omit=dev --frozen-lockfile --ignore-scripts && \
+    npm cache clean --force
 
 # Build stage
 FROM node:20-alpine AS builder

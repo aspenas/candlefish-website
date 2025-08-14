@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Candlefish LinkedIn Banner</title>
+  <style>
+    :root{ --teal:#00CED1; --black:#000; --white:#fff; }
+    body{ margin:0; background:#000; }
+    .banner{ width:1584px; height:396px; position:relative; font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif; color:var(--white); }
+    .grid{ position:absolute; inset:0; background: radial-gradient(circle at 25% 50%, rgba(0,206,209,.15), transparent 50%); opacity:.25; }
+    .content{ position:absolute; inset:0; display:flex; align-items:center; justify-content:space-between; padding:32px 56px; }
+    .left{ display:flex; align-items:center; gap:16px; }
+    .right{ text-align:right; }
+    h1{ margin:0; font-weight:300; letter-spacing:-0.02em; font-size:40px; }
+    .tag{ border:1px solid var(--teal); color:var(--teal); font-family:'Space Mono',monospace; font-size:12px; text-transform:uppercase; letter-spacing:.08em; padding:4px 8px; display:inline-block; }
+    img{ display:block; border-radius:12px; height:64px; width:auto; object-fit:contain; }
+  </style>
+</head>
+<body>
+  <div class="banner">
+    <div class="grid"></div>
+    <div class="content">
+      <div class="left">
+        <img src="/logo/candlefish_original.png" alt="Candlefish"/>
+        <h1>Illuminating Intelligence</h1>
+      </div>
+      <div class="right">
+        <div class="tag">candlefish.ai</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

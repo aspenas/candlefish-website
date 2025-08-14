@@ -30,7 +30,7 @@ const EstimateUpdateSchema = z.object({
 // GET /api/v1/salesforce/estimates/[id] - Get estimate by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const estimate = await salesforceService.getPaintboxEstimate(params.id);
@@ -63,7 +63,7 @@ export async function GET(
 // PUT /api/v1/salesforce/estimates/[id] - Update estimate
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json();
@@ -99,7 +99,7 @@ export async function PUT(
 // DELETE /api/v1/salesforce/estimates/[id] - Delete estimate
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await salesforceService.deletePaintboxEstimate(params.id);

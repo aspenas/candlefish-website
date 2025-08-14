@@ -172,6 +172,12 @@ class CompanyCamApiService {
   }
 
   private async initOfflineDB(): Promise<void> {
+    // Skip database initialization during build time
+    if (typeof window === 'undefined') {
+      logger.debug('Skipping offline database initialization during build time');
+      return;
+    }
+
     try {
       this.db = await openDB('companycam-offline', 1, {
         upgrade(db) {

@@ -2,16 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
-import { initPerformanceMonitoring } from './utils/performanceMonitor'
-
-// Initialize performance monitoring
-const perfMonitor = initPerformanceMonitoring({
-  enableLogging: process.env.NODE_ENV !== 'production',
-  enableAnalytics: process.env.NODE_ENV === 'production',
-  analyticsEndpoint: '/api/analytics/performance',
-  sampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1,
-  debug: process.env.NODE_ENV === 'development'
-})
+import './styles/animations.css'
 
 // Performance monitoring
 const startTime = performance.now()
@@ -43,16 +34,15 @@ if (typeof window !== 'undefined') {
   // Track app load time
   window.addEventListener('load', () => {
     const loadTime = performance.now() - startTime
-    perfMonitor.markCustomMetric('appLoadTime', loadTime)
     console.log(`App loaded in ${loadTime.toFixed(2)}ms`)
   })
 
   // Add global error tracking
   window.addEventListener('error', (event) => {
-    perfMonitor.markCustomMetric('jsError', 1)
+    console.error('Global error:', event.error)
   })
 
   window.addEventListener('unhandledrejection', (event) => {
-    perfMonitor.markCustomMetric('unhandledRejection', 1)
+    console.error('Unhandled rejection:', event.reason)
   })
 }

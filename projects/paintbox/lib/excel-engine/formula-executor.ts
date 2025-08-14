@@ -358,4 +358,59 @@ export class FormulaExecutor {
     }
 
     // String comparison
-    const leftStr = String(left).toLowerCase();\n    const rightStr = String(right).toLowerCase();\n    \n    if (leftStr < rightStr) return -1;\n    if (leftStr > rightStr) return 1;\n    return 0;\n  }\n\n  /**\n   * Convert column letter to number\n   */\n  private columnToNumber(column: string): number {\n    let result = 0;\n    for (let i = 0; i < column.length; i++) {\n      result = result * 26 + (column.charCodeAt(i) - 64);\n    }\n    return result;\n  }\n\n  /**\n   * Convert number to column letter\n   */\n  private numberToColumn(num: number): string {\n    let result = '';\n    while (num > 0) {\n      num--;\n      result = String.fromCharCode(65 + (num % 26)) + result;\n      num = Math.floor(num / 26);\n    }\n    return result;\n  }\n\n  /**\n   * Handle Excel errors\n   */\n  private handleExcelError(error: string): any {\n    switch (error) {\n      case '#DIV/0!':\n        return { error: '#DIV/0!' };\n      case '#N/A':\n        return { error: '#N/A' };\n      case '#NAME?':\n        return { error: '#NAME?' };\n      case '#NULL!':\n        return { error: '#NULL!' };\n      case '#NUM!':\n        return { error: '#NUM!' };\n      case '#REF!':\n        return { error: '#REF!' };\n      case '#VALUE!':\n        return { error: '#VALUE!' };\n      default:\n        return { error: error };\n    }\n  }\n}
+    const leftStr = String(left).toLowerCase();
+    const rightStr = String(right).toLowerCase();
+
+    if (leftStr < rightStr) return -1;
+    if (leftStr > rightStr) return 1;
+    return 0;
+  }
+
+  /**
+   * Convert column letter to number
+   */
+  private columnToNumber(column: string): number {
+    let result = 0;
+    for (let i = 0; i < column.length; i++) {
+      result = result * 26 + (column.charCodeAt(i) - 64);
+    }
+    return result;
+  }
+
+  /**
+   * Convert number to column letter
+   */
+  private numberToColumn(num: number): string {
+    let result = '';
+    while (num > 0) {
+      num--;
+      result = String.fromCharCode(65 + (num % 26)) + result;
+      num = Math.floor(num / 26);
+    }
+    return result;
+  }
+
+  /**
+   * Handle Excel errors
+   */
+  private handleExcelError(error: string): any {
+    switch (error) {
+      case '#DIV/0!':
+        return { error: '#DIV/0!' };
+      case '#N/A':
+        return { error: '#N/A' };
+      case '#NAME?':
+        return { error: '#NAME?' };
+      case '#NULL!':
+        return { error: '#NULL!' };
+      case '#NUM!':
+        return { error: '#NUM!' };
+      case '#REF!':
+        return { error: '#REF!' };
+      case '#VALUE!':
+        return { error: '#VALUE!' };
+      default:
+        return { error: error };
+    }
+  }
+}

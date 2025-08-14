@@ -1,36 +1,132 @@
 apiVersion: 1
 
 datasources:
+  # Primary Prometheus datasource
   - name: Prometheus
     type: prometheus
+    uid: prometheus-paintbox
     access: proxy
     url: http://prometheus:9090
     isDefault: true
     editable: true
     jsonData:
-      timeInterval: "15s"
-      queryTimeout: "60s"
       httpMethod: POST
+      queryTimeout: 300s
+      timeInterval: 15s
+      manageAlerts: true
+      prometheusType: Prometheus
+      prometheusVersion: 2.45.0
+      cacheLevel: High
+      incrementalQuerying: true
+      incrementalQueryOverlapWindow: 10m
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: jaeger-paintbox
+    secureJsonData: {}
 
+  # Loki for log aggregation
+  - name: Loki
+    type: loki
+    uid: loki-paintbox
+    access: proxy
+    url: http://loki:3100
+    editable: true
+    jsonData:
+      maxLines: 1000
+      timeout: 60s
+      manageAlerts: true
+      derivedFields:
+        - datasourceUid: jaeger-paintbox
+          matcherRegex: '"trace_id":"([^"]*)"'
+          name: TraceID
+          url: '$${__value.raw}'
+
+  # PostgreSQL with secure connection
   - name: PostgreSQL
     type: postgres
+    uid: postgres-paintbox
     access: proxy
-    url: paintbox-prod-db.internal:5432
+    url: postgres-service:5432
     database: paintbox
-    user: postgres
-    secureJsonData:
-      password: "EPpCzXjR6sn8Xlq"
+    user: ${POSTGRES_USER}
+    editable: true
     jsonData:
       sslmode: require
-      postgresVersion: 1700
+      postgresVersion: 1500
       timescaledb: false
+      connMaxLifetime: 14400
+      maxOpenConns: 100
+      maxIdleConns: 100
+    secureJsonData:
+      password: ${POSTGRES_PASSWORD}
 
+  # Redis with enhanced configuration
   - name: Redis
     type: redis-datasource
+    uid: redis-paintbox
     access: proxy
-    url: redis://paintbox-redis.internal:6379
+    url: redis://redis-service:6379
+    editable: true
     jsonData:
+      client: standalone
       poolSize: 10
       timeout: 10
       pingInterval: 30
       pipelineWindow: 100
+      acl: true
+    secureJsonData:
+      password: ${REDIS_PASSWORD}
+
+  # Jaeger for distributed tracing
+  - name: Jaeger
+    type: jaeger
+    uid: jaeger-paintbox
+    access: proxy
+    url: http://jaeger-query:16686
+    editable: true
+    jsonData:
+      tracesToLogs:
+        datasourceUid: loki-paintbox
+        tags: [cluster, namespace, pod]
+        mappedTags:
+          - key: service.name
+            value: service
+        mapTagNamesEnabled: true
+        spanStartTimeShift: -1h
+        spanEndTimeShift: 1h
+        filterByTraceID: true
+      tracesToMetrics:
+        datasourceUid: prometheus-paintbox
+        tags:
+          - key: service.name
+            value: service
+          - key: operation
+            value: operation
+        queries:
+          - name: Request Rate
+            query: histogram_quantile(0.5, sum(rate(http_request_duration_seconds_bucket{$$__tags}[5m])) by (le))
+      nodeGraph:
+        enabled: true
+
+  # CloudWatch for AWS metrics
+  - name: CloudWatch
+    type: cloudwatch
+    uid: cloudwatch-paintbox
+    access: proxy
+    editable: true
+    jsonData:
+      authType: default
+      defaultRegion: us-east-1
+      customMetricsNamespaces: Paintbox/Production,AWS/RDS,AWS/ElastiCache,AWS/ECS,AWS/ApplicationELB,AWS/EKS
+      assumeRoleArn: ${CLOUDWATCH_ROLE_ARN}
+
+  # Alert Manager datasource
+  - name: AlertManager
+    type: alertmanager
+    uid: alertmanager-paintbox
+    access: proxy
+    url: http://alertmanager:9093
+    editable: true
+    jsonData:
+      implementation: prometheus
+      handleGrafanaManagedAlerts: true

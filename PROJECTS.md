@@ -5,6 +5,7 @@
 | Hotkey | Project | Path | Description |
 |--------|---------|------|-------------|
 | `cfweb` | **Website** | `/apps/website` | Main candlefish.ai site, landing pages, marketing |
+| `cftemp` / `cftemporal` | **Temporal Platform** | `/candlefish-temporal-platform` | Workflow orchestration & Paintbox integration |
 | `cf` | **Root** | `/` | Project root, configs, deployment scripts |
 
 ## 🏗️ Active Projects
@@ -30,18 +31,25 @@
 ```
 candlefish-ai/
 ├── 📱 apps/
-│   └── website/          → Marketing site & docs
+│   └── website/                  → Marketing site & docs
+├── ⚙️ candlefish-temporal-platform/ → Workflow orchestration
+│   ├── src/
+│   │   ├── workflows/            → Temporal workflows
+│   │   ├── activities/           → Temporal activities
+│   │   ├── paintbox/             → Paintbox integration
+│   │   └── graphql/              → GraphQL API
+│   └── frontend/                 → UI for workflows
 ├── 🚀 projects/
-│   ├── paintbox/         → Contractor platform
+│   ├── paintbox/                 → Contractor platform
 │   ├── fogg/
-│   │   └── calendar/     → Smart scheduling
-│   ├── promoterOS/       → Event management
-│   ├── brewkit/          → Brewery tools
-│   ├── crowntrophy/      → Awards platform
-│   └── bart-clean-core/  → Analytics engine
-├── 🔧 config/            → Global configs
-├── 📦 packages/          → Shared packages
-└── 🏗️ infrastructure/    → Deploy & CI/CD
+│   │   └── calendar/             → Smart scheduling
+│   ├── promoterOS/               → Event management
+│   ├── brewkit/                  → Brewery tools
+│   ├── crowntrophy/              → Awards platform
+│   └── bart-clean-core/          → Analytics engine
+├── 🔧 config/                    → Global configs
+├── 📦 packages/                  → Shared packages
+└── 🏗️ infrastructure/            → Deploy & CI/CD
 ```
 
 ## ⚡ Quick Commands
@@ -51,6 +59,7 @@ candlefish-ai/
 ```bash
 cf          # Go to root
 cfweb       # Website project
+cftemp      # Temporal platform (or cftemporal)
 cfpaint     # Paintbox project
 cffogg      # Fogg calendar
 cfprom      # PromoterOS
@@ -69,6 +78,11 @@ cfdeploy    # Deploy to production
 
 ## 🎨 Project Categories
 
+### ⚙️ **Infrastructure & Platform**
+
+- **Temporal Platform** - Workflow orchestration for all Candlefish services
+- **Website** - Marketing & lead generation
+
 ### 🏢 **B2B SaaS**
 
 - **Paintbox** - Vertical SaaS for painting contractors
@@ -83,13 +97,13 @@ cfdeploy    # Deploy to production
 ### 🛍️ **E-Commerce**
 
 - **Crown Trophy** - Awards marketplace
-- **Website** - Marketing & lead generation
 
 ## 📈 Project Status
 
 | Project | Stage | Stack | Status |
 |---------|-------|-------|--------|
 | Website | Production | Next.js, React | 🟢 Active |
+| Temporal Platform | Development | TypeScript, Temporal, GraphQL | 🟡 Development |
 | Paintbox | Beta | Next.js, Postgres | 🟡 Development |
 | Fogg Calendar | Alpha | Python, FastAPI | 🟡 Development |
 | PromoterOS | Planning | TypeScript | 🔵 Planning |

@@ -17,10 +17,10 @@ const UpdatePhotoSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { photoId: string } }
+  { params }: { params: Promise<{ photoId: string }> }
 ) {
   try {
-    const { photoId } = params;
+    const { photoId } = await params;
     logger.info('GET /api/v1/companycam/photos/:photoId', { photoId });
 
     // Since we don't have a direct getPhoto method, we'll need to search through projects
@@ -49,10 +49,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { photoId: string } }
+  { params }: { params: Promise<{ photoId: string }> }
 ) {
   try {
-    const { photoId } = params;
+    const { photoId } = await params;
     logger.info('PUT /api/v1/companycam/photos/:photoId', { photoId });
 
     const body = await request.json();
@@ -82,7 +82,7 @@ export async function PUT(
         {
           success: false,
           error: 'Validation error',
-          details: error.errors,
+          details: error.issues,
         },
         { status: 400 }
       );
@@ -101,10 +101,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { photoId: string } }
+  { params }: { params: Promise<{ photoId: string }> }
 ) {
   try {
-    const { photoId } = params;
+    const { photoId } = await params;
     logger.info('DELETE /api/v1/companycam/photos/:photoId', { photoId });
 
     // Photo deletion would need to be implemented in the API service
