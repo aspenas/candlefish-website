@@ -14,17 +14,18 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.0",
     "@aws-sdk/client-secrets-manager": "^3.600.0",
+    "@temporalio/activity": "^1.10.1",
     "@temporalio/client": "^1.10.1",
     "@temporalio/worker": "^1.10.1",
     "@temporalio/workflow": "^1.10.1",
-    "@temporalio/activity": "^1.10.1",
-    "openai": "^4.52.0",
-    "jsonwebtoken": "^9.0.2",
     "ioredis": "^5.3.2",
-    "pg": "^8.11.5",
-    "lru-cache": "^10.2.2"
+    "jsonwebtoken": "^9.0.2",
+    "lru-cache": "^10.2.2",
+    "openai": "^4.52.0",
+    "pg": "^8.11.5"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "^20.14.0",
     "@types/pg": "^8.11.6",
