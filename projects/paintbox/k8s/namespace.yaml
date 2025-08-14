@@ -1,19 +1,33 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: system-analyzer
+  name: paintbox-production
   labels:
-    name: system-analyzer
+    name: paintbox-production
     environment: production
-    app.kubernetes.io/name: system-analyzer
+    app.kubernetes.io/name: paintbox
     app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/component: application
+    app.kubernetes.io/part-of: candlefish-ai
 ---
-# Network policies for security
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: paintbox-staging
+  labels:
+    name: paintbox-staging
+    environment: staging
+    app.kubernetes.io/name: paintbox
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/component: application
+    app.kubernetes.io/part-of: candlefish-ai
+---
+# Network policies for security - Production
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: system-analyzer-network-policy
-  namespace: system-analyzer
+  name: paintbox-network-policy
+  namespace: paintbox-production
 spec:
   podSelector: {}
   policyTypes:
@@ -23,28 +37,90 @@ spec:
   - from:
     - namespaceSelector:
         matchLabels:
-          name: system-analyzer
+          name: paintbox-production
     - namespaceSelector:
         matchLabels:
           name: ingress-nginx
     - namespaceSelector:
         matchLabels:
           name: monitoring
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 8081
+    - protocol: TCP
+      port: 5432
+    - protocol: TCP
+      port: 6379
   egress:
-  - {}  # Allow all egress traffic
+  - {}  # Allow all egress traffic for external API calls
 ---
-# Resource quota to prevent resource exhaustion
+# Network policies for security - Staging
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: paintbox-network-policy
+  namespace: paintbox-staging
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: paintbox-staging
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 8081
+  egress:
+  - {}  # Allow all egress traffic for external API calls
+---
+# Resource quota to prevent resource exhaustion - Production
 apiVersion: v1
 kind: ResourceQuota
 metadata:
-  name: system-analyzer-quota
-  namespace: system-analyzer
+  name: paintbox-quota
+  namespace: paintbox-production
+spec:
+  hard:
+    requests.cpu: "8"
+    requests.memory: 16Gi
+    limits.cpu: "16"
+    limits.memory: 32Gi
+    pods: "50"
+    persistentvolumeclaims: "20"
+    services: "20"
+    configmaps: "20"
+    secrets: "20"
+---
+# Resource quota to prevent resource exhaustion - Staging
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: paintbox-quota
+  namespace: paintbox-staging
 spec:
   hard:
     requests.cpu: "4"
     requests.memory: 8Gi
     limits.cpu: "8"
     limits.memory: 16Gi
-    pods: "20"
+    pods: "30"
     persistentvolumeclaims: "10"
-    services: "10"
+    services: "15"
+    configmaps: "15"
+    secrets: "15"

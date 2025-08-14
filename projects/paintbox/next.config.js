@@ -2,6 +2,7 @@
 const nextConfig = {
   // Basic configuration
   reactStrictMode: false, // Disabled temporarily for compatibility
+  productionBrowserSourceMaps: false,
 
   // Image configuration - SECURED: Only allow specific domains
   images: {
@@ -33,6 +34,7 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true, // Temporarily disabled for deployment
   },
+  output: 'standalone',
 
   // Runtime configuration
   trailingSlash: false,
@@ -49,6 +51,7 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '10mb',
     },
+    isrMemoryCacheSize: 0, // Disable ISR memory cache
   },
 
   // Static generation timeout
@@ -106,6 +109,7 @@ const nextConfig = {
       '@aws-sdk/client-s3': require.resolve('./lib/stubs/@aws-sdk-client-s3.ts'),
       'cloudinary': require.resolve('./lib/stubs/cloudinary.ts'),
       'idb': require.resolve('./lib/stubs/idb.ts'),
+      'pg': require.resolve('./lib/stubs/pg.ts'),
     };
 
     // Exclude server-only modules from client bundle

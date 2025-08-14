@@ -154,7 +154,7 @@ export default function Home() {
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">Why Choose KIND HOME?</h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              We're not just painters – we're your partners in creating beautiful spaces
+              We&apos;re not just painters &ndash; we&apos;re your partners in creating beautiful spaces
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
@@ -196,7 +196,7 @@ export default function Home() {
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">What Our Customers Say</h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Don't just take our word for it – hear from our satisfied customers
+              Don&apos;t just take our word for it &ndash; hear from our satisfied customers
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -209,7 +209,7 @@ export default function Home() {
             <TestimonialCard
               name="Mike Chen"
               location="Boulder, CO"
-              text="Best painting contractor we've worked with. They were punctual, detail-oriented, and left our office looking brand new."
+              text="Best painting contractor we&apos;ve worked with. They were punctual, detail-oriented, and left our office looking brand new."
               rating={5}
             />
             <TestimonialCard

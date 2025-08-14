@@ -143,6 +143,14 @@ export async function transaction<T>(
 }
 
 /**
+ * Create a single connection for simple operations
+ */
+export async function createConnection(): Promise<PoolClient> {
+  const pool = getPool();
+  return await pool.connect();
+}
+
+/**
  * Health check for database connection
  */
 export async function checkHealth(): Promise<boolean> {

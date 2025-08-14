@@ -1,0 +1,316 @@
+# OpenTelemetry Collector Configuration for Paintbox
+# Collects metrics, traces, and logs from Paintbox application and infrastructure
+
+receivers:
+  # OTLP receivers for application telemetry
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - "https://paintbox.candlefish.ai"
+            - "https://*.candlefish.ai"
+          allowed_headers:
+            - "*"
+
+  # Prometheus receiver for scraping metrics
+  prometheus:
+    config:
+      global:
+        scrape_interval: 30s
+        evaluation_interval: 30s
+      scrape_configs:
+        # Scrape Paintbox application metrics
+        - job_name: 'paintbox-app'
+          static_configs:
+            - targets: ['paintbox-service:8081']
+          metrics_path: '/metrics'
+          scrape_interval: 30s
+          scrape_timeout: 10s
+
+        # Scrape PostgreSQL metrics
+        - job_name: 'postgres'
+          static_configs:
+            - targets: ['postgres-service:9187']
+          scrape_interval: 30s
+
+        # Scrape Redis metrics
+        - job_name: 'redis'
+          static_configs:
+            - targets: ['redis-service:9121']
+          scrape_interval: 30s
+
+        # Scrape Kubernetes metrics
+        - job_name: 'kubernetes-apiservers'
+          kubernetes_sd_configs:
+            - role: endpoints
+              namespaces:
+                names:
+                  - default
+          scheme: https
+          tls_config:
+            ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+            insecure_skip_verify: true
+          bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          relabel_configs:
+            - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+              action: keep
+              regex: default;kubernetes;https
+
+        # Scrape Kubernetes nodes
+        - job_name: 'kubernetes-nodes'
+          kubernetes_sd_configs:
+            - role: node
+          scheme: https
+          tls_config:
+            ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+            insecure_skip_verify: true
+          bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          relabel_configs:
+            - action: labelmap
+              regex: __meta_kubernetes_node_label_(.+)
+
+        # Scrape Kubernetes pods
+        - job_name: 'kubernetes-pods'
+          kubernetes_sd_configs:
+            - role: pod
+              namespaces:
+                names:
+                  - paintbox-production
+                  - paintbox-staging
+                  - monitoring
+          relabel_configs:
+            - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+              action: keep
+              regex: true
+            - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+              action: replace
+              target_label: __metrics_path__
+              regex: (.+)
+            - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+              action: replace
+              regex: ([^:]+)(?::\d+)?;(\d+)
+              replacement: $1:$2
+              target_label: __address__
+            - action: labelmap
+              regex: __meta_kubernetes_pod_label_(.+)
+            - source_labels: [__meta_kubernetes_namespace]
+              action: replace
+              target_label: kubernetes_namespace
+            - source_labels: [__meta_kubernetes_pod_name]
+              action: replace
+              target_label: kubernetes_pod_name
+
+  # Kubernetes Events receiver
+  k8s_events:
+    auth_type: serviceAccount
+    namespaces: [paintbox-production, paintbox-staging, monitoring]
+
+  # Host metrics receiver
+  hostmetrics:
+    collection_interval: 30s
+    scrapers:
+      cpu:
+        metrics:
+          system.cpu.utilization:
+            enabled: true
+      disk:
+      filesystem:
+        exclude_mount_points:
+          mount_points: ["/dev/*", "/proc/*", "/sys/*", "/var/lib/docker/*", "/var/lib/containerd/*", "/snap/*"]
+          match_type: regexp
+      memory:
+      network:
+      process:
+        mute_process_name_error: true
+        mute_process_exe_error: true
+        mute_process_io_error: true
+
+  # Docker stats receiver
+  docker_stats:
+    endpoint: unix:///var/run/docker.sock
+    collection_interval: 30s
+    timeout: 20s
+    provide_per_core_cpu_metrics: true
+
+processors:
+  # Memory limiter to prevent OOM
+  memory_limiter:
+    limit_mib: 512
+    spike_limit_mib: 128
+    check_interval: 5s
+
+  # Batch processor for better performance
+  batch:
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+    timeout: 10s
+
+  # Resource processor to add consistent labels
+  resource:
+    attributes:
+      - key: deployment.environment
+        value: production
+        action: upsert
+      - key: service.namespace
+        value: paintbox
+        action: upsert
+      - key: service.version
+        from_attribute: app.version
+        action: upsert
+
+  # Attributes processor for data enrichment
+  attributes:
+    actions:
+      - key: environment
+        value: production
+        action: upsert
+      - key: cluster
+        value: paintbox-production
+        action: upsert
+
+  # Filter processor to reduce noise
+  filter:
+    metrics:
+      exclude:
+        match_type: regexp
+        metric_names:
+          - ".*grpc_io.*"
+          - ".*_bucket"
+        
+  # Transform processor for metric normalization
+  transform:
+    metric_statements:
+      - context: metric
+        statements:
+          - set(description, "Paintbox application metric") where name == "paintbox_requests_total"
+          - set(unit, "1") where name == "paintbox_requests_total"
+
+  # Probabilistic sampler for traces
+  probabilistic_sampler:
+    sampling_percentage: 10.0
+
+  # Span processor for trace enrichment
+  span:
+    name:
+      to_attributes:
+        rules:
+          - ^\/api\/v1\/(?P<version>\w+)\/(?P<resource>\w+).*
+          - ^\/(?P<method>\w+).*
+
+exporters:
+  # Prometheus exporter
+  prometheus:
+    endpoint: "0.0.0.0:8888"
+    namespace: paintbox
+    const_labels:
+      environment: production
+      cluster: paintbox
+
+  # OTLP exporter for external observability platforms
+  otlp/jaeger:
+    endpoint: jaeger-collector:14250
+    tls:
+      insecure: true
+
+  # Loki exporter for logs
+  loki:
+    endpoint: http://loki:3100/loki/api/v1/push
+    tenant_id: paintbox
+    labels:
+      attributes:
+        environment: production
+        service.name: paintbox
+        service.namespace: paintbox
+
+  # CloudWatch exporter for AWS metrics
+  awscloudwatch:
+    region: us-east-1
+    namespace: Paintbox/Production
+    dimension_rollup_option: NoDimensionRollup
+    metric_declarations:
+      - dimensions: [[service.name], [service.name, service.version]]
+        metric_name_selectors:
+          - ".*_duration"
+          - ".*_total"
+          - ".*_count"
+      - dimensions: [[service.name, operation], [service.name, method]]
+        metric_name_selectors:
+          - ".*_requests.*"
+
+  # File exporter for debugging
+  file:
+    path: /tmp/otel-output.json
+    rotation:
+      max_megabytes: 100
+      max_days: 3
+      max_backups: 5
+
+  # Logging exporter for debugging
+  logging:
+    loglevel: info
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+extensions:
+  # Health check extension
+  health_check:
+    endpoint: 0.0.0.0:13133
+    path: "/health"
+
+  # Memory ballast extension
+  memory_ballast:
+    size_mib: 256
+
+  # pprof extension for performance profiling
+  pprof:
+    endpoint: 0.0.0.0:1777
+
+  # zpages extension for internal metrics
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+service:
+  extensions: [health_check, memory_ballast, pprof, zpages]
+  
+  pipelines:
+    # Metrics pipeline
+    metrics:
+      receivers: [otlp, prometheus, hostmetrics, docker_stats, k8s_events]
+      processors: [memory_limiter, resource, attributes, filter, transform, batch]
+      exporters: [prometheus, awscloudwatch, logging]
+
+    # Traces pipeline
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, attributes, probabilistic_sampler, span, batch]
+      exporters: [otlp/jaeger, logging]
+
+    # Logs pipeline
+    logs:
+      receivers: [otlp, k8s_events]
+      processors: [memory_limiter, resource, attributes, batch]
+      exporters: [loki, logging]
+
+  # Telemetry configuration
+  telemetry:
+    logs:
+      level: "info"
+      encoding: "json"
+      disable_caller: false
+      disable_stacktrace: false
+      output_paths: ["stderr"]
+      error_output_paths: ["stderr"]
+      initial_fields:
+        service: "otel-collector"
+        version: "0.89.0"
+    
+    metrics:
+      level: "detailed"
+      address: "0.0.0.0:8888"
+      
+    traces:
+      processors: [batch]
