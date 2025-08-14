@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 
 # GitHub repository
 REPO="candlefish-ai"
-OWNER="patricksmith" # Update if different
+OWNER="candlefish-ai" # Updated to use organization
 
 # Function to get secret from AWS
 get_aws_secret() {
