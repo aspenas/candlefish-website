@@ -1,0 +1,241 @@
+name: Claude Official Auto Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull Request number to review'
+        required: false
+        type: number
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  id-token: write
+  statuses: write
+  checks: write
+
+jobs:
+  should-review:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+      pr_number: ${{ steps.check.outputs.pr_number }}
+    steps:
+      - name: Check if should run
+        id: check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          should_run="false"
+          pr_number=""
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            should_run="true"
+            pr_number="${{ inputs.pr_number }}"
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            if [[ "${{ github.event.pull_request.draft }}" != "true" ]]; then
+              should_run="true"
+              pr_number="${{ github.event.pull_request.number }}"
+            fi
+          elif [[ "${{ github.event_name }}" == "issue_comment" ]]; then
+            if [[ "${{ github.event.issue.pull_request }}" != "" ]]; then
+              comment_body="${{ github.event.comment.body }}"
+              if [[ "$comment_body" == *"/claude-review"* ]]; then
+                should_run="true"
+                pr_number="${{ github.event.issue.number }}"
+              fi
+            fi
+          fi
+
+          echo "should_run=$should_run" >> $GITHUB_OUTPUT
+          echo "pr_number=$pr_number" >> $GITHUB_OUTPUT
+
+  auto-review:
+    needs: should-review
+    if: needs.should-review.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: claude-review-${{ github.run_id }}
+          aws-region: us-east-1
+
+      - name: Get Anthropic API Key from AWS
+        id: get-secrets
+        run: |
+          # Retrieve the secret from AWS Secrets Manager
+          SECRET_JSON=$(aws secretsmanager get-secret-value \
+            --secret-id "candlefish-ai/anthropic/api-key" \
+            --query SecretString \
+            --output text)
+
+          # Extract the API key
+          API_KEY=$(echo "$SECRET_JSON" | jq -r '.ANTHROPIC_API_KEY')
+
+          if [ -z "$API_KEY" ] || [ "$API_KEY" = "null" ]; then
+            echo "::error::Failed to retrieve ANTHROPIC_API_KEY from AWS Secrets Manager"
+            exit 1
+          fi
+
+          # Mask the API key in logs
+          echo "::add-mask::$API_KEY"
+
+          # Set as output
+          echo "anthropic_api_key=$API_KEY" >> $GITHUB_OUTPUT
+
+      - name: Setup review environment
+        id: setup
+        env:
+          PR_NUMBER: ${{ needs.should-review.outputs.pr_number }}
+        run: |
+          # Determine review focus based on comment
+          review_focus="comprehensive"
+
+          if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
+            comment="${{ github.event.comment.body }}"
+            if [[ "$comment" == *"security"* ]]; then
+              review_focus="security"
+            elif [[ "$comment" == *"performance"* ]]; then
+              review_focus="performance"
+            elif [[ "$comment" == *"quick"* ]]; then
+              review_focus="quick"
+            fi
+          fi
+
+          echo "review_focus=$review_focus" >> $GITHUB_OUTPUT
+
+      - name: Get PR diff
+        id: pr-diff
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ needs.should-review.outputs.pr_number }}
+        run: |
+          # Get PR information
+          PR_DATA=$(gh pr view $PR_NUMBER --json title,body,headRefName,baseRefName,files,additions,deletions)
+          echo "pr_title=$(echo "$PR_DATA" | jq -r '.title')" >> $GITHUB_OUTPUT
+          echo "pr_branch=$(echo "$PR_DATA" | jq -r '.headRefName')" >> $GITHUB_OUTPUT
+          echo "base_branch=$(echo "$PR_DATA" | jq -r '.baseRefName')" >> $GITHUB_OUTPUT
+          echo "additions=$(echo "$PR_DATA" | jq -r '.additions')" >> $GITHUB_OUTPUT
+          echo "deletions=$(echo "$PR_DATA" | jq -r '.deletions')" >> $GITHUB_OUTPUT
+
+          # Get the diff
+          gh pr diff $PR_NUMBER > pr_diff.txt || true
+
+          # Limit diff size to prevent token overflow
+          head -c 500000 pr_diff.txt > pr_diff_limited.txt
+
+      - name: Automatic PR Review with Claude
+        id: claude-review
+        env:
+          ANTHROPIC_API_KEY: ${{ steps.get-secrets.outputs.anthropic_api_key }}
+        run: |
+          # Create the review request
+          cat > review_request.json << 'EOF'
+          {
+            "model": "claude-3-5-sonnet-20241022",
+            "max_tokens": 8192,
+            "temperature": 0,
+            "system": "You are a senior software engineer performing a thorough code review. Focus on: security issues, bugs, performance problems, code quality, and best practices. Be constructive and specific.",
+            "messages": [
+              {
+                "role": "user",
+                "content": "Please review this pull request:\n\nTitle: ${{ steps.pr-diff.outputs.pr_title }}\nBranch: ${{ steps.pr-diff.outputs.pr_branch }} -> ${{ steps.pr-diff.outputs.base_branch }}\nChanges: +${{ steps.pr-diff.outputs.additions }} -${{ steps.pr-diff.outputs.deletions }}\n\nReview Focus: ${{ steps.setup.outputs.review_focus }}\n\nDiff (truncated if large):\n$(cat pr_diff_limited.txt)\n\nProvide a detailed review with:\n1. Summary of changes\n2. Critical issues (must fix)\n3. Major issues (should fix)\n4. Minor suggestions\n5. Security concerns if any\n6. Performance considerations\n\nFormat your response as a GitHub comment with proper markdown."
+              }
+            ]
+          }
+          EOF
+
+          # Call Claude API
+          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -d @review_request.json)
+
+          # Extract the review content
+          echo "$RESPONSE" | jq -r '.content[0].text' > review_comment.md
+
+          # Check if we got a valid response
+          if [ ! -s review_comment.md ] || grep -q "error" review_comment.md; then
+            echo "Error getting review from Claude"
+            echo "$RESPONSE" | jq '.'
+            exit 1
+          fi
+
+      - name: Post PR review comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ needs.should-review.outputs.pr_number }}
+        run: |
+          # Add header and footer to the review
+          cat > final_review.md << 'EOF'
+          ## 🤖 Claude Code Review
+
+          EOF
+          cat review_comment.md >> final_review.md
+          cat >> final_review.md << 'EOF'
+
+          ---
+          *This review was generated by Claude 3.5 Sonnet. To trigger a new review, comment `/claude-review`*
+          *Review type: **${{ steps.setup.outputs.review_focus }}***
+          EOF
+
+          # Post the review comment
+          gh pr comment $PR_NUMBER --body-file final_review.md
+
+      - name: Post review summary
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ needs.should-review.outputs.pr_number }}
+        run: |
+          # Create status check
+          if [[ "${{ job.status }}" == "success" ]]; then
+            gh pr comment $PR_NUMBER --body "✅ **Claude Review Complete**
+
+            Review type: **${{ steps.setup.outputs.review_focus }}**
+            Status: Successfully completed
+
+            Check the review comments above for detailed feedback.
+
+            ---
+            *Trigger a new review by commenting: \`/claude-review [type]\`*
+            *Types: comprehensive (default), security, performance, quick*"
+
+            # Set commit status
+            gh api repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha || github.sha }} \
+              -f state="success" \
+              -f context="claude-review/${{ steps.setup.outputs.review_focus }}" \
+              -f description="Claude review completed successfully"
+          else
+            gh pr comment $PR_NUMBER --body "❌ **Claude Review Failed**
+
+            The automated review encountered an error. Please check the [workflow logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
+
+            Common issues:
+            - AWS credentials not properly configured
+            - API key retrieval failed
+            - Rate limiting
+
+            You can retry by commenting \`/claude-review\`"
+
+            # Set commit status
+            gh api repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha || github.sha }} \
+              -f state="failure" \
+              -f context="claude-review/${{ steps.setup.outputs.review_focus }}" \
+              -f description="Claude review failed - check logs"
+          fi

@@ -1,28 +1,27 @@
+'use client'
+
 import Link from 'next/link'
 
 export default function NotFound() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-gray-50">
-      <div className="text-center max-w-md">
-        <div className="mb-8">
-          <div className="text-6xl mb-4">🎨</div>
-          <h1 className="text-2xl font-bold text-gray-900">Paintbox</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div className="text-center">
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+            404 - Page Not Found
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Could not find the requested resource
+          </p>
         </div>
-        <h2 className="mb-4 text-4xl font-bold text-gray-900">
-          404
-        </h2>
-        <p className="mb-6 text-xl text-gray-600">
-          Page not found
-        </p>
-        <p className="mb-8 text-gray-500">
-          The page you're looking for doesn't exist or has been moved.
-        </p>
-        <Link
-          href="/"
-          className="inline-block bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-3 rounded-lg font-medium hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5"
-        >
-          Return Home
-        </Link>
+        <div>
+          <Link
+            href="/"
+            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Return Home
+          </Link>
+        </div>
       </div>
     </div>
   )

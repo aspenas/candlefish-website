@@ -1,0 +1,321 @@
+name: CI
+
+on:
+  push:
+    branches: [main, development]
+  pull_request:
+    types: [opened, synchronize, reopened]
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.12'
+  CACHE_VERSION: v1
+
+jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      python: ${{ steps.filter.outputs.python }}
+      javascript: ${{ steps.filter.outputs.javascript }}
+      docker: ${{ steps.filter.outputs.docker }}
+      docs: ${{ steps.filter.outputs.docs }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect file changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            python:
+              - '**/*.py'
+              - '**/requirements*.txt'
+              - '**/pyproject.toml'
+              - '**/poetry.lock'
+            javascript:
+              - '**/*.js'
+              - '**/*.jsx'
+              - '**/*.ts'
+              - '**/*.tsx'
+              - '**/package*.json'
+              - '**/pnpm-lock.yaml'
+            docker:
+              - '**/Dockerfile*'
+              - '**/docker-compose*.yml'
+            docs:
+              - '**/*.md'
+              - 'docs/**'
+
+  lint-python:
+    name: Lint Python
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.python == 'true' || github.event_name == 'push'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.cache/pypoetry
+          key: ${{ runner.os }}-python-${{ env.CACHE_VERSION }}-${{ hashFiles('**/requirements*.txt', '**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-python-${{ env.CACHE_VERSION }}-
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install ruff black mypy
+
+      - name: Run Ruff
+        run: ruff check . --output-format=github
+
+      - name: Check formatting with Black
+        run: black --check .
+
+      - name: Type check with mypy
+        run: mypy . --ignore-missing-imports || true
+
+  lint-javascript:
+    name: Lint JavaScript/TypeScript
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.javascript == 'true' || github.event_name == 'push'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Cache pnpm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ env.CACHE_VERSION }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-${{ env.CACHE_VERSION }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run ESLint
+        run: pnpm run lint || true
+
+      - name: Type check
+        run: pnpm run typecheck || true
+
+  test-python:
+    name: Test Python
+    runs-on: ubuntu-latest
+    needs: [detect-changes, lint-python]
+    if: needs.detect-changes.outputs.python == 'true' || github.event_name == 'push'
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.cache/pypoetry
+          key: ${{ runner.os }}-python-${{ env.CACHE_VERSION }}-${{ hashFiles('**/requirements*.txt', '**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-python-${{ env.CACHE_VERSION }}-
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pytest pytest-cov pytest-asyncio
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+        run: |
+          pytest --cov --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          flags: python
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  test-javascript:
+    name: Test JavaScript/TypeScript
+    runs-on: ubuntu-latest
+    needs: [detect-changes, lint-javascript]
+    if: needs.detect-changes.outputs.javascript == 'true' || github.event_name == 'push'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Cache pnpm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ env.CACHE_VERSION }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-${{ env.CACHE_VERSION }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm test --if-present
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: ./coverage/lcov.info
+          flags: javascript
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: github.event_name == 'push' || github.event.pull_request.draft == false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Cache pnpm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ env.CACHE_VERSION }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-${{ env.CACHE_VERSION }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build applications
+        run: |
+          pnpm run build --if-present
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            dist/
+            build/
+            .next/
+          retention-days: 7
+
+  ci-status:
+    name: CI Status
+    runs-on: ubuntu-latest
+    needs: [lint-python, lint-javascript, test-python, test-javascript, build]
+    if: always()
+
+    steps:
+      - name: Check CI Status
+        run: |
+          echo "## CI Status Report"
+          echo "- Python Lint: ${{ needs.lint-python.result }}"
+          echo "- JavaScript Lint: ${{ needs.lint-javascript.result }}"
+          echo "- Python Tests: ${{ needs.test-python.result }}"
+          echo "- JavaScript Tests: ${{ needs.test-javascript.result }}"
+          echo "- Build: ${{ needs.build.result }}"
+
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "❌ CI failed. Please fix the issues above."
+            exit 1
+          elif [[ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "⚠️ CI was cancelled."
+            exit 1
+          else
+            echo "✅ All CI checks passed!"
+          fi

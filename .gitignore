@@ -101,3 +101,8 @@ node_modules/
 
 # Local Netlify folder
 .netlify
+
+# Environment files - NEVER COMMIT
+.env*
+!.env.example
+!.env.*.example

@@ -1,4 +1,4 @@
-# Ignore files to reduce deployment size
+# Ignore files to reduce deployment size and memory usage
 *.md
 **/*.test.ts
 **/*.test.tsx
@@ -22,3 +22,25 @@ __pycache__
 .DS_Store
 node_modules
 .next/cache
+
+# Build optimization - exclude heavy development files
+package-lock.backup.json
+*.backup.*
+mobile/__tests__/
+artillery-config.yml
+playwright.config.ts
+e2e/
+coverage/
+.nyc_output/
+tmp/
+temp/
+*.bak
+*.bak2
+.vscode/
+.idea/
+logs/
+
+# Memory-intensive analysis files
+excel_analysis.json
+COMPREHENSIVE_*.md
+IMPLEMENTATION_*.md

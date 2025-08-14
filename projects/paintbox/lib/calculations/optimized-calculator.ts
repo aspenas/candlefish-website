@@ -26,9 +26,9 @@ class PerformanceMonitor {
   private metrics: Map<string, { count: number; totalTime: number }> = new Map();
 
   measure<T>(name: string, fn: () => T): T {
-    const start = performance.now();
+    const start = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const result = fn();
-    const duration = performance.now() - start;
+    const duration = typeof performance !== 'undefined' ? performance.now() - start : Date.now() - start;
 
     const metric = this.metrics.get(name) || { count: 0, totalTime: 0 };
     metric.count++;
@@ -359,7 +359,8 @@ export function getOptimizedCalculator(options?: any): OptimizedPaintingCalculat
  * Web Worker support for heavy calculations
  */
 export function createWorkerCalculator() {
-  if (typeof Worker !== 'undefined') {
+  // Only create workers in browser environment
+  if (typeof window !== 'undefined' && typeof Worker !== 'undefined') {
     // Create a blob URL for the worker
     const workerCode = `
       importScripts('https://cdn.jsdelivr.net/npm/decimal.js@10/decimal.min.js');

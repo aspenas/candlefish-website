@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { signIn, getSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import PaintboxLogo from '@/components/ui/PaintboxLogo'
 
-export default function LoginPage() {
+function LoginContent() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
@@ -56,7 +56,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+    <>
       {/* Background Pattern */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-32 w-80 h-80 rounded-full bg-gradient-to-br from-purple-400/20 to-pink-400/20 blur-3xl" />
@@ -99,16 +99,17 @@ export default function LoginPage() {
                 hover:border-gray-300 hover:shadow-md
                 focus:outline-none focus:ring-4 focus:ring-purple-500/20
                 disabled:opacity-50 disabled:cursor-not-allowed
-                ${isLoading ? 'cursor-not-allowed' : 'hover:scale-[1.02] active:scale-[0.98]'}
+                ${isLoading ? 'animate-pulse' : ''}
               `}
             >
               {isLoading ? (
                 <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-gray-300 border-t-gray-600" />
-                  Signing in...
+                  <div className="w-5 h-5 border-2 border-gray-300 border-t-purple-500 rounded-full animate-spin" />
+                  <span>Signing in...</span>
                 </>
               ) : (
                 <>
+                  {/* Google Icon */}
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path
                       fill="#4285F4"
@@ -127,48 +128,64 @@ export default function LoginPage() {
                       d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                     />
                   </svg>
-                  Continue with Google
+                  <span>Sign in with Google</span>
                 </>
               )}
             </button>
+          </div>
 
-            <p className="text-xs text-gray-500 text-center leading-relaxed">
-              By signing in, you agree to our Terms of Service and Privacy Policy.
-              Your data is protected with enterprise-grade security.
+          {/* Footer */}
+          <div className="text-center space-y-2 pt-4 border-t border-gray-200">
+            <p className="text-sm text-gray-500">
+              By signing in, you agree to our{' '}
+              <a href="#" className="text-purple-600 hover:text-purple-700 underline">
+                Terms of Service
+              </a>{' '}
+              and{' '}
+              <a href="#" className="text-purple-600 hover:text-purple-700 underline">
+                Privacy Policy
+              </a>
+            </p>
+            <p className="text-xs text-gray-400">
+              © 2025 KindHome Paint. All rights reserved.
             </p>
           </div>
+        </div>
 
-          {/* Features Preview */}
-          <div className="space-y-3 pt-4 border-t border-gray-100">
-            <h3 className="text-sm font-medium text-gray-900 text-center">
-              What you'll get access to:
-            </h3>
-            <div className="grid grid-cols-1 gap-2 text-xs text-gray-600">
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-                Professional painting estimates
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-                Real-time pricing calculations
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-                Photo documentation with Company Cam
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-                Salesforce CRM integration
-              </div>
-            </div>
+        {/* Features List */}
+        <div className="mt-8 grid grid-cols-2 gap-4 text-center">
+          <div className="text-sm text-gray-600">
+            <div className="mb-2">📊</div>
+            <div>Professional Estimates</div>
+          </div>
+          <div className="text-sm text-gray-600">
+            <div className="mb-2">📱</div>
+            <div>iPad Optimized</div>
+          </div>
+          <div className="text-sm text-gray-600">
+            <div className="mb-2">🔄</div>
+            <div>Offline Support</div>
+          </div>
+          <div className="text-sm text-gray-600">
+            <div className="mb-2">🔗</div>
+            <div>CRM Integration</div>
           </div>
         </div>
-
-        {/* Footer */}
-        <div className="text-center mt-6 text-xs text-gray-500">
-          <p>Having trouble? Contact support at support@kindhomepaint.com</p>
-        </div>
       </div>
+    </>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+      <Suspense fallback={
+        <div className="flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
+        </div>
+      }>
+        <LoginContent />
+      </Suspense>
     </div>
   )
 }

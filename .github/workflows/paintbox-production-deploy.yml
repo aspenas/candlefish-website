@@ -1,0 +1,588 @@
+name: Paintbox Production Deployment Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'projects/paintbox/**'
+      - '.github/workflows/paintbox-production-deploy.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'projects/paintbox/**'
+      - '.github/workflows/paintbox-production-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deploy to environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      deployment_strategy:
+        description: 'Deployment strategy'
+        required: true
+        default: 'blue-green'
+        type: choice
+        options:
+          - blue-green
+          - rolling
+          - canary
+
+env:
+  NODE_VERSION: '20'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: paintbox
+  WORKING_DIRECTORY: 'projects/paintbox'
+
+jobs:
+  # Pre-deployment Security and Quality Checks
+  security-scan:
+    name: Security & Vulnerability Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Trivy vulnerability scanner (filesystem)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: ${{ env.WORKING_DIRECTORY }}
+          format: 'sarif'
+          output: 'trivy-fs-results.sarif'
+
+      - name: Upload Trivy scan results (filesystem)
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-fs-results.sarif'
+
+      - name: Setup Node.js for dependency audit
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Audit npm dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm audit --audit-level moderate
+
+      - name: Run SAST with CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: typescript, javascript
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  # Comprehensive Testing Pipeline
+  test-suite:
+    name: Comprehensive Test Suite
+    runs-on: ubuntu-latest
+    needs: security-scan
+
+    strategy:
+      matrix:
+        test-type: [unit, integration, api, components, accessibility, performance]
+      fail-fast: false
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: paintbox_test
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test123
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm ci --prefer-offline
+
+      - name: Setup test environment
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          cp .env.test .env.local
+          npm run setup-test-db
+
+      - name: Run unit tests
+        if: matrix.test-type == 'unit'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run test:coverage
+        env:
+          CI: true
+
+      - name: Run integration tests
+        if: matrix.test-type == 'integration'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run test:production:integration
+        env:
+          DATABASE_URL: postgres://test:test123@localhost:5432/paintbox_test
+          REDIS_URL: redis://localhost:6379
+
+      - name: Run API tests
+        if: matrix.test-type == 'api'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run test:production:unit
+        env:
+          DATABASE_URL: postgres://test:test123@localhost:5432/paintbox_test
+          REDIS_URL: redis://localhost:6379
+
+      - name: Install Playwright for E2E
+        if: matrix.test-type == 'components' || matrix.test-type == 'accessibility'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npx playwright install --with-deps chromium
+
+      - name: Run component tests
+        if: matrix.test-type == 'components'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run test:production:components
+
+      - name: Run accessibility tests
+        if: matrix.test-type == 'accessibility'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run test:production:accessibility
+
+      - name: Run performance tests
+        if: matrix.test-type == 'performance'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run test:load
+        env:
+          DATABASE_URL: postgres://test:test123@localhost:5432/paintbox_test
+          REDIS_URL: redis://localhost:6379
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.test-type }}
+          path: |
+            ${{ env.WORKING_DIRECTORY }}/coverage/
+            ${{ env.WORKING_DIRECTORY }}/test-results/
+            ${{ env.WORKING_DIRECTORY }}/playwright-report/
+
+  # Build and Container Image Creation
+  build-and-push:
+    name: Build & Push Container Images
+    runs-on: ubuntu-latest
+    needs: [security-scan, test-suite]
+    if: always() && needs.security-scan.result == 'success' && needs.test-suite.result == 'success'
+
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-tag: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.WORKING_DIRECTORY }}
+          file: ${{ env.WORKING_DIRECTORY }}/Dockerfile.production
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            BUILD_ENV=production
+
+      - name: Run Trivy vulnerability scanner (image)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-image-results.sarif'
+
+      - name: Upload Trivy scan results (image)
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-image-results.sarif'
+
+  # Infrastructure Provisioning
+  infrastructure:
+    name: Provision Infrastructure
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Terraform Init
+        working-directory: ${{ env.WORKING_DIRECTORY }}/terraform
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: ${{ env.WORKING_DIRECTORY }}/terraform
+        run: terraform plan -var="image_tag=${{ needs.build-and-push.outputs.image-tag }}"
+
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main'
+        working-directory: ${{ env.WORKING_DIRECTORY }}/terraform
+        run: terraform apply -auto-approve -var="image_tag=${{ needs.build-and-push.outputs.image-tag }}"
+
+  # Staging Deployment
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-and-push, infrastructure]
+    if: |
+      always() &&
+      needs.build-and-push.result == 'success' &&
+      (needs.infrastructure.result == 'success' || needs.infrastructure.result == 'skipped') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' ||
+       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging'))
+
+    environment:
+      name: staging
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig --region us-east-1 --name paintbox-staging
+
+      - name: Deploy to staging with blue-green strategy
+        id: deploy
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          # Apply Kubernetes manifests
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/configmap.yaml
+          kubectl apply -f k8s/secrets.yaml
+
+          # Update deployment with new image
+          kubectl set image deployment/paintbox-app \
+            paintbox-app=${{ needs.build-and-push.outputs.image-tag }} \
+            -n paintbox-staging
+
+          # Wait for rollout to complete
+          kubectl rollout status deployment/paintbox-app -n paintbox-staging --timeout=600s
+
+          # Get service URL
+          STAGING_URL=$(kubectl get service paintbox-service -n paintbox-staging -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          echo "url=https://${STAGING_URL}" >> $GITHUB_OUTPUT
+
+      - name: Run smoke tests on staging
+        run: |
+          sleep 30
+          curl -f ${{ steps.deploy.outputs.url }}/api/health || exit 1
+          curl -f ${{ steps.deploy.outputs.url }}/api/v1/metrics || exit 1
+          echo "Staging deployment successful: ${{ steps.deploy.outputs.url }}"
+
+      - name: Run integration tests against staging
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run test:e2e
+        env:
+          E2E_BASE_URL: ${{ steps.deploy.outputs.url }}
+
+  # Production Deployment (Manual Approval Required)
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-and-push, deploy-staging]
+    if: |
+      always() &&
+      needs.build-and-push.result == 'success' &&
+      needs.deploy-staging.result == 'success' &&
+      (github.ref == 'refs/heads/main' ||
+       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'))
+
+    environment:
+      name: production
+      url: https://paintbox.candlefish.ai
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig --region us-east-1 --name paintbox-production
+
+      - name: Create backup of current deployment
+        run: |
+          kubectl get deployment paintbox-app -n paintbox-production -o yaml > backup-deployment-$(date +%Y%m%d-%H%M%S).yaml
+
+      - name: Deploy to production
+        id: deploy-prod
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          # Choose deployment strategy
+          STRATEGY="${{ github.event.inputs.deployment_strategy || 'blue-green' }}"
+
+          if [ "$STRATEGY" = "blue-green" ]; then
+            ./scripts/blue-green-deploy.sh ${{ needs.build-and-push.outputs.image-tag }}
+          elif [ "$STRATEGY" = "rolling" ]; then
+            kubectl set image deployment/paintbox-app \
+              paintbox-app=${{ needs.build-and-push.outputs.image-tag }} \
+              -n paintbox-production
+            kubectl rollout status deployment/paintbox-app -n paintbox-production --timeout=600s
+          elif [ "$STRATEGY" = "canary" ]; then
+            ./scripts/canary-deploy.sh ${{ needs.build-and-push.outputs.image-tag }}
+          fi
+
+      - name: Run comprehensive health checks
+        run: |
+          # Wait for deployment to propagate
+          sleep 60
+
+          # Health check with retries
+          for i in {1..10}; do
+            if curl -f https://paintbox.candlefish.ai/api/health; then
+              echo "Health check passed"
+              break
+            else
+              echo "Health check failed, attempt $i/10"
+              sleep 30
+            fi
+          done
+
+      - name: Run production smoke tests
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          # Critical path tests
+          curl -f https://paintbox.candlefish.ai/api/v1/companycam/health || exit 1
+          curl -f https://paintbox.candlefish.ai/api/v1/salesforce/health || exit 1
+          curl -f https://paintbox.candlefish.ai/api/v1/pdf/health || exit 1
+
+          # Performance baseline check
+          response_time=$(curl -o /dev/null -s -w '%{time_total}' https://paintbox.candlefish.ai)
+          if (( $(echo "$response_time > 2.0" | bc -l) )); then
+            echo "Performance degradation detected: ${response_time}s response time"
+            exit 1
+          fi
+
+      - name: Update monitoring dashboards
+        run: |
+          # Update Grafana dashboards with new deployment
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.GRAFANA_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"tags":["deployment"], "text":"Production deployment: ${{ github.sha }}"}' \
+            https://grafana.candlefish.ai/api/annotations
+
+      - name: Notify deployment success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: context.payload.deployment?.id,
+              state: 'success',
+              environment_url: 'https://paintbox.candlefish.ai',
+              description: 'Production deployment successful'
+            });
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "Deployment failed, initiating rollback..."
+          kubectl rollout undo deployment/paintbox-app -n paintbox-production
+          kubectl rollout status deployment/paintbox-app -n paintbox-production --timeout=300s
+
+      - name: Notify deployment failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Paintbox Production Deployment Failed',
+              body: `Production deployment failed for commit ${{ github.sha }}.
+
+              **Image:** ${{ needs.build-and-push.outputs.image-tag }}
+              **Strategy:** ${{ github.event.inputs.deployment_strategy || 'blue-green' }}
+              **Workflow:** ${{ github.workflow }}
+              **Run:** ${{ github.run_id }}
+
+              Automatic rollback has been initiated. Please investigate and take corrective action.`,
+              labels: ['deployment', 'production', 'urgent', 'paintbox']
+            });
+
+  # Post-deployment monitoring and cleanup
+  post-deployment:
+    name: Post-deployment Monitoring
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: always() && needs.deploy-production.result == 'success'
+
+    steps:
+      - name: Setup monitoring alerts
+        run: |
+          # Update alerting rules for new deployment
+          echo "Setting up enhanced monitoring for new deployment..."
+
+      - name: Warm up caches
+        run: |
+          # Warm up application caches
+          curl -X POST https://paintbox.candlefish.ai/api/v1/cache/warm || true
+
+      - name: Update deployment metrics
+        run: |
+          # Record deployment metrics
+          echo "Recording deployment completion metrics..."
+
+  # Cleanup old resources
+  cleanup:
+    name: Cleanup Resources
+    runs-on: ubuntu-latest
+    needs: [post-deployment]
+    if: always()
+
+    steps:
+      - name: Cleanup old container images
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Keep only the latest 10 images
+            const packages = await github.rest.packages.getAllPackageVersionsForPackageOwnedByOrg({
+              package_type: 'container',
+              package_name: 'paintbox',
+              org: 'candlefish-ai'
+            });
+
+            const oldVersions = packages.data
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+              .slice(10);
+
+            for (const version of oldVersions) {
+              await github.rest.packages.deletePackageVersionForOrg({
+                package_type: 'container',
+                package_name: 'paintbox',
+                org: 'candlefish-ai',
+                package_version_id: version.id
+              });
+            }
+
+      - name: Cleanup old artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listArtifactsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100
+            });
+
+            const oldArtifacts = artifacts.data.artifacts
+              .filter(artifact => artifact.name.startsWith('test-results-'))
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+              .slice(20); // Keep latest 20 test result artifacts
+
+            for (const artifact of oldArtifacts) {
+              await github.rest.actions.deleteArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id
+              });
+            }

@@ -329,4 +329,5 @@ if (require.main === module) {
   main().catch(console.error);
 }
 
-export { testExcelEngine, TestResult };
+export { testExcelEngine };
+export type { TestResult };

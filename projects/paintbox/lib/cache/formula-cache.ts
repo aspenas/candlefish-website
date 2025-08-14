@@ -141,10 +141,12 @@ class FormulaCache {
         return result;
       }
     } catch (error) {
-      logger.error('Failed to get formula from cache', {
-        key,
-        error: error instanceof Error ? error.message : String(error)
-      });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('Redis not available during build time')) {
+        logger.debug('Redis cache skipped during build time', { formulaId: input.formulaId });
+      } else {
+        logger.error('Failed to get formula from cache', { key, error: errorMessage });
+      }
     }
 
     return null;
@@ -193,10 +195,12 @@ class FormulaCache {
         size: serialized.length
       });
     } catch (error) {
-      logger.error('Failed to cache formula', {
-        key,
-        error: error instanceof Error ? error.message : String(error)
-      });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('Redis not available during build time')) {
+        logger.debug('Redis cache set skipped during build time', { formulaId: input.formulaId });
+      } else {
+        logger.error('Failed to cache formula', { key, error: errorMessage });
+      }
     }
   }
 

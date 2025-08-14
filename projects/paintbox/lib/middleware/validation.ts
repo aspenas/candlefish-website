@@ -261,7 +261,7 @@ async function extractRequestData(request: NextRequest): Promise<any> {
 function formatValidationErrors(error: ZodError): any {
   const errors: Record<string, string[]> = {};
 
-  for (const issue of error.errors) {
+  for (const issue of error.issues) {
     const path = issue.path.join('.');
     const field = path || 'root';
 
@@ -275,7 +275,7 @@ function formatValidationErrors(error: ZodError): any {
   return {
     message: 'Validation failed',
     errors,
-    totalErrors: error.errors.length,
+    totalErrors: error.issues.length,
   };
 }
 

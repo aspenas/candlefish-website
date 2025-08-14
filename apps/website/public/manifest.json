@@ -1,0 +1,27 @@
+{
+  "name": "Candlefish AI - Enterprise AI Consulting",
+  "short_name": "Candlefish AI",
+  "description": "We turn your slowest business processes into your fastest competitive advantages through discrete, composable AI modules.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#00CED1",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo/candlefish_original.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo/candlefish_highquality.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["business", "productivity", "utilities"],
+  "lang": "en-US",
+  "dir": "ltr"
+}

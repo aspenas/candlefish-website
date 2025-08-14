@@ -1,11 +1,12 @@
-# Monitoring stack for System Analyzer
+# Monitoring stack for Paintbox
 apiVersion: v1
 kind: Namespace
 metadata:
   name: monitoring
   labels:
     name: monitoring
-    app.kubernetes.io/name: monitoring-system
+    app.kubernetes.io/name: paintbox-monitoring
+    app.kubernetes.io/part-of: candlefish-ai
 ---
 # Prometheus deployment
 apiVersion: apps/v1
@@ -126,7 +127,7 @@ data:
       scrape_interval: 15s
       evaluation_interval: 15s
       external_labels:
-        cluster: 'system-analyzer'
+        cluster: 'paintbox'
         environment: 'production'
 
     alerting:
@@ -143,12 +144,13 @@ data:
         static_configs:
           - targets: ['localhost:9090']
 
-      - job_name: 'system-analyzer-services'
+      - job_name: 'paintbox-services'
         kubernetes_sd_configs:
           - role: pod
             namespaces:
               names:
-                - system-analyzer
+                - paintbox-production
+                - paintbox-staging
         relabel_configs:
           - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
             action: keep

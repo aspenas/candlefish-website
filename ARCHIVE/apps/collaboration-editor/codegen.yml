@@ -1,0 +1,30 @@
+overwrite: true
+schema:
+  - "../../graphql/schema/**/*.graphql"
+documents:
+  - "src/**/*.{ts,tsx}"
+  - "src/graphql/**/*.graphql"
+generates:
+  src/types/graphql.ts:
+    plugins:
+      - "typescript"
+      - "typescript-operations"
+      - "typescript-react-apollo"
+    config:
+      withHooks: true
+      withComponent: false
+      withHOC: false
+      scalars:
+        DateTime: string
+        UUID: string
+        BigInt: string
+        NonEmptyString: string
+        NonNegativeInt: number
+        Decimal: number
+        Duration: string
+        HexColorCode: string
+        URL: string
+        JSON: any
+hooks:
+  afterAllFileWrite:
+    - prettier --write

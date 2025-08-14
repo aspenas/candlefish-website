@@ -465,10 +465,12 @@ class PaintboxOfflineDB extends Dexie {
 // Create and export database instance
 export const offlineDB = new PaintboxOfflineDB();
 
-// Initialize database and handle errors
-offlineDB.ready().catch(error => {
-  console.error('Failed to initialize offline database:', error);
-});
+// Initialize database and handle errors (only at runtime, not during build)
+if (typeof window !== 'undefined') {
+  offlineDB.ready().catch(error => {
+    console.error('Failed to initialize offline database:', error);
+  });
+}
 
 // Export type helpers
 export type { PaintboxOfflineDB };

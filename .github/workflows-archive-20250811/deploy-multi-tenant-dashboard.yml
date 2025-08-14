@@ -1,0 +1,541 @@
+name: Deploy Multi-Tenant Analytics Dashboard
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'apps/analytics-dashboard/**'
+      - 'apps/mobile-dashboard/**'
+      - 'apps/rtpm-api/**'
+      - '.github/workflows/deploy-multi-tenant-dashboard.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/analytics-dashboard/**'
+      - 'apps/mobile-dashboard/**'
+      - 'apps/rtpm-api/**'
+
+env:
+  REGISTRY: ghcr.io
+  NAMESPACE: candlefish-ai
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  # Security and Code Quality
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run CodeQL Analysis
+        uses: github/codeql-action/init@v2
+        with:
+          languages: javascript, python
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+
+  # Test Frontend
+  test-frontend:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          cache-dependency-path: apps/analytics-dashboard/pnpm-lock.yaml
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install dependencies
+        run: |
+          cd apps/analytics-dashboard
+          pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: |
+          cd apps/analytics-dashboard
+          pnpm typecheck
+
+      - name: Lint code
+        run: |
+          cd apps/analytics-dashboard
+          pnpm lint
+
+      - name: Run unit tests
+        run: |
+          cd apps/analytics-dashboard
+          pnpm test --coverage
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: apps/analytics-dashboard/coverage/lcov.info
+          flags: frontend
+          name: frontend-coverage
+
+  # Test Mobile
+  test-mobile:
+    name: Test Mobile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: apps/mobile-dashboard/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd apps/mobile-dashboard
+          npm ci
+
+      - name: Run tests
+        run: |
+          cd apps/mobile-dashboard
+          npm test -- --coverage --watchAll=false
+
+  # Test Backend API
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: apps/rtpm-api/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd apps/rtpm-api
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379
+          TESTING: true
+        run: |
+          cd apps/rtpm-api
+          pytest --cov=src --cov-report=xml
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: apps/rtpm-api/coverage.xml
+          flags: backend
+          name: backend-coverage
+
+  # Build and Push Docker Images
+  build-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [security-scan, test-frontend, test-mobile, test-backend]
+    if: github.event_name == 'push'
+    outputs:
+      frontend-image: ${{ steps.meta-frontend.outputs.tags }}
+      backend-image: ${{ steps.meta-backend.outputs.tags }}
+      mobile-image: ${{ steps.meta-mobile.outputs.tags }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Frontend metadata
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/analytics-dashboard-frontend
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/analytics-dashboard
+          file: deployment/docker/Dockerfile.frontend
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Extract Backend metadata
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/analytics-dashboard-backend
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/rtpm-api
+          file: apps/rtpm-api/Dockerfile
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Extract Mobile metadata
+        id: meta-mobile
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/analytics-dashboard-mobile-builder
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Mobile builder image
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/mobile-dashboard
+          file: deployment/docker/Dockerfile.mobile
+          push: true
+          tags: ${{ steps.meta-mobile.outputs.tags }}
+          labels: ${{ steps.meta-mobile.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Deploy to Development
+  deploy-dev:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    needs: [build-images]
+    if: github.ref == 'refs/heads/develop'
+    environment: development
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region us-west-2 --name candlefish-dev
+
+      - name: Deploy to Development
+        run: |
+          # Update image tags in Kubernetes manifests
+          sed -i "s|{{FRONTEND_IMAGE}}|${{ needs.build-images.outputs.frontend-image }}|g" deployment/k8s/overlays/dev/kustomization.yaml
+          sed -i "s|{{BACKEND_IMAGE}}|${{ needs.build-images.outputs.backend-image }}|g" deployment/k8s/overlays/dev/kustomization.yaml
+
+          # Apply Kubernetes manifests
+          kubectl apply -k deployment/k8s/overlays/dev
+
+          # Wait for rollout to complete
+          kubectl rollout status deployment/frontend-deployment -n candlefish-dev --timeout=600s
+          kubectl rollout status deployment/backend-deployment -n candlefish-dev --timeout=600s
+
+      - name: Run smoke tests
+        run: |
+          # Wait for services to be ready
+          kubectl wait --for=condition=ready pod -l app=frontend -n candlefish-dev --timeout=300s
+          kubectl wait --for=condition=ready pod -l app=backend -n candlefish-dev --timeout=300s
+
+          # Run basic health checks
+          kubectl exec -n candlefish-dev deployment/frontend-deployment -- curl -f http://localhost/health
+          kubectl exec -n candlefish-dev deployment/backend-deployment -- curl -f http://localhost:8000/health
+
+  # Deploy to Staging with Blue-Green
+  deploy-staging:
+    name: Deploy to Staging (Blue-Green)
+    runs-on: ubuntu-latest
+    needs: [build-images, deploy-dev]
+    if: github.ref == 'refs/heads/main'
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region us-west-2 --name candlefish-staging
+
+      - name: Blue-Green Deployment
+        run: |
+          # Determine current color
+          CURRENT_COLOR=$(kubectl get service frontend-service -n candlefish-staging -o jsonpath='{.spec.selector.color}' || echo "blue")
+          NEW_COLOR=$([ "$CURRENT_COLOR" = "blue" ] && echo "green" || echo "blue")
+
+          echo "Current color: $CURRENT_COLOR, New color: $NEW_COLOR"
+
+          # Update manifests with new color and images
+          sed -i "s|{{COLOR}}|$NEW_COLOR|g" deployment/k8s/overlays/staging/kustomization.yaml
+          sed -i "s|{{FRONTEND_IMAGE}}|${{ needs.build-images.outputs.frontend-image }}|g" deployment/k8s/overlays/staging/kustomization.yaml
+          sed -i "s|{{BACKEND_IMAGE}}|${{ needs.build-images.outputs.backend-image }}|g" deployment/k8s/overlays/staging/kustomization.yaml
+
+          # Deploy new version
+          kubectl apply -k deployment/k8s/overlays/staging
+
+          # Wait for new deployment to be ready
+          kubectl rollout status deployment/frontend-deployment-$NEW_COLOR -n candlefish-staging --timeout=600s
+          kubectl rollout status deployment/backend-deployment-$NEW_COLOR -n candlefish-staging --timeout=600s
+
+          # Health check new deployment
+          kubectl wait --for=condition=ready pod -l app=frontend,color=$NEW_COLOR -n candlefish-staging --timeout=300s
+          kubectl wait --for=condition=ready pod -l app=backend,color=$NEW_COLOR -n candlefish-staging --timeout=300s
+
+      - name: Integration Tests
+        run: |
+          # Run comprehensive integration tests against staging
+          cd __tests__
+          npm install
+          npm run test:integration:staging
+
+      - name: Switch Traffic
+        run: |
+          # Switch service selectors to new color
+          kubectl patch service frontend-service -n candlefish-staging -p '{"spec":{"selector":{"color":"'$NEW_COLOR'"}}}'
+          kubectl patch service backend-service -n candlefish-staging -p '{"spec":{"selector":{"color":"'$NEW_COLOR'"}}}'
+
+          # Verify traffic switch
+          sleep 30
+          kubectl exec -n candlefish-staging deployment/frontend-deployment-$NEW_COLOR -- curl -f http://frontend-service/health
+
+      - name: Cleanup Old Deployment
+        run: |
+          # Remove old color deployment after successful switch
+          OLD_COLOR=$([ "$NEW_COLOR" = "blue" ] && echo "green" || echo "blue")
+          kubectl delete deployment frontend-deployment-$OLD_COLOR -n candlefish-staging --ignore-not-found
+          kubectl delete deployment backend-deployment-$OLD_COLOR -n candlefish-staging --ignore-not-found
+
+  # Deploy to Production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-images, deploy-staging]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
+          aws-region: us-west-2
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region us-west-2 --name candlefish-prod
+
+      - name: Canary Deployment
+        run: |
+          # Deploy canary version (10% traffic)
+          sed -i "s|{{FRONTEND_IMAGE}}|${{ needs.build-images.outputs.frontend-image }}|g" deployment/k8s/overlays/prod/canary/kustomization.yaml
+          sed -i "s|{{BACKEND_IMAGE}}|${{ needs.build-images.outputs.backend-image }}|g" deployment/k8s/overlays/prod/canary/kustomization.yaml
+
+          kubectl apply -k deployment/k8s/overlays/prod/canary
+
+          # Wait for canary deployment
+          kubectl rollout status deployment/frontend-canary -n candlefish-prod --timeout=600s
+          kubectl rollout status deployment/backend-canary -n candlefish-prod --timeout=600s
+
+      - name: Canary Health Check
+        run: |
+          # Monitor canary for 5 minutes
+          for i in {1..10}; do
+            kubectl exec -n candlefish-prod deployment/frontend-canary -- curl -f http://localhost/health
+            kubectl exec -n candlefish-prod deployment/backend-canary -- curl -f http://localhost:8000/health
+            sleep 30
+          done
+
+      - name: Production Tests
+        run: |
+          # Run production smoke tests
+          cd __tests__
+          npm run test:production:smoke
+
+      - name: Full Production Rollout
+        run: |
+          # Update main production deployments
+          sed -i "s|{{FRONTEND_IMAGE}}|${{ needs.build-images.outputs.frontend-image }}|g" deployment/k8s/overlays/prod/kustomization.yaml
+          sed -i "s|{{BACKEND_IMAGE}}|${{ needs.build-images.outputs.backend-image }}|g" deployment/k8s/overlays/prod/kustomization.yaml
+
+          kubectl apply -k deployment/k8s/overlays/prod
+
+          # Rolling update with careful monitoring
+          kubectl rollout status deployment/frontend-deployment -n candlefish-prod --timeout=900s
+          kubectl rollout status deployment/backend-deployment -n candlefish-prod --timeout=900s
+
+      - name: Cleanup Canary
+        run: |
+          kubectl delete -k deployment/k8s/overlays/prod/canary
+
+      - name: Post-deployment Validation
+        run: |
+          # Comprehensive post-deployment checks
+          kubectl wait --for=condition=ready pod -l app=frontend -n candlefish-prod --timeout=300s
+          kubectl wait --for=condition=ready pod -l app=backend -n candlefish-prod --timeout=300s
+
+          # Performance baseline check
+          cd __tests__
+          npm run test:performance:baseline
+
+  # Rollback on Failure
+  rollback:
+    name: Rollback on Failure
+    runs-on: ubuntu-latest
+    if: failure() && github.ref == 'refs/heads/main'
+    needs: [deploy-production]
+    environment: production
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
+          aws-region: us-west-2
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region us-west-2 --name candlefish-prod
+
+      - name: Rollback Production
+        run: |
+          # Rollback to previous version
+          kubectl rollout undo deployment/frontend-deployment -n candlefish-prod
+          kubectl rollout undo deployment/backend-deployment -n candlefish-prod
+
+          # Wait for rollback to complete
+          kubectl rollout status deployment/frontend-deployment -n candlefish-prod --timeout=600s
+          kubectl rollout status deployment/backend-deployment -n candlefish-prod --timeout=600s
+
+      - name: Notify on Rollback
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: "🚨 Production deployment failed and was rolled back automatically"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Notification
+  notify:
+    name: Notify Deployment Status
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [deploy-production]
+    steps:
+      - name: Notify Success
+        if: needs.deploy-production.result == 'success'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          text: "✅ Multi-tenant analytics dashboard deployed successfully to production"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify Failure
+        if: needs.deploy-production.result == 'failure'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: "❌ Multi-tenant analytics dashboard deployment failed"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

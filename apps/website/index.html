@@ -14,20 +14,169 @@
     <link rel="canonical" href="https://candlefish.ai" />
     <link rel="icon" type="image/png" href="/logo/candlefish_original.png" />
 
-    <!-- Preconnect to external resources -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <!-- Additional SEO Meta Tags -->
+    <meta name="author" content="Candlefish AI" />
+    <meta name="keywords" content="AI consulting, business automation, AI transformation, machine learning, enterprise AI, AI implementation, process automation" />
+    <meta name="theme-color" content="#00CED1" />
+    <link rel="apple-touch-icon" href="/logo/candlefish_original.png" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Open Graph Additional Tags -->
+    <meta property="og:site_name" content="Candlefish AI" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter Additional Tags -->
+    <meta name="twitter:site" content="@candlefishai" />
+    <meta name="twitter:creator" content="@candlefishai" />
+
+    <!-- Structured Data (JSON-LD) for SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Candlefish AI",
+      "alternateName": "Candlefish",
+      "url": "https://candlefish.ai",
+      "logo": "https://candlefish.ai/logo/candlefish_original.png",
+      "description": "Enterprise AI consulting through discrete, composable modules. We turn your slowest business processes into your fastest competitive advantages.",
+      "address": {
+        "@type": "PostalAddress",
+        "addressCountry": "US"
+      },
+      "sameAs": [
+        "https://twitter.com/candlefishai",
+        "https://linkedin.com/company/candlefish-ai",
+        "https://github.com/candlefish-ai"
+      ],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "sales",
+        "email": "hello@candlefish.ai",
+        "availableLanguage": ["English"]
+      },
+      "offers": {
+        "@type": "Offer",
+        "itemOffered": {
+          "@type": "Service",
+          "name": "AI Consulting Services",
+          "description": "AI transformation, automation, and implementation services"
+        }
+      }
+    }
+    </script>
+
+    <!-- Website Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Candlefish AI",
+      "url": "https://candlefish.ai",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://candlefish.ai/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+
+    <!-- Resource Hints for Optimal Performance -->
+    <!-- DNS Prefetch for third-party domains -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+
+    <!-- Preconnect for faster connection establishment -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
 
+    <!-- Preload critical resources -->
+    <link rel="preload" as="image" href="/logo/candlefish_original.png" fetchpriority="high" />
+    <link rel="preload" as="image" href="/logo/candlefish_highquality.png" fetchpriority="high" />
+
+    <!-- Optimized font loading with fallback -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Use font-display: swap for better performance -->
     <style>
-        /* Critical CSS for loading state */
+        @font-face {
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 400;
+            font-display: swap;
+            src: url(https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hjp-Ek-_EeA.woff2) format('woff2');
+            unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+        }
+        @font-face {
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 600;
+            font-display: swap;
+            src: url(https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuGKYAZ9hjp-Ek-_EeA.woff2) format('woff2');
+            unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+        }
+    </style>
+
+    <!-- Prefetch next likely navigation targets -->
+    <link rel="prefetch" href="/about" />
+    <link rel="prefetch" href="/contact" />
+
+    <!-- Module preload for critical JavaScript -->
+    <link rel="modulepreload" href="/src/main.tsx" />
+
+    <!-- Prerender for instant navigation (if supported) -->
+    <link rel="prerender" href="/v2" />
+
+    <style>
+        /* Critical CSS - Inline for fastest render */
+        :root {
+            --color-primary: #00CED1;
+            --color-secondary: #007AFF;
+            --color-accent: #AF52DE;
+            --color-background: #000000;
+            --color-surface: #1a1a1a;
+            --color-text: #ffffff;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            --font-mono: 'Monaco', 'Consolas', 'Courier New', monospace;
+        }
+
+        /* CSS Reset and Base Styles */
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        html {
+            font-size: 16px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-sans);
+            background: var(--color-background);
+            color: var(--color-text);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* Loading Screen Styles */
         .loading-screen {
             position: fixed;
             inset: 0;
-            background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+            background: linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #1a0f2e 100%);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 9999;
+            will-change: opacity;
         }
 
         .loading-container {
@@ -38,39 +187,89 @@
             width: 120px;
             height: 120px;
             margin-bottom: 24px;
-            animation: pulse 2s ease-in-out infinite;
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            will-change: transform, opacity;
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.8; transform: scale(1.05); }
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.7;
+                transform: scale(1.05);
+            }
+        }
+
+        .loading-screen.fade-out {
+            opacity: 0;
+            transition: opacity 0.3s ease-out;
+            pointer-events: none;
         }
 
         .loading-text {
-            color: #00CED1;
-            font-family: 'Monaco', 'Consolas', monospace;
+            color: var(--color-primary);
+            font-family: var(--font-mono);
             font-size: 14px;
             letter-spacing: 0.1em;
             text-transform: uppercase;
+            animation: fadeInOut 2s ease-in-out infinite;
         }
 
-        /* Prevent flash of unstyled content */
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #000000;
-            color: #ffffff;
-            overflow: hidden;
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
         }
 
+        /* Root container */
         #root {
             min-height: 100vh;
+            position: relative;
         }
 
+        /* Performance optimizations */
         .no-transitions * {
             transition: none !important;
             animation: none !important;
+        }
+
+        /* Smooth scroll behavior */
+        @media (prefers-reduced-motion: no-preference) {
+            html {
+                scroll-behavior: smooth;
+            }
+        }
+
+        /* Focus styles for accessibility */
+        :focus-visible {
+            outline: 2px solid var(--color-primary);
+            outline-offset: 2px;
+        }
+
+        /* Selection colors */
+        ::selection {
+            background-color: var(--color-primary);
+            color: var(--color-background);
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--color-background);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--color-surface);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--color-primary);
         }
     </style>
 </head>
