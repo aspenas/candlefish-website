@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Candlefish AI Documentation</title>
+    <meta name="description" content="Official documentation for Candlefish AI enterprise development platform">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: radial-gradient(circle at center, #0c1a2a 0%, #051015 50%, #000408 100%);
+            color: #e2e8f0;
+            margin: 0;
+            padding: 0;
+            line-height: 1.7;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated background elements */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(circle at 20% 30%, rgba(0, 255, 255, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(0, 255, 136, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(34, 211, 238, 0.04) 0%, transparent 50%);
+            z-index: -1;
+            animation: backgroundShift 20s ease-in-out infinite alternate;
+        }
+
+        @keyframes backgroundShift {
+            0% { opacity: 0.8; transform: rotate(0deg) scale(1); }
+            100% { opacity: 1; transform: rotate(2deg) scale(1.02); }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Animated Candlefish Logo */
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 2rem 0 3rem 0;
+            position: relative;
+        }
+
+        .candlefish-logo {
+            width: 120px;
+            height: 60px;
+            position: relative;
+            margin-right: 1rem;
+            cursor: pointer;
+        }
+
+        .fish-body {
+            position: absolute;
+            width: 80px;
+            height: 30px;
+            background: linear-gradient(45deg, #00ffff, #22d3ee, #0891b2);
+            border-radius: 50px 20px 50px 20px;
+            top: 15px;
+            left: 20px;
+            box-shadow:
+                0 0 20px rgba(0, 255, 255, 0.4),
+                inset 0 2px 10px rgba(255, 255, 255, 0.2);
+            animation: swim 4s ease-in-out infinite;
+        }
+
+        .fish-tail {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 25px solid #00ffff;
+            border-top: 15px solid transparent;
+            border-bottom: 15px solid transparent;
+            top: 15px;
+            left: 0;
+            opacity: 0.9;
+            animation: tailWave 2s ease-in-out infinite;
+            filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.3));
+        }
+
+        .fish-eye {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: radial-gradient(circle, #ffffff 30%, #000000 70%);
+            border-radius: 50%;
+            top: 22px;
+            left: 75px;
+            animation: blink 3s ease-in-out infinite;
+        }
+
+        .fish-fin {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 12px solid rgba(0, 255, 255, 0.7);
+            border-top: 8px solid transparent;
+            border-bottom: 8px solid transparent;
+            top: 35px;
+            left: 45px;
+            animation: finWave 1.5s ease-in-out infinite;
+        }
+
+        .glow-effect {
+            position: absolute;
+            width: 120px;
+            height: 60px;
+            background: radial-gradient(ellipse, rgba(0, 255, 255, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: glow 3s ease-in-out infinite alternate;
+            pointer-events: none;
+        }
+
+        @keyframes swim {
+            0%, 100% { transform: translateX(0) translateY(0) rotate(0deg); }
+            25% { transform: translateX(5px) translateY(-2px) rotate(1deg); }
+            50% { transform: translateX(0) translateY(-3px) rotate(0deg); }
+            75% { transform: translateX(-3px) translateY(-1px) rotate(-1deg); }
+        }
+
+        @keyframes tailWave {
+            0%, 100% { transform: scaleX(1); }
+            50% { transform: scaleX(0.8); }
+        }
+
+        @keyframes finWave {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(-10deg); }
+        }
+
+        @keyframes blink {
+            0%, 90%, 100% { transform: scaleY(1); }
+            95% { transform: scaleY(0.1); }
+        }
+
+        @keyframes glow {
+            0% { opacity: 0.5; transform: scale(1); }
+            100% { opacity: 0.8; transform: scale(1.1); }
+        }
+
+        h1 {
+            background: linear-gradient(135deg, #00ffff, #22d3ee, #10b981, #00ffff);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: -0.02em;
+            animation: gradientShift 6s ease-in-out infinite;
+            text-align: center;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .subtitle {
+            font-size: clamp(1rem, 2.5vw, 1.3rem);
+            color: #94a3b8;
+            text-align: center;
+            margin-bottom: 3rem;
+            font-weight: 400;
+        }
+
+        .status {
+            background: linear-gradient(145deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.6));
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 2.5rem;
+            margin: 3rem 0;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .status::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #00ffff, transparent);
+            animation: borderScan 3s ease-in-out infinite;
+        }
+
+        @keyframes borderScan {
+            0% { left: -100%; }
+            50% { left: 100%; }
+            100% { left: 100%; }
+        }
+
+        .status:hover {
+            transform: translateY(-2px);
+            border-color: rgba(0, 255, 255, 0.4);
+            box-shadow: 0 10px 40px rgba(0, 255, 255, 0.1);
+        }
+
+        .status h2 {
+            color: #00ffff;
+            margin: 0 0 1rem 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .access-points {
+            background: linear-gradient(145deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.7));
+            padding: 2rem;
+            border-radius: 12px;
+            margin: 2rem 0;
+            border: 1px solid rgba(34, 211, 238, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .access-points:hover {
+            border-color: rgba(34, 211, 238, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .access-points h3 {
+            color: #22d3ee;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .access-points a {
+            color: #10b981;
+            text-decoration: none;
+            font-family: 'SF Mono', Consolas, monospace;
+            font-size: 1.1rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .access-points a:hover {
+            color: #00ffff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .feature {
+            background: linear-gradient(145deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.6));
+            padding: 2rem;
+            border-radius: 16px;
+            border: 1px solid rgba(51, 65, 85, 0.3);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #00ffff, #22d3ee, #10b981);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .feature:hover::before {
+            transform: scaleX(1);
+        }
+
+        .feature:hover {
+            border-color: rgba(0, 255, 255, 0.3);
+            transform: translateY(-8px);
+            box-shadow:
+                0 20px 60px rgba(0, 255, 255, 0.1),
+                0 0 20px rgba(0, 255, 255, 0.05);
+        }
+
+        .feature h3 {
+            color: #00ffff;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .feature p {
+            color: #cbd5e1;
+            line-height: 1.6;
+        }
+
+        .install-command {
+            background: linear-gradient(145deg, rgba(0, 0, 0, 0.8), rgba(15, 23, 42, 0.9));
+            color: #00ffff;
+            padding: 1.5rem;
+            border-radius: 12px;
+            font-family: 'SF Mono', Consolas, monospace;
+            font-size: 1.1rem;
+            margin: 2rem 0;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .install-command:hover {
+            border-color: rgba(0, 255, 255, 0.4);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+        }
+
+        .install-command::before {
+            content: '$ ';
+            color: #10b981;
+            font-weight: bold;
+        }
+
+        .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #00ffff, #22d3ee);
+            color: #000;
+            padding: 1rem 2.5rem;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            margin: 1rem 0.5rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 255, 255, 0.2);
+        }
+
+        .button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .button:hover::before {
+            left: 100%;
+        }
+
+        .button:hover {
+            background: linear-gradient(135deg, #10b981, #00ffff);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0, 255, 255, 0.3);
+        }
+
+        .section-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 3rem 0 2rem 0;
+            background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        footer {
+            text-align: center;
+            color: #64748b;
+            margin-top: 5rem;
+            padding: 3rem 0 2rem 0;
+            border-top: 1px solid rgba(51, 65, 85, 0.3);
+            background: linear-gradient(145deg, rgba(15, 23, 42, 0.5), rgba(30, 41, 59, 0.3));
+            border-radius: 16px 16px 0 0;
+        }
+
+        footer p {
+            margin: 0.5rem 0;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .feature-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+
+            .candlefish-logo {
+                width: 80px;
+                height: 40px;
+            }
+
+            .fish-body {
+                width: 60px;
+                height: 24px;
+                left: 15px;
+                top: 8px;
+            }
+
+            .fish-tail {
+                border-left-width: 20px;
+                border-top-width: 12px;
+                border-bottom-width: 12px;
+                top: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo-container">
+            <div class="candlefish-logo">
+                <div class="glow-effect"></div>
+                <div class="fish-tail"></div>
+                <div class="fish-body"></div>
+                <div class="fish-fin"></div>
+                <div class="fish-eye"></div>
+            </div>
+            <h1>Candlefish AI Documentation</h1>
+        </div>
+        <p class="subtitle">Enterprise development platform with 58+ AI agents, Claude CLI, and complete automation suite</p>
+
+        <div class="status">
+            <h2>✅ Documentation Status</h2>
+            <p>The complete documentation site is available with:</p>
+            <ul>
+                <li>58 AI agents reference</li>
+                <li>Installation guides (NPM, web installer, manual)</li>
+                <li>API documentation</li>
+                <li>AWS integration guide</li>
+                <li>Troubleshooting section</li>
+            </ul>
+        </div>
+
+        <div class="access-points">
+            <h3>📍 Access Documentation</h3>
+            <p><strong>Full Documentation Available At:</strong></p>
+            <p><a href="http://candlefish-docs-site.s3-website-us-west-2.amazonaws.com">http://candlefish-docs-site.s3-website-us-west-2.amazonaws.com</a></p>
+            <p style="color: #888; margin-top: 1rem;">HTTPS custom domain coming soon...</p>
+        </div>
+
+        <h2 class="section-title">🚀 Quick Start</h2>
+        <div class="install-command">
+            <code>bash -c "$(curl -fsSL https://claude.candlefish.ai/tyler-setup.sh)"</code>
+        </div>
+        <p>This one-click installer configures everything: Claude CLI, all 58 agents, AWS setup, and terminal fixes.</p>
+
+        <h2 class="section-title">✨ Features</h2>
+        <div class="feature-grid">
+            <div class="feature">
+                <h3>🤖 58+ AI Agents</h3>
+                <p>Specialized agents for backend, frontend, security, data science, DevOps, and more</p>
+            </div>
+            <div class="feature">
+                <h3>📘 Complete Guides</h3>
+                <p>Installation, configuration, API reference, and troubleshooting documentation</p>
+            </div>
+            <div class="feature">
+                <h3>🔧 Claude CLI</h3>
+                <p>Command-line interface with MCP servers, agent management, and AWS integration</p>
+            </div>
+            <div class="feature">
+                <h3>☁️ AWS Integration</h3>
+                <p>Seamless integration with Secrets Manager, S3, Lambda, and more AWS services</p>
+            </div>
+            <div class="feature">
+                <h3>🚢 GitHub Actions</h3>
+                <p>Automated CI/CD pipelines, deployment workflows, and security scanning</p>
+            </div>
+            <div class="feature">
+                <h3>🔒 Enterprise Ready</h3>
+                <p>Production-grade security, monitoring, and scalability features</p>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin: 3rem 0;">
+            <a href="http://candlefish-docs-site.s3-website-us-west-2.amazonaws.com" class="button">View Full Documentation</a>
+            <a href="https://github.com/candlefish-ai/candlefish-ai" class="button">GitHub Repository</a>
+        </div>
+
+        <footer style="text-align: center; color: #666; margin-top: 4rem; padding-top: 2rem; border-top: 1px solid #333;">
+            <p>© 2025 Candlefish AI - Enterprise Development Platform</p>
+            <p>Version 2.0.0 | Powered by Claude Code</p>
+        </footer>
+    </div>
+</body>
+</html>
