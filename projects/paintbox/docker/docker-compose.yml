@@ -1,12 +1,12 @@
 version: '3.8'
 
 services:
-  # PostgreSQL with TimescaleDB extension
+  # PostgreSQL database for Paintbox
   postgres:
-    image: timescale/timescaledb:latest-pg14
-    container_name: system-analyzer-postgres
+    image: postgres:15-alpine
+    container_name: paintbox-postgres
     environment:
-      POSTGRES_DB: system_analyzer
+      POSTGRES_DB: paintbox
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       PGDATA: /var/lib/postgresql/data/pgdata
@@ -16,7 +16,7 @@ services:
     ports:
       - "5432:5432"
     networks:
-      - system-analyzer-network
+      - paintbox-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
@@ -27,7 +27,7 @@ services:
   # Redis for caching and pub/sub
   redis:
     image: redis:7-alpine
-    container_name: system-analyzer-redis
+    container_name: paintbox-redis
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis}
     volumes:
       - redis_data:/data
@@ -35,7 +35,7 @@ services:
     ports:
       - "6379:6379"
     networks:
-      - system-analyzer-network
+      - paintbox-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -43,29 +43,94 @@ services:
       timeout: 5s
       retries: 5
 
-  # Backend API services
-  backend-api:
+  # Apollo Router (Federation Gateway)
+  apollo-router:
     build:
-      context: .
-      dockerfile: docker/Dockerfile.backend
-      target: production
-    container_name: system-analyzer-backend
+      context: ./apollo-graphos/router
+      dockerfile: Dockerfile
+    container_name: paintbox-apollo-router
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/system_analyzer
-      REDIS_URL: redis://:${REDIS_PASSWORD:-redis}@redis:6379/0
-      NODE_ENV: production
-      AWS_REGION: ${AWS_REGION:-us-east-1}
-      JWT_SECRET: ${JWT_SECRET}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      APOLLO_GRAPH_REF: ${APOLLO_GRAPH_REF}
+      APOLLO_KEY: ${APOLLO_KEY}
+      LISTEN_ADDRESS: 0.0.0.0:4000
+      SUPERGRAPH_CONFIG_PATH: /etc/router/supergraph.yaml
     ports:
-      - "8000:8000"
+      - "4000:4000"
+    volumes:
+      - ./apollo-graphos/supergraph-config.yaml:/etc/router/supergraph.yaml:ro
+    networks:
+      - paintbox-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Subgraph: Customers
+  subgraph-customers:
+    build:
+      context: ./apollo-graphos/subgraph-customers
+      dockerfile: Dockerfile
+    container_name: paintbox-customers
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/paintbox
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis}@redis:6379/1
+      NODE_ENV: production
+      PORT: 4001
+    ports:
+      - "4001:4001"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     networks:
-      - system-analyzer-network
+      - paintbox-network
+    restart: unless-stopped
+
+  # Subgraph: Projects
+  subgraph-projects:
+    build:
+      context: ./apollo-graphos/subgraph-projects
+      dockerfile: Dockerfile
+    container_name: paintbox-projects
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/paintbox
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis}@redis:6379/2
+      NODE_ENV: production
+      PORT: 4002
+    ports:
+      - "4002:4002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - paintbox-network
+    restart: unless-stopped
+
+  # Subgraph: Estimates
+  subgraph-estimates:
+    build:
+      context: ./apollo-graphos/subgraph-estimates
+      dockerfile: Dockerfile
+    container_name: paintbox-estimates
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/paintbox
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis}@redis:6379/3
+      NODE_ENV: production
+      PORT: 4003
+    ports:
+      - "4003:4003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - paintbox-network
     restart: unless-stopped
     deploy:
       resources:
@@ -75,39 +140,33 @@ services:
     volumes:
       - ./logs:/app/logs
 
-  # GraphQL API server
-  graphql-server:
+  # Subgraph: Integrations (Salesforce, Company Cam)
+  subgraph-integrations:
     build:
-      context: .
-      dockerfile: docker/Dockerfile.graphql
-      target: production
-    container_name: system-analyzer-graphql
+      context: ./apollo-graphos/subgraph-integrations
+      dockerfile: Dockerfile
+    container_name: paintbox-integrations
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/system_analyzer
-      REDIS_URL: redis://:${REDIS_PASSWORD:-redis}@redis:6379/1
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/paintbox
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis}@redis:6379/4
       NODE_ENV: production
-      GRAPHQL_PORT: 4000
-      ENABLE_FEDERATION: 'false'
-      ENABLE_SUBSCRIPTIONS: 'true'
-      ALLOWED_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
-      JWT_SECRET: ${JWT_SECRET}
+      PORT: 4004
+      SALESFORCE_CLIENT_ID: ${SALESFORCE_CLIENT_ID}
+      SALESFORCE_CLIENT_SECRET: ${SALESFORCE_CLIENT_SECRET}
+      SALESFORCE_USERNAME: ${SALESFORCE_USERNAME}
+      SALESFORCE_PASSWORD: ${SALESFORCE_PASSWORD}
+      SALESFORCE_SECURITY_TOKEN: ${SALESFORCE_SECURITY_TOKEN}
+      COMPANYCAM_API_KEY: ${COMPANYCAM_API_KEY}
     ports:
-      - "4000:4000"
+      - "4004:4004"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     networks:
-      - system-analyzer-network
+      - paintbox-network
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-          cpus: '0.5'
-    volumes:
-      - ./logs:/app/logs
 
   # Next.js Frontend
   frontend:
@@ -115,21 +174,27 @@ services:
       context: .
       dockerfile: docker/Dockerfile.frontend
       target: runner
-    container_name: system-analyzer-frontend
+    container_name: paintbox-frontend
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: http://backend-api:8000
-      NEXT_PUBLIC_GRAPHQL_URL: http://graphql-server:4000/graphql
-      NEXT_PUBLIC_GRAPHQL_WS_URL: ws://graphql-server:4000/graphql
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/system_analyzer
+      NEXT_PUBLIC_GRAPHQL_URL: http://apollo-router:4000/graphql
+      NEXT_PUBLIC_GRAPHQL_WS_URL: ws://apollo-router:4000/graphql
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/paintbox
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET}
+      SENTRY_DSN: ${SENTRY_DSN}
     ports:
       - "3000:3000"
     depends_on:
-      - backend-api
-      - graphql-server
+      - apollo-router
+      - subgraph-customers
+      - subgraph-projects
+      - subgraph-estimates
+      - subgraph-integrations
     networks:
-      - system-analyzer-network
+      - paintbox-network
     restart: unless-stopped
     deploy:
       resources:
@@ -140,7 +205,7 @@ services:
   # Nginx reverse proxy and load balancer
   nginx:
     image: nginx:alpine
-    container_name: system-analyzer-nginx
+    container_name: paintbox-nginx
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
@@ -151,10 +216,9 @@ services:
       - "443:443"
     depends_on:
       - frontend
-      - backend-api
-      - graphql-server
+      - apollo-router
     networks:
-      - system-analyzer-network
+      - paintbox-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
@@ -165,7 +229,7 @@ services:
   # Prometheus monitoring
   prometheus:
     image: prom/prometheus:latest
-    container_name: system-analyzer-prometheus
+    container_name: paintbox-prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -179,13 +243,13 @@ services:
     ports:
       - "9090:9090"
     networks:
-      - system-analyzer-network
+      - paintbox-network
     restart: unless-stopped
 
   # Grafana dashboards
   grafana:
     image: grafana/grafana:latest
-    container_name: system-analyzer-grafana
+    container_name: paintbox-grafana
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
       GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
@@ -198,13 +262,13 @@ services:
     depends_on:
       - prometheus
     networks:
-      - system-analyzer-network
+      - paintbox-network
     restart: unless-stopped
 
   # Node Exporter for system metrics
   node-exporter:
     image: prom/node-exporter:latest
-    container_name: system-analyzer-node-exporter
+    container_name: paintbox-node-exporter
     command:
       - '--path.procfs=/host/proc'
       - '--path.rootfs=/rootfs'
@@ -217,13 +281,13 @@ services:
     ports:
       - "9100:9100"
     networks:
-      - system-analyzer-network
+      - paintbox-network
     restart: unless-stopped
 
   # Cadvisor for container metrics
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
-    container_name: system-analyzer-cadvisor
+    container_name: paintbox-cadvisor
     privileged: true
     devices:
       - /dev/kmsg:/dev/kmsg
@@ -236,7 +300,7 @@ services:
     ports:
       - "8080:8080"
     networks:
-      - system-analyzer-network
+      - paintbox-network
     restart: unless-stopped
 
 volumes:
@@ -250,7 +314,7 @@ volumes:
     driver: local
 
 networks:
-  system-analyzer-network:
+  paintbox-network:
     driver: bridge
     ipam:
       config:

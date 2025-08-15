@@ -5,6 +5,10 @@
 
 'use client';
 
+// Force dynamic rendering to avoid static generation memory issues
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { PDFEstimateGenerator } from '@/components/ui/PDFEstimateGenerator';

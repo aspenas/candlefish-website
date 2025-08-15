@@ -1,47 +1,54 @@
-import { defineConfig, devices } from '@playwright/test'
+import { defineConfig, devices } from '@playwright/test';
 
 /**
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
-  testDir: './e2e',
-
+  testDir: './__tests__/e2e',
+  
   /* Run tests in files in parallel */
   fullyParallel: true,
-
+  
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-
+  
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-
+  
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
-
+  
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
-    ['html', { outputFolder: 'playwright-report' }],
-    ['json', { outputFile: 'test-results/results.json' }],
-    ['junit', { outputFile: 'test-results/results.xml' }]
+    ['html'],
+    ['json', { outputFile: 'test-results/e2e-results.json' }],
+    ['junit', { outputFile: 'test-results/e2e-junit.xml' }],
+    ...(process.env.CI ? [['github'] as const] : []),
   ],
-
+  
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
-
+    baseURL: process.env.E2E_BASE_URL || 'http://localhost:3000',
+    
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
-
-    /* Take screenshot only when test fails */
+    
+    /* Take screenshot on failure */
     screenshot: 'only-on-failure',
-
-    /* Record video only when test fails */
+    
+    /* Record video on failure */
     video: 'retain-on-failure',
-
-    /* Ignore HTTPS errors */
-    ignoreHTTPSErrors: true,
+    
+    /* API endpoint for backend tests */
+    extraHTTPHeaders: {
+      'Authorization': `Bearer ${process.env.TEST_AUTH_TOKEN}`,
+    },
   },
+
+  /* Global setup and teardown */
+  globalSetup: require.resolve('./__tests__/setup/e2e-global-setup.ts'),
+  globalTeardown: require.resolve('./__tests__/setup/e2e-global-teardown.ts'),
 
   /* Configure projects for major browsers */
   projects: [

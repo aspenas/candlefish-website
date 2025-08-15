@@ -1,0 +1,6 @@
+federation_version: 2
+subgraphs:
+  estimates:
+    routing_url: http://localhost:4002
+    schema:
+      subgraph_url: http://localhost:4002

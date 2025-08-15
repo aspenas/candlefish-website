@@ -1,0 +1,6 @@
+{
+  "scripts": {
+    "build:production": "next build || (echo 'Build failed, trying with reduced optimization' && NODE_OPTIONS='--max-old-space-size=16384' next build)",
+    "build:deploy": "npm run build:production"
+  }
+}

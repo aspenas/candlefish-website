@@ -86,6 +86,9 @@ jobs:
       - name: Checkout (sparse)
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+        with:
           sparse-checkout: |
             .github
             turbo.json
@@ -208,6 +211,9 @@ jobs:
       - name: Checkout (minimal)
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+        with:
           sparse-checkout: |
             .github
 
@@ -251,6 +257,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2

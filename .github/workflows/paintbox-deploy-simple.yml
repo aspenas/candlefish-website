@@ -30,6 +30,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+        with:
           submodules: false
 
       - name: Setup Node.js

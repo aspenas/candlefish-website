@@ -20,6 +20,9 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -61,6 +64,9 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
     - name: Download build artifacts
       uses: actions/download-artifact@v4
@@ -110,6 +116,9 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -144,6 +153,9 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
     - name: Download build artifacts
       uses: actions/download-artifact@v4
@@ -217,6 +229,9 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
     - name: Download build artifacts
       uses: actions/download-artifact@v4

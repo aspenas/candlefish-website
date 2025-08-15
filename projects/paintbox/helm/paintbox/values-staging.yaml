@@ -1,0 +1,346 @@
+# Staging environment values for Paintbox
+# Override values for staging deployment
+
+environment: staging
+
+# Image configuration for staging
+image:
+  registry: ghcr.io
+  repository: candlefish-ai/paintbox
+  pullPolicy: Always
+
+# Staging scaling configuration (smaller than production)
+frontend:
+  replicaCount: 2
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+apolloRouter:
+  replicaCount: 2
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 70
+  
+  config:
+    apolloGraphRef: paintbox@staging
+    logLevel: "debug"
+    telemetryDisabled: false
+
+# Subgraphs staging configuration
+subgraphs:
+  customers:
+    replicaCount: 1
+    resources:
+      limits:
+        cpu: 300m
+        memory: 512Mi
+      requests:
+        cpu: 150m
+        memory: 256Mi
+    autoscaling:
+      enabled: false
+
+  projects:
+    replicaCount: 1
+    resources:
+      limits:
+        cpu: 300m
+        memory: 512Mi
+      requests:
+        cpu: 150m
+        memory: 256Mi
+    autoscaling:
+      enabled: false
+
+  estimates:
+    replicaCount: 2
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+    autoscaling:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 4
+      targetCPUUtilizationPercentage: 70
+
+  integrations:
+    replicaCount: 1
+    resources:
+      limits:
+        cpu: 300m
+        memory: 512Mi
+      requests:
+        cpu: 150m
+        memory: 256Mi
+    autoscaling:
+      enabled: false
+
+# Staging ingress configuration
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+    alb.ingress.kubernetes.io/healthcheck-path: /api/health
+    alb.ingress.kubernetes.io/load-balancer-name: paintbox-staging-alb
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/STAGING_CERT_ID
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/group.name: paintbox-staging
+    alb.ingress.kubernetes.io/tags: Environment=staging,Project=paintbox
+
+  hosts:
+    - host: staging.paintbox.com
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: frontend
+              port:
+                number: 3000
+        - path: /graphql
+          pathType: Prefix
+          backend:
+            service:
+              name: apollo-router
+              port:
+                number: 4000
+
+  tls:
+    - secretName: paintbox-staging-tls
+      hosts:
+        - staging.paintbox.com
+
+# External services configuration (staging)
+postgresql:
+  enabled: false
+  external:
+    enabled: true
+    host: paintbox-staging.cluster-xxx.us-east-1.rds.amazonaws.com
+    port: 5432
+    database: paintbox_staging
+    username: paintbox
+
+redis:
+  enabled: false
+  external:
+    enabled: true
+    host: paintbox-staging.xxx.cache.amazonaws.com
+    port: 6379
+
+# External Secrets Operator configuration
+externalSecrets:
+  enabled: true
+  secretStore:
+    name: aws-secrets-manager-staging
+    kind: SecretStore
+    aws:
+      region: us-east-1
+      service: SecretsManager
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: paintbox-external-secrets-staging-sa
+
+# Staging monitoring (lightweight)
+monitoring:
+  enabled: true
+  
+  prometheus:
+    enabled: true
+    retention: "7d"
+    storage: "10Gi"
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+    
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
+
+  grafana:
+    enabled: true
+    persistence:
+      enabled: true
+      size: 5Gi
+    resources:
+      limits:
+        cpu: 300m
+        memory: 512Mi
+      requests:
+        cpu: 150m
+        memory: 256Mi
+    
+    dashboards:
+      enabled: true
+      default: true
+
+  jaeger:
+    enabled: true
+    agent:
+      enabled: true
+    collector:
+      enabled: true
+      resources:
+        limits:
+          cpu: 500m
+          memory: 1Gi
+        requests:
+          cpu: 250m
+          memory: 512Mi
+    query:
+      enabled: true
+      persistence:
+        enabled: true
+        size: 10Gi
+
+# Logging configuration
+logging:
+  enabled: true
+  
+  loki:
+    enabled: true
+    retention: "7d"
+    storage: "20Gi"
+    
+  promtail:
+    enabled: true
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+
+# Security policies (relaxed for staging)
+networkPolicies:
+  enabled: false
+  
+podSecurityPolicy:
+  enabled: false
+
+# Resource limits (smaller for staging)
+resourceQuota:
+  enabled: true
+  hard:
+    requests.cpu: "10"
+    requests.memory: 20Gi
+    limits.cpu: "20"
+    limits.memory: 40Gi
+    persistentvolumeclaims: "10"
+    services.loadbalancers: "3"
+
+# Pod disruption budget (minimal for staging)
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Backup configuration (reduced retention)
+backup:
+  enabled: true
+  schedule: "0 3 * * *"  # Daily at 3 AM UTC
+  retention: "7d"
+  s3:
+    bucket: paintbox-staging-backups
+    region: us-east-1
+    
+  postgresql:
+    enabled: true
+    retention: "7d"
+  
+  files:
+    enabled: false
+
+# Blue/Green deployment configuration
+blueGreen:
+  enabled: true
+  router:
+    weight:
+      blue: 100
+      green: 0
+    
+  # Canary deployment settings (more aggressive for testing)
+  canary:
+    enabled: true
+    steps:
+      - percentage: 25
+        duration: "2m"
+      - percentage: 50
+        duration: "3m"
+      - percentage: 100
+
+# Staging feature flags (enable experimental features)
+featureFlags:
+  enablePWA: true
+  enableOfflineMode: true
+  enableRealtimeSync: true
+  enableAdvancedAnalytics: true
+  enableA11yFeatures: true
+  enablePerformanceMonitoring: true
+  enableExperimentalFeatures: true
+  enableDebugMode: true
+
+# Node selection (smaller instances for staging)
+nodeSelector:
+  node.kubernetes.io/instance-type: t3.large
+
+# No pod anti-affinity for staging (allow co-location)
+affinity: {}
+
+# Tolerations for spot instances
+tolerations:
+  - key: "spot-instance"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+
+# Staging environment variables
+env:
+  NODE_ENV: staging
+  LOG_LEVEL: debug
+  METRICS_ENABLED: "true"
+  TRACING_ENABLED: "true"
+  CACHE_TTL: "1800"
+  RATE_LIMIT_WINDOW: "60"
+  RATE_LIMIT_MAX: "100"
+  SESSION_TIMEOUT: "1800"
+  ENABLE_DEBUG_LOGGING: "true"

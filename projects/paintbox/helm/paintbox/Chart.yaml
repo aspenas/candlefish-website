@@ -1,0 +1,50 @@
+apiVersion: v2
+name: paintbox
+description: A Helm chart for Paintbox platform deployment
+type: application
+
+# Chart version
+version: 1.0.0
+
+# Application version
+appVersion: "1.0.0"
+
+home: https://github.com/candlefish-ai/paintbox
+sources:
+  - https://github.com/candlefish-ai/paintbox
+
+maintainers:
+  - name: Candlefish AI Team
+    email: dev@candlefish.ai
+
+keywords:
+  - paintbox
+  - construction
+  - estimates
+  - apollo-federation
+  - react
+  - graphql
+
+dependencies:
+  - name: postgresql
+    version: "13.2.2"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: postgresql.enabled
+  
+  - name: redis
+    version: "18.4.0"  
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled
+
+  - name: prometheus
+    version: "25.8.0"
+    repository: "https://prometheus-community.github.io/helm-charts"
+    condition: monitoring.prometheus.enabled
+
+  - name: grafana
+    version: "7.0.19"
+    repository: "https://grafana.github.io/helm-charts"
+    condition: monitoring.grafana.enabled
+
+annotations:
+  category: Application

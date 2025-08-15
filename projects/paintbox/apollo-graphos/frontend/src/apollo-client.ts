@@ -150,6 +150,25 @@ const cache = new InMemoryCache({
             }
           },
         },
+        // Measurement-specific query caching
+        measurementsByElevation: {
+          keyArgs: ['estimateId', 'elevation'],
+          merge(existing = [], incoming) {
+            return incoming; // Always replace with fresh data
+          },
+        },
+        measurementSummary: {
+          keyArgs: ['estimateId'],
+        },
+        calculatePricingTiers: {
+          keyArgs: ['input', ['estimateId']],
+        },
+        colorPlacementOptions: {
+          keyArgs: ['roomType', 'measurements'],
+          merge(existing = [], incoming) {
+            return incoming;
+          },
+        },
       },
     },
     Estimate: {
@@ -165,7 +184,156 @@ const cache = new InMemoryCache({
             return value ? new Date(value).toISOString() : null;
           },
         },
+        // Enhanced measurement caching
+        measurements: {
+          merge(existing = [], incoming) {
+            const existingMap = new Map(existing.map((m: any) => [m.__ref || m.id, m]));
+            const result = [...existing];
+            
+            incoming.forEach((measurement: any) => {
+              const key = measurement.__ref || measurement.id;
+              const existingIndex = existing.findIndex((m: any) => 
+                (m.__ref || m.id) === key
+              );
+              
+              if (existingIndex >= 0) {
+                result[existingIndex] = measurement;
+              } else {
+                result.push(measurement);
+              }
+            });
+            
+            return result;
+          },
+        },
+        elevations: {
+          merge(existing = [], incoming) {
+            // Merge elevations while preserving measurement references
+            const existingMap = new Map(existing.map((e: any) => [e.type || e.__ref, e]));
+            const result = [];
+            
+            for (const elevation of incoming) {
+              const key = elevation.type || elevation.__ref;
+              const existingElevation = existingMap.get(key);
+              
+              if (existingElevation) {
+                // Merge measurements within elevation
+                result.push({
+                  ...elevation,
+                  measurements: elevation.measurements || existingElevation.measurements || [],
+                });
+              } else {
+                result.push(elevation);
+              }
+            }
+            
+            return result;
+          },
+        },
+        currentCollaborators: {
+          merge(existing = [], incoming) {
+            // Real-time collaborator updates
+            return incoming; // Always use fresh collaborator data
+          },
+        },
+        pricingTiers: {
+          merge(existing, incoming) {
+            return incoming; // Always use latest pricing
+          },
+        },
       },
+    },
+    
+    // Measurement entity caching
+    Measurement: {
+      keyFields: ['id'],
+      fields: {
+        createdAt: {
+          read(value) {
+            return value ? new Date(value).toISOString() : null;
+          },
+        },
+        updatedAt: {
+          read(value) {
+            return value ? new Date(value).toISOString() : null;
+          },
+        },
+        associatedPhotos: {
+          merge(existing = [], incoming) {
+            // Merge photo arrays, avoiding duplicates
+            const existingIds = new Set(existing.map((p: any) => p.id || p.__ref));
+            const result = [...existing];
+            
+            incoming.forEach((photo: any) => {
+              const id = photo.id || photo.__ref;
+              if (!existingIds.has(id)) {
+                result.push(photo);
+              }
+            });
+            
+            return result;
+          },
+        },
+        wwTags: {
+          merge(existing = [], incoming) {
+            return incoming; // Always use latest tags
+          },
+        },
+      },
+    },
+    
+    // Elevation entity caching
+    Elevation: {
+      keyFields: ['id'],
+      fields: {
+        measurements: {
+          merge(existing = [], incoming) {
+            // Smart merge for measurements within elevation
+            const existingMap = new Map(existing.map((m: any) => [m.__ref || m.id, m]));
+            const result = [];
+            
+            // Keep existing measurements not in incoming
+            for (const measurement of existing) {
+              const key = measurement.__ref || measurement.id;
+              if (!incoming.some((m: any) => (m.__ref || m.id) === key)) {
+                result.push(measurement);
+              }
+            }
+            
+            // Add all incoming measurements
+            result.push(...incoming);
+            
+            return result;
+          },
+        },
+      },
+    },
+    
+    // Photo entity caching for Company Cam integration
+    AssociatedPhoto: {
+      keyFields: ['id'],
+      fields: {
+        capturedAt: {
+          read(value) {
+            return value ? new Date(value).toISOString() : null;
+          },
+        },
+        wwTags: {
+          merge(existing = [], incoming) {
+            return incoming; // Always use latest tags
+          },
+        },
+      },
+    },
+    
+    // Color placement caching
+    ColorPlacement: {
+      keyFields: ['id'],
+    },
+    
+    // Pricing tier caching
+    PricingTierDetail: {
+      keyFields: ['tier'],
     },
     Customer: {
       keyFields: ['id'],
@@ -215,6 +383,24 @@ const cache = new InMemoryCache({
   },
   possibleTypes: {
     // Add any union types here if needed
+  },
+  // Enable result caching for better performance
+  resultCaching: true,
+  // Add dataIdFromObject for better normalization
+  dataIdFromObject: (object: any) => {
+    switch (object.__typename) {
+      case 'Estimate':
+      case 'Measurement':
+      case 'Elevation':
+      case 'AssociatedPhoto':
+      case 'ColorPlacement':
+      case 'WWTag':
+        return `${object.__typename}:${object.id}`;
+      case 'PricingTierDetail':
+        return `${object.__typename}:${object.tier}`;
+      default:
+        return object.id ? `${object.__typename}:${object.id}` : null;
+    }
   },
 });
 

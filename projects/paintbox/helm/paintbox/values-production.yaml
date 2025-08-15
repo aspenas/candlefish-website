@@ -1,0 +1,366 @@
+# Production environment values for Paintbox
+# Override values for production deployment
+
+environment: production
+
+# Image configuration for production
+image:
+  registry: ghcr.io
+  repository: candlefish-ai/paintbox
+  pullPolicy: IfNotPresent
+
+# Production scaling configuration
+frontend:
+  replicaCount: 3
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 15
+    targetCPUUtilizationPercentage: 60
+    targetMemoryUtilizationPercentage: 70
+
+apolloRouter:
+  replicaCount: 3
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 60
+  
+  config:
+    apolloGraphRef: paintbox@production
+    logLevel: "info"
+    telemetryDisabled: false
+
+# Subgraphs production configuration
+subgraphs:
+  customers:
+    replicaCount: 3
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 8
+      targetCPUUtilizationPercentage: 70
+
+  projects:
+    replicaCount: 3
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 8
+      targetCPUUtilizationPercentage: 70
+
+  estimates:
+    replicaCount: 4
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+    autoscaling:
+      enabled: true
+      minReplicas: 3
+      maxReplicas: 12
+      targetCPUUtilizationPercentage: 65
+
+  integrations:
+    replicaCount: 2
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 6
+      targetCPUUtilizationPercentage: 70
+
+# Production ingress configuration
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+    alb.ingress.kubernetes.io/healthcheck-path: /api/health
+    alb.ingress.kubernetes.io/load-balancer-name: paintbox-production-alb
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/CERT_ID
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/group.name: paintbox-production
+    alb.ingress.kubernetes.io/tags: Environment=production,Project=paintbox
+
+  hosts:
+    - host: app.paintbox.com
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: frontend
+              port:
+                number: 3000
+        - path: /graphql
+          pathType: Prefix
+          backend:
+            service:
+              name: apollo-router
+              port:
+                number: 4000
+
+  tls:
+    - secretName: paintbox-production-tls
+      hosts:
+        - app.paintbox.com
+
+# External services configuration (production)
+postgresql:
+  enabled: false
+  external:
+    enabled: true
+    host: paintbox-production.cluster-xxx.us-east-1.rds.amazonaws.com
+    port: 5432
+    database: paintbox
+    username: paintbox
+
+redis:
+  enabled: false
+  external:
+    enabled: true
+    host: paintbox-production.xxx.cache.amazonaws.com
+    port: 6379
+
+# External Secrets Operator configuration
+externalSecrets:
+  enabled: true
+  secretStore:
+    name: aws-secrets-manager
+    kind: SecretStore
+    aws:
+      region: us-east-1
+      service: SecretsManager
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: paintbox-external-secrets-sa
+
+# Production monitoring
+monitoring:
+  enabled: true
+  
+  prometheus:
+    enabled: true
+    retention: "30d"
+    storage: "20Gi"
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+      requests:
+        cpu: 1000m
+        memory: 2Gi
+    
+    serviceMonitor:
+      enabled: true
+      interval: 15s
+      scrapeTimeout: 10s
+
+  grafana:
+    enabled: true
+    persistence:
+      enabled: true
+      size: 10Gi
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+    
+    dashboards:
+      enabled: true
+      default: true
+
+  jaeger:
+    enabled: true
+    agent:
+      enabled: true
+    collector:
+      enabled: true
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 2Gi
+        requests:
+          cpu: 500m
+          memory: 1Gi
+    query:
+      enabled: true
+      persistence:
+        enabled: true
+        size: 20Gi
+
+# Logging configuration
+logging:
+  enabled: true
+  
+  loki:
+    enabled: true
+    retention: "30d"
+    storage: "50Gi"
+    
+  promtail:
+    enabled: true
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+# Security policies
+networkPolicies:
+  enabled: true
+  ingress:
+    enabled: true
+  egress:
+    enabled: true
+
+podSecurityPolicy:
+  enabled: true
+
+# Resource limits
+resourceQuota:
+  enabled: true
+  hard:
+    requests.cpu: "20"
+    requests.memory: 40Gi
+    limits.cpu: "40"
+    limits.memory: 80Gi
+    persistentvolumeclaims: "20"
+    services.loadbalancers: "5"
+
+# Production-specific pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# Backup configuration
+backup:
+  enabled: true
+  schedule: "0 2 * * *"  # Daily at 2 AM UTC
+  retention: "30d"
+  s3:
+    bucket: paintbox-production-backups
+    region: us-east-1
+    
+  postgresql:
+    enabled: true
+    retention: "30d"
+  
+  files:
+    enabled: true
+    retention: "7d"
+
+# Blue/Green deployment configuration
+blueGreen:
+  enabled: true
+  router:
+    weight:
+      blue: 100
+      green: 0
+    
+  # Canary deployment settings
+  canary:
+    enabled: false
+    steps:
+      - percentage: 10
+        duration: "5m"
+      - percentage: 25
+        duration: "10m"
+      - percentage: 50
+        duration: "15m"
+      - percentage: 100
+
+# Production feature flags
+featureFlags:
+  enablePWA: true
+  enableOfflineMode: true
+  enableRealtimeSync: true
+  enableAdvancedAnalytics: true
+  enableA11yFeatures: true
+  enablePerformanceMonitoring: true
+
+# Node affinity for production workloads
+nodeSelector:
+  node.kubernetes.io/instance-type: m5.xlarge
+  topology.kubernetes.io/zone: us-east-1a
+
+# Pod anti-affinity to spread across nodes
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: ["paintbox"]
+          topologyKey: kubernetes.io/hostname
+
+# Tolerations for dedicated nodes
+tolerations: []
+
+# Production environment variables
+env:
+  NODE_ENV: production
+  LOG_LEVEL: info
+  METRICS_ENABLED: "true"
+  TRACING_ENABLED: "true"
+  CACHE_TTL: "3600"
+  RATE_LIMIT_WINDOW: "900"
+  RATE_LIMIT_MAX: "1000"
+  SESSION_TIMEOUT: "3600"
