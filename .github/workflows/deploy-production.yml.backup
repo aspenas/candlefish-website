@@ -1,0 +1,302 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+    types: [ closed ]
+
+env:
+  NODE_VERSION: '18'
+  WORKING_DIRECTORY: 'apps/website'
+
+jobs:
+  # Quality checks and tests
+  quality-checks:
+    name: Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ${{ env.WORKING_DIRECTORY }}
+      run: npm ci
+
+    - name: Type checking
+      working-directory: ${{ env.WORKING_DIRECTORY }}
+      run: npm run typecheck
+
+    - name: Linting
+      working-directory: ${{ env.WORKING_DIRECTORY }}
+      run: npm run lint
+
+    - name: Build application
+      working-directory: ${{ env.WORKING_DIRECTORY }}
+      run: npm run build
+
+    # Store build artifacts for deployment job
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: production-build
+        path: ${{ env.WORKING_DIRECTORY }}/dist/
+        retention-days: 1
+
+  # Performance testing
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: quality-checks
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: production-build
+        path: ${{ env.WORKING_DIRECTORY }}/dist/
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ${{ env.WORKING_DIRECTORY }}
+      run: npm ci
+
+    - name: Start preview server
+      working-directory: ${{ env.WORKING_DIRECTORY }}
+      run: |
+        npm run preview &
+        sleep 10
+
+    - name: Install Lighthouse CLI
+      run: npm install -g @lhci/cli@0.12.x
+
+    - name: Run Lighthouse performance tests
+      working-directory: ${{ env.WORKING_DIRECTORY }}
+      run: |
+        lhci autorun --config=lighthouserc.json || echo "Lighthouse warnings detected"
+
+    - name: Upload performance reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: lighthouse-reports
+        path: ${{ env.WORKING_DIRECTORY }}/lighthouse-reports/
+        retention-days: 30
+
+  # Security scanning
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: quality-checks
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ${{ env.WORKING_DIRECTORY }}
+      run: npm ci
+
+    - name: Run security audit
+      working-directory: ${{ env.WORKING_DIRECTORY }}
+      run: npm audit --audit-level high
+
+    - name: Run dependency check
+      working-directory: ${{ env.WORKING_DIRECTORY }}
+      run: npx audit-ci --config .auditcirc.json || echo "Security warnings detected"
+
+  # Deploy to production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [quality-checks, performance-tests, security-scan]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    environment:
+      name: production
+      url: https://candlefish.ai
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: production-build
+        path: ${{ env.WORKING_DIRECTORY }}/dist/
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+    - name: Install Netlify CLI
+      run: npm install -g netlify-cli
+
+    - name: Deploy to Netlify
+      working-directory: ${{ env.WORKING_DIRECTORY }}
+      env:
+        NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+      run: |
+        netlify deploy \
+          --prod \
+          --dir=dist \
+          --site=$NETLIFY_SITE_ID \
+          --auth=$NETLIFY_AUTH_TOKEN \
+          --message="Production deployment from GitHub Actions"
+
+    - name: Verify deployment
+      run: |
+        sleep 30
+        curl -f https://candlefish.ai || exit 1
+        echo "✅ Production deployment verified"
+
+    - name: Post-deployment tests
+      working-directory: ${{ env.WORKING_DIRECTORY }}
+      run: |
+        # Quick smoke test on production
+        curl -f https://candlefish.ai/about || echo "⚠️  About page check failed"
+        curl -f https://candlefish.ai/services || echo "⚠️  Services page check failed"
+        curl -f https://candlefish.ai/projects || echo "⚠️  Projects page check failed"
+        curl -f https://candlefish.ai/contact || echo "⚠️  Contact page check failed"
+        echo "🚀 Post-deployment checks completed"
+
+    - name: Rollback on failure
+      if: failure()
+      working-directory: ${{ env.WORKING_DIRECTORY }}
+      env:
+        NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+      run: |
+        echo "🔄 Deployment failed, initiating rollback..."
+        # Get the previous successful deployment
+        PREV_DEPLOY_ID=$(netlify api listSiteDeploys --data='{"site_id":"'$NETLIFY_SITE_ID'"}' | jq -r '.[] | select(.state == "ready") | .id' | head -2 | tail -1)
+        if [ ! -z "$PREV_DEPLOY_ID" ]; then
+          netlify api restoreSiteDeploy --data='{"site_id":"'$NETLIFY_SITE_ID'","deploy_id":"'$PREV_DEPLOY_ID'"}'
+          echo "✅ Rolled back to previous deployment: $PREV_DEPLOY_ID"
+        else
+          echo "❌ No previous deployment found for rollback"
+        fi
+
+  # Deploy preview for pull requests
+  deploy-preview:
+    name: Deploy Preview
+    runs-on: ubuntu-latest
+    needs: [quality-checks]
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: production-build
+        path: ${{ env.WORKING_DIRECTORY }}/dist/
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+    - name: Install Netlify CLI
+      run: npm install -g netlify-cli
+
+    - name: Deploy preview
+      working-directory: ${{ env.WORKING_DIRECTORY }}
+      env:
+        NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+      run: |
+        DEPLOY_URL=$(netlify deploy \
+          --dir=dist \
+          --site=$NETLIFY_SITE_ID \
+          --auth=$NETLIFY_AUTH_TOKEN \
+          --message="Preview deployment for PR #${{ github.event.number }}" \
+          --json | jq -r '.deploy_url')
+
+        echo "Preview deployed to: $DEPLOY_URL"
+        echo "DEPLOY_URL=$DEPLOY_URL" >> $GITHUB_ENV
+
+    - name: Comment on PR
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const deployUrl = process.env.DEPLOY_URL;
+          const body = `🚀 **Preview deployment ready!**
+
+          Preview URL: ${deployUrl}
+
+          Changes in this PR:
+          - Updated website with new pages and features
+          - Performance optimizations applied
+          - A/B testing analytics integrated
+
+          The preview will be available for 7 days.`;
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: body
+          });
+
+  # Cleanup old deployments
+  cleanup:
+    name: Cleanup Old Deployments
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [deploy-production]
+
+    steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: Install Netlify CLI
+      run: npm install -g netlify-cli
+
+    - name: Cleanup old preview deployments
+      env:
+        NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+      run: |
+        # Keep last 10 deployments, cleanup the rest
+        netlify api listSiteDeploys --data='{"site_id":"'$NETLIFY_SITE_ID'"}' | \
+        jq -r '.[] | select(.context != "production") | .id' | \
+        tail -n +11 | \
+        head -20 | \
+        xargs -I {} netlify api deleteSiteDeploy --data='{"site_id":"'$NETLIFY_SITE_ID'","deploy_id":"{}"}' || echo "No old deployments to cleanup"

@@ -1,0 +1,827 @@
+# Enhanced Projects Schema with Company Cam WW Tagging Integration
+# Incorporates WW1-WW30 tagging system and advanced photo management
+
+directive @contact(
+  "Contact title of the subgraph owner"
+  name: String!
+  "URL where the subgraph's owner can be reached"
+  url: String
+  "Other relevant notes can be included here; supports markdown links"
+  description: String
+) on SCHEMA
+
+extend schema
+  @contact(
+    name: "Paintbox Enhanced Project Management Team"
+    url: "https://paintbox.candlefish.ai/support"
+    description: "Manages project lifecycle with advanced Company Cam WW tagging integration"
+  )
+  @link(
+    url: "https://specs.apollo.dev/federation/v2.3",
+    import: [
+      "@key", "@extends", "@shareable", "@inaccessible", "@override", "@external", "@provides", "@requires", "@tag",
+      "@composeDirective", "@interfaceObject"
+    ]
+  )
+
+type Query {
+  project(id: ID!): Project
+  projects(filter: ProjectFilter, limit: Int = 20, offset: Int = 0): ProjectConnection!
+  searchProjects(query: String!, limit: Int = 10): [Project!]!
+  
+  # Enhanced photo and WW tag queries
+  projectPhotos(projectId: ID!, filters: PhotoFilters): [ProjectPhoto!]!
+  photosByWWTag(projectId: ID!, wwTag: WWTagType!): [ProjectPhoto!]!
+  photosByElevation(projectId: ID!, elevation: ElevationType!): [ProjectPhoto!]!
+  wwTagAnalysis(projectId: ID!): WWTagAnalysis!
+  
+  # Measurement association queries
+  photosForMeasurement(measurementId: ID!): [ProjectPhoto!]!
+  measurementsForPhoto(photoId: ID!): [MeasurementReference!]!
+  
+  # Project timeline and progress
+  projectTimeline(projectId: ID!): [TimelineEvent!]!
+  projectProgress(projectId: ID!): ProjectProgress!
+}
+
+type Mutation {
+  createProject(input: CreateProjectInput!): Project!
+  updateProject(id: ID!, input: UpdateProjectInput!): Project!
+  deleteProject(id: ID!): Boolean!
+
+  # Enhanced Company Cam Integration with WW Tags
+  syncProjectFromCompanyCam(input: CompanyCamSyncInput!): ProjectSyncResult!
+  uploadProjectPhoto(projectId: ID!, input: EnhancedPhotoUploadInput!): ProjectPhoto!
+  deleteProjectPhoto(projectId: ID!, photoId: ID!): Boolean!
+  bulkSyncPhotos(projectId: ID!, options: BulkSyncOptions): BulkPhotoSyncResult!
+  
+  # WW Tag Management
+  assignWWTagsToPhoto(photoId: ID!, wwTags: [WWTagAssignmentInput!]!): ProjectPhoto!
+  removeWWTagFromPhoto(photoId: ID!, wwTag: WWTagType!): ProjectPhoto!
+  bulkTagPhotos(projectId: ID!, input: BulkTaggingInput!): BulkTaggingResult!
+  
+  # Photo-Measurement Association
+  associatePhotoWithMeasurements(photoId: ID!, measurementIds: [ID!]!): PhotoMeasurementAssociation!
+  removePhotoMeasurementAssociation(photoId: ID!, measurementId: ID!): Boolean!
+  
+  # Elevation and Side Management
+  organizePhotosByElevation(projectId: ID!, input: ElevationOrganizationInput!): ElevationOrganizationResult!
+  tagPhotosForElevation(projectId: ID!, elevation: ElevationType!, photoIds: [ID!]!): Boolean!
+  
+  # Project Lifecycle with Enhanced Tracking
+  startProject(id: ID!, input: ProjectStartInput): Project!
+  pauseProject(id: ID!, reason: String, expectedResumeDate: String): Project!
+  completeProject(id: ID!, input: EnhancedCompleteProjectInput!): Project!
+  archiveProject(id: ID!, archiveReason: String): Project!
+  
+  # Progress tracking
+  updateProjectProgress(projectId: ID!, input: ProgressUpdateInput!): ProjectProgress!
+  recordMilestone(projectId: ID!, input: MilestoneInput!): ProjectMilestone!
+}
+
+type Subscription {
+  projectUpdated(id: ID!): Project!
+  projectPhotoAdded(projectId: ID!): ProjectPhoto!
+  projectStatusChanged(id: ID!): ProjectStatusUpdate!
+  
+  # Enhanced real-time subscriptions
+  photoSyncProgress(projectId: ID!): SyncProgress!
+  wwTagUpdated(projectId: ID!): WWTagUpdate!
+  measurementPhotoAssociated(projectId: ID!): PhotoMeasurementUpdate!
+  elevationProgress(projectId: ID!, elevation: ElevationType!): ElevationProgress!
+}
+
+# Enhanced Project Entity
+type Project @key(fields: "id") {
+  id: ID!
+  customerId: ID!
+  companyCamId: String
+  
+  # Basic Information
+  name: String!
+  description: String
+  type: ProjectType!
+  priority: ProjectPriority!
+  
+  # Timeline & Scheduling
+  status: ProjectStatus!
+  scheduledStartDate: String
+  actualStartDate: String
+  scheduledEndDate: String
+  actualEndDate: String
+  estimatedDuration: Int
+  
+  # Location and Elevations
+  serviceAddress: Address!
+  jobSite: JobSite
+  elevations: [ProjectElevation!]!
+  
+  # Team & Resources
+  assignedCrew: [CrewMember!]!
+  projectManager: ProjectManager
+  
+  # Financial tracking
+  budgetAmount: Float
+  actualCost: Float
+  profitMargin: Float
+  costBreakdown: ProjectCostBreakdown
+  
+  # Enhanced Company Cam Integration with WW Tags
+  photos: [ProjectPhoto!]!
+  photoCount: Int!
+  photosByElevation: [ElevationPhotoGroup!]!
+  wwTagSummary: WWTagSummary!
+  lastPhotoSync: String
+  syncStatus: ProjectSyncStatus!
+  
+  # Progress and Milestones
+  progress: ProjectProgress!
+  milestones: [ProjectMilestone!]!
+  completionPercentage: Float!
+  
+  # Weather & Environmental
+  weatherRestrictions: [WeatherRestriction!]!
+  optimalConditions: WeatherConditions
+  weatherRisk: WeatherRisk!
+  
+  # Documentation and Specifications
+  notes: String
+  specifications: JSON
+  permits: [Permit!]!
+  safetyRequirements: [SafetyRequirement!]!
+  
+  # Quality Control
+  qualityChecks: [QualityCheck!]!
+  inspections: [ProjectInspection!]!
+  
+  # Metadata
+  createdAt: String!
+  updatedAt: String!
+  createdBy: String!
+  
+  # Federation Relationships
+  customer: Customer! @external
+  estimates: [Estimate!]! @external
+  
+  # Computed Fields
+  daysUntilDeadline: Int
+  isOverdue: Boolean!
+  currentPhase: ProjectPhase!
+  nextMilestone: ProjectMilestone
+}
+
+# Enhanced Photo Management with WW Tags
+type ProjectPhoto {
+  id: ID!
+  projectId: ID!
+  companyCamId: String
+  
+  # Photo Details
+  url: String!
+  thumbnailUrl: String
+  originalFileName: String
+  fileSize: Int
+  mimeType: String!
+  resolution: PhotoResolution
+  
+  # Enhanced Metadata with WW Tags
+  category: PhotoCategory!
+  wwTags: [WWTagAssignment!]!
+  description: String
+  capturedAt: String!
+  uploadedAt: String!
+  
+  # Location and Organization
+  coordinates: Coordinates
+  elevation: ElevationType
+  side: ProjectSide
+  room: String
+  surface: String
+  phase: ProjectPhase
+  
+  # Measurement Associations
+  associatedMeasurements: [MeasurementReference!]!
+  measurementContext: MeasurementContext
+  
+  # Photo Analysis and Quality
+  aiAnalysis: PhotoAIAnalysis
+  qualityScore: Float
+  technicalMetadata: PhotoTechnicalMetadata
+  
+  # Company Cam Specific
+  companyCamMetadata: JSON
+  syncStatus: PhotoSyncStatus!
+  syncHistory: [PhotoSyncEvent!]!
+  
+  # Annotations and Reviews
+  annotations: [PhotoAnnotation!]!
+  reviewStatus: PhotoReviewStatus!
+  approvedBy: String
+  approvedAt: String
+}
+
+# WW Tag System (WW1-WW30)
+type WWTagAssignment {
+  id: ID!
+  photoId: ID!
+  wwTag: WWTagType!
+  wwTagDefinition: WWTagDefinition!
+  
+  # Assignment context
+  assignedBy: String!
+  assignedAt: String!
+  confidence: Float # If auto-assigned by AI
+  
+  # Additional context
+  notes: String
+  measurementReferences: [ID!]!
+  elevationContext: ElevationType
+}
+
+type WWTagDefinition {
+  tag: WWTagType!
+  category: WWTagCategory!
+  name: String!
+  description: String!
+  usageGuidelines: String!
+  
+  # Common usage patterns
+  typicalSurfaces: [SurfaceType!]!
+  commonElevations: [ElevationType!]!
+  relatedTags: [WWTagType!]!
+  
+  # Project phase relevance
+  relevantPhases: [ProjectPhase!]!
+  measurementTypes: [MeasurementType!]!
+}
+
+type WWTagSummary {
+  projectId: ID!
+  totalTaggedPhotos: Int!
+  tagsUsed: [WWTagUsage!]!
+  
+  # Coverage analysis
+  elevationCoverage: [ElevationTagCoverage!]!
+  phaseCoverage: [PhaseTagCoverage!]!
+  
+  # Gaps and recommendations
+  missingTags: [WWTagType!]!
+  recommendedTags: [WWTagRecommendation!]!
+  
+  lastUpdated: String!
+}
+
+type WWTagUsage {
+  wwTag: WWTagType!
+  photoCount: Int!
+  elevations: [ElevationType!]!
+  phases: [ProjectPhase!]!
+  firstUsed: String!
+  lastUsed: String!
+}
+
+type WWTagAnalysis {
+  projectId: ID!
+  totalPhotos: Int!
+  taggedPhotos: Int!
+  tagCoverage: Float!
+  
+  # Detailed breakdown
+  tagBreakdown: [WWTagBreakdown!]!
+  elevationAnalysis: [ElevationTagAnalysis!]!
+  phaseAnalysis: [PhaseTagAnalysis!]!
+  
+  # Quality metrics
+  qualityMetrics: WWTagQualityMetrics!
+  recommendations: [TaggingRecommendation!]!
+}
+
+# Project Elevation Organization
+type ProjectElevation {
+  id: ID!
+  projectId: ID!
+  type: ElevationType!
+  name: String!
+  description: String
+  
+  # Photos organized by elevation
+  photos: [ProjectPhoto!]!
+  photoCount: Int!
+  wwTagsUsed: [WWTagType!]!
+  
+  # Progress tracking per elevation
+  progress: ElevationProgress!
+  measurements: [MeasurementReference!]!
+  
+  # Work status
+  status: ElevationStatus!
+  startedAt: String
+  completedAt: String
+  estimatedCompletion: String
+  
+  # Conditions and access
+  accessDifficulty: AccessDifficulty!
+  weatherDependency: WeatherDependency!
+  specialConsiderations: [String!]!
+}
+
+type ElevationProgress {
+  elevationId: ID!
+  elevation: ElevationType!
+  
+  # Work phases progress
+  phaseProgress: [PhaseProgress!]!
+  overallCompletion: Float!
+  
+  # Photo documentation progress
+  requiredPhotos: Int!
+  capturedPhotos: Int!
+  photoCompleteness: Float!
+  
+  # WW tag requirements
+  requiredWWTags: [WWTagType!]!
+  completedWWTags: [WWTagType!]!
+  
+  # Timeline
+  startedAt: String
+  estimatedCompletion: String
+  actualCompletion: String
+}
+
+# Measurement Association System
+type MeasurementReference {
+  measurementId: ID!
+  estimateId: ID!
+  measurementType: MeasurementType!
+  measurementName: String!
+  elevation: ElevationType!
+  
+  # Photo relationships
+  photos: [ProjectPhoto!]!
+  requiredWWTags: [WWTagType!]!
+  completedWWTags: [WWTagType!]!
+  
+  # Documentation status
+  documentationComplete: Boolean!
+  photoRequirements: PhotoRequirements!
+}
+
+type MeasurementContext {
+  measurementId: ID!
+  relevanceScore: Float!
+  contextType: MeasurementContextType!
+  description: String
+}
+
+type PhotoMeasurementAssociation {
+  photoId: ID!
+  measurementIds: [ID!]!
+  associatedAt: String!
+  associatedBy: String!
+  confidence: Float
+}
+
+# Project Progress and Milestones
+type ProjectProgress {
+  projectId: ID!
+  
+  # Overall progress
+  overallCompletion: Float!
+  currentPhase: ProjectPhase!
+  
+  # Phase-specific progress
+  phaseProgress: [PhaseProgress!]!
+  
+  # Elevation progress
+  elevationProgress: [ElevationProgress!]!
+  
+  # Documentation progress
+  photoDocumentation: PhotoDocumentationProgress!
+  wwTagging: WWTaggingProgress!
+  
+  # Timeline
+  estimatedCompletion: String!
+  actualProgress: Float!
+  scheduleVariance: Float!
+  
+  lastUpdated: String!
+  updatedBy: String!
+}
+
+type PhaseProgress {
+  phase: ProjectPhase!
+  status: PhaseStatus!
+  completion: Float!
+  
+  startedAt: String
+  completedAt: String
+  estimatedCompletion: String
+  
+  # Dependencies
+  prerequisites: [ProjectPhase!]!
+  blockers: [ProgressBlocker!]!
+  
+  # Resources
+  crewAssigned: [CrewMember!]!
+  equipmentRequired: [EquipmentType!]!
+}
+
+type ProjectMilestone {
+  id: ID!
+  projectId: ID!
+  name: String!
+  description: String
+  type: MilestoneType!
+  
+  # Timeline
+  targetDate: String!
+  actualDate: String
+  status: MilestoneStatus!
+  
+  # Dependencies
+  dependencies: [ID!]!
+  blockers: [MilestoneBlocker!]!
+  
+  # Progress indicators
+  criteria: [MilestoneCriteria!]!
+  completionPercentage: Float!
+  
+  # Photos and documentation
+  requiredPhotos: [PhotoRequirement!]!
+  completedPhotos: [ProjectPhoto!]!
+  wwTagsRequired: [WWTagType!]!
+  
+  # Metadata
+  createdAt: String!
+  createdBy: String!
+  lastUpdated: String!
+}
+
+# Quality Control and Inspections
+type QualityCheck {
+  id: ID!
+  projectId: ID!
+  type: QualityCheckType!
+  name: String!
+  
+  # Check details
+  checklist: [QualityCheckItem!]!
+  status: QualityCheckStatus!
+  passedItems: Int!
+  failedItems: Int!
+  
+  # Inspector information
+  inspectedBy: String!
+  inspectedAt: String!
+  
+  # Photos and evidence
+  evidencePhotos: [ProjectPhoto!]!
+  requiredWWTags: [WWTagType!]!
+  
+  # Results
+  overallResult: QualityResult!
+  issues: [QualityIssue!]!
+  recommendations: [String!]!
+  
+  # Follow-up
+  correctiveActions: [CorrectiveAction!]!
+  reinspectionRequired: Boolean!
+  reinspectionDate: String
+}
+
+# Sync and Integration Results
+type ProjectSyncResult {
+  project: Project!
+  syncedPhotos: Int!
+  newPhotos: Int!
+  updatedPhotos: Int!
+  errors: [SyncError!]!
+  duration: Float!
+  
+  # WW tag processing
+  autoTaggedPhotos: Int!
+  tagSuggestions: [WWTagSuggestion!]!
+}
+
+type BulkTaggingResult {
+  projectId: ID!
+  processedPhotos: Int!
+  successfulTags: Int!
+  failedTags: Int!
+  errors: [TaggingError!]!
+  
+  # Results breakdown
+  tagResults: [WWTagResult!]!
+  
+  duration: Float!
+}
+
+# Input Types
+input EnhancedPhotoUploadInput {
+  file: Upload!
+  category: PhotoCategory!
+  description: String
+  
+  # Enhanced organization
+  elevation: ElevationType
+  side: ProjectSide
+  phase: ProjectPhase
+  room: String
+  surface: String
+  
+  # WW tags and measurements
+  wwTags: [WWTagType!]
+  measurementIds: [ID!]
+  
+  # Metadata
+  coordinates: CoordinatesInput
+  technicalNotes: String
+}
+
+input WWTagAssignmentInput {
+  wwTag: WWTagType!
+  notes: String
+  measurementIds: [ID!]
+  confidence: Float
+}
+
+input BulkTaggingInput {
+  photoFilters: PhotoSelectionFilters!
+  wwTags: [WWTagType!]!
+  overwriteExisting: Boolean!
+  autoDetectSuggestions: Boolean!
+}
+
+input ElevationOrganizationInput {
+  photoElevationMappings: [PhotoElevationMapping!]!
+  autoDetectElevations: Boolean!
+  preserveExistingMappings: Boolean!
+}
+
+input EnhancedCompleteProjectInput {
+  actualEndDate: String!
+  actualCost: Float
+  finalNotes: String
+  customerSatisfactionScore: Int
+  
+  # Enhanced completion data
+  finalPhotos: [ID!]!
+  completionWWTags: [WWTagType!]!
+  qualityCheckResults: [QualityCheckResult!]!
+  lessonLearned: String
+  
+  # Photo organization validation
+  validatePhotoCompleteness: Boolean!
+  validateWWTagCoverage: Boolean!
+}
+
+input ProgressUpdateInput {
+  phase: ProjectPhase!
+  completion: Float!
+  notes: String
+  blockers: [ProgressBlockerInput!]
+  photosAdded: [ID!]
+  milestonesReached: [ID!]
+}
+
+input MilestoneInput {
+  name: String!
+  description: String
+  type: MilestoneType!
+  targetDate: String!
+  dependencies: [ID!]
+  criteria: [MilestoneCriteriaInput!]!
+  requiredWWTags: [WWTagType!]
+}
+
+# Enums
+enum ElevationType {
+  FRONT
+  REAR  
+  LEFT
+  RIGHT
+  DETACHED_GARAGE
+  ATTACHED_GARAGE
+  DECK
+  PORCH
+  SHED
+  FENCE
+  ROOF
+  FOUNDATION
+}
+
+enum ProjectSide {
+  NORTH
+  SOUTH
+  EAST
+  WEST
+  NORTHEAST
+  NORTHWEST
+  SOUTHEAST
+  SOUTHWEST
+}
+
+enum WWTagCategory {
+  SIDING_PREP
+  SIDING_PAINT
+  TRIM_PREP
+  TRIM_PAINT
+  DOOR_PREP
+  DOOR_PAINT
+  WINDOW_PREP
+  WINDOW_PAINT
+  RAILING_PREP
+  RAILING_PAINT
+  SHUTTER_PREP
+  SHUTTER_PAINT
+  SPECIALTY_PREP
+  SPECIALTY_PAINT
+  REPAIR_WORK
+  CLEANUP
+  QUALITY_CONTROL
+  BEFORE_AFTER
+  PROGRESS_DOCUMENTATION
+  SAFETY_COMPLIANCE
+}
+
+enum ElevationStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  INSPECTION_REQUIRED
+  APPROVED
+}
+
+enum PhaseStatus {
+  PENDING
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  SKIPPED
+  FAILED
+}
+
+enum MilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+  CANCELLED
+}
+
+enum MilestoneType {
+  PROJECT_START
+  PHASE_COMPLETION
+  INSPECTION
+  QUALITY_CHECK
+  CLIENT_APPROVAL
+  PROJECT_COMPLETION
+  CUSTOM
+}
+
+enum QualityCheckType {
+  PREPARATION
+  PRIME_COAT
+  FINISH_COAT
+  FINAL_INSPECTION
+  CLEANUP
+  CUSTOMER_WALKTHROUGH
+}
+
+enum QualityCheckStatus {
+  PENDING
+  IN_PROGRESS
+  PASSED
+  FAILED
+  NEEDS_REWORK
+}
+
+enum QualityResult {
+  EXCELLENT
+  GOOD
+  ACCEPTABLE
+  NEEDS_IMPROVEMENT
+  UNACCEPTABLE
+}
+
+enum PhotoReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  NEEDS_REVISION
+}
+
+enum MeasurementContextType {
+  PRIMARY
+  SECONDARY
+  REFERENCE
+  RELATED
+}
+
+enum WeatherDependency {
+  NONE
+  LOW
+  MODERATE
+  HIGH
+  CRITICAL
+}
+
+# Supporting scalar and complex types
+scalar JSON
+scalar Upload
+
+# External federation references
+type Customer @key(fields: "id") @extends {
+  id: ID! @external
+}
+
+type Estimate @key(fields: "id") @extends {
+  id: ID! @external
+  projectId: ID @external
+}
+
+# Additional supporting types (abbreviated for brevity)
+type Address { street: String! city: String! state: String! postalCode: String! }
+type Coordinates { latitude: Float! longitude: Float! }
+type PhotoResolution { width: Int! height: Int! }
+type CrewMember { id: ID! name: String! role: CrewRole! }
+type ProjectManager { id: ID! name: String! }
+type JobSite { id: ID! name: String! }
+type WeatherRestriction { condition: WeatherCondition! }
+type WeatherConditions { minTemperature: Float }
+type ProjectCostBreakdown { labor: Float! materials: Float! }
+type ProjectSyncStatus { status: String! lastSync: String! }
+type ElevationPhotoGroup { elevation: ElevationType! photos: [ProjectPhoto!]! }
+type SafetyRequirement { requirement: String! mandatory: Boolean! }
+type PhotoTechnicalMetadata { iso: Int camera: String }
+type PhotoAnnotation { id: ID! text: String! }
+type PhotoSyncEvent { timestamp: String! status: String! }
+type PhotoRequirements { minimum: Int! categories: [PhotoCategory!]! }
+type PhotoDocumentationProgress { required: Int! completed: Int! }
+type WWTaggingProgress { required: Int! completed: Int! }
+type ProgressBlocker { type: String! description: String! }
+type MilestoneBlocker { type: String! description: String! }
+type MilestoneCriteria { criterion: String! completed: Boolean! }
+type QualityCheckItem { item: String! passed: Boolean! }
+type QualityIssue { severity: String! description: String! }
+type CorrectiveAction { action: String! responsible: String! }
+type SyncError { message: String! retryable: Boolean! }
+type TaggingError { photoId: ID! error: String! }
+type WWTagSuggestion { photoId: ID! suggestedTags: [WWTagType!]! }
+type WWTagResult { tag: WWTagType! success: Boolean! }
+type PhotoSelectionFilters { elevation: ElevationType phase: ProjectPhase }
+type PhotoElevationMapping { photoId: ID! elevation: ElevationType! }
+type QualityCheckResult { checkType: QualityCheckType! passed: Boolean! }
+type ProgressBlockerInput { type: String! description: String! }
+type MilestoneCriteriaInput { criterion: String! }
+type ElevationTagCoverage { elevation: ElevationType! coverage: Float! }
+type PhaseTagCoverage { phase: ProjectPhase! coverage: Float! }
+type WWTagRecommendation { tag: WWTagType! priority: String! }
+type WWTagBreakdown { tag: WWTagType! count: Int! }
+type ElevationTagAnalysis { elevation: ElevationType! completeness: Float! }
+type PhaseTagAnalysis { phase: ProjectPhase! completeness: Float! }
+type WWTagQualityMetrics { accuracy: Float! completeness: Float! }
+type TaggingRecommendation { message: String! priority: String! }
+type TimelineEvent { id: ID! type: TimelineEventType! title: String! }
+type ProjectInspection { id: ID! type: String! status: String! }
+type Permit { id: ID! type: PermitType! number: String! }
+type ProjectStatusUpdate { projectId: ID! oldStatus: ProjectStatus! }
+type SyncProgress { projectId: ID! progress: Float! }
+type WWTagUpdate { projectId: ID! photoId: ID! }
+type PhotoMeasurementUpdate { photoId: ID! measurementId: ID! }
+type PhotoFilters { elevation: ElevationType phase: ProjectPhase }
+type BulkSyncOptions { autoTag: Boolean! }
+type BulkPhotoSyncResult { synced: Int! failed: Int! }
+type ProjectConnection { edges: [ProjectEdge!]! }
+type ProjectEdge { node: Project! }
+type PageInfo { hasNextPage: Boolean! }
+type CreateProjectInput { name: String! customerId: ID! }
+type UpdateProjectInput { name: String }
+type ProjectStartInput { notes: String }
+type CoordinatesInput { latitude: Float! longitude: Float! }
+type CompanyCamSyncInput { companyCamProjectId: String! }
+type ProjectFilter { status: ProjectStatus }
+
+# Enums for existing functionality
+enum ProjectStatus { PLANNING SCHEDULED IN_PROGRESS COMPLETED }
+enum ProjectType { INTERIOR_PAINTING EXTERIOR_PAINTING }
+enum ProjectPriority { LOW NORMAL HIGH URGENT }
+enum ProjectPhase { PREPARATION PRIMER BASE_COAT FINAL_COAT }
+enum PhotoCategory { BEFORE PROGRESS AFTER }
+enum PhotoSyncStatus { PENDING SYNCED FAILED }
+enum CrewRole { LEAD_PAINTER PAINTER }
+enum PermitType { BUILDING ENVIRONMENTAL }
+enum WeatherCondition { TEMPERATURE HUMIDITY }
+enum WeatherRisk { NONE LOW MODERATE HIGH }
+enum TimelineEventType { CREATED STATUS_CHANGED }
+enum AccessDifficulty { EASY MODERATE DIFFICULT }
+enum EquipmentType { LADDER SCAFFOLDING }
+enum SurfaceType { SMOOTH TEXTURED }
+enum MeasurementType { SIDING TRIM DOOR WINDOW }
+enum ComplexityLevel { SIMPLE MODERATE COMPLEX }
+enum WWTagType { 
+  WW1 WW2 WW3 WW4 WW5 WW6 WW7 WW8 WW9 WW10
+  WW11 WW12 WW13 WW14 WW15 WW16 WW17 WW18 WW19 WW20
+  WW21 WW22 WW23 WW24 WW25 WW26 WW27 WW28 WW29 WW30
+}

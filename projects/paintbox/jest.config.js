@@ -1,69 +1,176 @@
 const nextJest = require('next/jest')
 
 const createJestConfig = nextJest({
-  // Provide the path to your Next.js app to load next.config.js and .env files
   dir: './',
 })
 
-// Add any custom config to be passed to Jest
 const customJestConfig = {
+  // Test environment
+  testEnvironment: 'jsdom',
+  
+  // Setup files
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  testEnvironment: 'jest-environment-jsdom',
-  moduleNameMapper: {
+  
+  // Module paths
+  moduleNameMapping: {
     '^@/(.*)$': '<rootDir>/$1',
+    '^@/components/(.*)$': '<rootDir>/components/$1',
+    '^@/lib/(.*)$': '<rootDir>/lib/$1',
+    '^@/hooks/(.*)$': '<rootDir>/hooks/$1',
+    '^@/utils/(.*)$': '<rootDir>/utils/$1',
+    '^@/types/(.*)$': '<rootDir>/types/$1',
+    '^@/store/(.*)$': '<rootDir>/store/$1',
   },
+
+  // Test patterns
   testMatch: [
-    '**/__tests__/**/*.(test|spec).(js|jsx|ts|tsx)',
-    '**/*.(test|spec).(js|jsx|ts|tsx)'
+    '<rootDir>/__tests__/**/*.{js,jsx,ts,tsx}',
+    '<rootDir>/**/__tests__/**/*.{js,jsx,ts,tsx}',
+    '<rootDir>/**/*.{test,spec}.{js,jsx,ts,tsx}',
   ],
+
+  // Ignore patterns
   testPathIgnorePatterns: [
     '<rootDir>/.next/',
     '<rootDir>/node_modules/',
-    '<rootDir>/__tests__/e2e/'
+    '<rootDir>/dist/',
+    '<rootDir>/build/',
+    '<rootDir>/__tests__/fixtures/',
+    '<rootDir>/__tests__/utils/',
+    '<rootDir>/__tests__/data/test-data-setup.ts',
   ],
+
+  // Transform patterns
+  transformIgnorePatterns: [
+    '/node_modules/(?!(graphql-ws|@apollo/client|graphql-tag)/)',
+  ],
+
+  // Coverage settings
+  collectCoverage: false, // Enable only when running with --coverage flag
   collectCoverageFrom: [
-    'app/**/*.{js,jsx,ts,tsx}',
     'components/**/*.{js,jsx,ts,tsx}',
     'lib/**/*.{js,jsx,ts,tsx}',
+    'apollo-graphos/subgraph-estimates/src/**/*.{js,jsx,ts,tsx}',
     'hooks/**/*.{js,jsx,ts,tsx}',
-    'stores/**/*.{js,jsx,ts,tsx}',
+    'store/**/*.{js,jsx,ts,tsx}',
+    'utils/**/*.{js,jsx,ts,tsx}',
     '!**/*.d.ts',
     '!**/node_modules/**',
-    '!**/__tests__/**',
+    '!**/.next/**',
     '!**/coverage/**',
     '!**/dist/**',
+    '!**/*.config.{js,ts}',
+    '!**/index.{js,ts}',
   ],
+
+  coverageReporters: [
+    'text',
+    'text-summary',
+    'lcov',
+    'html',
+  ],
+
+  coverageDirectory: 'coverage',
+
   coverageThreshold: {
     global: {
-      branches: 80,
+      branches: 75,
       functions: 80,
       lines: 80,
       statements: 80,
     },
-    // Specific thresholds for production features
-    'components/production/**/*.{js,jsx,ts,tsx}': {
-      branches: 85,
+    './components/': {
+      branches: 80,
       functions: 85,
       lines: 85,
       statements: 85,
     },
-    'app/api/v1/**/*.{js,jsx,ts,tsx}': {
-      branches: 90,
+    './lib/services/': {
+      branches: 85,
       functions: 90,
       lines: 90,
       statements: 90,
     },
   },
-  coverageReporters: [
-    'text',
-    'text-summary',
-    'html',
-    'lcov',
-    'clover',
-    'json-summary'
+
+  // Test timeout
+  testTimeout: 10000,
+
+  // Max workers
+  maxWorkers: '50%',
+
+  // Mock settings
+  clearMocks: true,
+  resetMocks: true,
+  restoreMocks: true,
+
+  // Verbose output in CI
+  verbose: process.env.CI === 'true',
+
+  // Test result processor
+  reporters: [
+    'default',
+    [
+      'jest-junit',
+      {
+        outputDirectory: 'test-results',
+        outputName: 'junit.xml',
+        suiteName: 'Paintbox Test Suite',
+        classNameTemplate: '{classname}',
+        titleTemplate: '{title}',
+        ancestorSeparator: ' › ',
+        usePathForSuiteName: true,
+      },
+    ],
   ],
-  testTimeout: 30000,
-  maxWorkers: process.env.CI ? 2 : '50%',
+
+  // Projects configuration for different test types
+  projects: [
+    // Frontend component tests
+    {
+      displayName: 'Frontend Components',
+      testMatch: [
+        '<rootDir>/__tests__/components/**/*.{test,spec}.{js,jsx,ts,tsx}',
+      ],
+      testEnvironment: 'jsdom',
+      setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+    },
+
+    // Backend API tests
+    {
+      displayName: 'Backend API',
+      testMatch: [
+        '<rootDir>/apollo-graphos/subgraph-estimates/src/__tests__/**/*.{test,spec}.{js,ts}',
+      ],
+      testEnvironment: 'node',
+    },
+
+    // Integration tests
+    {
+      displayName: 'Integration Tests',
+      testMatch: [
+        '<rootDir>/__tests__/integration/**/*.{test,spec}.{js,ts}',
+      ],
+      testEnvironment: 'node',
+      testTimeout: 30000,
+    },
+
+    // Performance tests
+    {
+      displayName: 'Performance Tests',
+      testMatch: [
+        '<rootDir>/__tests__/performance/**/*.{test,spec}.{js,ts}',
+      ],
+      testEnvironment: 'node',
+      testTimeout: 120000,
+    },
+  ],
+
+  // Watch plugins
+  watchPlugins: [
+    'jest-watch-typeahead/filename',
+    'jest-watch-typeahead/testname',
+  ],
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

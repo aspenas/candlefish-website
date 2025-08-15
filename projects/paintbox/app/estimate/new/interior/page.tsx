@@ -1,10 +1,21 @@
 'use client';
 
+// Force dynamic rendering to avoid static generation memory issues
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Home, Plus, Trash2, Palette, Square } from 'lucide-react';
-import { animated, useSpring, useTransition } from '@react-spring/web';
+import dynamic from 'next/dynamic';
+// Conditionally import animations to reduce bundle size
+const AnimationComponents = dynamic(
+  () => import('@react-spring/web').then(mod => ({
+    default: { animated: mod.animated, useSpring: mod.useSpring, useTransition: mod.useTransition }
+  })),
+  { ssr: false }
+);
 import { useEstimateStore } from '@/stores/useEstimateStore';
 
 interface Room {
@@ -33,25 +44,14 @@ export default function InteriorMeasurementPage() {
   const { estimate, updateInteriorInfo } = useEstimateStore();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [animationsEnabled, setAnimationsEnabled] = useState(false);
 
-  const headerSpring = useSpring({
-    from: { opacity: 0, transform: 'translateY(-20px)' },
-    to: { opacity: 1, transform: 'translateY(0px)' },
-    config: { duration: 600 }
-  });
+  // Lazy load animations after component mount to reduce initial bundle size
+  const [AnimationState, setAnimationState] = useState<any>(null);
 
-  const transitions = useTransition(rooms, {
-    from: { opacity: 0, scale: 0.8, transform: 'translateY(20px)' },
-    enter: { opacity: 1, scale: 1, transform: 'translateY(0px)' },
-    leave: { opacity: 0, scale: 0.8, transform: 'translateY(-20px)' },
-    config: { tension: 200, friction: 20 }
-  });
-
-  const templateSpring = useSpring({
-    opacity: showTemplates ? 1 : 0,
-    transform: showTemplates ? 'translateY(0px)' : 'translateY(-10px)',
-    config: { tension: 300, friction: 25 }
-  });
+  // Simplified animation state for memory optimization
+  const simpleHeaderStyle = animationsEnabled ? {} : { opacity: 1 };
+  const simpleTemplateStyle = showTemplates ? { opacity: 1 } : { opacity: 0 };
 
   const updateRoom = (id: string, field: keyof Room, value: any) => {
     setRooms(rooms.map(r =>

@@ -1,649 +1,458 @@
-import { test, expect } from '@playwright/test';
-import { ProductionTestFactory } from '../factories/productionFactory';
+import { performance } from 'perf_hooks';
+import axios from 'axios';
 
-// Performance testing utilities
-interface PerformanceMetrics {
-  responseTime: number;
-  throughput: number;
-  errorRate: number;
-  cpuUsage: number;
-  memoryUsage: number;
-  concurrentUsers: number;
-}
+describe('Paintbox Load Testing Suite', () => {
+  const baseURL = process.env.TEST_BASE_URL || 'http://localhost:3000';
 
-interface LoadTestConfig {
-  users: number;
-  duration: number; // in seconds
-  rampUp: number; // in seconds
-  endpoint: string;
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
-  payload?: any;
-  expectedResponseTime: number; // in ms
-  expectedThroughput: number; // requests per second
-  maxErrorRate: number; // percentage
-}
+  describe('API Endpoint Performance', () => {
+    test('should handle concurrent estimate creations', async () => {
+      const concurrentRequests = 50;
+      const results: any[] = [];
 
-class LoadTestRunner {
-  private baseURL: string;
-  private authToken: string;
+      const createEstimate = async (index: number) => {
+        const startTime = performance.now();
+        
+        try {
+          const response = await axios.post(`${baseURL}/api/v1/estimates`, {
+            customerId: `customer${index}`,
+            projectId: `project${index}`,
+            measurements: {
+              kitchen: {
+                totalArea: 200 + (index * 10),
+                walls: [
+                  { length: 12, height: 9 },
+                  { length: 10, height: 9 },
+                ],
+              },
+            },
+            materialType: 'STANDARD',
+            complexity: 'MODERATE',
+          }, {
+            timeout: 10000,
+            headers: {
+              'Authorization': `Bearer ${process.env.TEST_AUTH_TOKEN}`,
+            },
+          });
 
-  constructor(baseURL: string = 'http://localhost:3000') {
-    this.baseURL = baseURL;
-    this.authToken = global.securityTestHelpers.createMockJWT({
-      permissions: ['admin:all'],
-    });
-  }
+          const endTime = performance.now();
+          
+          return {
+            index,
+            duration: endTime - startTime,
+            statusCode: response.status,
+            success: true,
+          };
+        } catch (error: any) {
+          const endTime = performance.now();
+          
+          return {
+            index,
+            duration: endTime - startTime,
+            statusCode: error.response?.status || 0,
+            success: false,
+            error: error.message,
+          };
+        }
+      };
 
-  async runLoadTest(config: LoadTestConfig): Promise<PerformanceMetrics> {
-    const startTime = Date.now();
-    const responses: Array<{ time: number; status: number; error?: string }> = [];
-    const userPromises: Promise<void>[] = [];
+      // Execute concurrent requests
+      const promises = Array.from({ length: concurrentRequests }, (_, i) => createEstimate(i));
+      const allResults = await Promise.all(promises);
+      
+      results.push(...allResults);
 
-    // Calculate user spawn rate
-    const spawnRate = config.users / config.rampUp;
+      // Analyze results
+      const successful = results.filter(r => r.success);
+      const failed = results.filter(r => !r.success);
+      const avgResponseTime = successful.reduce((sum, r) => sum + r.duration, 0) / successful.length;
+      const maxResponseTime = Math.max(...successful.map(r => r.duration));
+      const successRate = successful.length / results.length;
 
-    for (let i = 0; i < config.users; i++) {
-      const delay = (i / spawnRate) * 1000; // Convert to milliseconds
+      console.log(`Success rate: ${(successRate * 100).toFixed(1)}%`);
+      console.log(`Average response time: ${avgResponseTime.toFixed(2)}ms`);
+      console.log(`Max response time: ${maxResponseTime.toFixed(2)}ms`);
 
-      userPromises.push(
-        new Promise(async (resolve) => {
-          await this.sleep(delay);
-          await this.simulateUser(config, responses, startTime + config.duration * 1000);
-          resolve();
-        })
+      expect(successRate).toBeGreaterThan(0.95); // 95% success rate
+      expect(avgResponseTime).toBeLessThan(2000); // Average under 2 seconds
+      expect(maxResponseTime).toBeLessThan(5000); // Max under 5 seconds
+
+    }, 60000); // 1 minute timeout
+
+    test('should handle GraphQL query load', async () => {
+      const concurrentQueries = 100;
+      const query = `
+        query GetEstimates($limit: Int) {
+          estimates(limit: $limit) {
+            totalCount
+            edges {
+              node {
+                id
+                goodPrice
+                betterPrice
+                bestPrice
+                status
+                totalSquareFootage
+              }
+            }
+          }
+        }
+      `;
+
+      const executeQuery = async (index: number) => {
+        const startTime = performance.now();
+        
+        try {
+          const response = await axios.post(`${baseURL}/api/graphql`, {
+            query,
+            variables: { limit: 20 },
+          }, {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.TEST_AUTH_TOKEN}`,
+            },
+            timeout: 10000,
+          });
+
+          const endTime = performance.now();
+          
+          return {
+            index,
+            duration: endTime - startTime,
+            statusCode: response.status,
+            hasData: !!response.data.data,
+            hasErrors: !!response.data.errors,
+          };
+        } catch (error: any) {
+          return {
+            index,
+            duration: performance.now() - startTime,
+            statusCode: error.response?.status || 0,
+            hasData: false,
+            hasErrors: true,
+            error: error.message,
+          };
+        }
+      };
+
+      const results = await Promise.all(
+        Array.from({ length: concurrentQueries }, (_, i) => executeQuery(i))
       );
-    }
 
-    await Promise.all(userPromises);
+      const successful = results.filter(r => r.hasData && !r.hasErrors);
+      const avgResponseTime = successful.reduce((sum, r) => sum + r.duration, 0) / successful.length;
+      const successRate = successful.length / results.length;
 
-    return this.calculateMetrics(responses, config);
-  }
+      expect(successRate).toBeGreaterThan(0.95);
+      expect(avgResponseTime).toBeLessThan(1000); // GraphQL should be fast
 
-  private async simulateUser(
-    config: LoadTestConfig,
-    responses: Array<{ time: number; status: number; error?: string }>,
-    endTime: number
-  ): Promise<void> {
-    while (Date.now() < endTime) {
-      const requestStart = Date.now();
-
-      try {
-        const response = await fetch(`${this.baseURL}${config.endpoint}`, {
-          method: config.method,
-          headers: {
-            'Authorization': `Bearer ${this.authToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: config.payload ? JSON.stringify(config.payload) : undefined,
-        });
-
-        responses.push({
-          time: Date.now() - requestStart,
-          status: response.status,
-        });
-
-        // Simulate think time between requests (100ms - 500ms)
-        await this.sleep(Math.random() * 400 + 100);
-      } catch (error) {
-        responses.push({
-          time: Date.now() - requestStart,
-          status: 0,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
-      }
-    }
-  }
-
-  private calculateMetrics(
-    responses: Array<{ time: number; status: number; error?: string }>,
-    config: LoadTestConfig
-  ): PerformanceMetrics {
-    const totalRequests = responses.length;
-    const successfulRequests = responses.filter(r => r.status >= 200 && r.status < 400);
-    const errorRequests = responses.filter(r => r.status >= 400 || r.status === 0);
-
-    const avgResponseTime = successfulRequests.reduce((sum, r) => sum + r.time, 0) / successfulRequests.length;
-    const throughput = totalRequests / config.duration;
-    const errorRate = (errorRequests.length / totalRequests) * 100;
-
-    return {
-      responseTime: avgResponseTime,
-      throughput,
-      errorRate,
-      cpuUsage: 0, // Would be measured from system metrics
-      memoryUsage: 0, // Would be measured from system metrics
-      concurrentUsers: config.users,
-    };
-  }
-
-  private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-}
-
-describe('Performance Load Testing', () => {
-  let loadTestRunner: LoadTestRunner;
-
-  test.beforeAll(async ({ baseURL }) => {
-    loadTestRunner = new LoadTestRunner(baseURL || 'http://localhost:3000');
+    }, 30000);
   });
 
-  describe('API Endpoint Load Tests', () => {
-    test('GET /api/v1/temporal/connections - should handle 100 concurrent users', async () => {
-      const config: LoadTestConfig = {
-        users: 100,
-        duration: 30,
-        rampUp: 10,
-        endpoint: '/api/v1/temporal/connections',
-        method: 'GET',
-        expectedResponseTime: 200,
-        expectedThroughput: 100,
-        maxErrorRate: 1,
-      };
-
-      const metrics = await loadTestRunner.runLoadTest(config);
-
-      expect(metrics.responseTime).toBeLessThan(config.expectedResponseTime);
-      expect(metrics.throughput).toBeGreaterThan(config.expectedThroughput);
-      expect(metrics.errorRate).toBeLessThan(config.maxErrorRate);
-    });
-
-    test('POST /api/v1/keys - should handle API key creation load', async () => {
-      const config: LoadTestConfig = {
-        users: 50,
-        duration: 60,
-        rampUp: 15,
-        endpoint: '/api/v1/keys',
-        method: 'POST',
-        payload: {
-          name: 'Load Test Key',
-          permissions: ['read:metrics'],
-          rateLimits: {
-            requestsPerMinute: 100,
-            requestsPerHour: 6000,
-            requestsPerDay: 144000,
+  describe('Pricing Calculation Performance', () => {
+    test('should handle complex pricing calculations efficiently', async () => {
+      const testCases = [
+        {
+          name: 'Simple residential',
+          input: {
+            squareFootage: 1200,
+            laborHours: 16,
+            materialType: 'STANDARD',
+            complexity: 'SIMPLE',
           },
         },
-        expectedResponseTime: 500,
-        expectedThroughput: 50,
-        maxErrorRate: 2,
-      };
-
-      const metrics = await loadTestRunner.runLoadTest(config);
-
-      expect(metrics.responseTime).toBeLessThan(config.expectedResponseTime);
-      expect(metrics.throughput).toBeGreaterThan(config.expectedThroughput);
-      expect(metrics.errorRate).toBeLessThan(config.maxErrorRate);
-    });
-
-    test('POST /api/v1/monitoring/metrics - should handle high-frequency metric ingestion', async () => {
-      const config: LoadTestConfig = {
-        users: 200,
-        duration: 120,
-        rampUp: 20,
-        endpoint: '/api/v1/monitoring/metrics',
-        method: 'POST',
-        payload: {
-          metrics: Array.from({ length: 10 }, () =>
-            ProductionTestFactory.createMonitoringMetric()
-          ),
+        {
+          name: 'Complex commercial',
+          input: {
+            squareFootage: 5000,
+            laborHours: 80,
+            materialType: 'PREMIUM',
+            complexity: 'HIGHLY_COMPLEX',
+          },
         },
-        expectedResponseTime: 100,
-        expectedThroughput: 500,
-        maxErrorRate: 0.5,
-      };
-
-      const metrics = await loadTestRunner.runLoadTest(config);
-
-      expect(metrics.responseTime).toBeLessThan(config.expectedResponseTime);
-      expect(metrics.throughput).toBeGreaterThan(config.expectedThroughput);
-      expect(metrics.errorRate).toBeLessThan(config.maxErrorRate);
-    });
-
-    test('GET /api/v1/security/vulnerabilities - should handle vulnerability queries', async () => {
-      const config: LoadTestConfig = {
-        users: 75,
-        duration: 45,
-        rampUp: 10,
-        endpoint: '/api/v1/security/vulnerabilities?limit=100&severity=critical',
-        method: 'GET',
-        expectedResponseTime: 300,
-        expectedThroughput: 75,
-        maxErrorRate: 1,
-      };
-
-      const metrics = await loadTestRunner.runLoadTest(config);
-
-      expect(metrics.responseTime).toBeLessThan(config.expectedResponseTime);
-      expect(metrics.throughput).toBeGreaterThan(config.expectedThroughput);
-      expect(metrics.errorRate).toBeLessThan(config.maxErrorRate);
-    });
-  });
-
-  describe('Stress Testing', () => {
-    test('should handle peak load conditions', async () => {
-      const config: LoadTestConfig = {
-        users: 500,
-        duration: 300, // 5 minutes
-        rampUp: 60, // 1 minute ramp-up
-        endpoint: '/api/v1/temporal/connections',
-        method: 'GET',
-        expectedResponseTime: 1000, // Higher tolerance for stress test
-        expectedThroughput: 200,
-        maxErrorRate: 5,
-      };
-
-      const metrics = await loadTestRunner.runLoadTest(config);
-
-      // Stress test allows higher response times and error rates
-      expect(metrics.responseTime).toBeLessThan(config.expectedResponseTime);
-      expect(metrics.errorRate).toBeLessThan(config.maxErrorRate);
-
-      console.log('Stress Test Metrics:', {
-        'Response Time': `${metrics.responseTime.toFixed(2)}ms`,
-        'Throughput': `${metrics.throughput.toFixed(2)} req/s`,
-        'Error Rate': `${metrics.errorRate.toFixed(2)}%`,
-        'Concurrent Users': metrics.concurrentUsers,
-      });
-    });
-
-    test('should handle gradual load increase (ramp test)', async () => {
-      const rampSteps = [
-        { users: 50, duration: 30 },
-        { users: 100, duration: 30 },
-        { users: 200, duration: 30 },
-        { users: 300, duration: 30 },
-        { users: 400, duration: 30 },
+        {
+          name: 'Large estate',
+          input: {
+            squareFootage: 15000,
+            laborHours: 200,
+            materialType: 'LUXURY',
+            complexity: 'COMPLEX',
+          },
+        },
       ];
 
-      const results: PerformanceMetrics[] = [];
+      for (const testCase of testCases) {
+        const iterations = 100;
+        const times: number[] = [];
 
-      for (const step of rampSteps) {
-        const config: LoadTestConfig = {
-          users: step.users,
-          duration: step.duration,
-          rampUp: 5,
-          endpoint: '/api/v1/temporal/connections',
-          method: 'GET',
-          expectedResponseTime: 1000,
-          expectedThroughput: step.users / 2,
-          maxErrorRate: 10,
-        };
+        for (let i = 0; i < iterations; i++) {
+          const startTime = performance.now();
+          
+          await axios.post(`${baseURL}/api/v1/pricing/calculate`, testCase.input, {
+            headers: {
+              'Authorization': `Bearer ${process.env.TEST_AUTH_TOKEN}`,
+            },
+          });
+          
+          const endTime = performance.now();
+          times.push(endTime - startTime);
+        }
 
-        const metrics = await loadTestRunner.runLoadTest(config);
-        results.push(metrics);
+        const avgTime = times.reduce((sum, time) => sum + time, 0) / times.length;
+        const maxTime = Math.max(...times);
+        const p95Time = times.sort((a, b) => a - b)[Math.floor(times.length * 0.95)];
 
-        console.log(`Ramp Step ${step.users} users:`, {
-          'Response Time': `${metrics.responseTime.toFixed(2)}ms`,
-          'Throughput': `${metrics.throughput.toFixed(2)} req/s`,
-          'Error Rate': `${metrics.errorRate.toFixed(2)}%`,
-        });
-      }
+        console.log(`${testCase.name}: avg=${avgTime.toFixed(2)}ms, max=${maxTime.toFixed(2)}ms, p95=${p95Time.toFixed(2)}ms`);
 
-      // Check for performance degradation
-      for (let i = 1; i < results.length; i++) {
-        const previous = results[i - 1];
-        const current = results[i];
-
-        // Response time shouldn't increase more than 200% between steps
-        expect(current.responseTime).toBeLessThan(previous.responseTime * 2);
-
-        // Error rate shouldn't exceed 10%
-        expect(current.errorRate).toBeLessThan(10);
+        expect(avgTime).toBeLessThan(500); // Should average under 500ms
+        expect(p95Time).toBeLessThan(1000); // 95th percentile under 1s
       }
     });
 
-    test('should recover from load spikes', async () => {
-      // Baseline load
-      const baselineConfig: LoadTestConfig = {
-        users: 50,
-        duration: 30,
-        rampUp: 5,
-        endpoint: '/api/v1/temporal/connections',
-        method: 'GET',
-        expectedResponseTime: 200,
-        expectedThroughput: 50,
-        maxErrorRate: 1,
-      };
-
-      const baselineMetrics = await loadTestRunner.runLoadTest(baselineConfig);
-
-      // Spike load
-      const spikeConfig: LoadTestConfig = {
-        users: 500,
-        duration: 60,
-        rampUp: 5, // Very fast ramp-up to simulate spike
-        endpoint: '/api/v1/temporal/connections',
-        method: 'GET',
-        expectedResponseTime: 2000,
-        expectedThroughput: 100,
-        maxErrorRate: 15,
-      };
-
-      const spikeMetrics = await loadTestRunner.runLoadTest(spikeConfig);
-
-      // Recovery load (same as baseline)
-      const recoveryMetrics = await loadTestRunner.runLoadTest(baselineConfig);
-
-      // System should recover to near baseline performance
-      expect(recoveryMetrics.responseTime).toBeLessThan(baselineMetrics.responseTime * 1.5);
-      expect(recoveryMetrics.errorRate).toBeLessThan(baselineMetrics.errorRate + 2);
-
-      console.log('Load Spike Recovery Test:', {
-        'Baseline Response Time': `${baselineMetrics.responseTime.toFixed(2)}ms`,
-        'Spike Response Time': `${spikeMetrics.responseTime.toFixed(2)}ms`,
-        'Recovery Response Time': `${recoveryMetrics.responseTime.toFixed(2)}ms`,
-        'Baseline Error Rate': `${baselineMetrics.errorRate.toFixed(2)}%`,
-        'Spike Error Rate': `${spikeMetrics.errorRate.toFixed(2)}%`,
-        'Recovery Error Rate': `${recoveryMetrics.errorRate.toFixed(2)}%`,
-      });
-    });
-  });
-
-  describe('Endurance Testing', () => {
-    test('should maintain performance over extended periods', async () => {
-      const config: LoadTestConfig = {
-        users: 100,
-        duration: 1800, // 30 minutes
-        rampUp: 60,
-        endpoint: '/api/v1/temporal/connections',
-        method: 'GET',
-        expectedResponseTime: 300,
-        expectedThroughput: 80,
-        maxErrorRate: 2,
-      };
-
-      const metrics = await loadTestRunner.runLoadTest(config);
-
-      // Extended test should maintain reasonable performance
-      expect(metrics.responseTime).toBeLessThan(config.expectedResponseTime);
-      expect(metrics.throughput).toBeGreaterThan(config.expectedThroughput);
-      expect(metrics.errorRate).toBeLessThan(config.maxErrorRate);
-
-      console.log('Endurance Test Results:', {
-        'Duration': '30 minutes',
-        'Avg Response Time': `${metrics.responseTime.toFixed(2)}ms`,
-        'Throughput': `${metrics.throughput.toFixed(2)} req/s`,
-        'Error Rate': `${metrics.errorRate.toFixed(2)}%`,
-        'Total Requests': Math.floor(metrics.throughput * config.duration),
-      });
-    });
-
-    test('should detect memory leaks during extended testing', async () => {
-      // This test would need to be run with actual memory monitoring
-      // For demo purposes, we'll simulate the test structure
-
-      const testDuration = 3600; // 1 hour
-      const measurements: Array<{ time: number; memoryUsage: number }> = [];
-
-      // Simulate memory measurements every 5 minutes
-      for (let i = 0; i <= testDuration; i += 300) {
-        const config: LoadTestConfig = {
-          users: 50,
-          duration: 60,
-          rampUp: 10,
-          endpoint: '/api/v1/temporal/connections',
-          method: 'GET',
-          expectedResponseTime: 200,
-          expectedThroughput: 50,
-          maxErrorRate: 1,
-        };
-
-        await loadTestRunner.runLoadTest(config);
-
-        // Simulate memory measurement (in MB)
-        const simulatedMemoryUsage = 100 + Math.random() * 50 + (i / testDuration) * 20;
-        measurements.push({ time: i, memoryUsage: simulatedMemoryUsage });
-      }
-
-      // Check for memory leaks (memory growth over time)
-      const initialMemory = measurements[0].memoryUsage;
-      const finalMemory = measurements[measurements.length - 1].memoryUsage;
-      const memoryGrowth = finalMemory - initialMemory;
-
-      // Memory growth should be less than 50MB over 1 hour
-      expect(memoryGrowth).toBeLessThan(50);
-
-      console.log('Memory Leak Detection:', {
-        'Initial Memory': `${initialMemory.toFixed(2)} MB`,
-        'Final Memory': `${finalMemory.toFixed(2)} MB`,
-        'Memory Growth': `${memoryGrowth.toFixed(2)} MB`,
-        'Growth Rate': `${(memoryGrowth / (testDuration / 3600)).toFixed(2)} MB/hour`,
-      });
-    });
-  });
-
-  describe('API Rate Limiting Performance', () => {
-    test('should handle rate limit enforcement efficiently', async () => {
-      const config: LoadTestConfig = {
-        users: 200,
-        duration: 60,
-        rampUp: 10,
-        endpoint: '/api/v1/keys',
-        method: 'POST',
-        payload: {
-          name: 'Rate Limit Test Key',
-          permissions: ['read:metrics'],
+    test('should handle Excel formula validation at scale', async () => {
+      // Test with the validated Excel cases
+      const excelTestCases = [
+        {
+          name: 'Paul Sakry Case',
+          squareFootage: 2800,
+          laborHours: 28,
+          materialType: 'STANDARD',
+          complexity: 'MODERATE',
         },
-        expectedResponseTime: 200,
-        expectedThroughput: 50, // Lower due to rate limiting
-        maxErrorRate: 70, // High error rate expected due to 429 responses
-      };
+        {
+          name: 'Delores Huss Case',
+          squareFootage: 3200,
+          laborHours: 35,
+          materialType: 'PREMIUM',
+          complexity: 'COMPLEX',
+        },
+        {
+          name: 'Grant Norell Case',
+          squareFootage: 1800,
+          laborHours: 22,
+          materialType: 'STANDARD',
+          complexity: 'SIMPLE',
+        },
+      ];
 
-      const metrics = await loadTestRunner.runLoadTest(config);
+      const batchSize = 50; // Process in batches to avoid overwhelming
+      const batches = Math.ceil(excelTestCases.length * 100 / batchSize);
 
-      // Rate limiting should not significantly impact response times for allowed requests
-      expect(metrics.responseTime).toBeLessThan(config.expectedResponseTime);
+      for (let batch = 0; batch < batches; batch++) {
+        const batchStart = performance.now();
+        
+        const batchPromises = Array.from({ length: batchSize }, async (_, i) => {
+          const testCase = excelTestCases[i % excelTestCases.length];
+          
+          return axios.post(`${baseURL}/api/v1/pricing/calculate`, testCase, {
+            headers: { 'Authorization': `Bearer ${process.env.TEST_AUTH_TOKEN}` },
+          });
+        });
 
-      console.log('Rate Limiting Performance:', {
-        'Avg Response Time': `${metrics.responseTime.toFixed(2)}ms`,
-        'Throughput': `${metrics.throughput.toFixed(2)} req/s`,
-        'Error Rate (429s)': `${metrics.errorRate.toFixed(2)}%`,
-      });
-    });
-
-    test('should maintain rate limit accuracy under load', async () => {
-      // Test that rate limiting remains accurate even under high load
-      const config: LoadTestConfig = {
-        users: 500,
-        duration: 120,
-        rampUp: 20,
-        endpoint: '/api/v1/monitoring/metrics',
-        method: 'POST',
-        payload: ProductionTestFactory.createMonitoringMetric(),
-        expectedResponseTime: 500,
-        expectedThroughput: 100,
-        maxErrorRate: 80,
-      };
-
-      const metrics = await loadTestRunner.runLoadTest(config);
-
-      // Even under load, rate limiting should be enforced
-      expect(metrics.errorRate).toBeGreaterThan(50); // Should see significant rate limiting
-      expect(metrics.responseTime).toBeLessThan(config.expectedResponseTime);
-    });
-  });
-
-  describe('Database Performance Under Load', () => {
-    test('should handle concurrent database operations', async () => {
-      const readConfig: LoadTestConfig = {
-        users: 100,
-        duration: 60,
-        rampUp: 10,
-        endpoint: '/api/v1/temporal/connections',
-        method: 'GET',
-        expectedResponseTime: 200,
-        expectedThroughput: 100,
-        maxErrorRate: 1,
-      };
-
-      const writeConfig: LoadTestConfig = {
-        users: 50,
-        duration: 60,
-        rampUp: 10,
-        endpoint: '/api/v1/temporal/connections',
-        method: 'POST',
-        payload: ProductionTestFactory.createTemporalConnection(),
-        expectedResponseTime: 500,
-        expectedThroughput: 25,
-        maxErrorRate: 5,
-      };
-
-      // Run concurrent read and write operations
-      const [readMetrics, writeMetrics] = await Promise.all([
-        loadTestRunner.runLoadTest(readConfig),
-        loadTestRunner.runLoadTest(writeConfig),
-      ]);
-
-      expect(readMetrics.responseTime).toBeLessThan(readConfig.expectedResponseTime);
-      expect(writeMetrics.responseTime).toBeLessThan(writeConfig.expectedResponseTime);
-      expect(readMetrics.errorRate).toBeLessThan(readConfig.maxErrorRate);
-      expect(writeMetrics.errorRate).toBeLessThan(writeConfig.maxErrorRate);
-
-      console.log('Concurrent Database Operations:', {
-        'Read Response Time': `${readMetrics.responseTime.toFixed(2)}ms`,
-        'Write Response Time': `${writeMetrics.responseTime.toFixed(2)}ms`,
-        'Read Throughput': `${readMetrics.throughput.toFixed(2)} req/s`,
-        'Write Throughput': `${writeMetrics.throughput.toFixed(2)} req/s`,
-      });
-    });
-
-    test('should handle large result set queries efficiently', async () => {
-      const config: LoadTestConfig = {
-        users: 50,
-        duration: 120,
-        rampUp: 15,
-        endpoint: '/api/v1/security/vulnerabilities?limit=1000&includeFixed=true',
-        method: 'GET',
-        expectedResponseTime: 1000,
-        expectedThroughput: 20,
-        maxErrorRate: 2,
-      };
-
-      const metrics = await loadTestRunner.runLoadTest(config);
-
-      expect(metrics.responseTime).toBeLessThan(config.expectedResponseTime);
-      expect(metrics.throughput).toBeGreaterThan(config.expectedThroughput);
-      expect(metrics.errorRate).toBeLessThan(config.maxErrorRate);
+        const results = await Promise.all(batchPromises);
+        const batchTime = performance.now() - batchStart;
+        
+        // Verify all calculations completed successfully
+        const successCount = results.filter(r => r.status === 200).length;
+        expect(successCount).toBe(batchSize);
+        
+        // Verify performance
+        const avgTimePerCalculation = batchTime / batchSize;
+        expect(avgTimePerCalculation).toBeLessThan(200); // Under 200ms average per calculation
+        
+        console.log(`Batch ${batch + 1}: ${batchTime.toFixed(2)}ms total, ${avgTimePerCalculation.toFixed(2)}ms per calculation`);
+      }
     });
   });
 
-  describe('Circuit Breaker Performance', () => {
-    test('should handle circuit breaker state changes efficiently', async () => {
-      const config: LoadTestConfig = {
-        users: 100,
-        duration: 180,
-        rampUp: 20,
-        endpoint: '/api/v1/circuit-breakers/test-breaker/test',
-        method: 'POST',
-        payload: { requestCount: 5 },
-        expectedResponseTime: 300,
-        expectedThroughput: 50,
-        maxErrorRate: 30, // Some failures expected to trigger circuit breaker
-      };
+  describe('Database Query Performance', () => {
+    test('should handle complex estimate queries efficiently', async () => {
+      const queryTests = [
+        {
+          name: 'Paginated estimates with filters',
+          endpoint: '/api/v1/estimates?status=SENT&limit=50&offset=0',
+          maxTime: 200,
+        },
+        {
+          name: 'Customer search with fuzzy matching',
+          endpoint: '/api/v1/customers/search?q=john&limit=20',
+          maxTime: 300,
+        },
+        {
+          name: 'Project analytics dashboard',
+          endpoint: '/api/v1/analytics/projects?timeframe=30d',
+          maxTime: 500,
+        },
+        {
+          name: 'Pricing trends report',
+          endpoint: '/api/v1/reports/pricing-trends?months=6',
+          maxTime: 800,
+        },
+      ];
 
-      const metrics = await loadTestRunner.runLoadTest(config);
+      for (const test of queryTests) {
+        const iterations = 50;
+        const times: number[] = [];
 
-      expect(metrics.responseTime).toBeLessThan(config.expectedResponseTime);
-      expect(metrics.errorRate).toBeLessThan(config.maxErrorRate);
+        for (let i = 0; i < iterations; i++) {
+          const startTime = performance.now();
+          
+          await axios.get(`${baseURL}${test.endpoint}`, {
+            headers: { 'Authorization': `Bearer ${process.env.TEST_AUTH_TOKEN}` },
+          });
+          
+          times.push(performance.now() - startTime);
+        }
 
-      console.log('Circuit Breaker Performance:', {
-        'Response Time': `${metrics.responseTime.toFixed(2)}ms`,
-        'Throughput': `${metrics.throughput.toFixed(2)} req/s`,
-        'Error Rate': `${metrics.errorRate.toFixed(2)}%`,
-      });
+        const avgTime = times.reduce((sum, time) => sum + time, 0) / times.length;
+        const maxTime = Math.max(...times);
+        const p95Time = times.sort((a, b) => a - b)[Math.floor(times.length * 0.95)];
+
+        console.log(`${test.name}: avg=${avgTime.toFixed(2)}ms, max=${maxTime.toFixed(2)}ms, p95=${p95Time.toFixed(2)}ms`);
+
+        expect(avgTime).toBeLessThan(test.maxTime);
+        expect(p95Time).toBeLessThan(test.maxTime * 1.5);
+      }
     });
   });
 
-  describe('Security Scanning Performance', () => {
-    test('should handle concurrent security scans', async () => {
-      const config: LoadTestConfig = {
-        users: 10, // Lower concurrency for resource-intensive operations
-        duration: 300,
-        rampUp: 30,
-        endpoint: '/api/v1/security/scans',
-        method: 'POST',
-        payload: ProductionTestFactory.createSecurityScan(),
-        expectedResponseTime: 2000,
-        expectedThroughput: 5,
-        maxErrorRate: 10,
-      };
+  describe('File Upload Performance', () => {
+    test('should handle multiple photo uploads efficiently', async () => {
+      const photoSizes = [
+        { name: 'Small (1MB)', size: 1024 * 1024 },
+        { name: 'Medium (5MB)', size: 5 * 1024 * 1024 },
+        { name: 'Large (10MB)', size: 10 * 1024 * 1024 },
+      ];
 
-      const metrics = await loadTestRunner.runLoadTest(config);
+      for (const photoSize of photoSizes) {
+        const concurrentUploads = 10;
+        const mockPhotoData = Buffer.alloc(photoSize.size, 'test-photo-data');
 
-      expect(metrics.responseTime).toBeLessThan(config.expectedResponseTime);
-      expect(metrics.throughput).toBeGreaterThan(config.expectedThroughput);
-      expect(metrics.errorRate).toBeLessThan(config.maxErrorRate);
+        const uploadPromises = Array.from({ length: concurrentUploads }, async (_, i) => {
+          const startTime = performance.now();
+          const formData = new FormData();
+          
+          formData.append('photo', new Blob([mockPhotoData]), `test-photo-${i}.jpg`);
+          formData.append('estimateId', `estimate${i}`);
+          formData.append('roomId', 'kitchen');
+          formData.append('wwTag', `WW15-${String(i + 1).padStart(3, '0')}`);
+
+          try {
+            const response = await axios.post(`${baseURL}/api/v1/photos/upload`, formData, {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+                'Authorization': `Bearer ${process.env.TEST_AUTH_TOKEN}`,
+              },
+              timeout: 30000, // 30 second timeout for uploads
+            });
+
+            return {
+              success: true,
+              duration: performance.now() - startTime,
+              size: photoSize.size,
+              statusCode: response.status,
+            };
+          } catch (error: any) {
+            return {
+              success: false,
+              duration: performance.now() - startTime,
+              size: photoSize.size,
+              error: error.message,
+            };
+          }
+        });
+
+        const results = await Promise.all(uploadPromises);
+        const successful = results.filter(r => r.success);
+        const avgUploadTime = successful.reduce((sum, r) => sum + r.duration, 0) / successful.length;
+        const successRate = successful.length / results.length;
+
+        console.log(`${photoSize.name}: ${(successRate * 100).toFixed(1)}% success, avg ${(avgUploadTime / 1000).toFixed(2)}s`);
+
+        expect(successRate).toBeGreaterThan(0.9); // 90% success rate
+        
+        // Upload time expectations based on size
+        const expectedMaxTime = Math.max(5000, photoSize.size / (1024 * 1024) * 2000); // 2s per MB minimum
+        expect(avgUploadTime).toBeLessThan(expectedMaxTime);
+      }
     });
   });
 
-  describe('Performance Benchmarks', () => {
-    test('should meet SLA requirements', async () => {
-      const slaRequirements = {
-        p95ResponseTime: 500, // 95th percentile response time < 500ms
-        p99ResponseTime: 1000, // 99th percentile response time < 1000ms
-        availability: 99.9, // 99.9% availability
-        throughput: 1000, // 1000 requests per second
-      };
+  describe('Cache Performance', () => {
+    test('should demonstrate effective caching', async () => {
+      const cacheableEndpoints = [
+        '/api/v1/pricing/rates',
+        '/api/v1/materials/types',
+        '/api/v1/estimates/templates',
+      ];
 
-      const config: LoadTestConfig = {
-        users: 300,
-        duration: 300,
-        rampUp: 60,
-        endpoint: '/api/v1/temporal/connections',
-        method: 'GET',
-        expectedResponseTime: slaRequirements.p95ResponseTime,
-        expectedThroughput: slaRequirements.throughput,
-        maxErrorRate: 100 - slaRequirements.availability,
-      };
+      for (const endpoint of cacheableEndpoints) {
+        // Clear any existing cache
+        await axios.delete(`${baseURL}${endpoint}/cache`, {
+          headers: { 'Authorization': `Bearer ${process.env.TEST_AUTH_TOKEN}` },
+        }).catch(() => {}); // Ignore errors if cache clear not implemented
 
-      const metrics = await loadTestRunner.runLoadTest(config);
+        // First request (cache miss)
+        const firstStart = performance.now();
+        const firstResponse = await axios.get(`${baseURL}${endpoint}`, {
+          headers: { 'Authorization': `Bearer ${process.env.TEST_AUTH_TOKEN}` },
+        });
+        const firstTime = performance.now() - firstStart;
 
-      expect(metrics.responseTime).toBeLessThan(slaRequirements.p95ResponseTime);
-      expect(metrics.throughput).toBeGreaterThan(slaRequirements.throughput);
-      expect(metrics.errorRate).toBeLessThan(100 - slaRequirements.availability);
+        // Second request (should hit cache)
+        const secondStart = performance.now();
+        const secondResponse = await axios.get(`${baseURL}${endpoint}`, {
+          headers: { 'Authorization': `Bearer ${process.env.TEST_AUTH_TOKEN}` },
+        });
+        const secondTime = performance.now() - secondStart;
 
-      console.log('SLA Compliance Check:', {
-        'P95 Response Time': `${metrics.responseTime.toFixed(2)}ms (SLA: ${slaRequirements.p95ResponseTime}ms)`,
-        'Throughput': `${metrics.throughput.toFixed(2)} req/s (SLA: ${slaRequirements.throughput} req/s)`,
-        'Availability': `${(100 - metrics.errorRate).toFixed(3)}% (SLA: ${slaRequirements.availability}%)`,
-        'Error Rate': `${metrics.errorRate.toFixed(3)}%`,
-      });
+        expect(firstResponse.status).toBe(200);
+        expect(secondResponse.status).toBe(200);
+        expect(secondResponse.data).toEqual(firstResponse.data);
+
+        // Cached response should be significantly faster
+        const improvementRatio = firstTime / secondTime;
+        console.log(`${endpoint}: ${firstTime.toFixed(2)}ms → ${secondTime.toFixed(2)}ms (${improvementRatio.toFixed(1)}x faster)`);
+
+        expect(improvementRatio).toBeGreaterThan(2); // At least 2x faster
+      }
     });
+  });
 
-    test('should benchmark against previous performance baseline', async () => {
-      // This would typically load baseline metrics from a previous test run
-      const baseline = {
-        responseTime: 150,
-        throughput: 120,
-        errorRate: 0.5,
-      };
+  describe('Memory Usage', () => {
+    test('should maintain reasonable memory usage under load', async () => {
+      const initialMemory = process.memoryUsage();
+      console.log(`Initial memory: ${(initialMemory.heapUsed / 1024 / 1024).toFixed(2)}MB`);
 
-      const config: LoadTestConfig = {
-        users: 100,
-        duration: 120,
-        rampUp: 20,
-        endpoint: '/api/v1/temporal/connections',
-        method: 'GET',
-        expectedResponseTime: baseline.responseTime * 1.2, // Allow 20% degradation
-        expectedThroughput: baseline.throughput * 0.8, // Allow 20% degradation
-        maxErrorRate: baseline.errorRate * 2, // Allow 2x error rate
-      };
+      // Simulate heavy API usage
+      const operations = 500;
+      for (let i = 0; i < operations; i++) {
+        await axios.get(`${baseURL}/api/v1/estimates?limit=10&offset=${i}`, {
+          headers: { 'Authorization': `Bearer ${process.env.TEST_AUTH_TOKEN}` },
+        }).catch(() => {}); // Ignore individual failures
 
-      const metrics = await loadTestRunner.runLoadTest(config);
+        if (i % 50 === 0) {
+          const currentMemory = process.memoryUsage();
+          const heapGrowth = currentMemory.heapUsed - initialMemory.heapUsed;
+          
+          console.log(`Operation ${i}: Heap growth ${(heapGrowth / 1024 / 1024).toFixed(2)}MB`);
+          
+          // Memory growth should be reasonable
+          expect(heapGrowth).toBeLessThan(50 * 1024 * 1024); // Less than 50MB growth
+        }
+      }
 
-      // Performance should not degrade significantly from baseline
-      expect(metrics.responseTime).toBeLessThan(baseline.responseTime * 1.2);
-      expect(metrics.throughput).toBeGreaterThan(baseline.throughput * 0.8);
-      expect(metrics.errorRate).toBeLessThan(baseline.errorRate * 2);
+      // Force garbage collection if available
+      if (global.gc) {
+        global.gc();
+      }
 
-      const performanceComparison = {
-        'Response Time Change': `${((metrics.responseTime - baseline.responseTime) / baseline.responseTime * 100).toFixed(2)}%`,
-        'Throughput Change': `${((metrics.throughput - baseline.throughput) / baseline.throughput * 100).toFixed(2)}%`,
-        'Error Rate Change': `${((metrics.errorRate - baseline.errorRate) / baseline.errorRate * 100).toFixed(2)}%`,
-      };
-
-      console.log('Performance Regression Test:', performanceComparison);
+      const finalMemory = process.memoryUsage();
+      const totalGrowth = finalMemory.heapUsed - initialMemory.heapUsed;
+      
+      console.log(`Final memory growth: ${(totalGrowth / 1024 / 1024).toFixed(2)}MB`);
+      
+      // Total memory growth should be reasonable
+      expect(totalGrowth).toBeLessThan(100 * 1024 * 1024); // Less than 100MB total
     });
   });
 });

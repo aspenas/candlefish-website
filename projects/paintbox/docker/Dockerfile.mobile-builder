@@ -1,44 +1,59 @@
 # React Native mobile app builder for CI/CD
-FROM node:18-alpine AS base
+FROM node:20-bullseye AS base
 
-# Install system dependencies
-RUN apk add --no-cache \
+# Install system dependencies for React Native
+RUN apt-get update && apt-get install -y \
     bash \
     curl \
     git \
-    openjdk11 \
-    android-tools \
+    wget \
+    unzip \
     python3 \
-    make \
-    g++
+    python3-pip \
+    openjdk-11-jdk \
+    build-essential \
+    ruby \
+    ruby-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install Expo CLI
-RUN npm install -g @expo/cli@latest eas-cli
+# Install React Native CLI and tools
+RUN npm install -g @react-native-community/cli
+RUN gem install fastlane
 
-# Set up Android SDK (for Android builds)
+# Set up Android SDK
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
 ENV ANDROID_HOME=$ANDROID_SDK_ROOT
-ENV PATH=$PATH:$ANDROID_SDK_ROOT/tools:$ANDROID_SDK_ROOT/platform-tools
+ENV PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/tools
 
-# Create android SDK directory
-RUN mkdir -p $ANDROID_SDK_ROOT
+# Install Android SDK
+RUN mkdir -p $ANDROID_SDK_ROOT && \
+    wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O /tmp/cmdline-tools.zip && \
+    unzip /tmp/cmdline-tools.zip -d $ANDROID_SDK_ROOT && \
+    mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest && \
+    mv $ANDROID_SDK_ROOT/cmdline-tools/bin $ANDROID_SDK_ROOT/cmdline-tools/latest/ && \
+    mv $ANDROID_SDK_ROOT/cmdline-tools/lib $ANDROID_SDK_ROOT/cmdline-tools/latest/ && \
+    rm /tmp/cmdline-tools.zip
+
+# Accept Android licenses and install required packages
+RUN yes | sdkmanager --licenses && \
+    sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;25.1.8937393"
 
 # Set work directory
 WORKDIR /app
 
 # Copy package files
-COPY mobile/package.json mobile/package-lock.json* ./
+COPY mobile/PaintboxMobile/package.json mobile/PaintboxMobile/package-lock.json ./
 RUN npm ci
 
 # Copy mobile app source
-COPY mobile/ ./
+COPY mobile/PaintboxMobile/ ./
 
-# Build stage for Expo
-FROM base AS expo-builder
+# Android build stage
+FROM base AS android-builder
 
 # Set environment for builds
 ENV NODE_ENV=production
-ENV EXPO_NO_TELEMETRY=1
+ENV FLIPPER_DISABLE=1
 
 # Create builds directory
 RUN mkdir -p /builds
@@ -47,39 +62,44 @@ RUN mkdir -p /builds
 RUN echo '#!/bin/bash\n\
 set -e\n\
 echo "Building Android APK..."\n\
-expo build:android --type apk --non-interactive\n\
-echo "Build complete!"\n\
+cd android\n\
+./gradlew assembleRelease\n\
+cp app/build/outputs/apk/release/app-release.apk /builds/\n\
+echo "Android build complete!"\n\
 ' > /build-android.sh && chmod +x /build-android.sh
 
-# Build script for iOS
+# Build script for Android AAB (for Play Store)
 RUN echo '#!/bin/bash\n\
 set -e\n\
-echo "Building iOS IPA..."\n\
-expo build:ios --type archive --non-interactive\n\
-echo "Build complete!"\n\
+echo "Building Android AAB..."\n\
+cd android\n\
+./gradlew bundleRelease\n\
+cp app/build/outputs/bundle/release/app-release.aab /builds/\n\
+echo "Android AAB build complete!"\n\
+' > /build-android-aab.sh && chmod +x /build-android-aab.sh
+
+CMD ["/build-android.sh"]
+
+# iOS build stage (requires macOS runner in CI)
+FROM base AS ios-builder
+
+# Set environment for builds
+ENV NODE_ENV=production
+ENV RCT_NO_LAUNCH_PACKAGER=1
+
+# Create builds directory
+RUN mkdir -p /builds
+
+# Note: iOS builds require macOS and Xcode
+# This stage is for reference and would run on macOS runners
+RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "iOS builds require macOS environment"\n\
+echo "This should run on a macOS GitHub Actions runner"\n\
+echo "Commands: "\n\
+echo "  cd ios && pod install"\n\
+echo "  xcodebuild -workspace PaintboxMobile.xcworkspace -scheme PaintboxMobile -archivePath builds/PaintboxMobile.xcarchive archive"\n\
+echo "  xcodebuild -exportArchive -archivePath builds/PaintboxMobile.xcarchive -exportPath builds/ -exportOptionsPlist exportOptions.plist"\n\
 ' > /build-ios.sh && chmod +x /build-ios.sh
 
-# Default command
-CMD ["npm", "start"]
-
-# For EAS builds (recommended)
-FROM base AS eas-builder
-
-# Install EAS CLI
-RUN npm install -g eas-cli
-
-# EAS build script
-RUN echo '#!/bin/bash\n\
-set -e\n\
-echo "Running EAS build..."\n\
-if [ "$PLATFORM" = "android" ]; then\n\
-  eas build --platform android --non-interactive\n\
-elif [ "$PLATFORM" = "ios" ]; then\n\
-  eas build --platform ios --non-interactive\n\
-else\n\
-  eas build --platform all --non-interactive\n\
-fi\n\
-echo "EAS build complete!"\n\
-' > /eas-build.sh && chmod +x /eas-build.sh
-
-CMD ["./eas-build.sh"]
+CMD ["/build-ios.sh"]

@@ -1,54 +1,100 @@
-# Multi-stage build for Next.js frontend
-FROM node:18-alpine AS base
+# Multi-stage build for Next.js frontend with security optimizations
+FROM node:20-alpine AS base
+
+# Security: Run as non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
 # Install dependencies only when needed
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache \
+    libc6-compat \
+    curl \
+    && rm -rf /var/cache/apk/*
+
 WORKDIR /app
 
-# Install dependencies based on the preferred package manager
-COPY package.json package-lock.json* ./
-RUN npm ci --only=production
+# Copy package files and install dependencies
+COPY package.json package-lock.json ./
+RUN npm ci --only=production --frozen-lockfile && \
+    npm cache clean --force
 
 FROM base AS builder
 WORKDIR /app
+
+# Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
+
+# Copy source code
 COPY . .
 
-# Build the application
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
+# Build arguments for environment variables
+ARG NODE_ENV=production
+ARG DATABASE_URL
+ARG NEXTAUTH_URL
+ARG NEXTAUTH_SECRET
+ARG GRAPHQL_ENDPOINT
+ARG AWS_REGION
+ARG SENTRY_DSN
+ARG APOLLO_GRAPH_REF
 
-# Production image, copy all the files and run next
-FROM base AS runner
+# Set environment variables for build
+ENV NODE_ENV=$NODE_ENV
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV SKIP_STATIC_OPTIMIZATION=1
+ENV DATABASE_URL=$DATABASE_URL
+ENV NEXTAUTH_URL=$NEXTAUTH_URL
+ENV NEXTAUTH_SECRET=$NEXTAUTH_SECRET
+ENV GRAPHQL_ENDPOINT=$GRAPHQL_ENDPOINT
+ENV AWS_REGION=$AWS_REGION
+ENV SENTRY_DSN=$SENTRY_DSN
+ENV APOLLO_GRAPH_REF=$APOLLO_GRAPH_REF
+
+# Generate Prisma client and build
+RUN npx prisma generate && \
+    npm run build
+
+# Production image - minimal runtime
+FROM node:20-alpine AS runner
+
+# Install security updates
+RUN apk add --no-cache \
+    curl \
+    dumb-init \
+    && rm -rf /var/cache/apk/*
+
 WORKDIR /app
 
+# Create user and set permissions
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# Set production environment
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
+# Copy built application
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 
-# Set the correct permission for prerender cache
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
+# Copy Prisma files for runtime
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
-# Automatically leverage output traces to reduce image size
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Set correct permissions
+RUN chown -R nextjs:nodejs /app
 
 USER nextjs
 
 EXPOSE 3000
 
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+# Enhanced health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:3000/api/health || exit 1
 
+# Use dumb-init for proper signal handling
+ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "server.js"]

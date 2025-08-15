@@ -1,0 +1,403 @@
+# Default values for Paintbox platform
+# This is a YAML-formatted file.
+
+# Global configuration
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/name: paintbox
+  app.kubernetes.io/instance: paintbox
+  app.kubernetes.io/version: "1.0.0"
+  app.kubernetes.io/component: platform
+  app.kubernetes.io/part-of: paintbox
+  app.kubernetes.io/managed-by: helm
+
+# Environment configuration
+environment: production
+
+# Image configuration
+image:
+  registry: ghcr.io
+  repository: candlefish-ai/paintbox
+  pullPolicy: IfNotPresent
+  tag: ""
+
+# Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+
+# Security context
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+
+# Frontend configuration
+frontend:
+  enabled: true
+  replicaCount: 2
+  
+  image:
+    repository: frontend
+    tag: latest
+  
+  service:
+    type: ClusterIP
+    port: 3000
+    targetPort: 3000
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  
+  livenessProbe:
+    httpGet:
+      path: /api/health
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  
+  readinessProbe:
+    httpGet:
+      path: /api/health
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# Apollo Router (Federation Gateway)
+apolloRouter:
+  enabled: true
+  replicaCount: 2
+  
+  image:
+    repository: apollo-router
+    tag: latest
+  
+  service:
+    type: ClusterIP
+    port: 4000
+    targetPort: 4000
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+  
+  config:
+    apolloGraphRef: ""
+    apolloKey: ""
+    logLevel: "info"
+    telemetryDisabled: false
+
+# GraphQL Subgraphs
+subgraphs:
+  customers:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: subgraph-customers
+      tag: latest
+    service:
+      port: 4001
+    resources:
+      limits:
+        cpu: 300m
+        memory: 512Mi
+      requests:
+        cpu: 150m
+        memory: 256Mi
+  
+  projects:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: subgraph-projects
+      tag: latest
+    service:
+      port: 4002
+    resources:
+      limits:
+        cpu: 300m
+        memory: 512Mi
+      requests:
+        cpu: 150m
+        memory: 256Mi
+  
+  estimates:
+    enabled: true
+    replicaCount: 3
+    image:
+      repository: subgraph-estimates
+      tag: latest
+    service:
+      port: 4003
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 8
+      targetCPUUtilizationPercentage: 70
+  
+  integrations:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: subgraph-integrations
+      tag: latest
+    service:
+      port: 4004
+    resources:
+      limits:
+        cpu: 300m
+        memory: 512Mi
+      requests:
+        cpu: 150m
+        memory: 256Mi
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+    alb.ingress.kubernetes.io/healthcheck-path: /api/health
+    alb.ingress.kubernetes.io/load-balancer-name: paintbox-alb
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS-1-2-2017-01
+    alb.ingress.kubernetes.io/certificate-arn: ""
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+  
+  hosts:
+    - host: app.paintbox.com
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: frontend
+              port:
+                number: 3000
+        - path: /graphql
+          pathType: Prefix
+          backend:
+            service:
+              name: apollo-router
+              port:
+                number: 4000
+  
+  tls:
+    - secretName: paintbox-tls
+      hosts:
+        - app.paintbox.com
+
+# PostgreSQL configuration (external managed service)
+postgresql:
+  enabled: false
+  external:
+    enabled: true
+    host: ""
+    port: 5432
+    database: paintbox
+    username: paintbox
+    password: ""
+
+# Redis configuration (external managed service)
+redis:
+  enabled: false
+  external:
+    enabled: true
+    host: ""
+    port: 6379
+    password: ""
+
+# External secrets configuration (AWS Secrets Manager)
+externalSecrets:
+  enabled: true
+  secretStore:
+    name: aws-secrets-manager
+    kind: SecretStore
+    aws:
+      region: us-east-1
+      service: SecretsManager
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: paintbox-external-secrets
+
+# Secrets configuration
+secrets:
+  # Database credentials
+  database:
+    create: true
+    name: paintbox-database
+    data:
+      DATABASE_URL: ""
+  
+  # Redis credentials
+  redis:
+    create: true
+    name: paintbox-redis
+    data:
+      REDIS_URL: ""
+  
+  # Application secrets
+  app:
+    create: true
+    name: paintbox-app-secrets
+    data:
+      NEXTAUTH_SECRET: ""
+      JWT_SECRET: ""
+      ENCRYPTION_KEY: ""
+  
+  # Third-party integrations
+  integrations:
+    create: true
+    name: paintbox-integrations
+    data:
+      SALESFORCE_CLIENT_ID: ""
+      SALESFORCE_CLIENT_SECRET: ""
+      SALESFORCE_USERNAME: ""
+      SALESFORCE_PASSWORD: ""
+      SALESFORCE_SECURITY_TOKEN: ""
+      COMPANYCAM_API_TOKEN: ""
+      COMPANYCAM_WEBHOOK_SECRET: ""
+      ANTHROPIC_API_KEY: ""
+
+# Monitoring configuration
+monitoring:
+  enabled: true
+  
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
+  
+  grafana:
+    enabled: true
+    dashboards:
+      enabled: true
+    
+  jaeger:
+    enabled: true
+    agent:
+      enabled: true
+    collector:
+      enabled: true
+    query:
+      enabled: true
+
+# Logging configuration
+logging:
+  enabled: true
+  fluentd:
+    enabled: true
+    elasticsearch:
+      host: ""
+      port: 9200
+  
+  loki:
+    enabled: true
+    promtail:
+      enabled: true
+
+# Network policies
+networkPolicies:
+  enabled: true
+  ingress:
+    enabled: true
+  egress:
+    enabled: true
+
+# Pod disruption budgets
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Resource quotas
+resourceQuota:
+  enabled: true
+  hard:
+    requests.cpu: "10"
+    requests.memory: 20Gi
+    limits.cpu: "20"
+    limits.memory: 40Gi
+    persistentvolumeclaims: "10"
+
+# Backup configuration
+backup:
+  enabled: true
+  schedule: "0 2 * * *"
+  retention: "7d"
+  s3:
+    bucket: ""
+    region: us-east-1
+
+# Blue/Green deployment
+blueGreen:
+  enabled: false
+  router:
+    weight:
+      blue: 100
+      green: 0
+
+# Feature flags
+featureFlags:
+  enablePWA: true
+  enableOfflineMode: true
+  enableRealtimeSync: true
+  enableAdvancedAnalytics: true

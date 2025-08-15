@@ -1,0 +1,767 @@
+# Enhanced Estimates Schema for Kind Home Paint Integration
+# Incorporates comprehensive measurement organization, color placement, and pricing tiers
+
+directive @contact(
+  "Contact title of the subgraph owner"
+  name: String!
+  "URL where the subgraph's owner can be reached"
+  url: String
+  "Other relevant notes can be included here; supports markdown links"
+  description: String
+) on SCHEMA
+
+extend schema
+  @contact(
+    name: "Paintbox Enhanced Estimates Team"
+    url: "https://paintbox.candlefish.ai/support"
+    description: "Manages advanced paint estimation with Kind Home Paint methodology"
+  )
+  @link(
+    url: "https://specs.apollo.dev/federation/v2.3",
+    import: [
+      "@key", "@extends", "@shareable", "@inaccessible", "@override", "@external", "@provides", "@requires", "@tag",
+      "@composeDirective", "@interfaceObject"
+    ]
+  )
+
+type Query {
+  estimate(id: ID!): Estimate
+  estimates(filter: EstimateFilter, limit: Int = 10, offset: Int = 0): EstimateConnection!
+  
+  # Enhanced measurement queries
+  measurementsByElevation(estimateId: ID!, elevation: ElevationType!): [Measurement!]!
+  measurementSummary(estimateId: ID!): MeasurementSummary!
+  
+  # Pricing calculations
+  calculatePricing(input: PricingInput!): PricingCalculation!
+  calculatePricingTiers(input: ComprehensivePricingInput!): PricingTiers!
+  
+  # Room and color analysis
+  roomTypeAnalysis(estimateId: ID!): RoomTypeAnalysis!
+  colorPlacementOptions(roomType: RoomType!, measurements: [MeasurementInput!]!): [ColorPlacementOption!]!
+}
+
+type Mutation {
+  createEstimate(input: CreateEstimateInput!): Estimate!
+  updateEstimate(id: ID!, input: UpdateEstimateInput!): Estimate!
+  deleteEstimate(id: ID!): Boolean!
+  
+  # Enhanced measurement operations
+  addMeasurement(estimateId: ID!, input: MeasurementInput!): Measurement!
+  updateMeasurement(measurementId: ID!, input: UpdateMeasurementInput!): Measurement!
+  deleteMeasurement(measurementId: ID!): Boolean!
+  bulkUpdateMeasurements(estimateId: ID!, measurements: [BulkMeasurementInput!]!): BulkMeasurementResult!
+  
+  # Elevation and side management
+  excludeElevationFromPainting(estimateId: ID!, elevation: ElevationType!): Estimate!
+  includeElevationInPainting(estimateId: ID!, elevation: ElevationType!): Estimate!
+  
+  # Color and specification updates
+  updateColorPlacement(measurementId: ID!, input: ColorPlacementInput!): Measurement!
+  updateSidingSpecifications(measurementId: ID!, input: SidingSpecificationInput!): Measurement!
+  
+  # Pricing operations
+  selectPricingTier(estimateId: ID!, tier: PricingTier!): Estimate!
+  applyDiscount(estimateId: ID!, input: DiscountInput!): Estimate!
+  
+  # PDF and document generation
+  generatePDF(estimateId: ID!, options: PDFGenerationOptions): PDFResult!
+  generateMeasurementReport(estimateId: ID!): PDFResult!
+}
+
+type Subscription {
+  estimateUpdated(id: ID!): Estimate!
+  measurementUpdated(estimateId: ID!): MeasurementUpdate!
+  calculationProgress(estimateId: ID!): CalculationProgress!
+  
+  # Real-time collaboration
+  userJoinedEstimate(estimateId: ID!): EstimateCollaborator!
+  userLeftEstimate(estimateId: ID!): EstimateCollaborator!
+  measurementBeingEdited(estimateId: ID!): MeasurementEditingStatus!
+}
+
+# Core Estimate Entity with Federation
+type Estimate @key(fields: "id") {
+  id: ID!
+  customerId: ID!
+  projectId: ID
+  
+  # Basic Information
+  name: String!
+  description: String
+  status: EstimateStatus!
+  version: Int!
+  
+  # Measurement Organization
+  elevations: [Elevation!]!
+  measurements: [Measurement!]!
+  measurementSummary: MeasurementSummary!
+  excludedElevations: [ElevationType!]!
+  
+  # Pricing Tiers (Kind Home Paint methodology)
+  pricingTiers: PricingTiers!
+  selectedTier: PricingTier!
+  appliedDiscount: Discount
+  finalPricing: FinalPricing!
+  
+  # Room and Color Information
+  rooms: [RoomSpecification!]!
+  colorPlacements: [ColorPlacement!]!
+  
+  # Calculations and Totals
+  totalSquareFootage: Float!
+  laborHours: Float!
+  materialCost: Float!
+  estimatedVsActual: EstimatedVsActualAnalysis
+  
+  # Conditions and Access
+  conditions: ProjectConditions!
+  accessPoints: [AccessPoint!]!
+  
+  # Metadata
+  createdAt: String!
+  updatedAt: String!
+  createdBy: String!
+  lastModifiedBy: String!
+  
+  # Collaboration
+  currentCollaborators: [EstimateCollaborator!]!
+  editingHistory: [EstimateEdit!]!
+  
+  # Documents and exports
+  pdfUrl: String
+  measurementReportUrl: String
+  notes: String
+  
+  # Federation relationships
+  customer: Customer! @external
+  project: Project @external
+}
+
+# Elevation and Measurement Organization
+type Elevation {
+  id: ID!
+  estimateId: ID!
+  type: ElevationType!
+  name: String!
+  description: String
+  isIncludedInPainting: Boolean!
+  
+  # Measurements grouped by elevation
+  measurements: [Measurement!]!
+  totalSquareFootage: Float!
+  
+  # Stories/levels for multi-story buildings
+  stories: [StoryLevel!]!
+  
+  # Access and conditions specific to this elevation
+  accessDifficulty: AccessDifficulty!
+  specialConditions: [String!]!
+}
+
+type StoryLevel {
+  id: ID!
+  elevationId: ID!
+  level: Int! # 1st story, 2nd story, etc.
+  name: String
+  measurements: [Measurement!]!
+  squareFootage: Float!
+}
+
+type Measurement {
+  id: ID!
+  estimateId: ID!
+  elevationId: ID!
+  storyId: ID
+  
+  # Measurement specifics
+  type: MeasurementType!
+  name: String!
+  description: String
+  
+  # Dimensions
+  length: Float
+  width: Float
+  height: Float
+  squareFootage: Float!
+  
+  # Surface and material specifications
+  surfaceType: SurfaceType!
+  sidingType: SidingType
+  doorType: DoorType
+  
+  # Color and finish
+  colorPlacement: ColorPlacement
+  coatRequirements: CoatRequirements!
+  
+  # Conditions specific to this measurement
+  nailCondition: NailCondition!
+  edgeCondition: EdgeCondition!
+  faceCondition: FaceCondition!
+  
+  # Company Cam integration
+  associatedPhotos: [AssociatedPhoto!]!
+  wwTags: [WWTag!]!
+  
+  # Labor and material calculations
+  laborHours: Float!
+  materialQuantity: Float!
+  difficulty: DifficultyLevel!
+  
+  # Metadata
+  createdAt: String!
+  updatedAt: String!
+  lastEditedBy: String!
+}
+
+# Measurement Summary and Analysis
+type MeasurementSummary {
+  estimateId: ID!
+  
+  # Totals by elevation
+  elevationTotals: [ElevationTotal!]!
+  
+  # Totals by measurement type
+  typeTotals: [MeasurementTypeTotal!]!
+  
+  # Overall totals
+  totalSquareFootage: Float!
+  totalLaborHours: Float!
+  totalMaterialCost: Float!
+  
+  # Breakdown by conditions
+  conditionBreakdown: ConditionBreakdown!
+  
+  # Access and complexity analysis
+  overallComplexity: ComplexityLevel!
+  accessAnalysis: AccessAnalysis!
+}
+
+type ElevationTotal {
+  elevation: ElevationType!
+  squareFootage: Float!
+  laborHours: Float!
+  materialCost: Float!
+  measurementCount: Int!
+}
+
+type MeasurementTypeTotal {
+  type: MeasurementType!
+  squareFootage: Float!
+  count: Int!
+  averageSize: Float!
+}
+
+# Pricing Tiers (Kind Home Paint Formula)
+type PricingTiers {
+  good: PricingTierDetail!
+  better: PricingTierDetail!
+  best: PricingTierDetail!
+  
+  # Comparison analysis
+  comparison: PricingComparison!
+}
+
+type PricingTierDetail {
+  tier: PricingTier!
+  
+  # Cost breakdown
+  laborCost: Float!
+  materialCost: Float!
+  subtotal: Float! # Labor + Material
+  
+  # Formula: (Labor + Material) / 0.45 + discount = price
+  basePrice: Float! # (Labor + Material) / 0.45
+  discountAmount: Float!
+  finalPrice: Float!
+  
+  # Margin analysis
+  marginPercentage: Float!
+  profitAmount: Float!
+  
+  # Product specifications
+  productSelection: ProductSelection!
+  warranty: WarrantyInfo!
+  
+  # Labor specifications
+  laborSpecifications: LaborSpecifications!
+}
+
+type FinalPricing {
+  selectedTier: PricingTier!
+  finalPrice: Float!
+  appliedDiscount: Discount
+  marginAnalysis: MarginAnalysis!
+  estimatedVsActual: EstimatedVsActualAnalysis
+}
+
+# Room Types and Color Management
+type RoomSpecification {
+  id: ID!
+  estimateId: ID!
+  type: RoomType!
+  name: String!
+  description: String
+  
+  # Measurements in this room
+  measurements: [Measurement!]!
+  squareFootage: Float!
+  
+  # Color specifications
+  colorScheme: ColorScheme!
+  specialRequirements: [String!]!
+}
+
+type ColorPlacement {
+  id: ID!
+  measurementId: ID!
+  
+  # Color specifications
+  primaryColor: ColorSpecification!
+  accentColor: ColorSpecification
+  trimColor: ColorSpecification
+  
+  # Application details
+  coats: Int!
+  primerRequired: Boolean!
+  specialTechnique: String
+  
+  # Finish specifications
+  finish: FinishType!
+  sheen: SheenLevel!
+}
+
+type ColorSpecification {
+  name: String!
+  brand: String!
+  productCode: String!
+  rgb: String
+  hex: String
+  finish: FinishType!
+}
+
+# Company Cam Integration (WW Tags)
+type AssociatedPhoto {
+  id: ID!
+  measurementId: ID!
+  
+  # Company Cam details
+  companyCamId: String!
+  url: String!
+  thumbnailUrl: String
+  
+  # Association details
+  wwTags: [WWTag!]!
+  description: String
+  capturedAt: String!
+  
+  # Photo analysis
+  analysisResults: PhotoAnalysis
+}
+
+type WWTag {
+  id: ID!
+  tag: WWTagType! # WW1-WW30
+  description: String!
+  category: WWTagCategory!
+  measurements: [Measurement!]!
+}
+
+# Conditions and Access
+type ProjectConditions {
+  estimateId: ID!
+  
+  # Nail conditions across all measurements
+  nailConditions: [NailConditionSummary!]!
+  
+  # Edge conditions
+  edgeConditions: [EdgeConditionSummary!]!
+  
+  # Face conditions
+  faceConditions: [FaceConditionSummary!]!
+  
+  # Overall condition assessment
+  overallCondition: OverallCondition!
+  additionalConsiderations: [String!]!
+}
+
+type AccessPoint {
+  id: ID!
+  estimateId: ID!
+  elevation: ElevationType!
+  type: AccessType!
+  description: String!
+  difficulty: AccessDifficulty!
+  equipmentRequired: [EquipmentType!]!
+  safetyConsiderations: [String!]!
+}
+
+# Real-time Collaboration
+type EstimateCollaborator {
+  userId: ID!
+  userName: String!
+  role: UserRole!
+  joinedAt: String!
+  currentlyEditing: [String!]! # Array of measurement IDs
+  lastActivity: String!
+}
+
+type MeasurementEditingStatus {
+  measurementId: ID!
+  userId: ID!
+  userName: String!
+  editingField: String
+  lockedAt: String!
+}
+
+# Connection Types
+type EstimateConnection {
+  edges: [EstimateEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type EstimateEdge {
+  node: Estimate!
+  cursor: String!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+# Input Types
+input CreateEstimateInput {
+  customerId: ID!
+  projectId: ID
+  name: String!
+  description: String
+  initialMeasurements: [MeasurementInput!]
+  rooms: [RoomSpecificationInput!]
+  notes: String
+}
+
+input UpdateEstimateInput {
+  name: String
+  description: String
+  status: EstimateStatus
+  selectedTier: PricingTier
+  notes: String
+  excludedElevations: [ElevationType!]
+}
+
+input MeasurementInput {
+  type: MeasurementType!
+  name: String!
+  elevation: ElevationType!
+  story: Int
+  
+  # Dimensions
+  length: Float!
+  width: Float
+  height: Float
+  
+  # Specifications
+  surfaceType: SurfaceType!
+  sidingType: SidingType
+  doorType: DoorType
+  
+  # Conditions
+  nailCondition: NailCondition!
+  edgeCondition: EdgeCondition!
+  faceCondition: FaceCondition!
+  
+  # Color and finish
+  colorPlacement: ColorPlacementInput
+  
+  # Company Cam integration
+  wwTags: [WWTagType!]
+  photoIds: [ID!]
+  
+  description: String
+}
+
+input ColorPlacementInput {
+  primaryColor: ColorSpecificationInput!
+  accentColor: ColorSpecificationInput
+  trimColor: ColorSpecificationInput
+  coats: Int!
+  primerRequired: Boolean!
+  finish: FinishType!
+  sheen: SheenLevel!
+}
+
+input ComprehensivePricingInput {
+  estimateId: ID!
+  laborRatePerHour: Float!
+  materialMarkup: Float!
+  overheadPercentage: Float!
+  desiredMarginPercentage: Float!
+  
+  # Product selections for each tier
+  goodTierProducts: ProductSelectionInput!
+  betterTierProducts: ProductSelectionInput!
+  bestTierProducts: ProductSelectionInput!
+}
+
+input DiscountInput {
+  type: DiscountType!
+  value: Float!
+  reason: String!
+  expiresAt: String
+}
+
+# Enums
+enum EstimateStatus {
+  DRAFT
+  IN_PROGRESS
+  MEASURING
+  CALCULATING
+  REVIEW
+  CUSTOMER_REVIEW
+  SENT
+  ACCEPTED
+  REJECTED
+  REVISION_REQUESTED
+  EXPIRED
+  ARCHIVED
+}
+
+enum ElevationType {
+  FRONT
+  REAR  
+  LEFT
+  RIGHT
+  DETACHED_GARAGE
+  ATTACHED_GARAGE
+  DECK
+  PORCH
+  SHED
+  FENCE
+}
+
+enum MeasurementType {
+  # Siding types
+  SIDING
+  TRIM
+  FASCIA
+  SOFFIT
+  
+  # Doors
+  GARAGE_DOOR
+  ACCESS_DOOR
+  FRONT_DOOR
+  SLIDING_DOOR
+  
+  # Windows
+  WINDOW
+  WINDOW_TRIM
+  SHUTTERS
+  
+  # Railings and details
+  RAILINGS
+  BALUSTERS
+  HANDRAILS
+  
+  # Specialty items
+  COLUMNS
+  BEAMS
+  LATTICE
+  VENTS
+  GUTTERS
+}
+
+enum RoomType {
+  LIVING_ROOM
+  BEDROOM
+  BATHROOM
+  FAMILY_ROOM
+  KITCHEN
+  DINING_ROOM
+  HALLWAY
+  MASTER_BEDROOM
+  ENTRY
+  BASEMENT
+  OFFICE
+  LAUNDRY_ROOM
+  CLOSET
+  PANTRY
+  MUDROOM
+  SUNROOM
+  BONUS_ROOM
+}
+
+enum SidingType {
+  VINYL
+  WOOD
+  FIBER_CEMENT
+  ALUMINUM
+  BRICK
+  STONE
+  STUCCO
+  LOG
+  COMPOSITE
+}
+
+enum DoorType {
+  GARAGE
+  ACCESS
+  FRONT
+  SLIDING_PATIO
+  FRENCH
+  STORM
+  SCREEN
+}
+
+enum SurfaceType {
+  SMOOTH
+  TEXTURED
+  ROUGH
+  PREVIOUSLY_PAINTED
+  BARE_WOOD
+  METAL
+  COMPOSITE
+  MASONRY
+}
+
+enum PricingTier {
+  GOOD
+  BETTER
+  BEST
+}
+
+enum WWTagType {
+  WW1 WW2 WW3 WW4 WW5 WW6 WW7 WW8 WW9 WW10
+  WW11 WW12 WW13 WW14 WW15 WW16 WW17 WW18 WW19 WW20
+  WW21 WW22 WW23 WW24 WW25 WW26 WW27 WW28 WW29 WW30
+}
+
+enum WWTagCategory {
+  SIDING
+  TRIM
+  DOORS
+  WINDOWS
+  RAILINGS
+  SHUTTERS
+  SPECIALTY
+  REPAIRS
+  PREPARATION
+  CLEANUP
+}
+
+enum NailCondition {
+  GOOD
+  LOOSE
+  MISSING
+  RUSTY
+  POPPED
+  REQUIRES_ATTENTION
+}
+
+enum EdgeCondition {
+  CLEAN
+  ROUGH
+  DAMAGED
+  NEEDS_CAULKING
+  REQUIRES_REPAIR
+}
+
+enum FaceCondition {
+  SMOOTH
+  TEXTURED
+  WEATHERED
+  DAMAGED
+  NEEDS_PREPARATION
+}
+
+enum AccessDifficulty {
+  EASY
+  MODERATE
+  DIFFICULT
+  EXTREME
+  REQUIRES_SPECIAL_EQUIPMENT
+}
+
+enum ComplexityLevel {
+  SIMPLE
+  MODERATE
+  COMPLEX
+  HIGHLY_COMPLEX
+}
+
+enum FinishType {
+  FLAT
+  EGGSHELL
+  SATIN
+  SEMI_GLOSS
+  GLOSS
+  SPECIALTY
+}
+
+enum SheenLevel {
+  MATTE
+  LOW
+  MEDIUM
+  HIGH
+  CUSTOM
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+  SENIOR
+  MILITARY
+  REPEAT_CUSTOMER
+  PROMOTIONAL
+  VOLUME
+}
+
+# Additional types for completeness
+scalar JSON
+scalar Upload
+
+# External federation types
+type Customer @key(fields: "id") @extends {
+  id: ID! @external
+}
+
+type Project @key(fields: "id") @extends {
+  id: ID! @external
+}
+
+# Supporting types (abbreviated for space)
+type ProductSelection { tier: PricingTier! }
+type WarrantyInfo { years: Int! }
+type LaborSpecifications { hours: Float! }
+type MarginAnalysis { percentage: Float! }
+type EstimatedVsActualAnalysis { variance: Float! }
+type ColorScheme { primary: String! }
+type CoatRequirements { primer: Int! finish: Int! }
+type PhotoAnalysis { confidence: Float! }
+type ConditionBreakdown { good: Int! needsAttention: Int! }
+type AccessAnalysis { difficulty: AccessDifficulty! }
+type PricingComparison { bestValue: PricingTier! }
+type OverallCondition { rating: String! }
+type NailConditionSummary { condition: NailCondition! count: Int! }
+type EdgeConditionSummary { condition: EdgeCondition! count: Int! }
+type FaceConditionSummary { condition: FaceCondition! count: Int! }
+type EstimateEdit { timestamp: String! user: String! changes: String! }
+type PDFResult { success: Boolean! url: String error: String }
+type PDFGenerationOptions { includePhotos: Boolean! }
+type CalculationProgress { stage: String! progress: Float! completed: Boolean! }
+type MeasurementUpdate { measurementId: ID! change: String! user: String! }
+type BulkMeasurementResult { updated: Int! failed: Int! }
+type BulkMeasurementInput { id: ID! input: UpdateMeasurementInput! }
+type UpdateMeasurementInput { name: String length: Float width: Float height: Float }
+type RoomSpecificationInput { type: RoomType! name: String! }
+type ColorSpecificationInput { name: String! brand: String! }
+type ProductSelectionInput { paint: String! primer: String! }
+type PricingInput { squareFootage: Float! laborHours: Float! }
+type EstimateFilter { customerId: ID projectId: ID status: EstimateStatus }
+type AccessType { LADDER SCAFFOLDING LIFT }
+type EquipmentType { LADDER SCAFFOLDING LIFT PRESSURE_WASHER }
+type UserRole { ESTIMATOR MANAGER VIEWER }
+type Discount { type: DiscountType! value: Float! }

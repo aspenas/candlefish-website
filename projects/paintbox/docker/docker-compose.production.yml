@@ -1,0 +1,361 @@
+version: '3.8'
+
+# Production overrides for enhanced security, performance, and monitoring
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: paintbox_production
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+      - ./database/init-production.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./database/performance-indexes.sql:/docker-entrypoint-initdb.d/indexes.sql:ro
+    command: >
+      postgres
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=4MB
+      -c min_wal_size=1GB
+      -c max_wal_size=4GB
+      -c log_min_duration_statement=1000
+      -c log_checkpoints=on
+      -c log_connections=on
+      -c log_disconnections=on
+      -c log_lock_waits=on
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+
+  redis:
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --tcp-keepalive 300
+      --timeout 300
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.2'
+
+  apollo-router:
+    environment:
+      APOLLO_GRAPH_REF: ${APOLLO_GRAPH_REF}
+      APOLLO_KEY: ${APOLLO_KEY}
+      APOLLO_ROUTER_LOG_LEVEL: info
+      APOLLO_ROUTER_SUPERGRAPH_POLLING_INTERVAL: 30s
+      APOLLO_TELEMETRY_DISABLED: false
+      RUST_LOG: apollo_router=info,tower_http=debug
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.2'
+      replicas: 2
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  subgraph-customers:
+    environment:
+      NODE_OPTIONS: "--max-old-space-size=512"
+      APOLLO_GRAPH_REF: ${APOLLO_GRAPH_REF}
+      APOLLO_KEY: ${APOLLO_KEY}
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.2'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4001/.well-known/apollo/server-health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  subgraph-projects:
+    environment:
+      NODE_OPTIONS: "--max-old-space-size=512"
+      APOLLO_GRAPH_REF: ${APOLLO_GRAPH_REF}
+      APOLLO_KEY: ${APOLLO_KEY}
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.2'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4002/.well-known/apollo/server-health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  subgraph-estimates:
+    environment:
+      NODE_OPTIONS: "--max-old-space-size=1024"
+      APOLLO_GRAPH_REF: ${APOLLO_GRAPH_REF}
+      APOLLO_KEY: ${APOLLO_KEY}
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.8'
+        reservations:
+          memory: 512M
+          cpus: '0.4'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4003/.well-known/apollo/server-health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  subgraph-integrations:
+    environment:
+      NODE_OPTIONS: "--max-old-space-size=512"
+      APOLLO_GRAPH_REF: ${APOLLO_GRAPH_REF}
+      APOLLO_KEY: ${APOLLO_KEY}
+      # External API timeouts
+      SALESFORCE_TIMEOUT: 30000
+      COMPANYCAM_TIMEOUT: 30000
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.2'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4004/.well-known/apollo/server-health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  frontend:
+    environment:
+      NODE_ENV: production
+      NODE_OPTIONS: "--max-old-space-size=1024"
+      NEXT_TELEMETRY_DISABLED: 1
+      # Production URLs (external)
+      NEXT_PUBLIC_GRAPHQL_URL: ${EXTERNAL_GRAPHQL_URL}
+      NEXT_PUBLIC_GRAPHQL_WS_URL: ${EXTERNAL_GRAPHQL_WS_URL}
+      # Analytics and monitoring
+      NEXT_PUBLIC_SENTRY_DSN: ${SENTRY_DSN}
+      NEXT_PUBLIC_GOOGLE_ANALYTICS_ID: ${GOOGLE_ANALYTICS_ID}
+      NEXT_PUBLIC_LOGROCKET_ID: ${LOGROCKET_ID}
+      # Feature flags
+      NEXT_PUBLIC_ENABLE_PWA: true
+      NEXT_PUBLIC_ENABLE_OFFLINE_MODE: true
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.3'
+      replicas: 2
+    volumes:
+      - ./logs/frontend:/app/logs
+
+  nginx:
+    volumes:
+      - ./nginx/production.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/cache:/var/cache/nginx
+      - ./logs/nginx:/var/log/nginx
+    environment:
+      - NGINX_WORKER_PROCESSES=auto
+      - NGINX_WORKER_CONNECTIONS=1024
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.3'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+
+  prometheus:
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    volumes:
+      - ./monitoring/prometheus/production.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data_prod:/prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '0.5'
+        reservations:
+          memory: 1G
+          cpus: '0.3'
+
+  grafana:
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER}
+      GF_SECURITY_DISABLE_GRAVATAR: true
+      GF_ANALYTICS_REPORTING_ENABLED: false
+      GF_ANALYTICS_CHECK_FOR_UPDATES: false
+      GF_SECURITY_COOKIE_SECURE: true
+      GF_SECURITY_COOKIE_SAMESITE: strict
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL}
+      GF_SMTP_ENABLED: true
+      GF_SMTP_HOST: ${SMTP_HOST}
+      GF_SMTP_FROM_ADDRESS: ${SMTP_FROM_ADDRESS}
+    volumes:
+      - grafana_data_prod:/var/lib/grafana
+      - ./monitoring/grafana/production-dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/production-datasources:/etc/grafana/provisioning/datasources:ro
+      - ./ssl/grafana:/etc/grafana/ssl:ro
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.3'
+        reservations:
+          memory: 256M
+          cpus: '0.1'
+
+  # Application Performance Monitoring with Jaeger
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: paintbox-jaeger
+    environment:
+      COLLECTOR_ZIPKIN_HOST_PORT: :9411
+      COLLECTOR_OTLP_ENABLED: true
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14268:14268"  # HTTP collector
+      - "14250:14250"  # gRPC collector
+    networks:
+      - paintbox-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.3'
+
+  # Log aggregation with Loki
+  loki:
+    image: grafana/loki:latest
+    container_name: paintbox-loki
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./monitoring/loki/config.yaml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+    networks:
+      - paintbox-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.3'
+
+  # Log shipping with Promtail
+  promtail:
+    image: grafana/promtail:latest
+    container_name: paintbox-promtail
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./monitoring/promtail/config.yml:/etc/promtail/config.yml:ro
+      - ./logs:/var/log/app:ro
+      - /var/log:/var/log/host:ro
+    networks:
+      - paintbox-network
+    depends_on:
+      - loki
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.1'
+
+  # Application security scanning
+  security-scanner:
+    image: owasp/zap2docker-stable
+    container_name: paintbox-security-scanner
+    command: zap-baseline.py -t http://nginx -J zap-report.json
+    volumes:
+      - ./security/reports:/zap/wrk:rw
+    networks:
+      - paintbox-network
+    depends_on:
+      - nginx
+    profiles:
+      - security-scan
+
+volumes:
+  postgres_data_prod:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_PATH}/postgres
+  prometheus_data_prod:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_PATH}/prometheus
+  grafana_data_prod:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_PATH}/grafana
+  loki_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_PATH}/loki

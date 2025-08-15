@@ -67,6 +67,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+        with:
           submodules: false
 
       - name: Setup Node.js
@@ -106,6 +109,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
         with:
           fetch-depth: 0
           submodules: false
@@ -208,6 +214,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+        with:
           submodules: false
 
       - name: Setup Node.js
@@ -254,6 +263,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
         with:
           submodules: false
 
@@ -358,6 +370,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+        with:
           submodules: false
 
       - name: Download build artifacts
@@ -460,6 +475,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+        with:
           submodules: false
 
       - name: Setup Node.js
@@ -523,6 +541,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+        with:
           submodules: false
 
       - name: Setup Node.js
@@ -563,6 +584,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
         with:
           submodules: false
 
@@ -652,6 +676,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+        with:
           submodules: false
 
       - name: Setup Node.js
@@ -692,6 +719,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
         with:
           submodules: false
 

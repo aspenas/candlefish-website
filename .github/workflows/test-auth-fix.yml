@@ -1,0 +1,47 @@
+name: Test Authentication Fix
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feat/paintbox-github-actions]
+
+jobs:
+  test-auth:
+    name: Test GitHub Actions Authentication
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Test repository access
+        run: |
+          echo "✅ Repository checkout successful"
+          echo "Current directory: $(pwd)"
+          echo "Git status:"
+          git status
+          echo "Repository size:"
+          du -sh .
+          echo "Recent commits:"
+          git log --oneline -5
+
+      - name: Test authentication
+        run: |
+          echo "🔍 Testing authentication..."
+          echo "Repository: ${{ github.repository }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Event: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "SHA: ${{ github.sha }}"
+          
+      - name: Success notification
+        run: |
+          echo "🎉 GitHub Actions authentication fix successful!"
+          echo "All workflows should now work properly with:"
+          echo "- Proper checkout@v4"
+          echo "- GitHub token authentication"
+          echo "- Full fetch depth"
