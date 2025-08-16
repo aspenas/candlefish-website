@@ -7,7 +7,7 @@
     "dev:next": "next dev --turbopack",
     "build": "NODE_OPTIONS='--max-old-space-size=16384 --max-semi-space-size=512' next build",
     "build:production": "NODE_OPTIONS='--max-old-space-size=32768 --max-semi-space-size=1024' SKIP_STATIC_OPTIMIZATION=1 DISABLE_ESLINT=1 DISABLE_TYPESCRIPT_CHECK=1 next build",
-    "build:deploy": "NODE_OPTIONS='--max-old-space-size=16384 --max-semi-space-size=512' SKIP_STATIC_OPTIMIZATION=1 DISABLE_ESLINT=1 DISABLE_TYPESCRIPT_CHECK=1 next build",
+    "build:deploy": "NODE_OPTIONS='--max-old-space-size=2048' SKIP_STATIC_OPTIMIZATION=1 DISABLE_ESLINT=1 DISABLE_TYPESCRIPT_CHECK=1 next build",
     "build:chunked": "NODE_OPTIONS='--max-old-space-size=32768 --max-semi-space-size=1024' NEXT_BUILD_SPLIT_CHUNKS=1 DISABLE_STATIC_OPTIMIZATION=1 next build",
     "build:dynamic": "NODE_OPTIONS='--max-old-space-size=32768 --max-semi-space-size=1024' DISABLE_STATIC_OPTIMIZATION=1 DISABLE_ESLINT=1 DISABLE_TYPESCRIPT_CHECK=1 next build",
     "export": "next export",
@@ -83,6 +83,7 @@
     "deploy:logs": "./scripts/render-deploy.sh logs"
   },
   "dependencies": {
+    "@candlefish/jwt-auth": "file:../../packages/jwt-auth",
     "@anthropic-ai/sdk": "^0.57.0",
     "@apollo/client": "^3.13.9",
     "@auth/prisma-adapter": "^2.7.4",

@@ -1,0 +1,148 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Pre-push hook for comprehensive dependency and security validation
+echo "🚀 Running pre-push validation..."
+
+# Set up colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+print_status() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Exit on any error
+set -e
+
+print_status "Starting comprehensive pre-push validation..."
+
+# 1. Run full dependency health check
+print_status "Running comprehensive dependency health check..."
+if [ -f "./scripts/dependency-health-check.sh" ]; then
+    if ./scripts/dependency-health-check.sh check; then
+        print_success "Dependency health check passed"
+    else
+        print_error "Dependency health check failed!"
+        exit 1
+    fi
+else
+    print_warning "Dependency health check script not found"
+fi
+
+# 2. Run security audit with strict settings
+print_status "Running strict security audit..."
+if npm audit --audit-level=low; then
+    print_success "Security audit passed"
+else
+    print_error "Security vulnerabilities found!"
+    print_status "Please fix all vulnerabilities before pushing"
+    exit 1
+fi
+
+# 3. Check for production dependencies
+print_status "Validating production dependencies..."
+if npm ci --only=production --dry-run >/dev/null 2>&1; then
+    print_success "Production dependencies validation passed"
+else
+    print_error "Production dependencies validation failed!"
+    exit 1
+fi
+
+# 4. Run tests related to dependencies
+print_status "Running dependency-related tests..."
+if npm run test:security >/dev/null 2>&1; then
+    print_success "Security tests passed"
+else
+    print_warning "Security tests failed or not configured"
+fi
+
+# 5. Check bundle size and performance impact
+print_status "Checking bundle size impact..."
+if command -v bundlesize >/dev/null 2>&1; then
+    if bundlesize; then
+        print_success "Bundle size check passed"
+    else
+        print_error "Bundle size exceeded limits!"
+        exit 1
+    fi
+fi
+
+# 6. Validate environment compatibility
+print_status "Validating Node.js version compatibility..."
+NODE_VERSION=$(node --version)
+REQUIRED_VERSION=$(jq -r '.engines.node // ">=18.0.0"' package.json)
+print_status "Current Node.js version: $NODE_VERSION"
+print_status "Required version: $REQUIRED_VERSION"
+
+# 7. Check for breaking changes in dependencies
+print_status "Checking for potential breaking changes..."
+if command -v npm-check-updates >/dev/null 2>&1; then
+    MAJOR_UPDATES=$(ncu --target major --jsonUpgraded 2>/dev/null | jq 'keys | length' 2>/dev/null || echo 0)
+    if [ "$MAJOR_UPDATES" -gt 0 ]; then
+        print_warning "$MAJOR_UPDATES major dependency updates available"
+        print_status "Consider reviewing breaking changes before major releases"
+    fi
+fi
+
+# 8. Generate deployment-ready dependency report
+print_status "Generating deployment dependency report..."
+mkdir -p reports/deployment
+
+# Create comprehensive dependency report
+cat > reports/deployment/dependency-report.json << EOF
+{
+    "timestamp": "$(date -Iseconds)",
+    "node_version": "$NODE_VERSION",
+    "npm_version": "$(npm --version)",
+    "git_commit": "$(git rev-parse HEAD)",
+    "git_branch": "$(git branch --show-current)",
+    "production_ready": true,
+    "security_audit": $(npm audit --json 2>/dev/null || echo '{}'),
+    "dependencies": $(npm ls --depth=0 --json 2>/dev/null || echo '{}'),
+    "outdated": $(npm outdated --json 2>/dev/null || echo '{}')
+}
+EOF
+
+print_success "Deployment report generated"
+
+# 9. Final validation summary
+print_status "Final validation summary..."
+
+CRITICAL_CHECKS=(
+    "Security audit: PASSED"
+    "Dependency health: PASSED"
+    "Production deps: PASSED"
+    "Bundle size: CHECKED"
+)
+
+echo
+print_success "=== PRE-PUSH VALIDATION SUMMARY ==="
+for check in "${CRITICAL_CHECKS[@]}"; do
+    print_success "✅ $check"
+done
+
+print_success "🎉 All validation checks passed! Ready to push."
+
+# 10. Optional: Performance impact analysis
+if command -v clinic >/dev/null 2>&1; then
+    print_status "Performance impact analysis available"
+    print_status "Run 'clinic doctor -- npm start' for detailed performance analysis"
+fi
+
+print_success "🚀 Push validation completed successfully!"

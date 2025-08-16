@@ -1,0 +1,623 @@
+{
+  "version": "1.0.0",
+  "name": "@candlefish-ai/monorepo",
+  "problems": [
+    "extraneous: @emnapi/core@1.4.5 /Users/patricksmith/candlefish-ai/node_modules/@emnapi/core",
+    "extraneous: @emnapi/runtime@1.4.5 /Users/patricksmith/candlefish-ai/node_modules/@emnapi/runtime",
+    "extraneous: @emnapi/wasi-threads@1.0.4 /Users/patricksmith/candlefish-ai/node_modules/@emnapi/wasi-threads",
+    "extraneous: @napi-rs/wasm-runtime@0.2.12 /Users/patricksmith/candlefish-ai/node_modules/@napi-rs/wasm-runtime",
+    "extraneous: @tybys/wasm-util@0.10.0 /Users/patricksmith/candlefish-ai/node_modules/@tybys/wasm-util",
+    "extraneous: jest-junit@16.0.0 /Users/patricksmith/candlefish-ai/node_modules/jest-junit",
+    "extraneous: xml@1.0.1 /Users/patricksmith/candlefish-ai/node_modules/xml"
+  ],
+  "dependencies": {
+    "@emnapi/core": {
+      "version": "1.4.5",
+      "resolved": "https://registry.npmjs.org/@emnapi/core/-/core-1.4.5.tgz",
+      "overridden": false,
+      "extraneous": true,
+      "problems": [
+        "extraneous: @emnapi/core@1.4.5 /Users/patricksmith/candlefish-ai/node_modules/@emnapi/core"
+      ]
+    },
+    "@emnapi/runtime": {
+      "version": "1.4.5",
+      "resolved": "https://registry.npmjs.org/@emnapi/runtime/-/runtime-1.4.5.tgz",
+      "overridden": false,
+      "extraneous": true,
+      "problems": [
+        "extraneous: @emnapi/runtime@1.4.5 /Users/patricksmith/candlefish-ai/node_modules/@emnapi/runtime"
+      ]
+    },
+    "@emnapi/wasi-threads": {
+      "version": "1.0.4",
+      "resolved": "https://registry.npmjs.org/@emnapi/wasi-threads/-/wasi-threads-1.0.4.tgz",
+      "overridden": false,
+      "extraneous": true,
+      "problems": [
+        "extraneous: @emnapi/wasi-threads@1.0.4 /Users/patricksmith/candlefish-ai/node_modules/@emnapi/wasi-threads"
+      ]
+    },
+    "@napi-rs/wasm-runtime": {
+      "version": "0.2.12",
+      "resolved": "https://registry.npmjs.org/@napi-rs/wasm-runtime/-/wasm-runtime-0.2.12.tgz",
+      "overridden": false,
+      "extraneous": true,
+      "problems": [
+        "extraneous: @napi-rs/wasm-runtime@0.2.12 /Users/patricksmith/candlefish-ai/node_modules/@napi-rs/wasm-runtime"
+      ]
+    },
+    "@tybys/wasm-util": {
+      "version": "0.10.0",
+      "resolved": "https://registry.npmjs.org/@tybys/wasm-util/-/wasm-util-0.10.0.tgz",
+      "overridden": false,
+      "extraneous": true,
+      "problems": [
+        "extraneous: @tybys/wasm-util@0.10.0 /Users/patricksmith/candlefish-ai/node_modules/@tybys/wasm-util"
+      ]
+    },
+    "jest-junit": {
+      "version": "16.0.0",
+      "overridden": false,
+      "extraneous": true,
+      "problems": [
+        "extraneous: jest-junit@16.0.0 /Users/patricksmith/candlefish-ai/node_modules/jest-junit"
+      ]
+    },
+    "paintbox-app": {
+      "version": "0.1.0",
+      "resolved": "file:../projects/paintbox",
+      "overridden": false,
+      "dependencies": {
+        "@anthropic-ai/sdk": {
+          "version": "0.57.0",
+          "resolved": "https://registry.npmjs.org/@anthropic-ai/sdk/-/sdk-0.57.0.tgz",
+          "overridden": false
+        },
+        "@apollo/client": {
+          "version": "3.13.9",
+          "resolved": "https://registry.npmjs.org/@apollo/client/-/client-3.13.9.tgz",
+          "overridden": false
+        },
+        "@auth/prisma-adapter": {
+          "version": "2.10.0",
+          "resolved": "https://registry.npmjs.org/@auth/prisma-adapter/-/prisma-adapter-2.10.0.tgz",
+          "overridden": false
+        },
+        "@aws-sdk/client-secrets-manager": {
+          "version": "3.859.0",
+          "resolved": "https://registry.npmjs.org/@aws-sdk/client-secrets-manager/-/client-secrets-manager-3.859.0.tgz",
+          "overridden": false
+        },
+        "@bull-board/express": {
+          "version": "6.12.0",
+          "resolved": "https://registry.npmjs.org/@bull-board/express/-/express-6.12.0.tgz",
+          "overridden": false
+        },
+        "@eslint/eslintrc": {
+          "version": "3.3.1",
+          "resolved": "https://registry.npmjs.org/@eslint/eslintrc/-/eslintrc-3.3.1.tgz",
+          "overridden": false
+        },
+        "@faker-js/faker": {
+          "version": "9.9.0",
+          "resolved": "https://registry.npmjs.org/@faker-js/faker/-/faker-9.9.0.tgz",
+          "overridden": false
+        },
+        "@heroicons/react": {
+          "version": "2.2.0",
+          "resolved": "https://registry.npmjs.org/@heroicons/react/-/react-2.2.0.tgz",
+          "overridden": false
+        },
+        "@infisical/sdk": {
+          "version": "4.0.4",
+          "resolved": "https://registry.npmjs.org/@infisical/sdk/-/sdk-4.0.4.tgz",
+          "overridden": false
+        },
+        "@opentelemetry/api": {
+          "version": "1.9.0",
+          "resolved": "https://registry.npmjs.org/@opentelemetry/api/-/api-1.9.0.tgz",
+          "overridden": false
+        },
+        "@opentelemetry/sdk-node": {
+          "version": "0.203.0",
+          "resolved": "https://registry.npmjs.org/@opentelemetry/sdk-node/-/sdk-node-0.203.0.tgz",
+          "overridden": false
+        },
+        "@playwright/test": {
+          "version": "1.54.2",
+          "resolved": "https://registry.npmjs.org/@playwright/test/-/test-1.54.2.tgz",
+          "overridden": false
+        },
+        "@prisma/client": {
+          "version": "6.13.0",
+          "resolved": "https://registry.npmjs.org/@prisma/client/-/client-6.13.0.tgz",
+          "overridden": false
+        },
+        "@radix-ui/react-dialog": {
+          "version": "1.1.14",
+          "resolved": "https://registry.npmjs.org/@radix-ui/react-dialog/-/react-dialog-1.1.14.tgz",
+          "overridden": false
+        },
+        "@radix-ui/react-popover": {
+          "version": "1.1.14",
+          "resolved": "https://registry.npmjs.org/@radix-ui/react-popover/-/react-popover-1.1.14.tgz",
+          "overridden": false
+        },
+        "@radix-ui/react-select": {
+          "version": "2.2.5",
+          "resolved": "https://registry.npmjs.org/@radix-ui/react-select/-/react-select-2.2.5.tgz",
+          "overridden": false
+        },
+        "@radix-ui/react-switch": {
+          "version": "1.2.5",
+          "resolved": "https://registry.npmjs.org/@radix-ui/react-switch/-/react-switch-1.2.5.tgz",
+          "overridden": false
+        },
+        "@radix-ui/react-tooltip": {
+          "version": "1.2.7",
+          "resolved": "https://registry.npmjs.org/@radix-ui/react-tooltip/-/react-tooltip-1.2.7.tgz",
+          "overridden": false
+        },
+        "@react-pdf/renderer": {
+          "version": "4.3.0",
+          "resolved": "https://registry.npmjs.org/@react-pdf/renderer/-/renderer-4.3.0.tgz",
+          "overridden": false
+        },
+        "@react-spring/web": {
+          "version": "10.0.1",
+          "resolved": "https://registry.npmjs.org/@react-spring/web/-/web-10.0.1.tgz",
+          "overridden": false
+        },
+        "@sendgrid/mail": {
+          "version": "8.1.5",
+          "resolved": "https://registry.npmjs.org/@sendgrid/mail/-/mail-8.1.5.tgz",
+          "overridden": false
+        },
+        "@sentry/nextjs": {
+          "version": "10.1.0",
+          "resolved": "https://registry.npmjs.org/@sentry/nextjs/-/nextjs-10.1.0.tgz",
+          "overridden": false
+        },
+        "@socket.io/redis-adapter": {
+          "version": "8.3.0",
+          "resolved": "https://registry.npmjs.org/@socket.io/redis-adapter/-/redis-adapter-8.3.0.tgz",
+          "overridden": false
+        },
+        "@tailwindcss/postcss": {
+          "version": "4.1.11",
+          "resolved": "https://registry.npmjs.org/@tailwindcss/postcss/-/postcss-4.1.11.tgz",
+          "overridden": false
+        },
+        "@testing-library/jest-dom": {
+          "version": "6.7.0",
+          "resolved": "https://registry.npmjs.org/@testing-library/jest-dom/-/jest-dom-6.7.0.tgz",
+          "overridden": false
+        },
+        "@testing-library/react": {
+          "version": "16.3.0",
+          "resolved": "https://registry.npmjs.org/@testing-library/react/-/react-16.3.0.tgz",
+          "overridden": false
+        },
+        "@testing-library/user-event": {
+          "version": "14.6.1",
+          "resolved": "https://registry.npmjs.org/@testing-library/user-event/-/user-event-14.6.1.tgz",
+          "overridden": false
+        },
+        "@types/bull": {
+          "version": "3.15.9",
+          "resolved": "https://registry.npmjs.org/@types/bull/-/bull-3.15.9.tgz",
+          "overridden": false
+        },
+        "@types/exceljs": {
+          "version": "0.5.3",
+          "resolved": "https://registry.npmjs.org/@types/exceljs/-/exceljs-0.5.3.tgz",
+          "overridden": false
+        },
+        "@types/jest-axe": {
+          "version": "3.5.9",
+          "resolved": "https://registry.npmjs.org/@types/jest-axe/-/jest-axe-3.5.9.tgz",
+          "overridden": false
+        },
+        "@types/jest": {
+          "version": "29.5.14",
+          "resolved": "https://registry.npmjs.org/@types/jest/-/jest-29.5.14.tgz",
+          "overridden": false
+        },
+        "@types/jsonwebtoken": {
+          "version": "9.0.10",
+          "resolved": "https://registry.npmjs.org/@types/jsonwebtoken/-/jsonwebtoken-9.0.10.tgz",
+          "overridden": false
+        },
+        "@types/lodash": {
+          "version": "4.17.20",
+          "resolved": "https://registry.npmjs.org/@types/lodash/-/lodash-4.17.20.tgz",
+          "overridden": false
+        },
+        "@types/node": {
+          "version": "20.19.9",
+          "resolved": "https://registry.npmjs.org/@types/node/-/node-20.19.9.tgz",
+          "overridden": false
+        },
+        "@types/nodemailer": {
+          "version": "6.4.17",
+          "resolved": "https://registry.npmjs.org/@types/nodemailer/-/nodemailer-6.4.17.tgz",
+          "overridden": false
+        },
+        "@types/qrcode": {
+          "version": "1.5.5",
+          "resolved": "https://registry.npmjs.org/@types/qrcode/-/qrcode-1.5.5.tgz",
+          "overridden": false
+        },
+        "@types/react-dom": {
+          "version": "19.1.7",
+          "resolved": "https://registry.npmjs.org/@types/react-dom/-/react-dom-19.1.7.tgz",
+          "overridden": false
+        },
+        "@types/react": {
+          "version": "19.1.9",
+          "resolved": "https://registry.npmjs.org/@types/react/-/react-19.1.9.tgz",
+          "overridden": false
+        },
+        "@use-gesture/react": {
+          "version": "10.3.1",
+          "resolved": "https://registry.npmjs.org/@use-gesture/react/-/react-10.3.1.tgz",
+          "overridden": false
+        },
+        "@vercel/analytics": {
+          "version": "1.5.0",
+          "resolved": "https://registry.npmjs.org/@vercel/analytics/-/analytics-1.5.0.tgz",
+          "overridden": false
+        },
+        "@vercel/speed-insights": {
+          "version": "1.2.0",
+          "resolved": "https://registry.npmjs.org/@vercel/speed-insights/-/speed-insights-1.2.0.tgz",
+          "overridden": false
+        },
+        "artillery": {
+          "version": "2.0.23",
+          "resolved": "https://registry.npmjs.org/artillery/-/artillery-2.0.23.tgz",
+          "overridden": false
+        },
+        "autoprefixer": {
+          "version": "10.4.21",
+          "resolved": "https://registry.npmjs.org/autoprefixer/-/autoprefixer-10.4.21.tgz",
+          "overridden": false
+        },
+        "axios": {
+          "version": "1.11.0",
+          "resolved": "https://registry.npmjs.org/axios/-/axios-1.11.0.tgz",
+          "overridden": false
+        },
+        "bull": {
+          "version": "4.16.5",
+          "resolved": "https://registry.npmjs.org/bull/-/bull-4.16.5.tgz",
+          "overridden": false
+        },
+        "chart.js": {
+          "version": "4.5.0",
+          "resolved": "https://registry.npmjs.org/chart.js/-/chart.js-4.5.0.tgz",
+          "overridden": false
+        },
+        "class-variance-authority": {
+          "version": "0.7.1",
+          "resolved": "https://registry.npmjs.org/class-variance-authority/-/class-variance-authority-0.7.1.tgz",
+          "overridden": false
+        },
+        "clsx": {
+          "version": "2.1.1",
+          "resolved": "https://registry.npmjs.org/clsx/-/clsx-2.1.1.tgz",
+          "overridden": false
+        },
+        "date-fns": {
+          "version": "3.6.0",
+          "resolved": "https://registry.npmjs.org/date-fns/-/date-fns-3.6.0.tgz",
+          "overridden": false
+        },
+        "decimal.js": {
+          "version": "10.6.0",
+          "resolved": "https://registry.npmjs.org/decimal.js/-/decimal.js-10.6.0.tgz",
+          "overridden": false
+        },
+        "dexie": {
+          "version": "4.0.11",
+          "resolved": "https://registry.npmjs.org/dexie/-/dexie-4.0.11.tgz",
+          "overridden": false
+        },
+        "dotenv": {
+          "version": "17.2.1",
+          "resolved": "https://registry.npmjs.org/dotenv/-/dotenv-17.2.1.tgz",
+          "overridden": false
+        },
+        "eslint-config-next": {
+          "version": "15.4.5",
+          "resolved": "https://registry.npmjs.org/eslint-config-next/-/eslint-config-next-15.4.5.tgz",
+          "overridden": false
+        },
+        "eslint": {
+          "version": "9.32.0",
+          "resolved": "https://registry.npmjs.org/eslint/-/eslint-9.32.0.tgz",
+          "overridden": false
+        },
+        "exceljs": {
+          "version": "4.4.0",
+          "resolved": "https://registry.npmjs.org/exceljs/-/exceljs-4.4.0.tgz",
+          "overridden": false
+        },
+        "formula-parser": {
+          "version": "2.0.1",
+          "resolved": "https://registry.npmjs.org/formula-parser/-/formula-parser-2.0.1.tgz",
+          "overridden": false
+        },
+        "framer-motion": {
+          "version": "11.18.2",
+          "resolved": "https://registry.npmjs.org/framer-motion/-/framer-motion-11.18.2.tgz",
+          "overridden": false
+        },
+        "fuse.js": {
+          "version": "7.1.0",
+          "resolved": "https://registry.npmjs.org/fuse.js/-/fuse.js-7.1.0.tgz",
+          "overridden": false
+        },
+        "graphql-ws": {
+          "version": "6.0.6",
+          "resolved": "https://registry.npmjs.org/graphql-ws/-/graphql-ws-6.0.6.tgz",
+          "overridden": false
+        },
+        "graphql": {
+          "version": "16.11.0",
+          "resolved": "https://registry.npmjs.org/graphql/-/graphql-16.11.0.tgz",
+          "overridden": false
+        },
+        "idb": {
+          "version": "8.0.3",
+          "resolved": "https://registry.npmjs.org/idb/-/idb-8.0.3.tgz",
+          "overridden": false
+        },
+        "ioredis": {
+          "version": "5.7.0",
+          "resolved": "https://registry.npmjs.org/ioredis/-/ioredis-5.7.0.tgz",
+          "overridden": false
+        },
+        "isomorphic-dompurify": {
+          "version": "2.15.0",
+          "resolved": "https://registry.npmjs.org/isomorphic-dompurify/-/isomorphic-dompurify-2.15.0.tgz",
+          "overridden": false
+        },
+        "jest-axe": {
+          "version": "10.0.0",
+          "resolved": "https://registry.npmjs.org/jest-axe/-/jest-axe-10.0.0.tgz",
+          "overridden": false
+        },
+        "jest-environment-jsdom": {
+          "version": "30.0.5",
+          "resolved": "https://registry.npmjs.org/jest-environment-jsdom/-/jest-environment-jsdom-30.0.5.tgz",
+          "overridden": false
+        },
+        "jest": {
+          "version": "30.0.5",
+          "resolved": "https://registry.npmjs.org/jest/-/jest-30.0.5.tgz",
+          "overridden": false
+        },
+        "jose": {
+          "version": "5.10.0",
+          "resolved": "https://registry.npmjs.org/jose/-/jose-5.10.0.tgz",
+          "overridden": false
+        },
+        "jsdom": {
+          "version": "26.1.0",
+          "resolved": "https://registry.npmjs.org/jsdom/-/jsdom-26.1.0.tgz",
+          "overridden": false
+        },
+        "jsforce": {
+          "version": "3.10.0",
+          "resolved": "https://registry.npmjs.org/jsforce/-/jsforce-3.10.0.tgz",
+          "overridden": false
+        },
+        "jsonwebtoken": {
+          "version": "9.0.2",
+          "resolved": "https://registry.npmjs.org/jsonwebtoken/-/jsonwebtoken-9.0.2.tgz",
+          "overridden": false
+        },
+        "lodash": {
+          "version": "4.17.21",
+          "resolved": "https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz",
+          "overridden": false
+        },
+        "logrocket-react": {
+          "version": "6.0.3",
+          "resolved": "https://registry.npmjs.org/logrocket-react/-/logrocket-react-6.0.3.tgz",
+          "overridden": false
+        },
+        "logrocket": {
+          "version": "10.1.0",
+          "resolved": "https://registry.npmjs.org/logrocket/-/logrocket-10.1.0.tgz",
+          "overridden": false
+        },
+        "lucide-react": {
+          "version": "0.534.0",
+          "resolved": "https://registry.npmjs.org/lucide-react/-/lucide-react-0.534.0.tgz",
+          "overridden": false
+        },
+        "mathjs": {
+          "version": "14.6.0",
+          "resolved": "https://registry.npmjs.org/mathjs/-/mathjs-14.6.0.tgz",
+          "overridden": false
+        },
+        "next-auth": {
+          "version": "4.24.11",
+          "resolved": "https://registry.npmjs.org/next-auth/-/next-auth-4.24.11.tgz",
+          "overridden": false
+        },
+        "next-pwa": {
+          "version": "5.6.0",
+          "resolved": "https://registry.npmjs.org/next-pwa/-/next-pwa-5.6.0.tgz",
+          "overridden": false
+        },
+        "next": {
+          "version": "15.4.5",
+          "resolved": "https://registry.npmjs.org/next/-/next-15.4.5.tgz",
+          "overridden": false
+        },
+        "nock": {
+          "version": "14.0.8",
+          "resolved": "https://registry.npmjs.org/nock/-/nock-14.0.8.tgz",
+          "overridden": false
+        },
+        "nodemailer": {
+          "version": "7.0.5",
+          "resolved": "https://registry.npmjs.org/nodemailer/-/nodemailer-7.0.5.tgz",
+          "overridden": false
+        },
+        "p-limit": {
+          "version": "6.2.0",
+          "resolved": "https://registry.npmjs.org/p-limit/-/p-limit-6.2.0.tgz",
+          "overridden": false
+        },
+        "pino-pretty": {
+          "version": "13.1.1",
+          "resolved": "https://registry.npmjs.org/pino-pretty/-/pino-pretty-13.1.1.tgz",
+          "overridden": false
+        },
+        "pino": {
+          "version": "9.7.0",
+          "resolved": "https://registry.npmjs.org/pino/-/pino-9.7.0.tgz",
+          "overridden": false
+        },
+        "postcss": {
+          "version": "8.5.6",
+          "resolved": "https://registry.npmjs.org/postcss/-/postcss-8.5.6.tgz",
+          "overridden": false
+        },
+        "prisma": {
+          "version": "6.14.0",
+          "resolved": "https://registry.npmjs.org/prisma/-/prisma-6.14.0.tgz",
+          "overridden": false
+        },
+        "qrcode": {
+          "version": "1.5.4",
+          "resolved": "https://registry.npmjs.org/qrcode/-/qrcode-1.5.4.tgz",
+          "overridden": false
+        },
+        "react-chartjs-2": {
+          "version": "5.3.0",
+          "resolved": "https://registry.npmjs.org/react-chartjs-2/-/react-chartjs-2-5.3.0.tgz",
+          "overridden": false
+        },
+        "react-dom": {
+          "version": "19.1.0",
+          "resolved": "https://registry.npmjs.org/react-dom/-/react-dom-19.1.0.tgz",
+          "overridden": false
+        },
+        "react-pdf": {
+          "version": "10.0.1",
+          "resolved": "https://registry.npmjs.org/react-pdf/-/react-pdf-10.0.1.tgz",
+          "overridden": false
+        },
+        "react": {
+          "version": "19.1.0",
+          "resolved": "https://registry.npmjs.org/react/-/react-19.1.0.tgz",
+          "overridden": false
+        },
+        "redis": {
+          "version": "5.7.0",
+          "resolved": "https://registry.npmjs.org/redis/-/redis-5.7.0.tgz",
+          "overridden": false
+        },
+        "sharp": {
+          "version": "0.34.3",
+          "resolved": "https://registry.npmjs.org/sharp/-/sharp-0.34.3.tgz",
+          "overridden": false
+        },
+        "socket.io-client": {
+          "version": "4.8.1",
+          "resolved": "https://registry.npmjs.org/socket.io-client/-/socket.io-client-4.8.1.tgz",
+          "overridden": false
+        },
+        "socket.io": {
+          "version": "4.8.1",
+          "resolved": "https://registry.npmjs.org/socket.io/-/socket.io-4.8.1.tgz",
+          "overridden": false
+        },
+        "sonner": {
+          "version": "2.0.7",
+          "resolved": "https://registry.npmjs.org/sonner/-/sonner-2.0.7.tgz",
+          "overridden": false
+        },
+        "supertest": {
+          "version": "7.1.4",
+          "resolved": "https://registry.npmjs.org/supertest/-/supertest-7.1.4.tgz",
+          "overridden": false
+        },
+        "tailwind-merge": {
+          "version": "3.3.1",
+          "resolved": "https://registry.npmjs.org/tailwind-merge/-/tailwind-merge-3.3.1.tgz",
+          "overridden": false
+        },
+        "tailwindcss": {
+          "version": "4.1.11",
+          "resolved": "https://registry.npmjs.org/tailwindcss/-/tailwindcss-4.1.11.tgz",
+          "overridden": false
+        },
+        "ts-node": {
+          "version": "10.9.2",
+          "resolved": "https://registry.npmjs.org/ts-node/-/ts-node-10.9.2.tgz",
+          "overridden": false
+        },
+        "tsconfig-paths": {
+          "version": "4.2.0",
+          "resolved": "https://registry.npmjs.org/tsconfig-paths/-/tsconfig-paths-4.2.0.tgz",
+          "overridden": false
+        },
+        "typescript": {
+          "version": "5.8.3",
+          "resolved": "https://registry.npmjs.org/typescript/-/typescript-5.8.3.tgz",
+          "overridden": false
+        },
+        "uuid": {
+          "version": "11.1.0",
+          "resolved": "https://registry.npmjs.org/uuid/-/uuid-11.1.0.tgz",
+          "overridden": false
+        },
+        "winston-daily-rotate-file": {
+          "version": "5.0.0",
+          "resolved": "https://registry.npmjs.org/winston-daily-rotate-file/-/winston-daily-rotate-file-5.0.0.tgz",
+          "overridden": false
+        },
+        "winston": {
+          "version": "3.17.0",
+          "resolved": "https://registry.npmjs.org/winston/-/winston-3.17.0.tgz",
+          "overridden": false
+        },
+        "workbox-webpack-plugin": {
+          "version": "7.3.0",
+          "resolved": "https://registry.npmjs.org/workbox-webpack-plugin/-/workbox-webpack-plugin-7.3.0.tgz",
+          "overridden": false
+        },
+        "xlsx-populate": {
+          "version": "1.21.0",
+          "resolved": "https://registry.npmjs.org/xlsx-populate/-/xlsx-populate-1.21.0.tgz",
+          "overridden": false
+        },
+        "zod": {
+          "version": "4.0.14",
+          "resolved": "https://registry.npmjs.org/zod/-/zod-4.0.14.tgz",
+          "overridden": false
+        },
+        "zustand": {
+          "version": "5.0.7",
+          "resolved": "https://registry.npmjs.org/zustand/-/zustand-5.0.7.tgz",
+          "overridden": false
+        }
+      }
+    },
+    "xml": {
+      "version": "1.0.1",
+      "overridden": false,
+      "extraneous": true,
+      "problems": [
+        "extraneous: xml@1.0.1 /Users/patricksmith/candlefish-ai/node_modules/xml"
+      ]
+    }
+  }
+}

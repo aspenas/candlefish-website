@@ -1,0 +1,8 @@
+[Unit]
+Description=Paintbox Application Stack
+Documentation=https://github.com/your-org/paintbox
+Wants=paintbox-postgres.service paintbox-redis.service paintbox-app.service paintbox-health-monitor.service
+After=network.target
+
+[Install]
+WantedBy=multi-user.target

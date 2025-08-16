@@ -5,6 +5,7 @@ import {
   readinessCheck,
   livenessCheck,
 } from '../controllers/health.controller';
+import { getMetrics } from '../controllers/metrics.controller';
 
 const router = Router();
 
@@ -35,5 +36,12 @@ router.get('/ready', readinessCheck);
  * @access  Public
  */
 router.get('/live', livenessCheck);
+
+/**
+ * @route   GET /metrics
+ * @desc    Prometheus metrics endpoint
+ * @access  Public
+ */
+router.get('/metrics', getMetrics);
 
 export default router;

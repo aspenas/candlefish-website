@@ -1,0 +1,14 @@
+[Unit]
+Description=Run Paintbox Dependency Health Check Daily
+Documentation=https://github.com/your-org/paintbox
+Requires=paintbox-dependency-checker.service
+PartOf=paintbox.target
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=3600
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+WantedBy=paintbox.target

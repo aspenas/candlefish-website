@@ -8,6 +8,7 @@ export interface AuthenticatedRequest extends Request {
 
 export interface AuthenticatedUser {
   id: string;
+  sub: string;
   email: string;
   firstName: string;
   lastName: string;
@@ -75,7 +76,7 @@ export interface TokenPair {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
-  tokenType: 'Bearer';
+  tokenType: string;
 }
 
 export interface ApiResponse<T = any> {
@@ -152,6 +153,10 @@ export interface Config {
     refreshTokenExpiry: string;
     issuer: string;
     audience: string;
+  };
+  aws: {
+    region: string;
+    secretId: string;
   };
   server: {
     port: number;

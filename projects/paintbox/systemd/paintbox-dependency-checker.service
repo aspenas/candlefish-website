@@ -1,0 +1,38 @@
+[Unit]
+Description=Paintbox Dependency Health Checker
+Documentation=https://github.com/your-org/paintbox
+After=network.target
+PartOf=paintbox.target
+
+[Service]
+Type=oneshot
+User=paintbox
+Group=paintbox
+WorkingDirectory=/opt/paintbox
+
+# Environment
+Environment=NODE_ENV=production
+EnvironmentFile=-/etc/paintbox/environment
+
+# Dependency Checker Script
+ExecStart=/opt/paintbox/scripts/dependency-health-check.sh check
+
+# Security Settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/paintbox/reports /opt/paintbox/logs /var/log/paintbox
+
+# Resource Limits
+MemoryMax=512M
+CPUWeight=10
+TimeoutStartSec=300
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=paintbox-dependency-checker
+
+[Install]
+WantedBy=paintbox.target

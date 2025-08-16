@@ -1,0 +1,39 @@
+[Unit]
+Description=Paintbox Log Rotation Service
+Documentation=https://github.com/your-org/paintbox
+PartOf=paintbox.target
+
+[Service]
+Type=oneshot
+User=paintbox
+Group=paintbox
+WorkingDirectory=/opt/paintbox
+
+# Environment
+Environment=NODE_ENV=production
+Environment=LOG_RETENTION_DAYS=30
+Environment=LOG_DIRECTORY=/opt/paintbox/logs
+EnvironmentFile=-/etc/paintbox/environment
+
+# Log Rotator Script
+ExecStart=/usr/bin/node scripts/log-rotator.js run
+
+# Security Settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/paintbox/logs /var/log/paintbox
+
+# Resource Limits
+MemoryMax=256M
+CPUWeight=10
+TimeoutStartSec=600
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=paintbox-log-rotator
+
+[Install]
+WantedBy=paintbox.target

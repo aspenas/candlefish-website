@@ -1,0 +1,58 @@
+[Unit]
+Description=PostgreSQL Database for Paintbox
+Documentation=https://www.postgresql.org/docs/
+After=network.target
+Before=paintbox-app.service
+PartOf=paintbox.target
+
+[Service]
+Type=notify
+User=postgres
+Group=postgres
+
+# PostgreSQL Configuration
+Environment=PGDATA=/var/lib/postgresql/paintbox
+Environment=POSTGRES_DB=paintbox
+Environment=POSTGRES_USER=paintbox
+EnvironmentFile=-/etc/paintbox/postgres.env
+
+ExecStart=/usr/lib/postgresql/16/bin/postgres -D /var/lib/postgresql/paintbox -c config_file=/etc/postgresql/16/main/paintbox.conf
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Process Management
+TimeoutSec=120
+Restart=always
+RestartSec=10
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Security Settings
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/postgresql /var/log/postgresql /run/postgresql
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictRealtime=true
+
+# Resource Limits
+LimitNOFILE=65536
+LimitNPROC=8192
+MemoryMax=2G
+CPUWeight=200
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=paintbox-postgres
+
+# Health Check
+ExecStartPost=/bin/sleep 10
+ExecStartPost=/usr/bin/pg_isready -U paintbox -d paintbox
+
+[Install]
+WantedBy=multi-user.target
+WantedBy=paintbox.target

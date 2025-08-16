@@ -1,0 +1,213 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Pre-commit hook for dependency checks and security scanning
+echo "🔍 Running pre-commit checks..."
+
+# Set up colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+print_status() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Exit on any error
+set -e
+
+print_status "Starting pre-commit dependency and security checks..."
+
+# 1. Check for package.json changes
+PACKAGE_JSON_CHANGED=false
+if git diff --cached --name-only | grep -E "(package\.json|package-lock\.json|yarn\.lock)" >/dev/null; then
+    PACKAGE_JSON_CHANGED=true
+    print_status "Package files modified, running comprehensive checks..."
+fi
+
+# 2. Run npm audit for security vulnerabilities
+print_status "Checking for security vulnerabilities..."
+if npm audit --audit-level=moderate >/dev/null 2>&1; then
+    print_success "No security vulnerabilities found"
+else
+    print_error "Security vulnerabilities detected!"
+    print_status "Running npm audit for details..."
+    npm audit --audit-level=moderate
+    
+    # Attempt auto-fix for non-critical vulnerabilities
+    print_status "Attempting to auto-fix vulnerabilities..."
+    if npm audit fix --dry-run >/dev/null 2>&1; then
+        print_warning "Auto-fixable vulnerabilities found. Run 'npm audit fix' to resolve."
+    else
+        print_error "Manual intervention required to fix vulnerabilities"
+        exit 1
+    fi
+fi
+
+# 3. Check for outdated dependencies (warning only)
+if [ "$PACKAGE_JSON_CHANGED" = true ]; then
+    print_status "Checking for outdated dependencies..."
+    OUTDATED_COUNT=$(npm outdated --json 2>/dev/null | jq 'keys | length' 2>/dev/null || echo 0)
+    if [ "$OUTDATED_COUNT" -gt 0 ]; then
+        print_warning "$OUTDATED_COUNT outdated dependencies found"
+        print_status "Run 'npm outdated' for details"
+    else
+        print_success "All dependencies are up to date"
+    fi
+fi
+
+# 4. License compliance check
+print_status "Checking license compliance..."
+if command -v license-checker >/dev/null 2>&1; then
+    # Check for prohibited licenses
+    PROHIBITED_LICENSES=("GPL-2.0" "GPL-3.0" "AGPL-1.0" "AGPL-3.0" "SSPL-1.0")
+    LICENSE_ISSUES=false
+    
+    for license in "${PROHIBITED_LICENSES[@]}"; do
+        if license-checker --onlyAllow "$(license-checker --summary | grep -v "$license" | tr '\n' ';')" >/dev/null 2>&1; then
+            continue
+        else
+            print_error "Prohibited license detected: $license"
+            LICENSE_ISSUES=true
+        fi
+    done
+    
+    if [ "$LICENSE_ISSUES" = true ]; then
+        print_error "License compliance check failed"
+        exit 1
+    else
+        print_success "License compliance check passed"
+    fi
+else
+    print_warning "license-checker not installed, skipping license check"
+fi
+
+# 5. Check for sensitive data in dependencies
+print_status "Scanning for sensitive data patterns..."
+SENSITIVE_PATTERNS=(
+    "password.*[:=].*['\"][^'\"]*['\"]"
+    "api[_-]?key.*[:=].*['\"][^'\"]*['\"]"
+    "secret.*[:=].*['\"][^'\"]*['\"]"
+    "token.*[:=].*['\"][^'\"]*['\"]"
+    "BEGIN PRIVATE KEY"
+    "BEGIN RSA PRIVATE KEY"
+)
+
+SENSITIVE_FOUND=false
+for pattern in "${SENSITIVE_PATTERNS[@]}"; do
+    if git diff --cached | grep -iE "$pattern" >/dev/null; then
+        print_error "Potential sensitive data found: $pattern"
+        SENSITIVE_FOUND=true
+    fi
+done
+
+if [ "$SENSITIVE_FOUND" = true ]; then
+    print_error "Sensitive data detected in staged changes"
+    print_status "Please review and remove sensitive data before committing"
+    exit 1
+fi
+
+# 6. Check dependencies for known security issues
+print_status "Checking dependencies for security issues..."
+if command -v snyk >/dev/null 2>&1; then
+    if snyk test --severity-threshold=high >/dev/null 2>&1; then
+        print_success "No high-severity security issues found"
+    else
+        print_warning "Security issues detected by Snyk"
+        print_status "Run 'snyk test' for details"
+    fi
+else
+    print_status "Snyk not installed, skipping advanced security scan"
+fi
+
+# 7. Validate package.json structure
+if [ "$PACKAGE_JSON_CHANGED" = true ]; then
+    print_status "Validating package.json structure..."
+    
+    # Check for required fields
+    REQUIRED_FIELDS=("name" "version" "scripts")
+    for field in "${REQUIRED_FIELDS[@]}"; do
+        if ! jq -e ".$field" package.json >/dev/null 2>&1; then
+            print_error "Missing required field in package.json: $field"
+            exit 1
+        fi
+    done
+    
+    # Check for security-related scripts
+    SECURITY_SCRIPTS=("audit" "test:security")
+    for script in "${SECURITY_SCRIPTS[@]}"; do
+        if ! jq -e ".scripts.\"$script\"" package.json >/dev/null 2>&1; then
+            print_warning "Missing recommended security script: $script"
+        fi
+    done
+    
+    print_success "package.json structure validation passed"
+fi
+
+# 8. Check for dependency conflicts
+print_status "Checking for dependency conflicts..."
+if npm ls >/dev/null 2>&1; then
+    print_success "No dependency conflicts found"
+else
+    print_error "Dependency conflicts detected!"
+    print_status "Running npm ls for details..."
+    npm ls
+    exit 1
+fi
+
+# 9. Bundle size check (if package.json changed)
+if [ "$PACKAGE_JSON_CHANGED" = true ] && command -v bundlesize >/dev/null 2>&1; then
+    print_status "Checking bundle size..."
+    if bundlesize >/dev/null 2>&1; then
+        print_success "Bundle size check passed"
+    else
+        print_warning "Bundle size check failed or not configured"
+    fi
+fi
+
+# 10. Generate dependency report
+if [ "$PACKAGE_JSON_CHANGED" = true ]; then
+    print_status "Generating dependency report..."
+    
+    # Create reports directory
+    mkdir -p reports/pre-commit
+    
+    # Generate dependency tree
+    npm ls --depth=0 --json > reports/pre-commit/dependencies.json 2>/dev/null || echo '{}' > reports/pre-commit/dependencies.json
+    
+    # Generate audit report
+    npm audit --json > reports/pre-commit/audit.json 2>/dev/null || echo '{}' > reports/pre-commit/audit.json
+    
+    # Generate outdated report
+    npm outdated --json > reports/pre-commit/outdated.json 2>/dev/null || echo '{}' > reports/pre-commit/outdated.json
+    
+    print_success "Dependency report generated in reports/pre-commit/"
+fi
+
+print_success "✅ All pre-commit dependency and security checks passed!"
+
+# Optional: Run quick dependency health check
+if [ -f "./scripts/dependency-health-check.sh" ]; then
+    print_status "Running quick dependency health check..."
+    if timeout 30s ./scripts/dependency-health-check.sh >/dev/null 2>&1; then
+        print_success "Dependency health check passed"
+    else
+        print_warning "Dependency health check timed out or failed (non-blocking)"
+    fi
+fi
+
+print_success "🎉 Ready to commit!"
