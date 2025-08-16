@@ -328,3 +328,41 @@ export const verifyToken = async (
     res.status(200).json(response);
   }
 };
+
+/**
+ * Get JSON Web Key Set (JWKS) for token verification
+ */
+export const getJwks = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const jwks = await authService.getPublicKeys();
+
+    // Set cache headers for JWKS endpoint
+    res.set({
+      'Cache-Control': 'public, max-age=300', // 5 minutes
+      'Content-Type': 'application/json',
+    });
+
+    res.status(200).json(jwks);
+  } catch (error) {
+    moduleLogger.error('JWKS retrieval failed:', error);
+    
+    const response: ApiResponse = {
+      success: false,
+      error: {
+        code: 'JWKS_ERROR',
+        message: 'Failed to retrieve public keys',
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.headers['x-request-id'] as string,
+        version: 'v1',
+      },
+    };
+
+    res.status(500).json(response);
+  }
+};

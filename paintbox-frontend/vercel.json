@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "outputDirectory": "build",
+  "framework": null,
+  "buildCommand": "echo 'Using pre-built files'",
+  "installCommand": "npm install --production",
+  "devCommand": "serve -s build",
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}

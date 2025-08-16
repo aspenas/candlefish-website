@@ -1,0 +1,14 @@
+[Unit]
+Description=Run Paintbox Log Rotation Daily
+Documentation=https://github.com/your-org/paintbox
+Requires=paintbox-log-rotator.service
+PartOf=paintbox.target
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=1800
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+WantedBy=paintbox.target

@@ -1,4 +1,5 @@
 import { User, Organization, UserRole, RefreshToken } from '@prisma/client';
+import { CandlefishAuth, TokenPayload, TokenPair as JWTTokenPair } from '@candlefish/jwt-auth';
 import { prisma } from '../config/database';
 import { redisService } from '../config/redis';
 import {
@@ -9,12 +10,25 @@ import {
   SessionData,
   AuditLogData
 } from '../types';
-import { PasswordUtils, TokenUtils, CryptoUtils } from '../utils/crypto';
+import { PasswordUtils, CryptoUtils } from '../utils/crypto';
 import { config, parseDuration } from '../config';
 import { logger } from '../utils/logger';
 
 export class AuthService {
   private moduleLogger = logger.child({ module: 'AuthService' });
+  private jwtAuth: CandlefishAuth;
+
+  constructor() {
+    this.jwtAuth = new CandlefishAuth({
+      secretId: config.aws.secretId,
+      issuer: config.jwt.issuer,
+      audience: config.jwt.audience,
+      region: config.aws.region,
+      expiresIn: config.jwt.accessTokenExpiry,
+      refreshExpiresIn: config.jwt.refreshTokenExpiry,
+      cacheTimeout: 600 // 10 minutes
+    });
+  }
 
   /**
    * Register a new user with organization
@@ -113,6 +127,7 @@ export class AuthService {
 
     const authenticatedUser: AuthenticatedUser = {
       id: user.id,
+      sub: user.id,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
@@ -223,6 +238,7 @@ export class AuthService {
 
     const authenticatedUser: AuthenticatedUser = {
       id: user.id,
+      sub: user.id,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
@@ -245,10 +261,10 @@ export class AuthService {
    */
   async refreshToken(refreshTokenString: string): Promise<TokenPair> {
     try {
-      // Verify refresh token
-      const payload = TokenUtils.verifyToken(refreshTokenString);
+      // Use the shared jwt-auth package for refresh
+      const jwtTokens = await this.jwtAuth.refreshToken(refreshTokenString);
 
-      // Find refresh token in database
+      // Find refresh token in database to validate
       const refreshToken = await prisma.refreshToken.findUnique({
         where: { token: refreshTokenString },
         include: {
@@ -269,8 +285,18 @@ export class AuthService {
         throw new Error('User account is deactivated');
       }
 
-      // Generate new token pair
-      const newTokens = await this.generateTokenPair(refreshToken.user);
+      // Store new refresh token in database
+      const tokenId = CryptoUtils.generateSecureToken();
+      const expiresAt = new Date(Date.now() + (jwtTokens.expiresIn * 1000));
+
+      await prisma.refreshToken.create({
+        data: {
+          id: tokenId,
+          token: jwtTokens.refreshToken,
+          userId: refreshToken.user.id,
+          expiresAt,
+        },
+      });
 
       // Revoke old refresh token
       await prisma.refreshToken.update({
@@ -285,7 +311,12 @@ export class AuthService {
         userId: refreshToken.user.id,
       });
 
-      return newTokens;
+      return {
+        accessToken: jwtTokens.accessToken,
+        refreshToken: jwtTokens.refreshToken,
+        expiresIn: jwtTokens.expiresIn,
+        tokenType: jwtTokens.tokenType,
+      };
     } catch (error) {
       this.moduleLogger.error('Token refresh failed:', error);
       throw new Error('Invalid refresh token');
@@ -339,20 +370,22 @@ export class AuthService {
   private async generateTokenPair(user: User & { organization?: Organization }, rememberMe: boolean = false): Promise<TokenPair> {
     const tokenId = CryptoUtils.generateSecureToken();
 
-    // Generate access token
-    const accessToken = TokenUtils.generateAccessToken({
+    // Generate access token using CandlefishAuth
+    const tokenPayload: TokenPayload = {
       sub: user.id,
       email: user.email,
       role: user.role,
       organizationId: user.organizationId,
       permissions: Array.isArray(user.permissions) ? user.permissions as string[] : [],
-    });
+    };
 
-    // Generate refresh token
-    const refreshTokenString = TokenUtils.generateRefreshToken(user.id, tokenId);
+    const accessToken = await this.jwtAuth.signToken(tokenPayload);
+
+    // Generate refresh token using CandlefishAuth
+    const refreshTokenString = await this.jwtAuth.generateRefreshToken(user.id);
 
     // Calculate expiry (extend if remember me)
-    const baseExpiry = TokenUtils.getTokenExpiry(config.jwt.refreshTokenExpiry);
+    const baseExpiry = this.parseExpiry(config.jwt.refreshTokenExpiry);
     const expirySeconds = rememberMe ? baseExpiry * 4 : baseExpiry; // 4x longer if remember me
     const expiresAt = new Date(Date.now() + (expirySeconds * 1000));
 
@@ -369,7 +402,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken: refreshTokenString,
-      expiresIn: TokenUtils.getTokenExpiry(config.jwt.accessTokenExpiry),
+      expiresIn: this.parseExpiry(config.jwt.accessTokenExpiry),
       tokenType: 'Bearer',
     };
   }
@@ -390,7 +423,7 @@ export class AuthService {
       ...metadata,
     };
 
-    const sessionTtl = TokenUtils.getTokenExpiry(config.jwt.refreshTokenExpiry);
+    const sessionTtl = this.parseExpiry(config.jwt.refreshTokenExpiry);
     await redisService.setSession(sessionId, sessionData, sessionTtl);
   }
 
@@ -436,6 +469,7 @@ export class AuthService {
 
     return {
       id: user.id,
+      sub: user.id,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
@@ -451,7 +485,7 @@ export class AuthService {
    */
   async verifyAccessToken(token: string): Promise<AuthenticatedUser> {
     try {
-      const payload = TokenUtils.verifyToken(token);
+      const payload = await this.jwtAuth.verifyToken(token);
       const user = await this.getUserById(payload.sub);
 
       if (!user) {
@@ -463,5 +497,33 @@ export class AuthService {
       this.moduleLogger.error('Token verification failed:', error);
       throw new Error('Invalid or expired token');
     }
+  }
+
+  /**
+   * Parse expiry string to seconds
+   */
+  private parseExpiry(expiry: string): number {
+    const match = expiry.match(/^(\d+)([smhd])$/);
+    if (!match) {
+      throw new Error(`Invalid expiry format: ${expiry}`);
+    }
+
+    const value = parseInt(match[1], 10);
+    const unit = match[2];
+
+    switch (unit) {
+      case 's': return value;
+      case 'm': return value * 60;
+      case 'h': return value * 60 * 60;
+      case 'd': return value * 24 * 60 * 60;
+      default: throw new Error(`Unsupported expiry unit: ${unit}`);
+    }
+  }
+
+  /**
+   * Get public keys in JWKS format
+   */
+  async getPublicKeys(): Promise<{ keys: any[] }> {
+    return await this.jwtAuth.getPublicKeys();
   }
 }

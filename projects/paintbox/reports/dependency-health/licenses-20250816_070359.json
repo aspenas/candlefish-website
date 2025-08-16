@@ -1,0 +1,133 @@
+{
+  "@react-spring/animated@10.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/pmndrs/react-spring",
+    "publisher": "Paul Henschel",
+    "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/@react-spring/animated",
+    "licenseFile": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/@react-spring/animated/LICENSE"
+  },
+  "@react-spring/core@10.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/pmndrs/react-spring",
+    "publisher": "Paul Henschel",
+    "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/@react-spring/core",
+    "licenseFile": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/@react-spring/core/LICENSE"
+  },
+  "@react-spring/rafz@10.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/pmndrs/react-spring",
+    "publisher": "Josh Ellis",
+    "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/@react-spring/rafz",
+    "licenseFile": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/@react-spring/rafz/LICENSE"
+  },
+  "@react-spring/shared@10.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/pmndrs/react-spring",
+    "publisher": "Paul Henschel",
+    "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/@react-spring/shared",
+    "licenseFile": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/@react-spring/shared/LICENSE"
+  },
+  "@react-spring/types@10.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/pmndrs/react-spring",
+    "publisher": "Paul Henschel",
+    "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/@react-spring/types",
+    "licenseFile": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/@react-spring/types/LICENSE"
+  },
+  "@react-spring/web@10.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/pmndrs/react-spring",
+    "publisher": "Paul Henschel",
+    "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/@react-spring/web",
+    "licenseFile": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/@react-spring/web/LICENSE"
+  },
+  "date-fns@3.6.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/date-fns/date-fns",
+    "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/date-fns",
+    "licenseFile": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/date-fns/LICENSE.md"
+  },
+  "framer-motion@11.18.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/motiondivision/motion",
+    "publisher": "Matt Perry",
+    "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/framer-motion",
+    "licenseFile": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/framer-motion/LICENSE.md"
+  },
+  "graphql-ws@6.0.6": {
+    "licenses": "MIT",
+    "repository": "https://github.com/enisdenjo/graphql-ws",
+    "publisher": "Denis Badurina",
+    "email": "badurinadenis@gmail.com",
+    "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/graphql-ws",
+    "licenseFile": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/graphql-ws/LICENSE.md"
+  },
+  "idb@8.0.3": {
+    "licenses": "ISC",
+    "repository": "https://github.com/jakearchibald/idb",
+    "publisher": "Jake Archibald",
+    "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/idb",
+    "licenseFile": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/idb/LICENSE"
+  },
+  "lru-cache@11.1.0": {
+    "licenses": "ISC",
+    "repository": "https://github.com/isaacs/node-lru-cache",
+    "publisher": "Isaac Z. Schlueter",
+    "email": "i@izs.me",
+    "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/lru-cache",
+    "licenseFile": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/lru-cache/LICENSE"
+  },
+  "lucide-react@0.534.0": {
+    "licenses": "ISC",
+    "repository": "https://github.com/lucide-icons/lucide",
+    "publisher": "Eric Fennis",
+    "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/lucide-react",
+    "licenseFile": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/lucide-react/LICENSE"
+  },
+  "motion-dom@11.18.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/motiondivision/motion",
+    "publisher": "Matt Perry",
+    "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/motion-dom",
+    "licenseFile": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/motion-dom/LICENSE.md"
+  },
+  "motion-utils@11.18.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/motiondivision/motion",
+    "publisher": "Matt Perry",
+    "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/motion-utils",
+    "licenseFile": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/motion-utils/LICENSE.md"
+  },
+  "paintbox-app@0.1.0": {
+    "licenses": "UNLICENSED",
+    "private": true,
+    "path": "/Users/patricksmith/candlefish-ai/projects/paintbox",
+    "licenseFile": "/Users/patricksmith/candlefish-ai/projects/paintbox/README.md"
+  },
+  "react-dom@19.1.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/facebook/react",
+    "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/react-dom",
+    "licenseFile": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/react-dom/LICENSE"
+  },
+  "react@19.1.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/facebook/react",
+    "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/react",
+    "licenseFile": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/react/LICENSE"
+  },
+  "scheduler@0.26.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/facebook/react",
+    "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/scheduler",
+    "licenseFile": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/scheduler/LICENSE"
+  },
+  "zod@4.0.14": {
+    "licenses": "MIT",
+    "repository": "https://github.com/colinhacks/zod",
+    "publisher": "Colin McDonnell",
+    "email": "zod@colinhacks.com",
+    "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/zod",
+    "licenseFile": "/Users/patricksmith/candlefish-ai/projects/paintbox/node_modules/zod/LICENSE"
+  }
+}

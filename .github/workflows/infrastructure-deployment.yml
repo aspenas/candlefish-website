@@ -1,0 +1,668 @@
+name: Infrastructure Management System - Production Deployment
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'candlefish-temporal-platform/**'
+      - '.github/workflows/infrastructure-deployment.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'candlefish-temporal-platform/**'
+      - '.github/workflows/infrastructure-deployment.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target Environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      deployment_type:
+        description: 'Deployment Strategy'
+        required: true
+        default: 'rolling'
+        type: choice
+        options:
+          - rolling
+          - blue-green
+          - canary
+      force_deploy:
+        description: 'Force deployment (skip safety checks)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  NODE_VERSION: '20'
+  WORKING_DIRECTORY: 'candlefish-temporal-platform'
+  REGISTRY: 'registry.fly.io'
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+
+jobs:
+  # ===============================
+  # Pre-deployment Checks
+  # ===============================
+  
+  pre-flight:
+    name: Pre-flight Checks
+    runs-on: ubuntu-latest
+    outputs:
+      should-deploy: ${{ steps.check.outputs.should-deploy }}
+      environment: ${{ steps.check.outputs.environment }}
+      commit-hash: ${{ steps.check.outputs.commit-hash }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine deployment environment
+        id: check
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            ENV="${{ github.event.inputs.environment }}"
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            ENV="production"
+          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            ENV="staging"
+          else
+            ENV="review"
+          fi
+          
+          SHOULD_DEPLOY="true"
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            SHOULD_DEPLOY="false"
+          fi
+          
+          COMMIT_HASH="${{ github.sha }}"
+          
+          echo "environment=${ENV}" >> $GITHUB_OUTPUT
+          echo "should-deploy=${SHOULD_DEPLOY}" >> $GITHUB_OUTPUT
+          echo "commit-hash=${COMMIT_HASH}" >> $GITHUB_OUTPUT
+          
+          echo "Environment: ${ENV}"
+          echo "Should Deploy: ${SHOULD_DEPLOY}"
+          echo "Commit: ${COMMIT_HASH}"
+
+      - name: Check for deployment blocking conditions
+        if: steps.check.outputs.should-deploy == 'true' && github.event.inputs.force_deploy != 'true'
+        run: |
+          # Check for open incidents
+          if gh api repos/${{ github.repository }}/issues --jq '.[] | select(.labels[].name == "incident" and .state == "open")' | grep -q "incident"; then
+            echo "❌ Open incidents detected. Deployment blocked."
+            exit 1
+          fi
+          
+          # Check recent deployment failures
+          RECENT_FAILURES=$(gh run list --workflow="infrastructure-deployment.yml" --status=failure --limit=5 --json conclusion | jq '[.[] | select(.conclusion == "failure")] | length')
+          if [[ $RECENT_FAILURES -ge 3 ]]; then
+            echo "❌ Too many recent deployment failures ($RECENT_FAILURES). Manual review required."
+            exit 1
+          fi
+          
+          echo "✅ Pre-flight checks passed"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ===============================
+  # Security and Quality Assurance
+  # ===============================
+
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    needs: pre-flight
+    
+    strategy:
+      matrix:
+        scan-type: [dependencies, code, secrets, container]
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm ci --audit=false
+
+      - name: Run dependency vulnerability scan
+        if: matrix.scan-type == 'dependencies'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          npm audit --audit-level moderate --production
+          npx audit-ci --config .audit-ci.json
+
+      - name: Run static code analysis
+        if: matrix.scan-type == 'code'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          npx eslint . --ext .ts,.js --format json --output-file eslint-report.json || true
+          npx sonarjs-cli --config sonar-project.properties || true
+
+      - name: Scan for secrets
+        if: matrix.scan-type == 'secrets'
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ${{ env.WORKING_DIRECTORY }}
+          base: main
+          head: HEAD
+          extra_args: --debug --only-verified
+
+      - name: Build and scan container image
+        if: matrix.scan-type == 'container'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          docker build -t security-scan:latest -f Dockerfile.production --target runner .
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            -v $(pwd):/app aquasec/trivy image --exit-code 1 --severity HIGH,CRITICAL security-scan:latest
+
+      - name: Upload security scan results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-${{ matrix.scan-type }}
+          path: |
+            ${{ env.WORKING_DIRECTORY }}/eslint-report.json
+            ${{ env.WORKING_DIRECTORY }}/sonar-report.json
+            ${{ env.WORKING_DIRECTORY }}/audit-report.json
+
+  test-suite:
+    name: Comprehensive Testing
+    runs-on: ubuntu-latest
+    needs: pre-flight
+    
+    strategy:
+      matrix:
+        test-type: [unit, integration, e2e, performance, load]
+      fail-fast: false
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm ci
+
+      - name: Setup test environment
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          cp .env.example .env.test
+          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test_db" >> .env.test
+          echo "REDIS_URL=redis://localhost:6379" >> .env.test
+          npx prisma migrate deploy --schema prisma/schema.prisma
+          npx prisma db seed
+
+      - name: Run unit tests
+        if: matrix.test-type == 'unit'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run test:unit -- --coverage --maxWorkers=2
+
+      - name: Run integration tests
+        if: matrix.test-type == 'integration'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run test:integration -- --maxWorkers=1
+
+      - name: Run E2E tests
+        if: matrix.test-type == 'e2e'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          npm run build
+          npm start &
+          sleep 30
+          npm run test:e2e
+
+      - name: Run performance tests
+        if: matrix.test-type == 'performance'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          npm run test:performance
+          npm run benchmark:critical-paths
+
+      - name: Run load tests
+        if: matrix.test-type == 'load'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          npm start &
+          sleep 30
+          npx artillery run artillery-config.yml --output load-test-report.json
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.test-type }}
+          path: |
+            ${{ env.WORKING_DIRECTORY }}/coverage/
+            ${{ env.WORKING_DIRECTORY }}/test-results/
+            ${{ env.WORKING_DIRECTORY }}/load-test-report.json
+
+  # ===============================
+  # Build and Package
+  # ===============================
+
+  build:
+    name: Build & Package
+    runs-on: ubuntu-latest
+    needs: [security-scan, test-suite]
+    if: always() && (needs.security-scan.result == 'success' && needs.test-suite.result == 'success')
+    
+    outputs:
+      image-tag: ${{ steps.build.outputs.image-tag }}
+      image-digest: ${{ steps.build.outputs.image-digest }}
+      build-metadata: ${{ steps.build.outputs.build-metadata }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Fly.io Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: x
+          password: ${{ env.FLY_API_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/candlefish-temporal-platform
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.WORKING_DIRECTORY }}
+          file: ${{ env.WORKING_DIRECTORY }}/Dockerfile.production
+          target: runner
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Generate build metadata
+        id: metadata
+        run: |
+          METADATA=$(cat <<EOF
+          {
+            "commit": "${{ github.sha }}",
+            "branch": "${{ github.ref_name }}",
+            "workflow": "${{ github.run_id }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "version": "${{ steps.meta.outputs.version }}",
+            "environment": "${{ needs.pre-flight.outputs.environment }}"
+          }
+          EOF
+          )
+          echo "build-metadata=${METADATA}" >> $GITHUB_OUTPUT
+
+  # ===============================
+  # Infrastructure Deployment
+  # ===============================
+
+  deploy-infrastructure:
+    name: Deploy Infrastructure
+    runs-on: ubuntu-latest
+    needs: [pre-flight, build]
+    if: needs.pre-flight.outputs.should-deploy == 'true'
+
+    environment:
+      name: ${{ needs.pre-flight.outputs.environment }}-infrastructure
+      url: ${{ steps.deploy.outputs.infrastructure-url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.0"
+
+      - name: Initialize Terraform
+        working-directory: ${{ env.WORKING_DIRECTORY }}/terraform
+        run: |
+          terraform init \
+            -backend-config="bucket=candlefish-terraform-state" \
+            -backend-config="key=infrastructure/${{ needs.pre-flight.outputs.environment }}/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}"
+
+      - name: Plan Terraform changes
+        working-directory: ${{ env.WORKING_DIRECTORY }}/terraform
+        run: |
+          terraform plan \
+            -var="environment=${{ needs.pre-flight.outputs.environment }}" \
+            -var="image_tag=${{ needs.build.outputs.image-tag }}" \
+            -out=tfplan
+
+      - name: Apply Terraform changes
+        working-directory: ${{ env.WORKING_DIRECTORY }}/terraform
+        run: terraform apply -auto-approve tfplan
+
+      - name: Output infrastructure details
+        id: deploy
+        working-directory: ${{ env.WORKING_DIRECTORY }}/terraform
+        run: |
+          INFRASTRUCTURE_URL=$(terraform output -raw infrastructure_url)
+          echo "infrastructure-url=${INFRASTRUCTURE_URL}" >> $GITHUB_OUTPUT
+
+  # ===============================
+  # Application Deployment
+  # ===============================
+
+  deploy-application:
+    name: Deploy Application
+    runs-on: ubuntu-latest
+    needs: [pre-flight, build, deploy-infrastructure]
+    if: needs.pre-flight.outputs.should-deploy == 'true'
+
+    strategy:
+      matrix:
+        service: [api, worker, temporal]
+      max-parallel: 1
+
+    environment:
+      name: ${{ needs.pre-flight.outputs.environment }}-${{ matrix.service }}
+      url: ${{ steps.deploy.outputs.service-url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
+        id: deploy
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          # Configure app name based on environment and service
+          APP_NAME="candlefish-${{ matrix.service }}-${{ needs.pre-flight.outputs.environment }}"
+          
+          # Set deployment strategy
+          STRATEGY="${{ github.event.inputs.deployment_type || 'rolling' }}"
+          
+          # Deploy with the appropriate strategy
+          case $STRATEGY in
+            "blue-green")
+              flyctl deploy \
+                --app $APP_NAME \
+                --config fly-${{ matrix.service }}.toml \
+                --strategy bluegreen \
+                --wait-timeout 600
+              ;;
+            "canary")
+              flyctl deploy \
+                --app $APP_NAME \
+                --config fly-${{ matrix.service }}.toml \
+                --strategy canary \
+                --wait-timeout 600
+              ;;
+            *)
+              flyctl deploy \
+                --app $APP_NAME \
+                --config fly-${{ matrix.service }}.toml \
+                --strategy rolling \
+                --wait-timeout 600
+              ;;
+          esac
+          
+          # Get service URL
+          SERVICE_URL=$(flyctl info --app $APP_NAME --json | jq -r '.Hostname')
+          echo "service-url=https://${SERVICE_URL}" >> $GITHUB_OUTPUT
+        env:
+          FLY_API_TOKEN: ${{ env.FLY_API_TOKEN }}
+
+      - name: Health check
+        run: |
+          # Wait for deployment to be ready
+          sleep 60
+          
+          # Check service health
+          for i in {1..10}; do
+            if curl -f ${{ steps.deploy.outputs.service-url }}/health; then
+              echo "✅ Health check passed for ${{ matrix.service }}"
+              break
+            else
+              echo "⏳ Health check failed, attempt $i/10"
+              sleep 30
+            fi
+            if [[ $i -eq 10 ]]; then
+              echo "❌ Health check failed after 10 attempts"
+              exit 1
+            fi
+          done
+
+  # ===============================
+  # Post-Deployment Validation
+  # ===============================
+
+  post-deployment-tests:
+    name: Post-Deployment Validation
+    runs-on: ubuntu-latest
+    needs: [pre-flight, deploy-application]
+    if: needs.pre-flight.outputs.should-deploy == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm ci
+
+      - name: Run smoke tests
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          export ENVIRONMENT="${{ needs.pre-flight.outputs.environment }}"
+          npm run test:smoke:$ENVIRONMENT
+
+      - name: Run API contract tests
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          export ENVIRONMENT="${{ needs.pre-flight.outputs.environment }}"
+          npm run test:contract:$ENVIRONMENT
+
+      - name: Performance baseline check
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          export ENVIRONMENT="${{ needs.pre-flight.outputs.environment }}"
+          npm run test:performance:baseline:$ENVIRONMENT
+
+  # ===============================
+  # Rollback Capability
+  # ===============================
+
+  setup-rollback:
+    name: Setup Rollback Capability
+    runs-on: ubuntu-latest
+    needs: [pre-flight, deploy-application]
+    if: needs.pre-flight.outputs.should-deploy == 'true'
+
+    steps:
+      - name: Record deployment state
+        run: |
+          cat > deployment-state.json <<EOF
+          {
+            "environment": "${{ needs.pre-flight.outputs.environment }}",
+            "commit": "${{ needs.pre-flight.outputs.commit-hash }}",
+            "workflow_run": "${{ github.run_id }}",
+            "image_tag": "${{ needs.build.outputs.image-tag }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "deployment_type": "${{ github.event.inputs.deployment_type || 'rolling' }}"
+          }
+          EOF
+
+      - name: Store rollback information
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload deployment state
+        run: |
+          aws s3 cp deployment-state.json \
+            s3://candlefish-deployment-state/${{ needs.pre-flight.outputs.environment }}/latest.json
+
+  # ===============================
+  # Monitoring and Alerts
+  # ===============================
+
+  setup-monitoring:
+    name: Configure Monitoring
+    runs-on: ubuntu-latest
+    needs: [pre-flight, deploy-application]
+    if: needs.pre-flight.outputs.should-deploy == 'true'
+
+    steps:
+      - name: Configure CloudWatch alerts
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update monitoring dashboards
+        run: |
+          # Update Grafana dashboards for new deployment
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.GRAFANA_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"dashboard": {"tags": ["deployment", "${{ needs.pre-flight.outputs.environment }}"]}}' \
+            "https://grafana.candlefish.ai/api/dashboards/db"
+
+      - name: Send deployment notification
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deploymentInfo = {
+              environment: '${{ needs.pre-flight.outputs.environment }}',
+              commit: '${{ needs.pre-flight.outputs.commit-hash }}',
+              workflow: '${{ github.run_id }}',
+              image: '${{ needs.build.outputs.image-tag }}',
+              status: 'success'
+            };
+
+            // Create deployment notification issue
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚀 Deployment Complete: ${deploymentInfo.environment}`,
+              body: `
+              **Deployment Summary**
+              - Environment: ${deploymentInfo.environment}
+              - Commit: ${deploymentInfo.commit}
+              - Image: ${deploymentInfo.image}
+              - Workflow: [${deploymentInfo.workflow}](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${deploymentInfo.workflow})
+              
+              **Services Deployed**
+              - API Service ✅
+              - Worker Service ✅
+              - Temporal Service ✅
+              
+              **Monitoring**
+              - [Grafana Dashboard](https://grafana.candlefish.ai)
+              - [Application Logs](https://logs.candlefish.ai)
+              - [Metrics](https://metrics.candlefish.ai)
+              `,
+              labels: ['deployment', 'success', deploymentInfo.environment]
+            });
+
+  # ===============================
+  # Cleanup and Maintenance
+  # ===============================
+
+  cleanup:
+    name: Cleanup Resources
+    runs-on: ubuntu-latest
+    needs: [post-deployment-tests]
+    if: always()
+
+    steps:
+      - name: Clean up old container images
+        run: |
+          # Keep last 10 images per service
+          echo "Cleaning up old container images..."
+
+      - name: Archive build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-artifacts-${{ needs.pre-flight.outputs.commit-hash }}
+          path: |
+            deployment-state.json
+            terraform-plan.json
+          retention-days: 30

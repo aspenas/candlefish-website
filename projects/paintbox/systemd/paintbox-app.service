@@ -1,0 +1,57 @@
+[Unit]
+Description=Paintbox Application
+Documentation=https://github.com/your-org/paintbox
+After=network.target postgresql.service redis.service
+Wants=postgresql.service redis.service
+PartOf=paintbox.target
+
+[Service]
+Type=forking
+User=paintbox
+Group=paintbox
+WorkingDirectory=/opt/paintbox
+
+# Environment
+Environment=NODE_ENV=production
+Environment=PORT=3000
+EnvironmentFile=-/etc/paintbox/environment
+
+# PM2 Ecosystem Management
+ExecStart=/usr/bin/pm2 start ecosystem.config.js --env production --no-daemon
+ExecReload=/usr/bin/pm2 reload ecosystem.config.js --env production
+ExecStop=/usr/bin/pm2 stop ecosystem.config.js
+
+# Process Management
+PIDFile=/opt/paintbox/pm2.pid
+Restart=always
+RestartSec=10
+StartLimitInterval=60
+StartLimitBurst=5
+
+# Security Settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/paintbox /var/log/paintbox /tmp
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+# Resource Limits
+LimitNOFILE=65536
+LimitNPROC=4096
+MemoryMax=4G
+CPUWeight=100
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=paintbox-app
+
+# Health Monitoring
+ExecStartPost=/bin/sleep 30
+ExecStartPost=/usr/bin/curl -f http://localhost:3000/api/health || exit 1
+
+[Install]
+WantedBy=multi-user.target
+WantedBy=paintbox.target

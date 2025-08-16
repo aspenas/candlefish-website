@@ -1,9 +1,5 @@
 'use client';
 
-// Force dynamic rendering to avoid static generation memory issues
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -106,7 +102,7 @@ export default function InteriorMeasurementPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-paintbox-primary/5 via-paintbox-background to-paintbox-accent/5">
-      <animated.div style={headerSpring} className="bg-white shadow-paintbox sticky top-0 z-50">
+      <div className="bg-white shadow-paintbox sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -138,7 +134,7 @@ export default function InteriorMeasurementPage() {
             ))}
           </div>
         </div>
-      </animated.div>
+      </div>
 
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
@@ -154,8 +150,7 @@ export default function InteriorMeasurementPage() {
                   Add Room
                 </button>
                 {showTemplates && (
-                  <animated.div
-                    style={templateSpring}
+                  <div
                     className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-paintbox-border p-2 z-10"
                   >
                     <button
@@ -178,7 +173,7 @@ export default function InteriorMeasurementPage() {
                         </div>
                       </button>
                     ))}
-                  </animated.div>
+                  </div>
                 )}
               </div>
             </div>
@@ -190,9 +185,9 @@ export default function InteriorMeasurementPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {transitions((style, room) => (
-                  <animated.div
-                    style={style}
+                {rooms.map((room) => (
+                  <div
+                    key={room.id}
                     className="paintbox-section relative overflow-hidden"
                   >
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-paintbox-primary to-paintbox-accent" />
@@ -299,7 +294,7 @@ export default function InteriorMeasurementPage() {
                         </span>
                       </div>
                     </div>
-                  </animated.div>
+                  </div>
                 ))}
               </div>
             )}

@@ -1,0 +1,228 @@
+name: Dependency Security & Auto-Fix
+
+on:
+  schedule:
+    # Run daily at 6 AM UTC
+    - cron: '0 6 * * *'
+  pull_request:
+    paths:
+      - 'package*.json'
+      - '**/package*.json'
+      - 'yarn.lock'
+      - '**/yarn.lock'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'package*.json'
+      - '**/package*.json'
+  workflow_dispatch:
+
+jobs:
+  dependency-audit:
+    name: Dependency Security Audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        id: audit
+        run: |
+          npm audit --audit-level=moderate --json > audit-results.json || true
+          echo "audit_results=$(cat audit-results.json)" >> $GITHUB_OUTPUT
+
+      - name: Parse audit results
+        id: parse_audit
+        run: |
+          VULNERABILITIES=$(jq '.metadata.vulnerabilities' audit-results.json)
+          HIGH=$(echo $VULNERABILITIES | jq '.high // 0')
+          CRITICAL=$(echo $VULNERABILITIES | jq '.critical // 0')
+          
+          echo "high_vulnerabilities=$HIGH" >> $GITHUB_OUTPUT
+          echo "critical_vulnerabilities=$CRITICAL" >> $GITHUB_OUTPUT
+          echo "total_vulnerabilities=$((HIGH + CRITICAL))" >> $GITHUB_OUTPUT
+
+      - name: Auto-fix vulnerabilities
+        if: steps.parse_audit.outputs.total_vulnerabilities > 0
+        run: |
+          npm audit fix --force
+          
+          # Check if package-lock.json was modified
+          if git diff --quiet package-lock.json; then
+            echo "No auto-fixes applied"
+          else
+            echo "Auto-fixes applied to package-lock.json"
+            git config --local user.email "action@github.com"
+            git config --local user.name "GitHub Action"
+            git add package-lock.json
+            git commit -m "fix: auto-fix security vulnerabilities" || true
+          fi
+
+      - name: Check for remaining vulnerabilities
+        id: final_audit
+        run: |
+          npm audit --audit-level=moderate --json > final-audit.json || true
+          FINAL_VULNERABILITIES=$(jq '.metadata.vulnerabilities' final-audit.json)
+          FINAL_HIGH=$(echo $FINAL_VULNERABILITIES | jq '.high // 0')
+          FINAL_CRITICAL=$(echo $FINAL_VULNERABILITIES | jq '.critical // 0')
+          FINAL_TOTAL=$((FINAL_HIGH + FINAL_CRITICAL))
+          
+          echo "remaining_vulnerabilities=$FINAL_TOTAL" >> $GITHUB_OUTPUT
+
+      - name: Upload audit results
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-results
+          path: |
+            audit-results.json
+            final-audit.json
+
+      - name: Create security report
+        run: |
+          cat > security-report.md << EOF
+          # Dependency Security Report
+          
+          **Date:** $(date)
+          **Initial Vulnerabilities:** ${{ steps.parse_audit.outputs.total_vulnerabilities }}
+          **Remaining Vulnerabilities:** ${{ steps.final_audit.outputs.remaining_vulnerabilities }}
+          
+          ## Summary
+          - High severity: ${{ steps.parse_audit.outputs.high_vulnerabilities }}
+          - Critical severity: ${{ steps.parse_audit.outputs.critical_vulnerabilities }}
+          
+          ## Audit Details
+          \`\`\`json
+          $(cat audit-results.json | jq '.vulnerabilities // {}')
+          \`\`\`
+          EOF
+
+      - name: Fail on critical vulnerabilities
+        if: steps.final_audit.outputs.remaining_vulnerabilities > 0
+        run: |
+          echo "::error::Critical security vulnerabilities detected that could not be auto-fixed"
+          echo "Please review the audit results and update dependencies manually"
+          exit 1
+
+  outdated-dependencies:
+    name: Check Outdated Dependencies
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check outdated packages
+        run: |
+          npm outdated --json > outdated.json || true
+          
+          # Create readable report
+          cat > outdated-report.md << EOF
+          # Outdated Dependencies Report
+          
+          **Date:** $(date)
+          
+          ## Summary
+          $(npm outdated --depth=0 || echo "All dependencies are up to date!")
+          
+          ## Detailed Analysis
+          \`\`\`json
+          $(cat outdated.json)
+          \`\`\`
+          EOF
+
+      - name: Upload outdated report
+        uses: actions/upload-artifact@v4
+        with:
+          name: outdated-dependencies
+          path: |
+            outdated.json
+            outdated-report.md
+
+  license-check:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install license checker
+        run: npm install -g license-checker
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check licenses
+        run: |
+          license-checker --json --out licenses.json
+          license-checker --summary > license-summary.txt
+          
+          # Check for prohibited licenses
+          PROHIBITED_LICENSES=("GPL-2.0" "GPL-3.0" "AGPL-1.0" "AGPL-3.0")
+          
+          for license in "${PROHIBITED_LICENSES[@]}"; do
+            if grep -q "$license" license-summary.txt; then
+              echo "::error::Prohibited license detected: $license"
+              exit 1
+            fi
+          done
+
+      - name: Upload license report
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-report
+          path: |
+            licenses.json
+            license-summary.txt
+
+  dependency-graph:
+    name: Update Dependency Graph
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Submit dependency snapshot
+        uses: advanced-security/maven-dependency-submission-action@v3
+        with:
+          directory: '.'
