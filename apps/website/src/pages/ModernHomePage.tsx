@@ -29,11 +29,11 @@ const ModernHomePage: React.FC = () => {
   }, [])
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-warm-white">
       <ModernNavigation />
       <main>
         <ModernHeroSection />
-        <Suspense fallback={<div className="min-h-[400px] bg-gray-50 animate-pulse" />}>
+        <Suspense fallback={<div className="min-h-[400px] bg-muted-sand animate-pulse" />}>
           <LazySection>
             <ModernFeaturesSection />
           </LazySection>
@@ -45,7 +45,7 @@ const ModernHomePage: React.FC = () => {
           </LazySection>
         </Suspense>
       </main>
-      <Suspense fallback={<div className="min-h-[300px] bg-gray-900 animate-pulse" />}>
+      <Suspense fallback={<div className="min-h-[300px] bg-charcoal animate-pulse" />}>
         <ModernFooter />
       </Suspense>
     </div>

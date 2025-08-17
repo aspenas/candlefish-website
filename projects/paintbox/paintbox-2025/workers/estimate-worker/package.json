@@ -1,0 +1,17 @@
+{
+  "name": "estimate-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "ts-node-esm src/worker.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/worker.js"
+  },
+  "dependencies": {
+    "@temporalio/worker": "^1.12.2"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "ts-node": "^10"
+  }
+}

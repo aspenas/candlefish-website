@@ -29,10 +29,10 @@ export class ServiceAuth {
     };
 
     this.serviceToken = await this.auth.signToken(payload);
-    
+
     // Set expiry to 55 minutes (allowing 5 minute buffer before 1 hour expiry)
     this.tokenExpiry = Date.now() + (55 * 60 * 1000);
-    
+
     return this.serviceToken;
   }
 
@@ -44,11 +44,11 @@ export class ServiceAuth {
     options: RequestInit = {}
   ): Promise<Response> {
     const token = await this.getServiceToken();
-    
+
     const headers = new Headers(options.headers);
     headers.set('Authorization', `Bearer ${token}`);
     headers.set('X-Service-ID', this.credentials.serviceId);
-    
+
     if (options.body && !headers.has('Content-Type')) {
       headers.set('Content-Type', 'application/json');
     }
@@ -129,11 +129,11 @@ export class ServiceAuth {
    */
   async verifyServiceToken(token: string): Promise<TokenPayload> {
     const decoded = await this.auth.verifyToken(token);
-    
+
     if (decoded.type !== 'service') {
       throw new Error('Invalid token type: expected service token');
     }
-    
+
     return decoded;
   }
 
@@ -145,7 +145,7 @@ export class ServiceAuth {
       try {
         const authHeader = req.headers.authorization;
         const serviceId = req.headers['x-service-id'];
-        
+
         if (!authHeader) {
           return res.status(401).json({
             error: true,
@@ -156,7 +156,7 @@ export class ServiceAuth {
 
         const token = authHeader.replace('Bearer ', '');
         const decoded = await this.verifyServiceToken(token);
-        
+
         // Verify service ID matches
         if (serviceId && decoded.sub !== serviceId) {
           return res.status(403).json({

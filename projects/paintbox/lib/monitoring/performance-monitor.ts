@@ -78,7 +78,7 @@ export class PerformanceMonitor {
         for (const entry of list.getEntries()) {
           if (entry.entryType === 'navigation') {
             const nav = entry as PerformanceNavigationTiming;
-            
+
             this.recordMetric({
               name: 'page_load_time',
               value: nav.loadEventEnd - nav.fetchStart,
@@ -114,10 +114,10 @@ export class PerformanceMonitor {
     try {
       const observer = new PerformanceObserver((list) => {
         const entries = list.getEntries() as PerformanceResourceTiming[];
-        
+
         // Group by resource type
         const resourceGroups: Record<string, number[]> = {};
-        
+
         entries.forEach(entry => {
           const type = this.getResourceType(entry.name);
           if (!resourceGroups[type]) {
@@ -129,7 +129,7 @@ export class PerformanceMonitor {
         // Record aggregated metrics
         Object.entries(resourceGroups).forEach(([type, durations]) => {
           const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
-          
+
           this.recordMetric({
             name: `resource_${type}_avg_load`,
             value: avg,
@@ -210,9 +210,9 @@ export class PerformanceMonitor {
       const observer = new PerformanceObserver((list) => {
         const entries = list.getEntries();
         const lastEntry = entries[entries.length - 1] as any;
-        
+
         this.webVitals.lcp = lastEntry.renderTime || lastEntry.loadTime;
-        
+
         this.recordMetric({
           name: 'lcp',
           value: this.webVitals.lcp,
@@ -238,7 +238,7 @@ export class PerformanceMonitor {
           if (entry.entryType === 'first-input') {
             const fid = (entry as any).processingStart - entry.startTime;
             this.webVitals.fid = fid;
-            
+
             this.recordMetric({
               name: 'fid',
               value: fid,
@@ -271,9 +271,9 @@ export class PerformanceMonitor {
             clsValue += (entry as any).value;
           }
         }
-        
+
         this.webVitals.cls = clsValue;
-        
+
         this.recordMetric({
           name: 'cls',
           value: clsValue,
@@ -298,7 +298,7 @@ export class PerformanceMonitor {
       if (navigation) {
         const ttfb = navigation.responseStart - navigation.fetchStart;
         this.webVitals.ttfb = ttfb;
-        
+
         this.recordMetric({
           name: 'ttfb',
           value: ttfb,
@@ -318,7 +318,7 @@ export class PerformanceMonitor {
         for (const entry of list.getEntries()) {
           if (entry.name === 'first-contentful-paint') {
             this.webVitals.fcp = entry.startTime;
-            
+
             this.recordMetric({
               name: 'fcp',
               value: entry.startTime,
@@ -358,15 +358,15 @@ export class PerformanceMonitor {
     if (typeof window === 'undefined') return;
 
     const originalFetch = window.fetch;
-    
+
     window.fetch = async (...args) => {
       const startTime = performance.now();
       const url = args[0] instanceof Request ? args[0].url : args[0];
-      
+
       try {
         const response = await originalFetch(...args);
         const duration = performance.now() - startTime;
-        
+
         this.recordMetric({
           name: 'api_response_time',
           value: duration,
@@ -383,7 +383,7 @@ export class PerformanceMonitor {
         return response;
       } catch (error) {
         const duration = performance.now() - startTime;
-        
+
         this.recordMetric({
           name: 'api_error',
           value: 1,
@@ -403,7 +403,7 @@ export class PerformanceMonitor {
   private monitorCache(): void {
     setInterval(() => {
       const metrics = this.cache.getMetrics();
-      
+
       this.recordMetric({
         name: 'cache_hit_rate',
         value: parseFloat(metrics.overallHitRate),
@@ -444,14 +444,14 @@ export class PerformanceMonitor {
    */
   recordMetric(metric: PerformanceMetric): void {
     const key = `${metric.category}:${metric.name}`;
-    
+
     if (!this.metrics.has(key)) {
       this.metrics.set(key, []);
     }
-    
+
     const metrics = this.metrics.get(key)!;
     metrics.push(metric);
-    
+
     // Keep only last 1000 metrics per key
     if (metrics.length > 1000) {
       metrics.shift();
@@ -467,7 +467,7 @@ export class PerformanceMonitor {
   ): PerformanceMetric[] {
     const now = Date.now();
     const metrics: PerformanceMetric[] = [];
-    
+
     this.metrics.forEach((values, key) => {
       if (key.includes(name)) {
         metrics.push(
@@ -475,7 +475,7 @@ export class PerformanceMonitor {
         );
       }
     });
-    
+
     return metrics;
   }
 
@@ -514,19 +514,19 @@ export class PerformanceMonitor {
 
     // Aggregate metrics by category
     const categories = ['bundle', 'cache', 'api', 'calculation', 'render'];
-    
+
     categories.forEach(category => {
       const categoryMetrics: Record<string, any> = {};
-      
+
       this.metrics.forEach((values, key) => {
         if (key.startsWith(category)) {
           const recentValues = this.getRecentMetrics(key.split(':')[1], 60000);
-          
+
           if (recentValues.length > 0) {
             const avg = recentValues.reduce((sum, m) => sum + m.value, 0) / recentValues.length;
             const max = Math.max(...recentValues.map(m => m.value));
             const min = Math.min(...recentValues.map(m => m.value));
-            
+
             categoryMetrics[key.split(':')[1]] = {
               avg: avg.toFixed(2),
               max: max.toFixed(2),
@@ -536,7 +536,7 @@ export class PerformanceMonitor {
           }
         }
       });
-      
+
       report.metrics[category] = categoryMetrics;
     });
 
@@ -603,7 +603,7 @@ export class PerformanceMonitor {
             impact: 'High',
           });
           break;
-          
+
         case 'cache_hit_rate':
           report.recommendations.push({
             issue: 'Low cache hit rate',
@@ -611,7 +611,7 @@ export class PerformanceMonitor {
             impact: 'Medium',
           });
           break;
-          
+
         case 'calculation_time':
           report.recommendations.push({
             issue: 'Slow calculations',

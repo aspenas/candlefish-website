@@ -49,7 +49,7 @@
 </head>
 <body>
     <h1>🎨 Paintbox Full Stack Test</h1>
-    
+
     <div class="card">
         <h2>Backend Status</h2>
         <p>GraphQL API: <span class="info">https://paintbox-graphql.fly.dev</span></p>
@@ -115,7 +115,7 @@
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const resultDiv = document.getElementById('auth-result');
-            
+
             try {
                 const response = await fetch(`${API_URL}/graphql`, {
                     method: 'POST',
@@ -137,9 +137,9 @@
                         variables: { email, password }
                     })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.data && data.data.login) {
                     authToken = data.data.login.token;
                     resultDiv.innerHTML = `
@@ -161,7 +161,7 @@
 
         async function testAuthenticatedQuery() {
             const resultDiv = document.getElementById('auth-result');
-            
+
             try {
                 const response = await fetch(`${API_URL}/graphql`, {
                     method: 'POST',
@@ -192,7 +192,7 @@
                         `
                     })
                 });
-                
+
                 const data = await response.json();
                 resultDiv.innerHTML += `
                     <p class="success">✅ Authenticated Query Successful!</p>
@@ -211,11 +211,11 @@
             const summaryDiv = document.getElementById('test-summary');
             const total = Object.keys(testResults).length;
             const passed = Object.values(testResults).filter(v => v).length;
-            
+
             summaryDiv.innerHTML = `
                 <h3>Overall Status: ${passed === total ? '✅ All Tests Passed' : `⚠️ ${passed}/${total} Tests Passed`}</h3>
                 <ul>
-                    ${Object.entries(testResults).map(([test, success]) => 
+                    ${Object.entries(testResults).map(([test, success]) =>
                         `<li>${success ? '✅' : '❌'} ${test.charAt(0).toUpperCase() + test.slice(1)}</li>`
                     ).join('')}
                 </ul>

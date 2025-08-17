@@ -75,10 +75,10 @@ class MetricsStore {
     for (const [key, histogram] of this.histograms) {
       const baseName = key.split('{')[0];
       const labels = key.includes('{') ? key.substring(key.indexOf('{')).slice(0, -1) : '';
-      
+
       // Bucket metrics
       for (const [bucket, count] of histogram.buckets) {
-        const bucketKey = labels 
+        const bucketKey = labels
           ? `${baseName}_bucket{${labels},le="${bucket === Infinity ? '+Inf' : bucket}"}`
           : `${baseName}_bucket{le="${bucket === Infinity ? '+Inf' : bucket}"}`;
         lines.push(`${bucketKey} ${count}`);
@@ -101,18 +101,18 @@ export const metricsStore = new MetricsStore();
 // Initialize default metrics
 function updateSystemMetrics() {
   const memUsage = process.memoryUsage();
-  
+
   // Memory metrics
   metricsStore.setGauge('nodejs_heap_size_used_bytes', {}, memUsage.heapUsed);
   metricsStore.setGauge('nodejs_heap_size_total_bytes', {}, memUsage.heapTotal);
   metricsStore.setGauge('nodejs_external_memory_bytes', {}, memUsage.external);
   metricsStore.setGauge('nodejs_rss_bytes', {}, memUsage.rss);
-  
+
   // Process metrics
   metricsStore.setGauge('nodejs_uptime_seconds', {}, process.uptime());
   metricsStore.setGauge('nodejs_process_cpu_user_seconds_total', {}, process.cpuUsage().user / 1000000);
   metricsStore.setGauge('nodejs_process_cpu_system_seconds_total', {}, process.cpuUsage().system / 1000000);
-  
+
   // Event loop lag (simplified)
   const start = process.hrtime.bigint();
   setImmediate(() => {
@@ -131,9 +131,9 @@ updateSystemMetrics(); // Initial update
 export const getMetrics = async (req: Request, res: Response): Promise<void> => {
   try {
     updateSystemMetrics();
-    
+
     const metricsOutput = metricsStore.exportPrometheusFormat();
-    
+
     // Add metadata comments
     const output = [
       '# HELP http_requests_total Total number of HTTP requests',
@@ -180,7 +180,7 @@ export const getMetrics = async (req: Request, res: Response): Promise<void> => 
  */
 export const httpMetricsMiddleware = (req: Request, res: Response, next: Function) => {
   const start = Date.now();
-  
+
   res.on('finish', () => {
     const duration = (Date.now() - start) / 1000; // Convert to seconds
     const labels = {

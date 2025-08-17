@@ -90,7 +90,7 @@ async function calculateSingleFormula(
   data: Record<string, any>
 ): Promise<any> {
   const cacheKey = `${formula}_${JSON.stringify(data)}`;
-  
+
   // Check cache
   if (formulaCache.has(cacheKey)) {
     const cached = formulaCache.get(cacheKey);
@@ -125,11 +125,11 @@ async function calculateBatchFormulas(
   data: Record<string, any>
 ): Promise<Record<string, any>> {
   const results: Record<string, any> = {};
-  
+
   // Process formulas in chunks for better parallelization
   const chunkSize = 100;
   const chunks = [];
-  
+
   for (let i = 0; i < formulas.length; i += chunkSize) {
     chunks.push(formulas.slice(i, i + chunkSize));
   }
@@ -183,7 +183,7 @@ async function calculateAggregates(
   data: Record<string, any>
 ): Promise<Record<string, any>> {
   const values = Object.values(data).filter(v => typeof v === 'number');
-  
+
   if (values.length === 0) {
     return {
       sum: 0,
@@ -199,7 +199,7 @@ async function calculateAggregates(
   const avg = sum / values.length;
   const min = Math.min(...values);
   const max = Math.max(...values);
-  
+
   // Calculate standard deviation
   const squaredDiffs = values.map(v => Math.pow(v - avg, 2));
   const avgSquaredDiff = squaredDiffs.reduce((a, b) => a + b, 0) / values.length;
@@ -227,22 +227,22 @@ function evaluateFormula(formula: string, data: Record<string, any>): any {
 
     // Evaluate with math.js
     const result = math.evaluate(processedFormula);
-    
+
     // Convert to decimal for precision
     if (typeof result === 'number' || result instanceof math.BigNumber) {
       return new Decimal(result.toString()).toFixed(2);
     }
-    
+
     return result;
   } catch (error) {
     // Fallback to formula parser
     parser.setVariable('data', data);
     const parseResult = parser.parse(formula);
-    
+
     if (parseResult.error) {
       throw new Error(parseResult.error);
     }
-    
+
     return parseResult.result;
   }
 }
@@ -263,7 +263,7 @@ setInterval(() => {
       data: {
         ...performanceMetrics,
         avgTime: performanceMetrics.totalTime / performanceMetrics.totalCalculations,
-        cacheHitRate: performanceMetrics.cacheHits / 
+        cacheHitRate: performanceMetrics.cacheHits /
           (performanceMetrics.cacheHits + performanceMetrics.cacheMisses),
       },
     });

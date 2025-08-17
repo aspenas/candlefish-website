@@ -159,17 +159,40 @@ class SalesforceService {
     if (this.isInitialized) return;
 
     try {
-      // Get credentials from environment variables (production mode)
-      const clientId = process.env.SALESFORCE_CLIENT_ID;
-      const clientSecret = process.env.SALESFORCE_CLIENT_SECRET;
-      const username = process.env.SALESFORCE_USERNAME;
-      const password = process.env.SALESFORCE_PASSWORD;
-      const securityToken = process.env.SALESFORCE_SECURITY_TOKEN;
-      const loginUrl = process.env.SALESFORCE_LOGIN_URL || 'https://test.salesforce.com';
-      const instanceUrl = process.env.SALESFORCE_INSTANCE_URL;
+      // Try to get credentials from AWS Secrets Manager first, then fall back to env vars
+      let clientId = process.env.SALESFORCE_CLIENT_ID;
+      let clientSecret = process.env.SALESFORCE_CLIENT_SECRET;
+      let username = process.env.SALESFORCE_USERNAME;
+      let password = process.env.SALESFORCE_PASSWORD;
+      let securityToken = process.env.SALESFORCE_SECURITY_TOKEN;
+      let instanceUrl = process.env.SALESFORCE_INSTANCE_URL;
+
+      // Try AWS Secrets Manager if environment variables are not set
+      if (!clientId || !clientSecret || !username || !password) {
+        try {
+          const secretsManager = getSecretsManager();
+          const secrets = await secretsManager.getSecrets();
+
+          if (secrets.salesforce) {
+            clientId = secrets.salesforce.clientId || clientId;
+            clientSecret = secrets.salesforce.clientSecret || clientSecret;
+            username = secrets.salesforce.username || username;
+            password = secrets.salesforce.password || password;
+            securityToken = secrets.salesforce.securityToken || securityToken;
+            instanceUrl = secrets.salesforce.instanceUrl || instanceUrl;
+
+            logger.info('Loaded Salesforce credentials from AWS Secrets Manager');
+          }
+        } catch (secretError) {
+          logger.warn('Could not load credentials from AWS Secrets Manager:', secretError);
+        }
+      }
+
+      const loginUrl = process.env.SALESFORCE_LOGIN_URL || 'https://test.salesforce.com'; // Sandbox URL
 
       if (!username || !password || !clientId || !clientSecret) {
-        logger.warn('Salesforce credentials not configured in environment variables');
+        logger.warn('Salesforce credentials not configured. Please set environment variables or configure AWS Secrets Manager.');
+        logger.info('Required credentials: SALESFORCE_CLIENT_ID, SALESFORCE_CLIENT_SECRET, SALESFORCE_USERNAME, SALESFORCE_PASSWORD');
         return;
       }
 
@@ -177,7 +200,7 @@ class SalesforceService {
       await this.initializeWithOAuth(clientId, clientSecret, username, password, securityToken || '', instanceUrl || loginUrl);
 
       this.isInitialized = true;
-      logger.info('Salesforce connection established');
+      logger.info('Salesforce connection established successfully');
 
       // Start periodic sync
       this.startPeriodicSync();
@@ -204,9 +227,9 @@ class SalesforceService {
         }
       });
     } else {
-      // Fresh login
+      // Fresh login - ensure we use sandbox login URL
       this.conn = new jsforce.Connection({
-        loginUrl: process.env.SALESFORCE_LOGIN_URL || 'https://test.salesforce.com',
+        loginUrl: loginUrl, // Use the loginUrl variable which defaults to sandbox
         oauth2: {
           clientId,
           clientSecret,
@@ -324,16 +347,28 @@ class SalesforceService {
 
     return this.withRetry(async () => {
       const escapedQuery = query.replace(/'/g, "\\'");
+
+      // Enhanced search that handles phone number formats
+      const phoneQuery = query.replace(/\D/g, ''); // Remove non-digits for phone search
+
+      let whereClause = `(Name LIKE '%${escapedQuery}%' OR Email LIKE '%${escapedQuery}%'`;
+
+      // Add phone search if query contains digits
+      if (phoneQuery.length >= 3) {
+        whereClause += ` OR Phone LIKE '%${phoneQuery}%' OR MobilePhone LIKE '%${phoneQuery}%'`;
+      } else {
+        whereClause += ` OR Phone LIKE '%${escapedQuery}%' OR MobilePhone LIKE '%${escapedQuery}%'`;
+      }
+
+      whereClause += ')';
+
       const result = await this.conn!.query<SalesforceContact>(
         `SELECT Id, Name, FirstName, LastName, Email, Phone, MobilePhone,
          AccountId, Account.Name, Account.Id, MailingStreet, MailingCity, MailingState,
          MailingPostalCode, MailingCountry, Title, Department, LeadSource,
          LastModifiedDate, CreatedDate, SystemModstamp
          FROM Contact
-         WHERE Name LIKE '%${escapedQuery}%'
-         OR Email LIKE '%${escapedQuery}%'
-         OR Phone LIKE '%${escapedQuery}%'
-         OR MobilePhone LIKE '%${escapedQuery}%'
+         WHERE ${whereClause}
          ORDER BY LastModifiedDate DESC
          LIMIT ${limit}`
       );
@@ -426,7 +461,22 @@ class SalesforceService {
     }
 
     return this.withRetry(async () => {
-      const escapedQuery = query.replace(/'/g, "\\'")
+      const escapedQuery = query.replace(/'/g, "\\'");
+
+      // Enhanced search that handles phone number formats
+      const phoneQuery = query.replace(/\D/g, ''); // Remove non-digits for phone search
+
+      let whereClause = `(Name LIKE '%${escapedQuery}%'`;
+
+      // Add phone search if query contains digits
+      if (phoneQuery.length >= 3) {
+        whereClause += ` OR Phone LIKE '%${phoneQuery}%'`;
+      } else {
+        whereClause += ` OR Phone LIKE '%${escapedQuery}%'`;
+      }
+
+      whereClause += ')';
+
       const result = await this.conn!.query<SalesforceAccount>(
         `SELECT Id, Name, Type, Industry, Phone, Website,
          BillingStreet, BillingCity, BillingState, BillingPostalCode,
@@ -434,8 +484,7 @@ class SalesforceService {
          ShippingPostalCode, ShippingCountry, Description, NumberOfEmployees,
          AnnualRevenue, ParentId, OwnerId, LastModifiedDate, CreatedDate, SystemModstamp
          FROM Account
-         WHERE Name LIKE '%${escapedQuery}%'
-         OR Phone LIKE '%${escapedQuery}%'
+         WHERE ${whereClause}
          ORDER BY LastModifiedDate DESC
          LIMIT ${limit}`
       );

@@ -106,7 +106,7 @@ describe('HealthMonitoringDashboard Component', () => {
       expect(screen.getByTestId('service-database')).toBeInTheDocument();
       expect(screen.getByTestId('service-redis')).toBeInTheDocument();
       expect(screen.getByTestId('service-temporal')).toBeInTheDocument();
-      
+
       // Check service details
       const databaseCard = screen.getByTestId('service-database');
       expect(within(databaseCard).getByText('Database')).toBeInTheDocument();
@@ -176,11 +176,11 @@ describe('HealthMonitoringDashboard Component', () => {
     it('should update data when health status changes', async () => {
       // Arrange
       const { rerender } = renderWithProviders(<HealthMonitoringDashboard />);
-      
+
       // Act - simulate health status change
       const updatedData = healthComponentFactory.createDegradedDashboardData();
       mockUseHealthStore.mockReturnValue(updatedData);
-      
+
       rerender(
         <QueryClientProvider client={createQueryClient()}>
           <HealthMonitoringDashboard />
@@ -382,7 +382,7 @@ describe('HealthMonitoringDashboard Component', () => {
       // Act
       const refreshButton = screen.getByTestId('refresh-button');
       refreshButton.focus();
-      
+
       await user.keyboard('{Enter}');
 
       // Assert
@@ -410,11 +410,11 @@ describe('HealthMonitoringDashboard Component', () => {
     it('should announce status changes to screen readers', async () => {
       // Arrange
       const { rerender } = renderWithProviders(<HealthMonitoringDashboard />);
-      
+
       // Act
       const degradedData = healthComponentFactory.createDegradedDashboardData();
       mockUseHealthStore.mockReturnValue(degradedData);
-      
+
       rerender(
         <QueryClientProvider client={createQueryClient()}>
           <HealthMonitoringDashboard />
@@ -482,7 +482,7 @@ describe('HealthMonitoringDashboard Component', () => {
       // Assert
       expect(screen.getByText('Something went wrong')).toBeInTheDocument();
       expect(screen.getByText('Reload Dashboard')).toBeInTheDocument();
-      
+
       consoleSpy.mockRestore();
     });
   });

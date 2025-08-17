@@ -66,8 +66,8 @@ export const useHealthStore = create<HealthStore & HealthStoreActions>()(
         // Add to history (keep last 100 points)
         const { healthHistory } = get();
         const newHistory = {
-          responseTime: [...healthHistory.responseTime, health.summary.total > 0 
-            ? Object.values(health.checks).reduce((sum, check) => sum + check.responseTime, 0) / health.summary.total 
+          responseTime: [...healthHistory.responseTime, health.summary.total > 0
+            ? Object.values(health.checks).reduce((sum, check) => sum + check.responseTime, 0) / health.summary.total
             : 0].slice(-100),
           timestamp: [...healthHistory.timestamp, health.timestamp].slice(-100),
           status: [...healthHistory.status, health.status].slice(-100),
@@ -140,8 +140,8 @@ export const useWorkflowStore = create<WorkflowStore & WorkflowStoreActions>()(
           executionHistory: state.executionHistory.map((exec) =>
             exec.id === id ? { ...exec, ...updates } : exec
           ),
-          activeExecution: state.activeExecution?.id === id 
-            ? { ...state.activeExecution, ...updates } 
+          activeExecution: state.activeExecution?.id === id
+            ? { ...state.activeExecution, ...updates }
             : state.activeExecution,
         }));
       },
@@ -219,8 +219,8 @@ export const useLoadTestStore = create<LoadTestStore & LoadTestStoreActions>()(
           testHistory: state.testHistory.map((result) =>
             result.id === id ? { ...result, ...updates } : result
           ),
-          activeTest: state.activeTest?.id === id 
-            ? { ...state.activeTest, ...updates } 
+          activeTest: state.activeTest?.id === id
+            ? { ...state.activeTest, ...updates }
             : state.activeTest,
         }));
       },
@@ -274,7 +274,7 @@ export const useDRStore = create<DRStore & DRStoreActions>()(
 
       // Actions
       updateBackupStatus: (backups) => set({ backupStatus: backups }),
-      
+
       addBackup: (backup) => {
         set((state) => ({
           backupStatus: [backup, ...state.backupStatus].slice(0, 100),
@@ -354,7 +354,7 @@ export const useAlertStore = create<AlertStore & AlertStoreActions>()(
           const alertToRemove = state.alerts.find((alert) => alert.id === id);
           return {
             alerts: state.alerts.filter((alert) => alert.id !== id),
-            unreadCount: alertToRemove && !alertToRemove.acknowledged 
+            unreadCount: alertToRemove && !alertToRemove.acknowledged
               ? Math.max(0, state.unreadCount - 1)
               : state.unreadCount,
           };
@@ -405,7 +405,7 @@ export const useHealthMetrics = () => useHealthStore((state) => state.healthHist
 // Workflow selectors
 export const useActiveWorkflow = () => useWorkflowStore((state) => state.activeExecution);
 export const useWorkflowMetrics = () => useWorkflowStore((state) => state.metrics);
-export const useRecentExecutions = () => useWorkflowStore((state) => 
+export const useRecentExecutions = () => useWorkflowStore((state) =>
   state.executions.slice(0, 10)
 );
 
@@ -419,6 +419,6 @@ export const useFailoverStatus = () => useDRStore((state) => state.failoverStatu
 
 // Alert selectors
 export const useUnreadAlerts = () => useAlertStore((state) => state.unreadCount);
-export const useCriticalAlerts = () => useAlertStore((state) => 
+export const useCriticalAlerts = () => useAlertStore((state) =>
   state.alerts.filter((alert) => alert.severity === 'critical').slice(0, 5)
 );

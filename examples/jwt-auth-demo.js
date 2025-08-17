@@ -43,7 +43,7 @@ app.get('/', (req, res) => {
 app.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    
+
     // Mock user validation (replace with real authentication)
     if (email === 'admin@example.com' && password === 'password') {
       const accessToken = await auth.signToken({
@@ -52,9 +52,9 @@ app.post('/login', async (req, res) => {
         role: 'admin',
         permissions: ['read', 'write', 'delete']
       });
-      
+
       const refreshToken = await auth.generateRefreshToken('user-123');
-      
+
       res.json({
         accessToken,
         refreshToken,

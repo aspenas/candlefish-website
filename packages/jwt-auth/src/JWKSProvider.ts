@@ -15,9 +15,9 @@ export class JWKSProvider {
       jwksRequestsPerMinute: 10
     });
 
-    this.cache = cache || new NodeCache({ 
+    this.cache = cache || new NodeCache({
       stdTTL: 600,
-      checkperiod: 120 
+      checkperiod: 120
     });
   }
 
@@ -27,7 +27,7 @@ export class JWKSProvider {
   async getKey(kid: string): Promise<string> {
     const cacheKey = `jwks-key-${kid}`;
     const cached = this.cache.get(cacheKey);
-    
+
     if (cached) {
       return cached as string;
     }
@@ -35,7 +35,7 @@ export class JWKSProvider {
     try {
       const key = await this.client.getSigningKey(kid);
       const signingKey = key.getPublicKey();
-      
+
       this.cache.set(cacheKey, signingKey);
       return signingKey;
     } catch (error: any) {
@@ -49,7 +49,7 @@ export class JWKSProvider {
   async getAllKeys(): Promise<jwksClient.SigningKey[]> {
     const cacheKey = 'jwks-all-keys';
     const cached = this.cache.get(cacheKey);
-    
+
     if (cached) {
       return cached as jwksClient.SigningKey[];
     }
@@ -59,7 +59,7 @@ export class JWKSProvider {
       // In production, you might want to fetch the JWKS endpoint directly
       const keys: jwksClient.SigningKey[] = [];
       // Implementation would fetch from the JWKS endpoint
-      
+
       this.cache.set(cacheKey, keys);
       return keys;
     } catch (error: any) {

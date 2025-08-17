@@ -113,7 +113,7 @@ export class InfrastructureTestFactory {
   static createHealthyResponse(): HealthTestData {
     const services = ['database', 'redis', 'temporal', 'api', 'websocket'];
     const checks: Record<string, ServiceCheck> = {};
-    
+
     services.forEach(service => {
       checks[service] = {
         status: 'healthy',
@@ -141,11 +141,11 @@ export class InfrastructureTestFactory {
 
   static createDegradedResponse(): HealthTestData {
     const healthyData = this.createHealthyResponse();
-    
+
     // Make one service degraded
     const serviceNames = Object.keys(healthyData.checks);
     const degradedService = faker.helpers.arrayElement(serviceNames);
-    
+
     healthyData.checks[degradedService] = {
       status: 'degraded',
       responseTime: faker.number.int({ min: 100, max: 500 }),
@@ -163,11 +163,11 @@ export class InfrastructureTestFactory {
 
   static createUnhealthyResponse(): HealthTestData {
     const healthyData = this.createHealthyResponse();
-    
+
     // Make multiple services unhealthy
     const serviceNames = Object.keys(healthyData.checks);
     const unhealthyServices = faker.helpers.arrayElements(serviceNames, { min: 2, max: 3 });
-    
+
     unhealthyServices.forEach(service => {
       healthyData.checks[service] = {
         status: 'unhealthy',
@@ -187,7 +187,7 @@ export class InfrastructureTestFactory {
 
   static createHealthyResponseWithCircuitBreakers(): HealthTestData {
     const healthyData = this.createHealthyResponse();
-    
+
     healthyData['circuitBreakers'] = {
       database: {
         state: 'closed',
@@ -350,7 +350,7 @@ export class InfrastructureTestFactory {
 
   static createLoadTestResult(): LoadTestData {
     const scenario = this.createLoadTestScenario();
-    
+
     return {
       id: faker.string.uuid(),
       name: scenario.name,

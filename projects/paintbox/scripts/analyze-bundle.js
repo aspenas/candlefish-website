@@ -19,7 +19,7 @@ exec('ANALYZE=true npm run build:analyze', (error, stdout, stderr) => {
   // Read Next.js build output
   const buildManifest = path.join(__dirname, '../.next/build-manifest.json');
   const appBuildManifest = path.join(__dirname, '../.next/app-build-manifest.json');
-  
+
   if (fs.existsSync(buildManifest)) {
     const manifest = JSON.parse(fs.readFileSync(buildManifest, 'utf8'));
     analyzeBuildManifest(manifest);
@@ -45,10 +45,10 @@ exec('ANALYZE=true npm run build:analyze', (error, stdout, stderr) => {
 function analyzeBuildManifest(manifest) {
   console.log('📋 Build Manifest Analysis:');
   console.log('─'.repeat(50));
-  
+
   const pages = Object.keys(manifest.pages || {});
   console.log(`Total pages: ${pages.length}`);
-  
+
   // Analyze page bundles
   pages.forEach(page => {
     const bundles = manifest.pages[page];
@@ -59,7 +59,7 @@ function analyzeBuildManifest(manifest) {
       }
       return sum;
     }, 0);
-    
+
     if (totalSize > 200000) { // Flag pages over 200KB
       console.log(`⚠️  ${page}: ${(totalSize / 1024).toFixed(2)}KB`);
     }
@@ -69,7 +69,7 @@ function analyzeBuildManifest(manifest) {
 function analyzeChunkSizes(chunksPath) {
   console.log('\n📦 Chunk Size Analysis:');
   console.log('─'.repeat(50));
-  
+
   const files = fs.readdirSync(chunksPath);
   const chunks = files
     .filter(file => file.endsWith('.js'))
@@ -84,11 +84,11 @@ function analyzeChunkSizes(chunksPath) {
 
   let totalSize = 0;
   const largeChunks = [];
-  
+
   chunks.forEach((chunk, index) => {
     totalSize += chunk.size;
     const sizeKB = (chunk.size / 1024).toFixed(2);
-    
+
     if (chunk.size > 150000) { // Flag chunks over 150KB
       largeChunks.push(chunk);
       console.log(`❗ ${chunk.name}: ${sizeKB}KB`);
@@ -101,7 +101,7 @@ function analyzeChunkSizes(chunksPath) {
   console.log(`Total size: ${(totalSize / 1024 / 1024).toFixed(2)}MB`);
   console.log(`Average chunk size: ${(totalSize / chunks.length / 1024).toFixed(2)}KB`);
   console.log(`Large chunks (>150KB): ${largeChunks.length}`);
-  
+
   // Calculate metrics
   const metrics = {
     totalBundleSize: totalSize,
@@ -109,7 +109,7 @@ function analyzeChunkSizes(chunksPath) {
     chunkCount: chunks.length,
     largeChunkCount: largeChunks.length,
   };
-  
+
   // Save metrics
   fs.writeFileSync(
     path.join(__dirname, '../bundle-metrics.json'),
@@ -120,7 +120,7 @@ function analyzeChunkSizes(chunksPath) {
 function generateRecommendations() {
   console.log('\n💡 Performance Recommendations:');
   console.log('─'.repeat(50));
-  
+
   const recommendations = [
     {
       issue: 'Large bundle size',
@@ -148,13 +148,13 @@ function generateRecommendations() {
       impact: 'Medium',
     },
   ];
-  
+
   recommendations.forEach(rec => {
     console.log(`\n${rec.impact === 'High' ? '🔴' : '🟡'} ${rec.issue}`);
     console.log(`   Solution: ${rec.solution}`);
     console.log(`   Impact: ${rec.impact}`);
   });
-  
+
   console.log('\n✨ Run "npm run build:analyze" to generate a detailed bundle report');
 }
 
@@ -162,10 +162,10 @@ function generateRecommendations() {
 function analyzePackageSizes() {
   console.log('\n📚 Package Size Analysis:');
   console.log('─'.repeat(50));
-  
+
   const packageJson = require('../package.json');
   const dependencies = Object.keys(packageJson.dependencies || {});
-  
+
   const heavyPackages = [
     '@apollo/client',
     '@sentry/nextjs',
@@ -176,14 +176,14 @@ function analyzePackageSizes() {
     'framer-motion',
     'jsforce',
   ];
-  
+
   console.log('Heavy packages detected:');
   heavyPackages.forEach(pkg => {
     if (dependencies.includes(pkg)) {
       console.log(`   ⚠️  ${pkg}`);
     }
   });
-  
+
   console.log('\nConsider lazy loading these packages or finding lighter alternatives.');
 }
 

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "NODE_ENV=development ts-node -r tsconfig-paths/register --project tsconfig.server.json server/websocket-server.ts",
-    "dev:next": "next dev --turbopack",
+    "dev:next": "NEXT_DISABLE_TURBOPACK=1 next dev",
     "build": "NODE_OPTIONS='--max-old-space-size=16384 --max-semi-space-size=512' next build",
     "build:production": "NODE_OPTIONS='--max-old-space-size=32768 --max-semi-space-size=1024' SKIP_STATIC_OPTIMIZATION=1 DISABLE_ESLINT=1 DISABLE_TYPESCRIPT_CHECK=1 next build",
     "build:deploy": "NODE_OPTIONS='--max-old-space-size=2048' SKIP_STATIC_OPTIMIZATION=1 DISABLE_ESLINT=1 DISABLE_TYPESCRIPT_CHECK=1 next build",

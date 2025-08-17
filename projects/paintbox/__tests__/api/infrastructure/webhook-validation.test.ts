@@ -294,7 +294,7 @@ describe('Webhook Validation and Security', () => {
       const body = JSON.stringify(payload);
       const timestamp = Math.floor(Date.now() / 1000).toString();
 
-      const requests = Array.from({ length: 50 }, () => 
+      const requests = Array.from({ length: 50 }, () =>
         new NextRequest('http://localhost:3000/api/webhooks/slack', {
           method: 'POST',
           headers: {

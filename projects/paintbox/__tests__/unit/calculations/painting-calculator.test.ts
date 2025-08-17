@@ -127,7 +127,7 @@ describe('PaintingCalculator', () => {
 
     it('should handle primer calculations separately', () => {
       const area = 400;
-      
+
       const result = calculator.calculatePaintGallons(area, {
         needsPrimer: true,
         primerCoveragePerGallon: 300,
@@ -249,7 +249,7 @@ describe('PaintingCalculator', () => {
   describe('Pricing Calculations', () => {
     it('should calculate Good/Better/Best pricing', () => {
       const baseCost = 1000;
-      
+
       const result = calculator.calculateTieredPricing(baseCost, {
         goodMultiplier: 1.0,
         betterMultiplier: 1.25,
@@ -391,14 +391,14 @@ describe('PaintingCalculator', () => {
       });
 
       expect(() => calculator.calculateWallArea(invalidRoom)).not.toThrow();
-      
+
       const result = calculator.calculateWallArea(invalidRoom);
       expect(result.area).toBe(0);
     });
 
     it('should handle negative values', () => {
       expect(() => calculator.calculatePaintGallons(-100)).not.toThrow();
-      
+
       const result = calculator.calculatePaintGallons(-100);
       expect(result.gallons).toBe(0);
     });
@@ -437,7 +437,7 @@ describe('PaintingCalculator', () => {
       });
 
       const startTime = Date.now();
-      
+
       for (let i = 0; i < 100; i++) {
         calculator.calculateCompleteRoomEstimate(complexRoom);
       }

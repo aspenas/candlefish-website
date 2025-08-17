@@ -1,18 +1,18 @@
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
 import * as jwt from 'jsonwebtoken';
 import NodeCache from 'node-cache';
-import { 
-  JWTConfig, 
-  TokenPayload, 
-  TokenPair, 
+import {
+  JWTConfig,
+  TokenPayload,
+  TokenPair,
   JWKSKey,
   VerifyOptions
 } from './types';
-import { 
-  jwkToPem, 
-  generateJti, 
+import {
+  jwkToPem,
+  generateJti,
   getExpirationTime,
-  parseAuthHeader 
+  parseAuthHeader
 } from './utils';
 import { JWKSProvider } from './JWKSProvider';
 
@@ -34,9 +34,9 @@ export class CandlefishAuth {
     };
 
     // Initialize cache
-    this.cache = new NodeCache({ 
+    this.cache = new NodeCache({
       stdTTL: this.config.cacheTimeout!,
-      checkperiod: 120 
+      checkperiod: 120
     });
 
     // Initialize AWS Secrets Manager if secretId is provided
@@ -91,7 +91,7 @@ export class CandlefishAuth {
 
     const issuer = options?.issuer || this.config.issuer;
     const audience = options?.audience || this.config.audience;
-    
+
     const verifyOptions: jwt.VerifyOptions = {
       algorithms: ['RS256'],
       issuer: Array.isArray(issuer) ? issuer[0] : issuer,
@@ -153,7 +153,7 @@ export class CandlefishAuth {
   async refreshToken(refreshToken: string): Promise<TokenPair> {
     // Verify refresh token
     const decoded = await this.verifyToken(refreshToken);
-    
+
     if (decoded.type !== 'refresh') {
       throw new Error('Invalid token type');
     }
@@ -171,8 +171,8 @@ export class CandlefishAuth {
     return {
       accessToken,
       refreshToken: newRefreshToken,
-      expiresIn: typeof this.config.expiresIn === 'number' 
-        ? this.config.expiresIn 
+      expiresIn: typeof this.config.expiresIn === 'number'
+        ? this.config.expiresIn
         : 86400, // Default 24 hours in seconds
       tokenType: 'Bearer'
     };
@@ -231,7 +231,7 @@ export class CandlefishAuth {
 
     const cacheKey = 'private-key';
     const cached = this.cache.get(cacheKey);
-    
+
     if (cached) {
       const { key, kid } = cached as { key: string; kid: string };
       this.privateKey = key;
@@ -245,13 +245,13 @@ export class CandlefishAuth {
 
     const response = await this.secretsClient.send(command);
     const privateKeyJwk = JSON.parse(response.SecretString!) as JWKSKey;
-    
+
     this.privateKey = jwkToPem(privateKeyJwk);
     this.keyId = privateKeyJwk.kid;
 
-    this.cache.set(cacheKey, { 
-      key: this.privateKey, 
-      kid: this.keyId 
+    this.cache.set(cacheKey, {
+      key: this.privateKey,
+      kid: this.keyId
     });
   }
 

@@ -18,11 +18,13 @@ const publicRoutes = [
   '/api/auth/',
   '/api/health',
   '/api/webhooks/',
+  '/api/v1/salesforce/test', // Allow Salesforce connection testing
+  '/api/v1/salesforce/search', // Allow Salesforce search for customer lookup
+  '/estimate', // Make estimate routes public for internal staff workflow
 ];
 
 // Define protected routes that require authentication
 const protectedRoutes = [
-  '/estimate',
   '/admin',
   '/api/v1',
 ];

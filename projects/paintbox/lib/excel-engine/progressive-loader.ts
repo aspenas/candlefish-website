@@ -59,7 +59,7 @@ export class ProgressiveExcelLoader {
   ): Promise<void> {
     // Split formulas into chunks based on priority and dependencies
     const chunks = this.createChunks(formulas, data);
-    
+
     chunks.forEach(chunk => {
       this.chunks.set(chunk.id, chunk);
     });
@@ -96,7 +96,7 @@ export class ProgressiveExcelLoader {
       for (let i = 0; i < groupFormulas.length; i += chunkSize) {
         const chunkFormulas = groupFormulas.slice(i, i + chunkSize);
         const chunkData = this.extractRelevantData(chunkFormulas, data);
-        
+
         chunks.push({
           id: `${groupName}_${Math.floor(i / chunkSize)}`,
           priority: this.calculatePriority(groupName, groupIndex),
@@ -124,7 +124,7 @@ export class ProgressiveExcelLoader {
       // Extract cell references and function calls
       const cellRefs = formula.match(/[A-Z]+\d+/g) || [];
       const functions = formula.match(/[A-Z]+\(/g) || [];
-      
+
       // Determine category based on formula pattern
       let category = 'general';
       if (formula.includes('SUM') || formula.includes('AVERAGE')) {
@@ -170,7 +170,7 @@ export class ProgressiveExcelLoader {
     allData: Record<string, any>
   ): Record<string, any> {
     const relevantData: Record<string, any> = {};
-    
+
     // Extract referenced cells from formulas
     formulas.forEach(formula => {
       const cellRefs = formula.match(/[A-Z]+\d+/g) || [];
@@ -228,7 +228,7 @@ export class ProgressiveExcelLoader {
       if (this.options.cacheEnabled) {
         const cacheKey = `${CachePrefix.EXCEL}${chunkId}`;
         const cached = await this.cache.get(cacheKey);
-        
+
         if (cached) {
           chunk.loaded = true;
           this.loadingChunks.delete(chunkId);
@@ -276,7 +276,7 @@ export class ProgressiveExcelLoader {
       const messageHandler = (event: MessageEvent) => {
         if (event.data.id === chunk.id) {
           this.worker!.removeEventListener('message', messageHandler);
-          
+
           if (event.data.error) {
             reject(new Error(event.data.error));
           } else {
@@ -286,7 +286,7 @@ export class ProgressiveExcelLoader {
       };
 
       this.worker.addEventListener('message', messageHandler);
-      
+
       this.worker.postMessage({
         id: chunk.id,
         type: 'batch',
@@ -302,7 +302,7 @@ export class ProgressiveExcelLoader {
   private async processInMainThread(chunk: ExcelChunk): Promise<void> {
     // Simulate processing delay
     await new Promise(resolve => setTimeout(resolve, 10));
-    
+
     // Process formulas (simplified)
     chunk.formulas.forEach(formula => {
       // Formula processing logic here
@@ -329,7 +329,7 @@ export class ProgressiveExcelLoader {
   private updateProgress(): void {
     const loaded = Array.from(this.chunks.values()).filter(c => c.loaded).length;
     const total = this.chunks.size;
-    
+
     if (this.onProgress) {
       this.onProgress(loaded, total);
     }
@@ -341,7 +341,7 @@ export class ProgressiveExcelLoader {
   getProgress(): { loaded: number; total: number; percentage: number } {
     const loaded = Array.from(this.chunks.values()).filter(c => c.loaded).length;
     const total = this.chunks.size;
-    
+
     return {
       loaded,
       total,

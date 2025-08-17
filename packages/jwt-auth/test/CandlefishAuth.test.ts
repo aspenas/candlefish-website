@@ -13,7 +13,7 @@ jest.mock('@aws-sdk/client-secrets-manager', () => ({
 
 describe('CandlefishAuth', () => {
   let auth: CandlefishAuth;
-  
+
   // Generate test keys
   const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
     modulusLength: 2048,
@@ -43,10 +43,10 @@ describe('CandlefishAuth', () => {
       (auth as any).keyId = 'test-key-id';
 
       const token = await auth.signToken(payload);
-      
+
       expect(token).toBeDefined();
       expect(typeof token).toBe('string');
-      
+
       // Verify the token structure
       const decoded = jwt.decode(token, { complete: true }) as any;
       expect(decoded.header.kid).toBe('test-key-id');
@@ -58,7 +58,7 @@ describe('CandlefishAuth', () => {
 
     it('should throw error if secretId is not configured', async () => {
       const authWithoutSecret = new CandlefishAuth({});
-      
+
       await expect(authWithoutSecret.signToken({ sub: 'user123' }))
         .rejects.toThrow('secretId is required for signing tokens');
     });
@@ -89,7 +89,7 @@ describe('CandlefishAuth', () => {
 
       // Mock JWKS provider
       (auth as any).privateKey = privateKey;
-      
+
       const verified = await auth.verifyToken(token);
       expect(verified.sub).toBe('user123');
       expect(verified.email).toBe('test@example.com');
@@ -107,7 +107,7 @@ describe('CandlefishAuth', () => {
       );
 
       (auth as any).privateKey = privateKey;
-      
+
       await expect(auth.verifyToken(token))
         .rejects.toThrow('jwt expired');
     });
@@ -133,7 +133,7 @@ describe('CandlefishAuth', () => {
       );
 
       const tokenPair = await auth.refreshToken(refreshToken);
-      
+
       expect(tokenPair).toHaveProperty('accessToken');
       expect(tokenPair).toHaveProperty('refreshToken');
       expect(tokenPair).toHaveProperty('expiresIn');
@@ -142,7 +142,7 @@ describe('CandlefishAuth', () => {
 
     it('should reject non-refresh tokens', async () => {
       (auth as any).privateKey = privateKey;
-      
+
       const accessToken = jwt.sign(
         {
           sub: 'user123',
@@ -176,9 +176,9 @@ describe('CandlefishAuth', () => {
     it('should clear all cached data', () => {
       (auth as any).privateKey = 'test-key';
       (auth as any).keyId = 'test-id';
-      
+
       auth.clearCache();
-      
+
       expect((auth as any).privateKey).toBeNull();
       expect((auth as any).keyId).toBeNull();
     });

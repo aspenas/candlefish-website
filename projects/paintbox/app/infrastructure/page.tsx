@@ -35,7 +35,7 @@ import {
 
 // ===== TYPES =====
 
-type DashboardTab = 
+type DashboardTab =
   | 'overview'
   | 'health'
   | 'workflows'
@@ -136,7 +136,7 @@ const OverviewDashboard: React.FC = () => {
           <div className="flex items-center space-x-3">
             <div className={cn(
               'p-2 rounded-lg',
-              realTimeData.healthStatus === 'healthy' 
+              realTimeData.healthStatus === 'healthy'
                 ? 'bg-green-100 text-green-600'
                 : realTimeData.healthStatus === 'degraded'
                 ? 'bg-yellow-100 text-yellow-600'
@@ -169,7 +169,7 @@ const OverviewDashboard: React.FC = () => {
           <div className="flex items-center space-x-3">
             <div className={cn(
               'p-2 rounded-lg',
-              realTimeData.activeLoadTests 
+              realTimeData.activeLoadTests
                 ? 'bg-orange-100 text-orange-600'
                 : 'bg-gray-100 text-gray-600'
             )}>
@@ -188,7 +188,7 @@ const OverviewDashboard: React.FC = () => {
           <div className="flex items-center space-x-3">
             <div className={cn(
               'p-2 rounded-lg',
-              realTimeData.unreadAlerts > 0 
+              realTimeData.unreadAlerts > 0
                 ? 'bg-red-100 text-red-600'
                 : 'bg-green-100 text-green-600'
             )}>
@@ -208,7 +208,7 @@ const OverviewDashboard: React.FC = () => {
           <div className="flex items-center space-x-3">
             <div className={cn(
               'p-2 rounded-lg',
-              wsStatus === 'connected' 
+              wsStatus === 'connected'
                 ? 'bg-green-100 text-green-600'
                 : wsStatus === 'connecting'
                 ? 'bg-yellow-100 text-yellow-600'
@@ -349,7 +349,7 @@ export default function InfrastructurePage() {
               </div>
             </div>
           </div>
-          
+
           <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
         </div>
       </div>

@@ -22,11 +22,11 @@ describe('Authentication Middleware', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Mock URL for NextRequest
     const url = 'https://app.paintbox.com/api/v1/estimates';
     mockRequest = new NextRequest(url);
-    
+
     // Set up default JWT mocks
     process.env.JWT_SECRET = secretKey;
   });
@@ -35,7 +35,7 @@ describe('Authentication Middleware', () => {
     it('should generate valid JWT tokens', () => {
       const payload = createJWTPayload();
       const expectedToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LXVzZXItaWQifQ.signature';
-      
+
       mockJwt.sign.mockReturnValue(expectedToken);
 
       const token = generateToken(payload);
@@ -156,7 +156,7 @@ describe('Authentication Middleware', () => {
 
       // Add authorization header
       mockRequest.headers.set('authorization', token);
-      
+
       mockJwt.verify.mockReturnValue(payload as any);
 
       const response = await authMiddleware(mockRequest);
@@ -214,7 +214,7 @@ describe('Authentication Middleware', () => {
         email: 'test@example.com',
         role: 'admin',
       });
-      
+
       mockRequest.headers.set('authorization', 'Bearer valid.token');
       mockJwt.verify.mockReturnValue(payload as any);
 
@@ -238,8 +238,8 @@ describe('Authentication Middleware', () => {
       mockRequest.headers.set('authorization', 'Bearer admin.token');
       mockJwt.verify.mockReturnValue(payload as any);
 
-      const response = await authMiddleware(mockRequest, { 
-        requiredRole: 'user' 
+      const response = await authMiddleware(mockRequest, {
+        requiredRole: 'user'
       });
 
       expect(response).toBeUndefined(); // Allow access
@@ -250,8 +250,8 @@ describe('Authentication Middleware', () => {
       mockRequest.headers.set('authorization', 'Bearer user.token');
       mockJwt.verify.mockReturnValue(payload as any);
 
-      const response = await authMiddleware(mockRequest, { 
-        requiredRole: 'admin' 
+      const response = await authMiddleware(mockRequest, {
+        requiredRole: 'admin'
       });
 
       expect(response).toBeInstanceOf(NextResponse);
@@ -339,9 +339,9 @@ describe('Authentication Middleware', () => {
 
     it('should reject invalid refresh tokens', async () => {
       const refreshToken = 'invalid.refresh.token';
-      
+
       mockRequest.headers.set('x-refresh-token', refreshToken);
-      
+
       const error = new Error('invalid token');
       error.name = 'JsonWebTokenError';
       mockJwt.verify.mockImplementation(() => {
@@ -365,7 +365,7 @@ describe('Authentication Middleware', () => {
     it('should protect admin routes', async () => {
       const adminRequest = new NextRequest('https://app.paintbox.com/api/admin/users');
       const userPayload = createJWTPayload({ role: 'user' });
-      
+
       adminRequest.headers.set('authorization', 'Bearer user.token');
       mockJwt.verify.mockReturnValue(userPayload as any);
 
@@ -390,7 +390,7 @@ describe('Authentication Middleware', () => {
     it('should handle API key authentication for service routes', async () => {
       const serviceRequest = new NextRequest('https://app.paintbox.com/api/webhooks/salesforce');
       const validApiKey = 'valid-api-key-123';
-      
+
       serviceRequest.headers.set('x-api-key', validApiKey);
 
       const response = await authMiddleware(serviceRequest, {
@@ -408,7 +408,7 @@ describe('Authentication Middleware', () => {
       const invalidToken = 'Bearer invalid.token';
 
       const payload = createJWTPayload();
-      
+
       // Mock both scenarios
       mockJwt.verify
         .mockReturnValueOnce(payload as any) // Valid token
@@ -440,7 +440,7 @@ describe('Authentication Middleware', () => {
     it('should rate limit authentication attempts', async () => {
       const invalidToken = 'Bearer invalid.token';
       const request = new NextRequest('https://app.paintbox.com/api/test', {
-        headers: { 
+        headers: {
           authorization: invalidToken,
           'x-forwarded-for': '192.168.1.1',
         },
@@ -467,7 +467,7 @@ describe('Authentication Middleware', () => {
     it('should log security events', async () => {
       const mockLogger = jest.fn();
       const invalidToken = 'Bearer invalid.token';
-      
+
       mockRequest.headers.set('authorization', invalidToken);
       mockJwt.verify.mockImplementation(() => {
         throw new Error('invalid token');
@@ -492,13 +492,13 @@ describe('Authentication Middleware', () => {
     it('should cache JWT verification results', async () => {
       const token = 'Bearer cacheable.token';
       const payload = createJWTPayload();
-      
+
       mockRequest.headers.set('authorization', token);
       mockJwt.verify.mockReturnValue(payload as any);
 
       // First call
       await authMiddleware(mockRequest, { enableCache: true });
-      
+
       // Second call should use cache
       await authMiddleware(mockRequest, { enableCache: true });
 
@@ -523,7 +523,7 @@ describe('Authentication Middleware', () => {
 
       // All requests should succeed
       expect(responses.filter(r => r === undefined)).toHaveLength(100);
-      
+
       // Should complete reasonably fast
       expect(endTime - startTime).toBeLessThan(1000);
     });
@@ -543,7 +543,7 @@ describe('Authentication Middleware', () => {
 
     it('should handle malformed JWT tokens', async () => {
       mockRequest.headers.set('authorization', 'Bearer not.a.jwt');
-      
+
       mockJwt.verify.mockImplementation(() => {
         throw new Error('jwt malformed');
       });

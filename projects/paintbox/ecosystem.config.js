@@ -13,7 +13,7 @@ module.exports = {
       cwd: __dirname,
       instances: process.env.NODE_ENV === 'production' ? 'max' : 1,
       exec_mode: process.env.NODE_ENV === 'production' ? 'cluster' : 'fork',
-      
+
       // Environment configuration
       env: {
         NODE_ENV: 'development',
@@ -54,7 +54,7 @@ module.exports = {
         'tmp',
         '*.log'
       ],
-      
+
       // Memory and CPU limits
       max_memory_restart: process.env.NODE_ENV === 'production' ? '2G' : '1G',
       min_uptime: '10s',

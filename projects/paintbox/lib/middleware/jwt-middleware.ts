@@ -44,9 +44,9 @@ export class NextJWTMiddleware {
       });
     } else {
       // Client-side or verification only with JWKS
-      const jwksUrl = config.jwksUrl || 
+      const jwksUrl = config.jwksUrl ||
         `${config.authServiceUrl || process.env.AUTH_SERVICE_URL || 'http://localhost:3001'}/.well-known/jwks.json`;
-      
+
       this.jwtAuth = new CandlefishAuth({
         jwksUrl,
         issuer: config.issuer || process.env.JWT_ISSUER || 'candlefish-auth',
@@ -70,12 +70,12 @@ export class NextJWTMiddleware {
         if (!token) {
           if (this.config.required) {
             return NextResponse.json(
-              { 
-                success: false, 
-                error: { 
-                  code: 'MISSING_TOKEN', 
-                  message: 'Authorization token is required' 
-                } 
+              {
+                success: false,
+                error: {
+                  code: 'MISSING_TOKEN',
+                  message: 'Authorization token is required'
+                }
               },
               { status: 401 }
             );
@@ -93,12 +93,12 @@ export class NextJWTMiddleware {
         } catch (error) {
           if (this.config.required) {
             return NextResponse.json(
-              { 
-                success: false, 
-                error: { 
-                  code: 'INVALID_TOKEN', 
-                  message: 'Invalid or expired token' 
-                } 
+              {
+                success: false,
+                error: {
+                  code: 'INVALID_TOKEN',
+                  message: 'Invalid or expired token'
+                }
               },
               { status: 401 }
             );
@@ -114,12 +114,12 @@ export class NextJWTMiddleware {
           const userRole = tokenPayload.role;
           if (!userRole || !this.config.roles.includes(userRole)) {
             return NextResponse.json(
-              { 
-                success: false, 
-                error: { 
-                  code: 'INSUFFICIENT_ROLE', 
-                  message: `Required role: ${this.config.roles.join(' or ')}` 
-                } 
+              {
+                success: false,
+                error: {
+                  code: 'INSUFFICIENT_ROLE',
+                  message: `Required role: ${this.config.roles.join(' or ')}`
+                }
               },
               { status: 403 }
             );
@@ -135,12 +135,12 @@ export class NextJWTMiddleware {
 
           if (!hasPermissions) {
             return NextResponse.json(
-              { 
-                success: false, 
-                error: { 
-                  code: 'INSUFFICIENT_PERMISSIONS', 
-                  message: `Required permissions: ${this.config.permissions.join(', ')}` 
-                } 
+              {
+                success: false,
+                error: {
+                  code: 'INSUFFICIENT_PERMISSIONS',
+                  message: `Required permissions: ${this.config.permissions.join(', ')}`
+                }
               },
               { status: 403 }
             );
@@ -164,12 +164,12 @@ export class NextJWTMiddleware {
       } catch (error) {
         console.error('JWT middleware error:', error);
         return NextResponse.json(
-          { 
-            success: false, 
-            error: { 
-              code: 'MIDDLEWARE_ERROR', 
-              message: 'Authentication middleware error' 
-            } 
+          {
+            success: false,
+            error: {
+              code: 'MIDDLEWARE_ERROR',
+              message: 'Authentication middleware error'
+            }
           },
           { status: 500 }
         );
@@ -189,7 +189,7 @@ export class NextJWTMiddleware {
 
     return async (request: NextRequest, ...args: T): Promise<NextResponse> => {
       const middlewareResult = await middleware.middleware()(request);
-      
+
       if (middlewareResult instanceof NextResponse && middlewareResult.status >= 400) {
         return middlewareResult;
       }
@@ -197,7 +197,7 @@ export class NextJWTMiddleware {
       // Extract user info from headers for the handler
       const authHeader = request.headers.get('authorization');
       const token = this.jwtAuth.extractToken(authHeader);
-      
+
       if (token) {
         try {
           const tokenPayload = await this.jwtAuth.verifyToken(token);

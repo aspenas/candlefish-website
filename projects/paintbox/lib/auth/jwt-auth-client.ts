@@ -42,7 +42,7 @@ export class JWTAuthClient {
 
   constructor(config: AuthConfig) {
     this.config = config;
-    
+
     // Initialize the JWT auth library with JWKS for token verification
     this.jwtAuth = new CandlefishAuth({
       jwksUrl: config.jwksUrl || `${config.authServiceUrl}/.well-known/jwks.json`,
@@ -234,7 +234,7 @@ export class JWTAuthClient {
     if (response.status === 401 && this.refreshToken) {
       try {
         await this.refresh();
-        
+
         // Retry with new token
         response = await fetch(url, {
           ...options,

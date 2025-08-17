@@ -17,7 +17,7 @@ describe('Rate Limiting Middleware', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     mockRedis = {
       get: jest.fn(),
       set: jest.fn(),
@@ -149,7 +149,7 @@ describe('Rate Limiting Middleware', () => {
     it('should apply different limits for different endpoints', async () => {
       const apiRequest = new NextRequest('https://app.paintbox.com/api/estimates');
       const authRequest = new NextRequest('https://app.paintbox.com/api/auth/login');
-      
+
       apiRequest.headers.set('x-forwarded-for', '192.168.1.1');
       authRequest.headers.set('x-forwarded-for', '192.168.1.1');
 
@@ -172,7 +172,7 @@ describe('Rate Limiting Middleware', () => {
     it('should apply user-based rate limiting for authenticated requests', async () => {
       const request = new NextRequest('https://app.paintbox.com/api/estimates');
       request.headers.set('authorization', 'Bearer user.token.123');
-      
+
       // Mock JWT payload with user ID
       const mockUser = { id: 'user-123', email: 'test@example.com' };
       (request as any).user = mockUser;
@@ -217,7 +217,7 @@ describe('Rate Limiting Middleware', () => {
       const response = await rateLimitMiddleware(request);
 
       expect(response).toBeUndefined();
-      
+
       // Check that headers would be set (in real implementation)
       // This would be verified through integration tests
     });
@@ -453,7 +453,7 @@ describe('Rate Limiting Middleware', () => {
 
       // All should be allowed
       expect(responses.filter(r => r === undefined)).toHaveLength(50);
-      
+
       // Should complete quickly
       expect(endTime - startTime).toBeLessThan(500);
     });

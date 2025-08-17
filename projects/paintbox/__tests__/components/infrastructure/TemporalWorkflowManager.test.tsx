@@ -257,11 +257,11 @@ describe('TemporalWorkflowManager Component', () => {
     it('should update workflow progress in real-time', async () => {
       // Arrange
       const { rerender } = renderWithProviders(<TemporalWorkflowManager />);
-      
+
       // Act - simulate workflow progress update
       const updatedData = workflowComponentFactory.createWorkflowDataWithProgress(80);
       mockUseWorkflowStore.mockReturnValue(updatedData);
-      
+
       rerender(
         <QueryClientProvider client={createQueryClient()}>
           <TemporalWorkflowManager />
@@ -275,11 +275,11 @@ describe('TemporalWorkflowManager Component', () => {
     it('should handle workflow completion notifications', async () => {
       // Arrange
       const { rerender } = renderWithProviders(<TemporalWorkflowManager />);
-      
+
       // Act - simulate workflow completion
       const completedData = workflowComponentFactory.createCompletedWorkflowData();
       mockUseWorkflowStore.mockReturnValue(completedData);
-      
+
       rerender(
         <QueryClientProvider client={createQueryClient()}>
           <TemporalWorkflowManager />
@@ -444,11 +444,11 @@ describe('TemporalWorkflowManager Component', () => {
     it('should announce workflow status changes', async () => {
       // Arrange
       const { rerender } = renderWithProviders(<TemporalWorkflowManager />);
-      
+
       // Act
       const completedData = workflowComponentFactory.createCompletedWorkflowData();
       mockUseWorkflowStore.mockReturnValue(completedData);
-      
+
       rerender(
         <QueryClientProvider client={createQueryClient()}>
           <TemporalWorkflowManager />

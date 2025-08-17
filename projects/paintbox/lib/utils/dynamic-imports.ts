@@ -93,24 +93,24 @@ export function lazyWithRetry<T extends ComponentType<any>>(
 ): React.LazyExoticComponent<T> {
   return lazy(async () => {
     let lastError: any;
-    
+
     for (let i = 0; i < retries; i++) {
       try {
         return await componentImport();
       } catch (error) {
         lastError = error;
-        
+
         // If chunk load error, try to reload
         if (error instanceof Error && error.message.includes('Loading chunk')) {
           // Wait before retry with exponential backoff
           await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i)));
           continue;
         }
-        
+
         throw error;
       }
     }
-    
+
     throw lastError;
   });
 }

@@ -46,7 +46,7 @@ describe('Infrastructure WebSocket Hooks', () => {
   beforeEach(() => {
     // Reset all mocks
     jest.clearAllMocks();
-    
+
     // Setup default mock implementations
     mockSocket.connected = false;
     mockSocket.connect.mockClear();
@@ -54,7 +54,7 @@ describe('Infrastructure WebSocket Hooks', () => {
     mockSocket.emit.mockClear();
     mockSocket.on.mockClear();
     mockSocket.off.mockClear();
-    
+
     mockIo.mockReturnValue(mockSocket as any);
 
     // Setup store actions
@@ -112,7 +112,7 @@ describe('Infrastructure WebSocket Hooks', () => {
     it('should handle successful connection', async () => {
       // Arrange
       const { result } = renderHook(() => useInfrastructureWebSocket());
-      
+
       // Act - simulate connection
       act(() => {
         mockSocket.connected = true;
@@ -132,7 +132,7 @@ describe('Infrastructure WebSocket Hooks', () => {
     it('should handle connection errors', async () => {
       // Arrange
       const { result } = renderHook(() => useInfrastructureWebSocket());
-      
+
       // Act - simulate connection error
       act(() => {
         const errorHandler = mockSocket.on.mock.calls.find(call => call[0] === 'connect_error')?.[1];
@@ -148,7 +148,7 @@ describe('Infrastructure WebSocket Hooks', () => {
     it('should handle disconnection with auto-reconnect', async () => {
       // Arrange
       const { result } = renderHook(() => useInfrastructureWebSocket({ reconnectAttempts: 3 }));
-      
+
       // First connect
       act(() => {
         mockSocket.connected = true;
@@ -171,7 +171,7 @@ describe('Infrastructure WebSocket Hooks', () => {
     it('should send messages when connected', () => {
       // Arrange
       const { result } = renderHook(() => useInfrastructureWebSocket());
-      
+
       // Connect first
       act(() => {
         mockSocket.connected = true;
@@ -201,7 +201,7 @@ describe('Infrastructure WebSocket Hooks', () => {
       // Assert
       expect(mockSocket.emit).not.toHaveBeenCalled();
       expect(consoleSpy).toHaveBeenCalledWith('WebSocket not connected, cannot send message');
-      
+
       consoleSpy.mockRestore();
     });
 
@@ -209,7 +209,7 @@ describe('Infrastructure WebSocket Hooks', () => {
       // Arrange
       const { result } = renderHook(() => useInfrastructureWebSocket());
       const healthUpdate = webSocketFactory.createHealthUpdate();
-      
+
       // Act
       act(() => {
         const messageHandler = mockSocket.on.mock.calls.find(call => call[0] === 'message')?.[1];
@@ -228,7 +228,7 @@ describe('Infrastructure WebSocket Hooks', () => {
       // Arrange
       const { result } = renderHook(() => useInfrastructureWebSocket());
       const workflowUpdate = webSocketFactory.createWorkflowUpdate();
-      
+
       // Act
       act(() => {
         const messageHandler = mockSocket.on.mock.calls.find(call => call[0] === 'message')?.[1];
@@ -246,7 +246,7 @@ describe('Infrastructure WebSocket Hooks', () => {
       // Arrange
       const { result } = renderHook(() => useInfrastructureWebSocket());
       const loadTestUpdate = webSocketFactory.createLoadTestUpdate();
-      
+
       // Act
       act(() => {
         const messageHandler = mockSocket.on.mock.calls.find(call => call[0] === 'message')?.[1];
@@ -264,7 +264,7 @@ describe('Infrastructure WebSocket Hooks', () => {
       // Arrange
       const { result } = renderHook(() => useInfrastructureWebSocket());
       const backupUpdate = webSocketFactory.createBackupUpdate();
-      
+
       // Act
       act(() => {
         const messageHandler = mockSocket.on.mock.calls.find(call => call[0] === 'message')?.[1];
@@ -282,7 +282,7 @@ describe('Infrastructure WebSocket Hooks', () => {
       // Arrange
       const { result } = renderHook(() => useInfrastructureWebSocket());
       const alert = webSocketFactory.createAlert();
-      
+
       // Act
       act(() => {
         const messageHandler = mockSocket.on.mock.calls.find(call => call[0] === 'message')?.[1];
@@ -300,7 +300,7 @@ describe('Infrastructure WebSocket Hooks', () => {
       // Arrange
       const { result } = renderHook(() => useInfrastructureWebSocket());
       const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
-      
+
       // Act
       act(() => {
         const messageHandler = mockSocket.on.mock.calls.find(call => call[0] === 'message')?.[1];
@@ -312,7 +312,7 @@ describe('Infrastructure WebSocket Hooks', () => {
 
       // Assert
       expect(consoleSpy).toHaveBeenCalledWith('Unknown message type:', 'unknown-type');
-      
+
       consoleSpy.mockRestore();
     });
 
@@ -320,12 +320,12 @@ describe('Infrastructure WebSocket Hooks', () => {
       // Arrange
       const { result } = renderHook(() => useInfrastructureWebSocket());
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-      
+
       // Mock store action to throw error
       mockStoreActions.updateHealth.mockImplementation(() => {
         throw new Error('Store update failed');
       });
-      
+
       // Act
       act(() => {
         const messageHandler = mockSocket.on.mock.calls.find(call => call[0] === 'message')?.[1];
@@ -337,7 +337,7 @@ describe('Infrastructure WebSocket Hooks', () => {
 
       // Assert
       expect(consoleSpy).toHaveBeenCalledWith('Error handling WebSocket message:', expect.any(Error));
-      
+
       consoleSpy.mockRestore();
     });
 
@@ -357,7 +357,7 @@ describe('Infrastructure WebSocket Hooks', () => {
     it('should request health check', () => {
       // Arrange
       const { result } = renderHook(() => useHealthWebSocket());
-      
+
       // Connect WebSocket
       act(() => {
         mockSocket.connected = true;
@@ -375,7 +375,7 @@ describe('Infrastructure WebSocket Hooks', () => {
     it('should subscribe to service updates', () => {
       // Arrange
       const { result } = renderHook(() => useHealthWebSocket());
-      
+
       // Connect WebSocket
       act(() => {
         mockSocket.connected = true;
@@ -393,7 +393,7 @@ describe('Infrastructure WebSocket Hooks', () => {
     it('should unsubscribe from service updates', () => {
       // Arrange
       const { result } = renderHook(() => useHealthWebSocket());
-      
+
       // Connect WebSocket
       act(() => {
         mockSocket.connected = true;
@@ -413,7 +413,7 @@ describe('Infrastructure WebSocket Hooks', () => {
     it('should subscribe to workflow updates', () => {
       // Arrange
       const { result } = renderHook(() => useWorkflowWebSocket());
-      
+
       // Connect WebSocket
       act(() => {
         mockSocket.connected = true;
@@ -431,7 +431,7 @@ describe('Infrastructure WebSocket Hooks', () => {
     it('should cancel workflow execution', () => {
       // Arrange
       const { result } = renderHook(() => useWorkflowWebSocket());
-      
+
       // Connect WebSocket
       act(() => {
         mockSocket.connected = true;
@@ -451,7 +451,7 @@ describe('Infrastructure WebSocket Hooks', () => {
     it('should start load test', () => {
       // Arrange
       const { result } = renderHook(() => useLoadTestWebSocket());
-      
+
       // Connect WebSocket
       act(() => {
         mockSocket.connected = true;
@@ -469,7 +469,7 @@ describe('Infrastructure WebSocket Hooks', () => {
     it('should stop load test', () => {
       // Arrange
       const { result } = renderHook(() => useLoadTestWebSocket());
-      
+
       // Connect WebSocket
       act(() => {
         mockSocket.connected = true;
@@ -489,7 +489,7 @@ describe('Infrastructure WebSocket Hooks', () => {
     it('should trigger backup', () => {
       // Arrange
       const { result } = renderHook(() => useDRWebSocket());
-      
+
       // Connect WebSocket
       act(() => {
         mockSocket.connected = true;
@@ -507,7 +507,7 @@ describe('Infrastructure WebSocket Hooks', () => {
     it('should initiate failover', () => {
       // Arrange
       const { result } = renderHook(() => useDRWebSocket());
-      
+
       // Connect WebSocket
       act(() => {
         mockSocket.connected = true;
@@ -527,7 +527,7 @@ describe('Infrastructure WebSocket Hooks', () => {
     it('should acknowledge alert', () => {
       // Arrange
       const { result } = renderHook(() => useAlertWebSocket());
-      
+
       // Connect WebSocket
       act(() => {
         mockSocket.connected = true;
@@ -545,7 +545,7 @@ describe('Infrastructure WebSocket Hooks', () => {
     it('should create new alert', () => {
       // Arrange
       const { result } = renderHook(() => useAlertWebSocket());
-      
+
       // Connect WebSocket
       act(() => {
         mockSocket.connected = true;
@@ -580,7 +580,7 @@ describe('Infrastructure WebSocket Hooks', () => {
     it('should update status on connection', async () => {
       // Arrange
       const { result } = renderHook(() => useWebSocketStatus());
-      
+
       // Act - simulate connection
       act(() => {
         mockSocket.connected = true;
@@ -597,7 +597,7 @@ describe('Infrastructure WebSocket Hooks', () => {
     it('should update status on error', async () => {
       // Arrange
       const { result } = renderHook(() => useWebSocketStatus());
-      
+
       // Act - simulate error
       act(() => {
         const errorHandler = mockSocket.on.mock.calls.find(call => call[0] === 'connect_error')?.[1];
@@ -646,11 +646,11 @@ describe('Infrastructure WebSocket Hooks', () => {
     it('should implement exponential backoff for reconnection', async () => {
       // Arrange
       jest.useFakeTimers();
-      const { result } = renderHook(() => useInfrastructureWebSocket({ 
+      const { result } = renderHook(() => useInfrastructureWebSocket({
         reconnectAttempts: 3,
         reconnectDelay: 1000,
       }));
-      
+
       // Simulate initial connection failure
       act(() => {
         const errorHandler = mockSocket.on.mock.calls.find(call => call[0] === 'connect_error')?.[1];
@@ -659,7 +659,7 @@ describe('Infrastructure WebSocket Hooks', () => {
 
       // Assert first retry attempt
       expect(result.current.connectionAttempts).toBe(1);
-      
+
       // Fast-forward time and trigger second failure
       act(() => {
         jest.advanceTimersByTime(1000);
@@ -669,16 +669,16 @@ describe('Infrastructure WebSocket Hooks', () => {
 
       // Assert exponential backoff (second attempt should wait 2 seconds)
       expect(result.current.connectionAttempts).toBe(2);
-      
+
       jest.useRealTimers();
     });
 
     it('should stop reconnecting after max attempts', async () => {
       // Arrange
-      const { result } = renderHook(() => useInfrastructureWebSocket({ 
+      const { result } = renderHook(() => useInfrastructureWebSocket({
         reconnectAttempts: 2,
       }));
-      
+
       // Simulate multiple connection failures
       act(() => {
         const errorHandler = mockSocket.on.mock.calls.find(call => call[0] === 'connect_error')?.[1];

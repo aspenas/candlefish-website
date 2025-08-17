@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Candlefish Brand Bootstrap</title>
+    <style>
+        :root {
+            /* Candlefish Brand Colors */
+            --primary: #14b8a6;
+            --primary-foreground: #ffffff;
+            --background: #0b0f13;
+            --foreground: #e6f9f6;
+            --muted: #0f172a;
+            --muted-foreground: #a3b3bf;
+            --accent: #22d3ee;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+
+            /* Additional UI Colors */
+            --border: #1e2832;
+            --input: #1a202c;
+            --card: #111827;
+            --card-foreground: #e6f9f6;
+            --popover: #111827;
+            --popover-foreground: #e6f9f6;
+            --secondary: #1e293b;
+            --secondary-foreground: #f1f5f9;
+
+            /* Spacing */
+            --radius: 6px;
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+
+            /* Typography */
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            --font-size-xs: 11px;
+            --font-size-sm: 12px;
+            --font-size-base: 14px;
+            --font-size-lg: 16px;
+            --font-size-xl: 18px;
+
+            /* Animation */
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: var(--font-family);
+            font-size: var(--font-size-base);
+            line-height: 1.5;
+            color: var(--foreground);
+            background-color: var(--background);
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+            padding: var(--spacing-lg);
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: var(--spacing-xl);
+            padding-bottom: var(--spacing-lg);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            font-size: var(--font-size-xl);
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: var(--spacing-sm);
+            letter-spacing: 0.5px;
+        }
+
+        .subtitle {
+            color: var(--muted-foreground);
+            font-size: var(--font-size-sm);
+            margin: 0;
+        }
+
+        /* Sections */
+        .section {
+            margin-bottom: var(--spacing-lg);
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .section:hover {
+            border-color: var(--primary);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-md);
+            background: var(--secondary);
+            cursor: pointer;
+            user-select: none;
+            transition: var(--transition);
+        }
+
+        .section-header:hover {
+            background: var(--muted);
+        }
+
+        .section-title {
+            font-weight: 500;
+            color: var(--foreground);
+            margin: 0;
+            font-size: var(--font-size-base);
+        }
+
+        .section-toggle {
+            width: 16px;
+            height: 16px;
+            border: none;
+            background: none;
+            color: var(--muted-foreground);
+            cursor: pointer;
+            transform: rotate(0deg);
+            transition: var(--transition);
+            font-size: 12px;
+        }
+
+        .section-toggle.expanded {
+            transform: rotate(180deg);
+        }
+
+        .section-content {
+            padding: var(--spacing-md);
+            display: none;
+        }
+
+        .section-content.expanded {
+            display: block;
+            animation: slideDown 0.2s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .label {
+            display: block;
+            margin-bottom: var(--spacing-xs);
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            color: var(--foreground);
+        }
+
+        .input {
+            width: 100%;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--input);
+            color: var(--foreground);
+            font-size: var(--font-size-sm);
+            transition: var(--transition);
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.1);
+        }
+
+        .input::placeholder {
+            color: var(--muted-foreground);
+        }
+
+        .select {
+            width: 100%;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--input);
+            color: var(--foreground);
+            font-size: var(--font-size-sm);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.1);
+        }
+
+        .checkbox-group {
+            display: grid;
+            gap: var(--spacing-sm);
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm);
+            border-radius: var(--radius);
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .checkbox-item:hover {
+            background: var(--muted);
+        }
+
+        .checkbox {
+            width: 16px;
+            height: 16px;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            background: var(--input);
+            cursor: pointer;
+            position: relative;
+            transition: var(--transition);
+        }
+
+        .checkbox:checked {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .checkbox:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--primary-foreground);
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .checkbox-label {
+            flex: 1;
+            font-size: var(--font-size-sm);
+            color: var(--foreground);
+            cursor: pointer;
+        }
+
+        /* Buttons */
+        .button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border: none;
+            border-radius: var(--radius);
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            min-height: 36px;
+        }
+
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .button-primary {
+            background: var(--primary);
+            color: var(--primary-foreground);
+        }
+
+        .button-primary:hover:not(:disabled) {
+            background: #0d9488;
+            transform: translateY(-1px);
+        }
+
+        .button-secondary {
+            background: var(--secondary);
+            color: var(--secondary-foreground);
+            border: 1px solid var(--border);
+        }
+
+        .button-secondary:hover:not(:disabled) {
+            background: var(--muted);
+        }
+
+        .button-danger {
+            background: var(--danger);
+            color: var(--primary-foreground);
+        }
+
+        .button-danger:hover:not(:disabled) {
+            background: #dc2626;
+        }
+
+        .button-full {
+            width: 100%;
+        }
+
+        /* Progress */
+        .progress-container {
+            margin-bottom: var(--spacing-lg);
+            display: none;
+        }
+
+        .progress-container.active {
+            display: block;
+        }
+
+        .progress-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .progress-title {
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            color: var(--foreground);
+        }
+
+        .progress-percentage {
+            font-size: var(--font-size-xs);
+            color: var(--muted-foreground);
+            font-family: monospace;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--muted);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            border-radius: 3px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .progress-status {
+            font-size: var(--font-size-xs);
+            color: var(--muted-foreground);
+            line-height: 1.4;
+        }
+
+        .progress-time {
+            font-size: var(--font-size-xs);
+            color: var(--muted-foreground);
+            text-align: right;
+            margin-top: var(--spacing-xs);
+            font-family: monospace;
+        }
+
+        /* Status Messages */
+        .status-message {
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius);
+            margin-bottom: var(--spacing-md);
+            font-size: var(--font-size-sm);
+            display: none;
+        }
+
+        .status-message.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .status-success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--success);
+            color: var(--success);
+        }
+
+        .status-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+        }
+
+        .status-warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid var(--warning);
+            color: var(--warning);
+        }
+
+        .status-info {
+            background: rgba(34, 211, 238, 0.1);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Tooltips */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+        }
+
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--popover);
+            color: var(--popover-foreground);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius);
+            font-size: var(--font-size-xs);
+            white-space: nowrap;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: var(--transition);
+            border: 1px solid var(--border);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .tooltip:hover::after {
+            opacity: 1;
+        }
+
+        /* Dark mode toggle */
+        .theme-toggle {
+            position: absolute;
+            top: var(--spacing-md);
+            right: var(--spacing-md);
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 50%;
+            background: var(--secondary);
+            color: var(--foreground);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            font-size: 14px;
+        }
+
+        .theme-toggle:hover {
+            background: var(--primary);
+            transform: scale(1.1);
+        }
+
+        /* Keyboard shortcuts */
+        .shortcuts {
+            position: fixed;
+            bottom: var(--spacing-md);
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--popover);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: var(--spacing-sm) var(--spacing-md);
+            font-size: var(--font-size-xs);
+            color: var(--muted-foreground);
+            display: none;
+            z-index: 1000;
+        }
+
+        .shortcuts.active {
+            display: block;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
+        .shortcut-key {
+            background: var(--muted);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            margin: 0 2px;
+        }
+
+        /* Preview */
+        .preview-container {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: var(--spacing-md);
+            background: var(--card);
+            margin-top: var(--spacing-md);
+        }
+
+        .preview-title {
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            color: var(--foreground);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .preview-items {
+            display: grid;
+            gap: var(--spacing-sm);
+        }
+
+        .preview-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            background: var(--muted);
+            border-radius: var(--radius);
+            font-size: var(--font-size-xs);
+        }
+
+        .preview-item-name {
+            color: var(--foreground);
+        }
+
+        .preview-item-count {
+            color: var(--muted-foreground);
+            font-family: monospace;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .container {
+                padding: var(--spacing-md);
+            }
+
+            .header {
+                margin-bottom: var(--spacing-lg);
+            }
+        }
+
+        /* Loading animation */
+        .loading {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid var(--muted);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+            margin-right: var(--spacing-xs);
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Success checkmark animation */
+        .checkmark {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--success);
+            color: white;
+            text-align: center;
+            line-height: 12px;
+            font-size: 8px;
+            margin-right: var(--spacing-xs);
+            animation: checkmarkPulse 0.6s ease;
+        }
+
+        @keyframes checkmarkPulse {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="theme-toggle" onclick="toggleTheme()" data-tooltip="Toggle theme">🌙</button>
+
+        <header class="header">
+            <div class="logo">CANDLEFISH</div>
+            <p class="subtitle">Brand Bootstrap for Figma</p>
+        </header>
+
+        <!-- Status Messages -->
+        <div id="statusMessages"></div>
+
+        <!-- Progress Container -->
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-header">
+                <div class="progress-title">Bootstrapping Brand System</div>
+                <div class="progress-percentage" id="progressPercentage">0%</div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-status" id="progressStatus">Initializing...</div>
+            <div class="progress-time" id="progressTime"></div>
+        </div>
+
+        <!-- Configuration Sections -->
+        <form id="configForm">
+            <!-- Brand Assets Section -->
+            <section class="section">
+                <header class="section-header" onclick="toggleSection('assets')">
+                    <h3 class="section-title">🎨 Brand Assets</h3>
+                    <button type="button" class="section-toggle" id="assetsToggle">▼</button>
+                </header>
+                <div class="section-content" id="assetsContent">
+                    <div class="form-group">
+                        <label class="label tooltip" data-tooltip="Upload your primary logo file">Logo Upload</label>
+                        <input type="file" class="input" id="logoFile" accept="image/*">
+                    </div>
+
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="checkbox" id="includeLogos" checked>
+                            <span class="checkbox-label">Logo Components & Variants</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="checkbox" id="includeWordmark" checked>
+                            <span class="checkbox-label">Wordmark Component</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="checkbox" id="includeLockups" checked>
+                            <span class="checkbox-label">Logo Lockups (Horizontal & Stacked)</span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Color System Section -->
+            <section class="section">
+                <header class="section-header" onclick="toggleSection('colors')">
+                    <h3 class="section-title">🎨 Color System</h3>
+                    <button type="button" class="section-toggle" id="colorsToggle">▼</button>
+                </header>
+                <div class="section-content" id="colorsContent">
+                    <div class="form-group">
+                        <label class="label tooltip" data-tooltip="Choose a color theme variant">Color Theme</label>
+                        <select class="select" id="colorTheme">
+                            <option value="candlefish">Candlefish (Default)</option>
+                            <option value="ocean">Ocean Blue</option>
+                            <option value="forest">Forest Green</option>
+                            <option value="sunset">Sunset Orange</option>
+                            <option value="custom">Custom Colors</option>
+                        </select>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="checkbox" id="includeColorStyles" checked>
+                            <span class="checkbox-label">Color Styles (Paint Styles)</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="checkbox" id="includeColorVariables" checked>
+                            <span class="checkbox-label">Color Variables (Light & Dark)</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="checkbox" id="includeNeutralScale" checked>
+                            <span class="checkbox-label">Neutral Color Scale</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="checkbox" id="includeAccentColors" checked>
+                            <span class="checkbox-label">Accent Colors (Success, Warning, Danger)</span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Typography Section -->
+            <section class="section">
+                <header class="section-header" onclick="toggleSection('typography')">
+                    <h3 class="section-title">✍️ Typography</h3>
+                    <button type="button" class="section-toggle" id="typographyToggle">▼</button>
+                </header>
+                <div class="section-content" id="typographyContent">
+                    <div class="form-group">
+                        <label class="label tooltip" data-tooltip="Select the typography scale system">Typography Scale</label>
+                        <select class="select" id="typographyScale">
+                            <option value="standard">Standard (1.2 ratio)</option>
+                            <option value="minor-third">Minor Third (1.2 ratio)</option>
+                            <option value="major-third">Major Third (1.25 ratio)</option>
+                            <option value="perfect-fourth">Perfect Fourth (1.33 ratio)</option>
+                            <option value="golden">Golden Ratio (1.618)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="label tooltip" data-tooltip="Primary font for headings and body text">Primary Font</label>
+                        <select class="select" id="primaryFont">
+                            <option value="inter">Inter (Default)</option>
+                            <option value="system">System UI</option>
+                            <option value="sf-pro">SF Pro Display</option>
+                            <option value="roboto">Roboto</option>
+                            <option value="custom">Custom Font</option>
+                        </select>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="checkbox" id="includeTextStyles" checked>
+                            <span class="checkbox-label">Text Styles (H1-H6, Body, Caption)</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="checkbox" id="includeFontWeights" checked>
+                            <span class="checkbox-label">Font Weight Variants</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="checkbox" id="includeLineHeights">
+                            <span class="checkbox-label">Custom Line Heights</span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Grid & Layout Section -->
+            <section class="section">
+                <header class="section-header" onclick="toggleSection('grid')">
+                    <h3 class="section-title">📐 Grid & Layout</h3>
+                    <button type="button" class="section-toggle" id="gridToggle">▼</button>
+                </header>
+                <div class="section-content" id="gridContent">
+                    <div class="form-group">
+                        <label class="label tooltip" data-tooltip="Base grid system for consistent spacing">Grid System</label>
+                        <select class="select" id="gridSystem">
+                            <option value="8pt">8-Point Grid (Default)</option>
+                            <option value="4pt">4-Point Grid</option>
+                            <option value="12pt">12-Point Grid</option>
+                            <option value="16pt">16-Point Grid</option>
+                        </select>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="checkbox" id="includeContainer" checked>
+                            <span class="checkbox-label">Container Component</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="checkbox" id="includeStack" checked>
+                            <span class="checkbox-label">Stack Component</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="checkbox" id="includeGrid" checked>
+                            <span class="checkbox-label">Grid Layout Components</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="checkbox" id="includeSpacing">
+                            <span class="checkbox-label">Spacing Token Swatches</span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Components Section -->
+            <section class="section">
+                <header class="section-header" onclick="toggleSection('components')">
+                    <h3 class="section-title">🧩 Components</h3>
+                    <button type="button" class="section-toggle" id="componentsToggle">▼</button>
+                </header>
+                <div class="section-content" id="componentsContent">
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="checkbox" id="includeButtons" checked>
+                            <span class="checkbox-label">Button Components (Primary, Secondary, Ghost)</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="checkbox" id="includeCards" checked>
+                            <span class="checkbox-label">Card Components</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="checkbox" id="includeInputs">
+                            <span class="checkbox-label">Input Components</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="checkbox" id="includeNavigation">
+                            <span class="checkbox-label">Navigation Components</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="checkbox" id="includeModals">
+                            <span class="checkbox-label">Modal & Dialog Components</span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Export Options Section -->
+            <section class="section">
+                <header class="section-header" onclick="toggleSection('export')">
+                    <h3 class="section-title">📤 Export Options</h3>
+                    <button type="button" class="section-toggle" id="exportToggle">▼</button>
+                </header>
+                <div class="section-content" id="exportContent">
+                    <div class="form-group">
+                        <label class="label tooltip" data-tooltip="Choose naming convention for components">Naming Convention</label>
+                        <select class="select" id="namingConvention">
+                            <option value="standard">Standard (Button/Primary)</option>
+                            <option value="atomic">Atomic Design (Atoms/Button/Primary)</option>
+                            <option value="bem">BEM Style (button--primary)</option>
+                            <option value="custom">Custom Prefix</option>
+                        </select>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="checkbox" id="exportTokens">
+                            <span class="checkbox-label">Export Design Tokens (JSON)</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="checkbox" id="exportCSS">
+                            <span class="checkbox-label">Generate CSS Variables</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="checkbox" id="exportTailwind">
+                            <span class="checkbox-label">Create Tailwind Config</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="checkbox" id="exportDocs">
+                            <span class="checkbox-label">Generate Documentation</span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+        </form>
+
+        <!-- Preview Section -->
+        <div class="preview-container" id="previewContainer" style="display: none;">
+            <div class="preview-title">What will be created:</div>
+            <div class="preview-items" id="previewItems"></div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="margin-top: var(--spacing-xl); display: grid; gap: var(--spacing-md);">
+            <button type="button" class="button button-primary button-full" onclick="generatePreview()">
+                <span id="previewButtonText">Preview Changes</span>
+            </button>
+            <button type="button" class="button button-primary button-full" onclick="startBootstrap()" id="bootstrapButton">
+                <span id="bootstrapButtonText">Bootstrap Brand System</span>
+            </button>
+            <button type="button" class="button button-secondary button-full" onclick="resetForm()">
+                Reset to Defaults
+            </button>
+        </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Info -->
+    <div class="shortcuts" id="shortcuts">
+        <span class="shortcut-key">⌘</span>+<span class="shortcut-key">Enter</span> Bootstrap
+        <span style="margin: 0 8px;">•</span>
+        <span class="shortcut-key">⌘</span>+<span class="shortcut-key">P</span> Preview
+        <span style="margin: 0 8px;">•</span>
+        <span class="shortcut-key">⌘</span>+<span class="shortcut-key">R</span> Reset
+    </div>
+
+    <script>
+        // State management
+        let isBootstrapping = false;
+        let progressInterval;
+        let startTime;
+        let currentStep = 0;
+        let totalSteps = 0;
+
+        const steps = [
+            { name: 'Initializing brand system', weight: 5 },
+            { name: 'Creating color styles and variables', weight: 15 },
+            { name: 'Setting up typography styles', weight: 10 },
+            { name: 'Processing logo and brand assets', weight: 20 },
+            { name: 'Building base components', weight: 25 },
+            { name: 'Generating grid and layout system', weight: 15 },
+            { name: 'Creating specimen pages', weight: 5 },
+            { name: 'Finalizing brand system', weight: 5 }
+        ];
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+            setupKeyboardShortcuts();
+            loadSavedConfig();
+            updatePreview();
+        });
+
+        function initializeApp() {
+            // Expand first section by default
+            toggleSection('assets', true);
+
+            // Show shortcuts briefly
+            setTimeout(() => {
+                showShortcuts();
+                setTimeout(hideShortcuts, 3000);
+            }, 1000);
+
+            // Setup form change listeners
+            const form = document.getElementById('configForm');
+            form.addEventListener('change', function() {
+                saveConfig();
+                updatePreview();
+            });
+        }
+
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', function(e) {
+                if (e.metaKey || e.ctrlKey) {
+                    switch(e.key) {
+                        case 'Enter':
+                            e.preventDefault();
+                            if (!isBootstrapping) {
+                                startBootstrap();
+                            }
+                            break;
+                        case 'p':
+                            e.preventDefault();
+                            generatePreview();
+                            break;
+                        case 'r':
+                            e.preventDefault();
+                            resetForm();
+                            break;
+                        case '?':
+                            e.preventDefault();
+                            toggleShortcuts();
+                            break;
+                    }
+                }
+            });
+        }
+
+        function toggleSection(sectionId, forceExpand = false) {
+            const content = document.getElementById(sectionId + 'Content');
+            const toggle = document.getElementById(sectionId + 'Toggle');
+
+            const isExpanded = content.classList.contains('expanded');
+
+            if (forceExpand || !isExpanded) {
+                content.classList.add('expanded');
+                toggle.classList.add('expanded');
+                content.style.display = 'block';
+            } else {
+                content.classList.remove('expanded');
+                toggle.classList.remove('expanded');
+                content.style.display = 'none';
+            }
+        }
+
+        function showMessage(message, type = 'info') {
+            const container = document.getElementById('statusMessages');
+            const messageEl = document.createElement('div');
+            messageEl.className = `status-message status-${type} active`;
+            messageEl.textContent = message;
+
+            container.appendChild(messageEl);
+
+            setTimeout(() => {
+                messageEl.classList.remove('active');
+                setTimeout(() => {
+                    if (messageEl.parentNode) {
+                        messageEl.parentNode.removeChild(messageEl);
+                    }
+                }, 300);
+            }, 5000);
+        }
+
+        function updateProgress(percentage, status) {
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const progressPercentage = document.getElementById('progressPercentage');
+            const progressStatus = document.getElementById('progressStatus');
+            const progressTime = document.getElementById('progressTime');
+
+            progressContainer.classList.add('active');
+            progressFill.style.width = percentage + '%';
+            progressPercentage.textContent = Math.round(percentage) + '%';
+            progressStatus.textContent = status;
+
+            if (startTime) {
+                const elapsed = (Date.now() - startTime) / 1000;
+                const remaining = percentage > 0 ? (elapsed / percentage * (100 - percentage)) : 0;
+                progressTime.textContent = `${Math.round(elapsed)}s elapsed, ~${Math.round(remaining)}s remaining`;
+            }
+        }
+
+        function generatePreview() {
+            const config = getFormConfig();
+            const previewContainer = document.getElementById('previewContainer');
+            const previewItems = document.getElementById('previewItems');
+
+            previewItems.innerHTML = '';
+
+            let itemCount = 0;
+
+            function addPreviewItem(name, count) {
+                if (count > 0) {
+                    const item = document.createElement('div');
+                    item.className = 'preview-item';
+                    item.innerHTML = `
+                        <span class="preview-item-name">${name}</span>
+                        <span class="preview-item-count">${count}</span>
+                    `;
+                    previewItems.appendChild(item);
+                    itemCount += count;
+                }
+            }
+
+            // Calculate what will be created based on config
+            if (config.includeLogos) addPreviewItem('Logo Components', 1);
+            if (config.includeWordmark) addPreviewItem('Wordmark Component', 1);
+            if (config.includeLockups) addPreviewItem('Logo Lockups', 2);
+
+            if (config.includeColorStyles) addPreviewItem('Color Styles', 12);
+            if (config.includeColorVariables) addPreviewItem('Color Variables', 15);
+            if (config.includeNeutralScale) addPreviewItem('Neutral Colors', 9);
+            if (config.includeAccentColors) addPreviewItem('Accent Colors', 3);
+
+            if (config.includeTextStyles) addPreviewItem('Text Styles', 6);
+            if (config.includeFontWeights) addPreviewItem('Font Weight Variants', 4);
+
+            if (config.includeContainer) addPreviewItem('Container Component', 1);
+            if (config.includeStack) addPreviewItem('Stack Component', 1);
+            if (config.includeGrid) addPreviewItem('Grid Components', 2);
+
+            if (config.includeButtons) addPreviewItem('Button Components', 3);
+            if (config.includeCards) addPreviewItem('Card Components', 2);
+            if (config.includeInputs) addPreviewItem('Input Components', 4);
+            if (config.includeNavigation) addPreviewItem('Navigation Components', 3);
+            if (config.includeModals) addPreviewItem('Modal Components', 2);
+
+            addPreviewItem('Documentation Pages', 4);
+            addPreviewItem('Brand Specimens', 1);
+
+            if (itemCount > 0) {
+                previewContainer.style.display = 'block';
+                showMessage(`Preview generated: ${itemCount} items will be created`, 'info');
+            } else {
+                previewContainer.style.display = 'none';
+                showMessage('No items selected for creation', 'warning');
+            }
+        }
+
+        function updatePreview() {
+            // Auto-update preview when form changes
+            generatePreview();
+        }
+
+        async function startBootstrap() {
+            if (isBootstrapping) return;
+
+            const config = getFormConfig();
+            isBootstrapping = true;
+            startTime = Date.now();
+            currentStep = 0;
+            totalSteps = steps.length;
+
+            const button = document.getElementById('bootstrapButton');
+            const buttonText = document.getElementById('bootstrapButtonText');
+
+            button.disabled = true;
+            buttonText.innerHTML = '<span class="loading"></span>Bootstrapping...';
+
+            try {
+                showMessage('Starting brand system bootstrap...', 'info');
+
+                // Calculate total weight for progress
+                const totalWeight = steps.reduce((sum, step) => sum + step.weight, 0);
+                let currentWeight = 0;
+
+                for (let i = 0; i < steps.length; i++) {
+                    const step = steps[i];
+                    currentStep = i;
+
+                    updateProgress(
+                        (currentWeight / totalWeight) * 100,
+                        step.name
+                    );
+
+                    // Simulate step processing time
+                    await new Promise(resolve => setTimeout(resolve, step.weight * 50));
+
+                    currentWeight += step.weight;
+
+                    // Update progress
+                    updateProgress(
+                        (currentWeight / totalWeight) * 100,
+                        `Completed: ${step.name}`
+                    );
+                }
+
+                // Send message to Figma plugin
+                parent.postMessage({
+                    pluginMessage: {
+                        type: 'bootstrap',
+                        config: config,
+                        logoBytes: await getLogoBytes()
+                    }
+                }, '*');
+
+                showMessage('Brand system bootstrap completed successfully!', 'success');
+                buttonText.innerHTML = '<span class="checkmark">✓</span>Complete!';
+
+                setTimeout(() => {
+                    button.disabled = false;
+                    buttonText.textContent = 'Bootstrap Brand System';
+                    document.getElementById('progressContainer').classList.remove('active');
+                }, 3000);
+
+            } catch (error) {
+                showMessage(`Error during bootstrap: ${error.message}`, 'error');
+                button.disabled = false;
+                buttonText.textContent = 'Bootstrap Brand System';
+            } finally {
+                isBootstrapping = false;
+            }
+        }
+
+        async function getLogoBytes() {
+            const logoFile = document.getElementById('logoFile').files[0];
+            if (!logoFile) return null;
+
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.readAsArrayBuffer(logoFile);
+            });
+        }
+
+        function getFormConfig() {
+            const form = document.getElementById('configForm');
+            const formData = new FormData(form);
+            const config = {};
+
+            // Get all checkbox values
+            const checkboxes = form.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                config[checkbox.id] = checkbox.checked;
+            });
+
+            // Get all select values
+            const selects = form.querySelectorAll('select');
+            selects.forEach(select => {
+                config[select.id] = select.value;
+            });
+
+            return config;
+        }
+
+        function saveConfig() {
+            const config = getFormConfig();
+            localStorage.setItem('candlefishConfig', JSON.stringify(config));
+        }
+
+        function loadSavedConfig() {
+            const saved = localStorage.getItem('candlefishConfig');
+            if (!saved) return;
+
+            try {
+                const config = JSON.parse(saved);
+
+                // Apply saved config to form
+                Object.keys(config).forEach(key => {
+                    const element = document.getElementById(key);
+                    if (element) {
+                        if (element.type === 'checkbox') {
+                            element.checked = config[key];
+                        } else {
+                            element.value = config[key];
+                        }
+                    }
+                });
+
+                showMessage('Previous configuration loaded', 'info');
+            } catch (error) {
+                console.warn('Failed to load saved config:', error);
+            }
+        }
+
+        function resetForm() {
+            if (confirm('Reset all settings to defaults?')) {
+                document.getElementById('configForm').reset();
+                localStorage.removeItem('candlefishConfig');
+
+                // Re-check default items
+                const defaults = [
+                    'includeLogos', 'includeWordmark', 'includeLockups',
+                    'includeColorStyles', 'includeColorVariables', 'includeNeutralScale', 'includeAccentColors',
+                    'includeTextStyles', 'includeFontWeights',
+                    'includeContainer', 'includeStack', 'includeGrid',
+                    'includeButtons', 'includeCards'
+                ];
+
+                defaults.forEach(id => {
+                    const element = document.getElementById(id);
+                    if (element) element.checked = true;
+                });
+
+                updatePreview();
+                showMessage('Configuration reset to defaults', 'info');
+            }
+        }
+
+        function toggleTheme() {
+            const body = document.body;
+            const isDark = body.classList.contains('light-theme');
+
+            if (isDark) {
+                body.classList.remove('light-theme');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                body.classList.add('light-theme');
+                localStorage.setItem('theme', 'light');
+            }
+        }
+
+        function showShortcuts() {
+            document.getElementById('shortcuts').classList.add('active');
+        }
+
+        function hideShortcuts() {
+            document.getElementById('shortcuts').classList.remove('active');
+        }
+
+        function toggleShortcuts() {
+            const shortcuts = document.getElementById('shortcuts');
+            if (shortcuts.classList.contains('active')) {
+                hideShortcuts();
+            } else {
+                showShortcuts();
+            }
+        }
+
+        // Listen for messages from Figma
+        window.addEventListener('message', function(event) {
+            const message = event.data.pluginMessage;
+            if (!message) return;
+
+            switch (message.type) {
+                case 'bootstrap-complete':
+                    showMessage('Brand system created successfully in Figma!', 'success');
+                    break;
+                case 'bootstrap-error':
+                    showMessage(`Error: ${message.error}`, 'error');
+                    break;
+                case 'progress-update':
+                    updateProgress(message.progress, message.status);
+                    break;
+            }
+        });
+
+        // Load theme on startup
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-theme');
+            }
+        });
+    </script>
+</body>
+</html>

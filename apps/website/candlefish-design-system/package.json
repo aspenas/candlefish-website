@@ -1,0 +1,36 @@
+{
+  "name": "candlefish-design-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Candlefish design system - Figma to code pipeline",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "test": "npm test --workspaces",
+    "clean": "npm run clean --workspaces",
+    "tokens:build": "npm run build --workspace=@candlefish/tokens",
+    "tokens:watch": "npm run watch --workspace=@candlefish/tokens",
+    "publish:tokens": "npm publish --workspace=@candlefish/tokens",
+    "publish:preset": "npm publish --workspace=@candlefish/tailwind-preset",
+    "publish:all": "npm run publish:tokens && npm run publish:preset"
+  },
+  "devDependencies": {
+    "prettier": "^3.2.5"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/candlefish-ai/candlefish-design-system.git"
+  },
+  "author": {
+    "name": "Candlefish AI",
+    "email": "design@candlefish.ai",
+    "url": "https://candlefish.ai"
+  },
+  "license": "MIT"
+}

@@ -25,7 +25,7 @@ jobs:
       contents: read
       security-events: write
       actions: read
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -54,7 +54,7 @@ jobs:
           VULNERABILITIES=$(jq '.metadata.vulnerabilities' audit-results.json)
           HIGH=$(echo $VULNERABILITIES | jq '.high // 0')
           CRITICAL=$(echo $VULNERABILITIES | jq '.critical // 0')
-          
+
           echo "high_vulnerabilities=$HIGH" >> $GITHUB_OUTPUT
           echo "critical_vulnerabilities=$CRITICAL" >> $GITHUB_OUTPUT
           echo "total_vulnerabilities=$((HIGH + CRITICAL))" >> $GITHUB_OUTPUT
@@ -63,7 +63,7 @@ jobs:
         if: steps.parse_audit.outputs.total_vulnerabilities > 0
         run: |
           npm audit fix --force
-          
+
           # Check if package-lock.json was modified
           if git diff --quiet package-lock.json; then
             echo "No auto-fixes applied"
@@ -83,7 +83,7 @@ jobs:
           FINAL_HIGH=$(echo $FINAL_VULNERABILITIES | jq '.high // 0')
           FINAL_CRITICAL=$(echo $FINAL_VULNERABILITIES | jq '.critical // 0')
           FINAL_TOTAL=$((FINAL_HIGH + FINAL_CRITICAL))
-          
+
           echo "remaining_vulnerabilities=$FINAL_TOTAL" >> $GITHUB_OUTPUT
 
       - name: Upload audit results
@@ -98,15 +98,15 @@ jobs:
         run: |
           cat > security-report.md << EOF
           # Dependency Security Report
-          
+
           **Date:** $(date)
           **Initial Vulnerabilities:** ${{ steps.parse_audit.outputs.total_vulnerabilities }}
           **Remaining Vulnerabilities:** ${{ steps.final_audit.outputs.remaining_vulnerabilities }}
-          
+
           ## Summary
           - High severity: ${{ steps.parse_audit.outputs.high_vulnerabilities }}
           - Critical severity: ${{ steps.parse_audit.outputs.critical_vulnerabilities }}
-          
+
           ## Audit Details
           \`\`\`json
           $(cat audit-results.json | jq '.vulnerabilities // {}')
@@ -123,7 +123,7 @@ jobs:
   outdated-dependencies:
     name: Check Outdated Dependencies
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -140,16 +140,16 @@ jobs:
       - name: Check outdated packages
         run: |
           npm outdated --json > outdated.json || true
-          
+
           # Create readable report
           cat > outdated-report.md << EOF
           # Outdated Dependencies Report
-          
+
           **Date:** $(date)
-          
+
           ## Summary
           $(npm outdated --depth=0 || echo "All dependencies are up to date!")
-          
+
           ## Detailed Analysis
           \`\`\`json
           $(cat outdated.json)
@@ -167,7 +167,7 @@ jobs:
   license-check:
     name: License Compliance Check
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -188,10 +188,10 @@ jobs:
         run: |
           license-checker --json --out licenses.json
           license-checker --summary > license-summary.txt
-          
+
           # Check for prohibited licenses
           PROHIBITED_LICENSES=("GPL-2.0" "GPL-3.0" "AGPL-1.0" "AGPL-3.0")
-          
+
           for license in "${PROHIBITED_LICENSES[@]}"; do
             if grep -q "$license" license-summary.txt; then
               echo "::error::Prohibited license detected: $license"
@@ -211,7 +211,7 @@ jobs:
     name: Update Dependency Graph
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

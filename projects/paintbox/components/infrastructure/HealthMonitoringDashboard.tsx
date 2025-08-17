@@ -184,8 +184,8 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, icon, color }) => {
 
         <div className="mt-3 flex items-center text-xs text-gray-500">
           <Clock className="h-3 w-3 mr-1" />
-          {service.lastChecked ? 
-            new Date(service.lastChecked).toLocaleTimeString() : 
+          {service.lastChecked ?
+            new Date(service.lastChecked).toLocaleTimeString() :
             'Just now'
           }
         </div>
@@ -196,11 +196,11 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, icon, color }) => {
 
 const MetricsChart: React.FC<MetricsChartProps> = ({ data }) => {
   const chartData = useMemo(() => {
-    const labels = data.timestamp.map(ts => 
-      new Date(ts).toLocaleTimeString('en-US', { 
-        hour12: false, 
-        hour: '2-digit', 
-        minute: '2-digit' 
+    const labels = data.timestamp.map(ts =>
+      new Date(ts).toLocaleTimeString('en-US', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit'
       })
     );
 
@@ -376,7 +376,7 @@ export const HealthMonitoringDashboard: React.FC = () => {
 
   const criticalServices = useMemo(() => {
     if (!healthChecks) return [];
-    return Object.values(healthChecks).filter(check => 
+    return Object.values(healthChecks).filter(check =>
       ['database', 'redis', 'secrets'].includes(check.name) && check.status === 'unhealthy'
     );
   }, [healthChecks]);
@@ -400,9 +400,9 @@ export const HealthMonitoringDashboard: React.FC = () => {
             <p className="text-sm text-gray-600">{error}</p>
           </div>
         </div>
-        <Button 
-          onClick={fetchHealth} 
-          className="mt-4" 
+        <Button
+          onClick={fetchHealth}
+          className="mt-4"
           variant="outline"
         >
           Retry
@@ -506,8 +506,8 @@ export const HealthMonitoringDashboard: React.FC = () => {
             <div>
               <p className="text-sm text-gray-600">Uptime</p>
               <p className="text-lg font-semibold">
-                {currentHealth ? 
-                  Math.floor(currentHealth.uptime / (1000 * 60 * 60)) + 'h' : 
+                {currentHealth ?
+                  Math.floor(currentHealth.uptime / (1000 * 60 * 60)) + 'h' :
                   'N/A'
                 }
               </p>

@@ -21,10 +21,10 @@ describe('FormulaEngine', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     mockDependencyResolver = new DependencyResolver() as jest.Mocked<DependencyResolver>;
     mockValidator = new FormulaValidator() as jest.Mocked<FormulaValidator>;
-    
+
     formulaEngine = new FormulaEngine({
       dependencyResolver: mockDependencyResolver,
       validator: mockValidator,
@@ -61,10 +61,10 @@ describe('FormulaEngine', () => {
       });
 
       const mockData = { A1: 10, B1: 20 };
-      
+
       mockValidator.validate.mockResolvedValue({ isValid: true, errors: [] });
       mockDependencyResolver.resolveDependencies.mockResolvedValue(['A1', 'B1']);
-      
+
       formulaEngine.setWorksheetData(mockData);
 
       const result = await formulaEngine.evaluate(formula.cellReference, formula.formula);
@@ -96,9 +96,9 @@ describe('FormulaEngine', () => {
       const mockData = {
         A1: 10, A2: 20, A3: 30, A4: 40, A5: 50
       };
-      
+
       formulaEngine.setWorksheetData(mockData);
-      
+
       mockValidator.validate.mockResolvedValue({ isValid: true, errors: [] });
       mockDependencyResolver.resolveDependencies.mockResolvedValue(['A1', 'A2', 'A3', 'A4', 'A5']);
 
@@ -110,9 +110,9 @@ describe('FormulaEngine', () => {
 
     it('should evaluate SUM with individual cells', async () => {
       const mockData = { A1: 25, B1: 35, C1: 15 };
-      
+
       formulaEngine.setWorksheetData(mockData);
-      
+
       mockValidator.validate.mockResolvedValue({ isValid: true, errors: [] });
       mockDependencyResolver.resolveDependencies.mockResolvedValue(['A1', 'B1', 'C1']);
 
@@ -126,9 +126,9 @@ describe('FormulaEngine', () => {
         A1: 10, A2: 20, A3: 30,
         B1: 5, C1: 15
       };
-      
+
       formulaEngine.setWorksheetData(mockData);
-      
+
       mockValidator.validate.mockResolvedValue({ isValid: true, errors: [] });
       mockDependencyResolver.resolveDependencies.mockResolvedValue(['A1', 'A2', 'A3', 'B1', 'C1']);
 
@@ -141,9 +141,9 @@ describe('FormulaEngine', () => {
   describe('IF Function', () => {
     it('should evaluate simple IF condition', async () => {
       const mockData = { A1: 10 };
-      
+
       formulaEngine.setWorksheetData(mockData);
-      
+
       mockValidator.validate.mockResolvedValue({ isValid: true, errors: [] });
       mockDependencyResolver.resolveDependencies.mockResolvedValue(['A1']);
 
@@ -154,9 +154,9 @@ describe('FormulaEngine', () => {
 
     it('should evaluate IF with FALSE condition', async () => {
       const mockData = { A1: 3 };
-      
+
       formulaEngine.setWorksheetData(mockData);
-      
+
       mockValidator.validate.mockResolvedValue({ isValid: true, errors: [] });
       mockDependencyResolver.resolveDependencies.mockResolvedValue(['A1']);
 
@@ -167,9 +167,9 @@ describe('FormulaEngine', () => {
 
     it('should handle nested IF statements', async () => {
       const mockData = { A1: 75 };
-      
+
       formulaEngine.setWorksheetData(mockData);
-      
+
       mockValidator.validate.mockResolvedValue({ isValid: true, errors: [] });
       mockDependencyResolver.resolveDependencies.mockResolvedValue(['A1']);
 
@@ -187,9 +187,9 @@ describe('FormulaEngine', () => {
         A3: 'Product3', B3: 300,
         D1: 'Product2'
       };
-      
+
       formulaEngine.setWorksheetData(mockData);
-      
+
       mockValidator.validate.mockResolvedValue({ isValid: true, errors: [] });
       mockDependencyResolver.resolveDependencies.mockResolvedValue(['D1', 'A1:B3']);
 
@@ -204,9 +204,9 @@ describe('FormulaEngine', () => {
         A2: 'Product2', B2: 200,
         D1: 'Product4'
       };
-      
+
       formulaEngine.setWorksheetData(mockData);
-      
+
       mockValidator.validate.mockResolvedValue({ isValid: true, errors: [] });
       mockDependencyResolver.resolveDependencies.mockResolvedValue(['D1', 'A1:B2']);
 
@@ -223,20 +223,20 @@ describe('FormulaEngine', () => {
         length: 12,
         width: 10,
         height: 9,
-        
+
         // Rates
         labor_rate: 45,
         material_rate: 25,
         markup: 1.35,
-        
+
         // Calculated areas (would be from other formulas)
         wall_area: 396, // (12+10)*2*9
         ceiling_area: 120, // 12*10
         total_area: 516,
       };
-      
+
       formulaEngine.setWorksheetData(mockData);
-      
+
       mockValidator.validate.mockResolvedValue({ isValid: true, errors: [] });
       mockDependencyResolver.resolveDependencies.mockResolvedValue(['total_area', 'labor_rate', 'material_rate', 'markup']);
 
@@ -251,13 +251,13 @@ describe('FormulaEngine', () => {
         base_price: 5000,
         condition: 'poor',
       };
-      
+
       formulaEngine.setWorksheetData(mockData);
-      
+
       mockValidator.validate.mockResolvedValue({ isValid: true, errors: [] });
       mockDependencyResolver.resolveDependencies.mockResolvedValue(['base_price', 'condition']);
 
-      const result = await formulaEngine.evaluate('adjusted_price', 
+      const result = await formulaEngine.evaluate('adjusted_price',
         '=IF(condition="poor",base_price*1.5,IF(condition="fair",base_price*1.25,base_price))');
 
       expect(result.value).toBe(7500); // poor condition = 1.5x multiplier
@@ -272,9 +272,9 @@ describe('FormulaEngine', () => {
         PriceTable: { StandardPaint: { Type1: 25 } },
         HeaderRow: ['Type1', 'Type2', 'Type3']
       };
-      
+
       formulaEngine.setWorksheetData(mockData);
-      
+
       mockValidator.validate.mockResolvedValue({ isValid: true, errors: [] });
       mockDependencyResolver.resolveDependencies.mockResolvedValue(complex.dependencies);
 
@@ -289,9 +289,9 @@ describe('FormulaEngine', () => {
         A1: 10, A2: 20, A3: 30,
         B1: 2, B2: 3, B3: 4
       };
-      
+
       formulaEngine.setWorksheetData(mockData);
-      
+
       mockValidator.validate.mockResolvedValue({ isValid: true, errors: [] });
       mockDependencyResolver.resolveDependencies.mockResolvedValue(['A1:A3', 'B1:B3']);
 
@@ -322,9 +322,9 @@ describe('FormulaEngine', () => {
     });
 
     it('should handle circular references', async () => {
-      mockValidator.validate.mockResolvedValue({ 
-        isValid: false, 
-        errors: ['Circular reference detected: A1 -> B1 -> A1'] 
+      mockValidator.validate.mockResolvedValue({
+        isValid: false,
+        errors: ['Circular reference detected: A1 -> B1 -> A1']
       });
 
       const result = await formulaEngine.evaluate('A1', '=B1+5');
@@ -346,25 +346,25 @@ describe('FormulaEngine', () => {
     it('should handle large numbers of formulas efficiently', async () => {
       const startTime = Date.now();
       const formulaCount = 1000;
-      
+
       const mockData = {};
       for (let i = 1; i <= formulaCount; i++) {
         mockData[`A${i}`] = i;
       }
-      
+
       formulaEngine.setWorksheetData(mockData);
-      
+
       mockValidator.validate.mockResolvedValue({ isValid: true, errors: [] });
-      
+
       const promises = [];
       for (let i = 1; i <= formulaCount; i++) {
         mockDependencyResolver.resolveDependencies.mockResolvedValue([`A${i}`]);
         promises.push(formulaEngine.evaluate(`B${i}`, `=A${i}*2`));
       }
-      
+
       const results = await Promise.all(promises);
       const endTime = Date.now();
-      
+
       expect(results).toHaveLength(formulaCount);
       expect(results.every(r => r.error === null)).toBe(true);
       expect(endTime - startTime).toBeLessThan(5000); // Should complete in under 5 seconds
@@ -373,9 +373,9 @@ describe('FormulaEngine', () => {
     it('should handle complex dependency chains', async () => {
       const mockData = { A1: 10 };
       formulaEngine.setWorksheetData(mockData);
-      
+
       mockValidator.validate.mockResolvedValue({ isValid: true, errors: [] });
-      
+
       // Create a chain: A1 -> B1 -> C1 -> D1 -> E1
       const formulas = [
         { cell: 'B1', formula: '=A1*2', deps: ['A1'] },
@@ -383,16 +383,16 @@ describe('FormulaEngine', () => {
         { cell: 'D1', formula: '=C1*1.5', deps: ['C1'] },
         { cell: 'E1', formula: '=D1-10', deps: ['D1'] },
       ];
-      
+
       for (const f of formulas) {
         mockDependencyResolver.resolveDependencies.mockResolvedValue(f.deps);
         const result = await formulaEngine.evaluate(f.cell, f.formula);
-        
+
         // Update data with result for next formula
         mockData[f.cell] = result.value;
         formulaEngine.setWorksheetData(mockData);
       }
-      
+
       expect(mockData.E1).toBe(27.5); // ((10*2)+5)*1.5-10 = 27.5
     });
   });
@@ -413,9 +413,9 @@ describe('FormulaEngine', () => {
         rate: 0.05,
         periods: 360
       };
-      
+
       formulaEngine.setWorksheetData(mockData);
-      
+
       mockValidator.validate.mockResolvedValue({ isValid: true, errors: [] });
       mockDependencyResolver.resolveDependencies.mockResolvedValue(['principal', 'rate', 'periods']);
 
@@ -430,14 +430,14 @@ describe('FormulaEngine', () => {
   describe('Formula Categories', () => {
     it('should handle all formula categories correctly', async () => {
       const categories = createFormulaCategories();
-      
+
       for (const category of categories) {
         for (const formula of category.formulas) {
           mockValidator.validate.mockResolvedValue({ isValid: true, errors: [] });
           mockDependencyResolver.resolveDependencies.mockResolvedValue(formula.dependencies);
-          
+
           const result = await formulaEngine.evaluate(formula.cellReference, formula.formula);
-          
+
           expect(result.error).toBeNull();
           expect(result.type).toMatch(/number|string|boolean/);
         }
@@ -458,7 +458,7 @@ describe('FormulaEngine', () => {
 
       // First evaluation
       const result1 = await formulaEngineWithCache.evaluate('A1', '=5+3');
-      
+
       // Second evaluation (should be cached)
       const result2 = await formulaEngineWithCache.evaluate('A1', '=5+3');
 

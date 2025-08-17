@@ -53,16 +53,16 @@ const config = {
       critical: false,
     }
   ],
-  
+
   // Monitoring configuration
   interval: parseInt(process.env.MONITOR_INTERVAL) || 30000,
   maxFailures: 3,
   alertCooldown: 300000, // 5 minutes
-  
+
   // Alert configuration
   webhookUrl: process.env.ALERT_WEBHOOK_URL,
   logFile: path.join(__dirname, '../logs/health-monitor.json'),
-  
+
   // Recovery configuration
   autoRestart: process.env.NODE_ENV === 'production',
   restartCommands: {
@@ -87,9 +87,9 @@ class HealthMonitor {
   async start() {
     console.log(`[${new Date().toISOString()}] Health Monitor starting...`);
     console.log(`Monitoring ${config.services.length} services every ${config.interval}ms`);
-    
+
     this.isRunning = true;
-    
+
     // Initialize service states
     config.services.forEach(service => {
       serviceStates.set(service.name, {
@@ -149,10 +149,10 @@ class HealthMonitor {
 
   async checkService(service) {
     const startTime = Date.now();
-    
+
     try {
       let result;
-      
+
       switch (service.type) {
         case 'http':
           result = await this.checkHttpService(service);
@@ -187,7 +187,7 @@ class HealthMonitor {
     return new Promise((resolve, reject) => {
       const url = new URL(service.url);
       const client = url.protocol === 'https:' ? https : http;
-      
+
       const options = {
         hostname: url.hostname,
         port: url.port || (url.protocol === 'https:' ? 443 : 80),
@@ -201,7 +201,7 @@ class HealthMonitor {
         res.on('data', chunk => data += chunk);
         res.on('end', () => {
           if (res.statusCode === service.expectedStatusCode) {
-            resolve({ 
+            resolve({
               statusCode: res.statusCode,
               responseSize: data.length,
             });
@@ -225,7 +225,7 @@ class HealthMonitor {
     return new Promise((resolve, reject) => {
       const net = require('net');
       const socket = new net.Socket();
-      
+
       const timeout = setTimeout(() => {
         socket.destroy();
         reject(new Error(`TCP connection timeout after ${service.timeout}ms`));
@@ -251,7 +251,7 @@ class HealthMonitor {
           reject(new Error(`Process not found: ${service.processName}`));
         } else {
           const pids = stdout.trim().split('\n').filter(pid => pid);
-          resolve({ 
+          resolve({
             processCount: pids.length,
             pids: pids,
           });
@@ -285,13 +285,13 @@ class HealthMonitor {
 
   async checkAlerts() {
     const criticalServices = config.services.filter(s => s.critical);
-    
+
     for (const service of criticalServices) {
       const state = serviceStates.get(service.name);
-      
+
       if (state.consecutiveFailures >= config.maxFailures) {
         await this.triggerAlert(service, state);
-        
+
         // Attempt auto-restart if enabled
         if (config.autoRestart && config.restartCommands[service.name]) {
           await this.attemptServiceRestart(service);
@@ -303,7 +303,7 @@ class HealthMonitor {
   async triggerAlert(service, state) {
     const now = Date.now();
     const lastAlert = lastAlerts.get(service.name) || 0;
-    
+
     // Check cooldown period
     if (now - lastAlert < config.alertCooldown) {
       return;
@@ -409,12 +409,12 @@ class HealthMonitor {
 
       serviceStates.forEach((state, serviceName) => {
         statusReport.services[serviceName] = { ...state };
-        
+
         if (state.status === 'healthy') {
           statusReport.summary.healthy++;
         } else {
           statusReport.summary.unhealthy++;
-          
+
           const service = config.services.find(s => s.name === serviceName);
           if (service && service.critical && state.consecutiveFailures >= config.maxFailures) {
             statusReport.summary.critical_failures++;
@@ -428,7 +428,7 @@ class HealthMonitor {
 
       // Append to log file
       await fs.appendFile(config.logFile, JSON.stringify(statusReport) + '\n');
-      
+
     } catch (error) {
       console.error(`[${new Date().toISOString()}] Failed to log health status:`, error);
     }
@@ -438,7 +438,7 @@ class HealthMonitor {
     return new Promise((resolve, reject) => {
       const urlObj = new URL(url);
       const client = urlObj.protocol === 'https:' ? https : http;
-      
+
       const options = {
         hostname: urlObj.hostname,
         port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),

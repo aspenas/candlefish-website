@@ -41,9 +41,9 @@ info() {
 test_result() {
     local test_name=$1
     local status=$2
-    
+
     TESTS_RUN=$((TESTS_RUN + 1))
-    
+
     case $status in
         pass)
             echo -e "${GREEN}✅ PASS${NC} - $test_name"
@@ -64,42 +64,42 @@ test_result() {
 test_infrastructure() {
     log "Running Infrastructure Tests..."
     echo ""
-    
+
     # Test AWS connectivity
     if aws sts get-caller-identity >/dev/null 2>&1; then
         test_result "AWS Authentication" "pass"
     else
         test_result "AWS Authentication" "fail"
     fi
-    
+
     # Test S3 access
     if aws s3 ls 2>/dev/null | grep -q candlefish; then
         test_result "S3 Bucket Access" "pass"
     else
         test_result "S3 Bucket Access" "fail"
     fi
-    
+
     # Test CloudWatch access
     if aws cloudwatch describe-alarms --max-records 1 >/dev/null 2>&1; then
         test_result "CloudWatch Access" "pass"
     else
         test_result "CloudWatch Access" "fail"
     fi
-    
+
     # Test Secrets Manager
     if aws secretsmanager list-secrets --max-results 1 >/dev/null 2>&1; then
         test_result "Secrets Manager Access" "pass"
     else
         test_result "Secrets Manager Access" "fail"
     fi
-    
+
     # Test Fly.io connectivity
     if flyctl version >/dev/null 2>&1; then
         test_result "Fly.io CLI Available" "pass"
     else
         test_result "Fly.io CLI Available" "fail"
     fi
-    
+
     # Test Fly.io authentication
     if flyctl auth whoami >/dev/null 2>&1; then
         test_result "Fly.io Authentication" "pass"
@@ -112,21 +112,21 @@ test_infrastructure() {
 test_api_endpoints() {
     log "Running API Endpoint Tests..."
     echo ""
-    
+
     # Test Paintbox health endpoint
     if curl -f -s -m 5 https://paintbox-app.fly.dev/api/health >/dev/null 2>&1; then
         test_result "Paintbox Health Endpoint" "pass"
     else
         test_result "Paintbox Health Endpoint" "fail"
     fi
-    
+
     # Test Paintbox status endpoint
     if curl -f -s -m 5 https://paintbox-app.fly.dev/api/status >/dev/null 2>&1; then
         test_result "Paintbox Status Endpoint" "pass"
     else
         test_result "Paintbox Status Endpoint" "fail"
     fi
-    
+
     # Test Temporal health endpoint
     if curl -f -s -m 5 https://candlefish-temporal-platform.fly.dev/health >/dev/null 2>&1; then
         test_result "Temporal Health Endpoint" "pass"
@@ -139,18 +139,18 @@ test_api_endpoints() {
 test_performance() {
     log "Running Performance Tests..."
     echo ""
-    
+
     # Test response times
     local endpoints=(
         "https://paintbox-app.fly.dev/api/health"
         "https://paintbox-app.fly.dev/api/status"
         "https://candlefish-temporal-platform.fly.dev/health"
     )
-    
+
     for endpoint in "${endpoints[@]}"; do
         response_time=$(curl -o /dev/null -s -w "%{time_total}" "$endpoint" 2>/dev/null || echo "999")
         response_time_ms=$(echo "$response_time * 1000" | bc 2>/dev/null || echo "999")
-        
+
         if (( $(echo "$response_time_ms < 500" | bc -l 2>/dev/null || echo 0) )); then
             test_result "Performance: ${endpoint##*/} (<500ms)" "pass"
         elif (( $(echo "$response_time_ms < 1000" | bc -l 2>/dev/null || echo 0) )); then
@@ -165,13 +165,13 @@ test_performance() {
 test_security() {
     log "Running Security Tests..."
     echo ""
-    
+
     # Test HTTPS enforcement
     local urls=(
         "https://paintbox-app.fly.dev"
         "https://candlefish-temporal-platform.fly.dev"
     )
-    
+
     for url in "${urls[@]}"; do
         # Check if HTTPS is enforced
         if curl -I -s "$url" | grep -q "Strict-Transport-Security"; then
@@ -179,7 +179,7 @@ test_security() {
         else
             test_result "HSTS Header: ${url##*/}" "skip"
         fi
-        
+
         # Check for security headers
         if curl -I -s "$url" | grep -q "X-Content-Type-Options"; then
             test_result "Security Headers: ${url##*/}" "pass"
@@ -187,7 +187,7 @@ test_security() {
             test_result "Security Headers: ${url##*/}" "skip"
         fi
     done
-    
+
     # Test secrets are not exposed
     if curl -s https://paintbox-app.fly.dev 2>/dev/null | grep -q "AWS_SECRET\|DATABASE_URL\|API_KEY"; then
         test_result "No Secrets Exposed" "fail"
@@ -200,28 +200,28 @@ test_security() {
 test_configuration() {
     log "Running Configuration Tests..."
     echo ""
-    
+
     # Check Docker installation
     if docker --version >/dev/null 2>&1; then
         test_result "Docker Available" "pass"
     else
         test_result "Docker Available" "skip"
     fi
-    
+
     # Check Node.js version
     if node --version | grep -q "v18\|v20"; then
         test_result "Node.js Version" "pass"
     else
         test_result "Node.js Version" "fail"
     fi
-    
+
     # Check npm version
     if npm --version >/dev/null 2>&1; then
         test_result "NPM Available" "pass"
     else
         test_result "NPM Available" "fail"
     fi
-    
+
     # Check Git configuration
     if git config --get user.email >/dev/null 2>&1; then
         test_result "Git Configuration" "pass"
@@ -234,7 +234,7 @@ test_configuration() {
 test_backup_recovery() {
     log "Running Backup & Recovery Tests..."
     echo ""
-    
+
     # Test backup bucket exists
     BACKUP_BUCKET="candlefish-backups-$(date +%Y%m%d)"
     if aws s3 ls "s3://$BACKUP_BUCKET" 2>/dev/null; then
@@ -242,7 +242,7 @@ test_backup_recovery() {
     else
         test_result "Backup Bucket Exists" "fail"
     fi
-    
+
     # Test backup write access
     TEST_FILE="/tmp/backup-test-$(date +%s).txt"
     echo "Test backup" > "$TEST_FILE"
@@ -253,7 +253,7 @@ test_backup_recovery() {
         test_result "Backup Write Access" "fail"
     fi
     rm -f "$TEST_FILE"
-    
+
     # Test DR bucket exists
     DR_BUCKET="candlefish-backups-dr-$(date +%Y%m%d)"
     if aws s3 ls "s3://$DR_BUCKET" --region us-west-2 2>/dev/null; then
@@ -275,16 +275,16 @@ generate_report() {
     echo -e "Tests Failed:    ${RED}$TESTS_FAILED${NC}"
     echo -e "Tests Skipped:   ${YELLOW}$TESTS_SKIPPED${NC}"
     echo ""
-    
+
     # Calculate pass rate
     if [ $TESTS_RUN -gt 0 ]; then
         PASS_RATE=$(echo "scale=1; $TESTS_PASSED * 100 / $TESTS_RUN" | bc)
         echo -e "Pass Rate: ${CYAN}${PASS_RATE}%${NC}"
     fi
-    
+
     echo ""
     echo "────────────────────────────────────────────────────────────"
-    
+
     # Overall status
     if [ $TESTS_FAILED -eq 0 ]; then
         echo -e "${GREEN}✅ ALL CRITICAL TESTS PASSED!${NC}"
@@ -304,7 +304,7 @@ main() {
     log "🧪 Starting Production Test Suite..."
     echo "════════════════════════════════════════════════════════════"
     echo ""
-    
+
     # Parse command line arguments
     case "${1:-all}" in
         --infrastructure)
@@ -339,7 +339,7 @@ main() {
             test_backup_recovery
             ;;
     esac
-    
+
     # Generate report
     generate_report
 }

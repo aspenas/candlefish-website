@@ -54,7 +54,7 @@ export const useInfrastructureWebSocket = (options: UseInfrastructureWebSocketOp
   // Message handlers
   const handleHealthUpdate = useCallback((data: HealthResponse) => {
     updateHealth(data);
-    
+
     // Add individual metric for history
     addHealthMetric({
       timestamp: data.timestamp,
@@ -161,7 +161,7 @@ export const useInfrastructureWebSocket = (options: UseInfrastructureWebSocketOp
       console.error('Infrastructure WebSocket connection error:', error);
       setIsConnecting(false);
       setError(error.message);
-      
+
       if (connectionAttempts < reconnectAttempts) {
         setTimeout(() => {
           setConnectionAttempts(prev => prev + 1);
@@ -357,7 +357,7 @@ export const useWebSocketStatus = () => {
 // Real-time data hook
 export const useRealTimeData = () => {
   const healthStatus = useHealthStore((state) => state.currentHealth?.status);
-  const activeWorkflows = useWorkflowStore((state) => 
+  const activeWorkflows = useWorkflowStore((state) =>
     state.executions.filter(e => e.status === 'running').length
   );
   const activeLoadTests = useLoadTestStore((state) => state.isRunning);

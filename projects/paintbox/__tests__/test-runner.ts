@@ -154,7 +154,7 @@ class TestRunner {
     console.log(`   ${suite.description}`);
 
     const startTime = Date.now();
-    
+
     return new Promise((resolve) => {
       const process = spawn(suite.command, suite.args, {
         stdio: ['inherit', 'pipe', 'pipe'],
@@ -193,7 +193,7 @@ class TestRunner {
       process.on('close', (code) => {
         clearTimeout(timeout);
         const duration = Date.now() - startTime;
-        
+
         const coverage = this.extractCoverage(stdout);
         const errors = code !== 0 ? [stderr || 'Unknown error'] : undefined;
 
@@ -273,7 +273,7 @@ class TestRunner {
       for (const suite of suitesToRun) {
         const result = await this.runSuite(suite);
         this.results.push(result);
-        
+
         // Stop on critical test failure
         if (!result.passed && suite.critical && !options.criticalOnly) {
           console.log(`\n⚠️  Critical test failed: ${suite.name}`);
@@ -292,8 +292,8 @@ class TestRunner {
     const totalTests = this.results.length;
     const passedTests = this.results.filter(r => r.passed).length;
     const failedTests = totalTests - passedTests;
-    
-    const criticalResults = this.results.filter(r => 
+
+    const criticalResults = this.results.filter(r =>
       this.testSuites.find(s => s.name === r.suite)?.critical
     );
     const criticalPassed = criticalResults.filter(r => r.passed).length;
@@ -301,7 +301,7 @@ class TestRunner {
 
     const averageCoverage = this.results
       .filter(r => r.coverage !== undefined)
-      .reduce((sum, r) => sum + (r.coverage || 0), 0) / 
+      .reduce((sum, r) => sum + (r.coverage || 0), 0) /
       this.results.filter(r => r.coverage !== undefined).length;
 
     console.log('\n');
@@ -310,7 +310,7 @@ class TestRunner {
     console.log(`⏱️  Total Time: ${(totalDuration / 1000).toFixed(1)}s`);
     console.log(`📈 Overall: ${passedTests}/${totalTests} passed (${((passedTests/totalTests)*100).toFixed(1)}%)`);
     console.log(`🔥 Critical: ${criticalPassed}/${criticalResults.length} passed`);
-    
+
     if (averageCoverage) {
       console.log(`📊 Average Coverage: ${averageCoverage.toFixed(1)}%`);
     }
@@ -337,7 +337,7 @@ class TestRunner {
 
   private generateReports(): void {
     const reportDir = path.join(process.cwd(), 'test-results');
-    
+
     if (!fs.existsSync(reportDir)) {
       fs.mkdirSync(reportDir, { recursive: true });
     }
@@ -352,7 +352,7 @@ class TestRunner {
         failed: this.results.filter(r => !r.passed).length,
         averageCoverage: this.results
           .filter(r => r.coverage !== undefined)
-          .reduce((sum, r) => sum + (r.coverage || 0), 0) / 
+          .reduce((sum, r) => sum + (r.coverage || 0), 0) /
           this.results.filter(r => r.coverage !== undefined).length,
       },
       results: this.results,
@@ -408,7 +408,7 @@ class TestRunner {
         <p><strong>Success Rate:</strong> ${((report.summary.passed / report.summary.total) * 100).toFixed(1)}%</p>
         ${report.summary.averageCoverage ? `<p><strong>Average Coverage:</strong> ${report.summary.averageCoverage.toFixed(1)}%</p>` : ''}
     </div>
-    
+
     <h2>Test Results</h2>
     ${report.results.map((result: TestResult) => `
         <div class="suite ${result.passed ? 'passed' : 'failed'}">
@@ -453,17 +453,17 @@ async function main() {
   };
 
   const runner = new TestRunner();
-  
+
   try {
     await runner.runAll(options);
-    
+
     // Exit with appropriate code
     const hasFailures = runner.results.some(r => !r.passed);
     const hasCriticalFailures = runner.results.some(r => {
       const suite = runner.testSuites.find(s => s.name === r.suite);
       return !r.passed && suite?.critical;
     });
-    
+
     if (hasCriticalFailures) {
       process.exit(2); // Critical failure
     } else if (hasFailures) {

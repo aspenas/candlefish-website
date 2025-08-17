@@ -125,11 +125,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'paintbox-secret-key-2025';
 const resolvers = {
   Query: {
     me: (_, __, { user }) => user,
-    
+
     projects: (_, { filter }) => {
       let filtered = projects;
       if (filter) {
-        filtered = projects.filter(p => 
+        filtered = projects.filter(p =>
           p.name.toLowerCase().includes(filter.toLowerCase()) ||
           p.client.toLowerCase().includes(filter.toLowerCase())
         );
@@ -144,11 +144,11 @@ const resolvers = {
         }
       };
     },
-    
+
     estimates: (_, { filter }) => {
       let filtered = estimates;
       if (filter) {
-        filtered = estimates.filter(e => 
+        filtered = estimates.filter(e =>
           e.clientName.toLowerCase().includes(filter.toLowerCase()) ||
           e.address.toLowerCase().includes(filter.toLowerCase())
         );
@@ -163,25 +163,25 @@ const resolvers = {
         }
       };
     },
-    
+
     project: (_, { id }) => projects.find(p => p.id === id),
     estimate: (_, { id }) => estimates.find(e => e.id === id),
   },
-  
+
   Mutation: {
     login: async (_, { email, password }) => {
       const user = users.find(u => u.email === email && u.password === password);
-      
+
       if (!user) {
         throw new Error('Invalid credentials');
       }
-      
+
       const token = jwt.sign(
         { userId: user.id, email: user.email, role: user.role },
         JWT_SECRET,
         { expiresIn: '7d' }
       );
-      
+
       return {
         token,
         user: {
@@ -192,10 +192,10 @@ const resolvers = {
         },
       };
     },
-    
+
     createProject: (_, { input }, { user }) => {
       if (!user) throw new Error('Not authenticated');
-      
+
       const newProject = {
         id: String(projects.length + 1),
         ...input,
@@ -203,51 +203,51 @@ const resolvers = {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      
+
       projects.push(newProject);
       return newProject;
     },
-    
+
     updateProject: (_, { id, input }, { user }) => {
       if (!user) throw new Error('Not authenticated');
-      
+
       const index = projects.findIndex(p => p.id === id);
       if (index === -1) throw new Error('Project not found');
-      
+
       projects[index] = {
         ...projects[index],
         ...input,
         updatedAt: new Date().toISOString(),
       };
-      
+
       return projects[index];
     },
-    
+
     createEstimate: (_, { input }, { user }) => {
       if (!user) throw new Error('Not authenticated');
-      
+
       const newEstimate = {
         id: String(estimates.length + 1),
         ...input,
         status: input.status || 'Draft',
         createdAt: new Date().toISOString(),
       };
-      
+
       estimates.push(newEstimate);
       return newEstimate;
     },
-    
+
     updateEstimate: (_, { id, input }, { user }) => {
       if (!user) throw new Error('Not authenticated');
-      
+
       const index = estimates.findIndex(e => e.id === id);
       if (index === -1) throw new Error('Estimate not found');
-      
+
       estimates[index] = {
         ...estimates[index],
         ...input,
       };
-      
+
       return estimates[index];
     },
   },
@@ -256,7 +256,7 @@ const resolvers = {
 // Context function to extract user from JWT
 const context = async ({ req }) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
-  
+
   if (token) {
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
@@ -266,7 +266,7 @@ const context = async ({ req }) => {
       // Invalid token
     }
   }
-  
+
   return { user: null };
 };
 
@@ -274,7 +274,7 @@ const context = async ({ req }) => {
 async function startServer() {
   const app = express();
   const port = process.env.PORT || 8080;
-  
+
   // Enable CORS for all routes
   app.use(cors({
     origin: true,
@@ -307,7 +307,7 @@ async function startServer() {
 
   // Root endpoint
   app.get('/', (req, res) => {
-    res.json({ 
+    res.json({
       message: 'Paintbox GraphQL API',
       graphql: '/graphql',
       health: '/health'

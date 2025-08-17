@@ -43,15 +43,15 @@ class HealthChecker {
 
   async checkDatabase(): Promise<HealthCheckResult> {
     const startTime = Date.now();
-    
+
     try {
       // Use a simple query to check database connectivity
       const { PrismaClient } = await import('@prisma/client');
       const prisma = new PrismaClient();
-      
+
       await prisma.$queryRaw`SELECT 1 as health_check`;
       await prisma.$disconnect();
-      
+
       return {
         name: 'database',
         status: 'healthy',
@@ -73,22 +73,22 @@ class HealthChecker {
 
   async checkRedis(): Promise<HealthCheckResult> {
     const startTime = Date.now();
-    
+
     try {
       const cache = getCacheInstance();
-      
+
       // Test Redis with a simple set/get operation
       const testKey = `health_check_${Date.now()}`;
       const testValue = 'ok';
-      
+
       await cache.set(testKey, testValue, 10); // 10 second TTL
       const result = await cache.get(testKey);
       await cache.del(testKey);
-      
+
       if (result !== testValue) {
         throw new Error('Redis read/write test failed');
       }
-      
+
       return {
         name: 'redis',
         status: 'healthy',
@@ -111,17 +111,17 @@ class HealthChecker {
 
   async checkSecrets(): Promise<HealthCheckResult> {
     const startTime = Date.now();
-    
+
     try {
       const secretsManager = getSecretsManager();
-      
+
       // Test secrets manager by attempting to retrieve secrets
       const secrets = await secretsManager.getSecrets();
-      
+
       // Check if critical secrets are available
       const hasDatabase = Boolean(secrets.database?.url);
       const hasRedis = Boolean(secrets.redis?.url);
-      
+
       if (!hasDatabase || !hasRedis) {
         return {
           name: 'secrets',
@@ -134,7 +134,7 @@ class HealthChecker {
           },
         };
       }
-      
+
       return {
         name: 'secrets',
         status: 'healthy',
@@ -157,14 +157,14 @@ class HealthChecker {
 
   async checkSalesforce(): Promise<HealthCheckResult> {
     const startTime = Date.now();
-    
+
     try {
       // Import Salesforce service dynamically to avoid circular dependencies
       const { default: salesforceService } = await import('@/lib/services/salesforce-api');
-      
+
       // Test Salesforce connectivity with a simple query
       const testResult = await salesforceService.testConnection();
-      
+
       return {
         name: 'salesforce',
         status: testResult.success ? 'healthy' : 'degraded',
@@ -188,14 +188,14 @@ class HealthChecker {
 
   async checkCompanyCam(): Promise<HealthCheckResult> {
     const startTime = Date.now();
-    
+
     try {
       // Import CompanyCam service dynamically
       const { default: companyCamService } = await import('@/lib/services/companycam-api');
-      
+
       // Test CompanyCam API connectivity
       const testResult = await companyCamService.testConnection();
-      
+
       return {
         name: 'companycam',
         status: testResult.success ? 'healthy' : 'degraded',
@@ -218,24 +218,24 @@ class HealthChecker {
 
   async checkDiskSpace(): Promise<HealthCheckResult> {
     const startTime = Date.now();
-    
+
     try {
       const fs = require('fs').promises;
       const path = require('path');
-      
+
       // Check available disk space
       const stats = await fs.statfs(process.cwd());
       const totalSpace = stats.blocks * stats.bsize;
       const freeSpace = stats.bavail * stats.bsize;
       const usedPercentage = ((totalSpace - freeSpace) / totalSpace) * 100;
-      
+
       let status: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
       if (usedPercentage > 90) {
         status = 'unhealthy';
       } else if (usedPercentage > 80) {
         status = 'degraded';
       }
-      
+
       return {
         name: 'disk_space',
         status,
@@ -258,20 +258,20 @@ class HealthChecker {
 
   async checkMemory(): Promise<HealthCheckResult> {
     const startTime = Date.now();
-    
+
     try {
       const used = process.memoryUsage();
       const totalMemory = require('os').totalmem();
       const freeMemory = require('os').freemem();
       const usedPercentage = ((totalMemory - freeMemory) / totalMemory) * 100;
-      
+
       let status: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
       if (usedPercentage > 90) {
         status = 'unhealthy';
       } else if (usedPercentage > 80) {
         status = 'degraded';
       }
-      
+
       return {
         name: 'memory',
         status,
@@ -296,7 +296,7 @@ class HealthChecker {
 
   async runAllChecks(): Promise<HealthResponse> {
     const startTime = Date.now();
-    
+
     // Run all health checks in parallel with timeout
     const checkPromises = [
       this.withTimeout(this.checkDatabase(), 'database'),
@@ -307,16 +307,16 @@ class HealthChecker {
       this.withTimeout(this.checkDiskSpace(), 'disk_space'),
       this.withTimeout(this.checkMemory(), 'memory'),
     ];
-    
+
     const results = await Promise.allSettled(checkPromises);
-    
+
     // Process results
     const checks: Record<string, HealthCheckResult> = {};
     const summary = { total: 0, healthy: 0, unhealthy: 0, degraded: 0 };
-    
+
     results.forEach((result, index) => {
       let check: HealthCheckResult;
-      
+
       if (result.status === 'fulfilled') {
         check = result.value;
       } else {
@@ -329,10 +329,10 @@ class HealthChecker {
           error: result.reason?.message || 'Health check failed',
         };
       }
-      
+
       checks[check.name] = check;
       summary.total++;
-      
+
       switch (check.status) {
         case 'healthy':
           summary.healthy++;
@@ -345,22 +345,22 @@ class HealthChecker {
           break;
       }
     });
-    
+
     // Determine overall health status
     let overallStatus: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
-    
+
     // Check critical services
     const criticalServices = HEALTH_CHECK_CONFIG.critical;
-    const criticalUnhealthy = criticalServices.some(service => 
+    const criticalUnhealthy = criticalServices.some(service =>
       checks[service]?.status === 'unhealthy'
     );
-    
+
     if (criticalUnhealthy) {
       overallStatus = 'unhealthy';
     } else if (summary.unhealthy > 0 || summary.degraded > 0) {
       overallStatus = 'degraded';
     }
-    
+
     return {
       status: overallStatus,
       timestamp: new Date().toISOString(),
@@ -378,7 +378,7 @@ class HealthChecker {
         reject(new Error(`Health check timeout for ${name} after ${HEALTH_CHECK_CONFIG.timeout}ms`));
       }, HEALTH_CHECK_CONFIG.timeout);
     });
-    
+
     return Promise.race([promise, timeoutPromise]);
   }
 }
@@ -386,7 +386,7 @@ class HealthChecker {
 // API Route Handler
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
-  
+
   try {
     logger.info('Health check requested', {
       userAgent: request.headers.get('user-agent'),
@@ -395,7 +395,7 @@ export async function GET(request: NextRequest) {
 
     const checker = new HealthChecker();
     const healthResponse = await checker.runAllChecks();
-    
+
     // Determine HTTP status code based on health
     let statusCode = 200;
     if (healthResponse.status === 'degraded') {
@@ -403,15 +403,15 @@ export async function GET(request: NextRequest) {
     } else if (healthResponse.status === 'unhealthy') {
       statusCode = 503; // Service unavailable
     }
-    
+
     // Log health check result
     logger.info('Health check completed', {
       status: healthResponse.status,
       duration: Date.now() - startTime,
       summary: healthResponse.summary,
     });
-    
-    return NextResponse.json(healthResponse, { 
+
+    return NextResponse.json(healthResponse, {
       status: statusCode,
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -419,15 +419,15 @@ export async function GET(request: NextRequest) {
         'Expires': '0',
       },
     });
-    
+
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown health check error';
-    
+
     logger.error('Health check failed', {
       error: errorMessage,
       duration: Date.now() - startTime,
     });
-    
+
     const errorResponse: HealthResponse = {
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
@@ -449,8 +449,8 @@ export async function GET(request: NextRequest) {
         degraded: 0,
       },
     };
-    
-    return NextResponse.json(errorResponse, { 
+
+    return NextResponse.json(errorResponse, {
       status: 503,
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -465,27 +465,27 @@ export async function GET(request: NextRequest) {
 export async function HEAD(request: NextRequest) {
   try {
     const checker = new HealthChecker();
-    
+
     // Quick check of just critical services
     const criticalChecks = await Promise.allSettled([
       checker.checkDatabase(),
       checker.checkRedis(),
       checker.checkSecrets(),
     ]);
-    
-    const hasUnhealthy = criticalChecks.some(result => 
+
+    const hasUnhealthy = criticalChecks.some(result =>
       result.status === 'fulfilled' && result.value.status === 'unhealthy'
     );
-    
+
     const statusCode = hasUnhealthy ? 503 : 200;
-    
-    return new NextResponse(null, { 
+
+    return new NextResponse(null, {
       status: statusCode,
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
     });
-    
+
   } catch (error) {
     return new NextResponse(null, { status: 503 });
   }
