@@ -4,10 +4,10 @@
  */
 
 import { SalesforceOAuthService } from '@/lib/services/salesforce-oauth';
-import { 
-  createSalesforceOAuthResponse, 
+import {
+  createSalesforceOAuthResponse,
   createOAuthTestData,
-  createSalesforceErrorResponse 
+  createSalesforceErrorResponse
 } from '@/__tests__/factories';
 import nock from 'nock';
 
@@ -21,7 +21,7 @@ describe('SalesforceOAuthService', () => {
 
   beforeEach(() => {
     mockOAuthData = createOAuthTestData();
-    
+
     oauthService = new SalesforceOAuthService({
       clientId: mockOAuthData.clientId,
       clientSecret: mockOAuthData.clientSecret,
@@ -67,9 +67,9 @@ describe('SalesforceOAuthService', () => {
 
     it('should handle custom scopes', () => {
       const customScope = 'api id profile email address phone';
-      const authUrl = oauthService.getAuthorizationUrl({ 
+      const authUrl = oauthService.getAuthorizationUrl({
         state: mockOAuthData.state,
-        scope: customScope 
+        scope: customScope
       });
 
       expect(authUrl).toContain(`scope=${encodeURIComponent(customScope)}`);
@@ -79,7 +79,7 @@ describe('SalesforceOAuthService', () => {
   describe('Token Exchange', () => {
     it('should exchange authorization code for tokens', async () => {
       const mockTokenResponse = createSalesforceOAuthResponse();
-      
+
       // Mock the token endpoint
       nock('https://test.salesforce.com')
         .post('/services/oauth2/token')
@@ -343,7 +343,7 @@ describe('SalesforceOAuthService', () => {
       });
 
       expect(result.stored).toBe(true);
-      
+
       // Verify tokens are encrypted before storage
       const storedToken = await oauthService.getStoredTokens(userId);
       expect(storedToken.access_token).toBe(mockTokenResponse.access_token);
@@ -366,11 +366,11 @@ describe('SalesforceOAuthService', () => {
     it('should handle multiple Salesforce orgs', async () => {
       const orgId1 = 'org1';
       const orgId2 = 'org2';
-      
+
       const tokens1 = createSalesforceOAuthResponse({
         instance_url: 'https://org1.my.salesforce.com'
       });
-      
+
       const tokens2 = createSalesforceOAuthResponse({
         instance_url: 'https://org2.my.salesforce.com'
       });
@@ -389,7 +389,7 @@ describe('SalesforceOAuthService', () => {
   describe('Performance', () => {
     it('should handle concurrent token operations', async () => {
       const tokenResponses = Array.from({ length: 10 }, () => createSalesforceOAuthResponse());
-      
+
       // Mock multiple token requests
       tokenResponses.forEach((response, index) => {
         nock('https://test.salesforce.com')
@@ -397,7 +397,7 @@ describe('SalesforceOAuthService', () => {
           .reply(200, response);
       });
 
-      const promises = tokenResponses.map((_, index) => 
+      const promises = tokenResponses.map((_, index) =>
         oauthService.exchangeCodeForTokens(`code_${index}`)
       );
 
@@ -423,7 +423,7 @@ describe('SalesforceOAuthService', () => {
         .reply(200, mockUserInfo);
 
       const result1 = await oauthService.validateToken(accessToken, 'https://test.salesforce.com');
-      
+
       // Second request should use cache (no nock intercept)
       const result2 = await oauthService.validateToken(accessToken, 'https://test.salesforce.com');
 

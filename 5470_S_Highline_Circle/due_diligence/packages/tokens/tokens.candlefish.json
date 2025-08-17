@@ -1,0 +1,22 @@
+{
+  "color": {
+    "charcoal": { "value": "#1A1A1A" },
+    "warm_white": { "value": "#FAFAF8" },
+    "amber": { "value": "#FFB347" },
+    "deep_indigo": { "value": "#3A3A60" },
+    "slate": { "value": "#6B6B6B" },
+    "muted_sand": { "value": "#D8D3C4" }
+  },
+  "radius": {
+    "lg": { "value": "12px" },
+    "xl": { "value": "16px" },
+    "2xl": { "value": "24px" }
+  },
+  "shadow": {
+    "soft": { "value": "0 12px 30px rgba(0,0,0,0.08)" }
+  },
+  "font": {
+    "display_serif": { "value": "Georgia, 'Times New Roman', Times, serif" },
+    "sans": { "value": "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans'" }
+  }
+}

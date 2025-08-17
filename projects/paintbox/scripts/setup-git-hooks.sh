@@ -40,12 +40,12 @@ check_git_repo() {
 # Install Husky if not already installed
 install_husky() {
     print_status "Installing Husky..."
-    
+
     if ! command -v npx >/dev/null 2>&1; then
         print_error "npx not found. Please install Node.js and npm"
         exit 1
     fi
-    
+
     # Install husky as dev dependency if not present
     if ! npm list husky >/dev/null 2>&1; then
         npm install --save-dev husky
@@ -53,7 +53,7 @@ install_husky() {
     else
         print_success "Husky already installed"
     fi
-    
+
     # Initialize husky
     npx husky install
     print_success "Husky initialized"
@@ -62,21 +62,21 @@ install_husky() {
 # Install additional tools needed for hooks
 install_hook_dependencies() {
     print_status "Installing hook dependencies..."
-    
+
     local dev_dependencies=(
         "license-checker"
         "bundlesize"
         "npm-check-updates"
     )
-    
+
     local missing_deps=()
-    
+
     for dep in "${dev_dependencies[@]}"; do
         if ! npm list "$dep" >/dev/null 2>&1; then
             missing_deps+=("$dep")
         fi
     done
-    
+
     if [ ${#missing_deps[@]} -gt 0 ]; then
         print_status "Installing missing dependencies: ${missing_deps[*]}"
         npm install --save-dev "${missing_deps[@]}"
@@ -89,27 +89,27 @@ install_hook_dependencies() {
 # Setup git hook scripts
 setup_hook_scripts() {
     print_status "Setting up git hook scripts..."
-    
+
     # Create .husky directory if it doesn't exist
     mkdir -p .husky
-    
+
     # Ensure hook scripts are executable
     chmod +x .husky/pre-commit 2>/dev/null || true
     chmod +x .husky/pre-push 2>/dev/null || true
     chmod +x .husky/commit-msg 2>/dev/null || true
-    
+
     # Add hooks to Husky
     npx husky add .husky/pre-commit
     npx husky add .husky/pre-push
     npx husky add .husky/commit-msg
-    
+
     print_success "Git hooks configured"
 }
 
 # Add npm scripts for manual hook execution
 add_npm_scripts() {
     print_status "Adding npm scripts for manual hook execution..."
-    
+
     # Check if scripts already exist
     local scripts_to_add=(
         "precommit:./husky/pre-commit"
@@ -122,7 +122,7 @@ add_npm_scripts() {
         "security:audit:npm audit --audit-level=low"
         "hooks:install:./scripts/setup-git-hooks.sh"
     )
-    
+
     print_status "Manual script execution available:"
     echo "  npm run precommit     - Run pre-commit checks manually"
     echo "  npm run prepush       - Run pre-push checks manually"
@@ -131,17 +131,17 @@ add_npm_scripts() {
     echo "  npm run deps:outdated - Check for outdated packages"
     echo "  npm run deps:licenses - Check license compliance"
     echo "  npm run security:audit - Run strict security audit"
-    
+
     print_success "Manual execution scripts documented"
 }
 
 # Configure git settings for better hook experience
 configure_git_settings() {
     print_status "Configuring git settings for hooks..."
-    
+
     # Set up git to use the hooks
     git config core.hooksPath .husky
-    
+
     # Configure commit template if it doesn't exist
     if [ ! -f ".gitmessage" ]; then
         cat > .gitmessage << 'EOF'
@@ -173,18 +173,18 @@ configure_git_settings() {
 #
 # Footer should contain any BREAKING CHANGE or issue references
 EOF
-        
+
         git config commit.template .gitmessage
         print_success "Git commit template configured"
     fi
-    
+
     print_success "Git settings configured"
 }
 
 # Create hook bypass mechanism
 create_bypass_mechanism() {
     print_status "Setting up hook bypass mechanism..."
-    
+
     cat > scripts/bypass-hooks.sh << 'EOF'
 #!/bin/bash
 # Bypass git hooks for emergency commits
@@ -208,7 +208,7 @@ else
     echo "❌ Commit cancelled"
 fi
 EOF
-    
+
     chmod +x scripts/bypass-hooks.sh
     print_success "Hook bypass mechanism created: scripts/bypass-hooks.sh"
 }
@@ -216,10 +216,10 @@ EOF
 # Test the hooks
 test_hooks() {
     print_status "Testing git hooks..."
-    
+
     # Test if hooks are executable
     local hooks=(".husky/pre-commit" ".husky/pre-push" ".husky/commit-msg")
-    
+
     for hook in "${hooks[@]}"; do
         if [ -f "$hook" ] && [ -x "$hook" ]; then
             print_success "✅ $hook is executable"
@@ -227,14 +227,14 @@ test_hooks() {
             print_warning "⚠️  $hook may not be properly configured"
         fi
     done
-    
+
     # Test dependency health check script
     if [ -f "scripts/dependency-health-check.sh" ] && [ -x "scripts/dependency-health-check.sh" ]; then
         print_success "✅ Dependency health check script is ready"
     else
         print_warning "⚠️  Dependency health check script not found or not executable"
     fi
-    
+
     print_success "Hook testing completed"
 }
 
@@ -272,7 +272,7 @@ show_summary() {
 main() {
     echo "🔧 Setting up Git Hooks for Paintbox"
     echo
-    
+
     check_git_repo
     install_husky
     install_hook_dependencies

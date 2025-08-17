@@ -54,7 +54,7 @@ export class AuthMiddleware {
 
         // Verify token
         const decoded = await this.auth.verifyToken(token);
-        
+
         // Check roles if specified
         if (roles.length > 0 && decoded.role) {
           if (!roles.includes(decoded.role)) {
@@ -70,10 +70,10 @@ export class AuthMiddleware {
 
         // Check permissions if specified
         if (permissions.length > 0 && decoded.permissions) {
-          const hasPermission = permissions.some(perm => 
+          const hasPermission = permissions.some(perm =>
             decoded.permissions?.includes(perm)
           );
-          
+
           if (!hasPermission) {
             return this.handleError(
               new Error('Insufficient permissions'),
@@ -89,7 +89,7 @@ export class AuthMiddleware {
         if (scope.length > 0 && decoded.scope) {
           const userScopes = decoded.scope.split(' ');
           const hasScope = scope.some(s => userScopes.includes(s));
-          
+
           if (!hasScope) {
             return this.handleError(
               new Error('Insufficient scope'),
@@ -104,14 +104,14 @@ export class AuthMiddleware {
         // Attach user and token to request
         req.user = decoded;
         req.token = token;
-        
+
         next();
       } catch (error: any) {
         if (!required && error.message.includes('No token')) {
           // Token not required and not provided, continue
           return next();
         }
-        
+
         this.handleError(error, req, res, next, onError);
       }
     };
@@ -161,7 +161,7 @@ export class AuthMiddleware {
 
     // Default error handling
     const statusCode = this.getStatusCode(error.message);
-    
+
     res.status(statusCode).json({
       error: true,
       message: error.message,

@@ -43,7 +43,7 @@
 </head>
 <body>
     <h1>🎨 Vercel CORS Test</h1>
-    
+
     <div class="card">
         <h2>Test CORS from Vercel Frontend</h2>
         <p>Frontend URL: <span class="info">https://paintbox-3x93r19zx-temppjs.vercel.app</span></p>
@@ -62,11 +62,11 @@
 
     <script>
         const GRAPHQL_URL = 'https://paintbox-graphql.fly.dev/graphql';
-        
+
         async function testDirectGraphQL() {
             const resultDiv = document.getElementById('cors-result');
             resultDiv.innerHTML = '<p class="info">Testing CORS...</p>';
-            
+
             try {
                 const response = await fetch(GRAPHQL_URL, {
                     method: 'POST',
@@ -75,13 +75,13 @@
                         'Origin': 'https://paintbox-3x93r19zx-temppjs.vercel.app'
                     },
                     credentials: 'include',
-                    body: JSON.stringify({ 
-                        query: '{ __typename }' 
+                    body: JSON.stringify({
+                        query: '{ __typename }'
                     })
                 });
-                
+
                 const data = await response.json();
-                
+
                 resultDiv.innerHTML = `
                     <p class="success">✅ CORS Test Passed!</p>
                     <p>Response Headers:</p>
@@ -103,7 +103,7 @@ Credentials: ${response.headers.get('access-control-allow-credentials') || 'Not 
         async function testWithAuth() {
             const resultDiv = document.getElementById('cors-result');
             resultDiv.innerHTML = '<p class="info">Testing with authentication...</p>';
-            
+
             try {
                 // First login
                 const loginResponse = await fetch(GRAPHQL_URL, {
@@ -129,12 +129,12 @@ Credentials: ${response.headers.get('access-control-allow-credentials') || 'Not 
                         `
                     })
                 });
-                
+
                 const loginData = await loginResponse.json();
-                
+
                 if (loginData.data && loginData.data.login) {
                     const token = loginData.data.login.token;
-                    
+
                     // Now test authenticated query
                     const authResponse = await fetch(GRAPHQL_URL, {
                         method: 'POST',
@@ -157,9 +157,9 @@ Credentials: ${response.headers.get('access-control-allow-credentials') || 'Not 
                             `
                         })
                     });
-                    
+
                     const authData = await authResponse.json();
-                    
+
                     resultDiv.innerHTML = `
                         <p class="success">✅ Authenticated Request Successful!</p>
                         <p>Login Response:</p>
@@ -184,7 +184,7 @@ Credentials: ${response.headers.get('access-control-allow-credentials') || 'Not 
         async function testFrontendLikeRequest() {
             const resultDiv = document.getElementById('frontend-result');
             resultDiv.innerHTML = '<p class="info">Simulating frontend request...</p>';
-            
+
             try {
                 // This mimics what the Apollo Client would do
                 const response = await fetch(GRAPHQL_URL, {
@@ -207,9 +207,9 @@ Credentials: ${response.headers.get('access-control-allow-credentials') || 'Not 
                         `
                     })
                 });
-                
+
                 const data = await response.json();
-                
+
                 resultDiv.innerHTML = `
                     <p class="success">✅ Frontend-like Request Successful!</p>
                     <p>This means the frontend should be able to connect properly.</p>

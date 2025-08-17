@@ -268,7 +268,7 @@ class FormulaCache {
           const redisResults = await pipeline.exec();
 
           if (redisResults) {
-            redisResults.forEach((result, index) => {
+            redisResults.forEach((result: any, index: number) => {
               const key = missingKeys[index];
               if (result && result[1]) {
                 try {

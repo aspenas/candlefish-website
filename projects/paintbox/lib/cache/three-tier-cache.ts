@@ -123,10 +123,10 @@ export class ThreeTierCache {
         if (redisValue) {
           this.metrics.l2Hits++;
           const parsed = JSON.parse(redisValue);
-          
+
           // Promote to L1 cache
           this.memoryCache.set(key, parsed);
-          
+
           return parsed;
         }
       } catch (error) {
@@ -222,10 +222,10 @@ export class ThreeTierCache {
 
     // Generate new value
     const value = await factory();
-    
+
     // Store in cache
     await this.set(key, value, ttlSeconds);
-    
+
     return value;
   }
 
@@ -255,7 +255,7 @@ export class ThreeTierCache {
             const parsed = JSON.parse(value);
             const key = missingKeys[index];
             results.set(key, parsed);
-            
+
             // Promote to L1
             this.memoryCache.set(key, parsed);
           }
@@ -285,7 +285,7 @@ export class ThreeTierCache {
     if (this.redisClient) {
       try {
         const pipeline = this.redisClient.pipeline();
-        
+
         for (const [key, value] of entries) {
           const serialized = JSON.stringify(value);
           if (ttlSeconds) {
@@ -294,7 +294,7 @@ export class ThreeTierCache {
             pipeline.set(key, serialized);
           }
         }
-        
+
         await pipeline.exec();
       } catch (error) {
         console.error('Redis mset error:', error);
@@ -306,11 +306,11 @@ export class ThreeTierCache {
    * Get cache metrics
    */
   getMetrics() {
-    const l1HitRate = this.metrics.l1Hits / 
+    const l1HitRate = this.metrics.l1Hits /
       (this.metrics.l1Hits + this.metrics.l1Misses) || 0;
-    const l2HitRate = this.metrics.l2Hits / 
+    const l2HitRate = this.metrics.l2Hits /
       (this.metrics.l2Hits + this.metrics.l2Misses) || 0;
-    const overallHitRate = (this.metrics.l1Hits + this.metrics.l2Hits) / 
+    const overallHitRate = (this.metrics.l1Hits + this.metrics.l2Hits) /
       this.metrics.totalRequests || 0;
 
     return {

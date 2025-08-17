@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Candlefish Design System Generator</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #333;
+      background: #fff;
+      padding: 16px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e5e5e5;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 4px;
+    }
+
+    .header p {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: #333;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="color"],
+    .form-group select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: inherit;
+      background: #fff;
+      transition: border-color 0.2s ease;
+    }
+
+    .form-group input[type="text"]:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .form-group input[type="color"] {
+      height: 40px;
+      padding: 4px;
+      cursor: pointer;
+    }
+
+    .color-input-wrapper {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .color-input-wrapper input[type="text"] {
+      flex: 1;
+    }
+
+    .color-input-wrapper input[type="color"] {
+      width: 50px;
+      flex-shrink: 0;
+    }
+
+    .checkbox-group {
+      margin: 20px 0;
+      padding: 16px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid #e5e5e5;
+    }
+
+    .checkbox-group h3 {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #333;
+    }
+
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .checkbox-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .checkbox-item input[type="checkbox"] {
+      margin-right: 8px;
+      width: 14px;
+      height: 14px;
+    }
+
+    .checkbox-item label {
+      font-size: 12px;
+      font-weight: normal;
+      margin: 0;
+      text-transform: none;
+      letter-spacing: normal;
+      cursor: pointer;
+    }
+
+    .buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 24px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #2563eb;
+    }
+
+    .btn-primary:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+    }
+
+    .btn-secondary:hover {
+      background: #e2e8f0;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+    }
+
+    .btn-ghost:hover {
+      background: #f8fafc;
+    }
+
+    .progress-container {
+      margin: 16px 0;
+      display: none;
+    }
+
+    .progress-container.visible {
+      display: block;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #e5e5e5;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+      border-radius: 4px;
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    .progress-text {
+      font-size: 11px;
+      color: #666;
+      margin-top: 6px;
+      text-align: center;
+    }
+
+    .status-message {
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin: 16px 0;
+      display: none;
+    }
+
+    .status-message.visible {
+      display: block;
+    }
+
+    .status-success {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+    }
+
+    .status-error {
+      background: #fef2f2;
+      color: #dc2626;
+      border: 1px solid #fecaca;
+    }
+
+    .status-info {
+      background: #dbeafe;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+    }
+
+    .advanced-options {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #e5e5e5;
+    }
+
+    .advanced-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      padding: 8px 0;
+      font-size: 12px;
+      font-weight: 500;
+      color: #666;
+    }
+
+    .advanced-toggle:hover {
+      color: #333;
+    }
+
+    .advanced-content {
+      display: none;
+      margin-top: 12px;
+    }
+
+    .advanced-content.visible {
+      display: block;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .export-section {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid #e5e5e5;
+    }
+
+    .export-section h3 {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #333;
+    }
+
+    .export-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .font-preview {
+      margin-top: 8px;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      font-size: 14px;
+      border: 1px solid #e5e5e5;
+    }
+
+    .icon {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
+    }
+
+    .spinner {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .tooltip {
+      position: relative;
+      cursor: help;
+    }
+
+    .tooltip::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      z-index: 1000;
+    }
+
+    .tooltip:hover::after {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🎨 Candlefish Design System</h1>
+    <p>Generate a complete brand design system in seconds</p>
+  </div>
+
+  <form id="designSystemForm">
+    <!-- Brand Configuration -->
+    <div class="form-group">
+      <label for="brandName">Brand Name</label>
+      <input type="text" id="brandName" name="brandName" value="Candlefish" placeholder="Enter your brand name">
+    </div>
+
+    <div class="form-group">
+      <label for="primaryColor">Primary Brand Color</label>
+      <div class="color-input-wrapper">
+        <input type="text" id="primaryColorText" name="primaryColorText" value="#3B82F6" placeholder="#3B82F6">
+        <input type="color" id="primaryColor" name="primaryColor" value="#3B82F6">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="fontFamily">Primary Font Family</label>
+      <select id="fontFamily" name="fontFamily">
+        <option value="Inter">Inter (Recommended)</option>
+        <option value="Roboto">Roboto</option>
+        <option value="Open Sans">Open Sans</option>
+        <option value="Poppins">Poppins</option>
+        <option value="Lato">Lato</option>
+        <option value="Montserrat">Montserrat</option>
+        <option value="Source Sans Pro">Source Sans Pro</option>
+        <option value="Nunito">Nunito</option>
+        <option value="Work Sans">Work Sans</option>
+        <option value="Manrope">Manrope</option>
+      </select>
+      <div class="font-preview" id="fontPreview">
+        The quick brown fox jumps over the lazy dog
+      </div>
+    </div>
+
+    <!-- Generation Options -->
+    <div class="checkbox-group">
+      <h3>What to Generate</h3>
+      <div class="checkbox-item">
+        <input type="checkbox" id="generatePages" name="generatePages" checked>
+        <label for="generatePages">Complete page layouts (Cover, Brand System, Components, etc.)</label>
+      </div>
+      <div class="checkbox-item">
+        <input type="checkbox" id="generateComponents" name="generateComponents" checked>
+        <label for="generateComponents">Component library with all variants</label>
+      </div>
+      <div class="checkbox-item">
+        <input type="checkbox" id="generateTokens" name="generateTokens" checked>
+        <label for="generateTokens">Design tokens for development</label>
+      </div>
+      <div class="checkbox-item">
+        <input type="checkbox" id="generateResponsive" name="generateResponsive" checked>
+        <label for="generateResponsive">Responsive layouts (Desktop + Mobile)</label>
+      </div>
+    </div>
+
+    <!-- Advanced Options -->
+    <div class="advanced-options">
+      <div class="advanced-toggle" onclick="toggleAdvanced()">
+        <span>Advanced Options</span>
+        <span id="advancedIcon">▼</span>
+      </div>
+      <div class="advanced-content" id="advancedContent">
+        <div class="form-group">
+          <label for="typographyScale">Typography Scale</label>
+          <select id="typographyScale" name="typographyScale">
+            <option value="major">Major Third (1.25) - Recommended</option>
+            <option value="minor">Minor Third (1.2)</option>
+            <option value="harmonic">Harmonic Scale</option>
+          </select>
+        </div>
+
+        <div class="grid">
+          <div class="form-group">
+            <label for="borderRadius" class="tooltip" data-tooltip="Roundness of component corners">Border Radius</label>
+            <select id="borderRadius" name="borderRadius">
+              <option value="6">6px (Rounded)</option>
+              <option value="4">4px (Subtle)</option>
+              <option value="8">8px (More Rounded)</option>
+              <option value="12">12px (Very Rounded)</option>
+              <option value="0">0px (Sharp)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="shadowIntensity">Shadow Intensity</label>
+            <select id="shadowIntensity" name="shadowIntensity">
+              <option value="subtle">Subtle</option>
+              <option value="medium">Medium</option>
+              <option value="strong">Strong</option>
+              <option value="none">None</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="colorPalette">Color Palette Style</label>
+          <select id="colorPalette" name="colorPalette">
+            <option value="vibrant">Vibrant (High Saturation)</option>
+            <option value="muted">Muted (Lower Saturation)</option>
+            <option value="monochrome">Monochromatic</option>
+            <option value="complementary">Complementary Colors</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress Indicator -->
+    <div class="progress-container" id="progressContainer">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="progress-text" id="progressText">Initializing...</div>
+    </div>
+
+    <!-- Status Messages -->
+    <div class="status-message" id="statusMessage"></div>
+
+    <!-- Main Action Buttons -->
+    <div class="buttons">
+      <button type="button" class="btn btn-primary" onclick="generateFullSystem()" id="generateBtn">
+        <svg class="icon" viewBox="0 0 24 24">
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+        </svg>
+        Generate Complete Design System
+      </button>
+
+      <div class="export-section">
+        <h3>Quick Actions</h3>
+        <div class="export-buttons">
+          <button type="button" class="btn btn-secondary" onclick="generateColors()">
+            <svg class="icon" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            Colors Only
+          </button>
+
+          <button type="button" class="btn btn-secondary" onclick="generateTypography()">
+            <svg class="icon" viewBox="0 0 24 24">
+              <polyline points="4,7 4,4 20,4 20,7"/>
+              <line x1="9" y1="20" x2="15" y2="20"/>
+              <line x1="12" y1="4" x2="12" y2="20"/>
+            </svg>
+            Typography
+          </button>
+
+          <button type="button" class="btn btn-secondary" onclick="generateComponents()">
+            <svg class="icon" viewBox="0 0 24 24">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+              <line x1="8" y1="21" x2="16" y2="21"/>
+              <line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+            Components
+          </button>
+
+          <button type="button" class="btn btn-ghost" onclick="exportTokens()">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7,10 12,15 17,10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Export Tokens
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <script>
+    // Global state
+    let isGenerating = false;
+    let currentTokens = null;
+
+    // Initialize UI
+    document.addEventListener('DOMContentLoaded', function() {
+      // Sync color inputs
+      const colorInput = document.getElementById('primaryColor');
+      const colorTextInput = document.getElementById('primaryColorText');
+
+      colorInput.addEventListener('input', function() {
+        colorTextInput.value = this.value.toUpperCase();
+        updatePreview();
+      });
+
+      colorTextInput.addEventListener('input', function() {
+        if (this.value.match(/^#[0-9A-F]{6}$/i)) {
+          colorInput.value = this.value;
+          updatePreview();
+        }
+      });
+
+      // Font family preview
+      const fontSelect = document.getElementById('fontFamily');
+      fontSelect.addEventListener('change', updateFontPreview);
+
+      // Initialize previews
+      updatePreview();
+      updateFontPreview();
+    });
+
+    function updatePreview() {
+      const primaryColor = document.getElementById('primaryColor').value;
+      // Update any preview elements with the new color
+      document.documentElement.style.setProperty('--preview-color', primaryColor);
+    }
+
+    function updateFontPreview() {
+      const fontFamily = document.getElementById('fontFamily').value;
+      const preview = document.getElementById('fontPreview');
+      preview.style.fontFamily = fontFamily + ', sans-serif';
+    }
+
+    function toggleAdvanced() {
+      const content = document.getElementById('advancedContent');
+      const icon = document.getElementById('advancedIcon');
+
+      if (content.classList.contains('visible')) {
+        content.classList.remove('visible');
+        icon.textContent = '▼';
+      } else {
+        content.classList.add('visible');
+        icon.textContent = '▲';
+      }
+    }
+
+    function setGenerating(generating) {
+      isGenerating = generating;
+      const btn = document.getElementById('generateBtn');
+      const progressContainer = document.getElementById('progressContainer');
+
+      if (generating) {
+        btn.disabled = true;
+        btn.innerHTML = `
+          <svg class="icon spinner" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" stroke-dasharray="31.416" stroke-dashoffset="31.416">
+              <animate attributeName="stroke-dasharray" dur="2s" values="0 31.416;15.708 15.708;0 31.416" repeatCount="indefinite"/>
+              <animate attributeName="stroke-dashoffset" dur="2s" values="0;-15.708;-31.416" repeatCount="indefinite"/>
+            </circle>
+          </svg>
+          Generating...
+        `;
+        progressContainer.classList.add('visible');
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = `
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+          Generate Complete Design System
+        `;
+        progressContainer.classList.remove('visible');
+      }
+    }
+
+    function updateProgress(percentage, message) {
+      const progressFill = document.getElementById('progressFill');
+      const progressText = document.getElementById('progressText');
+
+      progressFill.style.width = percentage + '%';
+      progressText.textContent = message;
+    }
+
+    function showStatus(message, type = 'info') {
+      const statusEl = document.getElementById('statusMessage');
+      statusEl.className = `status-message visible status-${type}`;
+      statusEl.textContent = message;
+
+      // Auto-hide after 5 seconds
+      setTimeout(() => {
+        statusEl.classList.remove('visible');
+      }, 5000);
+    }
+
+    function getFormData() {
+      return {
+        brandName: document.getElementById('brandName').value || 'Brand',
+        primaryColor: document.getElementById('primaryColor').value || '#3B82F6',
+        fontFamily: document.getElementById('fontFamily').value || 'Inter',
+        generatePages: document.getElementById('generatePages').checked,
+        generateComponents: document.getElementById('generateComponents').checked,
+        generateTokens: document.getElementById('generateTokens').checked,
+        generateResponsive: document.getElementById('generateResponsive').checked,
+        typographyScale: document.getElementById('typographyScale').value || 'major',
+        borderRadius: parseInt(document.getElementById('borderRadius').value) || 6,
+        shadowIntensity: document.getElementById('shadowIntensity').value || 'medium',
+        colorPalette: document.getElementById('colorPalette').value || 'vibrant'
+      };
+    }
+
+    // Main generation functions
+    function generateFullSystem() {
+      if (isGenerating) return;
+
+      setGenerating(true);
+      const formData = getFormData();
+
+      parent.postMessage({
+        pluginMessage: {
+          type: 'generate-full-system',
+          ...formData
+        }
+      }, '*');
+    }
+
+    function generateColors() {
+      if (isGenerating) return;
+
+      setGenerating(true);
+      const formData = getFormData();
+
+      parent.postMessage({
+        pluginMessage: {
+          type: 'generate-colors',
+          ...formData
+        }
+      }, '*');
+    }
+
+    function generateTypography() {
+      if (isGenerating) return;
+
+      setGenerating(true);
+      const formData = getFormData();
+
+      parent.postMessage({
+        pluginMessage: {
+          type: 'generate-typography',
+          ...formData
+        }
+      }, '*');
+    }
+
+    function generateComponents() {
+      if (isGenerating) return;
+
+      setGenerating(true);
+      const formData = getFormData();
+
+      parent.postMessage({
+        pluginMessage: {
+          type: 'generate-components',
+          ...formData
+        }
+      }, '*');
+    }
+
+    function exportTokens() {
+      const formData = getFormData();
+
+      parent.postMessage({
+        pluginMessage: {
+          type: 'export-tokens',
+          ...formData
+        }
+      }, '*');
+    }
+
+    function downloadTokens(tokens) {
+      const blob = new Blob([tokens], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'design-tokens.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // Message handling from plugin
+    window.onmessage = (event) => {
+      const { type, value, message, tokens } = event.data.pluginMessage;
+
+      switch (type) {
+        case 'progress':
+          updateProgress(value, message);
+          break;
+
+        case 'complete':
+          setGenerating(false);
+          showStatus(message, 'success');
+          if (tokens) {
+            currentTokens = tokens;
+            // Optionally auto-download tokens
+            // downloadTokens(tokens);
+          }
+          break;
+
+        case 'export-complete':
+          showStatus(message, 'success');
+          if (tokens) {
+            downloadTokens(tokens);
+          }
+          break;
+
+        case 'error':
+          setGenerating(false);
+          showStatus(message, 'error');
+          break;
+
+        default:
+          console.log('Unknown message type:', type);
+      }
+    };
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      if (e.metaKey || e.ctrlKey) {
+        switch (e.key) {
+          case 'Enter':
+            e.preventDefault();
+            generateFullSystem();
+            break;
+          case 'c':
+            if (e.shiftKey) {
+              e.preventDefault();
+              generateColors();
+            }
+            break;
+          case 't':
+            if (e.shiftKey) {
+              e.preventDefault();
+              generateTypography();
+            }
+            break;
+          case 'e':
+            if (e.shiftKey) {
+              e.preventDefault();
+              exportTokens();
+            }
+            break;
+        }
+      }
+    });
+
+    // Form validation
+    function validateForm() {
+      const brandName = document.getElementById('brandName').value.trim();
+      const primaryColor = document.getElementById('primaryColorText').value;
+
+      if (!brandName) {
+        showStatus('Please enter a brand name', 'error');
+        return false;
+      }
+
+      if (!primaryColor.match(/^#[0-9A-F]{6}$/i)) {
+        showStatus('Please enter a valid hex color (e.g., #3B82F6)', 'error');
+        return false;
+      }
+
+      return true;
+    }
+
+    // Enhanced generation with validation
+    const originalGenerateFullSystem = generateFullSystem;
+    generateFullSystem = function() {
+      if (validateForm()) {
+        originalGenerateFullSystem();
+      }
+    };
+  </script>
+</body>
+</html>

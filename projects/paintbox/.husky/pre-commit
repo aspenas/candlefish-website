@@ -47,7 +47,7 @@ else
     print_error "Security vulnerabilities detected!"
     print_status "Running npm audit for details..."
     npm audit --audit-level=moderate
-    
+
     # Attempt auto-fix for non-critical vulnerabilities
     print_status "Attempting to auto-fix vulnerabilities..."
     if npm audit fix --dry-run >/dev/null 2>&1; then
@@ -76,7 +76,7 @@ if command -v license-checker >/dev/null 2>&1; then
     # Check for prohibited licenses
     PROHIBITED_LICENSES=("GPL-2.0" "GPL-3.0" "AGPL-1.0" "AGPL-3.0" "SSPL-1.0")
     LICENSE_ISSUES=false
-    
+
     for license in "${PROHIBITED_LICENSES[@]}"; do
         if license-checker --onlyAllow "$(license-checker --summary | grep -v "$license" | tr '\n' ';')" >/dev/null 2>&1; then
             continue
@@ -85,7 +85,7 @@ if command -v license-checker >/dev/null 2>&1; then
             LICENSE_ISSUES=true
         fi
     done
-    
+
     if [ "$LICENSE_ISSUES" = true ]; then
         print_error "License compliance check failed"
         exit 1
@@ -137,7 +137,7 @@ fi
 # 7. Validate package.json structure
 if [ "$PACKAGE_JSON_CHANGED" = true ]; then
     print_status "Validating package.json structure..."
-    
+
     # Check for required fields
     REQUIRED_FIELDS=("name" "version" "scripts")
     for field in "${REQUIRED_FIELDS[@]}"; do
@@ -146,7 +146,7 @@ if [ "$PACKAGE_JSON_CHANGED" = true ]; then
             exit 1
         fi
     done
-    
+
     # Check for security-related scripts
     SECURITY_SCRIPTS=("audit" "test:security")
     for script in "${SECURITY_SCRIPTS[@]}"; do
@@ -154,7 +154,7 @@ if [ "$PACKAGE_JSON_CHANGED" = true ]; then
             print_warning "Missing recommended security script: $script"
         fi
     done
-    
+
     print_success "package.json structure validation passed"
 fi
 
@@ -182,19 +182,19 @@ fi
 # 10. Generate dependency report
 if [ "$PACKAGE_JSON_CHANGED" = true ]; then
     print_status "Generating dependency report..."
-    
+
     # Create reports directory
     mkdir -p reports/pre-commit
-    
+
     # Generate dependency tree
     npm ls --depth=0 --json > reports/pre-commit/dependencies.json 2>/dev/null || echo '{}' > reports/pre-commit/dependencies.json
-    
+
     # Generate audit report
     npm audit --json > reports/pre-commit/audit.json 2>/dev/null || echo '{}' > reports/pre-commit/audit.json
-    
+
     # Generate outdated report
     npm outdated --json > reports/pre-commit/outdated.json 2>/dev/null || echo '{}' > reports/pre-commit/outdated.json
-    
+
     print_success "Dependency report generated in reports/pre-commit/"
 fi
 

@@ -1,6 +1,6 @@
-import '@testing-library/jest-dom'
-import { TextEncoder, TextDecoder } from 'util'
-import { toHaveNoViolations } from 'jest-axe'
+require('@testing-library/jest-dom')
+const { TextEncoder, TextDecoder } = require('util')
+const { toHaveNoViolations } = require('jest-axe')
 
 // Extend Jest matchers with jest-axe
 expect.extend(toHaveNoViolations)

@@ -32,12 +32,12 @@ app.get('/api/health', (req, res) => {
 app.get('/.well-known/jwks.json', async (req, res) => {
   try {
     // Get public keys from AWS Secrets Manager
-    const command = new AWS.GetSecretValueCommand({ 
-      SecretId: 'paintbox/production/jwt/public-keys' 
+    const command = new AWS.GetSecretValueCommand({
+      SecretId: 'paintbox/production/jwt/public-keys'
     });
     const response = await secretsClient.send(command);
     const publicKeys = JSON.parse(response.SecretString);
-    
+
     // Format as JWKS response
     const jwks = {
       keys: Object.entries(publicKeys).map(([kid, key]) => ({
@@ -49,15 +49,15 @@ app.get('/.well-known/jwks.json', async (req, res) => {
         e: key.e
       }))
     };
-    
+
     res.setHeader('Cache-Control', 'public, max-age=600'); // Cache for 10 minutes
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.json(jwks);
   } catch (error) {
     console.error('Error fetching JWKS:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch JWKS',
-      message: error.message 
+      message: error.message
     });
   }
 });

@@ -40,14 +40,14 @@ check_root() {
 # Create paintbox user and group
 create_user() {
     log_info "Creating paintbox user and group..."
-    
+
     if ! getent group paintbox >/dev/null 2>&1; then
         groupadd --system paintbox
         log_success "Created paintbox group"
     else
         log_info "Paintbox group already exists"
     fi
-    
+
     if ! getent passwd paintbox >/dev/null 2>&1; then
         useradd --system --gid paintbox --home-dir /opt/paintbox --shell /bin/bash paintbox
         log_success "Created paintbox user"
@@ -59,14 +59,14 @@ create_user() {
 # Create required directories
 create_directories() {
     log_info "Creating required directories..."
-    
+
     local directories=(
         "/opt/paintbox"
         "/etc/paintbox"
         "/var/log/paintbox"
         "/var/lib/paintbox"
     )
-    
+
     for dir in "${directories[@]}"; do
         mkdir -p "$dir"
         chown paintbox:paintbox "$dir"
@@ -78,16 +78,16 @@ create_directories() {
 # Install systemd service files
 install_services() {
     log_info "Installing systemd service files..."
-    
+
     local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     local project_root="$(dirname "$script_dir")"
     local systemd_dir="$project_root/systemd"
-    
+
     if [[ ! -d "$systemd_dir" ]]; then
         log_error "SystemD directory not found: $systemd_dir"
         exit 1
     fi
-    
+
     # Copy service files
     local service_files=(
         "paintbox-app.service"
@@ -98,7 +98,7 @@ install_services() {
         "paintbox-log-rotator.service"
         "paintbox.target"
     )
-    
+
     for service in "${service_files[@]}"; do
         if [[ -f "$systemd_dir/$service" ]]; then
             cp "$systemd_dir/$service" /etc/systemd/system/
@@ -108,13 +108,13 @@ install_services() {
             log_warning "Service file not found: $service"
         fi
     done
-    
+
     # Copy timer files
     local timer_files=(
         "paintbox-dependency-checker.timer"
         "paintbox-log-rotator.timer"
     )
-    
+
     for timer in "${timer_files[@]}"; do
         if [[ -f "$systemd_dir/$timer" ]]; then
             cp "$systemd_dir/$timer" /etc/systemd/system/
@@ -129,7 +129,7 @@ install_services() {
 # Create configuration files
 create_config_files() {
     log_info "Creating configuration files..."
-    
+
     # Environment file
     cat > /etc/paintbox/environment << 'EOF'
 # Paintbox Environment Configuration
@@ -157,18 +157,18 @@ SLACK_WEBHOOK_URL=
 MAX_MEMORY_RESTART=2G
 CPU_WEIGHT=100
 EOF
-    
+
     chmod 640 /etc/paintbox/environment
     chown root:paintbox /etc/paintbox/environment
     log_success "Created environment configuration"
-    
+
     # PostgreSQL environment file
     cat > /etc/paintbox/postgres.env << 'EOF'
 POSTGRES_DB=paintbox
 POSTGRES_USER=paintbox
 POSTGRES_PASSWORD=change_this_password
 EOF
-    
+
     chmod 600 /etc/paintbox/postgres.env
     chown postgres:postgres /etc/paintbox/postgres.env
     log_success "Created PostgreSQL environment configuration"
@@ -177,30 +177,30 @@ EOF
 # Deploy application
 deploy_application() {
     log_info "Deploying application to /opt/paintbox..."
-    
+
     local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     local project_root="$(dirname "$script_dir")"
-    
+
     # Copy application files
     rsync -av --exclude=node_modules --exclude=.git --exclude=.next "$project_root/" /opt/paintbox/
-    
+
     # Set ownership
     chown -R paintbox:paintbox /opt/paintbox
-    
+
     # Make scripts executable
     chmod +x /opt/paintbox/scripts/*.sh
     chmod +x /opt/paintbox/scripts/*.js
-    
+
     log_success "Application deployed to /opt/paintbox"
 }
 
 # Install Node.js dependencies
 install_dependencies() {
     log_info "Installing Node.js dependencies..."
-    
+
     cd /opt/paintbox
     sudo -u paintbox npm ci --only=production
-    
+
     log_success "Dependencies installed"
 }
 
@@ -214,12 +214,12 @@ reload_systemd() {
 # Enable and start services
 enable_services() {
     log_info "Enabling and starting services..."
-    
+
     # Enable target and services
     systemctl enable paintbox.target
     systemctl enable paintbox-dependency-checker.timer
     systemctl enable paintbox-log-rotator.timer
-    
+
     # Start services individually to handle dependencies
     local services=(
         "paintbox-postgres.service"
@@ -227,7 +227,7 @@ enable_services() {
         "paintbox-app.service"
         "paintbox-health-monitor.service"
     )
-    
+
     for service in "${services[@]}"; do
         log_info "Starting $service..."
         if systemctl start "$service"; then
@@ -237,30 +237,30 @@ enable_services() {
             systemctl status "$service" --no-pager
         fi
     done
-    
+
     # Start timers
     systemctl start paintbox-dependency-checker.timer
     systemctl start paintbox-log-rotator.timer
-    
+
     log_success "Services enabled and started"
 }
 
 # Check service status
 check_status() {
     log_info "Checking service status..."
-    
+
     echo
     echo "=== Paintbox Service Status ==="
     systemctl status paintbox.target --no-pager
     echo
-    
+
     local services=(
         "paintbox-postgres.service"
         "paintbox-redis.service"
         "paintbox-app.service"
         "paintbox-health-monitor.service"
     )
-    
+
     for service in "${services[@]}"; do
         echo "--- $service ---"
         if systemctl is-active "$service" >/dev/null 2>&1; then
@@ -269,7 +269,7 @@ check_status() {
             log_error "$service is not running"
         fi
     done
-    
+
     echo
     echo "--- Timers ---"
     systemctl list-timers paintbox-*
@@ -299,11 +299,11 @@ EOF
 # Uninstall services
 uninstall_services() {
     log_warning "Uninstalling Paintbox services..."
-    
+
     # Stop and disable services
     systemctl stop paintbox.target 2>/dev/null || true
     systemctl disable paintbox.target 2>/dev/null || true
-    
+
     local services=(
         "paintbox-app.service"
         "paintbox-redis.service"
@@ -314,16 +314,16 @@ uninstall_services() {
         "paintbox-log-rotator.service"
         "paintbox-log-rotator.timer"
     )
-    
+
     for service in "${services[@]}"; do
         systemctl stop "$service" 2>/dev/null || true
         systemctl disable "$service" 2>/dev/null || true
         rm -f "/etc/systemd/system/$service"
         log_info "Removed: $service"
     done
-    
+
     rm -f /etc/systemd/system/paintbox.target
-    
+
     systemctl daemon-reload
     log_success "Services uninstalled"
 }
@@ -331,16 +331,16 @@ uninstall_services() {
 # Restart services
 restart_services() {
     log_info "Restarting Paintbox services..."
-    
+
     systemctl restart paintbox.target
-    
+
     log_success "Services restarted"
 }
 
 # Main execution
 main() {
     local command="${1:-install}"
-    
+
     case "$command" in
         "install")
             check_root

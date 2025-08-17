@@ -37,7 +37,7 @@ export function useJWTAuth(): UseJWTAuthResult {
       try {
         // Check if user has valid token
         const tokenPayload = await jwtAuthClient.verifyToken();
-        
+
         if (tokenPayload) {
           setIsAuthenticated(true);
           setUser(tokenPayload);
@@ -64,10 +64,10 @@ export function useJWTAuth(): UseJWTAuthResult {
 
     try {
       const tokens = await jwtAuthClient.login(credentials);
-      
+
       // Verify the new token to get user data
       const tokenPayload = await jwtAuthClient.verifyToken();
-      
+
       if (tokenPayload) {
         setIsAuthenticated(true);
         setUser(tokenPayload);
@@ -92,10 +92,10 @@ export function useJWTAuth(): UseJWTAuthResult {
 
     try {
       const tokens = await jwtAuthClient.register(userData);
-      
+
       // Verify the new token to get user data
       const tokenPayload = await jwtAuthClient.verifyToken();
-      
+
       if (tokenPayload) {
         setIsAuthenticated(true);
         setUser(tokenPayload);
@@ -136,10 +136,10 @@ export function useJWTAuth(): UseJWTAuthResult {
 
     try {
       await jwtAuthClient.refresh();
-      
+
       // Verify the new token to get updated user data
       const tokenPayload = await jwtAuthClient.verifyToken();
-      
+
       if (tokenPayload) {
         setIsAuthenticated(true);
         setUser(tokenPayload);

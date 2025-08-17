@@ -8,6 +8,8 @@ interface EstimateStore {
   isOfflineMode: boolean;
   lastSavedAt: Date | null;
   updateClientInfo: (info: any) => void;
+  updateExteriorInfo: (info: any) => void;
+  updateInteriorInfo: (info: any) => void;
   markStepCompleted: (step: string) => void;
   updateEstimate: (data: any) => void;
   saveEstimate: () => Promise<void>;
@@ -22,7 +24,10 @@ export const useEstimateStore = create<EstimateStore>()(
       estimate: {
         id: null,
         clientInfo: {},
-        measurements: {},
+        measurements: {
+          exterior: {},
+          interior: {}
+        },
         pricing: {},
         stepsCompleted: [],
         createdAt: null,
@@ -42,6 +47,38 @@ export const useEstimateStore = create<EstimateStore>()(
         set({ estimate });
 
         // Auto-save after client info updates
+        setTimeout(() => get().saveEstimate(), 500);
+      },
+
+      updateExteriorInfo: (info) => {
+        const estimate = {
+          ...get().estimate,
+          measurements: {
+            ...get().estimate.measurements,
+            exterior: info
+          },
+          updatedAt: new Date().toISOString()
+        };
+
+        set({ estimate });
+
+        // Auto-save after exterior info updates
+        setTimeout(() => get().saveEstimate(), 500);
+      },
+
+      updateInteriorInfo: (info) => {
+        const estimate = {
+          ...get().estimate,
+          measurements: {
+            ...get().estimate.measurements,
+            interior: info
+          },
+          updatedAt: new Date().toISOString()
+        };
+
+        set({ estimate });
+
+        // Auto-save after interior info updates
         setTimeout(() => get().saveEstimate(), 500);
       },
 
@@ -169,7 +206,10 @@ export const useEstimateStore = create<EstimateStore>()(
           estimate: {
             id: null,
             clientInfo: {},
-            measurements: {},
+            measurements: {
+              exterior: {},
+              interior: {}
+            },
             pricing: {},
             stepsCompleted: [],
             createdAt: null,

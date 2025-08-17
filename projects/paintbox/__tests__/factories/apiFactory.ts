@@ -51,7 +51,7 @@ export interface RateLimitInfo {
  */
 export function createAPIRequest(overrides?: Partial<APIRequest>): APIRequest {
   const method = faker.helpers.arrayElement(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
-  
+
   const endpoints = [
     '/api/v1/estimates',
     '/api/v1/salesforce/auth',
@@ -157,7 +157,7 @@ export function createJWTPayload(overrides?: Partial<JWTPayload>): JWTPayload {
 export function createRateLimitInfo(overrides?: Partial<RateLimitInfo>): RateLimitInfo {
   const limit = faker.helpers.arrayElement([100, 1000, 5000, 10000]);
   const remaining = faker.number.int({ min: 0, max: limit });
-  
+
   return {
     limit,
     remaining,
@@ -328,7 +328,7 @@ export function createSuccessResponses(): Record<string, APIResponse> {
         })),
       },
     }),
-    
+
     health: createAPIResponse({
       status: 200,
       body: {

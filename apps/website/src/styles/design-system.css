@@ -1,70 +1,79 @@
 /* Candlefish AI Design System - ARC Prize Inspired Premium Edition */
 
 :root {
-  /* Core Colors - Minimalist palette with Candlefish branding */
+  /* Candlefish Brand Colors - Core Palette */
+  --color-charcoal: #1A1A1A;
+  --color-warm-white: #FAFAF8;
+  --color-amber-flame: #FFB347;
+  --color-deep-indigo: #3A3A60;
+  --color-slate: #6B6B6B;
+  --color-muted-sand: #D8D3C4;
+  --color-white: #FFFFFF;
   --color-black: #000000;
-  --color-white: #ffffff;
-  --color-gray-50: #fafafa;
+
+  /* Legacy gray scale for gradual migration */
+  --color-gray-50: #fafaf8;
   --color-gray-100: #f5f5f5;
   --color-gray-200: #e5e5e5;
   --color-gray-300: #d4d4d4;
   --color-gray-400: #a3a3a3;
   --color-gray-500: #737373;
-  --color-gray-600: #525252;
+  --color-gray-600: #6B6B6B;
   --color-gray-700: #404040;
   --color-gray-800: #262626;
-  --color-gray-900: #171717;
+  --color-gray-900: #1A1A1A;
   --color-gray-950: #0a0a0a;
 
-  /* Glass morphism colors */
-  --glass-white: rgba(255, 255, 255, 0.8);
-  --glass-gray: rgba(255, 255, 255, 0.1);
-  --glass-border: rgba(255, 255, 255, 0.2);
+  /* Glass morphism colors - updated for Candlefish */
+  --glass-white: rgba(250, 250, 248, 0.8);
+  --glass-sand: rgba(216, 211, 196, 0.3);
+  --glass-border: rgba(107, 107, 107, 0.2);
 
-  /* Professional Brand Colors - OpenAI/Claude inspired */
-  --color-primary-50: #E6F2FF;
-  --color-primary-100: #B3DBFF;
-  --color-primary-200: #80C3FF;
-  --color-primary-300: #4DABFF;
-  --color-primary-400: #1A94FF;
-  --color-primary-500: #0066CC;  /* Professional blue */
-  --color-primary-600: #0052A3;  /* Darker blue */
-  --color-primary-700: #003F7F;
-  --color-primary-800: #002B5C;
-  --color-primary-900: #001838;
+  /* Primary Colors - Candlefish System */
+  --color-primary-50: #FFF4E6;
+  --color-primary-100: #FFE4B3;
+  --color-primary-200: #FFD380;
+  --color-primary-300: #FFC24D;
+  --color-primary-400: #FFB347;  /* Amber flame base */
+  --color-primary-500: #FFB347;  /* Candlefish amber flame */
+  --color-primary-600: #E6A03D;  /* Darker amber */
+  --color-primary-700: #CC8D33;
+  --color-primary-800: #B37A29;
+  --color-primary-900: #99671F;
 
-  /* Candlefish Accent Colors */
-  --color-accent-50: #E0FFFE;
-  --color-accent-100: #B3FFFE;
-  --color-accent-200: #80FFFD;
-  --color-accent-300: #4DFFFC;
-  --color-accent-400: #1AFFFA;
-  --color-accent-500: #00CED1;  /* Candlefish cyan */
-  --color-accent-600: #00B8BA;  /* Darker cyan */
-  --color-accent-700: #009699;
-  --color-accent-800: #007377;
-  --color-accent-900: #005155;
+  /* Accent Colors - Deep Indigo System */
+  --color-accent-50: #F0F0F5;
+  --color-accent-100: #D6D6E6;
+  --color-accent-200: #ADADCC;
+  --color-accent-300: #8585B3;
+  --color-accent-400: #5C5C99;
+  --color-accent-500: #3A3A60;  /* Deep indigo */
+  --color-accent-600: #333354;  /* Darker indigo */
+  --color-accent-700: #2D2D48;
+  --color-accent-800: #26263C;
+  --color-accent-900: #1F1F30;
 
-  /* Professional gradients */
-  --gradient-primary: linear-gradient(135deg, #0066CC 0%, #0052A3 100%);
-  --gradient-primary-hover: linear-gradient(135deg, #1A94FF 0%, #0066CC 100%);
-  --gradient-accent: linear-gradient(135deg, #00CED1 0%, #00B8BA 100%);
-  --gradient-surface: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(249, 250, 251, 0.95) 100%);
-  --gradient-hero: linear-gradient(180deg, #FFFFFF 0%, #F9FAFB 100%);
-  --gradient-brand: linear-gradient(135deg, #0066CC 0%, #00CED1 100%);
+  /* Candlefish gradients */
+  --gradient-primary: linear-gradient(135deg, #FFB347 0%, #E6A03D 100%);
+  --gradient-primary-hover: linear-gradient(135deg, #FFC24D 0%, #FFB347 100%);
+  --gradient-accent: linear-gradient(135deg, #3A3A60 0%, #333354 100%);
+  --gradient-surface: linear-gradient(135deg, rgba(250, 250, 248, 0.98) 0%, rgba(216, 211, 196, 0.95) 100%);
+  --gradient-hero: linear-gradient(180deg, #FAFAF8 0%, #D8D3C4 100%);
+  --gradient-brand: linear-gradient(135deg, #FFB347 0%, #3A3A60 100%);
 
-  /* Semantic Colors */
-  --color-primary: var(--color-primary-500);
-  --color-primary-hover: var(--color-primary-400);
-  --color-background: var(--color-white);
-  --color-surface: var(--color-gray-50);
-  --color-border: var(--color-gray-200);
-  --color-text-primary: var(--color-gray-900);
-  --color-text-secondary: var(--color-gray-600);
+  /* Semantic Colors - Candlefish System */
+  --color-primary: var(--color-amber-flame);
+  --color-primary-hover: var(--color-primary-300);
+  --color-background: var(--color-warm-white);
+  --color-surface: var(--color-muted-sand);
+  --color-border: var(--color-slate);
+  --color-text-primary: var(--color-charcoal);
+  --color-text-secondary: var(--color-slate);
   --color-text-tertiary: var(--color-gray-500);
 
-  /* Typography - Clean, modern system fonts */
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  /* Typography - Candlefish System */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  --font-serif: 'Tiempos', Georgia, serif;
   --font-mono: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Fira Mono', 'Roboto Mono', 'Courier New', monospace;
 
   /* Font Sizes - Modular scale */
@@ -226,104 +235,186 @@
   }
 }
 
-/* Enhanced Typography System */
+/* Candlefish Typography System */
 .text-display {
+  font-family: var(--font-serif);
   font-size: var(--text-6xl);
   line-height: var(--leading-tight);
   font-weight: var(--font-bold);
   letter-spacing: -0.02em;
+  color: var(--color-text-primary);
+}
+
+.text-heading {
+  font-family: var(--font-sans);
+  font-size: var(--text-3xl);
+  line-height: var(--leading-snug);
+  font-weight: var(--font-medium);
+  letter-spacing: -0.01em;
+  color: var(--color-text-primary);
 }
 
 .text-heading-1 {
+  font-family: var(--font-serif);
   font-size: var(--text-5xl);
   line-height: var(--leading-tight);
   font-weight: var(--font-bold);
   letter-spacing: -0.02em;
+  color: var(--color-text-primary);
 }
 
 .text-heading-2 {
+  font-family: var(--font-sans);
   font-size: var(--text-4xl);
   line-height: var(--leading-tight);
-  font-weight: var(--font-semibold);
+  font-weight: var(--font-medium);
   letter-spacing: -0.01em;
+  color: var(--color-text-primary);
 }
 
 .text-heading-3 {
+  font-family: var(--font-sans);
   font-size: var(--text-3xl);
   line-height: var(--leading-snug);
-  font-weight: var(--font-semibold);
+  font-weight: var(--font-medium);
   letter-spacing: -0.01em;
+  color: var(--color-text-primary);
 }
 
 .text-heading-4 {
+  font-family: var(--font-sans);
   font-size: var(--text-2xl);
   line-height: var(--leading-snug);
-  font-weight: var(--font-semibold);
+  font-weight: var(--font-medium);
+  color: var(--color-text-primary);
 }
 
 .text-body-large {
+  font-family: var(--font-sans);
   font-size: var(--text-xl);
   line-height: var(--leading-relaxed);
   font-weight: var(--font-normal);
+  color: var(--color-text-primary);
 }
 
 .text-body {
+  font-family: var(--font-sans);
   font-size: var(--text-base);
   line-height: var(--leading-relaxed);
   font-weight: var(--font-normal);
+  color: var(--color-text-primary);
 }
 
 .text-body-medium {
+  font-family: var(--font-sans);
   font-size: var(--text-base);
   line-height: var(--leading-normal);
   font-weight: var(--font-medium);
+  color: var(--color-text-primary);
 }
 
 .text-caption {
+  font-family: var(--font-sans);
   font-size: var(--text-sm);
   line-height: var(--leading-normal);
   font-weight: var(--font-medium);
   letter-spacing: 0.025em;
+  color: var(--color-text-secondary);
 }
 
 .text-overline {
+  font-family: var(--font-sans);
   font-size: var(--text-xs);
   line-height: var(--leading-normal);
   font-weight: var(--font-semibold);
   letter-spacing: 0.1em;
   text-transform: uppercase;
+  color: var(--color-text-secondary);
 }
 
-/* Component Classes */
-.button {
+/* Candlefish Component Classes */
+.btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: var(--space-3) var(--space-6);
   border-radius: var(--radius-lg);
+  font-family: var(--font-sans);
   font-weight: var(--font-medium);
+  font-size: var(--text-base);
+  background: var(--gradient-primary);
+  color: var(--color-charcoal);
+  border: none;
   transition: all var(--transition-base);
   cursor: pointer;
+  text-decoration: none;
 }
 
-.button-primary {
-  background-color: var(--color-primary);
-  color: var(--color-white);
+.btn-primary:hover {
+  background: var(--gradient-primary-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
 }
 
-.button-primary:hover {
-  background-color: var(--color-primary-hover);
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-lg);
+  font-family: var(--font-sans);
+  font-weight: var(--font-medium);
+  font-size: var(--text-base);
+  background: var(--gradient-accent);
+  color: var(--color-warm-white);
+  border: none;
+  transition: all var(--transition-base);
+  cursor: pointer;
+  text-decoration: none;
 }
 
-.button-secondary {
-  background-color: transparent;
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-border);
+.btn-secondary:hover {
+  background: var(--color-accent-600);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
 }
 
-.button-secondary:hover {
-  background-color: var(--color-surface);
+.card-case {
+  background: var(--color-white);
+  border: 1px solid var(--color-muted-sand);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-md);
+  transition: all var(--transition-smooth);
+  position: relative;
+  overflow: hidden;
 }
+
+.card-case:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-4px);
+  border-color: var(--color-amber-flame);
+}
+
+/* Background Colors */
+.bg-warm-white { background-color: var(--color-warm-white); }
+.bg-charcoal { background-color: var(--color-charcoal); }
+.bg-amber-flame { background-color: var(--color-amber-flame); }
+.bg-muted-sand { background-color: var(--color-muted-sand); }
+.bg-slate { background-color: var(--color-slate); }
+.bg-deep-indigo { background-color: var(--color-deep-indigo); }
+
+/* Text Colors */
+.text-charcoal { color: var(--color-charcoal); }
+.text-warm-white { color: var(--color-warm-white); }
+.text-amber-flame { color: var(--color-amber-flame); }
+.text-slate { color: var(--color-slate); }
+.text-deep-indigo { color: var(--color-deep-indigo); }
+
+/* Border Colors */
+.border-slate { border-color: var(--color-slate); }
+.border-muted-sand { border-color: var(--color-muted-sand); }
+.border-amber-flame { border-color: var(--color-amber-flame); }
 
 /* Section Classes */
 .section {

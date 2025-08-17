@@ -1,0 +1,21 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["jest", "node"],
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": false
+  },
+  "include": [
+    "./**/*",
+    "../plugin/src/**/*",
+    "../scripts/**/*"
+  ],
+  "exclude": [
+    "../node_modules",
+    "../dist",
+    "../plugin/build"
+  ]
+}

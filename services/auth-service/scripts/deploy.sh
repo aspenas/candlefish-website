@@ -71,13 +71,13 @@ echo -e "${BLUE}🚀 Deploying Auth Service to ${ENVIRONMENT}${NC}"
 # Check prerequisites
 check_prerequisites() {
   echo -e "${YELLOW}Checking prerequisites...${NC}"
-  
+
   # Check if Docker is running
   if ! docker info > /dev/null 2>&1; then
     echo -e "${RED}Error: Docker is not running${NC}"
     exit 1
   fi
-  
+
   # Check if AWS CLI is configured for non-development environments
   if [[ "$ENVIRONMENT" != "development" ]]; then
     if ! aws sts get-caller-identity > /dev/null 2>&1; then
@@ -85,7 +85,7 @@ check_prerequisites() {
       exit 1
     fi
   fi
-  
+
   # Check if required environment variables are set
   if [[ "$ENVIRONMENT" != "development" ]]; then
     required_vars=("AWS_REGION")
@@ -96,7 +96,7 @@ check_prerequisites() {
       fi
     done
   fi
-  
+
   echo -e "${GREEN}✅ Prerequisites check passed${NC}"
 }
 
@@ -104,20 +104,20 @@ check_prerequisites() {
 run_tests() {
   if [[ "$RUN_TESTS" == "true" ]]; then
     echo -e "${YELLOW}Running tests...${NC}"
-    
+
     # Start test dependencies
     docker-compose -f docker-compose.test.yml up -d postgres redis
-    
+
     # Wait for services to be ready
     sleep 10
-    
+
     # Run tests
     npm test
     npm run test:coverage
-    
+
     # Cleanup test environment
     docker-compose -f docker-compose.test.yml down -v
-    
+
     echo -e "${GREEN}✅ Tests passed${NC}"
   else
     echo -e "${YELLOW}⏭️  Skipping tests${NC}"
@@ -128,18 +128,18 @@ run_tests() {
 build_and_push() {
   if [[ "$BUILD_PUSH" == "true" ]]; then
     echo -e "${YELLOW}Building container image...${NC}"
-    
+
     # Get git commit hash for tagging
     GIT_COMMIT=$(git rev-parse --short HEAD)
     GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
     TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-    
+
     # Build image
     IMAGE_TAG="${REGISTRY}/${SERVICE_NAME}:${GIT_BRANCH}-${GIT_COMMIT}-${TIMESTAMP}"
     LATEST_TAG="${REGISTRY}/${SERVICE_NAME}:latest"
-    
+
     docker build -t "$IMAGE_TAG" -t "$LATEST_TAG" .
-    
+
     if [[ "$ENVIRONMENT" != "development" ]]; then
       echo -e "${YELLOW}Pushing container image...${NC}"
       docker push "$IMAGE_TAG"
@@ -158,7 +158,7 @@ build_and_push() {
 # Deploy to environment
 deploy() {
   echo -e "${YELLOW}Deploying to ${ENVIRONMENT}...${NC}"
-  
+
   case "$ENVIRONMENT" in
     development)
       deploy_development
@@ -174,13 +174,13 @@ deploy() {
 
 deploy_development() {
   echo -e "${YELLOW}Starting development environment...${NC}"
-  
+
   # Stop any existing containers
   docker-compose down
-  
+
   # Start services
   docker-compose up -d
-  
+
   echo -e "${GREEN}✅ Development environment started${NC}"
   echo -e "${BLUE}Auth Service: http://localhost:3001${NC}"
   echo -e "${BLUE}PgAdmin: http://localhost:8080 (admin@candlefish.ai / admin123)${NC}"
@@ -189,27 +189,27 @@ deploy_development() {
 
 deploy_staging() {
   echo -e "${YELLOW}Deploying to staging environment...${NC}"
-  
+
   # Update ECS service
   aws ecs update-service \
     --cluster auth-service-staging \
     --service auth-service \
     --force-new-deployment \
     --region "${AWS_REGION:-us-east-1}"
-  
+
   # Wait for deployment
   echo -e "${YELLOW}Waiting for deployment to complete...${NC}"
   aws ecs wait services-stable \
     --cluster auth-service-staging \
     --services auth-service \
     --region "${AWS_REGION:-us-east-1}"
-  
+
   echo -e "${GREEN}✅ Deployed to staging${NC}"
 }
 
 deploy_production() {
   echo -e "${YELLOW}Deploying to production environment...${NC}"
-  
+
   # Production deployment with extra confirmation
   echo -e "${RED}⚠️  You are about to deploy to PRODUCTION${NC}"
   read -p "Are you sure you want to continue? (yes/no): " -r
@@ -217,21 +217,21 @@ deploy_production() {
     echo -e "${YELLOW}Deployment cancelled${NC}"
     exit 0
   fi
-  
+
   # Blue-green deployment
   aws ecs update-service \
     --cluster auth-service-production \
     --service auth-service \
     --force-new-deployment \
     --region "${AWS_REGION:-us-east-1}"
-  
+
   # Wait for deployment
   echo -e "${YELLOW}Waiting for production deployment to complete...${NC}"
   aws ecs wait services-stable \
     --cluster auth-service-production \
     --services auth-service \
     --region "${AWS_REGION:-us-east-1}"
-  
+
   echo -e "${GREEN}✅ Deployed to production${NC}"
 }
 
@@ -241,9 +241,9 @@ health_check() {
     echo -e "${YELLOW}⏭️  Skipping health check${NC}"
     return
   fi
-  
+
   echo -e "${YELLOW}Running health check...${NC}"
-  
+
   case "$ENVIRONMENT" in
     development)
       HEALTH_URL="http://localhost:3001/health"
@@ -255,15 +255,15 @@ health_check() {
       HEALTH_URL="https://auth.candlefish.ai/health"
       ;;
   esac
-  
+
   # Wait for service to be ready
   sleep 30
-  
+
   # Retry health check
   for i in {1..10}; do
     if curl -f -s "$HEALTH_URL" > /dev/null; then
       echo -e "${GREEN}✅ Health check passed${NC}"
-      
+
       # Additional checks for JWKS endpoint
       JWKS_URL="${HEALTH_URL%/health}/.well-known/jwks.json"
       if curl -f -s "$JWKS_URL" > /dev/null; then
@@ -271,13 +271,13 @@ health_check() {
       else
         echo -e "${YELLOW}⚠️  JWKS endpoint check failed${NC}"
       fi
-      
+
       return 0
     fi
     echo -e "${YELLOW}Health check attempt $i failed, retrying in 10s...${NC}"
     sleep 10
   done
-  
+
   echo -e "${RED}❌ Health check failed after 10 attempts${NC}"
   exit 1
 }
@@ -286,7 +286,7 @@ health_check() {
 show_info() {
   echo -e "\n${BLUE}🎉 Deployment complete!${NC}"
   echo -e "${BLUE}Environment: ${ENVIRONMENT}${NC}"
-  
+
   case "$ENVIRONMENT" in
     development)
       echo -e "${BLUE}Health Check: http://localhost:3001/health${NC}"

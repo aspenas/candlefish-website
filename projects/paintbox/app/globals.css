@@ -1,21 +1,56 @@
 @import "tailwindcss";
 
-/* Paintbox Theme Configuration */
+/* Paintbox 2025 Theme Tokens (Brand-driven, Apple-grade) */
 @theme {
-  --color-paintbox-primary: #8b5cf6;
-  --color-paintbox-primary-dark: #7c3aed;
-  --color-paintbox-accent: #ec4899;
-  --color-paintbox-background: #fafafa;
-  --color-paintbox-surface: #ffffff;
-  --color-paintbox-text: #111827;
-  --color-paintbox-text-muted: #6b7280;
-  --color-paintbox-border: #e5e7eb;
+  /* Brand core (from logo) */
+  --color-paintbox-brand: #1f2a44; /* deep navy from logo outline */
+  --color-paintbox-brand-600: #233253;
+  --color-paintbox-brand-500: #2d3e68;
+  --color-paintbox-brand-400: #3a4f84;
+
+  /* Subtle stripe accents (low chroma versions of logo colors) */
+  --stripe-red: #e0644f;
+  --stripe-orange: #f39a3a;
+  --stripe-yellow: #f2c94c;
+  --stripe-green: #66b88b;
+  --stripe-violet: #7a6ae6;
+
+  /* Primary accents (buttons, focus) */
+  --color-paintbox-accent: var(--color-paintbox-brand);
+  --color-paintbox-accent-2: var(--color-paintbox-brand-400);
+
+  /* Semantic roles (light) */
+  --color-paintbox-background: #f7f8fb; /* soft off‑white */
+  --color-paintbox-surface: #ffffffcc; /* glass */
+  --color-paintbox-overlay: #ffffffee;
+  --color-paintbox-text: #0e1a2a; /* deep navy text */
+  --color-paintbox-text-muted: #5b6a7c;
+  --color-paintbox-border: #e6eaf0;
+
+  /* Semantic roles (dark) */
+  --color-paintbox-background-dark: #0b1220; /* midnight */
+  --color-paintbox-surface-dark: #0b1220cc; /* glass */
+  --color-paintbox-overlay-dark: #0b1220f2;
+  --color-paintbox-text-dark: #e6edf5;
+  --color-paintbox-text-muted-dark: #9fb2c8;
+  --color-paintbox-border-dark: #1e2a3a;
+
+  /* Feedback */
   --color-paintbox-error: #ef4444;
   --color-paintbox-success: #10b981;
   --color-paintbox-warning: #f59e0b;
 
-  --shadow-paintbox: 0 4px 20px rgba(0, 0, 0, 0.1);
-  --shadow-paintbox-hover: 0 8px 30px rgba(0, 0, 0, 0.15);
+  /* Elevation + motion */
+  --shadow-paintbox: 0 8px 24px rgba(16, 28, 44, 0.12);
+  --shadow-paintbox-hover: 0 16px 40px rgba(16, 28, 44, 0.16);
+  --radius-2: 8px;
+  --radius-3: 12px;
+  --radius-4: 16px;
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 48px;
 }
 
 /* Paintbox Design System Components */
@@ -47,11 +82,12 @@
   }
 
   .paintbox-card {
-    background-color: white;
-    border-radius: 0.75rem;
+    background: var(--color-paintbox-surface);
+    border-radius: var(--radius-3);
     box-shadow: var(--shadow-paintbox);
     border: 1px solid var(--color-paintbox-border);
-    transition: all 0.3s;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
   }
 
   .paintbox-card:hover {
@@ -152,8 +188,26 @@ body {
 /* Glass morphism effects */
 .glass {
   backdrop-filter: blur(10px);
-  background-color: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background-color: var(--color-paintbox-surface);
+  border: 1px solid var(--color-paintbox-border);
+}
+
+@media (prefers-color-scheme: dark) {
+  .glass {
+    background-color: var(--color-paintbox-surface-dark);
+    border-color: var(--color-paintbox-border-dark);
+  }
+}
+
+/* Manual dark mode via .theme-dark on html or body */
+.theme-dark body {
+  background-color: var(--color-paintbox-background-dark);
+  color: var(--color-paintbox-text-dark);
+}
+.theme-dark .glass,
+.theme-dark .paintbox-card {
+  background-color: var(--color-paintbox-surface-dark);
+  border-color: var(--color-paintbox-border-dark);
 }
 
 /* Smooth scrolling for containers */
@@ -187,5 +241,29 @@ body {
 
 /* Utility classes for common patterns */
 .bg-gradient-paintbox {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, rgba(236, 72, 153, 0.05) 100%);
+  background: linear-gradient(135deg,
+    color-mix(in oklab, var(--color-paintbox-brand-500) 10%, transparent) 0%,
+    color-mix(in oklab, var(--color-paintbox-brand-400) 10%, transparent) 100%
+  );
+}
+
+/* Base typography and smoothing */
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  h1 {
+    letter-spacing: -0.02em;
+  }
+  h2, h3 {
+    letter-spacing: -0.01em;
+  }
+  a {
+    color: var(--color-paintbox-brand-400);
+  }
 }

@@ -24,10 +24,10 @@ log_error() { echo -e "$(date '+%Y-%m-%d %H:%M:%S') [HEALTH] ${RED}$*${NC}"; }
 # Health check function
 check_health() {
     local attempt=1
-    
+
     while [ $attempt -le $RETRIES ]; do
         log_info "Health check attempt $attempt/$RETRIES for $URL"
-        
+
         # Perform the health check with timeout
         if curl -f -s --max-time "$TIMEOUT" "$URL" >/dev/null 2>&1; then
             log_success "Health check passed"
@@ -40,7 +40,7 @@ check_health() {
             attempt=$((attempt + 1))
         fi
     done
-    
+
     log_error "All health check attempts failed"
     return 1
 }
@@ -59,7 +59,7 @@ system_checks() {
             fi
         fi
     fi
-    
+
     # Check memory usage
     if [ -f /proc/meminfo ]; then
         local mem_available=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
@@ -67,14 +67,14 @@ system_checks() {
             log_warning "Low memory available: ${mem_available}KB"
         fi
     fi
-    
+
     # Check disk space
     local disk_usage=$(df /app | tail -1 | awk '{print $5}' | sed 's/%//')
     if [ "$disk_usage" -gt 95 ]; then
         log_warning "Very low disk space: ${disk_usage}% used"
         return 1
     fi
-    
+
     return 0
 }
 
@@ -82,13 +82,13 @@ system_checks() {
 main() {
     log_info "Starting health check for Paintbox"
     log_info "URL: $URL, Timeout: ${TIMEOUT}s, Retries: $RETRIES"
-    
+
     # Run system checks first
     if ! system_checks; then
         log_error "System checks failed"
         exit 1
     fi
-    
+
     # Run application health check
     if check_health; then
         log_success "Health check completed successfully"

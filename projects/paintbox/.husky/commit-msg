@@ -71,41 +71,41 @@ fi
 # Check for dependency-related commits
 if [ "$DEPENDENCY_FILES_CHANGED" = true ]; then
     print_status "Dependency files changed in this commit"
-    
+
     # Suggest appropriate commit type for dependency changes
     if echo "$COMMIT_MSG" | grep -qE "^(deps|fix|chore|build)"; then
         print_success "Appropriate commit type for dependency changes"
     else
         print_warning "Consider using 'deps:', 'fix:', 'chore:', or 'build:' for dependency changes"
     fi
-    
+
     # Add dependency change summary to commit message if not present
     if ! echo "$COMMIT_MSG" | grep -q "Dependencies:"; then
         print_status "Adding dependency change summary..."
-        
+
         # Create temporary file with enhanced commit message
         TEMP_MSG=$(mktemp)
         echo "$COMMIT_MSG" > "$TEMP_MSG"
         echo "" >> "$TEMP_MSG"
         echo "Dependencies:" >> "$TEMP_MSG"
-        
+
         # Add summary of dependency changes
         if git diff --cached package.json | grep -E '^\+.*".*":' >/dev/null; then
             echo "- Added: $(git diff --cached package.json | grep -E '^\+.*".*":' | sed 's/^+[[:space:]]*//' | sed 's/[,:"]//g' | tr '\n' ', ' | sed 's/, $//')" >> "$TEMP_MSG"
         fi
-        
+
         if git diff --cached package.json | grep -E '^-.*".*":' >/dev/null; then
             echo "- Removed: $(git diff --cached package.json | grep -E '^-.*".*":' | sed 's/^-[[:space:]]*//' | sed 's/[,:"]//g' | tr '\n' ', ' | sed 's/, $//')" >> "$TEMP_MSG"
         fi
-        
+
         if git diff --cached package.json | grep -E '^\+.*".*": ".*"' | grep -v -E '^-.*".*": ".*"' >/dev/null; then
             echo "- Updated: $(git diff --cached package.json | grep -E '^\+.*".*": ".*"' | sed 's/^+[[:space:]]*//' | sed 's/[,:"]//g' | tr '\n' ', ' | sed 's/, $//')" >> "$TEMP_MSG"
         fi
-        
+
         # Copy enhanced message back
         cp "$TEMP_MSG" "$1"
         rm "$TEMP_MSG"
-        
+
         print_success "Enhanced commit message with dependency summary"
     fi
 fi

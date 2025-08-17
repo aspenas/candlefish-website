@@ -127,7 +127,7 @@ describe('Temporal Workflow Integration', () => {
     it('should handle workflow cancellation', async () => {
       // Arrange
       const workflowInput = temporalWorkflowFactory.createWorkflowInput();
-      mockActivities.parseUserIntent.mockImplementation(() => 
+      mockActivities.parseUserIntent.mockImplementation(() =>
         new Promise(resolve => setTimeout(resolve, 10000)) // Long-running task
       );
 
@@ -148,7 +148,7 @@ describe('Temporal Workflow Integration', () => {
     it('should handle activity timeouts', async () => {
       // Arrange
       const workflowInput = temporalWorkflowFactory.createWorkflowInput();
-      mockActivities.parseUserIntent.mockImplementation(() => 
+      mockActivities.parseUserIntent.mockImplementation(() =>
         new Promise(() => {}) // Never resolves
       );
 
@@ -339,7 +339,7 @@ describe('Temporal Workflow Integration', () => {
 
     it('should handle concurrent workflow executions', async () => {
       // Arrange
-      const workflowInputs = Array.from({ length: 10 }, () => 
+      const workflowInputs = Array.from({ length: 10 }, () =>
         temporalWorkflowFactory.createWorkflowInput()
       );
 

@@ -349,7 +349,7 @@ export const getJwks = async (
     res.status(200).json(jwks);
   } catch (error) {
     moduleLogger.error('JWKS retrieval failed:', error);
-    
+
     const response: ApiResponse = {
       success: false,
       error: {

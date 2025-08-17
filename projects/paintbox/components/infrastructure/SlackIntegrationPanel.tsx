@@ -169,8 +169,8 @@ const WebhookCard: React.FC<{
           <div className="flex items-center space-x-2">
             <Badge className={cn(
               'text-xs',
-              webhook.enabled 
-                ? 'bg-green-100 text-green-800' 
+              webhook.enabled
+                ? 'bg-green-100 text-green-800'
                 : 'bg-gray-100 text-gray-800'
             )}>
               {webhook.enabled ? 'Active' : 'Disabled'}
@@ -360,7 +360,7 @@ const DeliveryStatus: React.FC<{
   return (
     <Card className="p-4">
       <h3 className="text-lg font-semibold mb-4">Recent Deliveries</h3>
-      
+
       <div className="space-y-3">
         {deliveries.length > 0 ? (
           deliveries.map((delivery) => (
@@ -377,7 +377,7 @@ const DeliveryStatus: React.FC<{
                   </p>
                 </div>
               </div>
-              
+
               <div className="flex items-center space-x-3">
                 {delivery.responseTime && (
                   <span className="text-xs text-gray-500">
@@ -675,7 +675,7 @@ export const SlackIntegrationPanel: React.FC = () => {
   // Webhook management
   const handleSaveWebhook = (data: WebhookFormData) => {
     if (selectedWebhook) {
-      setWebhooks(prev => prev.map(w => 
+      setWebhooks(prev => prev.map(w =>
         w.id === selectedWebhook.id ? { ...data, id: w.id } : w
       ));
     } else {
@@ -690,7 +690,7 @@ export const SlackIntegrationPanel: React.FC = () => {
   };
 
   const handleToggleWebhook = (id: string, enabled: boolean) => {
-    setWebhooks(prev => prev.map(w => 
+    setWebhooks(prev => prev.map(w =>
       w.id === id ? { ...w, enabled } : w
     ));
   };
@@ -712,8 +712,8 @@ export const SlackIntegrationPanel: React.FC = () => {
 
     // Simulate delivery result
     setTimeout(() => {
-      setDeliveries(prev => prev.map(d => 
-        d.id === testDelivery.id 
+      setDeliveries(prev => prev.map(d =>
+        d.id === testDelivery.id
           ? { ...d, status: 'delivered', responseTime: 245 }
           : d
       ));
@@ -723,8 +723,8 @@ export const SlackIntegrationPanel: React.FC = () => {
   // Template management
   const handleSaveTemplate = (data: TemplateFormData) => {
     if (selectedTemplate) {
-      setTemplates(prev => prev.map(t => 
-        t.id === selectedTemplate.id 
+      setTemplates(prev => prev.map(t =>
+        t.id === selectedTemplate.id
           ? { ...data, id: t.id }
           : t
       ));
@@ -864,7 +864,7 @@ export const SlackIntegrationPanel: React.FC = () => {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Webhooks ({webhooks.length})</h2>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <AnimatePresence>
             {webhooks.map((webhook) => (
@@ -910,7 +910,7 @@ export const SlackIntegrationPanel: React.FC = () => {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Message Templates ({templates.length})</h2>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <AnimatePresence>
             {templates.map((template) => (

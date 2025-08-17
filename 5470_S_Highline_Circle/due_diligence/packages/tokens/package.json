@@ -1,0 +1,15 @@
+{
+  "name": "@candlefish/tokens",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/js/tokens.cjs",
+  "types": "",
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "pnpm run clean && style-dictionary build"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.1",
+    "style-dictionary": "^3.9.1"
+  }
+}

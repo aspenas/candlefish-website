@@ -79,17 +79,17 @@ class SystemStatusCollector {
   async collectMetrics(): Promise<SystemMetrics> {
     const os = require('os');
     const process = global.process;
-    
+
     // CPU metrics
     const cpuUsage = process.cpuUsage();
     const loadAverage = os.loadavg();
-    
+
     // Memory metrics
     const memoryUsage = process.memoryUsage();
     const totalMemory = os.totalmem();
     const freeMemory = os.freemem();
     const usedMemory = totalMemory - freeMemory;
-    
+
     // Process metrics
     const processMetrics = {
       pid: process.pid,
@@ -98,11 +98,11 @@ class SystemStatusCollector {
       platform: process.platform,
       arch: process.arch,
     };
-    
+
     // Network metrics (approximated)
     const activeHandles = (process as any)._getActiveHandles()?.length || 0;
     const activeRequests = (process as any)._getActiveRequests()?.length || 0;
-    
+
     const metrics: SystemMetrics = {
       cpu: {
         usage: (cpuUsage.user + cpuUsage.system) / 1000000, // Convert to seconds
@@ -126,7 +126,7 @@ class SystemStatusCollector {
         activeRequests,
       },
     };
-    
+
     // Try to get disk metrics (if available)
     try {
       const fs = require('fs').promises;
@@ -134,7 +134,7 @@ class SystemStatusCollector {
       const totalDisk = stats.blocks * stats.bsize;
       const freeDisk = stats.bavail * stats.bsize;
       const usedDisk = totalDisk - freeDisk;
-      
+
       metrics.disk = {
         total: totalDisk,
         free: freeDisk,
@@ -144,13 +144,13 @@ class SystemStatusCollector {
     } catch (error) {
       // Disk metrics not available on this platform
     }
-    
+
     return metrics;
   }
 
   async getServiceStatuses(): Promise<ServiceStatus[]> {
     const services: ServiceStatus[] = [];
-    
+
     try {
       // Try to get PM2 service status
       const pm2Status = await this.getPM2Status();
@@ -158,7 +158,7 @@ class SystemStatusCollector {
     } catch (error) {
       // PM2 not available, try alternative methods
     }
-    
+
     // Add current process as a service
     services.push({
       name: 'paintbox-app',
@@ -169,20 +169,20 @@ class SystemStatusCollector {
       cpu: 0, // Would need sampling over time
       restarts: 0,
     });
-    
+
     return services;
   }
 
   private async getPM2Status(): Promise<ServiceStatus[]> {
     return new Promise((resolve, reject) => {
       const { exec } = require('child_process');
-      
+
       exec('pm2 jlist', (error: any, stdout: string, stderr: string) => {
         if (error) {
           reject(error);
           return;
         }
-        
+
         try {
           const processes = JSON.parse(stdout);
           const services = processes.map((proc: any) => ({
@@ -194,7 +194,7 @@ class SystemStatusCollector {
             cpu: proc.monit.cpu,
             restarts: proc.pm2_env.restart_time,
           }));
-          
+
           resolve(services);
         } catch (parseError) {
           reject(parseError);
@@ -212,11 +212,11 @@ class SystemStatusCollector {
       // Get performance metrics from cache
       const metricsKey = 'performance_metrics';
       const cached = await this.cache.get(metricsKey);
-      
+
       if (cached) {
         return JSON.parse(cached);
       }
-      
+
       // Default metrics if none cached
       return {
         requestsPerMinute: 0,
@@ -240,7 +240,7 @@ class SystemStatusCollector {
   }>> {
     const alerts = [];
     const timestamp = new Date().toISOString();
-    
+
     // Memory alerts
     if (metrics.memory.usagePercentage > 90) {
       alerts.push({
@@ -257,12 +257,12 @@ class SystemStatusCollector {
         component: 'memory',
       });
     }
-    
+
     // CPU alerts
     const avgLoad = metrics.cpu.loadAverage[0];
     const cpuCores = require('os').cpus().length;
     const loadPercentage = (avgLoad / cpuCores) * 100;
-    
+
     if (loadPercentage > 90) {
       alerts.push({
         level: 'critical' as const,
@@ -278,7 +278,7 @@ class SystemStatusCollector {
         component: 'cpu',
       });
     }
-    
+
     // Disk space alerts
     if (metrics.disk && metrics.disk.usagePercentage > 90) {
       alerts.push({
@@ -295,7 +295,7 @@ class SystemStatusCollector {
         component: 'disk',
       });
     }
-    
+
     // Service alerts
     const stoppedServices = services.filter(s => s.status === 'stopped' || s.status === 'error');
     for (const service of stoppedServices) {
@@ -306,7 +306,7 @@ class SystemStatusCollector {
         component: 'service',
       });
     }
-    
+
     // High restart count alerts
     const highRestartServices = services.filter(s => (s.restarts || 0) > 5);
     for (const service of highRestartServices) {
@@ -317,28 +317,28 @@ class SystemStatusCollector {
         component: 'service',
       });
     }
-    
+
     return alerts;
   }
 
   determineOverallStatus(
-    metrics: SystemMetrics, 
-    services: ServiceStatus[], 
+    metrics: SystemMetrics,
+    services: ServiceStatus[],
     alerts: any[]
   ): 'healthy' | 'degraded' | 'critical' {
     const criticalAlerts = alerts.filter(a => a.level === 'critical');
     const errorAlerts = alerts.filter(a => a.level === 'error');
-    
+
     if (criticalAlerts.length > 0) {
       return 'critical';
     }
-    
-    if (errorAlerts.length > 0 || 
-        metrics.memory.usagePercentage > 80 || 
+
+    if (errorAlerts.length > 0 ||
+        metrics.memory.usagePercentage > 80 ||
         (metrics.disk && metrics.disk.usagePercentage > 80)) {
       return 'degraded';
     }
-    
+
     return 'healthy';
   }
 }
@@ -355,7 +355,7 @@ function formatBytes(bytes: number): string {
 // API Route Handler
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
-  
+
   try {
     logger.info('System status requested', {
       userAgent: request.headers.get('user-agent'),
@@ -363,20 +363,20 @@ export async function GET(request: NextRequest) {
     });
 
     const collector = new SystemStatusCollector();
-    
+
     // Collect all system information
     const [metrics, services, performance] = await Promise.all([
       collector.collectMetrics(),
       collector.getServiceStatuses(),
       collector.collectPerformanceMetrics(),
     ]);
-    
+
     // Generate alerts based on collected data
     const alerts = await collector.generateAlerts(metrics, services);
-    
+
     // Determine overall system status
     const overallStatus = collector.determineOverallStatus(metrics, services, alerts);
-    
+
     const response: SystemStatusResponse = {
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || 'development',
@@ -387,14 +387,14 @@ export async function GET(request: NextRequest) {
       alerts,
       performance,
     };
-    
+
     logger.info('System status collected', {
       status: overallStatus,
       duration: Date.now() - startTime,
       servicesCount: services.length,
       alertsCount: alerts.length,
     });
-    
+
     return NextResponse.json(response, {
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -402,20 +402,20 @@ export async function GET(request: NextRequest) {
         'Expires': '0',
       },
     });
-    
+
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown status collection error';
-    
+
     logger.error('System status collection failed', {
       error: errorMessage,
       duration: Date.now() - startTime,
     });
-    
+
     return NextResponse.json({
       timestamp: new Date().toISOString(),
       status: 'critical',
       error: errorMessage,
-    }, { 
+    }, {
       status: 500,
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -429,14 +429,14 @@ export async function HEAD(request: NextRequest) {
   try {
     const collector = new SystemStatusCollector();
     const metrics = await collector.collectMetrics();
-    
+
     // Quick status based on basic metrics
     const memoryOk = metrics.memory.usagePercentage < 95;
     const diskOk = !metrics.disk || metrics.disk.usagePercentage < 95;
-    
+
     const statusCode = (memoryOk && diskOk) ? 200 : 503;
-    
-    return new NextResponse(null, { 
+
+    return new NextResponse(null, {
       status: statusCode,
       headers: {
         'X-Memory-Usage': metrics.memory.usagePercentage.toFixed(1),
@@ -444,7 +444,7 @@ export async function HEAD(request: NextRequest) {
         'X-Uptime': metrics.process.uptime.toString(),
       },
     });
-    
+
   } catch (error) {
     return new NextResponse(null, { status: 503 });
   }

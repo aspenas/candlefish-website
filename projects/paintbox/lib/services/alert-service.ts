@@ -244,7 +244,7 @@ class AlertService {
       const cooldownKey = `${alert.component}:${alert.category}:${alert.level}`;
       const lastAlert = this.alertCooldowns.get(cooldownKey);
       const now = Date.now();
-      
+
       if (lastAlert && (now - lastAlert) < 300000) { // 5 minute default cooldown
         logger.debug('Alert in cooldown period, skipping', { alertId: alert.id });
         return;
@@ -324,7 +324,7 @@ class AlertService {
     try {
       // Replace data references in condition
       let evaluatedCondition = condition;
-      
+
       // Simple variable substitution
       for (const [key, value] of Object.entries(data)) {
         const regex = new RegExp(`\\b${key}\\b`, 'g');
@@ -352,7 +352,7 @@ class AlertService {
    */
   private renderTemplate(template: string, data: Record<string, any>): string {
     let rendered = template;
-    
+
     // Replace {{variable}} patterns
     rendered = rendered.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
       const value = this.getNestedValue(data, key.trim());
@@ -405,7 +405,7 @@ class AlertService {
   private async sendSlackAlert(channel: AlertChannel, alert: Alert): Promise<void> {
     const config = channel.config;
     const color = this.getAlertColor(alert.level);
-    
+
     const payload = {
       channel: config.channel,
       username: config.username || 'Paintbox Monitor',
@@ -453,7 +453,7 @@ class AlertService {
    */
   private async sendEmailAlert(channel: AlertChannel, alert: Alert): Promise<void> {
     const config = channel.config;
-    
+
     // In a real implementation, you would use nodemailer or similar
     const emailData = {
       to: config.to,
@@ -480,7 +480,7 @@ class AlertService {
    */
   private async sendWebhookAlert(channel: AlertChannel, alert: Alert): Promise<void> {
     const config = channel.config;
-    
+
     const payload = {
       alert,
       timestamp: new Date().toISOString(),
@@ -499,7 +499,7 @@ class AlertService {
    */
   private async sendPagerDutyAlert(channel: AlertChannel, alert: Alert): Promise<void> {
     const config = channel.config;
-    
+
     const payload = {
       routing_key: config.integrationKey,
       event_action: 'trigger',
@@ -534,15 +534,15 @@ class AlertService {
     try {
       const key = `alert:${alert.id}`;
       await this.cache.set(key, JSON.stringify(alert), 86400 * 7); // 7 days
-      
+
       // Also store in recent alerts list
       const recentKey = 'alerts:recent';
       const recent = await this.cache.get(recentKey);
       const recentAlerts = recent ? JSON.parse(recent) : [];
-      
+
       recentAlerts.unshift(alert);
       recentAlerts.splice(100); // Keep only last 100 alerts
-      
+
       await this.cache.set(recentKey, JSON.stringify(recentAlerts), 86400);
     } catch (error) {
       logger.error('Failed to store alert', { alertId: alert.id, error });
@@ -568,11 +568,11 @@ class AlertService {
   private async httpPost(url: string, data: string, headers: Record<string, string>): Promise<void> {
     const https = require('https');
     const http = require('http');
-    
+
     return new Promise((resolve, reject) => {
       const urlObj = new URL(url);
       const client = urlObj.protocol === 'https:' ? https : http;
-      
+
       const options = {
         hostname: urlObj.hostname,
         port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
@@ -623,12 +623,12 @@ class AlertService {
     try {
       const key = `alert:${alertId}`;
       const alertData = await this.cache.get(key);
-      
+
       if (alertData) {
         const alert: Alert = JSON.parse(alertData);
         alert.acknowledgedBy = acknowledgedBy;
         alert.acknowledgedAt = new Date().toISOString();
-        
+
         await this.cache.set(key, JSON.stringify(alert), 86400 * 7);
         logger.info('Alert acknowledged', { alertId, acknowledgedBy });
       }
@@ -644,17 +644,17 @@ class AlertService {
     try {
       const key = `alert:${alertId}`;
       const alertData = await this.cache.get(key);
-      
+
       if (alertData) {
         const alert: Alert = JSON.parse(alertData);
         alert.resolved = true;
         alert.resolvedAt = new Date().toISOString();
-        
+
         if (resolvedBy) {
           alert.acknowledgedBy = resolvedBy;
           alert.acknowledgedAt = new Date().toISOString();
         }
-        
+
         await this.cache.set(key, JSON.stringify(alert), 86400 * 7);
         logger.info('Alert resolved', { alertId, resolvedBy });
       }

@@ -186,11 +186,11 @@ const MetricsChart: React.FC<{
   type: 'response-time' | 'throughput' | 'errors';
 }> = ({ metrics, type }) => {
   const chartData = useMemo(() => {
-    const labels = metrics.map(m => 
-      new Date(m.timestamp).toLocaleTimeString('en-US', { 
-        hour12: false, 
-        minute: '2-digit', 
-        second: '2-digit' 
+    const labels = metrics.map(m =>
+      new Date(m.timestamp).toLocaleTimeString('en-US', {
+        hour12: false,
+        minute: '2-digit',
+        second: '2-digit'
       })
     );
 
@@ -440,8 +440,8 @@ const RealTimeMetrics: React.FC<{
           <div className="flex items-center space-x-3">
             <div className={cn(
               'p-2 rounded-lg',
-              metrics.errorRate > 5 
-                ? 'bg-red-100 text-red-600' 
+              metrics.errorRate > 5
+                ? 'bg-red-100 text-red-600'
                 : 'bg-yellow-100 text-yellow-600'
             )}>
               <AlertTriangle className="h-5 w-5" />
@@ -513,7 +513,7 @@ const TestResultCard: React.FC<{
     }
   };
 
-  const duration = result.endTime 
+  const duration = result.endTime
     ? new Date(result.endTime).getTime() - new Date(result.startTime).getTime()
     : Date.now() - new Date(result.startTime).getTime();
 
@@ -760,9 +760,9 @@ const ScenarioForm: React.FC<{
                 value={formData.config.requestsPerSecond || ''}
                 onChange={(e) => setFormData(prev => ({
                   ...prev,
-                  config: { 
-                    ...prev.config, 
-                    requestsPerSecond: e.target.value ? parseInt(e.target.value) : undefined 
+                  config: {
+                    ...prev.config,
+                    requestsPerSecond: e.target.value ? parseInt(e.target.value) : undefined
                   }
                 }))}
                 min={1}
@@ -775,16 +775,16 @@ const ScenarioForm: React.FC<{
           {/* Endpoints */}
           <div>
             <h3 className="text-lg font-medium mb-4">Endpoints</h3>
-            
+
             {/* Add Endpoint Form */}
             <Card className="p-4 mb-4">
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div>
                   <select
                     value={currentEndpoint.method}
-                    onChange={(e) => setCurrentEndpoint(prev => ({ 
-                      ...prev, 
-                      method: e.target.value as any 
+                    onChange={(e) => setCurrentEndpoint(prev => ({
+                      ...prev,
+                      method: e.target.value as any
                     }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   >
@@ -798,9 +798,9 @@ const ScenarioForm: React.FC<{
                   <Input
                     type="text"
                     value={currentEndpoint.url}
-                    onChange={(e) => setCurrentEndpoint(prev => ({ 
-                      ...prev, 
-                      url: e.target.value 
+                    onChange={(e) => setCurrentEndpoint(prev => ({
+                      ...prev,
+                      url: e.target.value
                     }))}
                     placeholder="/api/endpoint"
                   />
@@ -809,9 +809,9 @@ const ScenarioForm: React.FC<{
                   <Input
                     type="number"
                     value={currentEndpoint.weight}
-                    onChange={(e) => setCurrentEndpoint(prev => ({ 
-                      ...prev, 
-                      weight: parseInt(e.target.value) 
+                    onChange={(e) => setCurrentEndpoint(prev => ({
+                      ...prev,
+                      weight: parseInt(e.target.value)
                     }))}
                     placeholder="Weight %"
                     min={1}
@@ -865,8 +865,8 @@ const ScenarioForm: React.FC<{
           </div>
 
           <div className="flex space-x-3 pt-4">
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="flex-1"
               disabled={formData.endpoints.length === 0}
             >
@@ -1021,7 +1021,7 @@ export const LoadTestingConsole: React.FC = () => {
 
   const stats = useMemo(() => {
     const completed = testHistory.filter(t => t.status === 'completed');
-    const avgSuccessRate = completed.length > 0 
+    const avgSuccessRate = completed.length > 0
       ? completed.reduce((sum, t) => sum + (t.metrics.successfulRequests / t.metrics.totalRequests * 100), 0) / completed.length
       : 0;
     const avgResponseTime = completed.length > 0
@@ -1164,7 +1164,7 @@ export const LoadTestingConsole: React.FC = () => {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Test Scenarios ({scenarios.length})</h2>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <AnimatePresence>
             {scenarios.map((scenario) => (
@@ -1211,7 +1211,7 @@ export const LoadTestingConsole: React.FC = () => {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Test History ({testHistory.length})</h2>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <AnimatePresence>
             {testHistory.map((result) => (

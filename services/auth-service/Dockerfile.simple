@@ -1,8 +1,12 @@
 # Simple Dockerfile for Fly.io deployment
 FROM node:18-alpine
 
-# Install OpenSSL for Prisma
-RUN apk add --no-cache openssl openssl-dev
+# Install OpenSSL 1.1 for Prisma compatibility
+RUN apk add --no-cache openssl openssl-dev libc6-compat
+
+# Create symbolic links for OpenSSL 1.1 compatibility
+RUN ln -sf /usr/lib/libssl.so.3 /usr/lib/libssl.so.1.1 && \
+    ln -sf /usr/lib/libcrypto.so.3 /usr/lib/libcrypto.so.1.1
 
 WORKDIR /app
 

@@ -4,11 +4,11 @@
  */
 
 import { ThreeTierCache } from '@/lib/cache/three-tier-cache';
-import { 
-  createCacheEntry, 
+import {
+  createCacheEntry,
   createThreeTierCacheData,
   createCacheStats,
-  createCacheOperation 
+  createCacheOperation
 } from '@/__tests__/factories';
 import { jest } from '@jest/globals';
 
@@ -76,7 +76,7 @@ describe('ThreeTierCache', () => {
     });
 
     it('should respect L1 max size limit', async () => {
-      const entries = Array.from({ length: 110 }, (_, i) => 
+      const entries = Array.from({ length: 110 }, (_, i) =>
         createCacheEntry({ key: `test:memory:${i}` })
       );
 
@@ -104,7 +104,7 @@ describe('ThreeTierCache', () => {
       await cache.get(entry1.key);
 
       // Fill cache to trigger eviction
-      const moreEntries = Array.from({ length: 100 }, (_, i) => 
+      const moreEntries = Array.from({ length: 100 }, (_, i) =>
         createCacheEntry({ key: `test:filler:${i}` })
       );
 
@@ -125,7 +125,7 @@ describe('ThreeTierCache', () => {
   describe('L2 Redis Cache', () => {
     it('should fall back to Redis (L2) when not in memory', async () => {
       const entry = createCacheEntry({ key: 'test:redis:1' });
-      
+
       // Mock Redis response
       mockRedis.get.mockResolvedValue(JSON.stringify(entry.value));
 
@@ -138,7 +138,7 @@ describe('ThreeTierCache', () => {
 
     it('should promote L2 entries to L1 on access', async () => {
       const entry = createCacheEntry({ key: 'test:promote:1' });
-      
+
       mockRedis.get.mockResolvedValue(JSON.stringify(entry.value));
 
       // First access - should come from L2
@@ -169,7 +169,7 @@ describe('ThreeTierCache', () => {
 
     it('should handle Redis connection failures gracefully', async () => {
       const entry = createCacheEntry({ key: 'test:redis:error' });
-      
+
       mockRedis.get.mockRejectedValue(new Error('Redis connection failed'));
       mockDatabase.cacheEntry.findUnique.mockResolvedValue({
         key: entry.key,
@@ -187,7 +187,7 @@ describe('ThreeTierCache', () => {
   describe('L3 Database Cache', () => {
     it('should fall back to database (L3) when not in Redis', async () => {
       const entry = createCacheEntry({ key: 'test:database:1' });
-      
+
       mockRedis.get.mockResolvedValue(null);
       mockDatabase.cacheEntry.findUnique.mockResolvedValue({
         key: entry.key,
@@ -207,7 +207,7 @@ describe('ThreeTierCache', () => {
 
     it('should promote L3 entries to L2 and L1 on access', async () => {
       const entry = createCacheEntry({ key: 'test:promote:database' });
-      
+
       mockRedis.get.mockResolvedValue(null);
       mockDatabase.cacheEntry.findUnique.mockResolvedValue({
         key: entry.key,
@@ -234,7 +234,7 @@ describe('ThreeTierCache', () => {
 
     it('should handle expired database entries', async () => {
       const entry = createCacheEntry({ key: 'test:database:expired' });
-      
+
       mockRedis.get.mockResolvedValue(null);
       mockDatabase.cacheEntry.findUnique.mockResolvedValue({
         key: entry.key,
@@ -247,7 +247,7 @@ describe('ThreeTierCache', () => {
 
       expect(result.hit).toBe(false);
       expect(result.value).toBeNull();
-      
+
       // Should delete expired entry
       expect(mockDatabase.cacheEntry.delete).toHaveBeenCalledWith({
         where: { key: entry.key },
@@ -270,7 +270,7 @@ describe('ThreeTierCache', () => {
 
     it('should invalidate by tag pattern', async () => {
       const tags = ['estimates', 'calculations'];
-      
+
       await cache.deleteByTags(tags);
 
       // Should clear entries with matching tags from all layers
@@ -280,7 +280,7 @@ describe('ThreeTierCache', () => {
 
     it('should support wildcard invalidation', async () => {
       const pattern = 'estimate:*';
-      
+
       await cache.deleteByPattern(pattern);
 
       expect(mockRedis.del).toHaveBeenCalled();
@@ -381,7 +381,7 @@ describe('ThreeTierCache', () => {
   describe('Cache Warming', () => {
     it('should support cache warming from database', async () => {
       const entries = createThreeTierCacheData();
-      
+
       mockDatabase.cacheEntry.findMany.mockResolvedValue(
         entries.l3.map(entry => ({
           key: entry.key,
@@ -391,9 +391,9 @@ describe('ThreeTierCache', () => {
         }))
       );
 
-      await cache.warmCache({ 
-        tags: ['estimates'], 
-        maxEntries: 100 
+      await cache.warmCache({
+        tags: ['estimates'],
+        maxEntries: 100
       });
 
       // Should load entries into L1 and L2
@@ -401,8 +401,8 @@ describe('ThreeTierCache', () => {
     });
 
     it('should prioritize frequently accessed entries during warming', async () => {
-      const entries = Array.from({ length: 200 }, (_, i) => 
-        createCacheEntry({ 
+      const entries = Array.from({ length: 200 }, (_, i) =>
+        createCacheEntry({
           key: `test:warm:${i}`,
           metadata: { accessCount: 200 - i } // Descending access count
         })
@@ -428,10 +428,10 @@ describe('ThreeTierCache', () => {
   describe('Error Handling and Resilience', () => {
     it('should continue functioning when Redis is unavailable', async () => {
       const entry = createCacheEntry();
-      
+
       mockRedis.get.mockRejectedValue(new Error('Redis connection failed'));
       mockRedis.set.mockRejectedValue(new Error('Redis connection failed'));
-      
+
       mockDatabase.cacheEntry.findUnique.mockResolvedValue({
         key: entry.key,
         value: JSON.stringify(entry.value),
@@ -447,7 +447,7 @@ describe('ThreeTierCache', () => {
 
     it('should handle database failures gracefully', async () => {
       const entry = createCacheEntry();
-      
+
       mockRedis.get.mockResolvedValue(null);
       mockDatabase.cacheEntry.findUnique.mockRejectedValue(
         new Error('Database connection failed')
@@ -492,13 +492,13 @@ describe('ThreeTierCache', () => {
       expect(mockRedis.set).toHaveBeenCalled();
       const setCall = mockRedis.set.mock.calls[0];
       const storedValue = setCall[1];
-      
+
       // Stored value should be compressed (smaller than original)
       expect(storedValue.length).toBeLessThan(JSON.stringify(largeValue).length);
     });
 
     it('should use connection pooling for database operations', async () => {
-      const operations = Array.from({ length: 50 }, () => 
+      const operations = Array.from({ length: 50 }, () =>
         cache.get(`test:pool:${Math.random()}`)
       );
 
@@ -511,7 +511,7 @@ describe('ThreeTierCache', () => {
     it('should implement read-through caching', async () => {
       const key = 'test:read-through:1';
       const value = { computed: 'expensive_calculation_result' };
-      
+
       // Mock expensive computation
       const expensiveComputation = jest.fn().mockResolvedValue(value);
 

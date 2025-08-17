@@ -300,7 +300,7 @@ function setupMemoryPressureHandling(): void {
 
       if (memoryUsage > 90) {
         console.warn('High memory usage detected:', memoryUsage.toFixed(1) + '%');
-        
+
         // Clear caches and trigger garbage collection
         const cache = getCache();
         cache.clear();

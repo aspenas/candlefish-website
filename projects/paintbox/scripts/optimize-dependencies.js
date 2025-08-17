@@ -84,7 +84,7 @@ const checkDuplicates = () => {
 const analyzeHeavyPackages = () => {
   console.log('\n📊 Heavy packages analysis:');
   console.log('─'.repeat(50));
-  
+
   lazyLoadCandidates.forEach(pkg => {
     if (deps[pkg]) {
       console.log(`⚠️  ${pkg}: Consider lazy loading`);
@@ -96,7 +96,7 @@ const analyzeHeavyPackages = () => {
 const checkUnusedPackages = () => {
   console.log('\n🗑️  Potentially unused packages:');
   console.log('─'.repeat(50));
-  
+
   possiblyUnused.forEach(pkg => {
     if (deps[pkg]) {
       // Simple check if package is imported anywhere
@@ -105,7 +105,7 @@ const checkUnusedPackages = () => {
           `grep -r "from ['\\"]${pkg}" --include="*.ts" --include="*.tsx" --include="*.js" . 2>/dev/null | wc -l`,
           { encoding: 'utf8', cwd: path.join(__dirname, '..') }
         ).trim();
-        
+
         if (searchResult === '0') {
           console.log(`❌ ${pkg}: Not found in imports - consider removing`);
         } else {
@@ -121,29 +121,29 @@ const checkUnusedPackages = () => {
 // Generate optimized package.json
 const generateOptimizedPackageJson = () => {
   console.log('\n📝 Generating optimized package.json...');
-  
+
   const optimizedDeps = { ...deps };
-  
+
   // Remove potentially unused packages (manual review required)
   const toRemove = [
     'jsdom', // Only needed for testing
     'logrocket', // Consider removing if not using
     'logrocket-react', // Consider removing if not using
   ];
-  
+
   toRemove.forEach(pkg => {
     if (optimizedDeps[pkg]) {
       delete optimizedDeps[pkg];
       console.log(`   Removed: ${pkg}`);
     }
   });
-  
+
   // Create optimized package.json
   const optimizedPackageJson = {
     ...packageJson,
     dependencies: optimizedDeps,
   };
-  
+
   // Save to a new file for review
   const optimizedPath = path.join(__dirname, '../package.optimized.json');
   fs.writeFileSync(optimizedPath, JSON.stringify(optimizedPackageJson, null, 2));
@@ -155,7 +155,7 @@ const generateOptimizedPackageJson = () => {
 const generateRecommendations = () => {
   console.log('\n💡 Optimization Recommendations:');
   console.log('─'.repeat(50));
-  
+
   const recommendations = [
     {
       action: 'Lazy Load Heavy Libraries',
@@ -173,7 +173,7 @@ const generateRecommendations = () => {
       command: 'Replace with suggested alternatives',
     },
   ];
-  
+
   recommendations.forEach(rec => {
     if (rec.packages.length > 0) {
       console.log(`\n🎯 ${rec.action}:`);
@@ -183,7 +183,7 @@ const generateRecommendations = () => {
       console.log(`   Command: ${rec.command}`);
     }
   });
-  
+
   // Bundle size impact estimation
   console.log('\n📉 Estimated Impact:');
   console.log('─'.repeat(50));

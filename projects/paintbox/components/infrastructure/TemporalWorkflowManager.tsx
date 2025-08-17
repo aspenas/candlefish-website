@@ -106,11 +106,11 @@ const StatusBadge: React.FC<{ status: WorkflowExecution['status'] }> = ({ status
   );
 };
 
-const ExecutionCard: React.FC<ExecutionCardProps> = ({ 
-  execution, 
-  onView, 
-  onCancel, 
-  onRetry 
+const ExecutionCard: React.FC<ExecutionCardProps> = ({
+  execution,
+  onView,
+  onCancel,
+  onRetry
 }) => {
   const getDuration = (startTime: string, endTime?: string) => {
     const start = new Date(startTime);
@@ -473,7 +473,7 @@ const ExecutionDetails: React.FC<{
               <div className="bg-gray-50 p-3 rounded text-sm whitespace-pre-wrap">
                 {execution.output.response}
               </div>
-              
+
               {execution.output.metadata && (
                 <div className="mt-4 grid grid-cols-4 gap-4 text-sm">
                   <div>
@@ -560,7 +560,7 @@ export const TemporalWorkflowManager: React.FC = () => {
       }
 
       const result = await response.json();
-      
+
       // Create execution record
       const execution: WorkflowExecution = {
         id: result.workflowId || `wf_${Date.now()}`,
@@ -680,7 +680,7 @@ export const TemporalWorkflowManager: React.FC = () => {
         <h2 className="text-lg font-semibold">
           Workflow Executions ({filteredExecutions.length})
         </h2>
-        
+
         <AnimatePresence>
           {filteredExecutions.length > 0 ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -701,7 +701,7 @@ export const TemporalWorkflowManager: React.FC = () => {
                 No workflows found
               </h3>
               <p className="text-gray-600">
-                {searchTerm || statusFilter !== 'all' 
+                {searchTerm || statusFilter !== 'all'
                   ? 'Try adjusting your filters'
                   : 'Execute your first workflow to get started'
                 }

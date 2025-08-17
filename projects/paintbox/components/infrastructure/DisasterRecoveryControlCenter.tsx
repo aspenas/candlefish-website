@@ -212,7 +212,7 @@ const BackupCard: React.FC<{
     }
   };
 
-  const duration = backup.endTime 
+  const duration = backup.endTime
     ? new Date(backup.endTime).getTime() - new Date(backup.startTime).getTime()
     : Date.now() - new Date(backup.startTime).getTime();
 
@@ -317,7 +317,7 @@ const RestorePointCard: React.FC<{
   };
 
   const getTypeIcon = (type: RestorePoint['type']) => {
-    return type === 'manual' 
+    return type === 'manual'
       ? <Settings className="h-4 w-4" />
       : <Timer className="h-4 w-4" />;
   };
@@ -423,8 +423,8 @@ const FailoverPanel: React.FC<{
           <div className="flex items-center space-x-3">
             <div className={cn(
               'p-3 rounded-lg',
-              status.healthChecks.primary 
-                ? 'bg-green-100 text-green-600' 
+              status.healthChecks.primary
+                ? 'bg-green-100 text-green-600'
                 : 'bg-red-100 text-red-600'
             )}>
               <Server className="h-6 w-6" />
@@ -434,7 +434,7 @@ const FailoverPanel: React.FC<{
               <p className="text-sm text-gray-600">{status.primaryRegion}</p>
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-2">
             <div className={cn(
               'w-3 h-3 rounded-full',
@@ -451,8 +451,8 @@ const FailoverPanel: React.FC<{
           <div className="flex items-center space-x-3">
             <div className={cn(
               'p-3 rounded-lg',
-              status.healthChecks.secondary 
-                ? 'bg-green-100 text-green-600' 
+              status.healthChecks.secondary
+                ? 'bg-green-100 text-green-600'
                 : 'bg-red-100 text-red-600'
             )}>
               <Server className="h-6 w-6" />
@@ -462,7 +462,7 @@ const FailoverPanel: React.FC<{
               <p className="text-sm text-gray-600">{status.secondaryRegion}</p>
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-2">
             <div className={cn(
               'w-3 h-3 rounded-full',
@@ -508,7 +508,7 @@ const FailoverPanel: React.FC<{
             Initiate Failover
           </Button>
         )}
-        
+
         {status.status === 'failed-over' && (
           <Button
             onClick={onFailback}
@@ -585,7 +585,7 @@ const DrillCard: React.FC<{
             <div>
               <h3 className="font-medium text-sm">{drill.name}</h3>
               <p className="text-xs text-gray-500">
-                {drill.status === 'completed' 
+                {drill.status === 'completed'
                   ? format(new Date(drill.completedTime!), 'PPpp')
                   : format(new Date(drill.scheduledTime), 'PPpp')
                 }
@@ -612,7 +612,7 @@ const DrillCard: React.FC<{
                 <div className="font-medium">{drill.results.rpo}m</div>
               </div>
             </div>
-            
+
             {drill.results.issues.length > 0 && (
               <div className="mt-2">
                 <div className="text-xs text-red-600">
@@ -625,12 +625,12 @@ const DrillCard: React.FC<{
 
         <div className="flex items-center justify-between">
           <div className="text-xs text-gray-500">
-            {isUpcoming 
+            {isUpcoming
               ? `In ${formatDistanceToNow(new Date(drill.scheduledTime))}`
               : formatDistanceToNow(new Date(drill.scheduledTime), { addSuffix: true })
             }
           </div>
-          
+
           <div className="flex items-center space-x-1">
             {drill.status === 'scheduled' && isUpcoming && onStart && (
               <Button
@@ -642,7 +642,7 @@ const DrillCard: React.FC<{
                 <Play className="h-3 w-3" />
               </Button>
             )}
-            
+
             {drill.status === 'running' && onCancel && (
               <Button
                 variant="ghost"
@@ -733,9 +733,9 @@ const RestoreDialog: React.FC<{
             </label>
             <select
               value={formData.targetEnvironment}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                targetEnvironment: e.target.value as any 
+              onChange={(e) => setFormData(prev => ({
+                ...prev,
+                targetEnvironment: e.target.value as any
               }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
               required
@@ -753,9 +753,9 @@ const RestoreDialog: React.FC<{
             <Input
               type="text"
               value={formData.confirmationText}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                confirmationText: e.target.value 
+              onChange={(e) => setFormData(prev => ({
+                ...prev,
+                confirmationText: e.target.value
               }))}
               placeholder={`Type "${confirmationRequired}" to confirm`}
               required
@@ -831,7 +831,7 @@ export const DisasterRecoveryControlCenter: React.FC = () => {
   // Handle backup operations
   const handleTriggerBackup = async (type: 'database' | 'files' | 'full') => {
     triggerBackup(type);
-    
+
     // Add new backup to list
     const newBackup: BackupStatus = {
       id: `backup-${Date.now()}`,
@@ -854,7 +854,7 @@ export const DisasterRecoveryControlCenter: React.FC = () => {
 
   const handleConfirmRestore = async (data: RestoreFormData) => {
     setRestoring(true);
-    
+
     // Simulate restore process
     setTimeout(() => {
       setRestoring(false);
@@ -864,7 +864,7 @@ export const DisasterRecoveryControlCenter: React.FC = () => {
   // Handle failover operations
   const handleInitiateFailover = async () => {
     initiateFailover();
-    
+
     updateFailoverStatus({
       ...failoverStatus,
       status: 'failing-over',
@@ -1070,7 +1070,7 @@ export const DisasterRecoveryControlCenter: React.FC = () => {
             </Button>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <AnimatePresence>
             {backupStatus.map((backup) => (
@@ -1089,7 +1089,7 @@ export const DisasterRecoveryControlCenter: React.FC = () => {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Restore Points ({restorePoints.length})</h2>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <AnimatePresence>
             {restorePoints.map((point) => (
@@ -1115,7 +1115,7 @@ export const DisasterRecoveryControlCenter: React.FC = () => {
             Schedule Drill
           </Button>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <AnimatePresence>
             {drills.map((drill) => (

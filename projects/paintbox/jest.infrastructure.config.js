@@ -15,7 +15,7 @@ module.exports = {
     '<rootDir>/__tests__/performance/infrastructure-performance.test.ts',
     '<rootDir>/__tests__/security/infrastructure-security.test.ts'
   ],
-  
+
   // Coverage configuration
   collectCoverage: true,
   coverageDirectory: '<rootDir>/coverage/infrastructure',
@@ -27,7 +27,7 @@ module.exports = {
     'json',
     'clover'
   ],
-  
+
   // Coverage thresholds for infrastructure components
   coverageThreshold: {
     global: {
@@ -62,7 +62,7 @@ module.exports = {
       statements: 95
     }
   },
-  
+
   // Files to include in coverage
   collectCoverageFrom: [
     'app/api/health/**/*.{js,ts}',
@@ -85,12 +85,12 @@ module.exports = {
     '!**/__mocks__/**',
     '!**/node_modules/**'
   ],
-  
+
   // Test environment setup
   setupFilesAfterEnv: [
     '<rootDir>/__tests__/setup/infrastructure-setup.ts'
   ],
-  
+
   // Module name mapping for infrastructure components
   moduleNameMapping: {
     '^@/components/infrastructure/(.*)$': '<rootDir>/components/infrastructure/$1',
@@ -100,22 +100,22 @@ module.exports = {
     '^@/lib/middleware/(.*)$': '<rootDir>/lib/middleware/$1',
     '^@/lib/security/(.*)$': '<rootDir>/lib/security/$1'
   },
-  
+
   // Custom test timeout for infrastructure tests
   testTimeout: 30000,
-  
+
   // Performance testing configuration
   maxWorkers: '50%',
-  
+
   // Global test variables
   globals: {
     'process.env.NODE_ENV': 'test',
     'process.env.TEST_SUITE': 'infrastructure'
   },
-  
+
   // Test result processor for custom reporting
   testResultsProcessor: '<rootDir>/__tests__/utils/infrastructureTestProcessor.js',
-  
+
   // Custom reporters
   reporters: [
     'default',
@@ -142,7 +142,7 @@ module.exports = {
       }
     ]
   ],
-  
+
   // Transform configuration for TypeScript and React
   transform: {
     '^.+\\.(ts|tsx)$': [
@@ -156,13 +156,13 @@ module.exports = {
       }
     ]
   },
-  
+
   // Module file extensions
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
-  
+
   // Test environment
   testEnvironment: 'jsdom',
-  
+
   // Clear mocks between tests
   clearMocks: true,
   resetMocks: true,

@@ -26,7 +26,7 @@ describe('Health API Endpoints', () => {
       // Arrange
       const healthData = healthApiFactory.createHealthyResponse();
       mockHealthService.checkAllServices.mockResolvedValue(healthData);
-      
+
       const request = new NextRequest('http://localhost:3000/api/health');
 
       // Act
@@ -46,7 +46,7 @@ describe('Health API Endpoints', () => {
       // Arrange
       const healthData = healthApiFactory.createDegradedResponse();
       mockHealthService.checkAllServices.mockResolvedValue(healthData);
-      
+
       const request = new NextRequest('http://localhost:3000/api/health');
 
       // Act
@@ -64,7 +64,7 @@ describe('Health API Endpoints', () => {
       // Arrange
       const healthData = healthApiFactory.createUnhealthyResponse();
       mockHealthService.checkAllServices.mockResolvedValue(healthData);
-      
+
       const request = new NextRequest('http://localhost:3000/api/health');
 
       // Act
@@ -80,7 +80,7 @@ describe('Health API Endpoints', () => {
     it('should handle service timeout gracefully', async () => {
       // Arrange
       mockHealthService.checkAllServices.mockRejectedValue(new Error('Service timeout'));
-      
+
       const request = new NextRequest('http://localhost:3000/api/health');
 
       // Act
@@ -97,7 +97,7 @@ describe('Health API Endpoints', () => {
       // Arrange
       const healthData = healthApiFactory.createHealthyResponse();
       mockHealthService.checkAllServices.mockResolvedValue(healthData);
-      
+
       const request = new NextRequest('http://localhost:3000/api/health');
 
       // Act
@@ -116,7 +116,7 @@ describe('Health API Endpoints', () => {
       // Arrange
       const healthData = healthApiFactory.createHealthyResponse();
       mockHealthService.checkAllServices.mockResolvedValue(healthData);
-      
+
       const request = new NextRequest('http://localhost:3000/api/health');
 
       // Act
@@ -137,8 +137,8 @@ describe('Health API Endpoints', () => {
       // Arrange
       const healthData = healthApiFactory.createHealthyResponse();
       mockHealthService.checkAllServices.mockResolvedValue(healthData);
-      
-      const requests = Array.from({ length: 10 }, () => 
+
+      const requests = Array.from({ length: 10 }, () =>
         new NextRequest('http://localhost:3000/api/health')
       );
 
@@ -159,7 +159,7 @@ describe('Health API Endpoints', () => {
       // Arrange
       const healthData = healthApiFactory.createHealthyResponseWithCircuitBreakers();
       mockHealthService.checkAllServices.mockResolvedValue(healthData);
-      
+
       const request = new NextRequest('http://localhost:3000/api/health');
 
       // Act
@@ -179,9 +179,9 @@ describe('Health API Endpoints', () => {
       // Arrange
       const healthData = healthApiFactory.createHealthyResponse();
       mockHealthService.checkAllServices.mockResolvedValue(healthData);
-      
+
       // Simulate rapid requests
-      const requests = Array.from({ length: 100 }, () => 
+      const requests = Array.from({ length: 100 }, () =>
         new NextRequest('http://localhost:3000/api/health', {
           headers: { 'X-Forwarded-For': '192.168.1.1' }
         })
@@ -248,7 +248,7 @@ describe('Health API Endpoints', () => {
     it('should handle service dependency failures', async () => {
       // Arrange
       mockHealthService.checkDatabase.mockRejectedValue(new Error('Connection refused'));
-      
+
       // Act & Assert
       await expect(mockHealthService.checkDatabase()).rejects.toThrow('Connection refused');
     });
@@ -259,7 +259,7 @@ describe('Health API Endpoints', () => {
       // Arrange
       const healthData = healthApiFactory.createHealthyResponse();
       mockHealthService.checkAllServices.mockResolvedValue(healthData);
-      
+
       const request = new NextRequest('http://localhost:3000/api/health');
 
       // Act
@@ -277,7 +277,7 @@ describe('Health API Endpoints', () => {
       // Arrange
       const healthData = healthApiFactory.createHealthyResponse();
       mockHealthService.checkAllServices.mockResolvedValue(healthData);
-      
+
       const request = new NextRequest('http://localhost:3000/api/health?includeHistory=true');
 
       // Act
@@ -314,7 +314,7 @@ describe('Health API Endpoints', () => {
       mockHealthService.checkAllServices.mockRejectedValue(
         new Error('Service discovery unavailable')
       );
-      
+
       const request = new NextRequest('http://localhost:3000/api/health');
 
       // Act
