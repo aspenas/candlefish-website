@@ -1,0 +1,89 @@
+display_information:
+  name: Candlefish AI Assistant
+  description: AI-powered assistant for Candlefish team collaboration
+  background_color: "#2C3E50"
+  long_description: Candlefish AI Assistant enables seamless communication between team members and AI agents, providing code assistance, deployment notifications, and automated workflows.
+
+features:
+  bot_user:
+    display_name: Candlefish AI
+    always_online: true
+
+oauth_config:
+  redirect_urls:
+    - https://candlefish.ai/slack/oauth/callback
+    - http://localhost:3000/slack/oauth/callback
+  scopes:
+    bot:
+      # Core messaging
+      - chat:write
+      - chat:write.public
+      - chat:write.customize
+      
+      # Direct messages
+      - im:write
+      - im:read
+      - im:history
+      
+      # User information
+      - users:read
+      - users:read.email
+      - users.profile:read
+      
+      # Channel access
+      - channels:read
+      - channels:write
+      - channels:history
+      - channels:join
+      
+      # Groups (private channels)
+      - groups:read
+      - groups:write
+      - groups:history
+      
+      # Multi-party IMs
+      - mpim:read
+      - mpim:write
+      - mpim:history
+      
+      # File handling
+      - files:read
+      - files:write
+      
+      # Reactions
+      - reactions:read
+      - reactions:write
+      
+      # Team info
+      - team:read
+      
+      # Commands
+      - commands
+
+settings:
+  event_subscriptions:
+    bot_events:
+      - app_mention
+      - message.channels
+      - message.groups
+      - message.im
+      - message.mpim
+  interactivity:
+    is_enabled: true
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false
+
+slash_commands:
+  - command: /agent
+    description: Invoke a Candlefish AI agent
+    usage_hint: "[agent-name] [prompt]"
+    should_escape: false
+  - command: /deploy
+    description: Deploy a Candlefish project
+    usage_hint: "[project-name] [environment]"
+    should_escape: false
+  - command: /status
+    description: Check system status
+    usage_hint: "[service-name]"
+    should_escape: false
