@@ -1,0 +1,327 @@
+version: '3.8'
+
+# Development Environment with Enhanced Features
+# Hot reload, debugging, automatic dependency installation, and comprehensive monitoring
+
+services:
+  # Paintbox Next.js Frontend with Development Features
+  paintbox-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: paintbox-frontend-dev
+    ports:
+      - "3000:3000"
+      - "9229:9229" # Node.js debugging port
+    environment:
+      - NODE_ENV=development
+      - NEXT_TELEMETRY_DISABLED=1
+      - DATABASE_URL=postgresql://paintbox:paintbox123@postgres:5432/paintbox
+      - REDIS_URL=redis://redis:6379
+      - ANALYTICS_API_URL=http://analytics-api:8000
+      - CHOKIDAR_USEPOLLING=true # For file watching in Docker
+      - WATCHPACK_POLLING=true
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+      - paintbox-logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      dependency-checker:
+        condition: service_started
+    networks:
+      - paintbox-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "paintbox.service=frontend"
+      - "paintbox.environment=development"
+
+  # WebSocket Server
+  paintbox-websocket:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: paintbox-websocket-dev
+    ports:
+      - "3001:3001"
+      - "9230:9229" # Debugging port
+    environment:
+      - NODE_ENV=development
+      - WS_PORT=3001
+      - DATABASE_URL=postgresql://paintbox:paintbox123@postgres:5432/paintbox
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - paintbox-logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - paintbox-network
+    restart: unless-stopped
+    command: ["npm", "run", "dev:websocket"]
+    labels:
+      - "paintbox.service=websocket"
+      - "paintbox.environment=development"
+
+  # Background Worker
+  paintbox-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: paintbox-worker-dev
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://paintbox:paintbox123@postgres:5432/paintbox
+      - REDIS_URL=redis://redis:6379
+      - WORKER_CONCURRENCY=3
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - paintbox-logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - paintbox-network
+    restart: unless-stopped
+    command: ["npm", "run", "dev:worker"]
+    labels:
+      - "paintbox.service=worker"
+      - "paintbox.environment=development"
+
+  # PostgreSQL Database with Enhanced Configuration
+  postgres:
+    image: postgres:16-alpine
+    container_name: paintbox-postgres-dev
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=paintbox
+      - POSTGRES_PASSWORD=paintbox123
+      - POSTGRES_DB=paintbox
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
+    volumes:
+      - postgres-dev-data:/var/lib/postgresql/data
+      - ./scripts/init-database.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./config/postgres-dev.conf:/etc/postgresql/postgresql.conf
+    networks:
+      - paintbox-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paintbox -d paintbox"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    labels:
+      - "paintbox.service=database"
+      - "paintbox.environment=development"
+
+  # Redis Cache with Persistence
+  redis:
+    image: redis:7-alpine
+    container_name: paintbox-redis-dev
+    ports:
+      - "6379:6379"
+    command: redis-server /usr/local/etc/redis/redis.conf
+    volumes:
+      - redis-dev-data:/data
+      - ./config/redis-dev.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - paintbox-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    labels:
+      - "paintbox.service=cache"
+      - "paintbox.environment=development"
+
+  # Prometheus for Metrics Collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: paintbox-prometheus-dev
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus-dev.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus/rules:/etc/prometheus/rules
+      - prometheus-dev-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    networks:
+      - paintbox-network
+    restart: unless-stopped
+    labels:
+      - "paintbox.service=monitoring"
+      - "paintbox.environment=development"
+
+  # Grafana for Dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: paintbox-grafana-dev
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=redis-app,grafana-clock-panel
+      - GF_SERVER_ROOT_URL=http://localhost:3001
+    volumes:
+      - grafana-dev-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - paintbox-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    labels:
+      - "paintbox.service=dashboard"
+      - "paintbox.environment=development"
+
+  # Node Exporter for System Metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: paintbox-node-exporter-dev
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - paintbox-network
+    restart: unless-stopped
+    labels:
+      - "paintbox.service=metrics"
+      - "paintbox.environment=development"
+
+  # Redis Exporter for Redis Metrics
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: paintbox-redis-exporter-dev
+    ports:
+      - "9121:9121"
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+    networks:
+      - paintbox-network
+    restart: unless-stopped
+    depends_on:
+      - redis
+    labels:
+      - "paintbox.service=metrics"
+      - "paintbox.environment=development"
+
+  # Dependency Health Checker
+  dependency-checker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dependency-checker
+    container_name: paintbox-dependency-checker-dev
+    environment:
+      - NODE_ENV=development
+      - CHECK_INTERVAL=300000 # 5 minutes
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - paintbox-logs:/app/logs
+    networks:
+      - paintbox-network
+    restart: unless-stopped
+    labels:
+      - "paintbox.service=dependency-checker"
+      - "paintbox.environment=development"
+
+  # Log Aggregator (for development debugging)
+  log-aggregator:
+    image: fluent/fluent-bit:latest
+    container_name: paintbox-log-aggregator-dev
+    ports:
+      - "24224:24224"
+    volumes:
+      - ./config/fluent-bit-dev.conf:/fluent-bit/etc/fluent-bit.conf
+      - paintbox-logs:/var/log/paintbox
+    networks:
+      - paintbox-network
+    restart: unless-stopped
+    labels:
+      - "paintbox.service=logging"
+      - "paintbox.environment=development"
+
+  # Development Tools Container
+  dev-tools:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev-tools
+    container_name: paintbox-dev-tools
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - paintbox-logs:/app/logs
+    networks:
+      - paintbox-network
+    profiles:
+      - tools
+    command: ["tail", "-f", "/dev/null"] # Keep container running
+    labels:
+      - "paintbox.service=dev-tools"
+      - "paintbox.environment=development"
+
+networks:
+  paintbox-network:
+    driver: bridge
+    name: paintbox-dev-network
+
+volumes:
+  postgres-dev-data:
+    name: paintbox-postgres-dev-data
+  redis-dev-data:
+    name: paintbox-redis-dev-data
+  grafana-dev-data:
+    name: paintbox-grafana-dev-data
+  prometheus-dev-data:
+    name: paintbox-prometheus-dev-data
+  paintbox-logs:
+    name: paintbox-logs-dev
+
+# Development-specific configurations
+x-common-variables: &common-variables
+  ENVIRONMENT: development
+  LOG_LEVEL: debug
+  ENABLE_DEBUG: "true"
+  HEALTH_CHECK_INTERVAL: 30

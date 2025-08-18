@@ -3,8 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, User, Building, Plus, Loader2, AlertCircle } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
-import { salesforceApi } from '@/lib/services/salesforce-api';
-import type { SalesforceContact, SalesforceAccount } from '@/lib/services/salesforce';
 import { cn } from '@/lib/utils';
 
 interface Customer {
@@ -47,19 +45,27 @@ export const CustomerSearch: React.FC<CustomerSearchProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const debouncedQuery = useDebounce(query, 300);
 
-  // Initialize Salesforce service
+  // Test API connection
   useEffect(() => {
-    const initService = async () => {
+    const testConnection = async () => {
       try {
-        await salesforceApi.initialize();
-        setIsServiceReady(true);
+        const response = await fetch('/api/v1/salesforce/test');
+        const result = await response.json();
+
+        if (result.success && result.connected) {
+          setIsServiceReady(true);
+          console.log('Salesforce connection verified:', result.data.message);
+        } else {
+          setError('Salesforce connection failed');
+          console.error('Salesforce connection test failed:', result);
+        }
       } catch (error) {
-        console.error('Failed to initialize Salesforce:', error);
-        setError('Salesforce connection unavailable');
+        console.error('Failed to test Salesforce connection:', error);
+        setError('Unable to connect to Salesforce');
       }
     };
 
-    initService();
+    testConnection();
   }, []);
 
   // Search when query changes
@@ -89,14 +95,31 @@ export const CustomerSearch: React.FC<CustomerSearchProps> = ({
     setError(null);
 
     try {
-      // Search both contacts and accounts in parallel
-      const [contacts, accounts] = await Promise.all([
-        salesforceApi.searchContacts(searchQuery),
-        salesforceApi.searchAccounts(searchQuery)
-      ]);
+      // Use the real API endpoint for search
+      const response = await fetch(
+        `/api/v1/salesforce/search?q=${encodeURIComponent(searchQuery)}&limit=10`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Search API returned ${response.status}`);
+      }
+
+      const apiResult = await response.json();
+
+      if (!apiResult.success) {
+        throw new Error(apiResult.error || 'Search failed');
+      }
+
+      const { contacts = [], accounts = [] } = apiResult.data;
 
       // Transform results to common format
-      const contactResults: Customer[] = contacts.map(contact => ({
+      const contactResults: Customer[] = contacts.map((contact: any) => ({
         id: contact.Id,
         name: contact.Name,
         type: 'contact' as const,
@@ -111,7 +134,7 @@ export const CustomerSearch: React.FC<CustomerSearchProps> = ({
         } : undefined
       }));
 
-      const accountResults: Customer[] = accounts.map(account => ({
+      const accountResults: Customer[] = accounts.map((account: any) => ({
         id: account.Id,
         name: account.Name,
         type: 'account' as const,
@@ -128,9 +151,12 @@ export const CustomerSearch: React.FC<CustomerSearchProps> = ({
       setResults(allResults);
       setShowDropdown(allResults.length > 0 || true); // Show even if no results
       setSelectedIndex(-1);
+
+      // Log successful search for debugging
+      console.log(`Found ${allResults.length} results for query: ${searchQuery}`);
     } catch (error) {
       console.error('Search failed:', error);
-      setError('Search failed. Please try again.');
+      setError(`Search failed: ${(error as Error).message}`);
       setResults([]);
     } finally {
       setIsSearching(false);

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 // import { headers } from 'next/headers';
 import "./globals.css";
+import HeaderControls from "@/components/ui/HeaderControls";
 // import { PWAInstallPrompt } from "@/components/ui/PWAInstallPrompt";
 // import { Toaster } from "sonner";
 // import { AuthProvider } from "@/components/providers/SessionProvider";
@@ -141,9 +142,34 @@ export default function RootLayout({
         <meta name="format-detection" content="telephone=no, date=no, email=no, address=no" />
       </head>
 
-      <body className={`antialiased`}>
-        {/* Temporarily simplified for build testing */}
-        {children}
+      <body className={`antialiased bg-gradient-paintbox`}
+      >
+        <div className="min-h-screen">
+          <header className="sticky top-0 z-30 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b border-[var(--color-paintbox-border)]">
+            <div className="mx-auto max-w-7xl px-6 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <img src="/images/brand-paintbox.png" alt="Paintbox" className="h-7 w-7 rounded" />
+                <span className="font-semibold tracking-tight">Paintbox</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="hidden sm:block text-xs text-[var(--color-paintbox-text-muted)]">Estimator — Kind Home Paint Company</div>
+                <HeaderControls />
+              </div>
+            </div>
+            <div style={{height:2,background: `linear-gradient(90deg, var(--stripe-red) 0%, var(--stripe-orange) 20%, var(--stripe-yellow) 40%, var(--stripe-green) 60%, var(--stripe-violet) 80%)`}} />
+          </header>
+
+          <main className="mx-auto max-w-7xl px-6 py-8">
+            {children}
+          </main>
+
+          <footer className="mt-12 border-t border-[var(--color-paintbox-border)]/70">
+            <div className="mx-auto max-w-7xl px-6 py-6 flex items-center justify-between">
+              <div className="text-sm text-[var(--color-paintbox-text-muted)]">© {new Date().getFullYear()} Paintbox</div>
+              <div className="text-sm text-[var(--color-paintbox-text-muted)]">Made by <span className="font-medium">Candlefish.ai</span></div>
+            </div>
+          </footer>
+        </div>
 
         {/* PWA Install Prompt */}
         {/* <PWAInstallPrompt /> */}

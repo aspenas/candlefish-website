@@ -6,6 +6,7 @@ import {
   logout,
   getProfile,
   verifyToken,
+  getJwks,
   registerValidation,
   loginValidation,
   refreshTokenValidation,
@@ -113,6 +114,16 @@ router.post(
   '/verify',
   apiRateLimit,
   verifyToken
+);
+
+/**
+ * @route   GET /.well-known/jwks.json
+ * @desc    Get JSON Web Key Set (JWKS) for token verification
+ * @access  Public
+ */
+router.get(
+  '/.well-known/jwks.json',
+  getJwks
 );
 
 export default router;

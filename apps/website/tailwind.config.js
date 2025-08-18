@@ -1,4 +1,9 @@
 /** @type {import('tailwindcss').Config} */
+
+// Import the Candlefish theme directly
+const candlefishTheme = require('./candlefish-design-system/packages/tokens/build/tailwind/theme.js');
+const candlefishComponents = require('./candlefish-design-system/packages/tokens/build/tailwind/components.js');
+
 export default {
   content: [
     "./index.html",
@@ -6,54 +11,10 @@ export default {
   ],
   theme: {
     extend: {
-      colors: {
-        teal: {
-          400: '#00CED1',
-          500: '#00CED1'
-        },
-        gray: {
-          50: '#FAFAFA',
-          100: '#F4F4F5',
-          200: '#E4E4E7',
-          300: '#D4D4D8',
-          400: '#A1A1AA',
-          500: '#71717A',
-          600: '#52525B',
-          700: '#3F3F46',
-          800: '#27272A',
-          900: '#18181B',
-          950: '#09090B'
-        },
-        background: 'var(--bg-primary)',
-        foreground: 'var(--text-primary)',
-        'muted-foreground': 'var(--text-secondary)',
-        border: 'var(--border-color)',
-        accent: 'var(--accent)',
-        'accent-hover': 'var(--accent-hover)'
-      },
-      fontFamily: {
-        mono: ["'Space Mono'", 'SF Mono', 'Monaco', 'Consolas', 'Courier New', 'monospace'],
-        sans: ['-apple-system', 'BlinkMacSystemFont', 'Inter', 'Segoe UI', 'sans-serif'],
-      },
-      fontSize: {
-        'xs': 'clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem)',
-        'sm': 'clamp(0.875rem, 0.8rem + 0.375vw, 1rem)',
-        'base': 'clamp(1rem, 0.925rem + 0.375vw, 1.125rem)',
-        'lg': 'clamp(1.25rem, 1.1rem + 0.75vw, 1.5rem)',
-        'xl': 'clamp(1.5rem, 1.3rem + 1vw, 1.875rem)',
-        '2xl': 'clamp(2rem, 1.7rem + 1.5vw, 2.5rem)',
-        '3xl': 'clamp(2.5rem, 2rem + 2.5vw, 3.5rem)',
-        '4xl': 'clamp(3rem, 2.4rem + 3vw, 4.5rem)',
-        '5xl': 'clamp(3.5rem, 2.8rem + 3.5vw, 5.5rem)',
-        '6xl': 'clamp(4rem, 3.2rem + 4vw, 6.5rem)',
-      },
-      container: {
-        center: true,
-        padding: '1.5rem',
-        screens: {
-          '2xl': '1440px'
-        }
-      },
+      // Merge Candlefish design system
+      ...candlefishTheme,
+
+      // Keep existing animations and utilities
       animation: {
         'swim': 'swim 3s ease-in-out infinite',
         'fadeInUp': 'fadeInUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards',
@@ -89,14 +50,18 @@ export default {
       maxWidth: {
         'screen-2xl': '1440px',
       },
-      spacing: {
-        '18': '4.5rem',
-        '88': '22rem',
-      }
+      container: {
+        center: true,
+        padding: '1.5rem',
+        screens: {
+          '2xl': '1440px'
+        }
+      },
     },
   },
   plugins: [
     require('tailwindcss-animate'),
     require('tailwind-scrollbar')({ nocompatible: true }),
+    candlefishComponents, // Add Candlefish component classes
   ],
 }

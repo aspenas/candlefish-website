@@ -1,0 +1,12 @@
+{
+  "name": "candlefish-valuation-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "build": "pnpm -C packages/tokens build && pnpm -C apps/valuation-web build",
+    "dev": "pnpm -C packages/tokens build && pnpm -C apps/valuation-web dev",
+    "lint": "echo \"(lint configured later)\"",
+    "format": "echo \"(format configured later)\""
+  },
+  "packageManager": "pnpm@9.0.0"
+}

@@ -1,0 +1,42 @@
+{
+  "name": "Candlefish Starter Kit",
+  "id": "candlefish-starter-kit.patrick",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": ["figma", "dev"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["candlefish.ai"],
+    "reasoning": "For fetching brand assets and design tokens"
+  },
+  "capabilities": ["inspect", "codegen"],
+  "relaunchButtons": [
+    {
+      "command": "build",
+      "name": "Build Candlefish Kit",
+      "multipleSelection": false
+    },
+    {
+      "command": "export",
+      "name": "Export Design Tokens",
+      "multipleSelection": false
+    }
+  ],
+  "menu": [
+    {
+      "name": "Build Complete System",
+      "command": "build"
+    },
+    {
+      "name": "Export Tokens",
+      "command": "export"
+    },
+    {
+      "separator": true
+    },
+    {
+      "name": "Documentation",
+      "command": "docs"
+    }
+  ]
+}

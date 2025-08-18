@@ -1,5 +1,6 @@
-/* Import Design System */
+/* Import Candlefish Design System */
 @import './styles/design-system.css';
+@import '../candlefish-design-system/packages/tokens/build/web/css/variables.css';
 
 @tailwind base;
 @tailwind components;

@@ -1,0 +1,55 @@
+[Unit]
+Description=Redis In-Memory Data Store for Paintbox
+Documentation=https://redis.io/documentation
+After=network.target
+Before=paintbox-app.service
+PartOf=paintbox.target
+
+[Service]
+Type=notify
+User=redis
+Group=redis
+WorkingDirectory=/var/lib/redis
+
+# Redis Configuration
+ExecStart=/usr/bin/redis-server /etc/redis/paintbox-redis.conf
+ExecReload=/bin/kill -USR2 $MAINPID
+ExecStop=/usr/bin/redis-cli shutdown
+
+# Process Management
+TimeoutStopSec=30
+Restart=always
+RestartSec=5
+StartLimitInterval=60
+StartLimitBurst=5
+
+# Security Settings
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/redis /var/log/redis
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictRealtime=true
+RestrictNamespaces=true
+
+# Resource Limits
+LimitNOFILE=65536
+MemoryMax=1G
+CPUWeight=50
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=paintbox-redis
+
+# Health Check
+ExecStartPost=/bin/sleep 5
+ExecStartPost=/usr/bin/redis-cli ping
+
+[Install]
+WantedBy=multi-user.target
+WantedBy=paintbox.target
