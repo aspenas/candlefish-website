@@ -1,0 +1,112 @@
+# Dockerfile for Development Tools Container
+FROM node:20-alpine
+
+# Install development tools and utilities
+RUN apk add --no-cache \
+    bash \
+    curl \
+    wget \
+    jq \
+    git \
+    vim \
+    htop \
+    postgresql-client \
+    redis \
+    && rm -rf /var/cache/apk/*
+
+# Install global npm tools
+RUN npm install -g \
+    @typescript-eslint/parser \
+    @typescript-eslint/eslint-plugin \
+    typescript \
+    ts-node \
+    nodemon \
+    pm2 \
+    license-checker \
+    npm-check-updates \
+    depcheck \
+    bundlesize
+
+# Create app directory
+WORKDIR /app
+
+# Copy package files for tool availability
+COPY package*.json ./
+
+# Install all dependencies (including dev)
+RUN npm ci
+
+# Create useful aliases and scripts
+RUN echo 'alias ll="ls -la"' >> /root/.bashrc && \
+    echo 'alias la="ls -la"' >> /root/.bashrc && \
+    echo 'alias ..="cd .."' >> /root/.bashrc && \
+    echo 'alias logs="tail -f /app/logs/*.log"' >> /root/.bashrc && \
+    echo 'alias health="curl -s http://paintbox-frontend:3000/api/health | jq"' >> /root/.bashrc && \
+    echo 'alias status="curl -s http://paintbox-frontend:3000/api/status | jq"' >> /root/.bashrc
+
+# Create helpful scripts
+RUN mkdir -p /usr/local/bin
+
+# Database connection script
+RUN cat > /usr/local/bin/db-connect << 'EOF'
+#!/bin/bash
+psql postgresql://paintbox:paintbox123@postgres:5432/paintbox
+EOF
+
+# Redis connection script
+RUN cat > /usr/local/bin/redis-connect << 'EOF'
+#!/bin/bash
+redis-cli -h redis -p 6379
+EOF
+
+# Log viewer script
+RUN cat > /usr/local/bin/log-viewer << 'EOF'
+#!/bin/bash
+case "${1:-app}" in
+  "app"|"frontend")
+    tail -f /app/logs/paintbox-app*.log
+    ;;
+  "worker")
+    tail -f /app/logs/worker*.log
+    ;;
+  "websocket"|"ws")
+    tail -f /app/logs/websocket*.log
+    ;;
+  "health")
+    tail -f /app/logs/health-monitor*.log
+    ;;
+  "all")
+    tail -f /app/logs/*.log
+    ;;
+  *)
+    echo "Usage: log-viewer [app|worker|websocket|health|all]"
+    ;;
+esac
+EOF
+
+# Dependency checker script
+RUN cat > /usr/local/bin/check-deps << 'EOF'
+#!/bin/bash
+echo "Running dependency health check..."
+cd /app
+./scripts/dependency-health-check.sh
+EOF
+
+# Performance test script
+RUN cat > /usr/local/bin/perf-test << 'EOF'
+#!/bin/bash
+echo "Running performance tests..."
+cd /app
+npm run test:load
+EOF
+
+# Make all scripts executable
+RUN chmod +x /usr/local/bin/*
+
+# Install additional monitoring tools
+RUN npm install -g clinic autocannon
+
+WORKDIR /app
+
+# Keep container running
+CMD ["tail", "-f", "/dev/null"]

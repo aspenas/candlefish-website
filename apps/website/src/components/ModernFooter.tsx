@@ -68,9 +68,9 @@ const ModernFooter: React.FC = () => {
   })
 
   return (
-    <footer ref={ref} className="bg-gray-900 text-white">
+    <footer ref={ref} className="bg-charcoal text-warm-white">
       {/* Newsletter Section */}
-      <div className="border-b border-gray-800">
+      <div className="border-b border-slate">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 py-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -79,16 +79,16 @@ const ModernFooter: React.FC = () => {
             className="flex flex-col lg:flex-row items-center justify-between gap-8"
           >
             <div>
-              <h3 className="text-2xl font-bold mb-2">Stay Updated</h3>
-              <p className="text-gray-400">Get the latest updates on AI innovations and product releases</p>
+              <h3 className="text-heading-4 mb-2">Stay Updated</h3>
+              <p className="text-slate">Get the latest updates on AI innovations and product releases</p>
             </div>
             <div className="flex w-full lg:w-auto gap-3">
               <input
                 type="email"
                 placeholder="Enter your email"
-                className="flex-1 lg:w-80 px-5 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-indigo-500 transition-colors"
+                className="flex-1 lg:w-80 px-5 py-3 bg-deep-indigo border border-slate rounded-lg focus:outline-none focus:border-amber-flame transition-colors text-warm-white"
               />
-              <button className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 hover:scale-105">
+              <button className="btn-primary px-6 py-3 rounded-lg font-medium transition-all duration-200 hover:scale-105">
                 Subscribe
               </button>
             </div>
@@ -107,12 +107,12 @@ const ModernFooter: React.FC = () => {
             className="col-span-2"
           >
             <div className="flex items-center gap-2 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center">
-                <span className="text-white font-bold text-xl">C</span>
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-amber-flame to-deep-indigo flex items-center justify-center">
+                <span className="text-charcoal font-bold text-xl">C</span>
               </div>
-              <span className="text-xl font-bold">Candlefish AI</span>
+              <span className="text-heading-4">Candlefish AI</span>
             </div>
-            <p className="text-gray-400 mb-6 leading-relaxed">
+            <p className="text-slate mb-6 leading-relaxed">
               Empowering businesses with cutting-edge AI solutions to drive innovation and accelerate growth.
             </p>
             <div className="flex gap-4">
@@ -120,7 +120,7 @@ const ModernFooter: React.FC = () => {
                 <a
                   key={social.name}
                   href="#"
-                  className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-700 transition-colors"
+                  className="w-10 h-10 bg-deep-indigo rounded-lg flex items-center justify-center hover:bg-amber-flame hover:text-charcoal transition-colors"
                   aria-label={social.name}
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -139,13 +139,13 @@ const ModernFooter: React.FC = () => {
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.6, delay: index * 0.1 }}
             >
-              <h4 className="font-semibold mb-4">{section.title}</h4>
+              <h4 className="text-body-medium mb-4">{section.title}</h4>
               <ul className="space-y-3">
                 {section.links.map((link) => (
                   <li key={link.label}>
                     <a
                       href={link.href}
-                      className="text-gray-400 hover:text-white transition-colors"
+                      className="text-slate hover:text-amber-flame transition-colors"
                     >
                       {link.label}
                     </a>
@@ -158,20 +158,20 @@ const ModernFooter: React.FC = () => {
       </div>
 
       {/* Bottom Bar */}
-      <div className="border-t border-gray-800">
+      <div className="border-t border-slate">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8">
           <motion.div
             initial={{ opacity: 0 }}
             animate={inView ? { opacity: 1 } : {}}
             transition={{ duration: 0.6, delay: 0.5 }}
-            className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-400"
+            className="flex flex-col md:flex-row items-center justify-between gap-4 text-caption text-slate"
           >
             <p>&copy; 2024 Candlefish AI. All rights reserved.</p>
             <div className="flex items-center gap-6">
-              <a href="#" className="hover:text-white transition-colors">Privacy</a>
-              <a href="#" className="hover:text-white transition-colors">Terms</a>
-              <a href="#" className="hover:text-white transition-colors">Cookies</a>
-              <a href="#" className="hover:text-white transition-colors">Sitemap</a>
+              <a href="#" className="hover:text-amber-flame transition-colors">Privacy</a>
+              <a href="#" className="hover:text-amber-flame transition-colors">Terms</a>
+              <a href="#" className="hover:text-amber-flame transition-colors">Cookies</a>
+              <a href="#" className="hover:text-amber-flame transition-colors">Sitemap</a>
             </div>
           </motion.div>
         </div>

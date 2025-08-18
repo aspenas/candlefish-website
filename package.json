@@ -34,6 +34,8 @@
     "ci": "turbo build lint typecheck test"
   },
   "devDependencies": {
+    "@types/node": "^24.3.0",
+    "ts-node": "^10.9.2",
     "turbo": "^1.13.4"
   },
   "pnpm": {
@@ -45,5 +47,9 @@
     "node": ">=18.0.0",
     "pnpm": ">=8.0.0"
   },
-  "packageManager": "pnpm@8.15.6"
+  "packageManager": "pnpm@8.15.6",
+  "dependencies": {
+    "jsonwebtoken": "^9.0.2",
+    "jwks-rsa": "^3.2.0"
+  }
 }

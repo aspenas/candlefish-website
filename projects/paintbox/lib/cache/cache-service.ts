@@ -3,8 +3,17 @@
  * Provides caching functionality with Redis backend, fallback to in-memory cache
  */
 
-import Redis from 'ioredis';
 import { logger } from '@/lib/logging/simple-logger';
+
+// Conditional import for Redis - use stub on client side
+let Redis: any;
+if (typeof window === 'undefined') {
+  // Server-side: use real ioredis
+  Redis = require('ioredis');
+} else {
+  // Client-side: use stub
+  Redis = require('./redis-stub').default;
+}
 
 export interface CacheService {
   get(key: string): Promise<string | null>;

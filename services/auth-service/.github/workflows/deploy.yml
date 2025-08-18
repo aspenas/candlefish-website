@@ -1,0 +1,283 @@
+name: Deploy Auth Service
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'services/auth-service/**'
+      - 'packages/jwt-auth/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'services/auth-service/**'
+      - 'packages/jwt-auth/**'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: candlefish-ai/auth-service
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: auth_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: 'services/auth-service/package-lock.json'
+
+    - name: Install dependencies
+      working-directory: ./services/auth-service
+      run: npm ci
+
+    - name: Generate Prisma client
+      working-directory: ./services/auth-service
+      run: npx prisma generate
+
+    - name: Run database migrations
+      working-directory: ./services/auth-service
+      run: npx prisma db push
+      env:
+        DATABASE_URL: postgresql://test_user:test_password@localhost:5432/auth_test
+
+    - name: Run lint
+      working-directory: ./services/auth-service
+      run: npm run lint
+
+    - name: Run type check
+      working-directory: ./services/auth-service
+      run: npm run type-check
+
+    - name: Run tests
+      working-directory: ./services/auth-service
+      run: npm test
+      env:
+        NODE_ENV: test
+        DATABASE_URL: postgresql://test_user:test_password@localhost:5432/auth_test
+        REDIS_URL: redis://localhost:6379
+        JWT_SECRET: test-jwt-secret
+        SESSION_SECRET: test-session-secret
+
+    - name: Run test coverage
+      working-directory: ./services/auth-service
+      run: npm run test:coverage
+      env:
+        NODE_ENV: test
+        DATABASE_URL: postgresql://test_user:test_password@localhost:5432/auth_test
+        REDIS_URL: redis://localhost:6379
+        JWT_SECRET: test-jwt-secret
+        SESSION_SECRET: test-session-secret
+
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./services/auth-service/coverage/lcov.info
+        flags: auth-service
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./services/auth-service
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  deploy-staging:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: staging
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Deploy to ECS Staging
+      run: |
+        # Update ECS task definition with new image
+        aws ecs update-service \
+          --cluster auth-service-staging \
+          --service auth-service \
+          --force-new-deployment
+
+    - name: Wait for deployment to complete
+      run: |
+        aws ecs wait services-stable \
+          --cluster auth-service-staging \
+          --services auth-service
+
+    - name: Run health check
+      run: |
+        # Wait a bit for the service to be ready
+        sleep 30
+
+        # Health check with retry
+        for i in {1..10}; do
+          if curl -f https://auth-staging.candlefish.ai/health; then
+            echo "Health check passed"
+            exit 0
+          fi
+          echo "Health check attempt $i failed, retrying in 10s..."
+          sleep 10
+        done
+        echo "Health check failed after 10 attempts"
+        exit 1
+
+  deploy-production:
+    needs: [build, deploy-staging]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Deploy to ECS Production
+      run: |
+        # Blue-green deployment strategy
+        aws ecs update-service \
+          --cluster auth-service-production \
+          --service auth-service \
+          --force-new-deployment
+
+    - name: Wait for deployment to complete
+      run: |
+        aws ecs wait services-stable \
+          --cluster auth-service-production \
+          --services auth-service
+
+    - name: Run production health check
+      run: |
+        # Wait for the service to be ready
+        sleep 30
+
+        # Comprehensive health check
+        for i in {1..10}; do
+          if curl -f https://auth.candlefish.ai/health; then
+            echo "Production health check passed"
+            # Additional checks for production
+            if curl -f https://auth.candlefish.ai/.well-known/jwks.json; then
+              echo "JWKS endpoint check passed"
+              exit 0
+            fi
+          fi
+          echo "Health check attempt $i failed, retrying in 10s..."
+          sleep 10
+        done
+        echo "Production health check failed after 10 attempts"
+        exit 1
+
+    - name: Notify deployment success
+      if: success()
+      run: |
+        echo "🚀 Auth Service successfully deployed to production!"
+        # You can add Slack/Discord notifications here
+
+    - name: Rollback on failure
+      if: failure()
+      run: |
+        echo "❌ Deployment failed, initiating rollback..."
+        # Implement rollback logic here
+        aws ecs update-service \
+          --cluster auth-service-production \
+          --service auth-service \
+          --task-definition auth-service:PREVIOUS
+
+  security-scan:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+
+    steps:
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'

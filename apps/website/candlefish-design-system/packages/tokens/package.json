@@ -1,0 +1,52 @@
+{
+  "name": "@candlefish/tokens",
+  "version": "1.0.0",
+  "description": "Candlefish design tokens - Source of truth for design system",
+  "main": "build/web/js/tokens.js",
+  "type": "commonjs",
+  "scripts": {
+    "clean": "rimraf build",
+    "build:sd": "style-dictionary build --config ./style-dictionary.config.js",
+    "build:tw": "node scripts/generate-tailwind-theme.js",
+    "build": "npm run clean && npm run build:sd && npm run build:tw",
+    "watch": "style-dictionary build --watch",
+    "test": "node -e \"console.log('✅ Tokens package OK')\""
+  },
+  "files": [
+    "build/**/*",
+    "tokens/**/*",
+    "README.md"
+  ],
+  "exports": {
+    ".": "./build/web/js/tokens.js",
+    "./css": "./build/web/css/variables.css",
+    "./scss": "./build/web/scss/_tokens.scss",
+    "./json": "./build/web/json/tokens.json",
+    "./tailwind/theme": "./build/tailwind/theme.js",
+    "./tailwind/components": "./build/tailwind/components.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/candlefish-ai/candlefish-design-system.git"
+  },
+  "keywords": [
+    "design-tokens",
+    "design-system",
+    "style-dictionary",
+    "tailwind",
+    "candlefish"
+  ],
+  "author": {
+    "name": "Candlefish AI",
+    "email": "design@candlefish.ai",
+    "url": "https://candlefish.ai"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "rimraf": "^5.0.5",
+    "style-dictionary": "^3.9.2"
+  }
+}

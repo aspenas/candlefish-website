@@ -1,0 +1,83 @@
+# Prometheus Configuration for Development Environment
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: 'development'
+    cluster: 'paintbox-dev'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+# Scrape configuration
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Paintbox Application
+  - job_name: 'paintbox-app'
+    static_configs:
+      - targets: ['paintbox-frontend:3000']
+    metrics_path: '/api/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Paintbox Health Checks
+  - job_name: 'paintbox-health'
+    static_configs:
+      - targets: ['paintbox-frontend:3000']
+    metrics_path: '/api/health'
+    scrape_interval: 15s
+    scrape_timeout: 5s
+
+  # Paintbox Status
+  - job_name: 'paintbox-status'
+    static_configs:
+      - targets: ['paintbox-frontend:3000']
+    metrics_path: '/api/status'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # WebSocket Server
+  - job_name: 'paintbox-websocket'
+    static_configs:
+      - targets: ['paintbox-websocket:3001']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Node Exporter (System Metrics)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+
+  # Redis Exporter
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    scrape_interval: 15s
+
+  # PostgreSQL Exporter (if available)
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    scrape_interval: 30s
+
+# Remote write configuration for development testing
+# remote_write:
+#   - url: "http://localhost:9090/api/v1/write"
+
+# Development-specific configurations
+storage:
+  tsdb:
+    retention.time: 7d
+    retention.size: 1GB

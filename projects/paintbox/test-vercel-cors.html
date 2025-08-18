@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vercel CORS Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { color: #22c55e; }
+        .error { color: #ef4444; }
+        .info { color: #3b82f6; }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover { background: #2563eb; }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎨 Vercel CORS Test</h1>
+
+    <div class="card">
+        <h2>Test CORS from Vercel Frontend</h2>
+        <p>Frontend URL: <span class="info">https://paintbox-3x93r19zx-temppjs.vercel.app</span></p>
+        <p>Backend URL: <span class="info">https://paintbox-graphql.fly.dev</span></p>
+        <button onclick="testDirectGraphQL()">Test Direct GraphQL</button>
+        <button onclick="testWithAuth()">Test with Auth</button>
+        <div id="cors-result"></div>
+    </div>
+
+    <div class="card">
+        <h2>Test Frontend Integration</h2>
+        <p>This simulates what the frontend does internally:</p>
+        <button onclick="testFrontendLikeRequest()">Test Frontend-Like Request</button>
+        <div id="frontend-result"></div>
+    </div>
+
+    <script>
+        const GRAPHQL_URL = 'https://paintbox-graphql.fly.dev/graphql';
+
+        async function testDirectGraphQL() {
+            const resultDiv = document.getElementById('cors-result');
+            resultDiv.innerHTML = '<p class="info">Testing CORS...</p>';
+
+            try {
+                const response = await fetch(GRAPHQL_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Origin': 'https://paintbox-3x93r19zx-temppjs.vercel.app'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        query: '{ __typename }'
+                    })
+                });
+
+                const data = await response.json();
+
+                resultDiv.innerHTML = `
+                    <p class="success">✅ CORS Test Passed!</p>
+                    <p>Response Headers:</p>
+                    <pre>Status: ${response.status}
+CORS: ${response.headers.get('access-control-allow-origin') || 'Not set'}
+Credentials: ${response.headers.get('access-control-allow-credentials') || 'Not set'}</pre>
+                    <p>Response Data:</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ CORS Test Failed</p>
+                    <p>Error: ${error.message}</p>
+                    <p class="info">This error indicates CORS is blocking the request.</p>
+                `;
+            }
+        }
+
+        async function testWithAuth() {
+            const resultDiv = document.getElementById('cors-result');
+            resultDiv.innerHTML = '<p class="info">Testing with authentication...</p>';
+
+            try {
+                // First login
+                const loginResponse = await fetch(GRAPHQL_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Origin': 'https://paintbox-3x93r19zx-temppjs.vercel.app'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        query: `
+                            mutation {
+                                login(email: "admin@paintbox.com", password: "admin123") {
+                                    token
+                                    user {
+                                        id
+                                        email
+                                        name
+                                        role
+                                    }
+                                }
+                            }
+                        `
+                    })
+                });
+
+                const loginData = await loginResponse.json();
+
+                if (loginData.data && loginData.data.login) {
+                    const token = loginData.data.login.token;
+
+                    // Now test authenticated query
+                    const authResponse = await fetch(GRAPHQL_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`,
+                            'Origin': 'https://paintbox-3x93r19zx-temppjs.vercel.app'
+                        },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            query: `
+                                query {
+                                    me {
+                                        id
+                                        email
+                                        name
+                                        role
+                                    }
+                                }
+                            `
+                        })
+                    });
+
+                    const authData = await authResponse.json();
+
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ Authenticated Request Successful!</p>
+                        <p>Login Response:</p>
+                        <pre>${JSON.stringify(loginData, null, 2)}</pre>
+                        <p>Authenticated Query Response:</p>
+                        <pre>${JSON.stringify(authData, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <p class="error">❌ Login Failed</p>
+                        <pre>${JSON.stringify(loginData, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Authentication Test Failed</p>
+                    <p>Error: ${error.message}</p>
+                `;
+            }
+        }
+
+        async function testFrontendLikeRequest() {
+            const resultDiv = document.getElementById('frontend-result');
+            resultDiv.innerHTML = '<p class="info">Simulating frontend request...</p>';
+
+            try {
+                // This mimics what the Apollo Client would do
+                const response = await fetch(GRAPHQL_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-client-version': '1.0.0',
+                        'x-client-name': 'system-analyzer-dashboard'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        query: `
+                            query IntrospectionQuery {
+                                __schema {
+                                    queryType { name }
+                                    mutationType { name }
+                                    subscriptionType { name }
+                                }
+                            }
+                        `
+                    })
+                });
+
+                const data = await response.json();
+
+                resultDiv.innerHTML = `
+                    <p class="success">✅ Frontend-like Request Successful!</p>
+                    <p>This means the frontend should be able to connect properly.</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Frontend-like Request Failed</p>
+                    <p>Error: ${error.message}</p>
+                    <p class="info">The frontend will likely have connection issues.</p>
+                `;
+            }
+        }
+
+        // Auto-run first test
+        window.onload = () => {
+            testDirectGraphQL();
+        };
+    </script>
+</body>
+</html>

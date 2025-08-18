@@ -1,0 +1,142 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Commit message validation and dependency change detection
+echo "📝 Validating commit message..."
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+print_status() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Read commit message
+COMMIT_MSG=$(cat "$1")
+
+# Check if this is a dependency-related commit
+DEPENDENCY_FILES_CHANGED=false
+if git diff --cached --name-only | grep -E "(package\.json|package-lock\.json|yarn\.lock|npm-shrinkwrap\.json)" >/dev/null; then
+    DEPENDENCY_FILES_CHANGED=true
+fi
+
+# Validate commit message format (conventional commits)
+COMMIT_REGEX="^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert|deps)(\(.+\))?: .{1,50}"
+
+if echo "$COMMIT_MSG" | grep -qE "$COMMIT_REGEX"; then
+    print_success "Commit message format is valid"
+else
+    print_error "Invalid commit message format!"
+    echo
+    echo "Expected format: type(scope): description"
+    echo
+    echo "Types:"
+    echo "  feat:     A new feature"
+    echo "  fix:      A bug fix"
+    echo "  docs:     Documentation only changes"
+    echo "  style:    Changes that do not affect the meaning of the code"
+    echo "  refactor: A code change that neither fixes a bug nor adds a feature"
+    echo "  test:     Adding missing tests or correcting existing tests"
+    echo "  chore:    Changes to the build process or auxiliary tools"
+    echo "  perf:     A code change that improves performance"
+    echo "  ci:       Changes to CI configuration files and scripts"
+    echo "  build:    Changes that affect the build system or dependencies"
+    echo "  revert:   Reverts a previous commit"
+    echo "  deps:     Dependency updates"
+    echo
+    echo "Examples:"
+    echo "  feat(auth): add JWT authentication"
+    echo "  fix(deps): resolve security vulnerability in lodash"
+    echo "  deps: update dependencies to latest versions"
+    echo
+    exit 1
+fi
+
+# Check for dependency-related commits
+if [ "$DEPENDENCY_FILES_CHANGED" = true ]; then
+    print_status "Dependency files changed in this commit"
+
+    # Suggest appropriate commit type for dependency changes
+    if echo "$COMMIT_MSG" | grep -qE "^(deps|fix|chore|build)"; then
+        print_success "Appropriate commit type for dependency changes"
+    else
+        print_warning "Consider using 'deps:', 'fix:', 'chore:', or 'build:' for dependency changes"
+    fi
+
+    # Add dependency change summary to commit message if not present
+    if ! echo "$COMMIT_MSG" | grep -q "Dependencies:"; then
+        print_status "Adding dependency change summary..."
+
+        # Create temporary file with enhanced commit message
+        TEMP_MSG=$(mktemp)
+        echo "$COMMIT_MSG" > "$TEMP_MSG"
+        echo "" >> "$TEMP_MSG"
+        echo "Dependencies:" >> "$TEMP_MSG"
+
+        # Add summary of dependency changes
+        if git diff --cached package.json | grep -E '^\+.*".*":' >/dev/null; then
+            echo "- Added: $(git diff --cached package.json | grep -E '^\+.*".*":' | sed 's/^+[[:space:]]*//' | sed 's/[,:"]//g' | tr '\n' ', ' | sed 's/, $//')" >> "$TEMP_MSG"
+        fi
+
+        if git diff --cached package.json | grep -E '^-.*".*":' >/dev/null; then
+            echo "- Removed: $(git diff --cached package.json | grep -E '^-.*".*":' | sed 's/^-[[:space:]]*//' | sed 's/[,:"]//g' | tr '\n' ', ' | sed 's/, $//')" >> "$TEMP_MSG"
+        fi
+
+        if git diff --cached package.json | grep -E '^\+.*".*": ".*"' | grep -v -E '^-.*".*": ".*"' >/dev/null; then
+            echo "- Updated: $(git diff --cached package.json | grep -E '^\+.*".*": ".*"' | sed 's/^+[[:space:]]*//' | sed 's/[,:"]//g' | tr '\n' ', ' | sed 's/, $//')" >> "$TEMP_MSG"
+        fi
+
+        # Copy enhanced message back
+        cp "$TEMP_MSG" "$1"
+        rm "$TEMP_MSG"
+
+        print_success "Enhanced commit message with dependency summary"
+    fi
+fi
+
+# Check for security-related keywords
+SECURITY_KEYWORDS=("security" "vulnerability" "CVE" "audit" "fix")
+for keyword in "${SECURITY_KEYWORDS[@]}"; do
+    if echo "$COMMIT_MSG" | grep -qi "$keyword"; then
+        print_warning "Security-related commit detected"
+        print_status "Ensure security testing has been completed"
+        break
+    fi
+done
+
+# Check for breaking change indicators
+if echo "$COMMIT_MSG" | grep -qi "BREAKING CHANGE\|!:"; then
+    print_warning "Breaking change detected in commit message"
+    print_status "Ensure version bump and changelog updates are planned"
+fi
+
+# Validate commit message length
+MSG_LENGTH=$(echo "$COMMIT_MSG" | head -n1 | wc -c)
+if [ "$MSG_LENGTH" -gt 72 ]; then
+    print_warning "Commit message first line is longer than 72 characters ($MSG_LENGTH)"
+    print_status "Consider shortening the summary line"
+fi
+
+# Check for useful commit message content
+if echo "$COMMIT_MSG" | grep -qE "^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert|deps)(\(.+\))?: (wip|todo|temp|fixme)" > /dev/null; then
+    print_warning "Temporary commit message detected"
+    print_status "Consider using a more descriptive commit message"
+fi
+
+print_success "✅ Commit message validation completed"

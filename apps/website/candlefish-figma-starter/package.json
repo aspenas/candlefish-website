@@ -1,0 +1,101 @@
+{
+  "name": "candlefish-figma-starter",
+  "version": "1.0.0",
+  "description": "Production-ready Figma plugin that generates complete Candlefish brand design system with components, tokens, and layouts",
+  "main": "code.js",
+  "private": true,
+  "author": {
+    "name": "Patrick Smith",
+    "email": "patrick@candlefish.ai",
+    "url": "https://candlefish.ai"
+  },
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/candlefish-ai/candlefish-figma-starter.git"
+  },
+  "keywords": [
+    "figma",
+    "plugin",
+    "design-system",
+    "design-tokens",
+    "candlefish",
+    "brand",
+    "components",
+    "ui-kit"
+  ],
+  "scripts": {
+    "build": "echo 'No build needed - pure JavaScript implementation'",
+    "dev": "echo 'Open in Figma Desktop for development'",
+    "test": "echo 'Run tests in Figma console'",
+    "lint": "eslint code.js",
+    "format": "prettier --write '*.{js,json,md}'"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.82.0",
+    "eslint": "^8.56.0",
+    "prettier": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "figma": {
+    "name": "Candlefish Starter Kit",
+    "id": "candlefish-starter-kit.patrick",
+    "api": "1.0.0",
+    "main": "code.js",
+    "editorType": ["figma"],
+    "documentAccess": "dynamic-page",
+    "capabilities": ["inspect", "codegen"]
+  },
+  "exports": {
+    "tokens": "./tokens.json",
+    "css": "./variables.css",
+    "tailwind": "./tailwind.config.js"
+  },
+  "files": [
+    "manifest.json",
+    "code.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "config": {
+    "brandColors": {
+      "charcoal": "#1A1A1A",
+      "warmWhite": "#FAFAF8",
+      "amberFlame": "#FFB347",
+      "deepIndigo": "#3A3A60",
+      "slateGray": "#6B6B6B",
+      "mutedSand": "#D8D3C4"
+    },
+    "typography": {
+      "primary": "Tiempos",
+      "secondary": "Inter",
+      "monospace": "SF Mono"
+    },
+    "grid": {
+      "columns": 12,
+      "gutter": 24,
+      "margin": 120
+    }
+  },
+  "changelog": {
+    "1.0.0": {
+      "date": "2025-08-16",
+      "changes": [
+        "Initial release",
+        "Complete Candlefish brand system",
+        "6 pages with 50+ components",
+        "Design token export functionality",
+        "Smart font fallback system",
+        "Responsive layout templates"
+      ]
+    }
+  },
+  "roadmap": {
+    "1.1.0": "Dark mode support",
+    "1.2.0": "Animation presets",
+    "1.3.0": "Icon library integration",
+    "2.0.0": "Multi-brand support"
+  }
+}

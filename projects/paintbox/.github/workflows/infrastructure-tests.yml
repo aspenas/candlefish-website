@@ -1,0 +1,472 @@
+# Infrastructure Testing CI/CD Pipeline
+# Comprehensive testing workflow for infrastructure components
+
+name: Infrastructure Tests
+
+on:
+  push:
+    branches: [ main, develop, feat/* ]
+    paths:
+      - 'app/api/health/**'
+      - 'app/api/workflows/**'
+      - 'app/api/webhooks/**'
+      - 'components/infrastructure/**'
+      - 'hooks/useInfrastructureWebSocket.ts'
+      - 'stores/useInfrastructureStore.ts'
+      - 'lib/services/**'
+      - 'lib/middleware/**'
+      - 'lib/security/**'
+      - '__tests__/api/infrastructure/**'
+      - '__tests__/components/infrastructure/**'
+      - '__tests__/hooks/useInfrastructureWebSocket.test.ts'
+      - '__tests__/performance/**'
+      - '__tests__/security/**'
+      - '__tests__/e2e/infrastructure-workflows.spec.ts'
+      - 'jest.infrastructure.config.js'
+      - 'playwright.config.ts'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'app/api/health/**'
+      - 'app/api/workflows/**'
+      - 'app/api/webhooks/**'
+      - 'components/infrastructure/**'
+      - 'hooks/useInfrastructureWebSocket.ts'
+      - 'stores/useInfrastructureStore.ts'
+      - 'lib/services/**'
+      - 'lib/middleware/**'
+      - 'lib/security/**'
+      - '__tests__/**'
+  schedule:
+    # Run daily at 2 AM UTC for comprehensive testing
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Test suite to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - unit
+          - integration
+          - e2e
+          - performance
+          - security
+      coverage_threshold:
+        description: 'Coverage threshold percentage'
+        required: false
+        default: '90'
+        type: string
+
+env:
+  NODE_VERSION: '18'
+  COVERAGE_THRESHOLD: ${{ github.event.inputs.coverage_threshold || '90' }}
+  TEST_SUITE: ${{ github.event.inputs.test_suite || 'all' }}
+
+jobs:
+  # Pre-flight checks
+  pre-flight:
+    name: Pre-flight Checks
+    runs-on: ubuntu-latest
+    outputs:
+      should-run-tests: ${{ steps.check-changes.outputs.should-run }}
+      test-matrix: ${{ steps.test-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check for infrastructure changes
+        id: check-changes
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should-run=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+          if echo "$CHANGED_FILES" | grep -E "(app/api|components/infrastructure|hooks/useInfrastructure|stores/useInfrastructure|lib/services|lib/middleware|lib/security|__tests__)"; then
+            echo "should-run=true" >> $GITHUB_OUTPUT
+          else
+            echo "should-run=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate test matrix
+        id: test-matrix
+        run: |
+          case "${{ env.TEST_SUITE }}" in
+            "unit")
+              matrix='{"include":[{"name":"unit","script":"--unit-only","timeout":30}]}'
+              ;;
+            "integration")
+              matrix='{"include":[{"name":"integration","script":"--integration-only","timeout":45}]}'
+              ;;
+            "e2e")
+              matrix='{"include":[{"name":"e2e","script":"--e2e-only","timeout":60}]}'
+              ;;
+            "performance")
+              matrix='{"include":[{"name":"performance","script":"--performance","timeout":120}]}'
+              ;;
+            "security")
+              matrix='{"include":[{"name":"security","script":"--security","timeout":90}]}'
+              ;;
+            *)
+              matrix='{"include":[
+                {"name":"unit","script":"--unit-only","timeout":30},
+                {"name":"integration","script":"--integration-only","timeout":45},
+                {"name":"e2e","script":"--e2e-only","timeout":60}
+              ]}'
+              ;;
+          esac
+          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+
+  # Unit and Integration Tests
+  test-suite:
+    name: ${{ matrix.name }} Tests
+    runs-on: ubuntu-latest
+    needs: pre-flight
+    if: needs.pre-flight.outputs.should-run-tests == 'true'
+    timeout-minutes: ${{ matrix.timeout }}
+    strategy:
+      matrix: ${{ fromJson(needs.pre-flight.outputs.test-matrix) }}
+      fail-fast: false
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npx playwright install chromium
+
+      - name: Setup test environment
+        run: |
+          cp .env.test.example .env.test
+          echo "DATABASE_URL=postgresql://postgres:testpass@localhost:5432/testdb" >> .env.test
+          echo "REDIS_URL=redis://localhost:6379" >> .env.test
+          echo "NODE_ENV=test" >> .env.test
+
+      - name: Wait for services
+        run: |
+          timeout 30 bash -c 'until pg_isready -h localhost -p 5432; do sleep 1; done'
+          timeout 30 bash -c 'until redis-cli -h localhost -p 6379 ping; do sleep 1; done'
+
+      - name: Run database migrations
+        if: matrix.name == 'integration' || matrix.name == 'e2e'
+        run: |
+          npm run db:migrate:test || true
+
+      - name: Run ${{ matrix.name }} tests
+        run: |
+          ./__tests__/scripts/run-infrastructure-tests.sh ${{ matrix.script }} --ci
+        env:
+          NODE_ENV: test
+          CI: true
+          COVERAGE_THRESHOLD: ${{ env.COVERAGE_THRESHOLD }}
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.name }}
+          path: |
+            coverage/infrastructure/
+            reports/infrastructure/
+            test-results/
+          retention-days: 30
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: matrix.name == 'unit' || matrix.name == 'integration'
+        with:
+          file: ./coverage/infrastructure/lcov.info
+          flags: infrastructure,${{ matrix.name }}
+          name: infrastructure-${{ matrix.name }}
+          fail_ci_if_error: false
+
+  # Performance Tests (separate job for resource control)
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: pre-flight
+    if: needs.pre-flight.outputs.should-run-tests == 'true' && (github.event.inputs.test_suite == 'performance' || github.event.inputs.test_suite == 'all' || github.event_name == 'schedule')
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup performance test environment
+        run: |
+          # Increase Node.js memory limit for performance tests
+          echo "NODE_OPTIONS=--max-old-space-size=4096" >> $GITHUB_ENV
+
+          # Setup test configuration
+          cp .env.test.example .env.test
+          echo "NODE_ENV=test" >> .env.test
+          echo "PERFORMANCE_TEST_MODE=true" >> .env.test
+
+      - name: Run performance tests
+        run: |
+          ./__tests__/scripts/run-infrastructure-tests.sh --performance --ci
+        env:
+          NODE_ENV: test
+          CI: true
+          PERFORMANCE_TEST_MODE: true
+
+      - name: Generate performance report
+        run: |
+          node __tests__/scripts/generate-performance-report.js
+        if: always()
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-results
+          path: |
+            reports/infrastructure/performance/
+            artifacts/infrastructure/performance/
+          retention-days: 30
+
+  # Security Tests (separate job for security isolation)
+  security-tests:
+    name: Security Tests
+    runs-on: ubuntu-latest
+    needs: pre-flight
+    if: needs.pre-flight.outputs.should-run-tests == 'true' && (github.event.inputs.test_suite == 'security' || github.event.inputs.test_suite == 'all' || github.event_name == 'schedule')
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup security test environment
+        run: |
+          cp .env.test.example .env.test
+          echo "NODE_ENV=test" >> .env.test
+          echo "SECURITY_TEST_MODE=true" >> .env.test
+
+      - name: Run security tests
+        run: |
+          ./__tests__/scripts/run-infrastructure-tests.sh --security --ci
+        env:
+          NODE_ENV: test
+          CI: true
+          SECURITY_TEST_MODE: true
+
+      - name: Upload security scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: reports/infrastructure/security/security-scan.sarif
+        continue-on-error: true
+
+      - name: Upload security results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-results
+          path: |
+            reports/infrastructure/security/
+            artifacts/infrastructure/security/
+          retention-days: 30
+
+  # Coverage Analysis and Reporting
+  coverage-analysis:
+    name: Coverage Analysis
+    runs-on: ubuntu-latest
+    needs: [test-suite]
+    if: always() && needs.test-suite.result != 'cancelled'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all test artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Merge coverage reports
+        run: |
+          npx nyc merge artifacts/test-results-*/coverage/infrastructure/ coverage/merged.json
+          npx nyc report --reporter=html --reporter=lcov --reporter=text --temp-dir=coverage/
+
+      - name: Check coverage thresholds
+        run: |
+          npx nyc check-coverage \
+            --statements ${{ env.COVERAGE_THRESHOLD }} \
+            --branches ${{ env.COVERAGE_THRESHOLD }} \
+            --functions ${{ env.COVERAGE_THRESHOLD }} \
+            --lines ${{ env.COVERAGE_THRESHOLD }}
+
+      - name: Generate coverage badge
+        run: |
+          COVERAGE=$(npx nyc report --reporter=text-summary | grep "Lines" | grep -o "[0-9]\+\.[0-9]\+%" | head -1 | sed 's/%//')
+          COLOR=$(echo $COVERAGE | awk '{if($1>=90) print "brightgreen"; else if($1>=80) print "yellow"; else print "red"}')
+          curl -s "https://img.shields.io/badge/Infrastructure_Coverage-${COVERAGE}%25-${COLOR}" > coverage-badge.svg
+
+      - name: Upload final coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-coverage-report
+          path: |
+            coverage/
+            coverage-badge.svg
+          retention-days: 90
+
+      - name: Comment PR with coverage
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const fs = require('fs');
+            const coverage = fs.readFileSync('coverage/text-summary.txt', 'utf8');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## Infrastructure Test Coverage Report\n\n\`\`\`\n${coverage}\n\`\`\`\n\n[View detailed report](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
+            });
+
+  # Final Status Check
+  infrastructure-tests-status:
+    name: Infrastructure Tests Status
+    runs-on: ubuntu-latest
+    needs: [test-suite, performance-tests, security-tests, coverage-analysis]
+    if: always()
+
+    steps:
+      - name: Check test results
+        run: |
+          echo "Test Suite: ${{ needs.test-suite.result }}"
+          echo "Performance Tests: ${{ needs.performance-tests.result }}"
+          echo "Security Tests: ${{ needs.security-tests.result }}"
+          echo "Coverage Analysis: ${{ needs.coverage-analysis.result }}"
+
+          # Determine overall status
+          if [[ "${{ needs.test-suite.result }}" == "success" ]]; then
+            if [[ "${{ needs.coverage-analysis.result }}" == "success" || "${{ needs.coverage-analysis.result }}" == "skipped" ]]; then
+              echo "✅ Infrastructure tests passed successfully!"
+              exit 0
+            else
+              echo "❌ Coverage analysis failed"
+              exit 1
+            fi
+          else
+            echo "❌ Test suite failed"
+            exit 1
+          fi
+
+      - name: Update status check
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = '${{ needs.test-suite.result }}' === 'success' ? 'success' : 'failure';
+            const description = status === 'success' ?
+              'All infrastructure tests passed' :
+              'Some infrastructure tests failed';
+
+            github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: status,
+              target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              description: description,
+              context: 'Infrastructure Tests'
+            });
+
+# Cleanup old artifacts
+  cleanup:
+    name: Cleanup Old Artifacts
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - name: Delete old artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listArtifactsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100
+            });
+
+            const cutoff = new Date();
+            cutoff.setDate(cutoff.getDate() - 30);
+
+            for (const artifact of artifacts.data.artifacts) {
+              if (new Date(artifact.created_at) < cutoff) {
+                await github.rest.actions.deleteArtifact({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  artifact_id: artifact.id
+                });
+                console.log(`Deleted artifact: ${artifact.name}`);
+              }
+            }

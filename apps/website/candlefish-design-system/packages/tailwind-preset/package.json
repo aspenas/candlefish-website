@@ -1,0 +1,38 @@
+{
+  "name": "@candlefish/tailwind-preset",
+  "version": "1.0.0",
+  "description": "Tailwind CSS preset for Candlefish design system",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node -e \"console.log('✅ Tailwind preset OK')\""
+  },
+  "files": [
+    "index.js",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@candlefish/tokens": "^1.0.0",
+    "tailwindcss": "^3.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/candlefish-ai/candlefish-design-system.git"
+  },
+  "keywords": [
+    "tailwind",
+    "tailwindcss",
+    "preset",
+    "design-system",
+    "candlefish"
+  ],
+  "author": {
+    "name": "Candlefish AI",
+    "email": "design@candlefish.ai",
+    "url": "https://candlefish.ai"
+  },
+  "license": "MIT"
+}

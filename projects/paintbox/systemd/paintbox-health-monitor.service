@@ -1,0 +1,49 @@
+[Unit]
+Description=Paintbox Health Monitor
+Documentation=https://github.com/your-org/paintbox
+After=paintbox-app.service paintbox-redis.service paintbox-postgres.service
+Requires=paintbox-app.service
+PartOf=paintbox.target
+
+[Service]
+Type=simple
+User=paintbox
+Group=paintbox
+WorkingDirectory=/opt/paintbox
+
+# Environment
+Environment=NODE_ENV=production
+Environment=MONITOR_INTERVAL=10000
+Environment=HEALTH_CHECK_TIMEOUT=5000
+EnvironmentFile=-/etc/paintbox/environment
+
+# Health Monitor Process
+ExecStart=/usr/bin/node scripts/health-monitor.js
+ExecReload=/bin/kill -USR2 $MAINPID
+
+# Process Management
+Restart=always
+RestartSec=15
+StartLimitInterval=300
+StartLimitBurst=5
+
+# Security Settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/paintbox/logs /var/log/paintbox
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+# Resource Limits
+MemoryMax=256M
+CPUWeight=25
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=paintbox-health-monitor
+
+[Install]
+WantedBy=multi-user.target
+WantedBy=paintbox.target

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paintbox Full Stack Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { color: #22c55e; }
+        .error { color: #ef4444; }
+        .info { color: #3b82f6; }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover { background: #2563eb; }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎨 Paintbox Full Stack Test</h1>
+
+    <div class="card">
+        <h2>Backend Status</h2>
+        <p>GraphQL API: <span class="info">https://paintbox-graphql.fly.dev</span></p>
+        <button onclick="testHealth()">Test Health</button>
+        <button onclick="testGraphQL()">Test GraphQL</button>
+        <div id="backend-result"></div>
+    </div>
+
+    <div class="card">
+        <h2>Authentication Test</h2>
+        <input type="email" id="email" placeholder="Email" value="admin@paintbox.com">
+        <input type="password" id="password" placeholder="Password" value="admin123">
+        <button onclick="testLogin()">Test Login</button>
+        <div id="auth-result"></div>
+    </div>
+
+    <div class="card">
+        <h2>Frontend URLs</h2>
+        <p>Latest Deployment: <a href="https://paintbox-frontend-pffw3bdzx-temppjs.vercel.app" target="_blank">https://paintbox-frontend-pffw3bdzx-temppjs.vercel.app</a></p>
+        <p class="info">Note: Frontend requires authentication. Use the test credentials above to log in.</p>
+    </div>
+
+    <div class="card">
+        <h2>Test Results</h2>
+        <div id="test-summary"></div>
+    </div>
+
+    <script>
+        const API_URL = 'https://paintbox-graphql.fly.dev';
+        let authToken = null;
+
+        async function testHealth() {
+            const resultDiv = document.getElementById('backend-result');
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                resultDiv.innerHTML = `<p class="success">✅ Health Check Passed</p><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                updateSummary('health', true);
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">❌ Health Check Failed: ${error.message}</p>`;
+                updateSummary('health', false);
+            }
+        }
+
+        async function testGraphQL() {
+            const resultDiv = document.getElementById('backend-result');
+            try {
+                const response = await fetch(`${API_URL}/graphql`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: '{ __typename }' })
+                });
+                const data = await response.json();
+                resultDiv.innerHTML = `<p class="success">✅ GraphQL Endpoint Working</p><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                updateSummary('graphql', true);
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">❌ GraphQL Test Failed: ${error.message}</p>`;
+                updateSummary('graphql', false);
+            }
+        }
+
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('auth-result');
+
+            try {
+                const response = await fetch(`${API_URL}/graphql`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query: `
+                            mutation Login($email: String!, $password: String!) {
+                                login(email: $email, password: $password) {
+                                    token
+                                    user {
+                                        id
+                                        email
+                                        name
+                                        role
+                                    }
+                                }
+                            }
+                        `,
+                        variables: { email, password }
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.data && data.data.login) {
+                    authToken = data.data.login.token;
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ Login Successful!</p>
+                        <p><strong>User:</strong> ${data.data.login.user.name} (${data.data.login.user.role})</p>
+                        <p><strong>Token:</strong> ${authToken.substring(0, 50)}...</p>
+                        <button onclick="testAuthenticatedQuery()">Test Authenticated Query</button>
+                    `;
+                    updateSummary('auth', true);
+                } else {
+                    resultDiv.innerHTML = `<p class="error">❌ Login Failed: Invalid credentials</p>`;
+                    updateSummary('auth', false);
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">❌ Login Error: ${error.message}</p>`;
+                updateSummary('auth', false);
+            }
+        }
+
+        async function testAuthenticatedQuery() {
+            const resultDiv = document.getElementById('auth-result');
+
+            try {
+                const response = await fetch(`${API_URL}/graphql`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        query: `
+                            query {
+                                me {
+                                    id
+                                    email
+                                    name
+                                    role
+                                }
+                                projects(filter: "") {
+                                    edges {
+                                        node {
+                                            id
+                                            name
+                                            client
+                                            status
+                                        }
+                                    }
+                                }
+                            }
+                        `
+                    })
+                });
+
+                const data = await response.json();
+                resultDiv.innerHTML += `
+                    <p class="success">✅ Authenticated Query Successful!</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+                updateSummary('authenticated', true);
+            } catch (error) {
+                resultDiv.innerHTML += `<p class="error">❌ Authenticated Query Failed: ${error.message}</p>`;
+                updateSummary('authenticated', false);
+            }
+        }
+
+        const testResults = {};
+        function updateSummary(test, success) {
+            testResults[test] = success;
+            const summaryDiv = document.getElementById('test-summary');
+            const total = Object.keys(testResults).length;
+            const passed = Object.values(testResults).filter(v => v).length;
+
+            summaryDiv.innerHTML = `
+                <h3>Overall Status: ${passed === total ? '✅ All Tests Passed' : `⚠️ ${passed}/${total} Tests Passed`}</h3>
+                <ul>
+                    ${Object.entries(testResults).map(([test, success]) =>
+                        `<li>${success ? '✅' : '❌'} ${test.charAt(0).toUpperCase() + test.slice(1)}</li>`
+                    ).join('')}
+                </ul>
+            `;
+        }
+
+        // Run initial tests
+        window.onload = () => {
+            testHealth();
+        };
+    </script>
+</body>
+</html>

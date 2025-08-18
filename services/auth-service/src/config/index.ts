@@ -62,6 +62,10 @@ export const config: Config = {
     issuer: process.env.JWT_ISSUER || 'candlefish-auth',
     audience: process.env.JWT_AUDIENCE || 'candlefish-api',
   },
+  aws: {
+    region: process.env.AWS_REGION || 'us-east-1',
+    secretId: process.env.AWS_SECRET_ID || 'paintbox/production/jwt/private-key',
+  },
   server: {
     port: parseNumber(process.env.PORT, 3000),
     host: process.env.HOST || '0.0.0.0',
