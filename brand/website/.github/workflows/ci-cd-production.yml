@@ -1,0 +1,352 @@
+name: Production CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: candlefish-website
+  EKS_CLUSTER_NAME: candlefish-production
+  DEPLOYMENT_NAME: candlefish-website
+
+jobs:
+  # Quality Assurance Pipeline
+  quality-assurance:
+    runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.key }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Generate cache key
+        id: cache-key
+        run: echo "key=node-modules-${{ hashFiles('**/package-lock.json') }}" >> $GITHUB_OUTPUT
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run type checking
+        run: npx tsc --noEmit
+
+      - name: Run unit tests
+        run: npm run test:ci
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+
+      - name: Build application
+        run: npm run build
+
+      - name: Cache build artifacts
+        uses: actions/cache@v3
+        with:
+          path: |
+            .next
+            node_modules
+          key: ${{ steps.cache-key.outputs.key }}-${{ github.sha }}
+
+  # End-to-End Testing
+  e2e-testing:
+    runs-on: ubuntu-latest
+    needs: quality-assurance
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            .next
+            node_modules
+          key: ${{ needs.quality-assurance.outputs.cache-key }}-${{ github.sha }}
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+
+      - name: Run accessibility tests
+        run: npm run test:accessibility
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+
+  # Security Scanning
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: quality-assurance
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Docker Build and Push
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: [quality-assurance, security-scan]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      - name: Scan image for vulnerabilities
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          aws ecr start-image-scan --repository-name $ECR_REPOSITORY --image-id imageTag=$IMAGE_TAG
+          
+          # Wait for scan to complete
+          aws ecr wait image-scan-complete --repository-name $ECR_REPOSITORY --image-id imageTag=$IMAGE_TAG
+          
+          # Get scan results
+          SCAN_RESULTS=$(aws ecr describe-image-scan-findings --repository-name $ECR_REPOSITORY --image-id imageTag=$IMAGE_TAG)
+          
+          # Check for critical vulnerabilities
+          CRITICAL_COUNT=$(echo $SCAN_RESULTS | jq '.imageScanFindings.findingCounts.CRITICAL // 0')
+          HIGH_COUNT=$(echo $SCAN_RESULTS | jq '.imageScanFindings.findingCounts.HIGH // 0')
+          
+          echo "Critical vulnerabilities: $CRITICAL_COUNT"
+          echo "High vulnerabilities: $HIGH_COUNT"
+          
+          # Fail if critical vulnerabilities found
+          if [ "$CRITICAL_COUNT" -gt 0 ]; then
+            echo "Critical vulnerabilities found. Deployment blocked."
+            exit 1
+          fi
+
+  # Staging Deployment
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: docker-build
+    if: github.ref == 'refs/heads/main'
+    environment: staging
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
+
+      - name: Deploy to staging
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          NAMESPACE: staging
+        run: |
+          envsubst < k8s/deployment.yaml | kubectl apply -f - -n $NAMESPACE
+          kubectl rollout status deployment/$DEPLOYMENT_NAME -n $NAMESPACE --timeout=600s
+
+      - name: Run smoke tests
+        run: |
+          # Wait for deployment to be ready
+          sleep 30
+          
+          # Get staging URL
+          STAGING_URL=$(kubectl get ingress candlefish-website-ingress -n staging -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          
+          # Run basic health checks
+          curl -f "http://$STAGING_URL/api/health" || exit 1
+          
+          # Run critical path tests
+          npm run test:smoke -- --baseUrl="http://$STAGING_URL"
+
+  # Production Deployment (Blue-Green)
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
+
+      - name: Blue-Green Deployment
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          NAMESPACE: production
+        run: |
+          # Determine current active deployment (blue or green)
+          CURRENT_ACTIVE=$(kubectl get service candlefish-website-service -n $NAMESPACE -o jsonpath='{.spec.selector.version}' || echo "blue")
+          
+          if [ "$CURRENT_ACTIVE" = "blue" ]; then
+            NEW_VERSION="green"
+          else
+            NEW_VERSION="blue"
+          fi
+          
+          echo "Current active: $CURRENT_ACTIVE"
+          echo "Deploying to: $NEW_VERSION"
+          
+          # Deploy new version
+          sed "s/VERSION_PLACEHOLDER/$NEW_VERSION/g; s/IMAGE_TAG_PLACEHOLDER/$IMAGE_TAG/g" k8s/deployment.yaml | kubectl apply -f - -n $NAMESPACE
+          
+          # Wait for new deployment to be ready
+          kubectl rollout status deployment/candlefish-website-$NEW_VERSION -n $NAMESPACE --timeout=600s
+          
+          # Run health checks on new deployment
+          kubectl wait --for=condition=ready pod -l app=candlefish-website,version=$NEW_VERSION -n $NAMESPACE --timeout=300s
+          
+          # Get new deployment endpoint for testing
+          NEW_POD=$(kubectl get pods -l app=candlefish-website,version=$NEW_VERSION -n $NAMESPACE -o jsonpath='{.items[0].metadata.name}')
+          kubectl port-forward $NEW_POD 8080:3000 -n $NAMESPACE &
+          PORT_FORWARD_PID=$!
+          
+          sleep 10
+          
+          # Test new deployment
+          curl -f http://localhost:8080/api/health || {
+            echo "Health check failed for new deployment"
+            kill $PORT_FORWARD_PID
+            exit 1
+          }
+          
+          kill $PORT_FORWARD_PID
+          
+          # Switch traffic to new version
+          kubectl patch service candlefish-website-service -n $NAMESPACE -p '{"spec":{"selector":{"version":"'$NEW_VERSION'"}}}'
+          
+          echo "Traffic switched to $NEW_VERSION"
+          
+          # Wait and verify traffic switch
+          sleep 30
+          
+          # Clean up old deployment after successful switch
+          kubectl delete deployment candlefish-website-$CURRENT_ACTIVE -n $NAMESPACE --ignore-not-found=true
+          
+          echo "Deployment completed successfully"
+
+  # Post-deployment monitoring
+  post-deployment-monitoring:
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Wait for metrics collection
+        run: sleep 120
+
+      - name: Check deployment health
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          # Get production URL
+          PROD_URL="https://candlefish.ai"
+          
+          # Check main endpoints
+          HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL/api/health")
+          HOME_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL/")
+          
+          if [ "$HEALTH_STATUS" = "200" ] && [ "$HOME_STATUS" = "200" ]; then
+            MESSAGE="✅ Production deployment successful! All health checks passed."
+            COLOR="good"
+          else
+            MESSAGE="❌ Production deployment health check failed! Health: $HEALTH_STATUS, Home: $HOME_STATUS"
+            COLOR="danger"
+          fi
+          
+          # Send Slack notification
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"$MESSAGE\", \"color\":\"$COLOR\"}" \
+            $SLACK_WEBHOOK_URL
+
+      - name: Performance baseline check
+        run: |
+          # Run lighthouse performance audit
+          npm install -g lighthouse
+          lighthouse https://candlefish.ai --only-categories=performance --chrome-flags="--headless" --output=json --output-path=performance-report.json
+          
+          # Extract performance score
+          PERFORMANCE_SCORE=$(jq '.categories.performance.score * 100' performance-report.json)
+          
+          echo "Performance score: $PERFORMANCE_SCORE"
+          
+          # Alert if performance drops below threshold
+          if (( $(echo "$PERFORMANCE_SCORE < 85" | bc -l) )); then
+            echo "Performance score below threshold!"
+            exit 1
+          fi

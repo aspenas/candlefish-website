@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-deep-navy: 13 27 42;
+    --color-slate: 27 38 59;
+    --color-mist: 65 90 119;
+    --color-foam: 224 225 221;
+    --color-sea-glow: 63 211 198;
+  }
+}
+
+@layer components {
+  .gradient-primary {
+    background: linear-gradient(135deg, #0D1B2A 0%, #415A77 100%);
+  }
+  
+  .gradient-accent {
+    background: linear-gradient(90deg, #3FD3C6 0%, #415A77 100%);
+  }
+  
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background: linear-gradient(135deg, #3FD3C6 0%, #415A77 100%);
+  }
+}
