@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: candlefish-website-service
+  labels:
+    app: candlefish-website
+    app.kubernetes.io/name: candlefish-website
+    app.kubernetes.io/component: service
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-path: /api/health
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-interval: "10"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-timeout: "5"
+    service.beta.kubernetes.io/aws-load-balancer-healthy-threshold: "2"
+    service.beta.kubernetes.io/aws-load-balancer-unhealthy-threshold: "3"
+spec:
+  type: LoadBalancer
+  selector:
+    app: candlefish-website
+    version: blue  # This will be updated during blue-green deployments
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP
+  sessionAffinity: None
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: candlefish-website-headless
+  labels:
+    app: candlefish-website
+    app.kubernetes.io/name: candlefish-website
+    app.kubernetes.io/component: headless-service
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: candlefish-website
+  ports:
+  - name: http
+    port: 3000
+    targetPort: http
+    protocol: TCP
