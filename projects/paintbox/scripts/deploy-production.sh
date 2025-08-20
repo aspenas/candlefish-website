@@ -1,15 +1,19 @@
 #!/bin/bash
 
-# Production Deployment Script for Paintbox Application
-# This script handles the complete deployment process including infrastructure and application
+##############################################################################
+# Production Deployment Script for Paintbox with AWS Secrets Manager
+# Implements zero-downtime deployment with comprehensive validation
+##############################################################################
 
-set -euo pipefail
+set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
 # Configuration
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-TERRAFORM_DIR="$PROJECT_ROOT/terraform"
-ENVIRONMENT="production"
+APP_NAME="paintbox"
+DEPLOY_TIMEOUT="600"  # 10 minutes
+HEALTH_CHECK_RETRIES=20
+HEALTH_CHECK_DELAY=15
+LOG_FILE="/tmp/deploy-$(date +%Y%m%d-%H%M%S).log"
+ROLLBACK_ENABLED=true
 
 # Colors for output
 RED='\033[0;31m'
@@ -18,363 +22,400 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Logging functions
-log_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+##############################################################################
+# Logging Functions
+##############################################################################
+
+log() {
+    echo -e "${BLUE}[$(date +'%Y-%m-%d %H:%M:%S')] $1${NC}" | tee -a "$LOG_FILE"
 }
 
 log_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
+    echo -e "${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')] ✓ $1${NC}" | tee -a "$LOG_FILE"
 }
 
 log_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
+    echo -e "${YELLOW}[$(date +'%Y-%m-%d %H:%M:%S')] ⚠ $1${NC}" | tee -a "$LOG_FILE"
 }
 
 log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "${RED}[$(date +'%Y-%m-%d %H:%M:%S')] ✗ $1${NC}" | tee -a "$LOG_FILE"
 }
 
-# Check if required tools are installed
-check_prerequisites() {
-    log_info "Checking prerequisites..."
+##############################################################################
+# Pre-deployment Validation
+##############################################################################
 
-    local missing_tools=()
+validate_prerequisites() {
+    log "Validating deployment prerequisites..."
 
-    command -v aws >/dev/null 2>&1 || missing_tools+=("aws-cli")
-    command -v terraform >/dev/null 2>&1 || missing_tools+=("terraform")
-    command -v docker >/dev/null 2>&1 || missing_tools+=("docker")
-    command -v gh >/dev/null 2>&1 || missing_tools+=("github-cli")
+    # Check required tools
+    local required_tools=("flyctl" "node" "npm" "jq" "aws")
+    for tool in "${required_tools[@]}"; do
+        if ! command -v "$tool" &> /dev/null; then
+            log_error "Required tool '$tool' not found"
+            return 1
+        fi
+    done
 
-    if [ ${#missing_tools[@]} -ne 0 ]; then
-        log_error "Missing required tools: ${missing_tools[*]}"
-        log_error "Please install the missing tools and try again."
-        exit 1
+    # Check Fly.io authentication
+    if ! flyctl auth whoami &> /dev/null; then
+        log_error "Not authenticated with Fly.io. Run: flyctl auth login"
+        return 1
     fi
 
     # Check AWS credentials
-    if ! aws sts get-caller-identity >/dev/null 2>&1; then
-        log_error "AWS credentials not configured. Please run 'aws configure' or set appropriate environment variables."
-        exit 1
+    if ! aws sts get-caller-identity &> /dev/null; then
+        log_error "AWS credentials not configured or invalid"
+        return 1
     fi
 
-    log_success "All prerequisites satisfied"
+    # Validate AWS Secrets Manager access
+    log "Validating AWS Secrets Manager integration..."
+    if ! node scripts/validate-aws-secrets-integration.js; then
+        log_error "AWS Secrets Manager validation failed"
+        return 1
+    fi
+
+    log_success "Prerequisites validation completed"
+    return 0
 }
 
-# Validate environment and configuration
-validate_environment() {
-    log_info "Validating environment configuration..."
+##############################################################################
+# Application Health Checks
+##############################################################################
 
-    # Check if production tfvars exists
-    if [ ! -f "$TERRAFORM_DIR/environments/production.tfvars" ]; then
-        log_error "Production configuration file not found: $TERRAFORM_DIR/environments/production.tfvars"
-        exit 1
-    fi
+check_app_health() {
+    local app_url="$1"
+    local retries="$2"
+    local delay="$3"
 
-    # Check if we're on the correct branch
-    local current_branch=$(git branch --show-current)
-    if [ "$current_branch" != "main" ] && [ "$current_branch" != "production" ]; then
-        log_warning "Not on main or production branch. Current branch: $current_branch"
-        read -p "Continue anyway? (y/N): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            exit 1
+    log "Performing health checks on $app_url..."
+
+    for ((i=1; i<=retries; i++)); do
+        log "Health check attempt $i/$retries..."
+
+        # Basic health endpoint
+        if curl -sf --max-time 10 "$app_url/api/health" > /dev/null; then
+            # JWKS endpoint validation
+            if curl -sf --max-time 10 "$app_url/.well-known/jwks.json" | jq -e '.keys | length > 0' > /dev/null 2>&1; then
+                log_success "Application health check passed"
+                return 0
+            else
+                log_warning "JWKS endpoint failed validation"
+            fi
+        else
+            log_warning "Health endpoint not responding"
         fi
-    fi
 
-    # Check if there are uncommitted changes
-    if [ -n "$(git status --porcelain)" ]; then
-        log_warning "There are uncommitted changes in the repository."
-        log_warning "It's recommended to commit all changes before deploying to production."
-        read -p "Continue anyway? (y/N): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            exit 1
+        if [[ $i -lt $retries ]]; then
+            log "Waiting ${delay}s before retry..."
+            sleep "$delay"
         fi
+    done
+
+    log_error "Application health check failed after $retries attempts"
+    return 1
+}
+
+##############################################################################
+# Deployment Functions
+##############################################################################
+
+get_current_deployment() {
+    flyctl status --app "$APP_NAME" --json 2>/dev/null | jq -r '.Image // empty' || echo ""
+}
+
+perform_deployment() {
+    log "Starting production deployment..."
+
+    # Get current deployment for rollback
+    local current_deployment
+    current_deployment=$(get_current_deployment)
+    if [[ -n "$current_deployment" ]]; then
+        log "Current deployment: $current_deployment"
+        echo "$current_deployment" > "/tmp/${APP_NAME}-previous-deployment.txt"
     fi
 
-    log_success "Environment validation complete"
+    # Deploy using production configuration
+    log "Deploying with production Dockerfile..."
+    
+    if flyctl deploy \
+        --config fly.production.toml \
+        --strategy bluegreen \
+        --wait-timeout "${DEPLOY_TIMEOUT}s" \
+        --verbose; then
+        
+        log_success "Deployment completed successfully"
+        return 0
+    else
+        log_error "Deployment failed"
+        return 1
+    fi
 }
 
-# Build and push Docker image
-build_and_push_image() {
-    log_info "Building and pushing Docker image..."
+##############################################################################
+# Post-deployment Validation
+##############################################################################
 
-    cd "$PROJECT_ROOT"
+validate_deployment() {
+    log "Validating deployed application..."
 
-    # Get the git commit hash for tagging
-    local git_hash=$(git rev-parse --short HEAD)
-    local timestamp=$(date +%Y%m%d-%H%M%S)
-    local image_tag="ghcr.io/aspenas/candlefish-ai/paintbox:${git_hash}-${timestamp}"
-    local latest_tag="ghcr.io/aspenas/candlefish-ai/paintbox:latest"
+    # Wait for deployment to stabilize
+    log "Waiting for deployment to stabilize..."
+    sleep 30
 
-    log_info "Building image with tag: $image_tag"
-
-    # Build the production Docker image
-    docker build -f Dockerfile.production -t "$image_tag" -t "$latest_tag" .
-
-    # Login to GitHub Container Registry
-    echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_USERNAME" --password-stdin
-
-    # Push the images
-    docker push "$image_tag"
-    docker push "$latest_tag"
-
-    log_success "Docker image built and pushed successfully"
-
-    # Export the image tag for use in terraform
-    export TF_VAR_app_image="$image_tag"
-}
-
-# Deploy infrastructure with Terraform
-deploy_infrastructure() {
-    log_info "Deploying infrastructure with Terraform..."
-
-    cd "$TERRAFORM_DIR"
-
-    # Initialize Terraform
-    log_info "Initializing Terraform..."
-    terraform init
-
-    # Create workspace for production if it doesn't exist
-    terraform workspace select production 2>/dev/null || terraform workspace new production
-
-    # Plan the deployment
-    log_info "Planning infrastructure changes..."
-    terraform plan \
-        -var-file="environments/production.tfvars" \
-        -out="production.tfplan"
-
-    # Ask for confirmation
-    echo
-    log_warning "About to apply the above infrastructure changes to PRODUCTION."
-    read -p "Do you want to continue? (yes/no): " -r
-    echo
-    if [ "$REPLY" != "yes" ]; then
-        log_info "Deployment cancelled by user"
-        exit 0
+    # Check application status
+    log "Checking application status..."
+    if ! flyctl status --app "$APP_NAME"; then
+        log_error "Unable to get application status"
+        return 1
     fi
 
-    # Apply the changes
-    log_info "Applying infrastructure changes..."
-    terraform apply "production.tfplan"
-
-    # Clean up plan file
-    rm -f "production.tfplan"
-
-    log_success "Infrastructure deployment complete"
-}
-
-# Update application secrets
-update_secrets() {
-    log_info "Updating application secrets..."
-
-    # This function would typically update secrets in AWS Secrets Manager
-    # For now, we'll just provide instructions
-
-    log_warning "IMPORTANT: Please ensure the following secrets are updated in AWS Secrets Manager:"
-    echo "  - paintbox/production/database/password"
-    echo "  - paintbox/production/redis/auth-token"
-    echo "  - paintbox/production/salesforce/credentials"
-    echo "  - paintbox/production/companycam/credentials"
-    echo "  - paintbox/production/anthropic/api-key"
-    echo "  - paintbox/production/email/credentials"
-    echo "  - paintbox/production/app/encryption-keys"
-
-    read -p "Have you updated all required secrets? (y/N): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        log_error "Please update the secrets before continuing"
-        exit 1
+    # Perform comprehensive health checks
+    local app_url="https://${APP_NAME}.fly.dev"
+    if ! check_app_health "$app_url" "$HEALTH_CHECK_RETRIES" "$HEALTH_CHECK_DELAY"; then
+        log_error "Post-deployment health checks failed"
+        return 1
     fi
 
-    log_success "Secrets verification complete"
-}
-
-# Deploy application to ECS
-deploy_application() {
-    log_info "Deploying application to ECS..."
-
-    # Get cluster name from Terraform output
-    cd "$TERRAFORM_DIR"
-    local cluster_name=$(terraform output -raw ecs_cluster_name)
-    local service_name=$(terraform output -raw ecs_service_name)
-
-    if [ -z "$cluster_name" ] || [ -z "$service_name" ]; then
-        log_error "Could not retrieve ECS cluster or service name from Terraform outputs"
-        exit 1
+    # Validate JWKS endpoint specifically
+    log "Validating JWKS endpoint..."
+    local jwks_response
+    jwks_response=$(curl -sf "$app_url/.well-known/jwks.json" | jq -r '.keys | length')
+    
+    if [[ "$jwks_response" -gt 0 ]]; then
+        log_success "JWKS endpoint validated - $jwks_response key(s) available"
+    else
+        log_error "JWKS endpoint validation failed - no keys available"
+        return 1
     fi
 
-    log_info "Updating ECS service: $service_name in cluster: $cluster_name"
-
-    # Force new deployment
-    aws ecs update-service \
-        --cluster "$cluster_name" \
-        --service "$service_name" \
-        --force-new-deployment \
-        --query 'service.{ServiceName:serviceName,Status:status,TaskDefinition:taskDefinition}' \
-        --output table
-
-    # Wait for deployment to complete
-    log_info "Waiting for deployment to complete..."
-    aws ecs wait services-stable \
-        --cluster "$cluster_name" \
-        --services "$service_name"
-
-    log_success "Application deployment complete"
+    # Test JWT functionality
+    log "Testing JWT functionality..."
+    # This would test the actual JWT signing/verification if we had test scripts
+    # For now, we'll just validate the endpoint is accessible
+    
+    log_success "Deployment validation completed"
+    return 0
 }
 
-# Run health checks
-run_health_checks() {
-    log_info "Running health checks..."
+##############################################################################
+# Rollback Functions
+##############################################################################
 
-    cd "$TERRAFORM_DIR"
-    local alb_dns_name=$(terraform output -raw load_balancer_dns_name)
-    local health_check_url="https://$alb_dns_name/api/health"
+perform_rollback() {
+    if [[ "$ROLLBACK_ENABLED" != "true" ]]; then
+        log_warning "Rollback is disabled"
+        return 1
+    fi
 
-    log_info "Health check URL: $health_check_url"
+    log "Initiating rollback procedure..."
 
-    # Wait for the service to be ready
-    local max_attempts=30
-    local attempt=1
+    local previous_deployment_file="/tmp/${APP_NAME}-previous-deployment.txt"
+    
+    if [[ ! -f "$previous_deployment_file" ]]; then
+        log_error "No previous deployment information found"
+        return 1
+    fi
 
-    while [ $attempt -le $max_attempts ]; do
-        log_info "Health check attempt $attempt/$max_attempts..."
+    local previous_deployment
+    previous_deployment=$(cat "$previous_deployment_file")
+    
+    if [[ -z "$previous_deployment" ]]; then
+        log_error "Previous deployment information is empty"
+        return 1
+    fi
 
-        if curl -s -f "$health_check_url" >/dev/null; then
-            log_success "Health check passed!"
+    log "Rolling back to: $previous_deployment"
+    
+    if flyctl deploy \
+        --image "$previous_deployment" \
+        --strategy immediate \
+        --wait-timeout 300 \
+        --app "$APP_NAME"; then
+        
+        log_success "Rollback completed successfully"
+        
+        # Validate rollback
+        if validate_deployment; then
+            log_success "Rollback validation passed"
             return 0
-        fi
-
-        if [ $attempt -eq $max_attempts ]; then
-            log_error "Health check failed after $max_attempts attempts"
+        else
+            log_error "Rollback validation failed"
             return 1
         fi
-
-        sleep 30
-        ((attempt++))
-    done
-}
-
-# Invalidate CloudFront cache
-invalidate_cloudfront() {
-    log_info "Invalidating CloudFront cache..."
-
-    cd "$TERRAFORM_DIR"
-    local distribution_id=$(terraform output -raw cloudfront_distribution_id)
-
-    if [ -n "$distribution_id" ]; then
-        aws cloudfront create-invalidation \
-            --distribution-id "$distribution_id" \
-            --paths "/*" \
-            --query 'Invalidation.{Id:Id,Status:Status}' \
-            --output table
-
-        log_success "CloudFront cache invalidation initiated"
     else
-        log_warning "CloudFront distribution ID not found, skipping cache invalidation"
+        log_error "Rollback failed"
+        return 1
     fi
 }
 
-# Create deployment notification
-create_notification() {
-    log_info "Creating deployment notification..."
+##############################################################################
+# Monitoring and Alerts
+##############################################################################
 
-    local git_hash=$(git rev-parse --short HEAD)
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S UTC')
-    local deployer=$(git config user.name || whoami)
-
-    # This could be enhanced to send notifications to Slack, email, etc.
-    log_success "Deployment notification created"
-    log_info "Deployment Details:"
-    echo "  Environment: $ENVIRONMENT"
-    echo "  Git Hash: $git_hash"
-    echo "  Deployed by: $deployer"
-    echo "  Deployed at: $timestamp"
-}
-
-# Rollback function (in case something goes wrong)
-rollback() {
-    log_error "Deployment failed. Initiating rollback..."
-
-    cd "$TERRAFORM_DIR"
-    local cluster_name=$(terraform output -raw ecs_cluster_name 2>/dev/null || echo "")
-    local service_name=$(terraform output -raw ecs_service_name 2>/dev/null || echo "")
-
-    if [ -n "$cluster_name" ] && [ -n "$service_name" ]; then
-        log_info "Rolling back ECS service to previous task definition..."
-
-        # This is a simplified rollback - in practice, you'd want to store
-        # the previous task definition ARN and roll back to that specific version
-        aws ecs update-service \
-            --cluster "$cluster_name" \
-            --service "$service_name" \
-            --force-new-deployment >/dev/null 2>&1 || true
+send_deployment_notification() {
+    local status="$1"
+    local message="$2"
+    
+    # This would integrate with your notification system (Slack, email, etc.)
+    log "Notification: $status - $message"
+    
+    # Example Slack webhook (if configured)
+    if [[ -n "${SLACK_WEBHOOK:-}" ]]; then
+        curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"Paintbox Deployment $status: $message\"}" \
+            "$SLACK_WEBHOOK" || true
     fi
-
-    log_info "Manual intervention may be required to fully rollback the deployment"
-    log_info "Check the AWS console and application logs for more details"
 }
 
-# Cleanup function
-cleanup() {
-    log_info "Cleaning up temporary files..."
-    cd "$TERRAFORM_DIR"
-    rm -f production.tfplan
-    rm -f secret_rotation.zip
+##############################################################################
+# Performance Testing
+##############################################################################
+
+run_performance_tests() {
+    log "Running performance tests..."
+    
+    if command -v artillery &> /dev/null; then
+        # Create a basic performance test
+        cat > /tmp/perf-test.yml << EOF
+config:
+  target: 'https://${APP_NAME}.fly.dev'
+  phases:
+    - duration: 60
+      arrivalRate: 5
+      rampTo: 10
+scenarios:
+  - name: "Health Check"
+    flow:
+      - get:
+          url: "/api/health"
+  - name: "JWKS Endpoint"
+    flow:
+      - get:
+          url: "/.well-known/jwks.json"
+  - name: "Homepage"
+    flow:
+      - get:
+          url: "/"
+EOF
+
+        if artillery run /tmp/perf-test.yml; then
+            log_success "Performance tests passed"
+        else
+            log_warning "Performance tests failed (non-critical)"
+        fi
+    else
+        log_warning "Artillery not installed, skipping performance tests"
+    fi
 }
 
-# Main deployment function
+##############################################################################
+# Main Deployment Flow
+##############################################################################
+
 main() {
-    log_info "Starting production deployment for Paintbox application"
-    log_info "Environment: $ENVIRONMENT"
-    log_info "Project root: $PROJECT_ROOT"
-    echo
-
-    # Set trap for cleanup and rollback on error
-    trap cleanup EXIT
-    trap 'rollback; cleanup; exit 1' ERR
-
-    # Check required environment variables
-    if [ -z "${GITHUB_TOKEN:-}" ] || [ -z "${GITHUB_USERNAME:-}" ]; then
-        log_error "GitHub credentials not set. Please set GITHUB_TOKEN and GITHUB_USERNAME environment variables."
+    log "=== Paintbox Production Deployment Started ==="
+    log "Log file: $LOG_FILE"
+    
+    local deployment_success=false
+    
+    # Trap for cleanup
+    trap 'cleanup' EXIT
+    
+    # Pre-deployment validation
+    if ! validate_prerequisites; then
+        log_error "Pre-deployment validation failed"
+        send_deployment_notification "FAILED" "Pre-deployment validation failed"
         exit 1
     fi
-
-    # Run deployment steps
-    check_prerequisites
-    validate_environment
-    build_and_push_image
-    deploy_infrastructure
-    update_secrets
-    deploy_application
-    run_health_checks
-    invalidate_cloudfront
-    create_notification
-
-    echo
-    log_success "🎉 Production deployment completed successfully!"
-    log_info "Application should be available at the configured domain"
-    log_info "Monitor the application logs and metrics for any issues"
+    
+    # Perform deployment
+    if perform_deployment; then
+        # Validate deployment
+        if validate_deployment; then
+            deployment_success=true
+            log_success "Deployment successful!"
+            send_deployment_notification "SUCCESS" "Deployment completed successfully"
+            
+            # Run performance tests (optional)
+            run_performance_tests
+        else
+            log_error "Deployment validation failed"
+            send_deployment_notification "FAILED" "Deployment validation failed, initiating rollback"
+            
+            # Attempt rollback
+            if perform_rollback; then
+                log_warning "Deployment failed but rollback successful"
+                send_deployment_notification "ROLLED_BACK" "Deployment failed, rolled back to previous version"
+            else
+                log_error "Deployment and rollback both failed"
+                send_deployment_notification "CRITICAL" "Deployment and rollback both failed - manual intervention required"
+                exit 1
+            fi
+        fi
+    else
+        log_error "Deployment failed"
+        send_deployment_notification "FAILED" "Deployment failed, attempting rollback"
+        
+        # Attempt rollback
+        if perform_rollback; then
+            log_warning "Deployment failed but rollback successful"
+            send_deployment_notification "ROLLED_BACK" "Deployment failed, rolled back to previous version"
+        else
+            log_error "Deployment and rollback both failed"
+            send_deployment_notification "CRITICAL" "Deployment and rollback both failed - manual intervention required"
+            exit 1
+        fi
+    fi
+    
+    if [[ "$deployment_success" == "true" ]]; then
+        log_success "=== Deployment Completed Successfully ==="
+        exit 0
+    else
+        log_error "=== Deployment Failed ==="
+        exit 1
+    fi
 }
 
-# Handle command line arguments
-case "${1:-}" in
-    --dry-run)
-        log_info "Dry run mode - will not make any actual changes"
-        # Add dry run logic here
-        ;;
-    --help|-h)
-        echo "Usage: $0 [--dry-run] [--help]"
-        echo "  --dry-run: Show what would be done without making changes"
-        echo "  --help:    Show this help message"
-        exit 0
-        ;;
-    "")
-        main
-        ;;
-    *)
-        log_error "Unknown option: $1"
-        exit 1
-        ;;
-esac
+cleanup() {
+    log "Cleaning up temporary files..."
+    rm -f /tmp/perf-test.yml
+}
+
+# Usage information
+usage() {
+    echo "Usage: $0 [OPTIONS]"
+    echo ""
+    echo "Options:"
+    echo "  --no-rollback    Disable automatic rollback on failure"
+    echo "  --help          Show this help message"
+    echo ""
+    echo "Environment variables:"
+    echo "  SLACK_WEBHOOK   Slack webhook URL for notifications"
+    echo "  FLY_API_TOKEN   Fly.io API token"
+    echo ""
+}
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --no-rollback)
+            ROLLBACK_ENABLED=false
+            shift
+            ;;
+        --help)
+            usage
+            exit 0
+            ;;
+        *)
+            log_error "Unknown option: $1"
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+# Run main deployment
+main

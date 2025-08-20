@@ -11,7 +11,7 @@ import { getSecretsManager } from '@/lib/services/secrets-manager';
 // Health check configuration
 const HEALTH_CHECK_CONFIG = {
   timeout: 5000, // 5 seconds
-  critical: ['database', 'redis', 'secrets'],
+  critical: ['database', 'redis', 'secrets', 'jwks'],
   optional: ['salesforce', 'companycam'],
 };
 
@@ -216,6 +216,81 @@ class HealthChecker {
     }
   }
 
+  async checkJWKS(): Promise<HealthCheckResult> {
+    const startTime = Date.now();
+
+    try {
+      // Test JWKS endpoint internally
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const jwksUrl = `${baseUrl}/.well-known/jwks.json`;
+
+      const response = await fetch(jwksUrl, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'PaintboxHealthCheck/1.0',
+        },
+        timeout: 5000,
+      });
+
+      if (!response.ok) {
+        throw new Error(`JWKS endpoint returned ${response.status}: ${response.statusText}`);
+      }
+
+      const jwks = await response.json();
+
+      if (!jwks.keys || !Array.isArray(jwks.keys)) {
+        throw new Error('JWKS response missing keys array');
+      }
+
+      const keyCount = jwks.keys.length;
+
+      if (keyCount === 0) {
+        return {
+          name: 'jwks',
+          status: 'degraded',
+          responseTime: Date.now() - startTime,
+          details: {
+            keyCount: 0,
+            endpoint_accessible: true,
+            keys_available: false,
+          },
+          error: 'No public keys available in JWKS',
+        };
+      }
+
+      // Validate key structure
+      const validKeys = jwks.keys.filter((key: any) =>
+        key.kty && key.use && key.kid && key.alg && key.n && key.e
+      );
+
+      return {
+        name: 'jwks',
+        status: validKeys.length === keyCount ? 'healthy' : 'degraded',
+        responseTime: Date.now() - startTime,
+        details: {
+          keyCount: keyCount,
+          validKeyCount: validKeys.length,
+          endpoint_accessible: true,
+          keys_available: true,
+          keyIds: jwks.keys.map((k: any) => k.kid),
+        },
+      };
+
+    } catch (error) {
+      return {
+        name: 'jwks',
+        status: 'unhealthy',
+        responseTime: Date.now() - startTime,
+        error: error instanceof Error ? error.message : 'JWKS check failed',
+        details: {
+          keyCount: 0,
+          endpoint_accessible: false,
+          keys_available: false,
+        },
+      };
+    }
+  }
+
   async checkDiskSpace(): Promise<HealthCheckResult> {
     const startTime = Date.now();
 
@@ -302,6 +377,7 @@ class HealthChecker {
       this.withTimeout(this.checkDatabase(), 'database'),
       this.withTimeout(this.checkRedis(), 'redis'),
       this.withTimeout(this.checkSecrets(), 'secrets'),
+      this.withTimeout(this.checkJWKS(), 'jwks'),
       this.withTimeout(this.checkSalesforce(), 'salesforce'),
       this.withTimeout(this.checkCompanyCam(), 'companycam'),
       this.withTimeout(this.checkDiskSpace(), 'disk_space'),
@@ -321,7 +397,7 @@ class HealthChecker {
         check = result.value;
       } else {
         // Handle timeout or other failures
-        const checkNames = ['database', 'redis', 'secrets', 'salesforce', 'companycam', 'disk_space', 'memory'];
+        const checkNames = ['database', 'redis', 'secrets', 'jwks', 'salesforce', 'companycam', 'disk_space', 'memory'];
         check = {
           name: checkNames[index],
           status: 'unhealthy',
@@ -471,6 +547,7 @@ export async function HEAD(request: NextRequest) {
       checker.checkDatabase(),
       checker.checkRedis(),
       checker.checkSecrets(),
+      checker.checkJWKS(),
     ]);
 
     const hasUnhealthy = criticalChecks.some(result =>

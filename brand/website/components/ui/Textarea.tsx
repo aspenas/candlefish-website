@@ -1,4 +1,4 @@
-import React, { forwardRef, TextareaHTMLAttributes } from 'react';
+import React, { forwardRef, TextareaHTMLAttributes, useId } from 'react';
 import { cn } from '../../utils/cn';
 
 export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -19,7 +19,8 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     required,
     ...props 
   }, ref) => {
-    const textareaId = id || `textarea-${Math.random().toString(36).substr(2, 9)}`;
+    const fallbackId = useId();
+    const textareaId = id || fallbackId;
     const errorId = error ? `${textareaId}-error` : undefined;
     const helperId = helperText ? `${textareaId}-helper` : undefined;
 

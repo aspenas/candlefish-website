@@ -6,13 +6,13 @@ const metrics = new Map<string, number>();
 const histograms = new Map<string, number[]>();
 
 // Helper function to record metrics
-export function recordMetric(name: string, value: number, labels?: Record<string, string>) {
+function recordMetric(name: string, value: number, labels?: Record<string, string>) {
   const key = labels ? `${name}{${Object.entries(labels).map(([k, v]) => `${k}="${v}"`).join(',')}}` : name;
   metrics.set(key, value);
 }
 
 // Helper function to record histogram metrics
-export function recordHistogram(name: string, value: number, labels?: Record<string, string>) {
+function recordHistogram(name: string, value: number, labels?: Record<string, string>) {
   const key = labels ? `${name}{${Object.entries(labels).map(([k, v]) => `${k}="${v}"`).join(',')}}` : name;
   const values = histograms.get(key) || [];
   values.push(value);
@@ -125,5 +125,4 @@ export async function GET() {
   }
 }
 
-// Export the metrics recording functions for use in other parts of the application
-export { recordMetric as recordCustomMetric, recordHistogram as recordCustomHistogram };
+// Note: Helper functions are defined above but not exported from route files

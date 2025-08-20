@@ -226,7 +226,7 @@ export default function HomePage() {
                 Region: <strong>US East</strong>
               </div>
               <div>
-                URL: <a href="https://paintbox.fly.dev" style={{ color: '#8b5cf6', textDecoration: 'none' }}>paintbox.fly.dev</a>
+                URL: <a href="https://paintbox.candlefish.ai" style={{ color: '#8b5cf6', textDecoration: 'none' }}>paintbox.candlefish.ai</a>
               </div>
             </div>
           </div>
