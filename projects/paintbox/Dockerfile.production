@@ -1,178 +1,50 @@
-# Paintbox Production - Multi-stage Docker Build
-# Security-focused production container with enhanced optimization and monitoring
-
-ARG NODE_VERSION=20
-ARG BUILD_ENV=production
-
-# ================================================
-# Stage 1: Base image with security updates
-# ================================================
-FROM node:${NODE_VERSION}-alpine AS base
-
-# Install security updates and required system dependencies
-RUN apk update && apk upgrade && \
-    apk add --no-cache \
-    dumb-init \
-    curl \
-    ca-certificates \
-    tzdata \
-    && rm -rf /var/cache/apk/* && \
-    update-ca-certificates
-
-# Create non-root user early for security
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
-
-# Set up workspace
-WORKDIR /app
-
-# ================================================
-# Stage 2: Dependencies installation
-# ================================================
-FROM base AS deps
-
-# Copy package files for dependency installation
-COPY package*.json ./
-COPY prisma ./prisma/
-
-# Install production dependencies only with security optimizations
-RUN npm ci --only=production --omit=dev --frozen-lockfile --ignore-scripts && \
-    npm cache clean --force
-
-# Build stage
+# Production Dockerfile with proper Next.js standalone build
 FROM node:20-alpine AS builder
+
+# Install dependencies
+RUN apk add --no-cache libc6-compat
+
 WORKDIR /app
 
-# Install security updates and build dependencies
-RUN apk update && apk upgrade && \
-    apk add --no-cache libc6-compat python3 make g++ && \
-    rm -rf /var/cache/apk/*
+# Copy package files
+COPY package*.json ./
 
-# Copy dependencies from deps stage
-COPY --from=deps /app/node_modules ./node_modules
+# Install dependencies with legacy peer deps
+RUN npm install --legacy-peer-deps
+
+# Copy app files
 COPY . .
 
-# Remove sensitive files and directories
-RUN rm -f .env* && \
-    rm -rf logs/* coverage/ __tests__/ docs/ && \
-    rm -rf .git .gitignore .github
-
-# Build application with optimizations
+# Build the application with standalone output
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
-ENV NODE_OPTIONS="--max-old-space-size=8192"
+RUN npm run build
 
-RUN npm run build && \
-    npm run build:websocket
-
-# Runtime dependencies stage
-FROM node:20-alpine AS runtime-deps
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production --omit=dev --frozen-lockfile && \
-    npm cache clean --force
-
-# Production stage
+# Production image
 FROM node:20-alpine AS runner
 
-# Install security updates and runtime utilities
-RUN apk update && apk upgrade && \
-    apk add --no-cache \
-        dumb-init \
-        curl \
-        ca-certificates \
-        tzdata && \
-    rm -rf /var/cache/apk/* && \
-    update-ca-certificates
+RUN apk add --no-cache libc6-compat
 
-# Set production environment
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
-ENV TZ=UTC
-
-# Create application directory
 WORKDIR /app
 
-# Create non-root user with specific IDs for consistency
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Copy runtime dependencies
-COPY --from=runtime-deps --chown=nextjs:nodejs /app/node_modules ./node_modules
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
 
-# Copy built application from builder stage
+# Copy built application from builder
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/dist ./dist
 
-# Copy required application files
-COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
-COPY --from=builder --chown=nextjs:nodejs /app/bart3.20.xlsx ./bart3.20.xlsx
-
-# Create secure directories with proper permissions
-RUN mkdir -p logs tmp uploads cache && \
-    chown -R nextjs:nodejs logs tmp uploads cache && \
-    chmod 750 logs tmp uploads cache
-
-# Create startup script for graceful handling
-COPY --chown=nextjs:nodejs <<'EOF' /app/start.sh
-#!/bin/sh
-set -e
-
-# Health check for required files
-if [ ! -f "/app/server.js" ]; then
-    echo "ERROR: server.js not found"
-    exit 1
-fi
-
-# Start WebSocket server in background if available
-if [ -f "/app/dist/websocket-server.js" ]; then
-    echo "Starting WebSocket server..."
-    node /app/dist/websocket-server.js &
-    WS_PID=$!
-    echo "WebSocket server started with PID: $WS_PID"
-fi
-
-# Start main application
-echo "Starting Next.js application..."
-exec node server.js
-EOF
-
-RUN chmod +x /app/start.sh
-
-# Security hardening
-RUN chmod -R o-rwx /app && \
-    chown -R nextjs:nodejs /app && \
-    rm -rf /tmp/* /var/tmp/* /root/.npm /home/nextjs/.npm
-
-# Set up volumes for persistent data
-VOLUME ["/app/logs", "/app/tmp", "/app/uploads", "/app/cache"]
-
-# Switch to non-root user
 USER nextjs
 
-# Enhanced health check with retry logic
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:3000/api/health || exit 1
+EXPOSE 8080
 
-# Expose port
-EXPOSE 3000
+ENV PORT=8080
+ENV HOSTNAME="0.0.0.0"
 
-# Use dumb-init for proper signal handling
-ENTRYPOINT ["dumb-init", "--"]
-
-# Start application with custom script
-CMD ["/app/start.sh"]
-
-# Metadata labels for better container management
-LABEL maintainer="Paintbox Team" \
-      version="1.0" \
-      description="Paintbox - Professional Painting Estimate Application" \
-      org.opencontainers.image.source="https://github.com/aspenas/candlefish-ai" \
-      org.opencontainers.image.vendor="Paintbox" \
-      org.opencontainers.image.title="Paintbox Frontend" \
-      org.opencontainers.image.description="Next.js application for painting estimates" \
-      org.opencontainers.image.licenses="MIT"
+# Use the Next.js standalone server
+CMD ["node", "server.js"]

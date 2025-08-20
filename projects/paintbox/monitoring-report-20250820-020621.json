@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-08-20T08:06:45Z",
+  "staging_url": "https://paintbox.fly.dev",
+  "status": "monitoring",
+  "checks_performed": {
+    "health": true,
+    "endpoints": true,
+    "fly_metrics": true
+  },
+  "next_check": ""
+}

@@ -132,11 +132,45 @@ jobs:
             projects/paintbox/coverage/
             projects/paintbox/test-results/
 
+  # AWS Validation
+  aws-validation:
+    name: Validate AWS Integration
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: projects/paintbox/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Validate AWS Secrets Manager Integration
+        run: |
+          echo "Validating AWS Secrets Manager access..."
+          if ! node scripts/validate-aws-secrets-integration.js; then
+            echo "::error::AWS Secrets Manager validation failed"
+            exit 1
+          fi
+          echo "✓ AWS validation passed"
+
   # Build Application
   build:
     name: Build Application
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, aws-validation]
     outputs:
       image-tag: ${{ steps.meta.outputs.tags }}
     steps:
@@ -158,11 +192,6 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-
-      - name: Fetch secrets from AWS
-        run: |
-          # Fetch all required secrets
-          aws secretsmanager get-secret-value --secret-id paintbox/production --query SecretString --output text > .env.production
 
       - name: Build Next.js application
         run: |
@@ -201,7 +230,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: projects/paintbox
-          file: projects/paintbox/Dockerfile.fly.simple
+          file: projects/paintbox/Dockerfile.production
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -236,53 +265,52 @@ jobs:
       - name: Setup Fly.io CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Deploy to Fly.io
+      - name: Deploy with production configuration
         run: |
           cd projects/paintbox
-          flyctl deploy \
-            --app paintbox-app \
-            --image ${{ needs.build.outputs.image-tag }} \
-            --strategy immediate \
-            --wait-timeout 300
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-
-      - name: Check deployment health
-        run: |
-          cd projects/paintbox
-
-          # Wait for deployment to stabilize
-          sleep 30
-
-          # Check app status
-          flyctl status --app paintbox-app
-
-          # Check health endpoint
-          max_attempts=10
-          attempt=0
-
-          while [ $attempt -lt $max_attempts ]; do
-            if curl -f https://paintbox-app.fly.dev/api/health; then
-              echo "Health check passed"
-              break
-            fi
-
-            attempt=$((attempt + 1))
-            echo "Health check attempt $attempt failed, retrying..."
-            sleep 10
-          done
-
-          if [ $attempt -eq $max_attempts ]; then
-            echo "Health check failed after $max_attempts attempts"
+          
+          # Use production deployment script for zero-downtime deployment
+          chmod +x scripts/deploy-production.sh
+          
+          # Run production deployment with comprehensive validation
+          if ! scripts/deploy-production.sh; then
+            echo "::error::Production deployment failed"
             exit 1
           fi
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
 
-      - name: Run smoke tests
+      - name: Comprehensive Post-Deployment Validation
         run: |
-          # Basic smoke tests
-          curl -f https://paintbox-app.fly.dev/ || exit 1
-          curl -f https://paintbox-app.fly.dev/api/health || exit 1
-        continue-on-error: true
+          cd projects/paintbox
+          
+          # Make validation script executable
+          chmod +x scripts/validate-deployment.sh
+          
+          # Run comprehensive validation
+          if ! scripts/validate-deployment.sh --app-url https://paintbox.fly.dev; then
+            echo "::warning::Post-deployment validation failed"
+            
+            # Trigger rollback if validation fails
+            chmod +x scripts/rollback-deployment.sh
+            echo "Triggering automatic rollback..."
+            
+            if scripts/rollback-deployment.sh --emergency; then
+              echo "::error::Deployment failed but rollback successful"
+              exit 1
+            else
+              echo "::error::Deployment and rollback both failed - manual intervention required"
+              exit 1
+            fi
+          fi
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          FORCE_ROLLBACK: "true"
 
   # Post-deployment monitoring
   monitor:
@@ -352,50 +380,55 @@ jobs:
           webhook_url: ${{ secrets.SLACK_WEBHOOK }}
         continue-on-error: true
 
-  # Rollback on failure
-  rollback:
-    name: Rollback on Failure
+  # Emergency Rollback (only on critical failures)
+  emergency-rollback:
+    name: Emergency Rollback
     runs-on: ubuntu-latest
-    needs: [deploy, monitor]
-    if: failure()
+    needs: [deploy]
+    if: failure() && needs.deploy.result == 'failure'
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup Fly.io CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Rollback deployment
+      - name: Execute Emergency Rollback
         run: |
           cd projects/paintbox
-
-          echo "Rolling back to previous version..."
-
-          # Get the previous successful deployment
-          flyctl releases list --app paintbox-app --json > releases.json
-
-          # Find the last successful release
-          previous_version=$(jq -r '.[] | select(.Status == "complete") | .Version' releases.json | head -2 | tail -1)
-
-          if [ -n "$previous_version" ]; then
-            echo "Rolling back to version $previous_version"
-            flyctl deploy --app paintbox-app --image-label v$previous_version
+          
+          # Make rollback script executable
+          chmod +x scripts/rollback-deployment.sh
+          
+          # Execute emergency rollback
+          echo "Executing emergency rollback due to deployment failure..."
+          
+          if scripts/rollback-deployment.sh --emergency; then
+            echo "Emergency rollback completed successfully"
           else
-            echo "No previous version found for rollback"
+            echo "::error::Emergency rollback failed - manual intervention required"
+            exit 1
           fi
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          FORCE_ROLLBACK: "true"
 
-      - name: Notify rollback
+      - name: Critical Failure Notification
         uses: 8398a7/action-slack@v3
         with:
           status: custom
           custom_payload: |
             {
-              text: "⚠️ Paintbox deployment rolled back",
+              text: "🚨 CRITICAL: Paintbox deployment failed",
               attachments: [{
-                color: 'warning',
-                text: `Deployment to ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }} was rolled back due to failures`
+                color: 'danger',
+                text: `Emergency rollback triggered for ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }} deployment`,
+                fields: [
+                  { title: 'Commit', value: '${{ github.sha }}', short: true },
+                  { title: 'Author', value: '${{ github.actor }}', short: true }
+                ]
               }]
             }
           webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        if: always()
         continue-on-error: true

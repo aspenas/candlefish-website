@@ -20,7 +20,16 @@ const customJestConfig = {
     '^@/utils/(.*)$': '<rootDir>/utils/$1',
     '^@/types/(.*)$': '<rootDir>/types/$1',
     '^@/store/(.*)$': '<rootDir>/store/$1',
+    '^@/app/(.*)$': '<rootDir>/app/$1',
   },
+
+  // Transform ignore patterns for ES modules that need to be processed
+  transformIgnorePatterns: [
+    'node_modules/(?!(graphql-ws|@apollo/client|graphql-tag|@aws-sdk|jose|uuid)/)',
+  ],
+
+  // Force TypeScript files to be treated as ES modules
+  preset: undefined, // Let next/jest handle everything
 
   // Test patterns
   testMatch: [
@@ -124,13 +133,43 @@ const customJestConfig = {
       setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
     },
 
-    // Backend API tests
+    // API tests (includes auth, health, etc.)
     {
-      displayName: 'Backend API',
+      displayName: 'API Tests',
+      testMatch: [
+        '<rootDir>/__tests__/api/**/*.{test,spec}.{js,ts}',
+      ],
+      testEnvironment: 'node',
+      setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+    },
+
+    // Backend GraphQL tests
+    {
+      displayName: 'Backend GraphQL',
       testMatch: [
         '<rootDir>/apollo-graphos/subgraph-estimates/src/__tests__/**/*.{test,spec}.{js,ts}',
       ],
       testEnvironment: 'node',
+    },
+
+    // Security tests
+    {
+      displayName: 'Security Tests',
+      testMatch: [
+        '<rootDir>/__tests__/security/**/*.{test,spec}.{js,ts}',
+      ],
+      testEnvironment: 'node',
+      setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+    },
+
+    // Unit tests
+    {
+      displayName: 'Unit Tests',
+      testMatch: [
+        '<rootDir>/__tests__/unit/**/*.{test,spec}.{js,ts,tsx}',
+      ],
+      testEnvironment: 'node',
+      setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
     },
 
     // Integration tests
@@ -141,6 +180,7 @@ const customJestConfig = {
       ],
       testEnvironment: 'node',
       testTimeout: 30000,
+      setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
     },
 
     // Performance tests
