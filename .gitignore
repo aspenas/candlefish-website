@@ -106,3 +106,4 @@ node_modules/
 .env*
 !.env.example
 !.env.*.example
+performance-results.json
