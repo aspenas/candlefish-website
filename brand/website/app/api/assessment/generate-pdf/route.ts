@@ -290,7 +290,7 @@ function generateReportHTML(score: any, portrait: any, sessionId: string): strin
 
   <div class="footer">
     <p>© ${new Date().getFullYear()} Candlefish. This assessment provides operational insights based on your responses.</p>
-    <p style="margin-top: 10px;">For consultation: team@candlefish.ai</p>
+    <p style="margin-top: 10px;">For consultation: hello@candlefish.ai</p>
   </div>
 </body>
 </html>

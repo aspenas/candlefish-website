@@ -79,7 +79,7 @@ const Hero: React.FC<HeroProps> = ({
               <Button
                 size="lg"
                 className="group"
-                onClick={primaryCTA.onClick}
+                onClick={primaryCTA.onClick || (() => window.location.href = primaryCTA.href)}
               >
                 {primaryCTA.text}
                 <ArrowRightIcon className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -89,7 +89,7 @@ const Hero: React.FC<HeroProps> = ({
                 variant="outline"
                 size="lg"
                 className="border-foam/20 text-foam hover:bg-foam/10"
-                onClick={secondaryCTA.onClick}
+                onClick={secondaryCTA.onClick || (() => window.location.href = secondaryCTA.href)}
               >
                 <PlayIcon className="mr-2 h-4 w-4" />
                 {secondaryCTA.text}
