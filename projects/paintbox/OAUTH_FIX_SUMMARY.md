@@ -25,7 +25,7 @@
 The application is now correctly configured, but you still need to add the redirect URI to Google Cloud Console:
 
 1. Go to: https://console.cloud.google.com/apis/credentials
-2. Click on OAuth Client: `***REMOVED***`
+2. Click on OAuth Client: `641173075272-vu85i613rarruqsfst59qve7bvvrrd2s.apps.googleusercontent.com`
 3. Add this Authorized redirect URI:
    ```
    https://paintbox.fly.dev/api/auth/callback/google

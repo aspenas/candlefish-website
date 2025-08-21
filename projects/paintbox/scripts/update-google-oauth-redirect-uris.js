@@ -13,7 +13,7 @@ const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client
 const secretsManager = new SecretsManagerClient({ region: 'us-east-1' });
 
 // OAuth Client Configuration
-const OAUTH_CLIENT_ID = '***REMOVED***';
+const OAUTH_CLIENT_ID = '641173075272-vu85i613rarruqsfst59qve7bvvrrd2s.apps.googleusercontent.com';
 const PROJECT_ID = 'l0-candlefish';
 const CORRECT_REDIRECT_URI = 'https://paintbox.fly.dev/api/auth/callback/google';
 

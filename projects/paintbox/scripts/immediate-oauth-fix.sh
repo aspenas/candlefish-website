@@ -19,8 +19,8 @@ NC='\033[0m' # No Color
 echo -e "${YELLOW}Step 1: Verifying OAuth Credentials${NC}"
 echo "--------------------------------------"
 
-CLIENT_ID="***REMOVED***"
-CLIENT_SECRET="***REMOVED***"
+CLIENT_ID="[REDACTED_GOOGLE_CLIENT_ID]"
+CLIENT_SECRET="[REDACTED_GOOGLE_CLIENT_SECRET]"
 
 # Check current settings
 CURRENT_CLIENT_ID=$(fly secrets list --app paintbox | grep GOOGLE_CLIENT_ID | head -1 || echo "")
@@ -33,7 +33,7 @@ else
         GOOGLE_CLIENT_ID="$CLIENT_ID" \
         GOOGLE_CLIENT_SECRET="$CLIENT_SECRET" \
         --app paintbox
-    
+
     echo -e "${GREEN}✓ OAuth credentials updated${NC}"
     echo "Waiting for app to restart..."
     sleep 10
@@ -124,7 +124,7 @@ echo ""
 
 # Optional: Try to open Google Cloud Console
 echo -e "${YELLOW}Opening Google Cloud Console...${NC}"
-open "https://console.cloud.google.com/apis/credentials/oauthclient/***REMOVED***?project=l0-candlefish" 2>/dev/null || echo "Please open the URL manually"
+open "https://console.cloud.google.com/apis/credentials/oauthclient/[REDACTED_CLIENT_ID]?project=l0-candlefish" 2>/dev/null || echo "Please open the URL manually"
 
 echo ""
 echo -e "${GREEN}===================================="

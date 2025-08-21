@@ -10,7 +10,7 @@
 const https = require('https');
 const { URL } = require('url');
 
-const OAUTH_CLIENT_ID = '***REMOVED***';
+const OAUTH_CLIENT_ID = '641173075272-vu85i613rarruqsfst59qve7bvvrrd2s.apps.googleusercontent.com';
 const REDIRECT_URI = 'https://paintbox.candlefish.ai/api/auth/callback/google';
 const APP_BASE_URL = 'https://paintbox.candlefish.ai';
 

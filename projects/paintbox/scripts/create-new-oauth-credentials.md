@@ -75,7 +75,7 @@ Once you have the new credentials, I'll help you:
 ## Current vs New Credentials
 
 ### Current (patrick.smith@gmail.com):
-- Client ID: `***REMOVED***`
+- Client ID: `641173075272-vu85i613rarruqsfst59qve7bvvrrd2s.apps.googleusercontent.com`
 - Created by: patrick.smith@gmail.com
 - Status: Working, will keep as backup
 

@@ -273,7 +273,7 @@ const securityHeaders = {
 
 **Issue:**
 ```
-GOOGLE_CLIENT_SECRET=***REMOVED***
+GOOGLE_CLIENT_SECRET=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
 NEXTAUTH_SECRET=production-secret-key-do-not-expose...
 ```
 

@@ -2,7 +2,7 @@
 
 ## Current Status ✅
 - **Test Result**: Redirect URI appears to be configured correctly
-- **Client ID**: `***REMOVED***`
+- **Client ID**: `[REDACTED_GOOGLE_CLIENT_ID]`
 - **Project**: `l0-candlefish`
 - **Primary Redirect URI**: `https://paintbox.fly.dev/api/auth/callback/google`
 
@@ -17,7 +17,7 @@ The automated test showed:
 ### 1. Access Google Cloud Console
 1. Go to: https://console.cloud.google.com/apis/credentials
 2. Select project: **l0-candlefish**
-3. Find OAuth 2.0 Client ID: `***REMOVED***`
+3. Find OAuth 2.0 Client ID: `[REDACTED_GOOGLE_CLIENT_ID]`
 
 ### 2. Update Authorized Redirect URIs
 Click the edit button (pencil icon) and ensure these URIs are configured:
@@ -42,7 +42,7 @@ Click **"Save"** to apply the changes.
 ### Test the OAuth Flow
 ```bash
 # Test the primary redirect URI
-curl -I "https://accounts.google.com/o/oauth2/v2/auth?client_id=***REMOVED***&redirect_uri=https%3A%2F%2Fpaintbox.fly.dev%2Fapi%2Fauth%2Fcallback%2Fgoogle&response_type=code&scope=openid%20profile%20email&state=test"
+curl -I "https://accounts.google.com/o/oauth2/v2/auth?client_id=[REDACTED_CLIENT_ID]&redirect_uri=https%3A%2F%2Fpaintbox.fly.dev%2Fapi%2Fauth%2Fcallback%2Fgoogle&response_type=code&scope=openid%20profile%20email&state=test"
 
 # Expected: HTTP 302 (redirect to Google login)
 ```
@@ -58,12 +58,12 @@ Based on AWS Secrets Manager (`candlefish/google-oauth2-config`):
 ```json
 {
   "web": {
-    "client_id": "***REMOVED***",
+    "client_id": "[REDACTED_GOOGLE_CLIENT_ID]",
     "project_id": "l0-candlefish",
     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
     "token_uri": "https://oauth2.googleapis.com/token",
     "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-    "client_secret": "***REMOVED***"
+    "client_secret": "[REDACTED_GOOGLE_CLIENT_SECRET]"
   }
 }
 ```

@@ -54,7 +54,7 @@ Add the correct redirect URIs to your Google OAuth 2.0 Client ID configuration:
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
 2. Select your project
-3. Click on OAuth 2.0 Client ID: `***REMOVED***`
+3. Click on OAuth 2.0 Client ID: `641173075272-vu85i613rarruqsfst59qve7bvvrrd2s.apps.googleusercontent.com`
 4. Add these Authorized redirect URIs:
    ```
    https://paintbox.fly.dev/api/auth/callback/google
