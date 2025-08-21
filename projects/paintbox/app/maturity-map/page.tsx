@@ -217,7 +217,7 @@ export default function MaturityMapPage() {
   }
 
   return (
-    <div className="min-h-screen bg-paintbox-background dark:bg-paintbox-background-dark">
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--color-paintbox-background)' }}>
       <div className="max-w-4xl mx-auto px-6 py-12">
         {/* Header */}
         <div className="text-center mb-12">
@@ -226,10 +226,10 @@ export default function MaturityMapPage() {
               <FileText className="w-8 h-8 text-white" />
             </div>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-paintbox-text dark:text-paintbox-text-dark mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4" style={{ color: 'var(--color-paintbox-text)' }}>
             Digital <span className="paintbox-gradient-text">Maturity Assessment</span>
           </h1>
-          <p className="text-xl text-paintbox-text-muted dark:text-paintbox-text-muted-dark max-w-2xl mx-auto">
+          <p className="text-xl max-w-2xl mx-auto" style={{ color: 'var(--color-paintbox-text-muted)' }}>
             Discover your current digital transformation level and get a personalized roadmap for growth.
           </p>
         </div>
@@ -237,14 +237,14 @@ export default function MaturityMapPage() {
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-paintbox-text dark:text-paintbox-text-dark">
+            <span className="text-sm font-medium" style={{ color: 'var(--color-paintbox-text)' }}>
               Question {currentQuestionIndex + 1} of {assessmentQuestions.length}
             </span>
-            <span className="text-sm text-paintbox-text-muted dark:text-paintbox-text-muted-dark">
+            <span className="text-sm" style={{ color: 'var(--color-paintbox-text-muted)' }}>
               {Math.round(progress)}% Complete
             </span>
           </div>
-          <div className="w-full bg-gray-200 dark:bg-paintbox-border-dark rounded-full h-2">
+          <div className="w-full rounded-full h-2" style={{ backgroundColor: 'var(--color-paintbox-border)' }}>
             <div
               className="bg-gradient-to-r from-paintbox-brand to-paintbox-accent h-2 rounded-full transition-all duration-300"
               style={{ width: `${progress}%` }}
@@ -255,13 +255,13 @@ export default function MaturityMapPage() {
         {/* Question Card */}
         <div className="paintbox-card p-8 mb-8">
           <div className="mb-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-paintbox-brand/10 dark:bg-paintbox-brand/20 text-paintbox-brand rounded-full text-sm font-medium mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 text-paintbox-brand rounded-full text-sm font-medium mb-4" style={{ backgroundColor: 'color-mix(in oklab, var(--color-paintbox-brand) 10%, transparent)' }}>
               {currentQuestion.category}
             </div>
-            <h2 className="text-2xl font-bold text-paintbox-text dark:text-paintbox-text-dark mb-3">
+            <h2 className="text-2xl font-bold mb-3" style={{ color: 'var(--color-paintbox-text)' }}>
               {currentQuestion.question}
             </h2>
-            <p className="text-paintbox-text-muted dark:text-paintbox-text-muted-dark">
+            <p style={{ color: 'var(--color-paintbox-text-muted)' }}>
               {currentQuestion.description}
             </p>
           </div>
@@ -271,11 +271,19 @@ export default function MaturityMapPage() {
             {currentQuestion.options.map((option) => (
               <label
                 key={option.value}
-                className={`block cursor-pointer transition-all duration-200 ${
+                className={`block cursor-pointer transition-all duration-200 rounded-lg p-4 ${
                   answers[currentQuestion.id] === option.value
-                    ? 'ring-2 ring-paintbox-brand bg-paintbox-brand/5 dark:bg-paintbox-brand/10'
-                    : 'hover:bg-gray-50 dark:hover:bg-paintbox-surface-dark'
-                } border border-paintbox-border dark:border-paintbox-border-dark rounded-lg p-4`}
+                    ? 'ring-2 ring-paintbox-brand'
+                    : ''
+                }`}
+                style={{
+                  borderColor: 'var(--color-paintbox-border)',
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                  backgroundColor: answers[currentQuestion.id] === option.value
+                    ? 'color-mix(in oklab, var(--color-paintbox-brand) 5%, transparent)'
+                    : 'transparent'
+                }}
               >
                 <input
                   type="radio"
@@ -286,20 +294,26 @@ export default function MaturityMapPage() {
                   className="sr-only"
                 />
                 <div className="flex items-start gap-3">
-                  <div className={`w-5 h-5 border-2 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                    answers[currentQuestion.id] === option.value
-                      ? 'border-paintbox-brand bg-paintbox-brand'
-                      : 'border-gray-300 dark:border-paintbox-border-dark'
-                  }`}>
+                  <div
+                    className="w-5 h-5 border-2 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                    style={{
+                      borderColor: answers[currentQuestion.id] === option.value
+                        ? 'var(--color-paintbox-brand)'
+                        : 'var(--color-paintbox-border)',
+                      backgroundColor: answers[currentQuestion.id] === option.value
+                        ? 'var(--color-paintbox-brand)'
+                        : 'transparent'
+                    }}
+                  >
                     {answers[currentQuestion.id] === option.value && (
                       <div className="w-2 h-2 bg-white rounded-full"></div>
                     )}
                   </div>
                   <div className="flex-1">
-                    <div className="font-semibold text-paintbox-text dark:text-paintbox-text-dark mb-1">
+                    <div className="font-semibold mb-1" style={{ color: 'var(--color-paintbox-text)' }}>
                       {option.label}
                     </div>
-                    <div className="text-sm text-paintbox-text-muted dark:text-paintbox-text-muted-dark">
+                    <div className="text-sm" style={{ color: 'var(--color-paintbox-text-muted)' }}>
                       {option.description}
                     </div>
                   </div>
@@ -319,16 +333,20 @@ export default function MaturityMapPage() {
             disabled={currentQuestionIndex === 0}
             className={`paintbox-btn ${
               currentQuestionIndex === 0
-                ? 'opacity-50 cursor-not-allowed bg-gray-200 dark:bg-paintbox-border-dark text-gray-500'
+                ? 'opacity-50 cursor-not-allowed'
                 : 'paintbox-btn-secondary'
             }`}
+            style={currentQuestionIndex === 0 ? {
+              backgroundColor: 'var(--color-paintbox-border)',
+              color: 'var(--color-paintbox-text-muted)'
+            } : {}}
           >
             Previous
           </button>
 
           <div className="flex items-center gap-2">
             {!isAnswered && (
-              <div className="flex items-center gap-2 text-sm text-paintbox-text-muted dark:text-paintbox-text-muted-dark">
+              <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--color-paintbox-text-muted)' }}>
                 <AlertCircle className="w-4 h-4" />
                 Please select an answer
               </div>
@@ -340,9 +358,13 @@ export default function MaturityMapPage() {
             disabled={!isAnswered}
             className={`paintbox-btn ${
               !isAnswered
-                ? 'opacity-50 cursor-not-allowed bg-gray-200 dark:bg-paintbox-border-dark text-gray-500'
+                ? 'opacity-50 cursor-not-allowed'
                 : 'paintbox-btn-primary'
             }`}
+            style={!isAnswered ? {
+              backgroundColor: 'var(--color-paintbox-border)',
+              color: 'var(--color-paintbox-text-muted)'
+            } : {}}
           >
             {currentQuestionIndex === assessmentQuestions.length - 1 ? 'View Results' : 'Next'}
             <ChevronRight className="w-4 h-4" />

@@ -58,9 +58,9 @@ const Navigation: React.FC = () => {
               Workshop
             </Link>
             <Link
-              href="/assessment"
+              href="/maturity-map"
               className={`text-sm font-light transition-colors ${
-                pathname === '/assessment' ? 'text-[#3FD3C6]' : 'text-[#E0E1DD] hover:text-[#3FD3C6]'
+                pathname === '/maturity-map' || pathname === '/assessment' ? 'text-[#3FD3C6]' : 'text-[#E0E1DD] hover:text-[#3FD3C6]'
               }`}
             >
               Assessment
@@ -135,7 +135,7 @@ const Navigation: React.FC = () => {
               Workshop
             </Link>
             <Link
-              href="/assessment"
+              href="/maturity-map"
               className="block text-[#E0E1DD] hover:text-[#3FD3C6] transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >

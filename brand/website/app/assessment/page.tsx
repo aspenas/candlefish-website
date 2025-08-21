@@ -1,47 +1,21 @@
 'use client';
 
-import React from 'react';
-import { AssessmentForm } from '../../components/forms/AssessmentForm';
-import { AssessmentResult } from '../../types/api';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function AssessmentPage() {
-  const handleAssessmentComplete = (result: AssessmentResult) => {
-    // Track analytics event
-    if (typeof window !== 'undefined' && (window as any).gtag) {
-      (window as any).gtag('event', 'assessment_complete', {
-        event_category: 'engagement',
-        event_label: 'maturity_assessment',
-        custom_parameters: {
-          overall_score: result.overall.score,
-          maturity_level: result.overall.level
-        }
-      });
-    }
+  const router = useRouter();
 
-    // Could also redirect to results page or trigger email
-    console.log('Assessment completed:', result);
-  };
-
-  const handleAssessmentSubmit = (answers: any[]) => {
-    // Track analytics event
-    if (typeof window !== 'undefined' && (window as any).gtag) {
-      (window as any).gtag('event', 'assessment_submit', {
-        event_category: 'engagement',
-        event_label: 'maturity_assessment'
-      });
-    }
-
-    // Submit to API
-    console.log('Assessment submitted:', answers);
-  };
+  useEffect(() => {
+    // Redirect to the maturity-map page which has the proper dark theme
+    router.replace('/maturity-map');
+  }, [router]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-foam/5 to-sea-glow/5 py-12">
-      <AssessmentForm
-        assessmentId="maturity-assessment"
-        onComplete={handleAssessmentComplete}
-        onSubmit={handleAssessmentSubmit}
-      />
+    <div className="min-h-screen bg-gradient-to-b from-[#0D1B2A] via-[#1B263B] to-[#1C1C1C] flex items-center justify-center">
+      <div className="text-center">
+        <p className="text-[#3FD3C6] text-lg">Redirecting to assessment...</p>
+      </div>
     </div>
   );
 }
