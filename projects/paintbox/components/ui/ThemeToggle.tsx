@@ -1,8 +1,12 @@
+'use client'
 import React from 'react';
 
 export function ThemeToggle() {
   const [isDark, setIsDark] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
+
   React.useEffect(() => {
+    setMounted(true);
     const stored = localStorage.getItem('pb-theme');
     if (stored === 'dark') {
       document.documentElement.classList.add('theme-dark');
@@ -21,6 +25,19 @@ export function ThemeToggle() {
       localStorage.setItem('pb-theme', 'light');
     }
   };
+
+  // Prevent hydration mismatch by not rendering until mounted
+  if (!mounted) {
+    return (
+      <button
+        className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-[8px] border border-[var(--color-paintbox-border)] bg-[var(--color-paintbox-surface)] hover:brightness-95"
+        aria-label="Toggle dark mode"
+        disabled
+      >
+        Theme
+      </button>
+    );
+  }
 
   return (
     <button

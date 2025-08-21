@@ -168,7 +168,7 @@ export default function RootLayout({
 
               <footer className="mt-12 border-t border-[var(--color-paintbox-border)]/70">
                 <div className="mx-auto max-w-7xl px-6 py-6 flex items-center justify-between">
-                  <div className="text-sm text-[var(--color-paintbox-text-muted)]">© {new Date().getFullYear()} Paintbox</div>
+                  <div className="text-sm text-[var(--color-paintbox-text-muted)]">© 2025 Paintbox</div>
                   <div className="text-sm text-[var(--color-paintbox-text-muted)]">Made by <span className="font-medium">Candlefish.ai</span></div>
                 </div>
               </footer>
