@@ -18,8 +18,7 @@ const nextConfig = {
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
 
-  // Build optimizations
-  swcMinify: true,
+  // Build optimizations (swcMinify is default in Next.js 15)
   modularizeImports: {
     '@heroicons/react/24/outline': {
       transform: '@heroicons/react/24/outline/{{member}}',
@@ -254,14 +253,11 @@ const nextConfig = {
     return config;
   },
 
+  // Server external packages (moved from experimental)
+  serverExternalPackages: ['@aws-sdk/client-secrets-manager'],
+
   // Experimental features
   experimental: {
-    // Server components optimizations
-    serverComponentsExternalPackages: ['@aws-sdk/client-secrets-manager'],
-
-    // Instrumentation for monitoring
-    instrumentationHook: true,
-
     // Performance optimizations
     optimizePackageImports: ['@heroicons/react', 'lucide-react'],
   },
