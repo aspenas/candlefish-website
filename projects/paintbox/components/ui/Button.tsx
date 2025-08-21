@@ -1,12 +1,14 @@
 import React from 'react';
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'outline';
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'outline' | 'aurora';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   asChild?: boolean;
+  icon?: React.ReactNode;
+  iconPosition?: 'left' | 'right';
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -15,6 +17,8 @@ export const Button: React.FC<ButtonProps> = ({
   size = 'md',
   className = '',
   asChild = false,
+  icon,
+  iconPosition = 'left',
   ...props
 }) => {
   const radius = 'rounded-[var(--radius-2)]';
@@ -34,7 +38,9 @@ export const Button: React.FC<ButtonProps> = ({
     outline:
       'text-[var(--color-paintbox-text)] border border-[var(--color-paintbox-border)] bg-transparent hover:bg-[color-mix(in_oklab,_var(--color-paintbox-accent)_8%,_transparent)]',
     ghost:
-      'text-[var(--color-paintbox-text)] hover:bg-[color-mix(in_oklab,_var(--color-paintbox-accent-2)_8%,_transparent)]'
+      'text-[var(--color-paintbox-text)] hover:bg-[color-mix(in_oklab,_var(--color-paintbox-accent-2)_8%,_transparent)]',
+    aurora:
+      'text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 transition-all duration-200'
   };
 
   const classes = `${base} ${sizeClasses[size]} ${variants[variant]} ${className}`;
@@ -49,7 +55,9 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <button className={classes} {...props}>
+      {icon && iconPosition === 'left' && <span className="mr-2">{icon}</span>}
       {children}
+      {icon && iconPosition === 'right' && <span className="ml-2">{icon}</span>}
     </button>
   );
 };

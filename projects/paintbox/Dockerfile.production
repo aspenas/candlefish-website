@@ -35,8 +35,9 @@ ENV SKIP_STATIC_OPTIMIZATION=1
 ENV DISABLE_ESLINT=1
 ENV DISABLE_TYPESCRIPT_CHECK=1
 
-# Build with memory optimization
-RUN NODE_OPTIONS='--max-old-space-size=2048' npm run build:deploy
+# Apply server polyfills and build with memory optimization
+RUN node -r ./server-polyfills.js -e "console.log('Polyfills loaded')" && \
+    NODE_OPTIONS='--max-old-space-size=2048 --require ./server-polyfills.js' npm run build:deploy
 
 # Production stage - minimal runtime image
 FROM base AS runner

@@ -7,7 +7,7 @@
     "dev:next": "NEXT_DISABLE_TURBOPACK=1 next dev",
     "build": "NODE_OPTIONS='--max-old-space-size=16384 --max-semi-space-size=512' next build",
     "build:production": "NODE_OPTIONS='--max-old-space-size=32768 --max-semi-space-size=1024' SKIP_STATIC_OPTIMIZATION=1 DISABLE_ESLINT=1 DISABLE_TYPESCRIPT_CHECK=1 next build",
-    "build:deploy": "NODE_OPTIONS='--max-old-space-size=2048' SKIP_STATIC_OPTIMIZATION=1 DISABLE_ESLINT=1 DISABLE_TYPESCRIPT_CHECK=1 next build",
+    "build:deploy": "NODE_OPTIONS='--max-old-space-size=2048 --require ./server-polyfills.js' SKIP_STATIC_OPTIMIZATION=1 DISABLE_ESLINT=1 DISABLE_TYPESCRIPT_CHECK=1 next build",
     "build:chunked": "NODE_OPTIONS='--max-old-space-size=32768 --max-semi-space-size=1024' NEXT_BUILD_SPLIT_CHUNKS=1 DISABLE_STATIC_OPTIMIZATION=1 next build",
     "build:dynamic": "NODE_OPTIONS='--max-old-space-size=32768 --max-semi-space-size=1024' DISABLE_STATIC_OPTIMIZATION=1 DISABLE_ESLINT=1 DISABLE_TYPESCRIPT_CHECK=1 next build",
     "export": "next export",

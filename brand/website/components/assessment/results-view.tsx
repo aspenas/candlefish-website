@@ -6,6 +6,7 @@ import { OperationalPortraitCanvas } from './portrait-canvas'
 import { InterventionTimeline } from './intervention-timeline'
 import { trackReportDownload, trackConsultationRequest } from '@/lib/assessment/analytics'
 import { downloadJSON } from '@/lib/assessment/utils'
+import { generateAssessmentPDF } from '@/utils/generate-pdf'
 import type { AssessmentScore, OperationalPortrait, AssessmentResponse } from '@/types/assessment'
 
 interface ResultsViewProps {
@@ -28,25 +29,12 @@ export const ResultsView = ({
   const downloadPDF = async () => {
     setDownloading(true)
     try {
-      const response = await fetch('/api/assessment/generate-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ score, portrait, responses, sessionId })
-      })
-
-      if (response.ok) {
-        const blob = await response.blob()
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `operational-assessment-${sessionId}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-
-        trackReportDownload(sessionId, 'pdf')
-      }
+      // Use client-side PDF generation
+      generateAssessmentPDF(score, portrait, sessionId)
+      trackReportDownload(sessionId, 'html-pdf')
+      
+      // Brief delay for UX feedback
+      await new Promise(resolve => setTimeout(resolve, 500))
     } catch (error) {
       console.error('PDF generation failed:', error)
       // Fallback to JSON download

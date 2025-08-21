@@ -1,3 +1,4 @@
+import React from 'react';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { offlineDB } from '@/lib/db/offline-db';
@@ -441,6 +442,3 @@ export const useSyncStatus = () => useOfflineStore(state => state.syncStatus);
 export const useCurrentEstimate = () => useOfflineStore(state => state.currentEstimate);
 export const useOfflineEstimates = () => useOfflineStore(state => state.offlineEstimates);
 export const useOfflinePhotos = () => useOfflineStore(state => state.offlinePhotos);
-
-// React import (will be available in React components)
-import React from 'react';
