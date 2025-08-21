@@ -47,11 +47,11 @@ export const OperationalScanner = ({ demoMode = false }: { demoMode?: boolean })
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ domain })
       })
-      
+
       if (!response.ok) {
         throw new Error('Failed to scan domain')
       }
-      
+
       const scanResults = await response.json()
       setResults(scanResults)
     } catch (err) {
@@ -72,7 +72,7 @@ export const OperationalScanner = ({ demoMode = false }: { demoMode?: boolean })
             Operational Scanner
           </h1>
           <p className="text-[#415A77]">
-            Analyze any domain's operational footprint using public data. 
+            Analyze any domain's operational footprint using public data.
             This demonstrates our approach to understanding digital operations.
           </p>
         </header>
@@ -86,23 +86,23 @@ export const OperationalScanner = ({ demoMode = false }: { demoMode?: boolean })
                 placeholder="example.com"
                 value={domain}
                 onChange={(e) => setDomain(e.target.value)}
-                className="flex-1 bg-[#1B263B] border border-[#415A77] px-6 py-4 
+                className="flex-1 bg-[#1B263B] border border-[#415A77] px-6 py-4
                          text-[#F8F8F2] text-lg focus:border-[#3FD3C6] transition-colors"
               />
               <button
                 onClick={scanDomain}
                 disabled={!domain}
-                className="px-8 py-4 bg-[#3FD3C6] text-[#0D1B2A] font-medium 
+                className="px-8 py-4 bg-[#3FD3C6] text-[#0D1B2A] font-medium
                          hover:bg-[#4FE3D6] transition-colors disabled:opacity-50"
               >
                 Scan Domain
               </button>
             </div>
-            
+
             {error && (
               <p className="text-[#E84855] mt-4">{error}</p>
             )}
-            
+
             <p className="text-xs text-[#415A77] mt-4">
               This scanner uses only publicly available information
             </p>
@@ -133,7 +133,7 @@ export const OperationalScanner = ({ demoMode = false }: { demoMode?: boolean })
                 transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
               />
             </div>
-            
+
             <p className="text-[#3FD3C6] text-lg font-mono">{scanPhase}</p>
           </motion.div>
         )}
@@ -150,17 +150,17 @@ export const OperationalScanner = ({ demoMode = false }: { demoMode?: boolean })
               <h2 className="text-2xl font-light text-[#F8F8F2] mb-4">
                 Technology Signals Detected
               </h2>
-              
+
               <div className="space-y-3">
                 {results.technologies.map((tech, index) => (
-                  <div key={index} className="flex items-center justify-between 
+                  <div key={index} className="flex items-center justify-between
                                             py-2 border-b border-[#415A77]">
                     <span className="text-[#E0E1DD]">{tech.name}</span>
                     <span className="text-sm text-[#415A77]">{tech.category}</span>
                   </div>
                 ))}
               </div>
-              
+
               <p className="text-xs text-[#415A77] mt-4">
                 Based on public headers, DNS records, and page analysis
               </p>
@@ -171,7 +171,7 @@ export const OperationalScanner = ({ demoMode = false }: { demoMode?: boolean })
               <h2 className="text-2xl font-light text-[#F8F8F2] mb-4">
                 Common Operational Patterns
               </h2>
-              
+
               <ul className="space-y-3">
                 {results.patterns.map((pattern, index) => (
                   <li key={index} className="flex items-start">
@@ -194,14 +194,14 @@ export const OperationalScanner = ({ demoMode = false }: { demoMode?: boolean })
                   setResults(null)
                   setDomain('')
                 }}
-                className="px-6 py-3 border border-[#415A77] text-[#E0E1DD] 
+                className="px-6 py-3 border border-[#415A77] text-[#E0E1DD]
                          hover:border-[#3FD3C6] transition-colors"
               >
                 Scan Another Domain
               </button>
-              
+
               <button
-                className="px-6 py-3 bg-[#3FD3C6] text-[#0D1B2A] font-medium 
+                className="px-6 py-3 bg-[#3FD3C6] text-[#0D1B2A] font-medium
                          hover:bg-[#4FE3D6] transition-colors"
               >
                 Download Report

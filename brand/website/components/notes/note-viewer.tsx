@@ -42,7 +42,7 @@ export const NoteViewer = ({ noteId, onClose }: NoteViewerProps) => {
       >
         {/* Progress Bar */}
         <div className="fixed top-0 left-0 w-full h-1 bg-[#1B263B] z-50">
-          <motion.div 
+          <motion.div
             className="h-full bg-[#3FD3C6]"
             style={{ width: `${scrollProgress}%` }}
           />
@@ -51,7 +51,7 @@ export const NoteViewer = ({ noteId, onClose }: NoteViewerProps) => {
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="fixed top-6 right-6 z-40 p-3 bg-[#1B263B] text-[#E0E1DD] 
+          className="fixed top-6 right-6 z-40 p-3 bg-[#1B263B] text-[#E0E1DD]
                    hover:bg-[#415A77] transition-colors rounded-full"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -76,15 +76,15 @@ export const NoteViewer = ({ noteId, onClose }: NoteViewerProps) => {
                 </span>
               )}
             </div>
-            
+
             <h1 className="text-5xl font-light text-[#F8F8F2] mb-6">
               {note.title}
             </h1>
-            
+
             <p className="text-xl text-[#415A77] leading-relaxed">
               {note.excerpt}
             </p>
-            
+
             <div className="flex items-center gap-6 mt-6 text-sm text-[#415A77]">
               <span>{note.readTime}</span>
               {note.hasCode && (
@@ -131,10 +131,11 @@ export const NoteViewer = ({ noteId, onClose }: NoteViewerProps) => {
                     {children}
                   </blockquote>
                 ),
-                code: ({inline, className, children, ...props}) => {
+                code: ({className, children, ...props}: any) => {
                   const match = /language-(\w+)/.exec(className || '')
                   const language = match ? match[1] : ''
-                  
+                  const inline = !className || !language
+
                   if (!inline && language) {
                     return (
                       <div className="my-8">
@@ -155,7 +156,7 @@ export const NoteViewer = ({ noteId, onClose }: NoteViewerProps) => {
                       </div>
                     )
                   }
-                  
+
                   return (
                     <code className="bg-[#1C1C1C] text-[#3FD3C6] px-2 py-1 rounded font-mono text-sm">
                       {children}
@@ -181,7 +182,7 @@ export const NoteViewer = ({ noteId, onClose }: NoteViewerProps) => {
           <div className="mt-12 pt-8 border-t border-[#415A77]">
             <div className="flex flex-wrap gap-2">
               {note.tags.map(tag => (
-                <span 
+                <span
                   key={tag}
                   className="text-sm text-[#415A77] px-3 py-1 bg-[#1C1C1C] rounded"
                 >
@@ -199,7 +200,7 @@ export const NoteViewer = ({ noteId, onClose }: NoteViewerProps) => {
             >
               ← Back to Notes
             </button>
-            
+
             <button className="text-[#3FD3C6] hover:text-[#4FE3D6] transition-colors">
               Share Note →
             </button>

@@ -22,17 +22,17 @@ const instruments: Instrument[] = [
     description: 'Deep pattern recognition across operational systems. Identifies efficiency opportunities and systemic bottlenecks.',
     status: 'active',
     precision: 0.97,
-    lastCalibrated: '2025-12-15',
+    lastCalibrated: '2025-08-15',
     accessLevel: 'collaborator'
   },
   {
-    id: 'inst-002', 
+    id: 'inst-002',
     name: 'Workflow Synthesis Engine',
     category: 'synthesis',
     description: 'Combines disparate operational elements into coherent, optimized workflows. Emphasizes human-system harmony.',
     status: 'active',
     precision: 0.94,
-    lastCalibrated: '2025-12-18',
+    lastCalibrated: '2025-08-18',
     accessLevel: 'collaborator'
   },
   {
@@ -42,7 +42,7 @@ const instruments: Instrument[] = [
     description: 'Measures and maintains the craft integrity of all workshop outputs. Non-negotiable quality standards.',
     status: 'calibrating',
     precision: 0.99,
-    lastCalibrated: '2025-12-20',
+    lastCalibrated: '2025-08-20',
     accessLevel: 'restricted'
   },
   {
@@ -52,7 +52,7 @@ const instruments: Instrument[] = [
     description: 'Tracks the health and productivity of ongoing collaborative relationships. Ensures mutual amplification.',
     status: 'active',
     precision: 0.91,
-    lastCalibrated: '2025-12-12',
+    lastCalibrated: '2025-08-12',
     accessLevel: 'collaborator'
   },
   {
@@ -62,17 +62,17 @@ const instruments: Instrument[] = [
     description: 'Forecasts workshop capacity and optimal scheduling. Prevents cognitive overload and maintains flow states.',
     status: 'maintenance',
     precision: 0.88,
-    lastCalibrated: '2025-12-08',
+    lastCalibrated: '2025-08-08',
     accessLevel: 'public'
   },
   {
     id: 'inst-006',
     name: 'Selective Access Controller',
-    category: 'monitoring', 
+    category: 'monitoring',
     description: 'Maintains workshop boundaries and ensures only appropriate collaborations proceed. Quality over quantity.',
     status: 'active',
     precision: 1.00,
-    lastCalibrated: '2025-12-21',
+    lastCalibrated: '2025-08-19',
     accessLevel: 'restricted'
   }
 ];
@@ -82,9 +82,9 @@ export default function InstrumentsPage() {
   const [selectedInstrument, setSelectedInstrument] = useState<string | null>(null);
 
   const categories = ['all', 'analysis', 'synthesis', 'calibration', 'monitoring'];
-  
-  const filteredInstruments = selectedCategory === 'all' 
-    ? instruments 
+
+  const filteredInstruments = selectedCategory === 'all'
+    ? instruments
     : instruments.filter(inst => inst.category === selectedCategory);
 
   const getStatusColor = (status: string) => {
@@ -117,7 +117,7 @@ export default function InstrumentsPage() {
         >
           <h1 className="text-5xl font-light text-pearl mb-6">Workshop Instruments</h1>
           <p className="text-xl text-pearl/60 max-w-2xl mx-auto font-light">
-            Precision tools for operational excellence. Each instrument is calibrated for specific aspects of 
+            Precision tools for operational excellence. Each instrument is calibrated for specific aspects of
             collaborative creation and system optimization.
           </p>
         </motion.div>
@@ -178,7 +178,7 @@ export default function InstrumentsPage() {
                     {instrument.category}
                   </span>
                 </div>
-                
+
                 <div className="text-right">
                   <div className={`text-sm font-mono ${getStatusColor(instrument.status)}`}>
                     {instrument.status}
@@ -188,7 +188,7 @@ export default function InstrumentsPage() {
               </div>
 
               {/* Description */}
-              <p className="text-pearl/60 text-sm leading-relaxed mb-4">
+              <p className="text-pearl/60 text-lg leading-relaxed mb-4">
                 {instrument.description}
               </p>
 
@@ -200,20 +200,20 @@ export default function InstrumentsPage() {
                   </div>
                   <div className="text-pearl/40">precision</div>
                 </div>
-                
+
                 <div>
                   <div className="text-living-cyan text-lg font-light">
-                    {new Date(instrument.lastCalibrated).toLocaleDateString('en-US', { 
-                      month: 'short', 
-                      day: 'numeric' 
+                    {new Date(instrument.lastCalibrated).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric'
                     })}
                   </div>
                   <div className="text-pearl/40">calibrated</div>
                 </div>
-                
+
                 <div>
                   <div className={`text-lg font-light ${getAccessColor(instrument.accessLevel)}`}>
-                    {instrument.accessLevel === 'public' ? '◯' : 
+                    {instrument.accessLevel === 'public' ? '◯' :
                      instrument.accessLevel === 'collaborator' ? '◐' : '●'}
                   </div>
                   <div className="text-pearl/40">access</div>
@@ -223,7 +223,7 @@ export default function InstrumentsPage() {
               {/* Expanded Details */}
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
-                animate={{ 
+                animate={{
                   height: selectedInstrument === instrument.id ? 'auto' : 0,
                   opacity: selectedInstrument === instrument.id ? 1 : 0
                 }}
@@ -235,8 +235,8 @@ export default function InstrumentsPage() {
                     <div className="space-y-4">
                       <div>
                         <h4 className="text-sm font-mono text-copper mb-2">Access Protocol</h4>
-                        <p className="text-xs text-pearl/50 leading-relaxed">
-                          {instrument.accessLevel === 'public' 
+                        <p className="text-base text-pearl/50 leading-relaxed">
+                          {instrument.accessLevel === 'public'
                             ? 'Available for demonstration purposes. Full functionality requires collaboration agreement.'
                             : instrument.accessLevel === 'collaborator'
                             ? 'Active collaborators have operational access during project phases. Usage monitored and logged.'
@@ -244,11 +244,11 @@ export default function InstrumentsPage() {
                           }
                         </p>
                       </div>
-                      
+
                       <div>
                         <h4 className="text-sm font-mono text-copper mb-2">Calibration Notes</h4>
-                        <p className="text-xs text-pearl/50 leading-relaxed">
-                          Last precision verification completed {instrument.lastCalibrated}. 
+                        <p className="text-base text-pearl/50 leading-relaxed">
+                          Last precision verification completed {instrument.lastCalibrated}.
                           Next scheduled maintenance based on usage patterns and drift detection.
                           All instruments operate within acceptable tolerances.
                         </p>
@@ -268,12 +268,12 @@ export default function InstrumentsPage() {
           transition={{ delay: 0.6, duration: 0.8 }}
           className="text-center max-w-3xl mx-auto mb-16"
         >
-          <blockquote className="text-lg text-pearl/60 font-light italic leading-relaxed mb-6">
-            "An instrument is only as good as the craftsperson who wields it. 
-            These tools amplify intention, they do not replace judgment. 
+          <blockquote className="text-xl text-pearl/60 font-light italic leading-relaxed mb-6">
+            "An instrument is only as good as the craftsperson who wields it.
+            These tools amplify intention, they do not replace judgment.
             Each has been shaped by years of operational practice and refined through careful use."
           </blockquote>
-          
+
           <div className="text-sm font-mono text-pearl/40">
             — On Instrumentation, Workshop Manual v3.2
           </div>

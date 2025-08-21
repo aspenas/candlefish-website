@@ -1,6 +1,6 @@
 /**
  * Operational Data Infrastructure for Candlefish Atelier
- * 
+ *
  * Simulates live workshop metrics, queue management, and system telemetry.
  * In a real implementation, this would connect to actual monitoring systems.
  */
@@ -103,9 +103,9 @@ class OperationalDataService {
 
   private generateQueueActivity(): QueueActivity[] {
     const activities: QueueActivity[] = [];
-    const types: ('collaboration' | 'consultation' | 'workshop_visit')[] = 
+    const types: ('collaboration' | 'consultation' | 'workshop_visit')[] =
       ['collaboration', 'consultation', 'workshop_visit'];
-    const actions: ('submitted' | 'reviewed' | 'accepted' | 'declined' | 'completed')[] = 
+    const actions: ('submitted' | 'reviewed' | 'accepted' | 'declined' | 'completed')[] =
       ['submitted', 'reviewed', 'accepted', 'declined', 'completed'];
 
     for (let i = 0; i < 10; i++) {
@@ -194,7 +194,7 @@ class OperationalDataService {
     const cognitiveLoad = this.metrics.cognitiveLoad;
     const activeCollabs = this.collaborations.filter(c => c.status === 'active').length;
     const maxCollabs = 4; // Workshop capacity limit
-    
+
     return Math.min(1.0, (cognitiveLoad + (activeCollabs / maxCollabs)) / 2);
   }
 
@@ -239,7 +239,7 @@ class OperationalDataService {
       health.push({ component: 'Error Rate', status: 'optimal', value: this.telemetry.errorRate });
     }
 
-    const overall = criticalCount > 0 ? 'critical' : 
+    const overall = criticalCount > 0 ? 'critical' :
                    warningCount > 0 ? 'warning' : 'optimal';
 
     return { overall, details: health };
@@ -250,19 +250,19 @@ class OperationalDataService {
     if (now - this.lastUpdate < 2000) return; // Update every 2 seconds
 
     const variance = 0.02;
-    
+
     // Update metrics with realistic drift
     this.metrics.cognitiveLoad = this.constrainValue(
       this.metrics.cognitiveLoad + (Math.random() - 0.5) * variance,
       0.80, 1.0
     );
-    
+
     this.metrics.workshopTemperature = this.constrainValue(
       this.metrics.workshopTemperature + (Math.random() - 0.5) * 0.1,
       20.0, 23.0
     );
 
-    this.metrics.coffeeReserves = Math.max(0.1, 
+    this.metrics.coffeeReserves = Math.max(0.1,
       this.metrics.coffeeReserves - Math.random() * 0.001 // Slow depletion
     );
 
@@ -278,12 +278,12 @@ class OperationalDataService {
 
   private updateTelemetry(): void {
     const variance = 0.01;
-    
+
     this.telemetry.cpuUsage = this.constrainValue(
       this.telemetry.cpuUsage + (Math.random() - 0.5) * variance,
       0.2, 0.8
     );
-    
+
     this.telemetry.memoryUsage = this.constrainValue(
       this.telemetry.memoryUsage + (Math.random() - 0.5) * variance,
       0.5, 0.9
@@ -299,24 +299,24 @@ class OperationalDataService {
     // Simulate occasional queue changes
     if (Math.random() < 0.05) { // 5% chance
       this.queueStatus.totalEntries += Math.floor(Math.random() * 3 - 1); // -1, 0, 1
-      this.queueStatus.currentPosition = Math.max(40, 
+      this.queueStatus.currentPosition = Math.max(40,
         this.queueStatus.currentPosition + Math.floor(Math.random() * 3 - 1)
       );
-      
+
       // Add new activity
       if (Math.random() < 0.3) {
-        const types: ('collaboration' | 'consultation' | 'workshop_visit')[] = 
+        const types: ('collaboration' | 'consultation' | 'workshop_visit')[] =
           ['collaboration', 'consultation', 'workshop_visit'];
-        const actions: ('submitted' | 'reviewed' | 'accepted' | 'declined')[] = 
+        const actions: ('submitted' | 'reviewed' | 'accepted' | 'declined')[] =
           ['submitted', 'reviewed', 'accepted', 'declined'];
-          
+
         this.queueStatus.recentActivity.unshift({
           timestamp: Date.now(),
           action: actions[Math.floor(Math.random() * actions.length)],
           entryId: `q-2024-${Math.floor(Math.random() * 999).toString().padStart(3, '0')}`,
           type: types[Math.floor(Math.random() * types.length)],
         });
-        
+
         // Keep only last 20 activities
         this.queueStatus.recentActivity = this.queueStatus.recentActivity.slice(0, 20);
       }

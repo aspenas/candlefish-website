@@ -11,18 +11,18 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ 
-    className, 
-    type = 'text', 
-    label, 
-    error, 
-    helperText, 
-    leftIcon, 
-    rightIcon, 
+  ({
+    className,
+    type = 'text',
+    label,
+    error,
+    helperText,
+    leftIcon,
+    rightIcon,
     wrapperClassName,
     id,
     required,
-    ...props 
+    ...props
   }, ref) => {
     const fallbackId = useId();
     const inputId = id || fallbackId;
@@ -32,22 +32,22 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className={cn('w-full', wrapperClassName)}>
         {label && (
-          <label 
-            htmlFor={inputId} 
+          <label
+            htmlFor={inputId}
             className="block text-sm font-medium text-slate mb-2"
           >
             {label}
             {required && <span className="text-red-500 ml-1" aria-label="required">*</span>}
           </label>
         )}
-        
+
         <div className="relative">
           {leftIcon && (
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <span className="text-mist text-sm">{leftIcon}</span>
             </div>
           )}
-          
+
           <input
             type={type}
             className={cn(
@@ -65,28 +65,28 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             aria-describedby={cn(errorId, helperId)}
             {...props}
           />
-          
+
           {rightIcon && (
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
               <span className="text-mist text-sm">{rightIcon}</span>
             </div>
           )}
         </div>
-        
+
         {error && (
-          <p 
-            id={errorId} 
-            className="mt-1 text-sm text-red-600" 
+          <p
+            id={errorId}
+            className="mt-1 text-sm text-red-600"
             role="alert"
             aria-live="polite"
           >
             {error}
           </p>
         )}
-        
+
         {helperText && !error && (
-          <p 
-            id={helperId} 
+          <p
+            id={helperId}
             className="mt-1 text-sm text-mist/80"
           >
             {helperText}

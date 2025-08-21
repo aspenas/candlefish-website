@@ -13,9 +13,9 @@ export const OperationalScoreVisualization = ({ score }: OperationalScoreVisuali
     if (percentage < 80) return '#3FD3C6'
     return '#4FE3D6'
   }
-  
+
   const color = getColorForScore(score.percentage)
-  
+
   return (
     <div className="relative">
       {/* Score Circle */}
@@ -31,7 +31,7 @@ export const OperationalScoreVisualization = ({ score }: OperationalScoreVisuali
               strokeWidth="8"
               fill="none"
             />
-            
+
             {/* Score arc */}
             <motion.circle
               cx="128"
@@ -47,10 +47,10 @@ export const OperationalScoreVisualization = ({ score }: OperationalScoreVisuali
               transition={{ duration: 1.5, ease: "easeOut" }}
             />
           </svg>
-          
+
           {/* Center content */}
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <motion.p 
+            <motion.p
               className="text-5xl font-light text-[#F8F8F2]"
               initial={{ opacity: 0, scale: 0.5 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -64,10 +64,10 @@ export const OperationalScoreVisualization = ({ score }: OperationalScoreVisuali
           </div>
         </div>
       </div>
-      
+
       {/* Level Indicator */}
       <div className="text-center">
-        <motion.h2 
+        <motion.h2
           className="text-3xl font-light mb-2"
           style={{ color }}
           initial={{ opacity: 0, y: 20 }}
@@ -76,18 +76,18 @@ export const OperationalScoreVisualization = ({ score }: OperationalScoreVisuali
         >
           {score.level}
         </motion.h2>
-        
+
         {/* Level Description */}
         <p className="text-[#E0E1DD] max-w-2xl mx-auto">
           {getLevelDescription(score.level)}
         </p>
       </div>
-      
+
       {/* Visual Level Bar */}
       <div className="mt-8 max-w-3xl mx-auto">
         <div className="flex justify-between mb-2">
           {['Ad-hoc', 'Scripted', 'Assisted', 'Orchestrated', 'Autonomous'].map((level, idx) => (
-            <span 
+            <span
               key={level}
               className={`text-xs ${
                 idx * 20 <= score.percentage ? 'text-[#3FD3C6]' : 'text-[#415A77]'
@@ -97,7 +97,7 @@ export const OperationalScoreVisualization = ({ score }: OperationalScoreVisuali
             </span>
           ))}
         </div>
-        
+
         <div className="h-2 bg-[#1B263B] rounded-full overflow-hidden">
           <motion.div
             className="h-full rounded-full"
@@ -120,6 +120,6 @@ function getLevelDescription(level: string): string {
     'Level 3: Orchestrated': 'Systems coordinate effectively. Humans focus on exceptions and improvements.',
     'Level 4: Autonomous': 'Operations run themselves. Humans design the future, not operate the present.'
   }
-  
+
   return descriptions[level] || 'Your operational maturity level indicates significant opportunity for systematic improvement.'
 }

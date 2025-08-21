@@ -9,15 +9,15 @@ export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElemen
 }
 
 const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ 
-    className, 
-    label, 
-    error, 
-    helperText, 
+  ({
+    className,
+    label,
+    error,
+    helperText,
     wrapperClassName,
     id,
     required,
-    ...props 
+    ...props
   }, ref) => {
     const fallbackId = useId();
     const textareaId = id || fallbackId;
@@ -27,15 +27,15 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <div className={cn('w-full', wrapperClassName)}>
         {label && (
-          <label 
-            htmlFor={textareaId} 
+          <label
+            htmlFor={textareaId}
             className="block text-sm font-medium text-slate mb-2"
           >
             {label}
             {required && <span className="text-red-500 ml-1" aria-label="required">*</span>}
           </label>
         )}
-        
+
         <textarea
           className={cn(
             'block w-full rounded-md border border-mist/30 px-3 py-2 text-slate placeholder-mist/60 shadow-sm transition-colors resize-y',
@@ -50,21 +50,21 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           aria-describedby={cn(errorId, helperId)}
           {...props}
         />
-        
+
         {error && (
-          <p 
-            id={errorId} 
-            className="mt-1 text-sm text-red-600" 
+          <p
+            id={errorId}
+            className="mt-1 text-sm text-red-600"
             role="alert"
             aria-live="polite"
           >
             {error}
           </p>
         )}
-        
+
         {helperText && !error && (
-          <p 
-            id={helperId} 
+          <p
+            id={helperId}
             className="mt-1 text-sm text-mist/80"
           >
             {helperText}

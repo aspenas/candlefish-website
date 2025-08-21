@@ -15,7 +15,7 @@ export const InterventionTimeline = ({ interventions, timeline }: InterventionTi
       default: return '#415A77'
     }
   }
-  
+
   const getEffortSize = (effort: string) => {
     switch (effort) {
       case 'high': return 'Large effort'
@@ -24,7 +24,7 @@ export const InterventionTimeline = ({ interventions, timeline }: InterventionTi
       default: return 'Moderate effort'
     }
   }
-  
+
   return (
     <div className="relative">
       {/* Timeline Header */}
@@ -36,12 +36,12 @@ export const InterventionTimeline = ({ interventions, timeline }: InterventionTi
           {timeline}
         </p>
       </div>
-      
+
       {/* Timeline Visualization */}
       <div className="relative">
         {/* Timeline Line */}
         <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-[#415A77]" />
-        
+
         {/* Interventions */}
         <div className="space-y-8">
           {interventions.map((intervention, idx) => (
@@ -54,7 +54,7 @@ export const InterventionTimeline = ({ interventions, timeline }: InterventionTi
             >
               {/* Timeline Node */}
               <div className="absolute left-6 w-4 h-4 rounded-full border-2 border-[#3FD3C6] bg-[#0D1B2A]" />
-              
+
               {/* Content Card */}
               <div className="ml-16 flex-1 bg-[#1B263B] border border-[#415A77] p-6 hover:border-[#3FD3C6] transition-colors">
                 <div className="flex items-start justify-between mb-4">
@@ -66,11 +66,11 @@ export const InterventionTimeline = ({ interventions, timeline }: InterventionTi
                       {intervention.description}
                     </p>
                   </div>
-                  
+
                   {/* Impact Indicator */}
-                  <div 
+                  <div
                     className="px-3 py-1 rounded text-xs font-medium"
-                    style={{ 
+                    style={{
                       backgroundColor: `${getImpactColor(intervention.impact)}20`,
                       color: getImpactColor(intervention.impact)
                     }}
@@ -78,20 +78,20 @@ export const InterventionTimeline = ({ interventions, timeline }: InterventionTi
                     {intervention.impact.toUpperCase()} IMPACT
                   </div>
                 </div>
-                
+
                 {/* Metadata */}
                 <div className="flex items-center gap-6 text-sm">
                   <div className="flex items-center gap-2">
                     <span className="text-[#415A77]">Timeline:</span>
                     <span className="text-[#3FD3C6]">{intervention.timeline}</span>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <span className="text-[#415A77]">Effort:</span>
                     <span className="text-[#E0E1DD]">{getEffortSize(intervention.effort)}</span>
                   </div>
                 </div>
-                
+
                 {/* Dependencies */}
                 {intervention.dependencies.length > 0 && (
                   <div className="mt-4 pt-4 border-t border-[#415A77]">
@@ -115,13 +115,13 @@ export const InterventionTimeline = ({ interventions, timeline }: InterventionTi
           ))}
         </div>
       </div>
-      
+
       {/* Impact/Effort Matrix */}
       <div className="mt-16 p-8 bg-[#1C1C1C] rounded">
         <h3 className="text-xl text-[#F8F8F2] mb-6">
           Impact vs Effort Analysis
         </h3>
-        
+
         <div className="relative h-64 border-l-2 border-b-2 border-[#415A77]">
           {/* Axes Labels */}
           <span className="absolute -left-8 top-0 text-xs text-[#415A77] -rotate-90 origin-left">
@@ -130,7 +130,7 @@ export const InterventionTimeline = ({ interventions, timeline }: InterventionTi
           <span className="absolute bottom-0 right-0 text-xs text-[#415A77]">
             Effort →
           </span>
-          
+
           {/* Quadrant Labels */}
           <div className="absolute top-4 left-4 text-xs text-[#3FD3C6]">
             Quick Wins
@@ -144,12 +144,12 @@ export const InterventionTimeline = ({ interventions, timeline }: InterventionTi
           <div className="absolute bottom-4 right-4 text-xs text-[#E84855]">
             Question Marks
           </div>
-          
+
           {/* Plot Interventions */}
           {interventions.map((intervention, idx) => {
             const impactValue = intervention.impact === 'high' ? 80 : intervention.impact === 'medium' ? 50 : 20
             const effortValue = intervention.effort === 'high' ? 80 : intervention.effort === 'medium' ? 50 : 20
-            
+
             return (
               <motion.div
                 key={intervention.id}

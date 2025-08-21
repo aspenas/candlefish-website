@@ -36,11 +36,11 @@ export default function CursorManager() {
 
     const handleMouseEnter = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      const hoverTarget = target.getAttribute('data-cursor') || 
+      const hoverTarget = target.getAttribute('data-cursor') ||
                          (target.tagName === 'BUTTON' ? 'button' :
                           target.tagName === 'A' ? 'link' :
                           target.closest('[data-cursor]')?.getAttribute('data-cursor') || null);
-      
+
       if (hoverTarget) {
         setCursor(prev => ({
           ...prev,
@@ -73,7 +73,7 @@ export default function CursorManager() {
     // Add event listeners to all interactive elements
     const addInteractiveListeners = () => {
       const interactiveElements = document.querySelectorAll('button, a, [data-cursor], .hover-lift, .instrument-panel, .queue-position');
-      
+
       interactiveElements.forEach(element => {
         element.addEventListener('mouseenter', handleMouseEnter as EventListener);
         element.addEventListener('mouseleave', handleMouseLeave);
@@ -85,10 +85,10 @@ export default function CursorManager() {
     document.addEventListener('mousedown', handleMouseDown);
     document.addEventListener('mouseup', handleMouseUp);
     document.addEventListener('mouseleave', handleMouseOut);
-    
+
     // Set up interactive elements
     addInteractiveListeners();
-    
+
     // Re-scan for new interactive elements periodically
     const rescanInterval = setInterval(addInteractiveListeners, 2000);
 

@@ -9,7 +9,7 @@ import Link from 'next/link'
 function SpatialNavigation() {
   const pathname = usePathname()
   const [isVisible, setIsVisible] = useState(false)
-  
+
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 1000)
     return () => clearTimeout(timer)
@@ -36,7 +36,7 @@ function SpatialNavigation() {
           <div className="space-y-4">
             {navItems.map((item, index) => {
               const isActive = pathname === item.href
-              
+
               return (
                 <motion.div
                   key={item.href}
@@ -49,15 +49,15 @@ function SpatialNavigation() {
                     href={item.href}
                     data-cursor={item.label.toLowerCase()}
                     className={`flex items-center space-x-3 px-4 py-3 rounded-lg backdrop-blur-md transition-all duration-300 hover-lift ${
-                      isActive 
-                        ? 'bg-copper/20 border border-copper/60 text-copper' 
+                      isActive
+                        ? 'bg-copper/20 border border-copper/60 text-copper'
                         : 'bg-graphite/20 border border-living-cyan/20 text-pearl hover:border-living-cyan/40 hover:bg-graphite/40'
                     }`}
                   >
                     <span className="text-lg">{item.icon}</span>
                     <span className="text-interface-sm font-medium">{item.label}</span>
                   </Link>
-                  
+
                   {/* Tooltip */}
                   <div className="absolute left-full ml-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                     <div className="bg-graphite/90 text-pearl text-interface-sm px-3 py-2 rounded border border-living-cyan/20 whitespace-nowrap">
@@ -67,7 +67,7 @@ function SpatialNavigation() {
                 </motion.div>
               )
             })}
-            
+
             {/* Navigation Indicator */}
             <motion.div
               initial={{ opacity: 0 }}
@@ -99,7 +99,7 @@ function SystemStatus() {
   useEffect(() => {
     setIsClient(true);
   }, []);
-  
+
   useEffect(() => {
     if (!isClient) return;
 
@@ -110,10 +110,10 @@ function SystemStatus() {
         latency: Math.max(8, prev.latency + Math.floor((Math.random() - 0.5) * 4)),
       }))
     }, 5000)
-    
+
     return () => clearInterval(interval)
   }, [isClient])
-  
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 100 }}
@@ -147,10 +147,10 @@ export default function SpatialLayout({ children }: { children: React.ReactNode 
     <>
       {/* Spatial Navigation System */}
       <SpatialNavigation />
-      
+
       {/* System Status */}
       <SystemStatus />
-      
+
       {/* Main Content with 3D Transform Context */}
       <main className="relative min-h-screen transform-style-3d">
         {children}

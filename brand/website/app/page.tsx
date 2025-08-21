@@ -79,7 +79,10 @@ export default function OperationalHome() {
           {/* Status-driven action */}
           <div className="mt-16">
             {currentFocus.acceptingInquiries ? (
-              <button className="group relative inline-block">
+              <button 
+                className="group relative inline-block"
+                onClick={() => window.location.href = '/consideration'}
+              >
                 <span className="text-[#E0E1DD] border border-[#415A77] px-8 py-4 inline-block
                                hover:border-[#3FD3C6] transition-all duration-500">
                   Request Consideration
@@ -263,7 +266,10 @@ export default function OperationalHome() {
           </div>
 
           <div className="mt-16">
-            <button className="btn-primary">
+            <button 
+              className="btn-primary"
+              onClick={() => window.location.href = '/consideration'}
+            >
               Request Consideration for Q1 2026
             </button>
           </div>

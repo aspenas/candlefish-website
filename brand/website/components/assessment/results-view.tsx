@@ -16,15 +16,15 @@ interface ResultsViewProps {
   onRequestConsultation: () => void
 }
 
-export const ResultsView = ({ 
-  score, 
-  portrait, 
-  responses, 
-  sessionId, 
-  onRequestConsultation 
+export const ResultsView = ({
+  score,
+  portrait,
+  responses,
+  sessionId,
+  onRequestConsultation
 }: ResultsViewProps) => {
   const [downloading, setDownloading] = useState(false)
-  
+
   const downloadPDF = async () => {
     setDownloading(true)
     try {
@@ -33,7 +33,7 @@ export const ResultsView = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ score, portrait, responses, sessionId })
       })
-      
+
       if (response.ok) {
         const blob = await response.blob()
         const url = URL.createObjectURL(blob)
@@ -44,7 +44,7 @@ export const ResultsView = ({
         a.click()
         document.body.removeChild(a)
         URL.revokeObjectURL(url)
-        
+
         trackReportDownload(sessionId, 'pdf')
       }
     } catch (error) {
@@ -56,7 +56,7 @@ export const ResultsView = ({
       setDownloading(false)
     }
   }
-  
+
   const handleConsultationRequest = () => {
     trackConsultationRequest(sessionId, score)
     onRequestConsultation()
@@ -81,7 +81,7 @@ export const ResultsView = ({
       {/* Overall Score */}
       <div className="mb-20">
         <OperationalScoreVisualization score={score} />
-        
+
         <div className="grid grid-cols-3 gap-8 mt-12">
           <div className="text-center">
             <p className="text-3xl font-light text-[#F8F8F2]">
@@ -115,12 +115,12 @@ export const ResultsView = ({
         <h2 className="text-3xl font-light text-[#F8F8F2] mb-8">
           Dimensional Analysis
         </h2>
-        
-        <DimensionalRadarChart 
+
+        <DimensionalRadarChart
           dimensions={score.dimensions}
           industry={score.industryComparison}
         />
-        
+
         {/* Top 3 Strengths & Weaknesses */}
         <div className="grid md:grid-cols-2 gap-12 mt-12">
           <div>
@@ -137,7 +137,7 @@ export const ResultsView = ({
               ))}
             </ul>
           </div>
-          
+
           <div>
             <h3 className="text-xl text-[#E84855] mb-4">Intervention Points</h3>
             <ul className="space-y-3">
@@ -160,13 +160,13 @@ export const ResultsView = ({
         <h2 className="text-3xl font-light text-[#F8F8F2] mb-8">
           Your Operational Signature
         </h2>
-        
+
         <div className="bg-[#1C1C1C] p-12 rounded">
           <OperationalPortraitCanvas portrait={portrait} />
         </div>
-        
+
         <p className="text-sm text-[#415A77] mt-4 text-center">
-          This unique visualization represents your operational DNA - 
+          This unique visualization represents your operational DNA -
           a combination of strengths, gaps, and potential.
         </p>
       </div>
@@ -176,8 +176,8 @@ export const ResultsView = ({
         <h2 className="text-3xl font-light text-[#F8F8F2] mb-8">
           Recommended Intervention Sequence
         </h2>
-        
-        <InterventionTimeline 
+
+        <InterventionTimeline
           interventions={score.recommendedInterventions}
           timeline={score.suggestedTimeline}
         />
@@ -188,7 +188,7 @@ export const ResultsView = ({
         <h2 className="text-3xl font-light text-[#F8F8F2] mb-6">
           Candlefish Collaboration Fit
         </h2>
-        
+
         {score.candlefishFit.qualified ? (
           <>
             <p className="text-xl text-[#3FD3C6] mb-4">
@@ -224,23 +224,23 @@ export const ResultsView = ({
         <button
           onClick={downloadPDF}
           disabled={downloading}
-          className="px-8 py-4 bg-[#1B263B] border border-[#415A77] text-[#E0E1DD] 
+          className="px-8 py-4 bg-[#1B263B] border border-[#415A77] text-[#E0E1DD]
                    hover:border-[#3FD3C6] transition-all duration-300 disabled:opacity-50"
         >
           {downloading ? 'Generating PDF...' : 'Download Full Report (PDF)'}
         </button>
-        
+
         <button
           onClick={() => {
             if (navigator.share) {
-              navigator.share({ 
+              navigator.share({
                 title: 'Operational Maturity Assessment',
                 text: `${score.level} - ${score.percentile}th percentile`,
                 url: `${window.location.origin}/maturity-map/results/${sessionId}`
               })
             }
           }}
-          className="px-8 py-4 bg-[#1B263B] border border-[#415A77] text-[#E0E1DD] 
+          className="px-8 py-4 bg-[#1B263B] border border-[#415A77] text-[#E0E1DD]
                    hover:border-[#3FD3C6] transition-all duration-300"
         >
           Share Results

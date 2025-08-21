@@ -12,10 +12,10 @@ export default function Home() {
     <div className="min-h-screen relative">
       {/* Temporal Evolution - Time-based atmosphere */}
       <TemporalEvolution />
-      
+
       {/* Entry Portal - WebGL Background */}
       <EntryPortal />
-      
+
       {/* Main Content Layer */}
       <div className="relative z-10 flex items-center justify-center min-h-screen px-4">
         <div className="max-w-6xl mx-auto">

@@ -16,13 +16,13 @@ export default function QueuePage() {
   const [queuePosition, setQueuePosition] = useState(47);
   const [totalQueue, setTotalQueue] = useState(127);
   const [averageWait, setAverageWait] = useState("12-18 weeks");
-  
+
   const [recentEntries] = useState<QueueEntry[]>([
-    { position: 45, id: 'q-2024-156', type: 'collaboration', submittedAt: '2024-12-18', estimatedWait: '14-16 weeks', status: 'under_review' },
-    { position: 46, id: 'q-2024-157', type: 'workshop_visit', submittedAt: '2024-12-19', estimatedWait: '16-20 weeks', status: 'waiting' },
-    { position: 47, id: 'q-2024-158', type: 'consultation', submittedAt: '2024-12-20', estimatedWait: '12-14 weeks', status: 'waiting' },
-    { position: 48, id: 'q-2024-159', type: 'collaboration', submittedAt: '2024-12-20', estimatedWait: '18-22 weeks', status: 'waiting' },
-    { position: 49, id: 'q-2024-160', type: 'workshop_visit', submittedAt: '2024-12-21', estimatedWait: '20-24 weeks', status: 'waiting' },
+    { position: 45, id: 'q-2025-156', type: 'collaboration', submittedAt: '2025-08-18', estimatedWait: '14-16 weeks', status: 'under_review' },
+    { position: 46, id: 'q-2025-157', type: 'workshop_visit', submittedAt: '2025-08-19', estimatedWait: '16-20 weeks', status: 'waiting' },
+    { position: 47, id: 'q-2025-158', type: 'consultation', submittedAt: '2025-08-20', estimatedWait: '12-14 weeks', status: 'waiting' },
+    { position: 48, id: 'q-2025-159', type: 'collaboration', submittedAt: '2025-08-20', estimatedWait: '18-22 weeks', status: 'waiting' },
+    { position: 49, id: 'q-2025-160', type: 'workshop_visit', submittedAt: '2025-08-21', estimatedWait: '20-24 weeks', status: 'waiting' },
   ]);
 
   useEffect(() => {
@@ -67,7 +67,7 @@ export default function QueuePage() {
         >
           <h1 className="text-5xl font-light text-pearl mb-6">Queue Status</h1>
           <p className="text-xl text-pearl/60 max-w-2xl mx-auto font-light">
-            Current waiting room for workshop access and collaboration requests. 
+            Current waiting room for workshop access and collaboration requests.
             All entries are processed in order of receipt and operational fit.
           </p>
         </motion.div>
@@ -106,7 +106,7 @@ export default function QueuePage() {
           className="mb-16"
         >
           <h2 className="text-2xl font-light text-pearl mb-8 text-center">Recent Queue Activity</h2>
-          
+
           <div className="space-y-4">
             {recentEntries.map((entry, index) => (
               <motion.div
@@ -121,7 +121,7 @@ export default function QueuePage() {
                     <div className="text-2xl font-mono text-copper/60">
                       #{entry.position}
                     </div>
-                    
+
                     <div>
                       <div className="text-sm font-mono text-pearl/40 mb-1">
                         {entry.id}
@@ -131,7 +131,7 @@ export default function QueuePage() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="text-right">
                     <div className={`text-sm font-mono ${getStatusColor(entry.status)} mb-1`}>
                       {entry.status.replace('_', ' ')}
@@ -141,12 +141,12 @@ export default function QueuePage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="mt-4 text-xs font-mono text-pearl/30">
-                  Submitted: {new Date(entry.submittedAt).toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
+                  Submitted: {new Date(entry.submittedAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
                   })}
                 </div>
               </motion.div>
@@ -163,10 +163,10 @@ export default function QueuePage() {
         >
           <div className="bg-graphite/20 border border-copper/20 p-12 backdrop-blur-workshop">
             <blockquote className="text-lg text-pearl/60 font-light italic leading-relaxed mb-6">
-              "Quality work cannot be rushed. Each collaboration receives the time and attention 
+              "Quality work cannot be rushed. Each collaboration receives the time and attention
               it deserves. The queue is not a barrier—it is a commitment to craft."
             </blockquote>
-            
+
             <div className="text-sm font-mono text-copper">
               — Workshop Principles
             </div>
@@ -181,7 +181,7 @@ export default function QueuePage() {
           className="mb-16"
         >
           <h2 className="text-2xl font-light text-pearl mb-8 text-center">Submission Process</h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center">
               <div className="w-12 h-12 bg-copper/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -192,7 +192,7 @@ export default function QueuePage() {
                 All submissions undergo preliminary assessment for operational fit and workshop capacity alignment.
               </p>
             </div>
-            
+
             <div className="text-center">
               <div className="w-12 h-12 bg-living-cyan/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-living-cyan font-mono font-bold">02</span>
@@ -202,7 +202,7 @@ export default function QueuePage() {
                 Qualified submissions receive comprehensive evaluation. This process cannot be accelerated.
               </p>
             </div>
-            
+
             <div className="text-center">
               <div className="w-12 h-12 bg-pearl/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-pearl font-mono font-bold">03</span>
@@ -227,11 +227,11 @@ export default function QueuePage() {
               Queue position is estimated and may change based on workshop capacity and project complexity.
               Not all submissions will proceed to collaboration. Quality requirements are non-negotiable.
             </p>
-            
-            <button 
+
+            <button
               className="
-                px-6 py-3 
-                bg-graphite/60 border border-copper/30 
+                px-6 py-3
+                bg-graphite/60 border border-copper/30
                 text-copper font-mono text-sm
                 hover:border-copper/60 hover:bg-copper/5
                 transition-all duration-500
@@ -241,7 +241,7 @@ export default function QueuePage() {
             >
               Submit Workshop Request
             </button>
-            
+
             <div className="text-xs text-pearl/30 mt-3">
               New submissions temporarily suspended
             </div>

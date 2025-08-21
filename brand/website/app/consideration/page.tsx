@@ -46,33 +46,33 @@ export default function ConsiderationRequest() {
                 Request Consideration
               </h1>
               <p className="text-xl text-[#415A77] leading-relaxed font-light">
-                We accept three collaborations per quarter. Current queue 
+                We accept three collaborations per quarter. Current queue
                 position: {currentQueueLength + 1} of {maxQueueCapacity}.
               </p>
               <p className="text-[#415A77] mt-4 font-light">
                 Next consideration window: {nextConsiderationDate}
               </p>
             </header>
-            
+
             <form className="space-y-12" onSubmit={handleSubmit}>
               {/* Company Context */}
               <fieldset>
                 <legend className="text-[#3FD3C6] uppercase tracking-wider text-sm mb-6">
                   Operational Context
                 </legend>
-                
+
                 <div className="space-y-6">
                   <div>
                     <label className="block text-[#E0E1DD] mb-2 font-light">
                       Years in Operation
                     </label>
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       name="yearsInOperation"
                       value={formData.yearsInOperation}
                       onChange={handleChange}
                       min="1"
-                      className="w-full bg-[#1B263B] border border-[#415A77] px-4 py-3 
+                      className="w-full bg-[#1B263B] border border-[#415A77] px-4 py-3
                                text-[#F8F8F2] focus:border-[#3FD3C6] transition-colors
                                font-light"
                       required
@@ -81,35 +81,35 @@ export default function ConsiderationRequest() {
                       We work with established operations, typically 5+ years
                     </p>
                   </div>
-                  
+
                   <div>
                     <label className="block text-[#E0E1DD] mb-2 font-light">
                       Primary Operational Challenge
                     </label>
-                    <textarea 
+                    <textarea
                       name="operationalChallenge"
                       value={formData.operationalChallenge}
                       onChange={handleChange}
                       rows={4}
-                      className="w-full bg-[#1B263B] border border-[#415A77] px-4 py-3 
+                      className="w-full bg-[#1B263B] border border-[#415A77] px-4 py-3
                                text-[#F8F8F2] focus:border-[#3FD3C6] transition-colors
                                font-light"
                       placeholder="Describe the inefficiency that keeps you awake"
                       required
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-[#E0E1DD] mb-2 font-light">
                       Current Manual Hours per Week
                     </label>
-                    <input 
+                    <input
                       type="number"
                       name="manualHours"
                       value={formData.manualHours}
                       onChange={handleChange}
                       min="10"
-                      className="w-full bg-[#1B263B] border border-[#415A77] px-4 py-3 
+                      className="w-full bg-[#1B263B] border border-[#415A77] px-4 py-3
                                text-[#F8F8F2] focus:border-[#3FD3C6] transition-colors
                                font-light"
                       required
@@ -118,16 +118,16 @@ export default function ConsiderationRequest() {
                       Estimate time spent on repetitive operational tasks
                     </p>
                   </div>
-                  
+
                   <div>
                     <label className="block text-[#E0E1DD] mb-2 font-light">
                       Investment Range Comfort
                     </label>
-                    <select 
+                    <select
                       name="investmentRange"
                       value={formData.investmentRange}
                       onChange={handleChange}
-                      className="w-full bg-[#1B263B] border border-[#415A77] px-4 py-3 
+                      className="w-full bg-[#1B263B] border border-[#415A77] px-4 py-3
                                text-[#F8F8F2] focus:border-[#3FD3C6] transition-colors
                                font-light"
                       required
@@ -142,64 +142,64 @@ export default function ConsiderationRequest() {
                   </div>
                 </div>
               </fieldset>
-              
+
               {/* Contact Details */}
               <fieldset>
                 <legend className="text-[#3FD3C6] uppercase tracking-wider text-sm mb-6">
                   Contact Details
                 </legend>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <input 
+                  <input
                     type="text"
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
                     placeholder="Name"
-                    className="bg-[#1B263B] border border-[#415A77] px-4 py-3 
+                    className="bg-[#1B263B] border border-[#415A77] px-4 py-3
                              text-[#F8F8F2] focus:border-[#3FD3C6] transition-colors
                              font-light"
                     required
                   />
-                  <input 
+                  <input
                     type="text"
                     name="role"
                     value={formData.role}
                     onChange={handleChange}
                     placeholder="Role"
-                    className="bg-[#1B263B] border border-[#415A77] px-4 py-3 
+                    className="bg-[#1B263B] border border-[#415A77] px-4 py-3
                              text-[#F8F8F2] focus:border-[#3FD3C6] transition-colors
                              font-light"
                     required
                   />
-                  <input 
+                  <input
                     type="email"
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
                     placeholder="Email"
-                    className="bg-[#1B263B] border border-[#415A77] px-4 py-3 
+                    className="bg-[#1B263B] border border-[#415A77] px-4 py-3
                              text-[#F8F8F2] focus:border-[#3FD3C6] transition-colors
                              font-light"
                     required
                   />
-                  <input 
+                  <input
                     type="text"
                     name="company"
                     value={formData.company}
                     onChange={handleChange}
                     placeholder="Company"
-                    className="bg-[#1B263B] border border-[#415A77] px-4 py-3 
+                    className="bg-[#1B263B] border border-[#415A77] px-4 py-3
                              text-[#F8F8F2] focus:border-[#3FD3C6] transition-colors
                              font-light"
                     required
                   />
                 </div>
               </fieldset>
-              
-              <button 
+
+              <button
                 type="submit"
-                className="w-full py-4 bg-[#1B263B] border border-[#415A77] 
+                className="w-full py-4 bg-[#1B263B] border border-[#415A77]
                          text-[#E0E1DD] hover:border-[#3FD3C6] transition-all duration-500
                          font-light tracking-wider"
               >
@@ -208,7 +208,7 @@ export default function ConsiderationRequest() {
             </form>
           </>
         )}
-        
+
         {stage === 'submitted' && (
           <div className="text-center py-32">
             <div className="mb-8">

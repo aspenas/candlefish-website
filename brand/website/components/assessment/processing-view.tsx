@@ -44,7 +44,7 @@ export const ProcessingView = ({ responses, sessionId, onComplete }: ProcessingV
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ responses, sessionId })
       }).then(r => r.json())
-      
+
       onComplete(results)
     } catch (error) {
       console.error('Processing error:', error)
@@ -91,7 +91,7 @@ export const ProcessingView = ({ responses, sessionId, onComplete }: ProcessingV
                 style={{ transformOrigin: "center" }}
               />
             ))}
-            
+
             {/* Central pulse */}
             <motion.circle
               cx="128"
@@ -119,7 +119,7 @@ export const ProcessingView = ({ responses, sessionId, onComplete }: ProcessingV
             <motion.div
               key={idx}
               initial={{ opacity: 0.3 }}
-              animate={{ 
+              animate={{
                 opacity: idx <= stage ? 1 : 0.3,
                 x: idx <= stage ? 0 : -10
               }}

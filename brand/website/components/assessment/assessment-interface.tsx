@@ -29,7 +29,7 @@ export const AssessmentView = ({ dimension, onResponse, onBack }: AssessmentView
         followUp: followUpAnswer,
         timestamp: Date.now()
       })
-      
+
       // Reset for next question
       setSelected(null)
       setFollowUpAnswer('')
@@ -55,11 +55,11 @@ export const AssessmentView = ({ dimension, onResponse, onBack }: AssessmentView
             {Math.round(((dimension + 1) / 14) * 100)}% Complete
           </span>
         </div>
-        
+
         <h2 className="text-4xl font-light text-[#F8F8F2] mb-2">
           {currentQuestion.dimension}
         </h2>
-        
+
         <p className="text-[#415A77] leading-relaxed">
           {currentQuestion.context}
         </p>
@@ -78,8 +78,8 @@ export const AssessmentView = ({ dimension, onResponse, onBack }: AssessmentView
               key={option.value}
               className={`
                 w-full text-left p-6 border transition-all duration-300
-                ${selected === option.value 
-                  ? 'bg-[#1B263B] border-[#3FD3C6]' 
+                ${selected === option.value
+                  ? 'bg-[#1B263B] border-[#3FD3C6]'
                   : 'bg-[#0D1B2A]/50 border-[#415A77] hover:border-[#E0E1DD]'
                 }
               `}
@@ -96,7 +96,7 @@ export const AssessmentView = ({ dimension, onResponse, onBack }: AssessmentView
                 `}>
                   {String.fromCharCode(65 + index)}
                 </span>
-                
+
                 <div className="flex-1">
                   <p className={`
                     text-lg mb-2
@@ -104,7 +104,7 @@ export const AssessmentView = ({ dimension, onResponse, onBack }: AssessmentView
                   `}>
                     {option.label}
                   </p>
-                  
+
                   {/* Show insight on hover or selection */}
                   <AnimatePresence>
                     {(hoveredOption === option.value || selected === option.value) && (
@@ -140,7 +140,7 @@ export const AssessmentView = ({ dimension, onResponse, onBack }: AssessmentView
             <textarea
               value={followUpAnswer}
               onChange={(e) => setFollowUpAnswer(e.target.value)}
-              className="w-full bg-[#0D1B2A] border border-[#415A77] px-4 py-3 
+              className="w-full bg-[#0D1B2A] border border-[#415A77] px-4 py-3
                        text-[#F8F8F2] focus:border-[#3FD3C6] transition-colors
                        focus:outline-none resize-none"
               rows={3}
@@ -183,10 +183,10 @@ export const AssessmentView = ({ dimension, onResponse, onBack }: AssessmentView
               key={dim.id}
               className={`
                 h-1 flex-1 mx-0.5 transition-all duration-500
-                ${idx < dimension 
-                  ? 'bg-[#3FD3C6]' 
-                  : idx === dimension 
-                  ? 'bg-[#3FD3C6]/50' 
+                ${idx < dimension
+                  ? 'bg-[#3FD3C6]'
+                  : idx === dimension
+                  ? 'bg-[#3FD3C6]/50'
                   : 'bg-[#415A77]'
                 }
               `}

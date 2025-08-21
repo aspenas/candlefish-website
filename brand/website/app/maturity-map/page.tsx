@@ -17,7 +17,7 @@ export default function OperationalMaturityAssessment() {
   const [stage, setStage] = useState<
     'introduction' | 'assessment' | 'processing' | 'results' | 'consultation'
   >('introduction')
-  
+
   const [responses, setResponses] = useState<AssessmentResponse[]>([])
   const [currentDimension, setCurrentDimension] = useState(0)
   const [score, setScore] = useState<AssessmentScore | null>(null)
@@ -34,7 +34,7 @@ export default function OperationalMaturityAssessment() {
   const handleResponse = (response: AssessmentResponse) => {
     const newResponses = [...responses, response]
     setResponses(newResponses)
-    
+
     if (currentDimension < 13) {
       setCurrentDimension(currentDimension + 1)
     } else {
@@ -59,7 +59,7 @@ export default function OperationalMaturityAssessment() {
     <main className="min-h-screen bg-gradient-to-b from-[#0D1B2A] via-[#1B263B] to-[#1C1C1C]">
       {/* Progress Indicator */}
       {stage === 'assessment' && (
-        <AssessmentProgress 
+        <AssessmentProgress
           stage={stage}
           dimension={currentDimension}
           total={14}
@@ -68,9 +68,9 @@ export default function OperationalMaturityAssessment() {
 
       <AnimatePresence mode="wait">
         {stage === 'introduction' && (
-          <IntroductionView 
+          <IntroductionView
             key="introduction"
-            onBegin={() => setStage('assessment')} 
+            onBegin={() => setStage('assessment')}
           />
         )}
 
@@ -84,7 +84,7 @@ export default function OperationalMaturityAssessment() {
         )}
 
         {stage === 'processing' && (
-          <ProcessingView 
+          <ProcessingView
             key="processing"
             responses={responses}
             sessionId={sessionId}
@@ -104,7 +104,7 @@ export default function OperationalMaturityAssessment() {
         )}
 
         {stage === 'consultation' && score && (
-          <ConsultationView 
+          <ConsultationView
             key="consultation"
             score={score}
             sessionId={sessionId}

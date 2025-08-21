@@ -1,12 +1,12 @@
 import React from 'react';
 import { Card, CardContent } from '../ui/Card';
-import { 
-  BoltIcon, 
-  ChartBarIcon, 
-  CogIcon, 
+import {
+  BoltIcon,
+  ChartBarIcon,
+  CogIcon,
   ShieldCheckIcon,
   ClockIcon,
-  ScaleIcon 
+  ScaleIcon
 } from '@heroicons/react/24/outline';
 
 export interface Feature {
@@ -201,9 +201,9 @@ const Features: React.FC<FeaturesProps> = ({
 
         <div className={`grid grid-cols-1 ${gridCols[columns]} gap-8`}>
           {features.map((feature) => (
-            <Card 
-              key={feature.id} 
-              variant="elevated" 
+            <Card
+              key={feature.id}
+              variant="elevated"
               className="group hover:scale-105 transition-transform duration-200"
             >
               <CardContent>
@@ -211,11 +211,11 @@ const Features: React.FC<FeaturesProps> = ({
                   <div className="w-16 h-16 mx-auto mb-4 bg-sea-glow/10 rounded-full flex items-center justify-center text-sea-glow group-hover:bg-sea-glow group-hover:text-white transition-colors">
                     {feature.icon}
                   </div>
-                  
+
                   <h3 className="text-xl font-semibold text-slate mb-3">
                     {feature.title}
                   </h3>
-                  
+
                   <p className="text-mist mb-4">
                     {feature.description}
                   </p>
@@ -251,4 +251,4 @@ const Features: React.FC<FeaturesProps> = ({
   );
 };
 
-export { Features, type Feature, type FeaturesProps };
+export { Features };

@@ -21,7 +21,7 @@ const PortalMaterial = shaderMaterial(
     varying vec2 vUv;
     varying vec3 vPosition;
     uniform float time;
-    
+
     // Noise function
     vec3 mod289(vec3 x) {
       return x - floor(x * (1.0 / 289.0)) * 289.0;
@@ -83,12 +83,12 @@ const PortalMaterial = shaderMaterial(
 
     void main() {
       vUv = uv;
-      
+
       // Add noise-based displacement for organic movement
       vec3 pos = position;
       float noise = snoise(vec3(position.xy * 2.0, time * 0.1));
       pos.z += noise * 0.1;
-      
+
       vPosition = pos;
       gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
     }
@@ -133,22 +133,22 @@ const PortalMaterial = shaderMaterial(
     void main() {
       vec2 uv = vUv;
       vec2 center = vec2(0.5, 0.5);
-      
+
       // Distance from center for portal effect
       float distanceFromCenter = length(uv - center);
-      
+
       // Create spiral pattern
       float angle = atan(uv.y - center.y, uv.x - center.x);
       float spiral = sin(angle * 8.0 + time * 2.0) * 0.5 + 0.5;
-      
+
       // Volumetric portal effect
       float portalMask = 1.0 - smoothstep(0.1, 0.4, distanceFromCenter);
       portalMask *= spiral;
-      
+
       // Add flowing noise patterns
       vec2 flowUv = uv + vec2(sin(time * 0.3), cos(time * 0.2)) * 0.1;
       float flowPattern = fbm(flowUv * 6.0 + time * 0.5);
-      
+
       // Data stream lines
       float streams = 0.0;
       for(int i = 0; i < 5; i++) {
@@ -156,33 +156,33 @@ const PortalMaterial = shaderMaterial(
         streams += smoothstep(0.48, 0.52, streamY) * (1.0 - streamY);
       }
       streams *= 0.3;
-      
+
       // Circuit-like patterns
       vec2 circuitUv = uv * 20.0;
       float circuits = step(0.95, noise(circuitUv + time * 0.1));
       circuits *= (1.0 - distanceFromCenter);
-      
+
       // Combine all effects
       float intensity = portalMask * portalIntensity + flowPattern * 0.3 + streams + circuits * 0.5;
-      
+
       // Color mixing based on depth and effects
       vec3 color = mix(colorC, colorA, intensity);
       color = mix(color, colorB, portalMask * 0.5);
-      
+
       // Add chromatic aberration near edges
       float chromatic = smoothstep(0.3, 0.5, distanceFromCenter);
       color.r += chromatic * 0.1;
       color.b -= chromatic * 0.1;
-      
+
       // Enhance glow near mouse
       float mouseInfluence = 1.0 - length(uv - mousePosition) * 2.0;
       mouseInfluence = smoothstep(0.0, 1.0, mouseInfluence);
       color += colorA * mouseInfluence * 0.3;
-      
+
       // Final alpha with depth-based falloff
       float alpha = intensity * (1.0 - distanceFromCenter * 0.8);
       alpha = max(alpha, streams * 0.5);
-      
+
       gl_FragColor = vec4(color, alpha);
     }
   `
@@ -193,7 +193,7 @@ extend({ PortalMaterial });
 // Floating code fragments component
 function FloatingCodeFragments() {
   const meshRef = useRef<THREE.Group>(null);
-  
+
   const codeFragments = useMemo(() => [
     '// Operational transcendence\nconst portal = createPortal();',
     'async function synthesize() {\n  return await consciousness.merge();\n}',
@@ -242,7 +242,7 @@ function FloatingCodeFragments() {
 // Holographic metrics component
 function HolographicMetrics() {
   const groupRef = useRef<THREE.Group>(null);
-  
+
   useFrame(({ clock }) => {
     if (groupRef.current) {
       groupRef.current.rotation.y = clock.elapsedTime * 0.05;
@@ -319,7 +319,7 @@ function Scene() {
       {/* Floating elements in 3D space */}
       <FloatingCodeFragments />
       <HolographicMetrics />
-      
+
       {/* Depth layers with geometric forms */}
       <group position={[0, 0, -2]}>
         <mesh position={[-3, 2, 0]}>
@@ -331,7 +331,7 @@ function Scene() {
             wireframe
           />
         </mesh>
-        
+
         <mesh position={[3, -1, 0]}>
           <icosahedronGeometry args={[0.4]} />
           <meshBasicMaterial
@@ -380,7 +380,7 @@ export function EntryPortal() {
           <Scene />
         </Canvas>
       </Suspense>
-      
+
       {/* Atmospheric overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/5 to-black/20 pointer-events-none" />
     </div>

@@ -27,11 +27,11 @@ echo "================================================"
 # Function to check health endpoint
 check_health() {
     echo -e "\n${YELLOW}[$(date '+%Y-%m-%d %H:%M:%S')]${NC} Checking health endpoint..."
-    
+
     HEALTH_RESPONSE=$(curl -s -w "\n%{http_code}" "$STAGING_URL/api/health" 2>/dev/null || echo "000")
     HTTP_CODE=$(echo "$HEALTH_RESPONSE" | tail -n1)
     BODY=$(echo "$HEALTH_RESPONSE" | sed '$d')
-    
+
     if [ "$HTTP_CODE" = "200" ]; then
         echo -e "${GREEN}✅ Health check passed${NC}"
         echo "$BODY" | jq '.' 2>/dev/null || echo "$BODY"
@@ -39,7 +39,7 @@ check_health() {
         echo -e "${RED}❌ Health check failed (HTTP $HTTP_CODE)${NC}"
         echo "$BODY"
     fi
-    
+
     # Parse health metrics
     if [ "$HTTP_CODE" = "200" ] && command -v jq &> /dev/null; then
         MEMORY=$(echo "$BODY" | jq -r '.metrics.memory.heapUsed // 0' 2>/dev/null)
@@ -57,7 +57,7 @@ check_health() {
 # Function to test API endpoints
 test_endpoints() {
     echo -e "\n${YELLOW}[$(date '+%Y-%m-%d %H:%M:%S')]${NC} Testing API endpoints..."
-    
+
     ENDPOINTS=(
         "/api/health"
         "/api/.well-known/jwks.json"
@@ -65,13 +65,13 @@ test_endpoints() {
         "/api/v1/salesforce/test"
         "/api/v1/companycam/test"
     )
-    
+
     for endpoint in "${ENDPOINTS[@]}"; do
         START_TIME=$(date +%s%N)
         HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$STAGING_URL$endpoint" 2>/dev/null || echo "000")
         END_TIME=$(date +%s%N)
         RESPONSE_TIME=$(( (END_TIME - START_TIME) / 1000000 ))
-        
+
         if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ] || [ "$HTTP_CODE" = "204" ]; then
             echo -e "  ${GREEN}✓${NC} $endpoint: ${GREEN}$HTTP_CODE${NC} (${RESPONSE_TIME}ms)"
         elif [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
@@ -79,7 +79,7 @@ test_endpoints() {
         else
             echo -e "  ${RED}✗${NC} $endpoint: ${RED}$HTTP_CODE${NC} (${RESPONSE_TIME}ms)"
         fi
-        
+
         if [ "$RESPONSE_TIME" -gt "$ALERT_THRESHOLD_RESPONSE_TIME" ]; then
             echo -e "    ${YELLOW}⚠️  Slow response: ${RESPONSE_TIME}ms > ${ALERT_THRESHOLD_RESPONSE_TIME}ms${NC}"
         fi
@@ -89,11 +89,11 @@ test_endpoints() {
 # Function to check Fly.io metrics
 check_fly_metrics() {
     echo -e "\n${YELLOW}[$(date '+%Y-%m-%d %H:%M:%S')]${NC} Checking Fly.io metrics..."
-    
+
     if command -v fly &> /dev/null; then
         echo -e "${GREEN}Machine Status:${NC}"
         fly status --app paintbox 2>/dev/null | grep -E "^\s+[a-f0-9]+" || echo "No machines found"
-        
+
         echo -e "\n${GREEN}Recent Logs (errors/warnings):${NC}"
         fly logs --app paintbox -n 20 2>/dev/null | grep -E "(ERROR|WARN|error|warning)" | tail -5 || echo "No recent errors"
     else
@@ -104,7 +104,7 @@ check_fly_metrics() {
 # Function to generate monitoring report
 generate_report() {
     echo -e "\n${YELLOW}[$(date '+%Y-%m-%d %H:%M:%S')]${NC} Generating monitoring report..."
-    
+
     cat > "$REPORT_FILE" << EOF
 {
   "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
@@ -118,7 +118,7 @@ generate_report() {
   "next_check": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 }
 EOF
-    
+
     echo -e "${GREEN}✅ Report saved to: $REPORT_FILE${NC}"
 }
 
@@ -126,35 +126,35 @@ EOF
 continuous_monitor() {
     local duration_hours=${1:-24}
     local check_interval=${2:-300}  # 5 minutes default
-    
+
     echo -e "\n${GREEN}Starting continuous monitoring for $duration_hours hours${NC}"
     echo "Check interval: $check_interval seconds"
     echo "Press Ctrl+C to stop monitoring"
-    
+
     local end_time=$(($(date +%s) + duration_hours * 3600))
     local check_count=0
-    
+
     while [ $(date +%s) -lt $end_time ]; do
         check_count=$((check_count + 1))
         echo -e "\n${YELLOW}═══════════════════════════════════════════════════${NC}"
         echo -e "${YELLOW}Check #$check_count - $(date '+%Y-%m-%d %H:%M:%S')${NC}"
         echo -e "${YELLOW}═══════════════════════════════════════════════════${NC}"
-        
+
         check_health
         test_endpoints
         check_fly_metrics
         generate_report
-        
+
         remaining=$((end_time - $(date +%s)))
         remaining_hours=$((remaining / 3600))
         remaining_minutes=$(((remaining % 3600) / 60))
-        
+
         echo -e "\n${GREEN}Next check in $check_interval seconds...${NC}"
         echo -e "${GREEN}Monitoring remaining: ${remaining_hours}h ${remaining_minutes}m${NC}"
-        
+
         sleep $check_interval
     done
-    
+
     echo -e "\n${GREEN}✅ Monitoring complete after $duration_hours hours${NC}"
 }
 

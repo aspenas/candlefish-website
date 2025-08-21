@@ -79,7 +79,7 @@ function Queue3D({ positions }: { positions: QueuePosition[] }) {
           </Text>
         </Float>
       ))}
-      
+
       {/* Queue flow lines */}
       <mesh>
         <tubeGeometry
@@ -106,9 +106,9 @@ function Queue3D({ positions }: { positions: QueuePosition[] }) {
 }
 
 // Queue Position Card Component
-function QueuePositionCard({ position, isUserPosition }: { 
-  position: QueuePosition; 
-  isUserPosition?: boolean 
+function QueuePositionCard({ position, isUserPosition }: {
+  position: QueuePosition;
+  isUserPosition?: boolean
 }) {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -133,8 +133,8 @@ function QueuePositionCard({ position, isUserPosition }: {
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      className={`queue-position p-6 rounded-lg border ${getPriorityColor(position.priority)} 
-                  ${isUserPosition ? 'ring-2 ring-copper/50 bg-copper/10' : ''} 
+      className={`queue-position p-6 rounded-lg border ${getPriorityColor(position.priority)}
+                  ${isUserPosition ? 'ring-2 ring-copper/50 bg-copper/10' : ''}
                   hover-lift transition-all duration-300`}
     >
       <div className="flex items-center justify-between mb-4">
@@ -204,7 +204,7 @@ export default function QueueSystem() {
     }));
 
     setQueuePositions(mockPositions);
-    
+
     // Simulate user having a position
     if (Math.random() > 0.3) {
       setUserPosition(mockPositions[14]?.id || null);
@@ -243,7 +243,7 @@ export default function QueueSystem() {
     const avgWait = queuePositions.reduce((sum, pos) => sum + pos.estimatedWait, 0) / queuePositions.length || 0;
     const urgentCount = queuePositions.filter(p => p.priority === 'urgent').length;
     const expeditedCount = queuePositions.filter(p => p.priority === 'expedited').length;
-    
+
     return {
       totalInQueue: queuePositions.length,
       averageWait: avgWait,
@@ -257,7 +257,7 @@ export default function QueueSystem() {
     <div className="min-h-screen bg-deep-navy">
       <div className="container mx-auto px-8 py-12">
         {/* Queue Header */}
-        <motion.header 
+        <motion.header
           className="mb-12"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -297,7 +297,7 @@ export default function QueueSystem() {
         </motion.header>
 
         {/* 3D Queue Visualization */}
-        <motion.div 
+        <motion.div
           className="mb-12 h-80 bg-graphite/10 rounded-lg border border-living-cyan/20"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -307,9 +307,9 @@ export default function QueueSystem() {
             <ambientLight intensity={0.3} />
             <pointLight position={[10, 10, 10]} intensity={0.5} color="#00FFFF" />
             <pointLight position={[-10, 10, 10]} intensity={0.3} color="#B87333" />
-            
+
             <Queue3D positions={queuePositions} />
-            
+
             {/* Controls for interaction */}
             {/* <OrbitControls enablePan={false} enableZoom={true} maxDistance={15} minDistance={5} /> */}
           </Canvas>
@@ -329,7 +329,7 @@ export default function QueueSystem() {
         </div>
 
         {/* Queue Actions */}
-        <motion.div 
+        <motion.div
           className="mt-12 text-center"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -343,7 +343,7 @@ export default function QueueSystem() {
               </p>
               <button
                 data-cursor="queue"
-                className="px-6 py-3 bg-graphite/80 hover:bg-graphite border border-copper/30 hover:border-copper/60 
+                className="px-6 py-3 bg-graphite/80 hover:bg-graphite border border-copper/30 hover:border-copper/60
                          text-pearl transition-all duration-300 hover-lift rounded"
               >
                 Modify Request
@@ -358,7 +358,7 @@ export default function QueueSystem() {
               </p>
               <button
                 data-cursor="queue"
-                className="px-8 py-4 bg-graphite/80 hover:bg-graphite border border-living-cyan/30 hover:border-living-cyan/60 
+                className="px-8 py-4 bg-graphite/80 hover:bg-graphite border border-living-cyan/30 hover:border-living-cyan/60
                          text-pearl transition-all duration-300 hover-lift rounded"
                 onClick={() => {
                   // Simulate joining queue
@@ -381,7 +381,7 @@ export default function QueueSystem() {
         </motion.div>
 
         {/* Operational Philosophy */}
-        <motion.footer 
+        <motion.footer
           className="mt-16 text-center"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

@@ -17,14 +17,14 @@ export const ConsultationView = ({ score, sessionId }: ConsultationViewProps) =>
     preferredTime: '',
     message: ''
   })
-  
+
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
-    
+
     try {
       const response = await fetch('/api/assessment/consultation', {
         method: 'POST',
@@ -39,7 +39,7 @@ export const ConsultationView = ({ score, sessionId }: ConsultationViewProps) =>
           }
         })
       })
-      
+
       if (response.ok) {
         setSubmitted(true)
       }
@@ -49,7 +49,7 @@ export const ConsultationView = ({ score, sessionId }: ConsultationViewProps) =>
       setSubmitting(false)
     }
   }
-  
+
   if (submitted) {
     return (
       <motion.section
@@ -61,26 +61,26 @@ export const ConsultationView = ({ score, sessionId }: ConsultationViewProps) =>
           <h2 className="text-3xl font-light text-[#F8F8F2] mb-6">
             Consultation Request Received
           </h2>
-          
+
           <p className="text-[#E0E1DD] mb-8">
-            We'll review your assessment results and reach out within 24 hours 
+            We'll review your assessment results and reach out within 24 hours
             to discuss how we can help transform your operations.
           </p>
-          
+
           <div className="bg-[#0D1B2A] p-6 rounded">
             <p className="text-sm text-[#415A77] mb-2">Your reference number:</p>
             <p className="text-[#3FD3C6] font-mono text-lg">{sessionId}</p>
           </div>
-          
+
           <p className="text-sm text-[#415A77] mt-8">
-            You'll receive a confirmation email shortly with your assessment results 
+            You'll receive a confirmation email shortly with your assessment results
             and next steps.
           </p>
         </div>
       </motion.section>
     )
   }
-  
+
   return (
     <motion.section
       initial={{ opacity: 0 }}
@@ -92,11 +92,11 @@ export const ConsultationView = ({ score, sessionId }: ConsultationViewProps) =>
           Request Consultation
         </h1>
         <p className="text-xl text-[#E0E1DD]">
-          Let's discuss how to transform your {score.level.split(':')[1].toLowerCase()} operations 
+          Let's discuss how to transform your {score.level.split(':')[1].toLowerCase()} operations
           into systematic excellence.
         </p>
       </header>
-      
+
       <div className="bg-[#1B263B] p-8 mb-8">
         <h3 className="text-[#3FD3C6] mb-4">What happens next:</h3>
         <ul className="space-y-2 text-[#E0E1DD] text-sm">
@@ -107,7 +107,7 @@ export const ConsultationView = ({ score, sessionId }: ConsultationViewProps) =>
           <li>• No sales pressure - just operational truth</li>
         </ul>
       </div>
-      
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid md:grid-cols-2 gap-6">
           <div>
@@ -119,12 +119,12 @@ export const ConsultationView = ({ score, sessionId }: ConsultationViewProps) =>
               required
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full bg-[#0D1B2A] border border-[#415A77] px-4 py-3 
+              className="w-full bg-[#0D1B2A] border border-[#415A77] px-4 py-3
                        text-[#F8F8F2] focus:border-[#3FD3C6] transition-colors
                        focus:outline-none"
             />
           </div>
-          
+
           <div>
             <label className="block text-[#E0E1DD] mb-2">
               Email *
@@ -134,13 +134,13 @@ export const ConsultationView = ({ score, sessionId }: ConsultationViewProps) =>
               required
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full bg-[#0D1B2A] border border-[#415A77] px-4 py-3 
+              className="w-full bg-[#0D1B2A] border border-[#415A77] px-4 py-3
                        text-[#F8F8F2] focus:border-[#3FD3C6] transition-colors
                        focus:outline-none"
             />
           </div>
         </div>
-        
+
         <div className="grid md:grid-cols-2 gap-6">
           <div>
             <label className="block text-[#E0E1DD] mb-2">
@@ -151,12 +151,12 @@ export const ConsultationView = ({ score, sessionId }: ConsultationViewProps) =>
               required
               value={formData.company}
               onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-              className="w-full bg-[#0D1B2A] border border-[#415A77] px-4 py-3 
+              className="w-full bg-[#0D1B2A] border border-[#415A77] px-4 py-3
                        text-[#F8F8F2] focus:border-[#3FD3C6] transition-colors
                        focus:outline-none"
             />
           </div>
-          
+
           <div>
             <label className="block text-[#E0E1DD] mb-2">
               Role *
@@ -166,13 +166,13 @@ export const ConsultationView = ({ score, sessionId }: ConsultationViewProps) =>
               required
               value={formData.role}
               onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-              className="w-full bg-[#0D1B2A] border border-[#415A77] px-4 py-3 
+              className="w-full bg-[#0D1B2A] border border-[#415A77] px-4 py-3
                        text-[#F8F8F2] focus:border-[#3FD3C6] transition-colors
                        focus:outline-none"
             />
           </div>
         </div>
-        
+
         <div className="grid md:grid-cols-2 gap-6">
           <div>
             <label className="block text-[#E0E1DD] mb-2">
@@ -182,12 +182,12 @@ export const ConsultationView = ({ score, sessionId }: ConsultationViewProps) =>
               type="tel"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="w-full bg-[#0D1B2A] border border-[#415A77] px-4 py-3 
+              className="w-full bg-[#0D1B2A] border border-[#415A77] px-4 py-3
                        text-[#F8F8F2] focus:border-[#3FD3C6] transition-colors
                        focus:outline-none"
             />
           </div>
-          
+
           <div>
             <label className="block text-[#E0E1DD] mb-2">
               Preferred Time
@@ -195,7 +195,7 @@ export const ConsultationView = ({ score, sessionId }: ConsultationViewProps) =>
             <select
               value={formData.preferredTime}
               onChange={(e) => setFormData({ ...formData, preferredTime: e.target.value })}
-              className="w-full bg-[#0D1B2A] border border-[#415A77] px-4 py-3 
+              className="w-full bg-[#0D1B2A] border border-[#415A77] px-4 py-3
                        text-[#F8F8F2] focus:border-[#3FD3C6] transition-colors
                        focus:outline-none"
             >
@@ -206,7 +206,7 @@ export const ConsultationView = ({ score, sessionId }: ConsultationViewProps) =>
             </select>
           </div>
         </div>
-        
+
         <div>
           <label className="block text-[#E0E1DD] mb-2">
             Specific areas you'd like to discuss
@@ -215,22 +215,22 @@ export const ConsultationView = ({ score, sessionId }: ConsultationViewProps) =>
             value={formData.message}
             onChange={(e) => setFormData({ ...formData, message: e.target.value })}
             rows={4}
-            className="w-full bg-[#0D1B2A] border border-[#415A77] px-4 py-3 
+            className="w-full bg-[#0D1B2A] border border-[#415A77] px-4 py-3
                      text-[#F8F8F2] focus:border-[#3FD3C6] transition-colors
                      focus:outline-none resize-none"
             placeholder="What operational challenges are you facing? What would success look like?"
           />
         </div>
-        
+
         <div className="flex justify-between items-center">
           <p className="text-xs text-[#415A77]">
             * Required fields
           </p>
-          
+
           <button
             type="submit"
             disabled={submitting}
-            className="px-8 py-4 bg-[#3FD3C6] text-[#0D1B2A] hover:bg-[#4FE3D6] 
+            className="px-8 py-4 bg-[#3FD3C6] text-[#0D1B2A] hover:bg-[#4FE3D6]
                      transition-colors disabled:opacity-50"
           >
             {submitting ? 'Submitting...' : 'Request Consultation'}

@@ -92,7 +92,7 @@ describe('Homepage E2E Tests', () => {
         cy.wrap($img)
           .should('be.visible')
           .and(($img) => {
-            expect($img[0].naturalWidth).to.be.greaterThan(0)
+            expect(($img[0] as HTMLImageElement).naturalWidth).to.be.greaterThan(0)
           })
       })
     })

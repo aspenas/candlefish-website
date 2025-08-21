@@ -17,7 +17,6 @@ import {
   GetSecretValueCommand,
   SecretsManagerClientConfig,
   ResourceNotFoundException,
-  AccessDeniedException,
 } from '@aws-sdk/client-secrets-manager';
 import { jwksRateLimiter, withRateLimit } from '@/lib/security/rate-limiter';
 import { securityLogger } from '@/lib/logging/security-logger';
@@ -132,7 +131,7 @@ async function fetchJWKSFromAWS(): Promise<any> {
         ...errorContext,
         recommendation: 'Verify secret exists in AWS Secrets Manager',
       });
-    } else if (error instanceof AccessDeniedException) {
+    } else if (error.name === 'AccessDeniedException') {
       securityLogger.error('Access denied to JWKS secret', {
         ...errorContext,
         recommendation: 'Check IAM permissions for secretsmanager:GetSecretValue',

@@ -11,7 +11,7 @@ const ScrollRevealContext = createContext<ScrollRevealContextType | null>(null)
 
 export const ScrollRevealProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const observerRef = useRef<IntersectionObserver | null>(null)
-  
+
   useEffect(() => {
     // Create intersection observer for scroll reveals
     observerRef.current = new IntersectionObserver(
@@ -21,11 +21,11 @@ export const ScrollRevealProvider: React.FC<{ children: React.ReactNode }> = ({ 
             // Add revealed class with stagger based on index
             const target = entry.target as HTMLElement
             const delay = parseInt(target.dataset.revealDelay || '0')
-            
+
             setTimeout(() => {
               target.classList.add('revealed')
             }, delay)
-            
+
             // Stop observing once revealed
             observerRef.current?.unobserve(entry.target)
           }
@@ -36,16 +36,16 @@ export const ScrollRevealProvider: React.FC<{ children: React.ReactNode }> = ({ 
         rootMargin: '0px 0px -50px 0px'
       }
     )
-    
+
     // Auto-observe elements with reveal class
     const elements = document.querySelectorAll('.on-scroll-reveal')
     elements.forEach(el => observerRef.current?.observe(el))
-    
+
     return () => {
       observerRef.current?.disconnect()
     }
   }, [])
-  
+
   const contextValue: ScrollRevealContextType = {
     observe: (element: Element) => {
       observerRef.current?.observe(element)
@@ -54,7 +54,7 @@ export const ScrollRevealProvider: React.FC<{ children: React.ReactNode }> = ({ 
       observerRef.current?.unobserve(element)
     }
   }
-  
+
   return (
     <ScrollRevealContext.Provider value={contextValue}>
       {children}
@@ -78,16 +78,16 @@ export const RevealLine: React.FC<{
 }> = ({ children, delay = 0, className = '' }) => {
   const ref = useRef<HTMLDivElement>(null)
   const { observe } = useScrollReveal()
-  
+
   useEffect(() => {
     if (ref.current) {
       ref.current.dataset.revealDelay = delay.toString()
       observe(ref.current)
     }
   }, [delay, observe])
-  
+
   return (
-    <div 
+    <div
       ref={ref}
       className={`on-scroll-reveal ${className}`}
     >
@@ -105,7 +105,7 @@ export const RevealBlock: React.FC<{
 }> = ({ children, delay = 0, className = '', direction = 'up' }) => {
   const ref = useRef<HTMLDivElement>(null)
   const { observe } = useScrollReveal()
-  
+
   useEffect(() => {
     if (ref.current) {
       ref.current.dataset.revealDelay = delay.toString()
@@ -113,7 +113,7 @@ export const RevealBlock: React.FC<{
       observe(ref.current)
     }
   }, [delay, direction, observe])
-  
+
   const getTransformClass = () => {
     switch (direction) {
       case 'down': return 'translate-y-[-20px]'
@@ -122,9 +122,9 @@ export const RevealBlock: React.FC<{
       default: return 'translate-y-[20px]'
     }
   }
-  
+
   return (
-    <div 
+    <div
       ref={ref}
       className={`opacity-0 ${getTransformClass()} transition-all duration-gentle ease-gentle ${className}`}
       style={{

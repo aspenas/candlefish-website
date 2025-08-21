@@ -137,9 +137,9 @@ const Testimonials: React.FC<TestimonialsProps> = ({
           {/* Testimonials Grid */}
           <div className={`grid grid-cols-1 ${itemsPerPage > 1 ? `lg:grid-cols-${itemsPerPage}` : ''} gap-8`}>
             {visibleTestimonials.map((testimonial) => (
-              <Card 
-                key={testimonial.id} 
-                variant="elevated" 
+              <Card
+                key={testimonial.id}
+                variant="elevated"
                 className="h-full"
               >
                 <CardContent className="h-full flex flex-col">
@@ -227,7 +227,7 @@ const Testimonials: React.FC<TestimonialsProps> = ({
               >
                 <ChevronLeftIcon className="h-5 w-5" />
               </button>
-              
+
               <button
                 onClick={goToNext}
                 className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 w-10 h-10 bg-white shadow-lg rounded-full flex items-center justify-center text-slate hover:text-sea-glow transition-colors"
@@ -259,4 +259,4 @@ const Testimonials: React.FC<TestimonialsProps> = ({
   );
 };
 
-export { Testimonials, type Testimonial, type TestimonialsProps };
+export { Testimonials };

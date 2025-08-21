@@ -67,7 +67,7 @@ export function OperationalStatement() {
   }, []);
 
   const statement = statements[currentStatement];
-  const loadColor = metrics.systemLoad > 0.95 ? 'text-living-cyan' : 
+  const loadColor = metrics.systemLoad > 0.95 ? 'text-living-cyan' :
                    metrics.systemLoad > 0.90 ? 'text-copper' : 'text-pearl/70';
 
   return (
@@ -84,7 +84,7 @@ export function OperationalStatement() {
         <h1 className="text-4xl md:text-6xl font-light text-pearl tracking-tight leading-tight max-w-4xl mx-auto">
           {statement.primary}
         </h1>
-        
+
         <p className="text-xl md:text-2xl text-pearl/60 font-light max-w-2xl mx-auto">
           {statement.secondary}
         </p>
@@ -103,14 +103,14 @@ export function OperationalStatement() {
           </div>
           <div className="text-pearl/40">capacity</div>
         </div>
-        
+
         <div className="text-center space-y-1">
           <div className="text-copper">
             {metrics.queuePosition}
           </div>
           <div className="text-pearl/40">queue</div>
         </div>
-        
+
         <div className="text-center space-y-1">
           <div className="text-pearl/70">
             {metrics.activeProjects}
@@ -136,10 +136,10 @@ export function OperationalStatement() {
         transition={{ delay: 1.5, duration: 0.5 }}
         className="pt-8"
       >
-        <button 
+        <button
           className="
-            px-8 py-4 
-            bg-graphite/80 border border-copper/30 
+            px-8 py-4
+            bg-graphite/80 border border-copper/30
             text-copper font-mono text-sm
             backdrop-blur-workshop
             hover:border-copper/60 hover:bg-copper/5
