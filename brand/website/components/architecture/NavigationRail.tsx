@@ -36,40 +36,40 @@ const NavigationRail: React.FC = () => {
           {/* Logo Mark */}
           <div className="h-[72px] flex items-center justify-center border-b border-ink-primary/10">
             <Link href="/" className="group">
-              <svg 
-                width="32" 
-                height="32" 
-                viewBox="0 0 32 32" 
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 32 32"
                 fill="none"
                 className="transition-transform duration-200 group-hover:scale-110"
               >
                 {/* Minimalist Candlefish Mark */}
-                <rect 
-                  x="8" 
-                  y="8" 
-                  width="16" 
-                  height="16" 
-                  stroke="rgb(var(--ink-primary))" 
+                <rect
+                  x="8"
+                  y="8"
+                  width="16"
+                  height="16"
+                  stroke="rgb(var(--ink-primary))"
                   strokeWidth="1.5"
                   className="transition-all duration-200 group-hover:stroke-[rgb(var(--operation-active))]"
                 />
-                <circle 
-                  cx="16" 
-                  cy="16" 
-                  r="3" 
+                <circle
+                  cx="16"
+                  cy="16"
+                  r="3"
                   fill="rgb(var(--ink-primary))"
                   className="transition-all duration-200 group-hover:fill-[rgb(var(--operation-active))]"
                 />
               </svg>
             </Link>
           </div>
-          
+
           {/* Navigation Items */}
           <div className="flex-1 py-8">
             {routes.map((route, i) => {
               const isActive = pathname === route.path
               const isHovered = hoveredIndex === i
-              
+
               return (
                 <Link
                   key={route.path}
@@ -81,7 +81,7 @@ const NavigationRail: React.FC = () => {
                     animationDelay: mounted ? `${i * 50}ms` : '0ms'
                   }}
                 >
-                  <div 
+                  <div
                     className={`
                       h-[56px] flex items-center justify-center relative
                       transition-all duration-200
@@ -89,7 +89,7 @@ const NavigationRail: React.FC = () => {
                     `}
                   >
                     {/* Active/Hover Indicator */}
-                    <div 
+                    <div
                       className={`
                         absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[24px]
                         bg-operation-active transition-all duration-200
@@ -97,9 +97,9 @@ const NavigationRail: React.FC = () => {
                         ${isHovered && !isActive ? 'opacity-50' : ''}
                       `}
                     />
-                    
+
                     {/* Index Number */}
-                    <span 
+                    <span
                       className={`
                         type-xs font-mono transition-all duration-200
                         ${isActive ? 'text-ink-primary' : 'text-ink-tertiary'}
@@ -108,9 +108,9 @@ const NavigationRail: React.FC = () => {
                     >
                       {route.index}
                     </span>
-                    
+
                     {/* Label Tooltip */}
-                    <div 
+                    <div
                       className={`
                         absolute left-[72px] top-1/2 -translate-y-1/2
                         px-3 py-1 bg-ink-primary text-atelier-canvas
@@ -126,14 +126,14 @@ const NavigationRail: React.FC = () => {
               )
             })}
           </div>
-          
+
           {/* System Pulse */}
           <div className="h-[144px] border-t border-ink-primary/10 p-4">
             <SystemPulse />
           </div>
         </div>
       </nav>
-      
+
       {/* Mobile Navigation - Horizontal Bar */}
       <nav className="lg:hidden fixed top-0 left-0 right-0 h-[56px] bg-atelier-structure/90 backdrop-blur-sm border-b border-ink-primary/10 z-40">
         <div className="h-full flex items-center justify-between px-4">
@@ -145,9 +145,9 @@ const NavigationRail: React.FC = () => {
             </svg>
             <span className="type-sm font-display text-ink-primary">CANDLEFISH</span>
           </Link>
-          
+
           {/* Mobile Menu Button */}
-          <button 
+          <button
             className="p-2"
             aria-label="Menu"
           >
@@ -164,14 +164,14 @@ const NavigationRail: React.FC = () => {
 // System Pulse Component - Shows live activity
 const SystemPulse: React.FC = () => {
   const [pulse, setPulse] = useState(0)
-  
+
   useEffect(() => {
     const interval = setInterval(() => {
       setPulse(prev => (prev + 1) % 100)
     }, 50)
     return () => clearInterval(interval)
   }, [])
-  
+
   return (
     <div className="h-full flex flex-col justify-center items-center">
       {/* Pulse Visualization */}
@@ -191,7 +191,7 @@ const SystemPulse: React.FC = () => {
           )
         })}
       </div>
-      
+
       {/* Status Text */}
       <div className="mt-4">
         <span className="type-xs font-mono text-ink-tertiary">

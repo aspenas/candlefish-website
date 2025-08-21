@@ -37,13 +37,13 @@ export const WorkflowBuilder = ({ demoMode = false }: { demoMode?: boolean }) =>
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    
+
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    
+
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-    
+
     // Draw connections
     ctx.strokeStyle = '#415A77'
     ctx.lineWidth = 2
@@ -55,7 +55,7 @@ export const WorkflowBuilder = ({ demoMode = false }: { demoMode?: boolean }) =>
         ctx.moveTo(fromNode.x + 40, fromNode.y + 20)
         ctx.lineTo(toNode.x, toNode.y + 20)
         ctx.stroke()
-        
+
         // Draw arrow
         const angle = Math.atan2(toNode.y - fromNode.y, toNode.x - fromNode.x - 40)
         ctx.beginPath()
@@ -66,13 +66,13 @@ export const WorkflowBuilder = ({ demoMode = false }: { demoMode?: boolean }) =>
         ctx.stroke()
       }
     })
-    
+
     // Draw nodes
     nodes.forEach(node => {
-      ctx.fillStyle = node.type === 'start' ? '#3FD3C6' : 
+      ctx.fillStyle = node.type === 'start' ? '#3FD3C6' :
                      node.type === 'end' ? '#E84855' :
                      node.type === 'decision' ? '#FFB400' : '#415A77'
-      
+
       if (node.type === 'decision') {
         // Draw diamond
         ctx.beginPath()
@@ -86,13 +86,13 @@ export const WorkflowBuilder = ({ demoMode = false }: { demoMode?: boolean }) =>
         // Draw rectangle
         ctx.fillRect(node.x, node.y, 80, 40)
       }
-      
+
       // Draw text
       ctx.fillStyle = '#F8F8F2'
       ctx.font = '12px monospace'
       ctx.textAlign = 'center'
       ctx.fillText(node.name, node.x + 40, node.y + 25)
-      
+
       // Highlight selected
       if (selectedNode === node.id) {
         ctx.strokeStyle = '#3FD3C6'
@@ -127,16 +127,16 @@ export const WorkflowBuilder = ({ demoMode = false }: { demoMode?: boolean }) =>
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current?.getBoundingClientRect()
     if (!rect) return
-    
+
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
-    
+
     // Check if clicked on a node
-    const clickedNode = nodes.find(node => 
+    const clickedNode = nodes.find(node =>
       x >= node.x && x <= node.x + 80 &&
       y >= node.y && y <= node.y + 40
     )
-    
+
     if (clickedNode) {
       if (connecting) {
         // Create connection
@@ -157,15 +157,15 @@ export const WorkflowBuilder = ({ demoMode = false }: { demoMode?: boolean }) =>
     // Simple analysis
     const processNodes = nodes.filter(n => n.type === 'process')
     const totalTime = processNodes.reduce((sum, n) => sum + (n.duration || 0), 0)
-    
+
     // Find bottlenecks (nodes with high duration)
     const bottlenecks = processNodes
       .filter(n => (n.duration || 0) > 10)
       .map(n => n.name)
-    
+
     // Calculate efficiency (simplified)
     const efficiency = Math.max(0, 100 - (bottlenecks.length * 15))
-    
+
     setMetrics({ totalTime, bottlenecks, efficiency })
   }
 
@@ -187,34 +187,34 @@ export const WorkflowBuilder = ({ demoMode = false }: { demoMode?: boolean }) =>
           <div className="flex gap-4 items-center">
             <button
               onClick={() => addNode('process')}
-              className="px-4 py-2 bg-[#415A77] text-[#F8F8F2] hover:bg-[#3FD3C6] 
+              className="px-4 py-2 bg-[#415A77] text-[#F8F8F2] hover:bg-[#3FD3C6]
                        hover:text-[#0D1B2A] transition-colors"
             >
               + Add Process
             </button>
-            
+
             <button
               onClick={() => addNode('decision')}
-              className="px-4 py-2 bg-[#415A77] text-[#F8F8F2] hover:bg-[#FFB400] 
+              className="px-4 py-2 bg-[#415A77] text-[#F8F8F2] hover:bg-[#FFB400]
                        hover:text-[#0D1B2A] transition-colors"
             >
               + Add Decision
             </button>
-            
+
             <button
               onClick={() => selectedNode && setConnecting(selectedNode)}
               disabled={!selectedNode}
-              className="px-4 py-2 bg-[#415A77] text-[#F8F8F2] hover:bg-[#3FD3C6] 
+              className="px-4 py-2 bg-[#415A77] text-[#F8F8F2] hover:bg-[#3FD3C6]
                        hover:text-[#0D1B2A] transition-colors disabled:opacity-50"
             >
               Connect From Selected
             </button>
-            
+
             <div className="flex-1" />
-            
+
             <button
               onClick={analyzeWorkflow}
-              className="px-6 py-2 bg-[#3FD3C6] text-[#0D1B2A] font-medium 
+              className="px-6 py-2 bg-[#3FD3C6] text-[#0D1B2A] font-medium
                        hover:bg-[#4FE3D6] transition-colors"
             >
               Analyze Workflow
@@ -235,7 +235,7 @@ export const WorkflowBuilder = ({ demoMode = false }: { demoMode?: boolean }) =>
                 className="w-full cursor-crosshair"
                 style={{ background: '#0D1B2A' }}
               />
-              
+
               {connecting && (
                 <p className="text-[#3FD3C6] text-sm mt-2">
                   Click on a node to connect from {nodes.find(n => n.id === connecting)?.name}
@@ -250,7 +250,7 @@ export const WorkflowBuilder = ({ demoMode = false }: { demoMode?: boolean }) =>
             {selectedNode && (
               <div className="bg-[#1C1C1C] border border-[#415A77] p-4">
                 <h3 className="text-[#3FD3C6] mb-4">Node Properties</h3>
-                
+
                 <div className="space-y-3">
                   <div>
                     <label className="text-[#415A77] text-sm">Name</label>
@@ -258,15 +258,15 @@ export const WorkflowBuilder = ({ demoMode = false }: { demoMode?: boolean }) =>
                       type="text"
                       value={nodes.find(n => n.id === selectedNode)?.name || ''}
                       onChange={(e) => {
-                        setNodes(nodes.map(n => 
+                        setNodes(nodes.map(n =>
                           n.id === selectedNode ? { ...n, name: e.target.value } : n
                         ))
                       }}
-                      className="w-full bg-[#0D1B2A] border border-[#415A77] px-3 py-2 
+                      className="w-full bg-[#0D1B2A] border border-[#415A77] px-3 py-2
                                text-[#F8F8F2] text-sm"
                     />
                   </div>
-                  
+
                   {nodes.find(n => n.id === selectedNode)?.type === 'process' && (
                     <div>
                       <label className="text-[#415A77] text-sm">Duration (min)</label>
@@ -274,11 +274,11 @@ export const WorkflowBuilder = ({ demoMode = false }: { demoMode?: boolean }) =>
                         type="number"
                         value={nodes.find(n => n.id === selectedNode)?.duration || 0}
                         onChange={(e) => {
-                          setNodes(nodes.map(n => 
+                          setNodes(nodes.map(n =>
                             n.id === selectedNode ? { ...n, duration: parseInt(e.target.value) } : n
                           ))
                         }}
-                        className="w-full bg-[#0D1B2A] border border-[#415A77] px-3 py-2 
+                        className="w-full bg-[#0D1B2A] border border-[#415A77] px-3 py-2
                                  text-[#F8F8F2] text-sm"
                       />
                     </div>
@@ -290,7 +290,7 @@ export const WorkflowBuilder = ({ demoMode = false }: { demoMode?: boolean }) =>
             {/* Metrics */}
             <div className="bg-[#1C1C1C] border border-[#415A77] p-4">
               <h3 className="text-[#3FD3C6] mb-4">Workflow Metrics</h3>
-              
+
               <div className="space-y-3">
                 <div>
                   <p className="text-[#415A77] text-sm">Total Time</p>
@@ -298,14 +298,14 @@ export const WorkflowBuilder = ({ demoMode = false }: { demoMode?: boolean }) =>
                     {metrics.totalTime} min
                   </p>
                 </div>
-                
+
                 <div>
                   <p className="text-[#415A77] text-sm">Efficiency Score</p>
                   <p className="text-[#F8F8F2] text-2xl font-light">
                     {metrics.efficiency}%
                   </p>
                 </div>
-                
+
                 {metrics.bottlenecks.length > 0 && (
                   <div>
                     <p className="text-[#E84855] text-sm">Bottlenecks Detected</p>
@@ -322,7 +322,7 @@ export const WorkflowBuilder = ({ demoMode = false }: { demoMode?: boolean }) =>
             {/* Legend */}
             <div className="bg-[#1C1C1C] border border-[#415A77] p-4">
               <h3 className="text-[#3FD3C6] mb-4">Legend</h3>
-              
+
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 bg-[#3FD3C6]" />

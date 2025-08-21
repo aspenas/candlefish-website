@@ -21,7 +21,7 @@ export const AssessmentProgress = ({ stage, dimension, total }: AssessmentProgre
               Question {dimension + 1} of {total}
             </p>
           </div>
-          
+
           <div className="text-right">
             <p className="text-[#E0E1DD] text-lg font-light">
               {Math.round(percentage)}%
@@ -31,7 +31,7 @@ export const AssessmentProgress = ({ stage, dimension, total }: AssessmentProgre
             </p>
           </div>
         </div>
-        
+
         {/* Progress bar */}
         <div className="mt-4 h-1 bg-[#1B263B] rounded-full overflow-hidden">
           <motion.div

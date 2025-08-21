@@ -51,22 +51,22 @@ class ExcelWatcher(FileSystemEventHandler):
     """
     Watch Excel files and extract patterns without disrupting workflow
     """
-    
+
     def on_modified(self, event):
         if event.src_path.endswith('.xlsx'):
             self.process_excel_changes(event.src_path)
-    
+
     def process_excel_changes(self, filepath):
         # Read with all formatting preserved
         wb = pd.ExcelFile(filepath)
-        
+
         # Extract not just data, but patterns
         patterns = {
             'edit_frequency': self.calculate_edit_patterns(filepath),
             'formula_complexity': self.analyze_formulas(wb),
             'data_flow': self.trace_cell_dependencies(wb)
         }
-        
+
         return patterns
 \`\`\`
 
@@ -88,7 +88,7 @@ def sync_excel_to_db(excel_path, db_connection):
     Maintain database shadow of Excel without disrupting Excel use
     """
     df = pd.read_excel(excel_path, sheet_name=None)
-    
+
     for sheet_name, sheet_data in df.items():
         # Preserve everything, including metadata
         sheet_data.to_sql(
@@ -97,7 +97,7 @@ def sync_excel_to_db(excel_path, db_connection):
             if_exists='replace',
             index=True  # Even row numbers matter
         )
-    
+
     # Store metadata separately
     store_excel_metadata(excel_path, db_connection)
 \`\`\`
@@ -114,7 +114,7 @@ def extract_formulas(excel_path):
     """
     wb = load_workbook(excel_path, data_only=False)
     formulas = {}
-    
+
     for sheet in wb.worksheets:
         for row in sheet.iter_rows():
             for cell in row:
@@ -124,7 +124,7 @@ def extract_formulas(excel_path):
                         'current_value': cell.value,
                         'dependencies': extract_dependencies(cell.value)
                     }
-    
+
     return formulas
 \`\`\`
 
@@ -183,16 +183,16 @@ def model_email_queue(inbox_data):
     """
     arrivals = inbox_data['received_times']
     responses = inbox_data['response_times']
-    
+
     # Calculate queue metrics
     avg_wait = np.mean(responses - arrivals)
     queue_length = len([e for e in inbox_data if not e['responded']])
-    
+
     # Little's Law: L = λW
     observation_period = max(arrivals) - min(arrivals)
     arrival_rate = len(arrivals) / observation_period
     implied_queue_length = arrival_rate * avg_wait
-    
+
     return {
         'actual_queue': queue_length,
         'implied_queue': implied_queue_length,
@@ -207,22 +207,22 @@ def trace_approval_flow(approval_logs):
     Approvals are queues with human servers
     """
     stages = defaultdict(list)
-    
+
     for item in approval_logs:
         stages[item['approver']].append({
             'wait_time': item['approved_at'] - item['submitted_at'],
             'processing_time': item['decided_at'] - item['reviewed_at']
         })
-    
+
     # Find bottlenecks
     bottlenecks = []
     threshold = 24 * 3600  # 24 hours in seconds
-    
+
     for approver, times in stages.items():
         avg_wait = np.mean([t['wait_time'] for t in times])
         if avg_wait > threshold:
             bottlenecks.append(approver)
-    
+
     return bottlenecks
 \`\`\`
 
@@ -240,14 +240,14 @@ def implement_batching(work_items):
     batches = defaultdict(list)
     for item in work_items:
         batches[item['type']].append(item)
-    
+
     # Process in optimal order (queue scheduling)
     setup_time = {
         'type_a': 10,
         'type_b': 20,
         'type_c': 5
     }
-    
+
     for batch_type in sorted(batches.keys(), key=lambda x: setup_time.get(x, 0)):
         process_batch(batches[batch_type])
 \`\`\`
@@ -401,12 +401,12 @@ class UsagePatternLearner:
     """
     Learn from usage without explicit training
     """
-    
+
     def __init__(self):
         self.event_stream = []
         self.patterns = defaultdict(list)
         self.adaptations = {}
-    
+
     def observe(self, event):
         """
         Every action is a teaching moment
@@ -417,11 +417,11 @@ class UsagePatternLearner:
             'context': self.get_current_context(),
             'user_state': self.get_user_state(event['user_id'])
         }
-        
+
         self.event_stream.append(enriched_event)
         self.extract_patterns(enriched_event)
         self.suggest_adaptations()
-    
+
     def extract_patterns(self, event):
         """
         Find patterns without being told what to look for
@@ -431,23 +431,23 @@ class UsagePatternLearner:
         if len(recent_events) > 1:
             sequence = tuple(e['action'] for e in recent_events)
             self.patterns['sequences'][sequence] += 1
-        
+
         # Temporal patterns
         hour = event['timestamp'].hour
         day = event['timestamp'].weekday()
         self.patterns['temporal'][(hour, day)].append(event['action'])
-        
+
         # Error patterns
         if event.get('error'):
             preceding = self.get_preceding_events(event, count=3)
             self.patterns['errors'][event['error']].append(preceding)
-    
+
     def suggest_adaptations(self):
         """
         Propose system changes based on patterns
         """
         adaptations = []
-        
+
         # Frequently repeated sequences could be shortcuts
         for sequence, count in self.patterns['sequences'].items():
             if count > 10 and len(sequence) > 3:
@@ -456,7 +456,7 @@ class UsagePatternLearner:
                     'sequence': sequence,
                     'frequency': count
                 })
-        
+
         # Common error paths need better UX
         for error, contexts in self.patterns['errors'].items():
             if len(contexts) > 5:
@@ -466,7 +466,7 @@ class UsagePatternLearner:
                     'error': error,
                     'common_path': common_path
                 })
-        
+
         return adaptations
 \`\`\`
 
@@ -481,27 +481,27 @@ def discover_clusters(events, min_similarity=0.7):
     """
     from sklearn.cluster import DBSCAN
     from sklearn.feature_extraction.text import TfidfVectorizer
-    
+
     # Convert events to feature vectors
     event_strings = [json.dumps(e, sort_keys=True) for e in events]
     vectorizer = TfidfVectorizer(max_features=100)
     features = vectorizer.fit_transform(event_strings)
-    
+
     # Find clusters without knowing how many
     clustering = DBSCAN(eps=1-min_similarity, min_samples=3)
     clusters = clustering.fit_predict(features)
-    
+
     # Extract meaning from clusters
     cluster_patterns = defaultdict(list)
     for event, cluster_id in zip(events, clusters):
         if cluster_id != -1:  # Not noise
             cluster_patterns[cluster_id].append(event)
-    
+
     # Name clusters based on common attributes
     for cluster_id, cluster_events in cluster_patterns.items():
         common_attrs = find_common_attributes(cluster_events)
         print(f"Discovered pattern: {common_attrs}")
-    
+
     return cluster_patterns
 \`\`\`
 
@@ -513,52 +513,52 @@ The interface evolves based on usage:
 class AdaptiveUI {
   private usageHistory: Map<string, number> = new Map()
   private userPaths: Map<string, string[]> = new Map()
-  
+
   recordUsage(componentId: string, userId: string) {
     // Track component usage
     const count = this.usageHistory.get(componentId) || 0
     this.usageHistory.set(componentId, count + 1)
-    
+
     // Track user paths
     const path = this.userPaths.get(userId) || []
     path.push(componentId)
     this.userPaths.set(userId, path.slice(-10)) // Keep last 10
   }
-  
+
   getOptimalLayout(userId: string): Layout {
     const userPath = this.userPaths.get(userId) || []
     const globalUsage = Array.from(this.usageHistory.entries())
-    
+
     // Components used frequently should be prominent
     const prominentComponents = globalUsage
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([id]) => id)
-    
+
     // Components used in sequence should be near each other
     const sequences = this.findSequences(userPath)
-    
+
     return {
       primary: prominentComponents,
       grouped: sequences,
       hidden: this.getRarelyUsed()
     }
   }
-  
+
   private findSequences(path: string[]): string[][] {
     const sequences: string[][] = []
     const seen = new Set<string>()
-    
+
     for (let i = 0; i < path.length - 1; i++) {
       const pair = [path[i], path[i + 1]]
       const key = pair.join('->')
-      
+
       if (!seen.has(key)) {
         sequences.push(pair)
         seen.add(key)
       }
     }
-    
+
     return sequences
   }
 }
@@ -573,35 +573,35 @@ class HeuristicLearner:
     """
     Learn through simple rules, not neural networks
     """
-    
+
     def __init__(self):
         self.rules = []
         self.performance = defaultdict(float)
-    
+
     def learn_from_outcome(self, context, action, outcome):
         """
         If it worked, do more of it. If it didn't, do less.
         """
         key = (self.hash_context(context), action)
-        
+
         if outcome > 0:
             self.performance[key] += 0.1  # Reinforce
         else:
             self.performance[key] -= 0.1  # Discourage
-        
+
         # Create new rule if pattern is strong
         if abs(self.performance[key]) > 1.0:
             self.create_rule(context, action, self.performance[key])
-    
+
     def decide(self, context):
         """
         Use learned rules to make decisions
         """
         applicable_rules = [
-            rule for rule in self.rules 
+            rule for rule in self.rules
             if self.matches_context(rule.context, context)
         ]
-        
+
         if applicable_rules:
             # Use highest confidence rule
             best_rule = max(applicable_rules, key=lambda r: r.confidence)

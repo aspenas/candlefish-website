@@ -9,7 +9,7 @@ const getSystemCapacity = () => {
   return {
     available: false,
     nextWindow: 'December 2025',
-    queueLength: 47,
+    queueLength: 7,
     maxQueue: 50
   }
 }
@@ -38,43 +38,43 @@ const Navigation: React.FC = () => {
           <Link href="/" className="text-2xl font-light text-[#F8F8F2] tracking-tight">
             candlefish<span className="text-[#3FD3C6]">.</span>ai
           </Link>
-          
+
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
-            <Link 
-              href="/instruments" 
+            <Link
+              href="/instruments"
               className={`text-sm font-light transition-colors ${
                 pathname === '/instruments' ? 'text-[#3FD3C6]' : 'text-[#E0E1DD] hover:text-[#3FD3C6]'
               }`}
             >
               Instruments
             </Link>
-            <Link 
-              href="/workshop" 
+            <Link
+              href="/workshop"
               className={`text-sm font-light transition-colors ${
                 pathname === '/workshop' ? 'text-[#3FD3C6]' : 'text-[#E0E1DD] hover:text-[#3FD3C6]'
               }`}
             >
               Workshop
             </Link>
-            <Link 
-              href="/maturity-map" 
+            <Link
+              href="/assessment"
               className={`text-sm font-light transition-colors ${
-                pathname === '/maturity-map' ? 'text-[#3FD3C6]' : 'text-[#E0E1DD] hover:text-[#3FD3C6]'
+                pathname === '/assessment' ? 'text-[#3FD3C6]' : 'text-[#E0E1DD] hover:text-[#3FD3C6]'
               }`}
             >
               Assessment
             </Link>
-            <Link 
-              href="/manifesto" 
+            <Link
+              href="/manifesto"
               className={`text-sm font-light transition-colors ${
                 pathname === '/manifesto' ? 'text-[#3FD3C6]' : 'text-[#E0E1DD] hover:text-[#3FD3C6]'
               }`}
             >
               Manifesto
             </Link>
-            <Link 
-              href="/workshop-notes" 
+            <Link
+              href="/workshop-notes"
               className={`text-sm font-light transition-colors ${
                 pathname === '/workshop-notes' ? 'text-[#3FD3C6]' : 'text-[#E0E1DD] hover:text-[#3FD3C6]'
               }`}
@@ -82,12 +82,12 @@ const Navigation: React.FC = () => {
               Notes
             </Link>
           </div>
-          
+
           {/* Status-based CTA */}
           <div className="hidden md:block">
             {currentCapacity.available ? (
-              <Link 
-                href="/consideration" 
+              <Link
+                href="/consideration"
                 className="text-[#0D1B2A] bg-[#3FD3C6] px-6 py-2 text-sm font-light hover:bg-[#4FE3D6] transition-colors"
               >
                 Request Consideration
@@ -98,9 +98,9 @@ const Navigation: React.FC = () => {
               </span>
             )}
           </div>
-          
+
           {/* Mobile Menu Button */}
-          <button 
+          <button
             className="md:hidden text-[#E0E1DD] p-2"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Menu"
@@ -115,51 +115,51 @@ const Navigation: React.FC = () => {
           </button>
         </div>
       </div>
-      
+
       {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-[#0D1B2A]/95 backdrop-blur-sm border-t border-[#1B263B]">
           <div className="px-6 py-4 space-y-4">
-            <Link 
-              href="/instruments" 
+            <Link
+              href="/instruments"
               className="block text-[#E0E1DD] hover:text-[#3FD3C6] transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
               Instruments
             </Link>
-            <Link 
-              href="/workshop" 
+            <Link
+              href="/workshop"
               className="block text-[#E0E1DD] hover:text-[#3FD3C6] transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
               Workshop
             </Link>
-            <Link 
-              href="/maturity-map" 
+            <Link
+              href="/assessment"
               className="block text-[#E0E1DD] hover:text-[#3FD3C6] transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
               Assessment
             </Link>
-            <Link 
-              href="/manifesto" 
+            <Link
+              href="/manifesto"
               className="block text-[#E0E1DD] hover:text-[#3FD3C6] transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
               Manifesto
             </Link>
-            <Link 
-              href="/workshop-notes" 
+            <Link
+              href="/workshop-notes"
               className="block text-[#E0E1DD] hover:text-[#3FD3C6] transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
               Notes
             </Link>
-            
+
             <div className="pt-4 border-t border-[#1B263B]">
               {currentCapacity.available ? (
-                <Link 
-                  href="/consideration" 
+                <Link
+                  href="/consideration"
                   className="block text-center text-[#0D1B2A] bg-[#3FD3C6] px-6 py-2 hover:bg-[#4FE3D6] transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >

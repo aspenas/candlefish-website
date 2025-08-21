@@ -12,17 +12,17 @@ module.exports = {
         'atelier-canvas': 'rgb(var(--atelier-canvas) / <alpha-value>)',
         'atelier-structure': 'rgb(var(--atelier-structure) / <alpha-value>)',
         'atelier-depth': 'rgb(var(--atelier-depth) / <alpha-value>)',
-        
+
         /* PRECISION INKS */
         'ink-primary': 'rgb(var(--ink-primary) / <alpha-value>)',
         'ink-secondary': 'rgb(var(--ink-secondary) / <alpha-value>)',
         'ink-tertiary': 'rgb(var(--ink-tertiary) / <alpha-value>)',
-        
+
         /* OPERATIONAL ACCENTS */
         'operation-active': 'rgb(var(--operation-active) / <alpha-value>)',
         'operation-pending': 'rgb(var(--operation-pending) / <alpha-value>)',
         'operation-complete': 'rgb(var(--operation-complete) / <alpha-value>)',
-        
+
         /* MATERIAL TONES */
         'material-concrete': 'rgb(var(--material-concrete) / <alpha-value>)',
         'material-steel': 'rgb(var(--material-steel) / <alpha-value>)',
@@ -99,15 +99,15 @@ module.exports = {
         'dramatic': 'var(--duration-dramatic)',
       },
       gridTemplateColumns: {
-        'atelier': `[full-start] minmax(20px, 1fr) 
+        'atelier': `[full-start] minmax(20px, 1fr)
                     [wide-start] minmax(0, 80px)
                     [main-start] minmax(0, 80px)
                     [text-start] minmax(20px, 740px) [text-end]
                     minmax(20px, 140px) [main-end]
                     minmax(20px, 220px) [wide-end]
                     minmax(20px, 1fr) [full-end]`,
-        'atelier-mobile': `[full-start] 20px 
-                          [wide-start main-start text-start] 1fr 
+        'atelier-mobile': `[full-start] 20px
+                          [wide-start main-start text-start] 1fr
                           [text-end main-end wide-end] 20px [full-end]`,
       },
       letterSpacing: {

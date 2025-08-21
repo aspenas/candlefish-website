@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { Button } from '../ui/Button';
 import { ArrowRightIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
@@ -91,9 +92,9 @@ const CallToAction: React.FC<CTAProps> = ({
   };
 
   return (
-    <section 
+    <section
       className={`relative py-16 ${getVariantClasses()}`}
-      style={backgroundImage ? { 
+      style={backgroundImage ? {
         backgroundImage: `url(${backgroundImage})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center'
@@ -131,25 +132,52 @@ const CallToAction: React.FC<CTAProps> = ({
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-            <Button
-              size="lg"
-              variant={getButtonVariant()}
-              className="group"
-              onClick={primaryCTA.onClick}
-            >
-              {primaryCTA.text}
-              <ArrowRightIcon className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Button>
-            
-            {secondaryCTA && (
+            {primaryCTA.href ? (
+              <Link href={primaryCTA.href}>
+                <Button
+                  size="lg"
+                  variant={getButtonVariant()}
+                  className="group"
+                  onClick={primaryCTA.onClick}
+                >
+                  {primaryCTA.text}
+                  <ArrowRightIcon className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </Link>
+            ) : (
               <Button
-                variant="outline"
                 size="lg"
-                className={getSecondaryButtonClasses()}
-                onClick={secondaryCTA.onClick}
+                variant={getButtonVariant()}
+                className="group"
+                onClick={primaryCTA.onClick}
               >
-                {secondaryCTA.text}
+                {primaryCTA.text}
+                <ArrowRightIcon className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Button>
+            )}
+
+            {secondaryCTA && (
+              secondaryCTA.href ? (
+                <Link href={secondaryCTA.href}>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className={getSecondaryButtonClasses()}
+                    onClick={secondaryCTA.onClick}
+                  >
+                    {secondaryCTA.text}
+                  </Button>
+                </Link>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className={getSecondaryButtonClasses()}
+                  onClick={secondaryCTA.onClick}
+                >
+                  {secondaryCTA.text}
+                </Button>
+              )
             )}
           </div>
 
@@ -194,4 +222,4 @@ const CallToAction: React.FC<CTAProps> = ({
   );
 };
 
-export { CallToAction, type CTAProps };
+export { CallToAction };

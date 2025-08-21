@@ -11,8 +11,8 @@ export default function WorkshopNotes() {
 
   const filteredNotes = workshopNotes
     .filter(note => filter === 'all' || note.category === filter)
-    .filter(note => 
-      searchTerm === '' || 
+    .filter(note =>
+      searchTerm === '' ||
       note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       note.excerpt.toLowerCase().includes(searchTerm.toLowerCase()) ||
       note.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -28,7 +28,7 @@ export default function WorkshopNotes() {
               Workshop Notes
             </h1>
             <p className="text-xl text-[#415A77] leading-relaxed max-w-3xl">
-              Technical explorations from operational work. Published when we 
+              Technical explorations from operational work. Published when we
               find patterns worth documenting, not when the calendar says so.
             </p>
           </header>
@@ -42,8 +42,8 @@ export default function WorkshopNotes() {
                   onClick={() => setFilter(category)}
                   className={`
                     px-4 py-2 text-sm uppercase tracking-wider transition-all
-                    ${filter === category 
-                      ? 'text-[#3FD3C6] border-b-2 border-[#3FD3C6]' 
+                    ${filter === category
+                      ? 'text-[#3FD3C6] border-b-2 border-[#3FD3C6]'
                       : 'text-[#415A77] hover:text-[#E0E1DD]'
                     }
                   `}
@@ -52,15 +52,15 @@ export default function WorkshopNotes() {
                 </button>
               ))}
             </div>
-            
+
             <div className="flex-1 max-w-md">
               <input
                 type="text"
                 placeholder="Search notes..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-[#1B263B] border border-[#415A77] px-4 py-2 
-                         text-[#F8F8F2] placeholder-[#415A77] focus:border-[#3FD3C6] 
+                className="w-full bg-[#1B263B] border border-[#415A77] px-4 py-2
+                         text-[#F8F8F2] placeholder-[#415A77] focus:border-[#3FD3C6]
                          transition-colors"
               />
             </div>
@@ -98,13 +98,13 @@ export default function WorkshopNotes() {
                   </div>
 
                   {/* Title */}
-                  <h2 className="text-3xl font-light text-[#F8F8F2] mb-3 
+                  <h2 className="text-3xl font-light text-[#F8F8F2] mb-3
                                group-hover:text-[#3FD3C6] transition-colors">
                     {note.title}
                   </h2>
 
                   {/* Excerpt */}
-                  <p className="text-[#415A77] leading-relaxed mb-4 line-clamp-3">
+                  <p className="text-xl text-[#415A77] leading-relaxed mb-4 line-clamp-3">
                     {note.excerpt}
                   </p>
 
@@ -113,16 +113,16 @@ export default function WorkshopNotes() {
                     <span className="text-[#E0E1DD]">
                       {note.readTime}
                     </span>
-                    
+
                     {note.hasCode && (
-                      <span className="text-[#3FD3C6] font-mono text-xs px-2 py-1 
+                      <span className="text-[#3FD3C6] font-mono text-xs px-2 py-1
                                      bg-[#3FD3C6]/10 rounded">
                         Contains Code
                       </span>
                     )}
-                    
+
                     {note.hasVisualization && (
-                      <span className="text-[#E84855] text-xs px-2 py-1 
+                      <span className="text-[#E84855] text-xs px-2 py-1
                                      bg-[#E84855]/10 rounded">
                         Interactive
                       </span>
@@ -162,8 +162,8 @@ export default function WorkshopNotes() {
           </footer>
         </section>
       ) : (
-        <NoteViewer 
-          noteId={selectedNote} 
+        <NoteViewer
+          noteId={selectedNote}
           onClose={() => setSelectedNote(null)}
         />
       )}

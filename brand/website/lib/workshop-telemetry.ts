@@ -1,1 +1,411 @@
-/**\n * Workshop Telemetry System for Candlefish Atelier\n * \n * Monitors operational health, system performance, and environmental conditions.\n * Provides real-time insights into workshop functionality and craft integrity.\n */\n\nexport interface TelemetryEvent {\n  timestamp: number;\n  category: 'system' | 'environment' | 'collaboration' | 'craft' | 'security';\n  type: string;\n  severity: 'info' | 'warning' | 'error' | 'critical';\n  message: string;\n  data?: Record<string, any>;\n}\n\nexport interface SystemHealth {\n  overall: 'optimal' | 'degraded' | 'critical';\n  components: {\n    cognitive_load: ComponentStatus;\n    environmental: ComponentStatus;\n    collaboration: ComponentStatus;\n    infrastructure: ComponentStatus;\n    craft_integrity: ComponentStatus;\n  };\n  lastUpdate: number;\n}\n\nexport interface ComponentStatus {\n  status: 'optimal' | 'warning' | 'critical';\n  value: number;\n  threshold: { warning: number; critical: number };\n  trend: 'stable' | 'improving' | 'degrading';\n  lastCheck: number;\n}\n\nexport interface EnvironmentalMetrics {\n  temperature: number; // Celsius\n  humidity: number; // Percentage\n  ambientLight: number; // Lux\n  noiseLevel: number; // dB\n  airQuality: number; // 0-1 scale\n  electricalStability: number; // Voltage variance\n}\n\nexport interface CraftMetrics {\n  qualityIndex: number; // 0-1 scale\n  attentionDepth: number; // Focus measurement\n  flowState: number; // Creative flow indicator\n  toolPrecision: number; // Instrument accuracy\n  outputConsistency: number; // Work quality variance\n}\n\nclass WorkshopTelemetry {\n  private events: TelemetryEvent[] = [];\n  private systemHealth: SystemHealth;\n  private environmentalMetrics: EnvironmentalMetrics;\n  private craftMetrics: CraftMetrics;\n  private lastUpdate: number = 0;\n  private eventRetention: number = 7 * 24 * 60 * 60 * 1000; // 7 days\n\n  constructor() {\n    this.systemHealth = this.initializeSystemHealth();\n    this.environmentalMetrics = this.initializeEnvironmentalMetrics();\n    this.craftMetrics = this.initializeCraftMetrics();\n    this.startPeriodicUpdates();\n  }\n\n  private initializeSystemHealth(): SystemHealth {\n    return {\n      overall: 'optimal',\n      components: {\n        cognitive_load: {\n          status: 'warning',\n          value: 0.94,\n          threshold: { warning: 0.85, critical: 0.95 },\n          trend: 'stable',\n          lastCheck: Date.now(),\n        },\n        environmental: {\n          status: 'optimal',\n          value: 0.87,\n          threshold: { warning: 0.70, critical: 0.50 },\n          trend: 'stable',\n          lastCheck: Date.now(),\n        },\n        collaboration: {\n          status: 'optimal',\n          value: 0.92,\n          threshold: { warning: 0.75, critical: 0.60 },\n          trend: 'improving',\n          lastCheck: Date.now(),\n        },\n        infrastructure: {\n          status: 'optimal',\n          value: 0.98,\n          threshold: { warning: 0.80, critical: 0.65 },\n          trend: 'stable',\n          lastCheck: Date.now(),\n        },\n        craft_integrity: {\n          status: 'optimal',\n          value: 0.95,\n          threshold: { warning: 0.85, critical: 0.75 },\n          trend: 'stable',\n          lastCheck: Date.now(),\n        },\n      },\n      lastUpdate: Date.now(),\n    };\n  }\n\n  private initializeEnvironmentalMetrics(): EnvironmentalMetrics {\n    return {\n      temperature: 21.3,\n      humidity: 45.2,\n      ambientLight: 750,\n      noiseLevel: 35.5,\n      airQuality: 0.92,\n      electricalStability: 0.99,\n    };\n  }\n\n  private initializeCraftMetrics(): CraftMetrics {\n    return {\n      qualityIndex: 0.95,\n      attentionDepth: 0.87,\n      flowState: 0.78,\n      toolPrecision: 0.99,\n      outputConsistency: 0.93,\n    };\n  }\n\n  private startPeriodicUpdates(): void {\n    setInterval(() => {\n      this.updateMetrics();\n      this.cleanupOldEvents();\n    }, 5000); // Update every 5 seconds\n  }\n\n  private updateMetrics(): void {\n    const now = Date.now();\n    if (now - this.lastUpdate < 4000) return; // Throttle updates\n\n    this.updateEnvironmentalMetrics();\n    this.updateCraftMetrics();\n    this.updateSystemHealth();\n    this.generateTelemetryEvents();\n    \n    this.lastUpdate = now;\n  }\n\n  private updateEnvironmentalMetrics(): void {\n    const variance = 0.01;\n    \n    this.environmentalMetrics.temperature = this.applyDrift(\n      this.environmentalMetrics.temperature, variance * 10, 20.0, 23.0\n    );\n    \n    this.environmentalMetrics.humidity = this.applyDrift(\n      this.environmentalMetrics.humidity, variance * 100, 40, 60\n    );\n    \n    this.environmentalMetrics.ambientLight = this.applyDrift(\n      this.environmentalMetrics.ambientLight, variance * 1000, 600, 900\n    );\n    \n    this.environmentalMetrics.noiseLevel = this.applyDrift(\n      this.environmentalMetrics.noiseLevel, variance * 50, 30, 45\n    );\n    \n    this.environmentalMetrics.airQuality = this.applyDrift(\n      this.environmentalMetrics.airQuality, variance, 0.85, 0.98\n    );\n    \n    this.environmentalMetrics.electricalStability = this.applyDrift(\n      this.environmentalMetrics.electricalStability, variance * 0.1, 0.95, 1.0\n    );\n  }\n\n  private updateCraftMetrics(): void {\n    const variance = 0.005;\n    \n    // Quality index should remain high but show some variation\n    this.craftMetrics.qualityIndex = this.applyDrift(\n      this.craftMetrics.qualityIndex, variance, 0.90, 0.98\n    );\n    \n    // Attention depth varies based on time of day and workload\n    const hour = new Date().getHours();\n    const timeOfDayBonus = hour >= 9 && hour <= 17 ? 0.1 : -0.05;\n    this.craftMetrics.attentionDepth = this.applyDrift(\n      this.craftMetrics.attentionDepth + timeOfDayBonus, variance * 2, 0.70, 0.95\n    );\n    \n    // Flow state is more volatile\n    this.craftMetrics.flowState = this.applyDrift(\n      this.craftMetrics.flowState, variance * 3, 0.60, 0.90\n    );\n    \n    this.craftMetrics.toolPrecision = this.applyDrift(\n      this.craftMetrics.toolPrecision, variance * 0.5, 0.95, 1.0\n    );\n    \n    this.craftMetrics.outputConsistency = this.applyDrift(\n      this.craftMetrics.outputConsistency, variance, 0.85, 0.98\n    );\n  }\n\n  private updateSystemHealth(): void {\n    const now = Date.now();\n    \n    // Update component statuses based on current metrics\n    this.updateComponentStatus('cognitive_load', 0.94, now);\n    \n    const envScore = (this.environmentalMetrics.temperature / 25 +\n                     this.environmentalMetrics.airQuality +\n                     this.environmentalMetrics.electricalStability) / 3;\n    this.updateComponentStatus('environmental', envScore, now);\n    \n    const craftScore = (this.craftMetrics.qualityIndex +\n                       this.craftMetrics.attentionDepth +\n                       this.craftMetrics.toolPrecision) / 3;\n    this.updateComponentStatus('craft_integrity', craftScore, now);\n    \n    // Update overall health\n    const components = Object.values(this.systemHealth.components);\n    const criticalCount = components.filter(c => c.status === 'critical').length;\n    const warningCount = components.filter(c => c.status === 'warning').length;\n    \n    this.systemHealth.overall = criticalCount > 0 ? 'critical' :\n                               warningCount > 1 ? 'degraded' : 'optimal';\n    this.systemHealth.lastUpdate = now;\n  }\n\n  private updateComponentStatus(component: keyof SystemHealth['components'], value: number, timestamp: number): void {\n    const comp = this.systemHealth.components[component];\n    const prevValue = comp.value;\n    \n    comp.value = value;\n    comp.lastCheck = timestamp;\n    \n    // Update status based on thresholds\n    if (value < comp.threshold.critical) {\n      comp.status = 'critical';\n    } else if (value < comp.threshold.warning) {\n      comp.status = 'warning';\n    } else {\n      comp.status = 'optimal';\n    }\n    \n    // Update trend\n    const change = value - prevValue;\n    comp.trend = Math.abs(change) < 0.01 ? 'stable' :\n                change > 0 ? 'improving' : 'degrading';\n  }\n\n  private generateTelemetryEvents(): void {\n    // Generate events based on system state\n    const now = Date.now();\n    \n    // Coffee shortage alert\n    if (Math.random() < 0.001) { // Very rare but critical\n      this.logEvent({\n        timestamp: now,\n        category: 'environment',\n        type: 'coffee_shortage',\n        severity: 'critical',\n        message: 'Coffee reserves critically low. Immediate resupply required.',\n        data: { reserves: 0.15 },\n      });\n    }\n    \n    // Quality threshold events\n    if (this.craftMetrics.qualityIndex < 0.90) {\n      this.logEvent({\n        timestamp: now,\n        category: 'craft',\n        type: 'quality_degradation',\n        severity: 'warning',\n        message: 'Craft quality index below optimal threshold.',\n        data: { quality: this.craftMetrics.qualityIndex },\n      });\n    }\n    \n    // Flow state achievements\n    if (this.craftMetrics.flowState > 0.85 && Math.random() < 0.01) {\n      this.logEvent({\n        timestamp: now,\n        category: 'craft',\n        type: 'flow_state_achieved',\n        severity: 'info',\n        message: 'Deep flow state detected. Optimal craft conditions.',\n        data: { flow_state: this.craftMetrics.flowState },\n      });\n    }\n  }\n\n  private logEvent(event: TelemetryEvent): void {\n    this.events.unshift(event);\n    \n    // Keep events sorted by timestamp\n    this.events.sort((a, b) => b.timestamp - a.timestamp);\n    \n    // Limit memory usage\n    if (this.events.length > 1000) {\n      this.events = this.events.slice(0, 1000);\n    }\n  }\n\n  private cleanupOldEvents(): void {\n    const cutoff = Date.now() - this.eventRetention;\n    this.events = this.events.filter(event => event.timestamp > cutoff);\n  }\n\n  private applyDrift(current: number, variance: number, min: number, max: number): number {\n    const change = (Math.random() - 0.5) * variance;\n    return Math.max(min, Math.min(max, current + change));\n  }\n\n  /**\n   * Get current system health overview\n   */\n  public getSystemHealth(): SystemHealth {\n    return JSON.parse(JSON.stringify(this.systemHealth)); // Deep copy\n  }\n\n  /**\n   * Get environmental metrics\n   */\n  public getEnvironmentalMetrics(): EnvironmentalMetrics {\n    return { ...this.environmentalMetrics };\n  }\n\n  /**\n   * Get craft-specific metrics\n   */\n  public getCraftMetrics(): CraftMetrics {\n    return { ...this.craftMetrics };\n  }\n\n  /**\n   * Get recent telemetry events\n   */\n  public getRecentEvents(\n    limit: number = 20,\n    category?: TelemetryEvent['category'],\n    severity?: TelemetryEvent['severity']\n  ): TelemetryEvent[] {\n    let filtered = this.events;\n    \n    if (category) {\n      filtered = filtered.filter(e => e.category === category);\n    }\n    \n    if (severity) {\n      filtered = filtered.filter(e => e.severity === severity);\n    }\n    \n    return filtered.slice(0, limit);\n  }\n\n  /**\n   * Get telemetry statistics\n   */\n  public getTelemetryStats(): {\n    totalEvents: number;\n    eventsByCategory: Record<string, number>;\n    eventsBySeverity: Record<string, number>;\n    avgEventsPerHour: number;\n    systemUptimeHours: number;\n  } {\n    const now = Date.now();\n    const oneHourAgo = now - (60 * 60 * 1000);\n    const recentEvents = this.events.filter(e => e.timestamp > oneHourAgo);\n    \n    const eventsByCategory = this.events.reduce((acc, event) => {\n      acc[event.category] = (acc[event.category] || 0) + 1;\n      return acc;\n    }, {} as Record<string, number>);\n    \n    const eventsBySeverity = this.events.reduce((acc, event) => {\n      acc[event.severity] = (acc[event.severity] || 0) + 1;\n      return acc;\n    }, {} as Record<string, number>);\n    \n    // Simulate uptime (would be actual in production)\n    const systemUptimeHours = 127.5 + ((now - this.lastUpdate) / (1000 * 60 * 60));\n    \n    return {\n      totalEvents: this.events.length,\n      eventsByCategory,\n      eventsBySeverity,\n      avgEventsPerHour: recentEvents.length,\n      systemUptimeHours,\n    };\n  }\n\n  /**\n   * Force a system health check\n   */\n  public runHealthCheck(): SystemHealth {\n    this.updateMetrics();\n    return this.getSystemHealth();\n  }\n}\n\n// Export singleton instance\nexport const workshopTelemetry = new WorkshopTelemetry();"
+/**
+ * Workshop Telemetry System for Candlefish Atelier
+ *
+ * Monitors operational health, system performance, and environmental conditions.
+ * Provides real-time insights into workshop functionality and craft integrity.
+ */
+
+export interface TelemetryEvent {
+  timestamp: number;
+  category: 'system' | 'environment' | 'collaboration' | 'craft' | 'security';
+  type: string;
+  severity: 'info' | 'warning' | 'error' | 'critical';
+  message: string;
+  data?: Record<string, any>;
+}
+
+export interface SystemHealth {
+  overall: 'optimal' | 'degraded' | 'critical';
+  components: {
+    cognitive_load: ComponentStatus;
+    environmental: ComponentStatus;
+    collaboration: ComponentStatus;
+    infrastructure: ComponentStatus;
+    craft_integrity: ComponentStatus;
+  };
+  lastUpdate: number;
+}
+
+export interface ComponentStatus {
+  status: 'optimal' | 'warning' | 'critical';
+  value: number;
+  threshold: { warning: number; critical: number };
+  trend: 'stable' | 'improving' | 'degrading';
+  lastCheck: number;
+}
+
+export interface EnvironmentalMetrics {
+  temperature: number; // Celsius
+  humidity: number; // Percentage
+  ambientLight: number; // Lux
+  noiseLevel: number; // dB
+  airQuality: number; // 0-1 scale
+  electricalStability: number; // Voltage variance
+}
+
+export interface CraftMetrics {
+  qualityIndex: number; // 0-1 scale
+  attentionDepth: number; // Focus measurement
+  flowState: number; // Creative flow indicator
+  toolPrecision: number; // Instrument accuracy
+  outputConsistency: number; // Work quality variance
+}
+
+class WorkshopTelemetry {
+  private events: TelemetryEvent[] = [];
+  private systemHealth: SystemHealth;
+  private environmentalMetrics: EnvironmentalMetrics;
+  private craftMetrics: CraftMetrics;
+  private lastUpdate: number = 0;
+  private eventRetention: number = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+  constructor() {
+    this.systemHealth = this.initializeSystemHealth();
+    this.environmentalMetrics = this.initializeEnvironmentalMetrics();
+    this.craftMetrics = this.initializeCraftMetrics();
+    this.startPeriodicUpdates();
+  }
+
+  private initializeSystemHealth(): SystemHealth {
+    return {
+      overall: 'optimal',
+      components: {
+        cognitive_load: {
+          status: 'warning',
+          value: 0.94,
+          threshold: { warning: 0.85, critical: 0.95 },
+          trend: 'stable',
+          lastCheck: Date.now(),
+        },
+        environmental: {
+          status: 'optimal',
+          value: 0.87,
+          threshold: { warning: 0.70, critical: 0.50 },
+          trend: 'stable',
+          lastCheck: Date.now(),
+        },
+        collaboration: {
+          status: 'optimal',
+          value: 0.92,
+          threshold: { warning: 0.75, critical: 0.60 },
+          trend: 'improving',
+          lastCheck: Date.now(),
+        },
+        infrastructure: {
+          status: 'optimal',
+          value: 0.98,
+          threshold: { warning: 0.80, critical: 0.65 },
+          trend: 'stable',
+          lastCheck: Date.now(),
+        },
+        craft_integrity: {
+          status: 'optimal',
+          value: 0.95,
+          threshold: { warning: 0.85, critical: 0.75 },
+          trend: 'stable',
+          lastCheck: Date.now(),
+        },
+      },
+      lastUpdate: Date.now(),
+    };
+  }
+
+  private initializeEnvironmentalMetrics(): EnvironmentalMetrics {
+    return {
+      temperature: 21.3,
+      humidity: 45.2,
+      ambientLight: 750,
+      noiseLevel: 35.5,
+      airQuality: 0.92,
+      electricalStability: 0.99,
+    };
+  }
+
+  private initializeCraftMetrics(): CraftMetrics {
+    return {
+      qualityIndex: 0.95,
+      attentionDepth: 0.87,
+      flowState: 0.78,
+      toolPrecision: 0.99,
+      outputConsistency: 0.93,
+    };
+  }
+
+  private startPeriodicUpdates(): void {
+    if (typeof window !== 'undefined') {
+      setInterval(() => {
+        this.updateMetrics();
+        this.cleanupOldEvents();
+      }, 5000); // Update every 5 seconds
+    }
+  }
+
+  private updateMetrics(): void {
+    const now = Date.now();
+    if (now - this.lastUpdate < 4000) return; // Throttle updates
+
+    this.updateEnvironmentalMetrics();
+    this.updateCraftMetrics();
+    this.updateSystemHealth();
+    this.generateTelemetryEvents();
+
+    this.lastUpdate = now;
+  }
+
+  private updateEnvironmentalMetrics(): void {
+    const variance = 0.01;
+
+    this.environmentalMetrics.temperature = this.applyDrift(
+      this.environmentalMetrics.temperature, variance * 10, 20.0, 23.0
+    );
+
+    this.environmentalMetrics.humidity = this.applyDrift(
+      this.environmentalMetrics.humidity, variance * 100, 40, 60
+    );
+
+    this.environmentalMetrics.ambientLight = this.applyDrift(
+      this.environmentalMetrics.ambientLight, variance * 1000, 600, 900
+    );
+
+    this.environmentalMetrics.noiseLevel = this.applyDrift(
+      this.environmentalMetrics.noiseLevel, variance * 50, 30, 45
+    );
+
+    this.environmentalMetrics.airQuality = this.applyDrift(
+      this.environmentalMetrics.airQuality, variance, 0.85, 0.98
+    );
+
+    this.environmentalMetrics.electricalStability = this.applyDrift(
+      this.environmentalMetrics.electricalStability, variance * 0.1, 0.95, 1.0
+    );
+  }
+
+  private updateCraftMetrics(): void {
+    const variance = 0.005;
+
+    // Quality index should remain high but show some variation
+    this.craftMetrics.qualityIndex = this.applyDrift(
+      this.craftMetrics.qualityIndex, variance, 0.90, 0.98
+    );
+
+    // Attention depth varies based on time of day and workload
+    const hour = new Date().getHours();
+    const timeOfDayBonus = hour >= 9 && hour <= 17 ? 0.1 : -0.05;
+    this.craftMetrics.attentionDepth = this.applyDrift(
+      this.craftMetrics.attentionDepth + timeOfDayBonus, variance * 2, 0.70, 0.95
+    );
+
+    // Flow state is more volatile
+    this.craftMetrics.flowState = this.applyDrift(
+      this.craftMetrics.flowState, variance * 3, 0.60, 0.90
+    );
+
+    this.craftMetrics.toolPrecision = this.applyDrift(
+      this.craftMetrics.toolPrecision, variance * 0.5, 0.95, 1.0
+    );
+
+    this.craftMetrics.outputConsistency = this.applyDrift(
+      this.craftMetrics.outputConsistency, variance, 0.85, 0.98
+    );
+  }
+
+  private updateSystemHealth(): void {
+    const now = Date.now();
+
+    // Update component statuses based on current metrics
+    this.updateComponentStatus('cognitive_load', 0.94, now);
+
+    const envScore = (this.environmentalMetrics.temperature / 25 +
+                     this.environmentalMetrics.airQuality +
+                     this.environmentalMetrics.electricalStability) / 3;
+    this.updateComponentStatus('environmental', envScore, now);
+
+    const craftScore = (this.craftMetrics.qualityIndex +
+                       this.craftMetrics.attentionDepth +
+                       this.craftMetrics.toolPrecision) / 3;
+    this.updateComponentStatus('craft_integrity', craftScore, now);
+
+    // Update overall health
+    const components = Object.values(this.systemHealth.components);
+    const criticalCount = components.filter(c => c.status === 'critical').length;
+    const warningCount = components.filter(c => c.status === 'warning').length;
+
+    this.systemHealth.overall = criticalCount > 0 ? 'critical' :
+                               warningCount > 1 ? 'degraded' : 'optimal';
+    this.systemHealth.lastUpdate = now;
+  }
+
+  private updateComponentStatus(component: keyof SystemHealth['components'], value: number, timestamp: number): void {
+    const comp = this.systemHealth.components[component];
+    const prevValue = comp.value;
+
+    comp.value = value;
+    comp.lastCheck = timestamp;
+
+    // Update status based on thresholds
+    if (value < comp.threshold.critical) {
+      comp.status = 'critical';
+    } else if (value < comp.threshold.warning) {
+      comp.status = 'warning';
+    } else {
+      comp.status = 'optimal';
+    }
+
+    // Update trend
+    const change = value - prevValue;
+    comp.trend = Math.abs(change) < 0.01 ? 'stable' :
+                change > 0 ? 'improving' : 'degrading';
+  }
+
+  private generateTelemetryEvents(): void {
+    // Generate events based on system state
+    const now = Date.now();
+
+    // Coffee shortage alert
+    if (Math.random() < 0.001) { // Very rare but critical
+      this.logEvent({
+        timestamp: now,
+        category: 'environment',
+        type: 'coffee_shortage',
+        severity: 'critical',
+        message: 'Coffee reserves critically low. Immediate resupply required.',
+        data: { reserves: 0.15 },
+      });
+    }
+
+    // Quality threshold events
+    if (this.craftMetrics.qualityIndex < 0.90) {
+      this.logEvent({
+        timestamp: now,
+        category: 'craft',
+        type: 'quality_degradation',
+        severity: 'warning',
+        message: 'Craft quality index below optimal threshold.',
+        data: { quality: this.craftMetrics.qualityIndex },
+      });
+    }
+
+    // Flow state achievements
+    if (this.craftMetrics.flowState > 0.85 && Math.random() < 0.01) {
+      this.logEvent({
+        timestamp: now,
+        category: 'craft',
+        type: 'flow_state_achieved',
+        severity: 'info',
+        message: 'Deep flow state detected. Optimal craft conditions.',
+        data: { flow_state: this.craftMetrics.flowState },
+      });
+    }
+  }
+
+  private logEvent(event: TelemetryEvent): void {
+    this.events.unshift(event);
+
+    // Keep events sorted by timestamp
+    this.events.sort((a, b) => b.timestamp - a.timestamp);
+
+    // Limit memory usage
+    if (this.events.length > 1000) {
+      this.events = this.events.slice(0, 1000);
+    }
+  }
+
+  private cleanupOldEvents(): void {
+    const cutoff = Date.now() - this.eventRetention;
+    this.events = this.events.filter(event => event.timestamp > cutoff);
+  }
+
+  private applyDrift(current: number, variance: number, min: number, max: number): number {
+    const change = (Math.random() - 0.5) * variance;
+    return Math.max(min, Math.min(max, current + change));
+  }
+
+  /**
+   * Get current system health overview
+   */
+  public getSystemHealth(): SystemHealth {
+    return JSON.parse(JSON.stringify(this.systemHealth)); // Deep copy
+  }
+
+  /**
+   * Get environmental metrics
+   */
+  public getEnvironmentalMetrics(): EnvironmentalMetrics {
+    return { ...this.environmentalMetrics };
+  }
+
+  /**
+   * Get craft-specific metrics
+   */
+  public getCraftMetrics(): CraftMetrics {
+    return { ...this.craftMetrics };
+  }
+
+  /**
+   * Get recent telemetry events
+   */
+  public getRecentEvents(
+    limit: number = 20,
+    category?: TelemetryEvent['category'],
+    severity?: TelemetryEvent['severity']
+  ): TelemetryEvent[] {
+    let filtered = this.events;
+
+    if (category) {
+      filtered = filtered.filter(e => e.category === category);
+    }
+
+    if (severity) {
+      filtered = filtered.filter(e => e.severity === severity);
+    }
+
+    return filtered.slice(0, limit);
+  }
+
+  /**
+   * Get telemetry statistics
+   */
+  public getTelemetryStats(): {
+    totalEvents: number;
+    eventsByCategory: Record<string, number>;
+    eventsBySeverity: Record<string, number>;
+    avgEventsPerHour: number;
+    systemUptimeHours: number;
+  } {
+    const now = Date.now();
+    const oneHourAgo = now - (60 * 60 * 1000);
+    const recentEvents = this.events.filter(e => e.timestamp > oneHourAgo);
+
+    const eventsByCategory = this.events.reduce((acc, event) => {
+      acc[event.category] = (acc[event.category] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const eventsBySeverity = this.events.reduce((acc, event) => {
+      acc[event.severity] = (acc[event.severity] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Simulate uptime (would be actual in production)
+    const systemUptimeHours = 127.5 + ((now - this.lastUpdate) / (1000 * 60 * 60));
+
+    return {
+      totalEvents: this.events.length,
+      eventsByCategory,
+      eventsBySeverity,
+      avgEventsPerHour: recentEvents.length,
+      systemUptimeHours,
+    };
+  }
+
+  /**
+   * Force a system health check
+   */
+  public runHealthCheck(): SystemHealth {
+    this.updateMetrics();
+    return this.getSystemHealth();
+  }
+}
+
+// Export singleton instance
+export const workshopTelemetry = new WorkshopTelemetry();

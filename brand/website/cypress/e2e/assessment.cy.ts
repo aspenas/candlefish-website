@@ -36,14 +36,14 @@ describe('Assessment Form E2E Tests', () => {
       // Answer all 8 questions
       for (let i = 1; i <= 8; i++) {
         cy.contains(`Question ${i} of 8`).should('be.visible')
-        
+
         // Select first available option
         cy.get('[type="radio"], [type="checkbox"]').first().check()
-        
+
         // Click Next
         cy.get('button').contains(/Next/i).click()
       }
-      
+
       // Should reach contact form
       cy.contains('Get Your Personalized Results').should('be.visible')
     })
@@ -52,10 +52,10 @@ describe('Assessment Form E2E Tests', () => {
       // Answer first question and go to second
       cy.get('[type="radio"]').first().check()
       cy.get('button').contains(/Next/i).click()
-      
+
       // Go back
       cy.get('button').contains(/Back/i).click()
-      
+
       // Should be back to first question
       cy.contains('Question 1 of 8').should('be.visible')
     })
@@ -64,11 +64,11 @@ describe('Assessment Form E2E Tests', () => {
       // Select and remember first option
       cy.get('[type="radio"]').first().as('firstOption')
       cy.get('@firstOption').check()
-      
+
       // Navigate forward and back
       cy.get('button').contains(/Next/i).click()
       cy.get('button').contains(/Back/i).click()
-      
+
       // First option should still be selected
       cy.get('@firstOption').should('be.checked')
     })
@@ -81,14 +81,14 @@ describe('Assessment Form E2E Tests', () => {
         cy.get('[type="radio"]').first().check()
         cy.get('button').contains(/Next/i).click()
       }
-      
+
       // Should have checkboxes for multiple choice
       cy.get('[type="checkbox"]').should('have.length.greaterThan', 0)
-      
+
       // Should allow multiple selections
       cy.get('[type="checkbox"]').first().check()
       cy.get('[type="checkbox"]').eq(1).check()
-      
+
       cy.get('[type="checkbox"]:checked').should('have.length', 2)
     })
   })
@@ -108,24 +108,24 @@ describe('Assessment Form E2E Tests', () => {
 
     it('validates required fields', () => {
       cy.get('button').contains(/Get Results/i).click()
-      
+
       // Should show validation errors
       cy.contains('This field is required').should('be.visible')
     })
 
     it('validates email format', () => {
       cy.fillContactForm('John', 'Doe', 'invalid-email')
-      
+
       cy.get('input[type="email"], input[name*="email"]').blur()
       cy.contains('Please enter a valid email address').should('be.visible')
     })
 
     it('submits form with valid data', () => {
       cy.fillContactForm('John', 'Doe', 'john@example.com', 'Test Company')
-      
+
       cy.get('button').contains(/Get Results/i).should('not.be.disabled')
       cy.get('button').contains(/Get Results/i).click()
-      
+
       // Should show loading state
       cy.get('[role="img"]').should('be.visible') // Loading spinner
     })
@@ -174,11 +174,11 @@ describe('Assessment Form E2E Tests', () => {
     it('handles network errors gracefully', () => {
       // Mock network failure
       cy.intercept('POST', '/api/v1/**', { forceNetworkError: true }).as('networkError')
-      
+
       cy.completeAssessment()
       cy.fillContactForm('John', 'Doe', 'john@example.com')
       cy.get('button').contains(/Get Results/i).click()
-      
+
       // Should handle error without crashing
       cy.get('body').should('be.visible')
     })
@@ -196,7 +196,7 @@ describe('Assessment Form E2E Tests', () => {
     it('responds quickly to user interactions', () => {
       cy.get('[type="radio"]').first().check()
       cy.get('button').contains(/Next/i).should('not.be.disabled')
-      
+
       // Interaction should be immediate
       cy.get('button').contains(/Next/i).click()
       cy.contains('Question 2 of 8').should('be.visible')
@@ -205,10 +205,10 @@ describe('Assessment Form E2E Tests', () => {
 
   describe('Accessibility', () => {
     it('supports keyboard navigation', () => {
-      // Tab through form elements
-      cy.get('body').tab()
+      // Tab through form elements - using trigger as tab() is not a native command
+      cy.get('body').trigger('keydown', { keyCode: 9, which: 9 })
       cy.focused().should('be.visible')
-      
+
       // Should be able to navigate to radio buttons
       cy.get('[type="radio"]').first().focus()
       cy.focused().should('have.attr', 'type', 'radio')

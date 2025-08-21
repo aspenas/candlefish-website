@@ -22,7 +22,7 @@ async function request<T>(
   options: RequestOptions = {}
 ): Promise<ApiResponse<T>> {
   const { params, ...fetchOptions } = options;
-  
+
   // Build URL with query parameters
   let url = `${API_BASE_URL}${endpoint}`;
   if (params) {
@@ -38,13 +38,13 @@ async function request<T>(
   const token = authTokens ? JSON.parse(authTokens).accessToken : null;
 
   // Set default headers
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...fetchOptions.headers,
+    ...(fetchOptions.headers as Record<string, string> || {}),
   };
 
   if (token) {
-    headers.Authorization = `Bearer ${token}`;
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   try {
@@ -77,7 +77,7 @@ async function request<T>(
     if (error instanceof ApiError) {
       throw error;
     }
-    
+
     // Network or other errors
     throw new ApiError(
       error instanceof Error ? error.message : 'Network error',

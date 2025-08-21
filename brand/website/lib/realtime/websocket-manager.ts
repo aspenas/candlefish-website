@@ -98,10 +98,10 @@ export class RealTimeManager extends EventEmitter {
         latency: Math.max(5, this.baseMetrics.latency + Math.floor((Math.random() - 0.5) * 8)),
         timestamp: Date.now(),
       };
-      
+
       // Update base values for next iteration
       this.baseMetrics = { ...metrics };
-      
+
       this.emit('metrics:update', metrics);
     }, 2000);
 

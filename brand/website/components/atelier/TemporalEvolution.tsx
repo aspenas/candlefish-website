@@ -26,7 +26,7 @@ const calculateTemporalState = (): TemporalState => {
   const now = new Date();
   const hour = now.getHours();
   const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
-  
+
   let timeOfDay: TemporalState['timeOfDay'];
   if (hour >= 5 && hour < 8) timeOfDay = 'dawn';
   else if (hour >= 8 && hour < 17) timeOfDay = 'day';
@@ -93,7 +93,7 @@ export function TemporalEvolution() {
 
   const getSeasonalParticles = () => {
     const baseCount = Math.floor(dynamicState.atmosphericPressure);
-    
+
     switch (dynamicState.season) {
       case 'spring':
         return { count: baseCount + 20, color: 'rgba(144, 238, 144, 0.3)', size: 'small' };
@@ -120,7 +120,7 @@ export function TemporalEvolution() {
         }}
         transition={{ duration: 3, ease: "easeInOut" }}
       />
-      
+
       {/* Cosmic Alignment Indicator */}
       <motion.div
         className="fixed top-6 left-6 z-40"

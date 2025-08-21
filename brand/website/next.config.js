@@ -4,7 +4,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  output: 'export',
+  // output: 'export', // Commented out to enable API routes for PDF generation
 }
 
 module.exports = nextConfig

@@ -33,7 +33,7 @@ export const ExcelAnalyzer = ({ demoMode = false }: { demoMode?: boolean }) => {
     e.preventDefault()
     e.stopPropagation()
     setDragActive(false)
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFile(e.dataTransfer.files[0])
     }
@@ -97,14 +97,14 @@ export const ExcelAnalyzer = ({ demoMode = false }: { demoMode?: boolean }) => {
             Excel Pattern Analyzer
           </h1>
           <p className="text-[#415A77]">
-            Upload an Excel file to understand the operational patterns it contains. 
+            Upload an Excel file to understand the operational patterns it contains.
             We analyze formulas, data flows, and hidden logic.
           </p>
         </header>
 
         {/* Upload Area */}
         {!analyzing && !results && (
-          <div 
+          <div
             className={`
               border-2 border-dashed rounded-lg p-16 text-center transition-colors
               ${dragActive ? 'border-[#3FD3C6] bg-[#3FD3C6]/10' : 'border-[#415A77] bg-[#1C1C1C]'}
@@ -114,27 +114,27 @@ export const ExcelAnalyzer = ({ demoMode = false }: { demoMode?: boolean }) => {
             onDragOver={handleDrag}
             onDrop={handleDrop}
           >
-            <svg 
+            <svg
               className="w-16 h-16 mx-auto mb-4 text-[#415A77]"
-              fill="none" 
-              stroke="currentColor" 
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" 
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
               />
             </svg>
-            
+
             <p className="text-[#F8F8F2] text-xl mb-2">
               Drop your Excel file here
             </p>
             <p className="text-[#415A77] mb-6">
               or
             </p>
-            
+
             <input
               ref={fileInputRef}
               type="file"
@@ -142,19 +142,19 @@ export const ExcelAnalyzer = ({ demoMode = false }: { demoMode?: boolean }) => {
               onChange={handleFileSelect}
               className="hidden"
             />
-            
+
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="px-8 py-3 bg-[#3FD3C6] text-[#0D1B2A] font-medium 
+              className="px-8 py-3 bg-[#3FD3C6] text-[#0D1B2A] font-medium
                        hover:bg-[#4FE3D6] transition-colors"
             >
               Choose File
             </button>
-            
+
             {error && (
               <p className="text-[#E84855] mt-4">{error}</p>
             )}
-            
+
             <p className="text-xs text-[#415A77] mt-8">
               Your file is analyzed locally and never uploaded to our servers
             </p>
@@ -171,7 +171,7 @@ export const ExcelAnalyzer = ({ demoMode = false }: { demoMode?: boolean }) => {
             <div className="relative w-32 h-32 mb-8">
               <motion.div
                 className="absolute inset-0 border-4 border-[#3FD3C6] rounded-lg"
-                animate={{ 
+                animate={{
                   rotate: [0, 90, 180, 270, 360],
                   borderRadius: ["10%", "50%", "10%", "50%", "10%"]
                 }}
@@ -179,14 +179,14 @@ export const ExcelAnalyzer = ({ demoMode = false }: { demoMode?: boolean }) => {
               />
               <motion.div
                 className="absolute inset-4 border-4 border-[#4FE3D6] rounded-lg"
-                animate={{ 
+                animate={{
                   rotate: [360, 270, 180, 90, 0],
                   borderRadius: ["50%", "10%", "50%", "10%", "50%"]
                 }}
                 transition={{ duration: 2, repeat: Infinity }}
               />
             </div>
-            
+
             <p className="text-[#3FD3C6] text-lg font-mono">Analyzing patterns...</p>
             <p className="text-[#415A77] text-sm mt-2">
               Extracting formulas, dependencies, and hidden logic
@@ -206,7 +206,7 @@ export const ExcelAnalyzer = ({ demoMode = false }: { demoMode?: boolean }) => {
               <h2 className="text-2xl font-light text-[#F8F8F2] mb-6">
                 Analysis Summary
               </h2>
-              
+
               <div className="grid grid-cols-4 gap-6 mb-6">
                 <div>
                   <p className="text-[#415A77] text-sm">File</p>
@@ -247,10 +247,10 @@ export const ExcelAnalyzer = ({ demoMode = false }: { demoMode?: boolean }) => {
               <h2 className="text-2xl font-light text-[#F8F8F2] mb-4">
                 Patterns Detected
               </h2>
-              
+
               <ul className="space-y-3">
                 {results.patterns.map((pattern, index) => (
-                  <motion.li 
+                  <motion.li
                     key={index}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -269,7 +269,7 @@ export const ExcelAnalyzer = ({ demoMode = false }: { demoMode?: boolean }) => {
               <h2 className="text-2xl font-light text-[#F8F8F2] mb-4">
                 Operational Insights
               </h2>
-              
+
               <div className="space-y-4">
                 {results.insights.map((insight, index) => (
                   <motion.div
@@ -291,7 +291,7 @@ export const ExcelAnalyzer = ({ demoMode = false }: { demoMode?: boolean }) => {
                 <h2 className="text-2xl font-light text-[#E84855] mb-4">
                   ⚠ Warnings
                 </h2>
-                
+
                 <ul className="space-y-2">
                   {results.warnings.map((warning, index) => (
                     <li key={index} className="text-[#E0E1DD]">
@@ -311,21 +311,21 @@ export const ExcelAnalyzer = ({ demoMode = false }: { demoMode?: boolean }) => {
                     fileInputRef.current.value = ''
                   }
                 }}
-                className="px-6 py-3 border border-[#415A77] text-[#E0E1DD] 
+                className="px-6 py-3 border border-[#415A77] text-[#E0E1DD]
                          hover:border-[#3FD3C6] transition-colors"
               >
                 Analyze Another File
               </button>
-              
+
               <button
-                className="px-6 py-3 bg-[#3FD3C6] text-[#0D1B2A] font-medium 
+                className="px-6 py-3 bg-[#3FD3C6] text-[#0D1B2A] font-medium
                          hover:bg-[#4FE3D6] transition-colors"
               >
                 Download Full Report
               </button>
-              
+
               <button
-                className="px-6 py-3 border border-[#3FD3C6] text-[#3FD3C6] 
+                className="px-6 py-3 border border-[#3FD3C6] text-[#3FD3C6]
                          hover:bg-[#3FD3C6] hover:text-[#0D1B2A] transition-colors"
               >
                 Schedule Consultation

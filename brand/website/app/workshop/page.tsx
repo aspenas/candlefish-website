@@ -10,7 +10,7 @@ const activeProjects = [
     client: 'Crown Trophy',
     focus: 'Engraving Automation Platform',
     status: 'Discovery Phase',
-    weekInProgress: 2,
+    weekInProgress: 1,
     systemsBuilt: {
       'Document Parsing': 'in-progress',
       'AI Text Extraction': 'in-progress',
@@ -30,7 +30,7 @@ const activeProjects = [
     client: 'Paintbox',
     focus: 'Paint Estimation Platform',
     status: 'Production',
-    weekInProgress: 16,
+    weekInProgress: 4,
     systemsBuilt: {
       'Excel Formula Engine': 'complete',
       'Salesforce Integration': 'complete',
@@ -50,7 +50,7 @@ const activeProjects = [
     client: 'PromoterOS',
     focus: 'AI Concert Booking Intelligence',
     status: 'Beta Testing',
-    weekInProgress: 8,
+    weekInProgress: 4,
     systemsBuilt: {
       'Artist Analyzer': 'complete',
       'Demand Mapping': 'complete',
@@ -108,7 +108,7 @@ const SystemPreview: React.FC<{ projectId: string }> = ({ projectId }) => {
     'paintbox': 'Live in production · Processing estimates daily',
     'promoteros': 'Beta testing with 3 regional promoters'
   }
-  
+
   return (
     <div className="text-center py-8">
       <p className="text-[#3FD3C6] text-sm">
@@ -127,11 +127,11 @@ export default function WorkshopGlimpses() {
             Current Workshop
           </h1>
           <p className="text-xl text-[#415A77] max-w-3xl font-light">
-            Three operational systems in active development. No embellishment. 
+            Three operational systems in active development. No embellishment.
             Just the actual state of the craft.
           </p>
         </header>
-        
+
         <div className="space-y-24">
           {activeProjects.map(project => (
             <article key={project.id} className="border-b border-[#1B263B] pb-16">
@@ -144,7 +144,7 @@ export default function WorkshopGlimpses() {
                   <p className="text-[#3FD3C6] text-sm uppercase tracking-wider mb-4">
                     {project.focus}
                   </p>
-                  <div className="space-y-3 text-sm">
+                  <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-[#415A77]">Status</span>
                       <span className="text-[#E0E1DD]">{project.status}</span>
@@ -155,7 +155,7 @@ export default function WorkshopGlimpses() {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Systems Progress */}
                 <div className="lg:col-span-1">
                   <h3 className="text-sm uppercase tracking-wider text-[#3FD3C6] mb-4">
@@ -164,13 +164,13 @@ export default function WorkshopGlimpses() {
                   <div className="space-y-2">
                     {Object.entries(project.systemsBuilt).map(([system, status]) => (
                       <div key={system} className="flex items-center justify-between">
-                        <span className="text-sm text-[#E0E1DD] font-light">{system}</span>
+                        <span className="text-[#E0E1DD] font-light">{system}</span>
                         <SystemStatus status={status} />
                       </div>
                     ))}
                   </div>
                 </div>
-                
+
                 {/* Real Metrics */}
                 <div className="lg:col-span-1">
                   <h3 className="text-sm uppercase tracking-wider text-[#3FD3C6] mb-4">
@@ -186,7 +186,7 @@ export default function WorkshopGlimpses() {
                   </dl>
                 </div>
               </div>
-              
+
               {/* Live System Preview */}
               <div className="mt-8 p-8 bg-[#1B263B]/30 border border-[#415A77]/30">
                 <SystemPreview projectId={project.id} />
@@ -194,42 +194,42 @@ export default function WorkshopGlimpses() {
             </article>
           ))}
         </div>
-        
+
         {/* The Workshop Team */}
         <section className="mt-32">
           <h2 className="text-4xl font-light text-[#F8F8F2] mb-12 text-center">The Workshop</h2>
-          
+
           <div className="grid md:grid-cols-2 gap-12 max-w-4xl mx-auto">
             <div className="space-y-4">
               <h3 className="text-2xl font-light text-[#3FD3C6]">System Architecture</h3>
-              <p className="text-[#E0E1DD] leading-relaxed">
-                Former operational designer for painting contractors, event promoters, 
-                and retail operations. Believes every business contains hidden elegance 
+              <p className="text-xl text-[#E0E1DD] leading-relaxed">
+                Former operational designer for painting contractors, event promoters,
+                and retail operations. Believes every business contains hidden elegance
                 waiting to be revealed through thoughtful system design.
               </p>
             </div>
-            
+
             <div className="space-y-4">
               <h3 className="text-2xl font-light text-[#3FD3C6]">Implementation Craft</h3>
-              <p className="text-[#E0E1DD] leading-relaxed">
-                Transforms architectural vision into living systems. Specializes in 
-                making the complex feel simple, ensuring every interface feels 
+              <p className="text-xl text-[#E0E1DD] leading-relaxed">
+                Transforms architectural vision into living systems. Specializes in
+                making the complex feel simple, ensuring every interface feels
                 intuitive and every process runs smoothly.
               </p>
             </div>
           </div>
-          
-          <p className="text-center text-[#415A77] mt-12 text-lg font-light">
+
+          <p className="text-center text-[#415A77] mt-12 text-xl font-light">
             We don't scale our team. We scale our impact through the systems we leave behind.
             <br />
             Each one running quietly, efficiently, indefinitely.
           </p>
         </section>
-        
+
         {/* Bottom Note */}
         <aside className="mt-24 text-center">
           <p className="text-[#415A77] text-sm font-light">
-            Each system represents 12-16 weeks of focused craft. 
+            Each system represents 12-16 weeks of focused craft.
             We don't show past work. These are live operations.
           </p>
         </aside>

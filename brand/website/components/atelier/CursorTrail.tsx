@@ -38,7 +38,7 @@ export function CursorTrail() {
     const handleMouseMove = (e: MouseEvent) => {
       mouseRef.current = { x: e.clientX, y: e.clientY };
       if (!isActive) setIsActive(true);
-      
+
       // Create new particles at mouse position
       const numParticles = Math.random() * 3 + 1;
       for (let i = 0; i < numParticles; i++) {
@@ -54,7 +54,7 @@ export function CursorTrail() {
       const angle = Math.random() * Math.PI * 2;
       const speed = Math.random() * 2 + 0.5;
       const life = Math.random() * 40 + 20;
-      
+
       return {
         x,
         y,
@@ -73,51 +73,51 @@ export function CursorTrail() {
       // Update and draw particles
       for (let i = particlesRef.current.length - 1; i >= 0; i--) {
         const particle = particlesRef.current[i];
-        
+
         // Update particle physics
         particle.life--;
         particle.x += particle.vx;
         particle.y += particle.vy;
         particle.vx *= 0.98; // Friction
         particle.vy *= 0.98;
-        
+
         // Calculate opacity based on life
         particle.opacity = particle.life / particle.maxLife;
-        
+
         // Draw particle with copper glow
         if (particle.opacity > 0.01) {
           const gradient = ctx.createRadialGradient(
             particle.x, particle.y, 0,
             particle.x, particle.y, particle.size * 2
           );
-          
+
           gradient.addColorStop(0, `rgba(184, 115, 51, ${particle.opacity * 0.8})`);
           gradient.addColorStop(0.5, `rgba(184, 115, 51, ${particle.opacity * 0.4})`);
           gradient.addColorStop(1, `rgba(184, 115, 51, 0)`);
-          
+
           ctx.fillStyle = gradient;
           ctx.beginPath();
           ctx.arc(particle.x, particle.y, particle.size * 2, 0, Math.PI * 2);
           ctx.fill();
-          
+
           // Core particle
           ctx.fillStyle = `rgba(248, 248, 242, ${particle.opacity * 0.6})`;
           ctx.beginPath();
           ctx.arc(particle.x, particle.y, particle.size * 0.3, 0, Math.PI * 2);
           ctx.fill();
         }
-        
+
         // Remove dead particles
         if (particle.life <= 0) {
           particlesRef.current.splice(i, 1);
         }
       }
-      
+
       // Limit particle count for performance
       if (particlesRef.current.length > 150) {
         particlesRef.current = particlesRef.current.slice(-100);
       }
-      
+
       animationRef.current = requestAnimationFrame(animate);
     };
 
@@ -130,7 +130,7 @@ export function CursorTrail() {
       window.removeEventListener('resize', updateCanvasSize);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseleave', handleMouseLeave);
-      
+
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }

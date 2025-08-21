@@ -55,16 +55,16 @@ export function AmbientAudio() {
     // Low frequency oscillator for deep ambience
     const oscillator = context.createOscillator();
     const oscillatorGain = context.createGain();
-    
+
     oscillator.type = 'sine';
     oscillator.frequency.setValueAtTime(55, context.currentTime); // Low A
     oscillator.frequency.exponentialRampToValueAtTime(45, context.currentTime + 8);
-    
+
     oscillatorGain.gain.setValueAtTime(0.02, context.currentTime);
-    
+
     oscillator.connect(oscillatorGain);
     oscillatorGain.connect(gainNode);
-    
+
     oscillator.start();
     oscillatorRef.current = oscillator;
 
@@ -73,19 +73,19 @@ export function AmbientAudio() {
     const noiseSource = context.createBufferSource();
     const noiseFilter = context.createBiquadFilter();
     const noiseGain = context.createGain();
-    
+
     noiseSource.buffer = noiseBuffer;
     noiseSource.loop = true;
-    
+
     noiseFilter.type = 'lowpass';
     noiseFilter.frequency.setValueAtTime(200, context.currentTime);
-    
+
     noiseGain.gain.setValueAtTime(0.01, context.currentTime);
-    
+
     noiseSource.connect(noiseFilter);
     noiseFilter.connect(noiseGain);
     noiseGain.connect(gainNode);
-    
+
     noiseSource.start();
     noiseRef.current = noiseSource;
 
@@ -97,7 +97,7 @@ export function AmbientAudio() {
       oscillatorRef.current.stop();
       oscillatorRef.current = null;
     }
-    
+
     if (noiseRef.current) {
       noiseRef.current.stop();
       noiseRef.current = null;
@@ -117,7 +117,7 @@ export function AmbientAudio() {
   useEffect(() => {
     // Add event listeners for user interaction
     const events = ['click', 'touchstart', 'keydown'];
-    
+
     events.forEach(event => {
       document.addEventListener(event, handleUserInteraction, { once: true });
     });
@@ -126,9 +126,9 @@ export function AmbientAudio() {
       events.forEach(event => {
         document.removeEventListener(event, handleUserInteraction);
       });
-      
+
       stopAmbientSound();
-      
+
       if (audioState.context) {
         audioState.context.close();
       }
@@ -141,8 +141,8 @@ export function AmbientAudio() {
         <button
           onClick={isPlaying ? stopAmbientSound : startAmbientSound}
           className="
-            w-12 h-12 rounded-full 
-            bg-graphite/80 border border-copper/30 
+            w-12 h-12 rounded-full
+            bg-graphite/80 border border-copper/30
             text-copper hover:text-pearl
             backdrop-blur-sm
             transition-all duration-300
@@ -154,7 +154,7 @@ export function AmbientAudio() {
             {isPlaying ? '♫' : '♪'}
           </div>
           <div className={`
-            absolute inset-0 rounded-full border border-copper/20 
+            absolute inset-0 rounded-full border border-copper/20
             ${isPlaying ? 'animate-pulse' : ''}
           `} />
         </button>

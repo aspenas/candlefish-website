@@ -48,7 +48,7 @@ export default function MarketingHome() {
               Most small and medium businesses know they need automation, but existing solutions are either too complex, too expensive, or too risky.
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
             <div className="text-center p-6">
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">

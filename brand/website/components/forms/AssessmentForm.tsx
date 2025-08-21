@@ -497,11 +497,51 @@ export const AssessmentForm: React.FC<AssessmentFormProps> = ({
               </div>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button size="lg">
+                <Button 
+                  size="lg"
+                  onClick={() => window.location.href = '/consideration'}
+                >
                   Schedule Free Consultation
                   <ArrowRightIcon className="ml-2 h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="lg">
+                <Button 
+                  variant="outline" 
+                  size="lg"
+                  onClick={async () => {
+                    try {
+                      const response = await fetch('/api/assessment/generate-pdf', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                          score: results,
+                          portrait: results,
+                          responses: answers,
+                          sessionId: `session-${Date.now()}`
+                        }),
+                      });
+
+                      if (response.ok) {
+                        const html = await response.text();
+                        const blob = new Blob([html], { type: 'text/html' });
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.style.display = 'none';
+                        a.href = url;
+                        a.download = `assessment-report-${Date.now()}.html`;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                      } else {
+                        console.error('Failed to generate PDF');
+                      }
+                    } catch (error) {
+                      console.error('Error downloading report:', error);
+                    }
+                  }}
+                >
                   Download Detailed Report
                 </Button>
               </div>

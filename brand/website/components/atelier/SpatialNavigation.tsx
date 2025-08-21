@@ -52,10 +52,10 @@ export function SpatialNavigation() {
         <motion.div
           className="w-12 h-12 bg-graphite border border-copper/30 rounded-full flex items-center justify-center cursor-pointer backdrop-blur-workshop"
           whileHover={{ scale: 1.1 }}
-          animate={{ 
-            boxShadow: isExpanded 
-              ? '0 0 30px rgba(184, 115, 51, 0.4)' 
-              : '0 0 10px rgba(184, 115, 51, 0.2)' 
+          animate={{
+            boxShadow: isExpanded
+              ? '0 0 30px rgba(184, 115, 51, 0.4)'
+              : '0 0 10px rgba(184, 115, 51, 0.2)'
           }}
         >
           <div className="w-2 h-2 bg-copper rounded-full animate-pulse-slow" />
@@ -65,9 +65,9 @@ export function SpatialNavigation() {
         <motion.div
           className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
           initial={{ opacity: 0, scale: 0 }}
-          animate={{ 
-            opacity: isExpanded ? 1 : 0, 
-            scale: isExpanded ? 1 : 0 
+          animate={{
+            opacity: isExpanded ? 1 : 0,
+            scale: isExpanded ? 1 : 0
           }}
           transition={{ duration: 0.3, ease: "easeOut" }}
         >
@@ -75,7 +75,7 @@ export function SpatialNavigation() {
             const isCurrentPath = pathname === node.path;
             const x = node.coordinates.x * 80;
             const y = node.coordinates.y * 60;
-            
+
             return (
               <motion.div
                 key={node.path}
@@ -86,35 +86,35 @@ export function SpatialNavigation() {
                   transform: 'translate(-50%, -50%)',
                 }}
                 initial={{ opacity: 0, scale: 0 }}
-                animate={{ 
+                animate={{
                   opacity: isExpanded ? 1 : 0,
-                  scale: isExpanded ? 1 : 0 
+                  scale: isExpanded ? 1 : 0
                 }}
-                transition={{ 
+                transition={{
                   delay: index * 0.05,
-                  duration: 0.2 
+                  duration: 0.2
                 }}
               >
                 <motion.button
                   className={`
                     relative px-4 py-2 rounded-full text-xs font-mono backdrop-blur-workshop
-                    ${isCurrentPath 
-                      ? 'bg-copper/20 text-copper border border-copper/50' 
+                    ${isCurrentPath
+                      ? 'bg-copper/20 text-copper border border-copper/50'
                       : 'bg-graphite/80 text-pearl/70 border border-pearl/20 hover:border-copper/50'
                     }
                     transition-all duration-300
                   `}
                   onClick={() => handleNodeClick(node.path)}
-                  whileHover={{ 
+                  whileHover={{
                     scale: 1.05,
-                    boxShadow: '0 0 20px rgba(184, 115, 51, 0.3)' 
+                    boxShadow: '0 0 20px rgba(184, 115, 51, 0.3)'
                   }}
                   whileTap={{ scale: 0.95 }}
                 >
                   {node.label}
-                  
+
                   {/* Depth Indicator */}
-                  <div 
+                  <div
                     className="absolute -bottom-1 left-1/2 transform -translate-x-1/2"
                     style={{
                       width: `${2 + node.depth * 2}px`,
@@ -128,8 +128,8 @@ export function SpatialNavigation() {
                 {node.depth > 0 && (
                   <svg
                     className="absolute inset-0 pointer-events-none"
-                    style={{ 
-                      width: `${Math.abs(x) + 50}px`, 
+                    style={{
+                      width: `${Math.abs(x) + 50}px`,
                       height: `${Math.abs(y) + 50}px`,
                       left: x > 0 ? '-50px' : `${x}px`,
                       top: y > 0 ? '-50px' : `${y}px`,

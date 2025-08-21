@@ -15,55 +15,55 @@ interface ArchiveEntry {
 
 const archiveEntries: ArchiveEntry[] = [
   {
-    id: 'arch-2024-001',
+    id: 'arch-2025-001',
     title: 'Operational Patterns in Craft Manufacturing',
     type: 'study',
-    date: '2024-11-15',
+    date: '2025-08-18',
     accessLevel: 'public',
     summary: 'Analysis of efficiency patterns in small-batch manufacturing. Identifies key leverage points for automation without compromising craft integrity.',
     tags: ['manufacturing', 'automation', 'craft', 'efficiency']
   },
   {
-    id: 'arch-2024-002',
+    id: 'arch-2025-002',
     title: 'Workshop Capacity Optimization Framework',
     type: 'framework',
-    date: '2024-10-28',
+    date: '2025-08-15',
     accessLevel: 'collaborator',
     summary: 'Systematic approach to balancing workshop capacity with quality output. Includes tools for measuring cognitive load and creative flow.',
     tags: ['capacity', 'optimization', 'workflow', 'measurement']
   },
   {
-    id: 'arch-2024-003',
+    id: 'arch-2025-003',
     title: 'Collaborative Selection Criteria v2.1',
     type: 'instrument',
-    date: '2024-09-12',
+    date: '2025-08-12',
     accessLevel: 'restricted',
     summary: 'Refined evaluation framework for partnership assessment. Emphasizes mutual amplification over traditional client-service relationships.',
     tags: ['collaboration', 'selection', 'partnership', 'evaluation']
   },
   {
-    id: 'arch-2024-004',
+    id: 'arch-2025-004',
     title: 'Case Study: Industrial Partner Alpha',
     type: 'collaboration',
-    date: '2024-08-30',
+    date: '2025-08-08',
     accessLevel: 'collaborator',
     summary: 'Deep dive into 6-month operational transformation. Focus on system integration and human-automation balance.',
     tags: ['case-study', 'transformation', 'integration', 'balance']
   },
   {
-    id: 'arch-2024-005',
+    id: 'arch-2025-005',
     title: 'Quality Metrics for Operational Excellence',
     type: 'framework',
-    date: '2024-07-18',
+    date: '2025-08-05',
     accessLevel: 'public',
     summary: 'Comprehensive framework for measuring operational quality beyond traditional efficiency metrics. Includes craft integrity indicators.',
     tags: ['quality', 'metrics', 'excellence', 'measurement']
   },
   {
-    id: 'arch-2024-006',
+    id: 'arch-2025-006',
     title: 'Workshop Environmental Optimization',
     type: 'study',
-    date: '2024-06-22',
+    date: '2025-07-28',
     accessLevel: 'public',
     summary: 'Environmental factors that impact deep work and creative output. Analysis of lighting, temperature, sound, and spatial arrangement.',
     tags: ['environment', 'workspace', 'deep-work', 'optimization']
@@ -77,14 +77,14 @@ export default function ArchivePage() {
 
   const types = ['all', 'study', 'framework', 'instrument', 'collaboration'];
   const accessLevels = ['public', 'collaborator', 'restricted'];
-  
+
   const filteredEntries = archiveEntries.filter(entry => {
     const typeMatch = selectedType === 'all' || entry.type === selectedType;
-    const accessMatch = 
+    const accessMatch =
       selectedAccess === 'public' ? entry.accessLevel === 'public' :
       selectedAccess === 'collaborator' ? ['public', 'collaborator'].includes(entry.accessLevel) :
       true; // restricted shows all
-    
+
     return typeMatch && accessMatch;
   });
 
@@ -124,7 +124,7 @@ export default function ArchivePage() {
         >
           <h1 className="text-5xl font-light text-pearl mb-6">Workshop Archive</h1>
           <p className="text-xl text-pearl/60 max-w-2xl mx-auto font-light">
-            Repository of operational insights, frameworks, and collaborative learnings. 
+            Repository of operational insights, frameworks, and collaborative learnings.
             Access levels reflect both value and exclusivity.
           </p>
         </motion.div>
@@ -179,7 +179,7 @@ export default function ArchivePage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
           {filteredEntries.map((entry, index) => {
             const accessible = canAccess(entry.accessLevel);
-            
+
             return (
               <motion.div
                 key={entry.id}
@@ -189,8 +189,8 @@ export default function ArchivePage() {
                 className={`
                   bg-graphite/30 border p-6 backdrop-blur-workshop
                   transition-all duration-500
-                  ${accessible 
-                    ? 'border-copper/10 hover:border-copper/30 cursor-pointer' 
+                  ${accessible
+                    ? 'border-copper/10 hover:border-copper/30 cursor-pointer'
                     : 'border-pearl/5 opacity-60'
                   }
                   ${selectedEntry === entry.id ? 'border-copper/50 bg-copper/5' : ''}
@@ -212,14 +212,14 @@ export default function ArchivePage() {
                         {entry.type}
                       </span>
                       <span className="text-pearl/40 font-mono">
-                        {new Date(entry.date).toLocaleDateString('en-US', { 
-                          year: 'numeric', 
-                          month: 'short' 
+                        {new Date(entry.date).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short'
                         })}
                       </span>
                     </div>
                   </div>
-                  
+
                   <div className="text-right">
                     <div className={`text-sm font-mono ${
                       entry.accessLevel === 'public' ? 'text-copper' :
@@ -272,10 +272,10 @@ export default function ArchivePage() {
                   >
                     <div className="pt-6 mt-6 border-t border-copper/10">
                       <div className="text-center">
-                        <button 
+                        <button
                           className="
-                            px-6 py-2 
-                            bg-copper/10 border border-copper/30 
+                            px-6 py-2
+                            bg-copper/10 border border-copper/30
                             text-copper font-mono text-sm
                             hover:bg-copper/20
                             transition-all duration-300
@@ -301,10 +301,10 @@ export default function ArchivePage() {
         >
           <div className="bg-graphite/20 border border-copper/20 p-12 backdrop-blur-workshop">
             <blockquote className="text-lg text-pearl/60 font-light italic leading-relaxed mb-6">
-              "Knowledge shared selectively retains its power. Not every insight is meant 
+              "Knowledge shared selectively retains its power. Not every insight is meant
               for every audience. The archive preserves both the work and the intention behind it."
             </blockquote>
-            
+
             <div className="text-sm font-mono text-copper">
               — Archive Principles
             </div>
@@ -320,7 +320,7 @@ export default function ArchivePage() {
         >
           <div className="border border-copper/20 p-8 backdrop-blur-workshop">
             <h3 className="text-lg text-pearl mb-4 font-light">Archive Access Levels</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
               <div className="text-center">
                 <div className="text-copper text-xl mb-2">◯</div>
@@ -329,7 +329,7 @@ export default function ArchivePage() {
                   Open insights and foundational frameworks
                 </div>
               </div>
-              
+
               <div className="text-center">
                 <div className="text-living-cyan text-xl mb-2">◐</div>
                 <div className="text-pearl/70 mb-2">Collaborator</div>
@@ -337,7 +337,7 @@ export default function ArchivePage() {
                   Operational details and case studies
                 </div>
               </div>
-              
+
               <div className="text-center">
                 <div className="text-pearl/40 text-xl mb-2">●</div>
                 <div className="text-pearl/70 mb-2">Restricted</div>

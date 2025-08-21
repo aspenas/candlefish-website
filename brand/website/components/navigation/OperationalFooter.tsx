@@ -8,7 +8,7 @@ const getCurrentFocus = () => {
 }
 
 const getQueueStatus = () => {
-  return '47 organizations in queue · 3 slots Q1 2026'
+  return '4 organizations in queue · 3 slots Q1 2026'
 }
 
 const Footer: React.FC = () => {
@@ -33,7 +33,7 @@ const Footer: React.FC = () => {
             </p>
           </div>
         </div>
-        
+
         {/* Minimal copyright line */}
         <div className="mt-8 pt-8 border-t border-[#1B263B]/30">
           <p className="text-[#415A77] text-xs text-center">

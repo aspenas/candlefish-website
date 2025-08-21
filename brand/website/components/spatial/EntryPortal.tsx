@@ -15,7 +15,7 @@ import { getWebSocketManager } from '@/lib/realtime/websocket-manager';
 const SystemShaderMaterial = () => {
   const meshRef = useRef<THREE.Mesh>(null);
   const wsManager = getWebSocketManager();
-  
+
   const uniforms = useMemo(
     () => ({
       time: { value: 0 },
@@ -74,27 +74,27 @@ const SystemShaderMaterial = () => {
     varying vec2 vUv;
     varying vec3 vNormal;
     varying vec3 vPosition;
-    
+
     uniform float time;
     uniform float systemLoad;
     uniform vec2 mousePosition;
-    
+
     void main() {
       vUv = uv;
       vNormal = normalize(normalMatrix * normal);
-      
+
       vec3 pos = position;
-      
+
       // Wave distortion based on system load
       float wave = sin(pos.x * 5.0 + time * 2.0) * 0.1;
       float load = sin(pos.y * 3.0 + time * 1.5) * systemLoad * 0.2;
       pos.z += wave + load;
-      
+
       // Mouse interaction
       float mouseInfluence = 1.0 - distance(mousePosition, uv * 2.0 - 1.0);
       mouseInfluence = smoothstep(0.0, 1.0, mouseInfluence);
       pos.z += mouseInfluence * 0.3;
-      
+
       vPosition = pos;
       gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
     }
@@ -104,59 +104,59 @@ const SystemShaderMaterial = () => {
     varying vec2 vUv;
     varying vec3 vNormal;
     varying vec3 vPosition;
-    
+
     uniform float time;
     uniform float systemLoad;
     uniform vec3 healthStatus;
     uniform float visitorCount;
     uniform vec2 mousePosition;
-    
+
     vec3 palette(float t) {
       vec3 a = vec3(0.5, 0.5, 0.5);
       vec3 b = vec3(0.5, 0.5, 0.5);
       vec3 c = vec3(1.0, 1.0, 1.0);
       vec3 d = vec3(0.263, 0.416, 0.557);
-      
+
       return a + b * cos(6.28318 * (c * t + d));
     }
-    
+
     void main() {
       // Base color influenced by system health
       vec3 healthyColor = vec3(0.1, 0.3, 0.5); // Deep blue
       vec3 warningColor = vec3(0.5, 0.3, 0.1); // Amber
       vec3 criticalColor = vec3(0.5, 0.1, 0.1); // Deep red
-      
+
       vec3 baseColor = mix(
         mix(criticalColor, warningColor, healthStatus.x),
         healthyColor,
         healthStatus.y
       );
-      
+
       // Dynamic gradient based on position and time
       float gradient = vPosition.y * 0.5 + 0.5;
       vec3 gradientColor = palette(gradient + time * 0.1);
-      
+
       // Mix base with gradient
       vec3 color = mix(baseColor, gradientColor, 0.3);
-      
+
       // Pulse effect based on visitor count
       float pulse = sin(time * 3.0 + visitorCount * 0.1) * 0.5 + 0.5;
       color += pulse * 0.1;
-      
+
       // Edge glow
       float edge = 1.0 - dot(vNormal, vec3(0.0, 0.0, 1.0));
       edge = pow(edge, 2.0);
       color += edge * healthStatus * 0.3;
-      
+
       // System load intensity
       float intensity = 1.0 + systemLoad * 0.5;
       color *= intensity;
-      
+
       // Mouse highlight
       float mouseDistance = distance(mousePosition, vUv * 2.0 - 1.0);
       float mouseGlow = 1.0 - smoothstep(0.0, 1.0, mouseDistance);
       color += mouseGlow * 0.2;
-      
+
       gl_FragColor = vec4(color, 1.0);
     }
   `;
@@ -221,7 +221,7 @@ const ParticleField: React.FC = () => {
 // Camera controller for smooth navigation
 const CameraController: React.FC = () => {
   const { camera } = useThree();
-  
+
   useFrame((state) => {
     // Subtle floating motion
     camera.position.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.2 + 5;
@@ -239,13 +239,13 @@ export const EntryPortal: React.FC<{
   const containerRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className={`relative w-full h-screen ${className}`}
     >
       <Canvas
         dpr={[1, 2]}
-        gl={{ 
+        gl={{
           antialias: true,
           alpha: true,
           powerPreference: 'high-performance'
@@ -258,32 +258,32 @@ export const EntryPortal: React.FC<{
           near={0.1}
           far={100}
         />
-        
+
         <CameraController />
-        
+
         {/* Ambient lighting */}
         <ambientLight intensity={0.2} />
-        
+
         {/* Directional light */}
         <directionalLight
           position={[10, 10, 5]}
           intensity={0.5}
           castShadow
         />
-        
+
         {/* Point lights for depth */}
         <pointLight position={[-10, -10, -5]} intensity={0.3} color="#ff6b6b" />
         <pointLight position={[10, -10, 5]} intensity={0.3} color="#4ecdc4" />
-        
+
         {/* Main shader plane */}
         <SystemShaderMaterial />
-        
+
         {/* Particle field for depth */}
         <ParticleField />
-        
+
         {/* Environment for reflections */}
         <Environment preset="city" />
-        
+
         {/* Controls */}
         <OrbitControls
           enablePan={false}
@@ -292,7 +292,7 @@ export const EntryPortal: React.FC<{
           minPolarAngle={Math.PI / 4}
         />
       </Canvas>
-      
+
       {/* Transcendent Overlay UI */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="h-full flex flex-col justify-between p-8">
@@ -306,7 +306,7 @@ export const EntryPortal: React.FC<{
                 Transcendent Operational Presence
               </div>
             </div>
-            
+
             {/* Living Status Indicators */}
             <div className="flex items-center space-x-6 text-interface-sm">
               <div className="flex items-center space-x-2 system-active">
@@ -323,7 +323,7 @@ export const EntryPortal: React.FC<{
               </div>
             </div>
           </div>
-          
+
           {/* Evolving Statement */}
           <div className="text-center space-y-8 transform-style-3d">
             <div className="text-manuscript-lg text-pearl/90 max-w-2xl mx-auto leading-relaxed">
@@ -337,14 +337,14 @@ export const EntryPortal: React.FC<{
                 when operational becomes transcendent."
               </span>
             </div>
-            
+
             {/* Primary Interface */}
             <div className="space-y-4">
               <button
                 onClick={onEnter}
                 data-cursor="workshop"
-                className="pointer-events-auto group px-12 py-4 bg-graphite/20 backdrop-blur-md 
-                         border border-living-cyan/30 hover:border-living-cyan/60 text-pearl 
+                className="pointer-events-auto group px-12 py-4 bg-graphite/20 backdrop-blur-md
+                         border border-living-cyan/30 hover:border-living-cyan/60 text-pearl
                          transition-all duration-500 hover-lift transform-style-3d
                          hover:bg-graphite/40 hover:shadow-lg hover:shadow-living-cyan/20"
               >
@@ -355,22 +355,22 @@ export const EntryPortal: React.FC<{
                   Position 15 in queue
                 </div>
               </button>
-              
+
               {/* Secondary Navigation */}
               <div className="flex justify-center space-x-8 text-interface-sm">
-                <button 
+                <button
                   data-cursor="instrument"
                   className="pointer-events-auto text-pearl/60 hover:text-living-cyan transition-colors duration-300 hover-lift"
                 >
                   View Instruments
                 </button>
-                <button 
+                <button
                   data-cursor="manifesto"
                   className="pointer-events-auto text-pearl/60 hover:text-copper transition-colors duration-300 hover-lift"
                 >
                   Read Manifesto
                 </button>
-                <button 
+                <button
                   data-cursor="queue"
                   className="pointer-events-auto text-pearl/60 hover:text-pearl transition-colors duration-300 hover-lift"
                 >
@@ -379,7 +379,7 @@ export const EntryPortal: React.FC<{
               </div>
             </div>
           </div>
-          
+
           {/* System Telemetry */}
           <div className="flex justify-between items-end">
             <div className="space-y-2 text-code-sm font-code text-pearl/40">
@@ -387,7 +387,7 @@ export const EntryPortal: React.FC<{
               <div className="metric-pulse">Realtime.latency: 12ms</div>
               <div className="metric-pulse">System.health: optimal</div>
             </div>
-            
+
             {/* Time and Context */}
             <div className="text-right text-code-sm font-code text-pearl/40 space-y-1">
               <div>Local: {new Date().toLocaleTimeString()}</div>

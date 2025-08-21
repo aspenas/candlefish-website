@@ -3,7 +3,7 @@ export function trackAssessmentStart(sessionId: string): void {
     // Store session data
     window.sessionStorage.setItem('assessment-session', sessionId)
     window.sessionStorage.setItem('assessment-start', Date.now().toString())
-    
+
     // Track with analytics services
     if ((window as any).gtag) {
       (window as any).gtag('event', 'assessment_started', {
@@ -13,7 +13,7 @@ export function trackAssessmentStart(sessionId: string): void {
         timestamp: Date.now()
       })
     }
-    
+
     // Track with Plausible if available
     if ((window as any).plausible) {
       (window as any).plausible('Assessment Started', {
@@ -58,7 +58,7 @@ export function trackAssessmentComplete(
         duration_seconds: Math.round(duration / 1000)
       })
     }
-    
+
     if ((window as any).plausible) {
       (window as any).plausible('Assessment Completed', {
         props: {
@@ -86,7 +86,7 @@ export function trackConsultationRequest(
         value: score.percentage // Use score as value for tracking
       })
     }
-    
+
     if ((window as any).plausible) {
       (window as any).plausible('Consultation Requested', {
         props: {

@@ -1,6 +1,6 @@
 /**
  * Queue Management System for Candlefish Atelier
- * 
+ *
  * Handles workshop access requests, collaboration proposals,
  * and maintains the selective entry process.
  */
@@ -125,7 +125,7 @@ class QueueManager {
   private createCompleteEntry(partial: Partial<QueueEntry>, position: number): QueueEntry {
     const id = `q-2024-${(158 + position).toString().padStart(3, '0')}`;
     const type = partial.type || 'consultation';
-    
+
     return {
       id,
       type,
@@ -149,15 +149,15 @@ class QueueManager {
 
   private calculatePriority(entry: Partial<QueueEntry>): 'standard' | 'expedited' | 'deferred' {
     if (!entry.details) return 'standard';
-    
-    const urgencyScore = entry.details.urgency === 'high' ? 1 : 
+
+    const urgencyScore = entry.details.urgency === 'high' ? 1 :
                         entry.details.urgency === 'medium' ? 0.5 : 0;
     const complexityScore = (entry.details.complexity || 0.5);
-    const scopeScore = entry.details.scope === 'large' ? 1 : 
+    const scopeScore = entry.details.scope === 'large' ? 1 :
                       entry.details.scope === 'medium' ? 0.6 : 0.3;
-    
+
     const totalScore = (urgencyScore + complexityScore + scopeScore) / 3;
-    
+
     if (totalScore > 0.75) return 'expedited';
     if (totalScore < 0.35) return 'deferred';
     return 'standard';
@@ -167,11 +167,11 @@ class QueueManager {
     const baseWeeks = 12; // Base wait time
     const positionMultiplier = position / 40; // Normalize position
     const typeMultiplier = this.config.waitTimeMultipliers[type];
-    
+
     const estimatedWeeks = Math.ceil(baseWeeks * positionMultiplier * typeMultiplier);
     const minWeeks = estimatedWeeks;
     const maxWeeks = estimatedWeeks + 4;
-    
+
     return `${minWeeks}-${maxWeeks} weeks`;
   }
 
@@ -190,7 +190,7 @@ class QueueManager {
     const waitingEntries = this.entries.filter(e => e.status === 'waiting').length;
     const underReview = this.entries.filter(e => e.status === 'under_review').length;
     const capacityUtilization = totalEntries / this.config.maxCapacity;
-    
+
     return {
       totalEntries,
       waitingEntries,
@@ -213,10 +213,10 @@ class QueueManager {
     total: number;
     hasMore: boolean;
   } {
-    let filtered = status ? 
-      this.entries.filter(e => e.status === status) : 
+    let filtered = status ?
+      this.entries.filter(e => e.status === status) :
       this.entries;
-    
+
     // Sort by submission date (newest first) and priority
     filtered = filtered.sort((a, b) => {
       if (a.priority !== b.priority) {
@@ -227,7 +227,7 @@ class QueueManager {
     });
 
     const paginatedEntries = filtered.slice(offset, offset + limit);
-    
+
     return {
       entries: paginatedEntries,
       total: filtered.length,
@@ -241,7 +241,7 @@ class QueueManager {
   public getQueuePosition(entryId: string): number | null {
     const entry = this.entries.find(e => e.id === entryId);
     if (!entry || entry.status !== 'waiting') return null;
-    
+
     const waitingEntries = this.entries
       .filter(e => e.status === 'waiting')
       .sort((a, b) => {
@@ -252,7 +252,7 @@ class QueueManager {
         }
         return a.submittedAt - b.submittedAt;
       });
-    
+
     return waitingEntries.findIndex(e => e.id === entryId) + 1;
   }
 
@@ -265,7 +265,7 @@ class QueueManager {
     requester?: QueueEntry['requester']
   ): { success: boolean; entryId?: string; position?: number; message: string } {
     const status = this.getQueueStatus();
-    
+
     if (!status.isAcceptingSubmissions) {
       return {
         success: false,
@@ -302,7 +302,7 @@ class QueueManager {
     if (!entry) return false;
 
     entry.evaluation = evaluation;
-    
+
     // Calculate overall score
     const weights = this.config.priorityWeights;
     const score = (
@@ -332,7 +332,7 @@ class QueueManager {
     // Simulate average based on queue length and type distribution
     const avgPosition = waitingEntries.length / 2;
     const estimatedWeeks = Math.ceil(12 + (avgPosition / 10) * 4);
-    
+
     return `${estimatedWeeks}-${estimatedWeeks + 4} weeks`;
   }
 
@@ -361,7 +361,7 @@ class QueueManager {
       return acc;
     }, {} as Record<QueueEntry['priority'], number>);
 
-    const averageComplexity = this.entries.reduce((sum, entry) => 
+    const averageComplexity = this.entries.reduce((sum, entry) =>
       sum + entry.details.complexity, 0) / this.entries.length;
 
     const scheduledCount = statusDistribution.scheduled || 0;
