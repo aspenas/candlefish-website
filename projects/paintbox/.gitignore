@@ -1,1 +1,8 @@
 .vercel
+scripts/deploy-production-optimized.sh
+scripts/monitor-production.sh
+scripts/gcp-migration-automation.sh
+scripts/immediate-oauth-fix.sh
+scripts/fix-oauth-redirect-uri.sh
+scripts/gcp-migration-complete.sh
+scripts/setup-fly-aws-secrets.sh

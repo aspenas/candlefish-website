@@ -184,16 +184,16 @@ read -r response
 
 if [[ "$response" == "y" ]]; then
     echo -e "${GREEN}Deploying optimized configuration...${NC}"
-    
+
     # Backup current config
     cp fly.toml fly.toml.backup
-    
+
     # Apply optimized config
     cp fly.toml.optimized fly.toml
-    
+
     # Deploy
     fly deploy --strategy immediate
-    
+
     echo -e "${GREEN}Deployment complete!${NC}"
     echo ""
     echo "Monitor the deployment:"

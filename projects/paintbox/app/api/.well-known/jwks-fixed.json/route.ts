@@ -1,7 +1,7 @@
 /**
  * JWKS (JSON Web Key Set) API Endpoint - Fixed Version
  * Serves public keys for JWT verification with proper AWS Secrets Manager integration
- * 
+ *
  * This implementation includes:
  * - Proper AWS SDK initialization for Fly.io environment
  * - Comprehensive error handling and logging
@@ -10,10 +10,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-  SecretsManagerClient, 
+import {
+  SecretsManagerClient,
   GetSecretValueCommand,
-  SecretsManagerClientConfig 
+  SecretsManagerClientConfig
 } from '@aws-sdk/client-secrets-manager';
 
 // Cache for the JWKS response
@@ -60,23 +60,23 @@ function getSecretsManagerClient(): SecretsManagerClient {
  */
 async function fetchJWKSFromAWS(): Promise<any> {
   const client = getSecretsManagerClient();
-  
+
   try {
     console.log('[JWKS] Fetching public keys from AWS Secrets Manager...');
-    
+
     const command = new GetSecretValueCommand({
       SecretId: 'paintbox/production/jwt/public-keys'
     });
-    
+
     const response = await client.send(command);
-    
+
     if (!response.SecretString) {
       throw new Error('Secret has no value');
     }
-    
+
     const publicKeys = JSON.parse(response.SecretString);
     console.log(`[JWKS] Successfully retrieved ${Object.keys(publicKeys).length} key(s) from AWS`);
-    
+
     // Format as JWKS response
     const jwks = {
       keys: Object.entries(publicKeys).map(([kid, key]: [string, any]) => ({
@@ -88,7 +88,7 @@ async function fetchJWKSFromAWS(): Promise<any> {
         e: key.e || 'AQAB'
       }))
     };
-    
+
     return jwks;
   } catch (error: any) {
     console.error('[JWKS] Failed to fetch from AWS Secrets Manager:', {
@@ -98,7 +98,7 @@ async function fetchJWKSFromAWS(): Promise<any> {
       region: process.env.AWS_REGION || 'us-east-1',
       hasCredentials: !!(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY)
     });
-    
+
     // Log specific error types for debugging
     if (error.name === 'AccessDeniedException') {
       console.error('[JWKS] ❌ ACCESS DENIED - IAM permissions issue');
@@ -111,7 +111,7 @@ async function fetchJWKSFromAWS(): Promise<any> {
     } else if (error.name === 'InvalidParameterException') {
       console.error('[JWKS] ❌ INVALID PARAMETER - Check secret format');
     }
-    
+
     throw error;
   }
 }
@@ -126,25 +126,25 @@ async function getJWKS(): Promise<any> {
     console.log('[JWKS] Returning cached response');
     return cachedJWKS;
   }
-  
+
   try {
     // Try to fetch from AWS
     const jwks = await fetchJWKSFromAWS();
-    
+
     // Update cache
     cachedJWKS = jwks;
     cacheTimestamp = now;
-    
+
     return jwks;
   } catch (error) {
     console.error('[JWKS] Falling back to hardcoded keys due to AWS error');
-    
+
     // If we have a cached version (even if expired), use it
     if (cachedJWKS) {
       console.log('[JWKS] Using expired cache as fallback');
       return cachedJWKS;
     }
-    
+
     // Otherwise, use hardcoded fallback
     console.log('[JWKS] Using hardcoded fallback keys');
     return FALLBACK_JWKS;
@@ -153,7 +153,7 @@ async function getJWKS(): Promise<any> {
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
-  
+
   try {
     // Log the request for debugging
     console.log('[JWKS] Endpoint requested', {
@@ -170,7 +170,7 @@ export async function GET(request: NextRequest) {
 
     // Get JWKS (with caching and fallback)
     const jwks = await getJWKS();
-    
+
     // Validate response
     if (!jwks || !jwks.keys || jwks.keys.length === 0) {
       console.error('[JWKS] ❌ Invalid JWKS response - empty keys array');
@@ -186,9 +186,9 @@ export async function GET(request: NextRequest) {
         },
       });
     }
-    
+
     console.log(`[JWKS] ✅ Returning ${jwks.keys.length} key(s) - Response time: ${Date.now() - startTime}ms`);
-    
+
     return NextResponse.json(jwks, {
       status: 200,
       headers: {
@@ -203,7 +203,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('[JWKS] Unexpected error in endpoint:', error);
-    
+
     // Always return the fallback keys to prevent complete failure
     return NextResponse.json(FALLBACK_JWKS, {
       status: 200, // Return 200 even on error to prevent client failures

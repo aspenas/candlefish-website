@@ -173,11 +173,11 @@ class PerformanceProfiler {
 
   private monitorEventLoop(): void {
     let lastCheck = Date.now();
-    
+
     this.eventLoopMonitor = setInterval(() => {
       const now = Date.now();
       const delay = now - lastCheck - 100; // Expected 100ms interval
-      
+
       this.metrics.set('eventLoopDelay', Math.max(0, delay));
       lastCheck = now;
     }, 100);
@@ -185,7 +185,7 @@ class PerformanceProfiler {
 
   private async collectMetrics(): Promise<void> {
     const metrics = await this.getCurrentMetrics();
-    
+
     // Store metrics in cache for historical analysis
     const key = `metrics:${Date.now()}`;
     await this.cache.set(key, JSON.stringify(metrics), 3600); // Keep for 1 hour
@@ -202,7 +202,7 @@ class PerformanceProfiler {
     const cpuUsage = process.cpuUsage();
     const currentTime = Date.now();
     const timeDiff = currentTime - this.lastSampleTime;
-    
+
     // Calculate CPU percentage
     const userDiff = cpuUsage.user - this.lastCpuUsage.user;
     const systemDiff = cpuUsage.system - this.lastCpuUsage.system;
@@ -264,7 +264,7 @@ class PerformanceProfiler {
   private calculateAPIMetrics(): APIMetrics {
     const endpoints = Array.from(this.apiCalls.entries());
     const allCalls = endpoints.flatMap(([_, calls]) => calls);
-    
+
     // Calculate response time percentiles
     const responseTimes = allCalls.map(call => call.duration).sort((a, b) => a - b);
     const p50Index = Math.floor(responseTimes.length * 0.5);
@@ -504,7 +504,7 @@ export const performanceProfiler = PerformanceProfiler.getInstance();
 // Export for use in API routes
 export function trackAPIPerformance(req: any, res: any, next: any) {
   const tracker = performanceProfiler.trackAPICall(req.path, req.method);
-  
+
   // Track response
   const originalSend = res.send;
   res.send = function(data: any) {

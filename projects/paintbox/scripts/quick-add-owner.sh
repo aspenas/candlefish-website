@@ -22,7 +22,7 @@ if [ "$choice" = "1" ]; then
     echo ""
     echo -e "${BLUE}Opening Google Cloud Console IAM page...${NC}"
     open "https://console.cloud.google.com/iam-admin/iam?project=l0-candlefish"
-    
+
     echo ""
     echo -e "${YELLOW}Manual Steps:${NC}"
     echo "1. Click '+ GRANT ACCESS' button"
@@ -31,32 +31,32 @@ if [ "$choice" = "1" ]; then
     echo "4. Click SAVE"
     echo ""
     echo -e "${GREEN}✅ Once done, patrick@candlefish.ai will be an owner!${NC}"
-    
+
 elif [ "$choice" = "2" ]; then
     echo ""
     echo -e "${YELLOW}Authenticating with gcloud...${NC}"
-    
+
     # Remove the problematic service account override
     gcloud config unset auth/credential_file_override
-    
+
     echo ""
     echo "Please authenticate with your patrick.smith@gmail.com account:"
     gcloud auth login
-    
+
     echo ""
     echo -e "${YELLOW}Setting project to l0-candlefish...${NC}"
     gcloud config set project l0-candlefish
-    
+
     echo ""
     echo -e "${YELLOW}Adding patrick@candlefish.ai as owner...${NC}"
     gcloud projects add-iam-policy-binding l0-candlefish \
         --member="user:patrick@candlefish.ai" \
         --role="roles/owner"
-    
+
     if [ $? -eq 0 ]; then
         echo ""
         echo -e "${GREEN}✅ Successfully added patrick@candlefish.ai as owner!${NC}"
-        
+
         echo ""
         echo -e "${YELLOW}Verifying the change...${NC}"
         gcloud projects get-iam-policy l0-candlefish \

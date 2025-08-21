@@ -34,7 +34,7 @@ function makeRequest(url, options = {}) {
         });
       });
     });
-    
+
     req.on('error', reject);
     req.end();
   });
@@ -48,7 +48,7 @@ async function main() {
     console.log('1. Testing NextAuth configuration...');
     const configResponse = await makeRequest(`${APP_URL}/api/auth/session`);
     console.log(`   Session endpoint status: ${configResponse.statusCode}`);
-    
+
     if (configResponse.body) {
       try {
         const session = JSON.parse(configResponse.body);
@@ -57,12 +57,12 @@ async function main() {
         console.log('   Session response (first 200 chars):', configResponse.body.substring(0, 200));
       }
     }
-    
+
     // Test 2: Check NextAuth providers endpoint
     console.log('\n2. Testing NextAuth providers...');
     const providersResponse = await makeRequest(`${APP_URL}/api/auth/providers`);
     console.log(`   Providers endpoint status: ${providersResponse.statusCode}`);
-    
+
     if (providersResponse.body) {
       try {
         const providers = JSON.parse(providersResponse.body);
@@ -106,7 +106,7 @@ async function main() {
     console.log(`   POST request status: ${oauthPostResponse.statusCode}`);
     if (oauthPostResponse.location) {
       console.log(`   Redirect location: ${oauthPostResponse.location}`);
-      
+
       // Parse Google OAuth URL
       if (oauthPostResponse.location.includes('accounts.google.com')) {
         console.log('   ✅ Successfully redirecting to Google!');
@@ -117,11 +117,11 @@ async function main() {
         console.log(`     - scope: ${url.searchParams.get('scope')}`);
         console.log(`     - response_type: ${url.searchParams.get('response_type')}`);
         console.log(`     - state: ${url.searchParams.get('state')?.substring(0, 20)}...`);
-        
+
         // Verify the redirect URI matches what we expect
         const redirectUri = url.searchParams.get('redirect_uri');
         const expectedRedirectUri = 'https://paintbox.fly.dev/api/auth/callback/google';
-        
+
         if (redirectUri === expectedRedirectUri) {
           console.log('   ✅ Redirect URI is correct!');
         } else {
@@ -142,7 +142,7 @@ async function main() {
     console.log('\n5. Testing signin page for errors...');
     const signinResponse = await makeRequest(`${APP_URL}/login`);
     console.log(`   Login page status: ${signinResponse.statusCode}`);
-    
+
     if (signinResponse.body.includes('error')) {
       console.log('   ⚠️  Error found on login page');
       // Extract error from URL or page content

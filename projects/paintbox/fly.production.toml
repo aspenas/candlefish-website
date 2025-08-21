@@ -72,7 +72,7 @@ kill_timeout = "30s"
 [deploy]
   strategy = "bluegreen"
   wait_timeout = "5m"
-  
+
   # Release command to validate AWS integration
   release_command = "node /app/scripts/validate-aws-secrets-integration.js"
 

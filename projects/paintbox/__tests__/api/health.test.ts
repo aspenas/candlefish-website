@@ -105,7 +105,7 @@ describe('Health Check Endpoint (/api/health)', () => {
     mockCache.set.mockResolvedValue(true);
     mockCache.get.mockResolvedValue('ok');
     mockCache.del.mockResolvedValue(1);
-    
+
     mockSecretsManager.getSecrets.mockResolvedValue({
       database: { url: 'postgresql://test' },
       redis: { url: 'redis://test' },
@@ -328,7 +328,7 @@ describe('Health Check Endpoint (/api/health)', () => {
 
     it('should handle timeout for slow health checks', async () => {
       // Make database check timeout
-      mockPrisma.$queryRaw.mockImplementation(() => 
+      mockPrisma.$queryRaw.mockImplementation(() =>
         new Promise((resolve) => setTimeout(resolve, 10000)) // 10 second delay
       );
 
@@ -435,12 +435,12 @@ describe('Health Check Endpoint (/api/health)', () => {
   describe('Health Check Performance', () => {
     it('should complete health check within reasonable time', async () => {
       const startTime = Date.now();
-      
+
       const request = new NextRequest('https://test.com/api/health');
       await GET(request);
-      
+
       const duration = Date.now() - startTime;
-      
+
       // Should complete within 10 seconds (with all mocks)
       expect(duration).toBeLessThan(10000);
     });
@@ -448,14 +448,14 @@ describe('Health Check Endpoint (/api/health)', () => {
     it('should run health checks in parallel', async () => {
       // This is tested indirectly by ensuring the overall time is reasonable
       // when all services respond quickly
-      
+
       const request = new NextRequest('https://test.com/api/health');
       const startTime = Date.now();
-      
+
       await GET(request);
-      
+
       const duration = Date.now() - startTime;
-      
+
       // If checks were serial, this would take much longer
       expect(duration).toBeLessThan(1000);
     });

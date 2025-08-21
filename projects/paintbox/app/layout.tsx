@@ -5,7 +5,8 @@ import HeaderControls from "@/components/ui/HeaderControls";
 // import { PWAInstallPrompt } from "@/components/ui/PWAInstallPrompt";
 // import { Toaster } from "sonner";
 import { AuthProvider } from "@/components/providers/SessionProvider";
-import { AuthWrapper } from "@/components/auth/AuthWrapper";
+// import { AuthWrapper } from "@/components/auth/AuthWrapper";
+import { AuthWrapperSimple as AuthWrapper } from "@/components/auth/AuthWrapperSimple";
 
 // Use system fonts to avoid network fetch at build time
 

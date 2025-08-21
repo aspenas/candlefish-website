@@ -2,7 +2,7 @@
 
 /**
  * Google OAuth2 Redirect URI Updater
- * 
+ *
  * This script programmatically updates Google OAuth2 client redirect URIs
  * using the Google Cloud Console API to fix redirect_uri_mismatch errors.
  */
@@ -27,14 +27,14 @@ const ADDITIONAL_REDIRECT_URIS = [
 async function getGoogleCredentials() {
   try {
     console.log('🔑 Retrieving Google OAuth credentials from AWS Secrets Manager...');
-    const command = new GetSecretValueCommand({ 
-      SecretId: 'candlefish/google-oauth2-config' 
+    const command = new GetSecretValueCommand({
+      SecretId: 'candlefish/google-oauth2-config'
     });
     const response = await secretsManager.send(command);
-    
+
     const credentials = JSON.parse(response.SecretString);
     console.log('✅ Successfully retrieved Google OAuth credentials');
-    
+
     return credentials.web;
   } catch (error) {
     console.error('❌ Error retrieving Google credentials:', error.message);
@@ -50,19 +50,19 @@ async function getAccessToken(credentials) {
 
 async function updateRedirectURIsViaGcloudCLI() {
   console.log('🛠️  Attempting to update redirect URIs via gcloud CLI...');
-  
+
   const { execSync } = require('child_process');
-  
+
   try {
     // Check if gcloud is installed
     console.log('🔍 Checking gcloud CLI installation...');
     execSync('gcloud version', { stdio: 'pipe' });
     console.log('✅ gcloud CLI is available');
-    
+
     // Check authentication
     console.log('🔍 Checking gcloud authentication...');
     try {
-      const currentAccount = execSync('gcloud auth list --filter=status:ACTIVE --format="value(account)"', 
+      const currentAccount = execSync('gcloud auth list --filter=status:ACTIVE --format="value(account)"',
         { encoding: 'utf8' }).trim();
       console.log(`✅ Authenticated as: ${currentAccount}`);
     } catch (authError) {
@@ -70,24 +70,24 @@ async function updateRedirectURIsViaGcloudCLI() {
       console.log('Please run: gcloud auth login');
       return false;
     }
-    
+
     // Set the correct project
     console.log(`🎯 Setting project to: ${PROJECT_ID}`);
     execSync(`gcloud config set project ${PROJECT_ID}`, { stdio: 'inherit' });
-    
+
     // Get current OAuth client configuration
     console.log('📋 Retrieving current OAuth client configuration...');
     const currentConfigCmd = `gcloud alpha iap oauth-brands list --format="value(name)"`;
-    
+
     try {
       const brandsList = execSync(currentConfigCmd, { encoding: 'utf8' }).trim();
       console.log('Current OAuth brands:', brandsList);
-      
+
       if (!brandsList) {
         console.log('❌ No OAuth brands found in project');
         return false;
       }
-      
+
       // For now, we'll provide the manual steps since the gcloud API for OAuth clients is limited
       console.log('\n📝 Manual steps required:');
       console.log('1. Go to: https://console.cloud.google.com/apis/credentials');
@@ -99,14 +99,14 @@ async function updateRedirectURIsViaGcloudCLI() {
       ADDITIONAL_REDIRECT_URIS.forEach(uri => console.log(`   - ${uri}`));
       console.log('6. Remove any incorrect URIs');
       console.log('7. Click "Save"');
-      
+
       return true;
-      
+
     } catch (error) {
       console.error('❌ Error retrieving OAuth configuration:', error.message);
       return false;
     }
-    
+
   } catch (error) {
     console.error('❌ gcloud CLI not available:', error.message);
     console.log('💡 Install gcloud CLI: https://cloud.google.com/sdk/docs/install');
@@ -116,25 +116,25 @@ async function updateRedirectURIsViaGcloudCLI() {
 
 async function updateRedirectURIsViaAPI() {
   console.log('🔄 Attempting to update redirect URIs via Google API...');
-  
+
   try {
     const credentials = await getGoogleCredentials();
-    
+
     // Use Google's Client Libraries for Identity and Access Management (IAM) API
     // Note: This requires proper service account credentials with IAM permissions
-    
+
     console.log('📡 Initializing Google Cloud Resource Manager API...');
-    
+
     // Alternative approach: Use the Google Cloud Console API directly
     const https = require('https');
     const querystring = require('querystring');
-    
+
     // This approach requires a bearer token with proper scopes
     console.log('⚠️  Direct API access requires service account with IAM permissions');
     console.log('📚 Documentation: https://cloud.google.com/docs/authentication/production');
-    
+
     return false;
-    
+
   } catch (error) {
     console.error('❌ Error updating via API:', error.message);
     return false;
@@ -143,9 +143,9 @@ async function updateRedirectURIsViaAPI() {
 
 async function validateRedirectURI() {
   console.log('🧪 Testing redirect URI configuration...');
-  
+
   const https = require('https');
-  
+
   return new Promise((resolve) => {
     const testUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
       `client_id=${OAUTH_CLIENT_ID}&` +
@@ -153,13 +153,13 @@ async function validateRedirectURI() {
       `response_type=code&` +
       `scope=openid%20profile%20email&` +
       `state=test`;
-    
+
     console.log('🔗 Test URL:', testUrl);
-    
+
     const req = https.get(testUrl, (res) => {
       console.log(`📊 HTTP Status: ${res.statusCode}`);
       console.log(`📋 Headers:`, res.headers);
-      
+
       if (res.statusCode === 200 || res.statusCode === 302) {
         console.log('✅ Redirect URI appears to be configured correctly');
         resolve(true);
@@ -168,12 +168,12 @@ async function validateRedirectURI() {
         resolve(false);
       }
     });
-    
+
     req.on('error', (error) => {
       console.error('❌ Error testing redirect URI:', error.message);
       resolve(false);
     });
-    
+
     req.setTimeout(10000, () => {
       console.log('⏰ Request timeout');
       req.destroy();
@@ -205,31 +205,31 @@ async function main() {
   console.log('🚀 Google OAuth2 Redirect URI Updater');
   console.log('======================================');
   console.log('');
-  
+
   console.log(`📋 Target Configuration:`);
   console.log(`   Client ID: ${OAUTH_CLIENT_ID}`);
   console.log(`   Project: ${PROJECT_ID}`);
   console.log(`   Primary Redirect URI: ${CORRECT_REDIRECT_URI}`);
   console.log(`   Additional URIs: ${ADDITIONAL_REDIRECT_URIS.length} configured`);
   console.log('');
-  
+
   // Try gcloud CLI approach first
   const gcloudSuccess = await updateRedirectURIsViaGcloudCLI();
-  
+
   if (!gcloudSuccess) {
     // Try API approach
     const apiSuccess = await updateRedirectURIsViaAPI();
-    
+
     if (!apiSuccess) {
       console.log('\n💡 Automated update not possible with current setup');
       await createServiceAccountInstructions();
     }
   }
-  
+
   // Test the configuration
   console.log('\n🧪 Testing current configuration...');
   await validateRedirectURI();
-  
+
   console.log('\n✅ Script execution completed');
   console.log('🔗 Verify changes at: https://console.cloud.google.com/apis/credentials');
 }

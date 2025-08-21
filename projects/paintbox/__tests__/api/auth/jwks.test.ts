@@ -30,10 +30,10 @@ describe('JWKS Endpoint (/api/.well-known/jwks.json)', () => {
   beforeEach(() => {
     // Clear cache before each test
     clearJWKSCache();
-    
+
     // Reset mocks
     jest.clearAllMocks();
-    
+
     // Get the mocked secrets client
     const { SecretsManagerClient } = require('@aws-sdk/client-secrets-manager');
     mockSecretsClient = new SecretsManagerClient();
@@ -75,7 +75,7 @@ describe('JWKS Endpoint (/api/.well-known/jwks.json)', () => {
       expect(data).toHaveProperty('keys');
       expect(Array.isArray(data.keys)).toBe(true);
       expect(data.keys).toHaveLength(2);
-      
+
       // Validate key structure
       data.keys.forEach((key: any) => {
         expect(key).toHaveProperty('kty', 'RSA');
@@ -178,7 +178,7 @@ describe('JWKS Endpoint (/api/.well-known/jwks.json)', () => {
 
       // Simulate cache expiry by clearing and setting up error
       clearJWKSCache();
-      
+
       // Manually populate expired cache (this would need access to internal cache)
       // For this test, we'll simulate by testing the error handling path
       mockSecretsClient.send.mockRejectedValueOnce(new Error('Network error'));
@@ -262,7 +262,7 @@ describe('JWKS Endpoint (/api/.well-known/jwks.json)', () => {
       // Check CORS headers
       expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
       expect(response.headers.get('Access-Control-Allow-Methods')).toBe('GET, OPTIONS');
-      
+
       // Check caching headers
       expect(response.headers.get('Cache-Control')).toContain('public');
       expect(response.headers.get('Cache-Control')).toContain('max-age=600');

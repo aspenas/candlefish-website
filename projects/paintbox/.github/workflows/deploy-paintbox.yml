@@ -268,10 +268,10 @@ jobs:
       - name: Deploy with production configuration
         run: |
           cd projects/paintbox
-          
+
           # Use production deployment script for zero-downtime deployment
           chmod +x scripts/deploy-production.sh
-          
+
           # Run production deployment with comprehensive validation
           if ! scripts/deploy-production.sh; then
             echo "::error::Production deployment failed"
@@ -287,18 +287,18 @@ jobs:
       - name: Comprehensive Post-Deployment Validation
         run: |
           cd projects/paintbox
-          
+
           # Make validation script executable
           chmod +x scripts/validate-deployment.sh
-          
+
           # Run comprehensive validation
           if ! scripts/validate-deployment.sh --app-url https://paintbox.fly.dev; then
             echo "::warning::Post-deployment validation failed"
-            
+
             # Trigger rollback if validation fails
             chmod +x scripts/rollback-deployment.sh
             echo "Triggering automatic rollback..."
-            
+
             if scripts/rollback-deployment.sh --emergency; then
               echo "::error::Deployment failed but rollback successful"
               exit 1
@@ -395,13 +395,13 @@ jobs:
       - name: Execute Emergency Rollback
         run: |
           cd projects/paintbox
-          
+
           # Make rollback script executable
           chmod +x scripts/rollback-deployment.sh
-          
+
           # Execute emergency rollback
           echo "Executing emergency rollback due to deployment failure..."
-          
+
           if scripts/rollback-deployment.sh --emergency; then
             echo "Emergency rollback completed successfully"
           else

@@ -1,47 +1,69 @@
-# Multi-stage Dockerfile optimized for Fly.io
-FROM node:20-alpine AS deps
-RUN apk add --no-cache libc6-compat
-WORKDIR /app
+# Production Dockerfile optimized for Fly.io with flexible standalone handling
+FROM node:20-alpine AS builder
 
 # Install dependencies
-COPY package.json package-lock.json* ./
-RUN npm ci --only=production
+RUN apk add --no-cache libc6-compat
 
-# Rebuild the source code only when needed
-FROM node:20-alpine AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies with legacy peer deps
+RUN npm install --legacy-peer-deps
+
+# Copy app files
 COPY . .
 
-# Build the application
-ENV NEXT_TELEMETRY_DISABLED 1
-ENV NODE_ENV production
+# Build the application with standalone output
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
 RUN npm run build
+
+# Debug: Check the standalone structure
+RUN echo "=== Checking standalone structure ===" && \
+    ls -la .next/standalone/ || echo "No standalone dir" && \
+    find .next/standalone -name "server.js" -type f 2>/dev/null || echo "No server.js found"
 
 # Production image
 FROM node:20-alpine AS runner
+
+RUN apk add --no-cache libc6-compat
+
 WORKDIR /app
 
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
+# Create non-root user
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy built application
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+# Copy the entire standalone directory and figure out structure at runtime
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./standalone-tmp
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
-# Copy WebSocket server
-COPY --from=builder /app/dist ./dist
+# Move files to correct location based on structure
+RUN if [ -f ./standalone-tmp/server.js ]; then \
+      echo "server.js at root of standalone" && \
+      cp -r ./standalone-tmp/* ./ ; \
+    elif [ -f ./standalone-tmp/projects/paintbox/server.js ]; then \
+      echo "server.js in projects/paintbox" && \
+      cp -r ./standalone-tmp/projects/paintbox/* ./ && \
+      cp -r ./standalone-tmp/node_modules ./node_modules 2>/dev/null || true ; \
+    else \
+      echo "Warning: server.js not found in expected locations" && \
+      find ./standalone-tmp -name "server.js" -type f ; \
+    fi && \
+    rm -rf ./standalone-tmp
 
 USER nextjs
 
 EXPOSE 8080
-EXPOSE 3001
 
-ENV PORT 8080
-ENV HOSTNAME "0.0.0.0"
+ENV PORT=8080
+ENV HOSTNAME="0.0.0.0"
 
+# Use the Next.js standalone server
 CMD ["node", "server.js"]

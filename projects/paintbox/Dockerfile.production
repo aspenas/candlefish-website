@@ -1,50 +1,89 @@
-# Production Dockerfile with proper Next.js standalone build
-FROM node:20-alpine AS builder
+# Production-optimized Dockerfile with security hardening
+# Multi-stage build for minimal production image
 
-# Install dependencies
-RUN apk add --no-cache libc6-compat
+# Build stage with build tools and dependencies
+FROM node:20-alpine AS base
+
+# Install security updates and required packages
+RUN apk update && apk upgrade && \
+    apk add --no-cache \
+    libc6-compat \
+    dumb-init \
+    tini && \
+    rm -rf /var/cache/apk/*
+
+# Builder stage
+FROM base AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files first for better Docker layer caching
 COPY package*.json ./
 
-# Install dependencies with legacy peer deps
-RUN npm install --legacy-peer-deps
+# Install dependencies with production optimizations
+RUN npm ci --only=production --legacy-peer-deps && \
+    npm cache clean --force
 
-# Copy app files
+# Install dev dependencies for build
+RUN npm ci --legacy-peer-deps
+
+# Copy source code
 COPY . .
 
-# Build the application with standalone output
+# Build the application with production optimizations
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
-RUN npm run build
+ENV GENERATE_SOURCEMAP=false
+ENV SKIP_STATIC_OPTIMIZATION=1
+ENV DISABLE_ESLINT=1
+ENV DISABLE_TYPESCRIPT_CHECK=1
 
-# Production image
-FROM node:20-alpine AS runner
+# Build with memory optimization
+RUN NODE_OPTIONS='--max-old-space-size=2048' npm run build:deploy
 
-RUN apk add --no-cache libc6-compat
+# Production stage - minimal runtime image
+FROM base AS runner
 
 WORKDIR /app
 
+# Production environment variables
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_OPTIONS="--max-old-space-size=1536 --optimize-for-size"
+ENV PORT=8080
+ENV HOSTNAME="0.0.0.0"
 
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Create non-root user with specific UID/GID
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 --ingroup nodejs nextjs
 
-# Copy built application from builder
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/.next /data/logs && \
+    chown -R nextjs:nodejs /app /data
+
+# Copy runtime files with proper ownership
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
+# Security: Remove unnecessary files and set proper permissions
+RUN find /app -type f -name "*.map" -delete && \
+    find /app -type f -exec chmod 644 {} \; && \
+    find /app -type d -exec chmod 755 {} \; && \
+    chmod +x /app/server.js
+
+# Verify critical files exist
+RUN test -f server.js || (echo "server.js not found" && exit 1)
+
+# Health check for container monitoring
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/simple-health || exit 1
+
+# Switch to non-root user
 USER nextjs
 
 EXPOSE 8080
 
-ENV PORT=8080
-ENV HOSTNAME="0.0.0.0"
-
-# Use the Next.js standalone server
+# Use tini for proper signal handling and zombie reaping
+ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "server.js"]

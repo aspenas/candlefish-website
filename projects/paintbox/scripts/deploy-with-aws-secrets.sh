@@ -79,7 +79,7 @@ echo ""
 echo "Checking Fly.io app status..."
 if flyctl status -a "$APP_NAME" > /dev/null 2>&1; then
     echo -e "${GREEN}✓ App '$APP_NAME' exists${NC}"
-    
+
     # Get current app info
     echo ""
     echo "Current app status:"
@@ -106,22 +106,22 @@ read -r UPDATE_CREDS
 if [[ "$UPDATE_CREDS" == "y" || "$UPDATE_CREDS" == "Y" ]]; then
     echo "Enter AWS Access Key ID for Fly.io:"
     read -r AWS_ACCESS_KEY_ID
-    
+
     echo "Enter AWS Secret Access Key for Fly.io:"
     read -rs AWS_SECRET_ACCESS_KEY
     echo ""
-    
+
     echo "Setting AWS credentials in Fly.io..."
     flyctl secrets set -a "$APP_NAME" \
         AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" \
         AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
         AWS_REGION="$AWS_REGION" \
         AUTO_INIT_SECRETS="true"
-    
+
     echo -e "${GREEN}✓ AWS credentials updated${NC}"
 else
     echo "Keeping existing AWS credentials"
-    
+
     # Ensure AUTO_INIT_SECRETS is set
     flyctl secrets set -a "$APP_NAME" AUTO_INIT_SECRETS="true" > /dev/null 2>&1 || true
 fi
@@ -291,7 +291,7 @@ BODY=$(echo "$RESPONSE" | head -n-1)
 
 if [ "$HTTP_CODE" == "200" ]; then
     echo -e "${GREEN}✓ JWKS endpoint is working (HTTP 200)${NC}"
-    
+
     # Check if keys are present
     KEY_COUNT=$(echo "$BODY" | jq '.keys | length')
     if [ "$KEY_COUNT" -gt 0 ]; then

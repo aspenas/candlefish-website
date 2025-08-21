@@ -24,7 +24,7 @@ class SecurityLogger {
   constructor() {
     this.serviceName = 'paintbox';
     this.environment = process.env.NODE_ENV || 'development';
-    
+
     // Patterns to redact from logs
     this.sensitivePatterns = [
       /AWS_SECRET_ACCESS_KEY=[\w+/]+/gi,
@@ -84,7 +84,7 @@ class SecurityLogger {
   private formatLogEntry(level: LogLevel, message: string, context?: LogContext): string {
     const timestamp = new Date().toISOString();
     const sanitizedContext = context ? this.sanitize(context) : {};
-    
+
     const logEntry = {
       timestamp,
       level,
@@ -104,7 +104,7 @@ class SecurityLogger {
    */
   private log(level: LogLevel, message: string, context?: LogContext): void {
     const formattedEntry = this.formatLogEntry(level, message, context);
-    
+
     // In production, use structured logging
     if (this.environment === 'production') {
       switch (level) {
@@ -134,7 +134,7 @@ class SecurityLogger {
         security: '🔐',
         audit: '📋',
       }[level];
-      
+
       console.log(`${emoji} [${level.toUpperCase()}] ${message}`);
       if (context) {
         console.log('  Context:', this.sanitize(context));
@@ -157,7 +157,7 @@ class SecurityLogger {
 
   error(message: string, context?: LogContext): void {
     this.log('error', message, context);
-    
+
     // In production, also send to error tracking service
     if (this.environment === 'production' && context?.error) {
       this.sendToErrorTracking(message, context);
@@ -173,9 +173,9 @@ class SecurityLogger {
       category: event.category || 'general',
       severity: event.severity || 'MEDIUM',
     };
-    
+
     this.log('security', message, enhancedContext);
-    
+
     // Send critical security events to alerting system
     if (event.severity === 'CRITICAL' || event.severity === 'HIGH') {
       this.sendSecurityAlert(message, enhancedContext);

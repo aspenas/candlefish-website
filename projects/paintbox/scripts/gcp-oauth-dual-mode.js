@@ -1,6 +1,6 @@
 /**
  * Google OAuth Dual-Mode Support for Zero-Downtime Migration
- * 
+ *
  * This module allows the application to work with both old and new OAuth
  * credentials during the migration period, ensuring zero downtime.
  */
@@ -10,14 +10,14 @@ const { OAuth2Client } = require('google-auth-library');
 class DualModeOAuthClient {
     constructor() {
         this.migrationMode = process.env.OAUTH_MIGRATION_MODE || 'single';
-        
+
         // Initialize clients based on migration mode
         if (this.migrationMode === 'dual') {
             this.initializeDualMode();
         } else {
             this.initializeSingleMode();
         }
-        
+
         this.setupMetrics();
     }
 
@@ -28,11 +28,11 @@ class DualModeOAuthClient {
             process.env.GOOGLE_CLIENT_SECRET,
             this.getRedirectUrl()
         );
-        
+
         this.clients = {
             primary: this.primaryClient
         };
-        
+
         console.log('OAuth initialized in single mode');
     }
 
@@ -43,24 +43,24 @@ class DualModeOAuthClient {
             process.env.GOOGLE_CLIENT_SECRET_OLD,
             this.getRedirectUrl()
         );
-        
+
         this.newClient = new OAuth2Client(
             process.env.GOOGLE_CLIENT_ID_NEW,
             process.env.GOOGLE_CLIENT_SECRET_NEW,
             this.getRedirectUrl()
         );
-        
+
         // Use new client as primary, old as fallback
         this.primaryClient = this.newClient;
         this.fallbackClient = this.oldClient;
-        
+
         this.clients = {
             primary: this.primaryClient,
             fallback: this.fallbackClient,
             old: this.oldClient,
             new: this.newClient
         };
-        
+
         console.log('OAuth initialized in dual mode (migration active)');
     }
 
@@ -75,7 +75,7 @@ class DualModeOAuthClient {
                 new: 0
             }
         };
-        
+
         // Log metrics every 5 minutes
         if (this.migrationMode === 'dual') {
             setInterval(() => this.logMetrics(), 5 * 60 * 1000);
@@ -131,7 +131,7 @@ class DualModeOAuthClient {
         } catch (newError) {
             console.warn('New OAuth client failed, trying old client:', newError.message);
             this.metrics.errors.new++;
-            
+
             try {
                 const { tokens } = await this.oldClient.getToken(code);
                 this.metrics.oldClientUsage++;
@@ -261,11 +261,11 @@ class DualModeOAuthClient {
      */
     logMetrics() {
         const total = this.metrics.oldClientUsage + this.metrics.newClientUsage;
-        
+
         if (total > 0) {
             const newClientPercentage = (this.metrics.newClientUsage / total * 100).toFixed(2);
             const oldClientPercentage = (this.metrics.oldClientUsage / total * 100).toFixed(2);
-            
+
             console.log('OAuth Migration Metrics:', {
                 totalRequests: total,
                 newClient: {
