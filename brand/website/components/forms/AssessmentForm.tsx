@@ -507,39 +507,59 @@ export const AssessmentForm: React.FC<AssessmentFormProps> = ({
                 <Button
                   variant="outline"
                   size="lg"
-                  onClick={async () => {
-                    try {
-                      const response = await fetch('/api/assessment/generate-pdf', {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                          score: results,
-                          portrait: results,
-                          responses: answers,
-                          sessionId: `session-${Date.now()}`
-                        }),
-                      });
-
-                      if (response.ok) {
-                        const html = await response.text();
-                        const blob = new Blob([html], { type: 'text/html' });
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.style.display = 'none';
-                        a.href = url;
-                        a.download = `assessment-report-${Date.now()}.html`;
-                        document.body.appendChild(a);
-                        a.click();
-                        window.URL.revokeObjectURL(url);
-                        document.body.removeChild(a);
-                      } else {
-                        console.error('Failed to generate PDF');
-                      }
-                    } catch (error) {
-                      console.error('Error downloading report:', error);
-                    }
+                  onClick={() => {
+                    // Generate simple HTML report client-side
+                    const html = `
+                      <!DOCTYPE html>
+                      <html>
+                      <head>
+                        <title>Assessment Report</title>
+                        <style>
+                          body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 40px; }
+                          h1 { color: #0D1B2A; }
+                          .score { font-size: 3em; color: #3FD3C6; }
+                          .section { margin: 30px 0; padding: 20px; background: #f5f5f5; border-radius: 8px; }
+                        </style>
+                      </head>
+                      <body>
+                        <h1>Candlefish Assessment Report</h1>
+                        <div class="section">
+                          <h2>Overall Score</h2>
+                          <div class="score">${results.overall.score}%</div>
+                          <p>Level: ${results.overall.level}</p>
+                          <p>${results.overall.description}</p>
+                        </div>
+                        <div class="section">
+                          <h2>Category Scores</h2>
+                          ${results.categories.map((cat: any) => `
+                            <div>
+                              <h3>${cat.name}</h3>
+                              <p>Score: ${cat.score}%</p>
+                              <p>Level: ${cat.level}</p>
+                            </div>
+                          `).join('')}
+                        </div>
+                        <div class="section">
+                          <h2>Next Steps</h2>
+                          <ul>
+                            ${results.nextSteps.map((step: string) => `<li>${step}</li>`).join('')}
+                          </ul>
+                        </div>
+                        <p>Generated: ${new Date().toLocaleString()}</p>
+                        <p>Contact: hello@candlefish.ai</p>
+                      </body>
+                      </html>
+                    `;
+                    
+                    const blob = new Blob([html], { type: 'text/html' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `candlefish-assessment-${Date.now()}.html`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
                   }}
                 >
                   Download Detailed Report
