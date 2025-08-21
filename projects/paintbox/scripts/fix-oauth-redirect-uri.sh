@@ -5,7 +5,7 @@ echo "======================================="
 echo
 
 # Set variables
-GOOGLE_CLIENT_ID="***REMOVED***"
+GOOGLE_CLIENT_ID="641173075272-vu85i613rarruqsfst59qve7bvvrrd2s.apps.googleusercontent.com"
 CORRECT_REDIRECT_URI="https://paintbox.fly.dev/api/auth/callback/google"
 APP_NAME="paintbox"
 

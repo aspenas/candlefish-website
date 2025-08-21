@@ -7,7 +7,7 @@
 
 const https = require('https');
 
-const CLIENT_ID = '***REMOVED***';
+const CLIENT_ID = '641173075272-vu85i613rarruqsfst59qve7bvvrrd2s.apps.googleusercontent.com';
 const APP_URL = 'https://paintbox.fly.dev';
 
 function makeRequest(url, options = {}) {
@@ -158,7 +158,7 @@ async function main() {
 
   console.log('\n📋 Summary:');
   console.log('- App is deployed at: https://paintbox.fly.dev');
-  console.log('- Expected Client ID: ***REMOVED***');
+  console.log('- Expected Client ID: 641173075272-vu85i613rarruqsfst59qve7bvvrrd2s.apps.googleusercontent.com');
   console.log('- Expected Redirect URI: https://paintbox.fly.dev/api/auth/callback/google');
   console.log('\nTo fix redirect_uri_mismatch, ensure Google Cloud Console has:');
   console.log('1. The correct Client ID');

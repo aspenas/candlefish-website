@@ -28,7 +28,7 @@ The security audit has identified **15 critical vulnerabilities** across the por
 NEXTAUTH_SECRET=production-secret-key-do-not-expose-in-public-repos-Fj42BnmOP23KlmxvBJbaI=
 
 /Users/patricksmith/candlefish-ai/projects/paintbox/.env.production:10
-GOOGLE_CLIENT_SECRET=***REMOVED***
+GOOGLE_CLIENT_SECRET=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
 
 /Users/patricksmith/candlefish-ai/projects/paintbox/.env.local:28
 SALESFORCE_CLIENT_SECRET=54B10E80E3D17048B44BC2FB26C0579BC73F3D3C6FEE99F2B465EF94B6B8B632

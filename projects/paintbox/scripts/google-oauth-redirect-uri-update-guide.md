@@ -17,7 +17,7 @@ Your Google OAuth login is showing `Error 400: redirect_uri_mismatch` because th
    - Make sure you're in the correct project
 
 2. **Find Your OAuth Client**
-   - Look for OAuth 2.0 Client ID: `***REMOVED***`
+   - Look for OAuth 2.0 Client ID: `641173075272-vu85i613rarruqsfst59qve7bvvrrd2s.apps.googleusercontent.com`
    - Click on it to edit
 
 3. **Add Authorized Redirect URIs**

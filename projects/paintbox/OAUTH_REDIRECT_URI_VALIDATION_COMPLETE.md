@@ -23,7 +23,7 @@
 ## OAuth Client Configuration
 
 ### Current Setup (Verified Working)
-- **Client ID**: `***REMOVED***`
+- **Client ID**: `641173075272-vu85i613rarruqsfst59qve7bvvrrd2s.apps.googleusercontent.com`
 - **Project**: `l0-candlefish`
 - **Primary Redirect URI**: `https://paintbox.fly.dev/api/auth/callback/google`
 
@@ -50,7 +50,7 @@ https://paintbox.fly.dev/api/auth/callback/google - ✅ Exists (HTTP 302)
 The complete OAuth URL was tested successfully:
 ```
 https://accounts.google.com/o/oauth2/v2/auth?
-  client_id=***REMOVED***&
+  client_id=641173075272-vu85i613rarruqsfst59qve7bvvrrd2s.apps.googleusercontent.com&
   redirect_uri=https%3A%2F%2Fpaintbox.fly.dev%2Fapi%2Fauth%2Fcallback%2Fgoogle&
   response_type=code&
   scope=openid%20profile%20email&

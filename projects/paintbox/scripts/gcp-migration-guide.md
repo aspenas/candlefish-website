@@ -16,7 +16,7 @@
 ### Current Setup
 - **Project ID**: l0-candlefish
 - **Project Number**: 641173075272
-- **OAuth Client ID**: ***REMOVED***
+- **OAuth Client ID**: 641173075272-vu85i613rarruqsfst59qve7bvvrrd2s.apps.googleusercontent.com
 - **Current Owner**: patrick.smith@gmail.com
 - **Target Owner**: patrick@candlefish.ai
 
@@ -52,7 +52,7 @@
 ### Required Information
 ```bash
 # Current OAuth Configuration
-CLIENT_ID: ***REMOVED***
+CLIENT_ID: 641173075272-vu85i613rarruqsfst59qve7bvvrrd2s.apps.googleusercontent.com
 CLIENT_SECRET: [Stored in AWS Secrets Manager]
 
 # Current Redirect URIs
@@ -146,7 +146,7 @@ CLIENT_SECRET: [Stored in AWS Secrets Manager]
 1. **Update Environment Variables**
    ```bash
    # Store both old and new credentials temporarily
-   GOOGLE_CLIENT_ID_OLD=***REMOVED***
+   GOOGLE_CLIENT_ID_OLD=641173075272-vu85i613rarruqsfst59qve7bvvrrd2s.apps.googleusercontent.com
    GOOGLE_CLIENT_ID_NEW=[NEW_CLIENT_ID]
    GOOGLE_CLIENT_SECRET_OLD=[OLD_SECRET]
    GOOGLE_CLIENT_SECRET_NEW=[NEW_SECRET]

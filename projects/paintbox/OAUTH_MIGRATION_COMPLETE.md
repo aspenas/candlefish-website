@@ -14,7 +14,7 @@
 
 ### 2. New OAuth Credentials Created
 - **Created By**: patrick@candlefish.ai
-- **New Client ID**: `***REMOVED***`
+- **New Client ID**: `[REDACTED_GOOGLE_CLIENT_ID]`
 - **Stored In**: AWS Secrets Manager (`paintbox/google-oauth-candlefish`)
 - **Status**: Active and deployed
 
@@ -27,7 +27,7 @@
 
 | Aspect | Old (patrick.smith@gmail.com) | New (patrick@candlefish.ai) |
 |--------|-------------------------------|------------------------------|
-| Client ID | 641173075272-vu85i613rarruqsfst59qve7bvvrrd2s | 641173075272-21i9ktrkp177besde65o3cq7jh1kt8n5 |
+| Client ID | [REDACTED_OLD_CLIENT_ID] | [REDACTED_NEW_CLIENT_ID] |
 | Created By | patrick.smith@gmail.com | patrick@candlefish.ai |
 | Status | Replaced (but still valid) | Active (primary) |
 | AWS Secret | candlefish/google-oauth2-config | paintbox/google-oauth-candlefish |
@@ -54,8 +54,8 @@ If any issues occur, rollback to original credentials:
 ```bash
 # Revert to original OAuth credentials
 fly secrets set \
-  GOOGLE_CLIENT_ID="***REMOVED***" \
-  GOOGLE_CLIENT_SECRET="***REMOVED***" \
+  GOOGLE_CLIENT_ID="[REDACTED_GOOGLE_CLIENT_ID]" \
+  GOOGLE_CLIENT_SECRET="[REDACTED_GOOGLE_CLIENT_SECRET]" \
   --app paintbox
 ```
 

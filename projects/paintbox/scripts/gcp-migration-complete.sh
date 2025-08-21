@@ -11,7 +11,7 @@ set -e  # Exit on error
 PROJECT_ID="l0-candlefish"
 OLD_OWNER="patrick.smith@gmail.com"
 NEW_OWNER="patrick@candlefish.ai"
-OLD_CLIENT_ID="***REMOVED***"
+OLD_CLIENT_ID="641173075272-vu85i613rarruqsfst59qve7bvvrrd2s.apps.googleusercontent.com"
 
 # Color codes
 RED='\033[0;31m'
