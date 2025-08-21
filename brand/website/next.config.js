@@ -4,7 +4,15 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // output: 'export', // Commented out to enable API routes for PDF generation
+  output: 'export',
+  trailingSlash: true,
+  distDir: 'out',
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
 }
 
 module.exports = nextConfig

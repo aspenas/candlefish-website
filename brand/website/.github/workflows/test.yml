@@ -7,7 +7,7 @@ on:
     branches: [ main, develop ]
 
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '20'
   NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1' }}
 
 jobs:
@@ -15,36 +15,36 @@ jobs:
   unit-tests:
     name: Unit & Integration Tests
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          
+
       - name: Install dependencies
         run: npm ci
-        
+
       - name: Run linting
         run: npm run lint
-        
+
       - name: Run type checking
         run: npx tsc --noEmit
-        
+
       - name: Run unit tests
         run: npm run test:ci
-        
+
       - name: Upload coverage reports
         uses: codecov/codecov-action@v3
         with:
           file: ./coverage/lcov.info
           flags: unittests
           name: codecov-umbrella
-          
+
       - name: Upload test results
         uses: actions/upload-artifact@v3
         if: always()
@@ -58,23 +58,23 @@ jobs:
   build-test:
     name: Build Test
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          
+
       - name: Install dependencies
         run: npm ci
-        
+
       - name: Build application
         run: npm run build
-        
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -86,37 +86,37 @@ jobs:
     name: E2E Tests (Cypress)
     runs-on: ubuntu-latest
     needs: build-test
-    
+
     strategy:
       matrix:
         browser: [chrome, firefox, edge]
       fail-fast: false
-      
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          
+
       - name: Install dependencies
         run: npm ci
-        
+
       - name: Download build artifacts
         uses: actions/download-artifact@v3
         with:
           name: build-files
           path: .next/
-          
+
       - name: Start server
         run: |
           npm run build
           npm start &
           npx wait-on http://localhost:3000
-        
+
       - name: Run Cypress tests
         uses: cypress-io/github-action@v6
         with:
@@ -129,14 +129,14 @@ jobs:
         env:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Upload Cypress videos
         uses: actions/upload-artifact@v3
         if: failure()
         with:
           name: cypress-videos-${{ matrix.browser }}
           path: cypress/videos/
-          
+
       - name: Upload Cypress screenshots
         uses: actions/upload-artifact@v3
         if: failure()
@@ -149,32 +149,32 @@ jobs:
     name: Accessibility Tests
     runs-on: ubuntu-latest
     needs: build-test
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          
+
       - name: Install dependencies
         run: npm ci
-        
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
-        
+
       - name: Download build artifacts
         uses: actions/download-artifact@v3
         with:
           name: build-files
           path: .next/
-          
+
       - name: Run accessibility tests
         run: npm run test:accessibility
-        
+
       - name: Upload accessibility test results
         uses: actions/upload-artifact@v3
         if: always()
@@ -189,32 +189,32 @@ jobs:
     name: Visual Regression Tests
     runs-on: ubuntu-latest
     needs: build-test
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          
+
       - name: Install dependencies
         run: npm ci
-        
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
-        
+
       - name: Download build artifacts
         uses: actions/download-artifact@v3
         with:
           name: build-files
           path: .next/
-          
+
       - name: Run visual tests
         run: npm run test:visual
-        
+
       - name: Upload visual test results
         uses: actions/upload-artifact@v3
         if: always()
@@ -230,41 +230,41 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          
+
       - name: Install dependencies
         run: npm ci
-        
+
       - name: Download build artifacts
         uses: actions/download-artifact@v3
         with:
           name: build-files
           path: .next/
-          
+
       - name: Start server for performance testing
         run: |
           npm run build
           npm start &
           npx wait-on http://localhost:3000
-          
+
       - name: Install k6
         run: |
           curl https://github.com/grafana/k6/releases/download/v0.47.0/k6-v0.47.0-linux-amd64.tar.gz -L | tar xvz --strip-components 1
-          
+
       - name: Run performance tests
         run: ./k6 run tests/performance/load-test.js
         env:
           BASE_URL: http://localhost:3000
-          
+
       - name: Upload performance test results
         uses: actions/upload-artifact@v3
         if: always()
@@ -278,29 +278,29 @@ jobs:
   security-tests:
     name: Security Tests
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          
+
       - name: Install dependencies
         run: npm ci
-        
+
       - name: Run security audit
         run: npm audit --audit-level moderate
         continue-on-error: true
-        
+
       - name: Run CodeQL Analysis
         uses: github/codeql-action/analyze@v2
         with:
           languages: javascript
-          
+
       - name: Upload security scan results
         uses: actions/upload-artifact@v3
         if: always()
@@ -313,39 +313,39 @@ jobs:
     name: Lighthouse CI
     runs-on: ubuntu-latest
     needs: build-test
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          
+
       - name: Install dependencies
         run: npm ci
-        
+
       - name: Download build artifacts
         uses: actions/download-artifact@v3
         with:
           name: build-files
           path: .next/
-          
+
       - name: Start server
         run: |
           npm run build
           npm start &
           npx wait-on http://localhost:3000
-          
+
       - name: Run Lighthouse CI
         run: |
           npm install -g @lhci/cli@0.12.x
           lhci autorun
         env:
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
-          
+
       - name: Upload Lighthouse results
         uses: actions/upload-artifact@v3
         if: always()
@@ -359,11 +359,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: [unit-tests, e2e-tests, accessibility-tests, visual-tests, lighthouse]
     if: always()
-    
+
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v3
-        
+
       - name: Create test summary
         run: |
           echo "# Test Results Summary" >> $GITHUB_STEP_SUMMARY
@@ -391,7 +391,7 @@ jobs:
           else
             echo "❌ Visual regression tests failed" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
       - name: Comment on PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v6
@@ -399,7 +399,7 @@ jobs:
           script: |
             const fs = require('fs');
             const summary = fs.readFileSync(process.env.GITHUB_STEP_SUMMARY, 'utf8');
-            
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -414,31 +414,33 @@ jobs:
     needs: [unit-tests, e2e-tests, accessibility-tests, lighthouse]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          
+
       - name: Install dependencies
         run: npm ci
-        
+
       - name: Build for production
         run: npm run build
         env:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL_PROD }}
-          
-      - name: Deploy to production
+
+      - name: Deploy to Netlify
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
         run: |
-          echo "Deploying to production..."
-          # Add your deployment script here
-          # Examples: Vercel, Netlify, AWS, etc.
-          
+          npm install -g netlify-cli
+          netlify deploy --prod --dir=out --site=$NETLIFY_SITE_ID
+
       - name: Post-deployment tests
         run: |
           # Run smoke tests against production

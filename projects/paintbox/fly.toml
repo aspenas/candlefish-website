@@ -13,7 +13,7 @@ primary_region = "sjc"
   PORT = "8080"
   DATABASE_URL = "sqlite://:memory:"
   # Production optimizations
-  NODE_OPTIONS = "--max-old-space-size=1536 --optimize-for-size"
+  NODE_OPTIONS = "--max-old-space-size=1536"
   NEXT_TELEMETRY_DISABLED = "1"
   # Disable source maps in production for security
   GENERATE_SOURCEMAP = "false"
