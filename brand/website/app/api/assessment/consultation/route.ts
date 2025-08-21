@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     // Send notification (in production, this would be an actual email service)
     // await sendNotificationEmail({
-    //   to: 'team@candlefish.ai',
+    //   to: 'hello@candlefish.ai',
     //   subject: `New Consultation Request - ${company} (${score?.level})`,
     //   data: { name, email, company, role, sessionId, score }
     // })

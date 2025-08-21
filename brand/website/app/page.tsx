@@ -79,7 +79,7 @@ export default function OperationalHome() {
           {/* Status-driven action */}
           <div className="mt-16">
             {currentFocus.acceptingInquiries ? (
-              <button 
+              <button
                 className="group relative inline-block"
                 onClick={() => window.location.href = '/consideration'}
               >
@@ -266,7 +266,7 @@ export default function OperationalHome() {
           </div>
 
           <div className="mt-16">
-            <button 
+            <button
               className="btn-primary"
               onClick={() => window.location.href = '/consideration'}
             >

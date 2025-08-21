@@ -195,19 +195,19 @@ export const AssessmentForm: React.FC<AssessmentFormProps> = ({
 
   // Contact form for lead capture
   const contactForm = useForm({
-    email: { 
+    email: {
       validation: { required: true, email: true },
       initialValue: ''
     },
-    firstName: { 
+    firstName: {
       validation: { required: true, minLength: 2 },
       initialValue: ''
     },
-    lastName: { 
+    lastName: {
       validation: { required: true, minLength: 2 },
       initialValue: ''
     },
-    company: { 
+    company: {
       validation: { required: false },
       initialValue: ''
     }
@@ -241,7 +241,7 @@ export const AssessmentForm: React.FC<AssessmentFormProps> = ({
 
   const calculateResults = (): AssessmentResult => {
     const categoryScores: Record<string, { total: number; count: number }> = {};
-    
+
     // Initialize categories
     assessment.categories.forEach(cat => {
       categoryScores[cat.id] = { total: 0, count: 0 };
@@ -268,7 +268,7 @@ export const AssessmentForm: React.FC<AssessmentFormProps> = ({
     const categories = assessment.categories.map(cat => {
       const categoryData = categoryScores[cat.id];
       const score = categoryData.count > 0 ? (categoryData.total / categoryData.count) / 4 * 100 : 0;
-      
+
       let level = 'beginner';
       let recommendations: string[] = [];
 
@@ -310,15 +310,15 @@ export const AssessmentForm: React.FC<AssessmentFormProps> = ({
     });
 
     const overallScore = categories.reduce((sum, cat) => sum + cat.score, 0) / categories.length;
-    
+
     let overallLevel = 'beginner';
     let description = 'Starting your automation journey';
-    
+
     if (overallScore >= 75) {
       overallLevel = 'advanced';
       description = 'Ready for sophisticated automation';
     } else if (overallScore >= 50) {
-      overallLevel = 'intermediate'; 
+      overallLevel = 'intermediate';
       description = 'Building automation capabilities';
     } else if (overallScore >= 25) {
       overallLevel = 'developing';
@@ -347,7 +347,7 @@ export const AssessmentForm: React.FC<AssessmentFormProps> = ({
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    
+
     try {
       // Convert answers to API format
       const formattedAnswers: AssessmentAnswer[] = Object.entries(answers).map(([questionId, value]) => ({
@@ -365,7 +365,7 @@ export const AssessmentForm: React.FC<AssessmentFormProps> = ({
 
       // Submit to API (mock)
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       setShowResults(true);
     } catch (error) {
       console.error('Failed to submit assessment:', error);
@@ -378,7 +378,7 @@ export const AssessmentForm: React.FC<AssessmentFormProps> = ({
     if (isContactStep) {
       return contactForm.isValid;
     }
-    
+
     const answer = answers[currentQuestion?.id];
     return answer !== undefined && answer !== '';
   };
@@ -410,7 +410,7 @@ export const AssessmentForm: React.FC<AssessmentFormProps> = ({
               <div className="text-xl text-slate mb-2">
                 Overall Maturity Score
               </div>
-              <Badge 
+              <Badge
                 variant={results.overall.level === 'advanced' ? 'primary' : results.overall.level === 'intermediate' ? 'secondary' : 'default'}
                 size="lg"
               >
@@ -430,9 +430,9 @@ export const AssessmentForm: React.FC<AssessmentFormProps> = ({
                       <h3 className="font-semibold text-slate">{category.name}</h3>
                       <Badge variant="outline">{category.score}%</Badge>
                     </div>
-                    <Progress 
-                      value={category.score} 
-                      size="sm" 
+                    <Progress
+                      value={category.score}
+                      size="sm"
                       className="mb-3"
                       variant={category.score >= 75 ? 'success' : category.score >= 50 ? 'default' : 'warning'}
                     />
@@ -495,17 +495,17 @@ export const AssessmentForm: React.FC<AssessmentFormProps> = ({
                   </div>
                 ))}
               </div>
-              
+
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button 
+                <Button
                   size="lg"
                   onClick={() => window.location.href = '/consideration'}
                 >
                   Schedule Free Consultation
                   <ArrowRightIcon className="ml-2 h-4 w-4" />
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="lg"
                   onClick={async () => {
                     try {
@@ -571,9 +571,9 @@ export const AssessmentForm: React.FC<AssessmentFormProps> = ({
 
       {/* Progress */}
       <div className="mb-8">
-        <Progress 
-          value={progress} 
-          showLabel 
+        <Progress
+          value={progress}
+          showLabel
           label={`Step ${currentStep + 1} of ${totalSteps}`}
           className="mb-4"
         />
@@ -652,7 +652,7 @@ export const AssessmentForm: React.FC<AssessmentFormProps> = ({
 
                 <div className="space-y-3">
                   {currentQuestion.options?.map((option) => {
-                    const isSelected = currentQuestion.type === 'multiple' 
+                    const isSelected = currentQuestion.type === 'multiple'
                       ? (answers[currentQuestion.id] || []).includes(option.value)
                       : answers[currentQuestion.id] === option.value;
 
@@ -660,8 +660,8 @@ export const AssessmentForm: React.FC<AssessmentFormProps> = ({
                       <label
                         key={option.id}
                         className={`block p-4 border rounded-lg cursor-pointer transition-all hover:border-sea-glow ${
-                          isSelected 
-                            ? 'border-sea-glow bg-sea-glow/5' 
+                          isSelected
+                            ? 'border-sea-glow bg-sea-glow/5'
                             : 'border-mist/20'
                         }`}
                       >
@@ -715,7 +715,7 @@ export const AssessmentForm: React.FC<AssessmentFormProps> = ({
           <ArrowLeftIcon className="mr-2 h-4 w-4" />
           Back
         </Button>
-        
+
         <Button
           onClick={handleNext}
           disabled={!canProceed()}

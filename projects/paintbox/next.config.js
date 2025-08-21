@@ -192,6 +192,15 @@ const nextConfig = {
 
   // Webpack optimizations
   webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
+    // Fix 'self is not defined' error for server-side rendering
+    if (isServer) {
+      config.plugins.push(
+        new webpack.DefinePlugin({
+          'self': 'typeof self !== "undefined" ? self : typeof global !== "undefined" ? global : this',
+        })
+      );
+    }
+
     // Production optimizations
     if (!dev) {
       config.optimization = {

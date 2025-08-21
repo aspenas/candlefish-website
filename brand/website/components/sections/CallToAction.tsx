@@ -138,7 +138,7 @@ const CallToAction: React.FC<CTAProps> = ({
                   size="lg"
                   variant={getButtonVariant()}
                   className="group"
-                  onClick={primaryCTA.onClick}
+                  onClick={primaryCTA.onClick || (() => window.location.href = primaryCTA.href)}
                 >
                   {primaryCTA.text}
                   <ArrowRightIcon className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -149,7 +149,7 @@ const CallToAction: React.FC<CTAProps> = ({
                 size="lg"
                 variant={getButtonVariant()}
                 className="group"
-                onClick={primaryCTA.onClick}
+                onClick={primaryCTA.onClick || (() => console.log('No action defined for primary CTA'))}
               >
                 {primaryCTA.text}
                 <ArrowRightIcon className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -163,7 +163,7 @@ const CallToAction: React.FC<CTAProps> = ({
                     variant="outline"
                     size="lg"
                     className={getSecondaryButtonClasses()}
-                    onClick={secondaryCTA.onClick}
+                    onClick={secondaryCTA.onClick || (() => window.location.href = secondaryCTA.href)}
                   >
                     {secondaryCTA.text}
                   </Button>
@@ -173,7 +173,7 @@ const CallToAction: React.FC<CTAProps> = ({
                   variant="outline"
                   size="lg"
                   className={getSecondaryButtonClasses()}
-                  onClick={secondaryCTA.onClick}
+                  onClick={secondaryCTA.onClick || (() => console.log('No action defined for secondary CTA'))}
                 >
                   {secondaryCTA.text}
                 </Button>

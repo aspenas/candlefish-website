@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { BlogGallery } from '../../components/sections/BlogGallery';
+import { NewsletterForm } from '../../components/ui/NewsletterForm';
 import { BlogPost } from '../../types/api';
 
 export default function InsightsPage() {
@@ -34,24 +35,13 @@ export default function InsightsPage() {
             Stay ahead with practical insights from our automation specialists.
           </p>
           
-          {/* Newsletter Signup Teaser */}
-          <div className="bg-white rounded-lg shadow-sm border border-mist/10 p-6 max-w-lg mx-auto">
-            <h3 className="text-lg font-semibold text-slate mb-2">
-              Get Weekly Insights
-            </h3>
-            <p className="text-sm text-mist mb-4">
-              Subscribe to our newsletter for the latest automation tips and strategies
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="email"
-                placeholder="Enter your email"
-                className="flex-1 px-3 py-2 border border-mist/30 rounded-md text-sm focus:border-sea-glow focus:outline-none"
-              />
-              <button className="bg-sea-glow text-white px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 transition">
-                Subscribe
-              </button>
-            </div>
+          {/* Newsletter Signup */}
+          <div className="max-w-lg mx-auto">
+            <NewsletterForm 
+              variant="compact"
+              theme="light"
+              source="insights-page"
+            />
           </div>
         </div>
       </section>
