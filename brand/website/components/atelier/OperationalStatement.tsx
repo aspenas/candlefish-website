@@ -38,7 +38,7 @@ export function OperationalStatement() {
   const [currentStatement, setCurrentStatement] = useState(0);
   const [metrics, setMetrics] = useState<OperationalMetrics>({
     currentCapacity: 100,
-    queuePosition: 47,
+    queuePosition: 7,
     activeProjects: 3,
     systemLoad: 0.94,
     craftIntensity: 'immersive',

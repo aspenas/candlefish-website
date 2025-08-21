@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import type { Metadata } from 'next'
 
-const currentQueueLength = 47
+const currentQueueLength = 7
 const maxQueueCapacity = 50
 const nextConsiderationDate = 'December 2025'
 const expectedConsiderationDate = 'January-February 2026'
