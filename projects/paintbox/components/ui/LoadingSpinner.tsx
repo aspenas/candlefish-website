@@ -38,9 +38,9 @@ export function LoadingSpinner({
   };
 
   const variantClasses = {
-    default: 'border-[hsl(var(--border))] border-t-[hsl(var(--foreground))]',
-    primary: 'border-[hsl(var(--border))] border-t-[hsl(var(--primary))]',
-    secondary: 'border-[hsl(var(--border))] border-t-[hsl(var(--secondary))]',
+    default: 'border-paintbox-border border-t-paintbox-text',
+    primary: 'border-paintbox-border border-t-paintbox-brand',
+    secondary: 'border-paintbox-border border-t-paintbox-accent',
   };
 
   return (
@@ -61,7 +61,7 @@ export function LoadingSpinner({
       </div>
       {message && (
         <p className={cn(
-          'text-[hsl(var(--muted-foreground))] font-medium',
+          'text-paintbox-text-muted font-medium',
           textSizeClasses[size]
         )}>
           {message}

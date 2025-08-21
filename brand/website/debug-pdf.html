@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug PDF Download</title>
+</head>
+<body>
+    <h1>PDF Debug Test</h1>
+    <button id="testPDF">Test PDF Download</button>
+    <div id="output"></div>
+
+    <script>
+        // Simulate the PDF generation code from the website
+        function generateAssessmentPDF(score, portrait, sessionId) {
+            console.log('generateAssessmentPDF called with:', { score, portrait, sessionId });
+
+            try {
+                // Create HTML content (simplified version of the real function)
+                const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Operational Maturity Assessment - ${sessionId}</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .header { border-bottom: 2px solid #3FD3C6; padding-bottom: 10px; }
+        .score-box { background: #3FD3C6; color: white; padding: 20px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Operational Maturity Assessment</h1>
+        <div>Assessment ID: ${sessionId}</div>
+        <div>Generated: ${new Date().toLocaleDateString()}</div>
+    </div>
+
+    <div class="score-box">
+        <div>Score: ${score.percentage}%</div>
+        <div>Level: ${score.level}</div>
+    </div>
+
+    <div>
+        <h2>Test Report Generated Successfully</h2>
+        <p>This is a test PDF generation to debug the download functionality.</p>
+    </div>
+</body>
+</html>`;
+
+                console.log('HTML generated, length:', html.length);
+
+                // Create a blob and download
+                const blob = new Blob([html], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+
+                console.log('Blob created:', blob);
+                console.log('URL created:', url);
+
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `candlefish-assessment-${sessionId}.html`;
+
+                console.log('Download link created:', a);
+
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                console.log('Download triggered successfully');
+                return true;
+            } catch (error) {
+                console.error('PDF generation error:', error);
+                document.getElementById('output').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                return false;
+            }
+        }
+
+        document.getElementById('testPDF').addEventListener('click', () => {
+            console.log('Test button clicked');
+            document.getElementById('output').innerHTML = '<p>Testing PDF generation...</p>';
+
+            // Mock data similar to what the real app would have
+            const mockScore = {
+                percentage: 85,
+                level: 'Advanced: Operational Excellence',
+                percentile: 92,
+                readiness: 78,
+                dimensions: [
+                    { name: 'Process Documentation', rawScore: 3 },
+                    { name: 'Data Management', rawScore: 4 },
+                ],
+                strengths: [
+                    { dimension: 'Process Documentation', insight: 'Well-structured workflow documentation' }
+                ],
+                interventions: [
+                    { dimension: 'Automation', action: 'Implement RPA for repetitive tasks', impact: 'High' }
+                ],
+                candlefishFit: {
+                    qualified: true,
+                    reason: 'Strong operational foundation with clear automation opportunities',
+                    prerequisites: []
+                }
+            };
+
+            const mockPortrait = {
+                signature: 'test-portrait-data',
+                complexity: 0.7,
+                maturity: 0.85
+            };
+
+            const sessionId = 'debug-test-' + Date.now();
+
+            const success = generateAssessmentPDF(mockScore, mockPortrait, sessionId);
+
+            if (success) {
+                document.getElementById('output').innerHTML = '<p style="color: green;">PDF download should have been triggered. Check your downloads folder.</p>';
+            }
+        });
+    </script>
+</body>
+</html>

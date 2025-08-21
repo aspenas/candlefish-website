@@ -507,59 +507,270 @@ export const AssessmentForm: React.FC<AssessmentFormProps> = ({
                 <Button
                   variant="outline"
                   size="lg"
-                  onClick={() => {
-                    // Generate simple HTML report client-side
-                    const html = `
-                      <!DOCTYPE html>
-                      <html>
-                      <head>
-                        <title>Assessment Report</title>
-                        <style>
-                          body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 40px; }
-                          h1 { color: #0D1B2A; }
-                          .score { font-size: 3em; color: #3FD3C6; }
-                          .section { margin: 30px 0; padding: 20px; background: #f5f5f5; border-radius: 8px; }
-                        </style>
-                      </head>
-                      <body>
-                        <h1>Candlefish Assessment Report</h1>
-                        <div class="section">
-                          <h2>Overall Score</h2>
-                          <div class="score">${results.overall.score}%</div>
-                          <p>Level: ${results.overall.level}</p>
-                          <p>${results.overall.description}</p>
-                        </div>
-                        <div class="section">
-                          <h2>Category Scores</h2>
-                          ${results.categories.map((cat: any) => `
-                            <div>
-                              <h3>${cat.name}</h3>
-                              <p>Score: ${cat.score}%</p>
-                              <p>Level: ${cat.level}</p>
+                  onClick={async () => {
+                    try {
+                      // Check browser support first
+                      if (!window.Blob || !window.URL || !window.URL.createObjectURL) {
+                        throw new Error('Your browser does not support file downloads. Please use a modern browser.');
+                      }
+
+                      // Generate comprehensive HTML report
+                      const html = `
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                          <title>Candlefish Assessment Report</title>
+                          <meta charset="UTF-8">
+                          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                          <style>
+                            * { margin: 0; padding: 0; box-sizing: border-box; }
+                            body {
+                              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                              max-width: 800px;
+                              margin: 0 auto;
+                              padding: 40px 20px;
+                              line-height: 1.6;
+                              color: #333;
+                            }
+                            h1 {
+                              color: #0D1B2A;
+                              text-align: center;
+                              margin-bottom: 30px;
+                              font-size: 2.5em;
+                              font-weight: 300;
+                            }
+                            .header-info {
+                              text-align: center;
+                              margin-bottom: 40px;
+                              color: #666;
+                            }
+                            .score {
+                              font-size: 4em;
+                              color: #3FD3C6;
+                              font-weight: bold;
+                              text-align: center;
+                              margin: 20px 0;
+                            }
+                            .section {
+                              margin: 30px 0;
+                              padding: 25px;
+                              background: #f8f8f2;
+                              border-radius: 8px;
+                              border-left: 4px solid #3FD3C6;
+                            }
+                            .category {
+                              background: white;
+                              padding: 15px;
+                              margin: 15px 0;
+                              border-radius: 6px;
+                              border: 1px solid #e0e0e0;
+                            }
+                            .category h3 {
+                              color: #1B263B;
+                              margin-bottom: 8px;
+                            }
+                            ul {
+                              padding-left: 20px;
+                              margin: 10px 0;
+                            }
+                            li {
+                              margin: 8px 0;
+                            }
+                            .footer {
+                              margin-top: 40px;
+                              padding-top: 20px;
+                              border-top: 1px solid #e0e0e0;
+                              text-align: center;
+                              color: #666;
+                              font-size: 0.9em;
+                            }
+                            @media print {
+                              body { padding: 20px; }
+                              .section { break-inside: avoid; }
+                            }
+                          </style>
+                        </head>
+                        <body>
+                          <h1>Candlefish Assessment Report</h1>
+                          <div class="header-info">
+                            <p>Assessment ID: ${Date.now()}</p>
+                            <p>Generated: ${new Date().toLocaleString()}</p>
+                          </div>
+
+                          <div class="section">
+                            <h2>Overall Score</h2>
+                            <div class="score">${results.overall.score}%</div>
+                            <p style="text-align: center; font-size: 1.2em; margin: 10px 0;">
+                              <strong>Level:</strong> ${results.overall.level.charAt(0).toUpperCase() + results.overall.level.slice(1)}
+                            </p>
+                            <p style="text-align: center; color: #666;">
+                              ${results.overall.description}
+                            </p>
+                          </div>
+
+                          <div class="section">
+                            <h2>Category Breakdown</h2>
+                            ${results.categories.map((cat: any) => `
+                              <div class="category">
+                                <h3>${cat.name}</h3>
+                                <p><strong>Score:</strong> ${cat.score}% | <strong>Level:</strong> ${cat.level.charAt(0).toUpperCase() + cat.level.slice(1)}</p>
+                                ${cat.recommendations && cat.recommendations.length > 0 ? `
+                                  <p style="margin-top: 10px; color: #666;"><strong>Recommendations:</strong></p>
+                                  <ul style="margin-top: 5px;">
+                                    ${cat.recommendations.slice(0, 2).map((rec: string) => `<li>${rec}</li>`).join('')}
+                                  </ul>
+                                ` : ''}
+                              </div>
+                            `).join('')}
+                          </div>
+
+                          <div class="section">
+                            <h2>Recommended Next Steps</h2>
+                            <ul>
+                              ${results.nextSteps.map((step: string) => `<li>${step}</li>`).join('')}
+                            </ul>
+                          </div>
+
+                          ${results.estimatedROI ? `
+                            <div class="section">
+                              <h2>Estimated ROI</h2>
+                              <p><strong>Payback Period:</strong> ${results.estimatedROI.timeframe}</p>
+                              <p><strong>Annual Savings:</strong> $${results.estimatedROI.savings.toLocaleString()}</p>
+                              <p><strong>Efficiency Gain:</strong> ${results.estimatedROI.efficiency}%</p>
                             </div>
-                          `).join('')}
-                        </div>
-                        <div class="section">
-                          <h2>Next Steps</h2>
-                          <ul>
-                            ${results.nextSteps.map((step: string) => `<li>${step}</li>`).join('')}
-                          </ul>
-                        </div>
-                        <p>Generated: ${new Date().toLocaleString()}</p>
-                        <p>Contact: hello@candlefish.ai</p>
-                      </body>
-                      </html>
-                    `;
-                    
-                    const blob = new Blob([html], { type: 'text/html' });
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `candlefish-assessment-${Date.now()}.html`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    window.URL.revokeObjectURL(url);
+                          ` : ''}
+
+                          <div class="footer">
+                            <p>© ${new Date().getFullYear()} Candlefish. This assessment provides operational insights based on your responses.</p>
+                            <p style="margin-top: 10px;">For consultation: hello@candlefish.ai | https://candlefish.ai</p>
+                          </div>
+                        </body>
+                        </html>
+                      `;
+
+                      // Validate HTML content
+                      if (!html || html.length < 100) {
+                        throw new Error('Generated report content is incomplete');
+                      }
+
+                      // Create and download the file
+                      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+
+                      // Set download attributes
+                      a.href = url;
+                      a.download = `candlefish-assessment-report-${new Date().toISOString().slice(0, 10)}.html`;
+                      a.style.display = 'none';
+
+                      // Trigger download
+                      document.body.appendChild(a);
+                      a.click();
+
+                      // Cleanup
+                      setTimeout(() => {
+                        if (document.body.contains(a)) {
+                          document.body.removeChild(a);
+                        }
+                        window.URL.revokeObjectURL(url);
+                      }, 100);
+
+                      // Show success message with instructions
+                      alert('Report downloaded successfully!\n\n💡 To save as PDF: Open the downloaded HTML file and use your browser\'s print function (Ctrl+P or Cmd+P) and select "Save as PDF".');
+
+                      console.log('Assessment report download triggered successfully');
+
+                    } catch (error) {
+                      console.error('Assessment report download failed:', error);
+
+                      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+
+                      // Try alternative: Open in new window for print
+                      try {
+                        const printWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes');
+                        if (printWindow) {
+                          const basicHTML = `
+                            <!DOCTYPE html>
+                            <html>
+                              <head>
+                                <meta charset="UTF-8">
+                                <title>Candlefish Assessment Results</title>
+                                <style>
+                                  body {
+                                    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+                                    padding: 40px;
+                                    line-height: 1.6;
+                                    max-width: 800px;
+                                    margin: 0 auto;
+                                  }
+                                  .score { font-size: 48px; color: #3FD3C6; text-align: center; margin: 20px 0; }
+                                  .section { margin: 30px 0; padding: 20px; background: #f8f8f8; border-radius: 8px; }
+                                  .category { margin: 15px 0; padding: 15px; background: white; border-left: 4px solid #3FD3C6; }
+                                  .print-note { background: #e8f4f8; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0; }
+                                  @media print { .print-note { display: none; } }
+                                </style>
+                              </head>
+                              <body>
+                                <h1 style="text-align: center; color: #0D1B2A;">Candlefish Assessment Results</h1>
+                                <div class="print-note">
+                                  <strong>💡 To save as PDF:</strong> Use Ctrl+P (Cmd+P on Mac) and select "Save as PDF"
+                                </div>
+
+                                <div class="section">
+                                  <div class="score">${results.overall.score}%</div>
+                                  <p style="text-align: center; font-size: 18px;"><strong>Level:</strong> ${results.overall.level.charAt(0).toUpperCase() + results.overall.level.slice(1)}</p>
+                                  <p style="text-align: center; color: #666;">${results.overall.description}</p>
+                                </div>
+
+                                <div class="section">
+                                  <h2>Category Breakdown</h2>
+                                  ${results.categories.map((cat: any) => `
+                                    <div class="category">
+                                      <h3>${cat.name}</h3>
+                                      <p><strong>Score:</strong> ${cat.score}% | <strong>Level:</strong> ${cat.level.charAt(0).toUpperCase() + cat.level.slice(1)}</p>
+                                      <p style="color: #666;">Top recommendations: ${(cat.recommendations || []).slice(0, 2).join(', ')}</p>
+                                    </div>
+                                  `).join('')}
+                                </div>
+
+                                <div class="section">
+                                  <h2>Next Steps</h2>
+                                  <ul>
+                                    ${results.nextSteps.map((step: string) => `<li>${step}</li>`).join('')}
+                                  </ul>
+                                </div>
+
+                                <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ccc; text-align: center; color: #666; font-size: 14px;">
+                                  <p>© ${new Date().getFullYear()} Candlefish Assessment | Contact: hello@candlefish.ai</p>
+                                </div>
+                              </body>
+                            </html>
+                          `;
+
+                          printWindow.document.write(basicHTML);
+                          printWindow.document.close();
+
+                          // Auto-trigger print after content loads
+                          printWindow.onload = () => {
+                            setTimeout(() => {
+                              try {
+                                printWindow.print();
+                              } catch (printError) {
+                                console.error('Auto-print failed:', printError);
+                              }
+                            }, 500);
+                          };
+
+                          alert(`Download failed, but opened a print-friendly version instead.\n\nOriginal error: ${errorMessage}\n\nUse Ctrl+P (Cmd+P on Mac) to save as PDF.`);
+
+                        } else {
+                          throw new Error('Unable to open print window. Pop-up may be blocked.');
+                        }
+                      } catch (printError) {
+                        console.error('Print fallback also failed:', printError);
+                        alert(`Both download and print failed.\n\nPlease try:\n1. Using a different browser (Chrome, Firefox, Safari)\n2. Disabling pop-up blockers\n3. Enabling JavaScript\n4. Contacting support at hello@candlefish.ai\n\nOriginal error: ${errorMessage}`);
+                      }
+                    }
                   }}
                 >
                   Download Detailed Report
