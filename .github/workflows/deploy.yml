@@ -4,12 +4,12 @@ on:
   push:
     branches: [main]
     paths:
-      - 'apps/website/**'
+      - 'brand/website/**'
       - '.github/workflows/deploy.yml'
   pull_request:
     branches: [main]
     paths:
-      - 'apps/website/**'
+      - 'brand/website/**'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
     inputs:
@@ -23,8 +23,8 @@ on:
           - production
 
 env:
-  NODE_VERSION: '18'
-  WORKING_DIRECTORY: 'apps/website'
+  NODE_VERSION: '20'
+  WORKING_DIRECTORY: 'brand/website'
 
 jobs:
   # Quality Assurance Pipeline
@@ -66,12 +66,12 @@ jobs:
       - name: Run type checking
         if: matrix.test-type == 'typecheck'
         working-directory: ${{ env.WORKING_DIRECTORY }}
-        run: npm run typecheck
+        run: npx tsc --noEmit
 
       - name: Run unit tests
         if: matrix.test-type == 'unit'
         working-directory: ${{ env.WORKING_DIRECTORY }}
-        run: npm run test:coverage
+        run: npm run test:ci
 
       - name: Install Playwright browsers
         if: matrix.test-type == 'e2e'
@@ -133,18 +133,12 @@ jobs:
         env:
           NODE_ENV: production
 
-      - name: Analyze bundle
-        working-directory: ${{ env.WORKING_DIRECTORY }}
-        run: npm run analyze
-        env:
-          ANALYZE: true
-
       - name: Generate build info
         id: build-info
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
-          BUILD_HASH=$(find dist -type f -name "*.js" -o -name "*.css" | head -1 | xargs sha256sum | cut -d' ' -f1 | head -c 8)
-          BUNDLE_SIZE=$(du -sh dist | cut -f1)
+          BUILD_HASH=$(find out -type f -name "*.js" -o -name "*.css" | head -1 | xargs sha256sum | cut -d' ' -f1 | head -c 8)
+          BUNDLE_SIZE=$(du -sh out | cut -f1)
           echo "hash=${BUILD_HASH}" >> $GITHUB_OUTPUT
           echo "size=${BUNDLE_SIZE}" >> $GITHUB_OUTPUT
           echo "Build hash: ${BUILD_HASH}"
@@ -154,14 +148,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-${{ steps.build-info.outputs.hash }}
-          path: ${{ env.WORKING_DIRECTORY }}/dist/
+          path: ${{ env.WORKING_DIRECTORY }}/out/
           retention-days: 30
-
-      - name: Upload bundle analysis
-        uses: actions/upload-artifact@v4
-        with:
-          name: bundle-analysis-${{ steps.build-info.outputs.hash }}
-          path: ${{ env.WORKING_DIRECTORY }}/dist/stats.html
 
   # Lighthouse CI for Performance Monitoring
   lighthouse:
@@ -192,7 +180,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-${{ needs.build.outputs.build-hash }}
-          path: ${{ env.WORKING_DIRECTORY }}/dist/
+          path: ${{ env.WORKING_DIRECTORY }}/out/
 
       - name: Install Lighthouse CI
         run: npm install -g @lhci/cli@0.12.x
@@ -261,13 +249,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-${{ needs.build.outputs.build-hash }}
-          path: ${{ env.WORKING_DIRECTORY }}/dist/
+          path: ${{ env.WORKING_DIRECTORY }}/out/
 
       - name: Deploy to Netlify (Staging)
         id: deploy
         uses: netlify/actions/deploy@master
         with:
-          publish-dir: ${{ env.WORKING_DIRECTORY }}/dist
+          publish-dir: ${{ env.WORKING_DIRECTORY }}/out
           production-deploy: false
           github-token: ${{ secrets.GITHUB_TOKEN }}
           deploy-message: |
@@ -333,13 +321,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-${{ needs.build.outputs.build-hash }}
-          path: ${{ env.WORKING_DIRECTORY }}/dist/
+          path: ${{ env.WORKING_DIRECTORY }}/out/
 
       - name: Deploy to Netlify (Production)
         id: deploy
         uses: netlify/actions/deploy@master
         with:
-          publish-dir: ${{ env.WORKING_DIRECTORY }}/dist
+          publish-dir: ${{ env.WORKING_DIRECTORY }}/out
           production-deploy: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
           deploy-message: |
