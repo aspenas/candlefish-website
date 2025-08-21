@@ -139,13 +139,13 @@ perform_deployment() {
 
     # Deploy using production configuration
     log "Deploying with production Dockerfile..."
-    
+
     if flyctl deploy \
         --config fly.production.toml \
         --strategy bluegreen \
         --wait-timeout "${DEPLOY_TIMEOUT}s" \
         --verbose; then
-        
+
         log_success "Deployment completed successfully"
         return 0
     else
@@ -183,7 +183,7 @@ validate_deployment() {
     log "Validating JWKS endpoint..."
     local jwks_response
     jwks_response=$(curl -sf "$app_url/.well-known/jwks.json" | jq -r '.keys | length')
-    
+
     if [[ "$jwks_response" -gt 0 ]]; then
         log_success "JWKS endpoint validated - $jwks_response key(s) available"
     else
@@ -195,7 +195,7 @@ validate_deployment() {
     log "Testing JWT functionality..."
     # This would test the actual JWT signing/verification if we had test scripts
     # For now, we'll just validate the endpoint is accessible
-    
+
     log_success "Deployment validation completed"
     return 0
 }
@@ -213,7 +213,7 @@ perform_rollback() {
     log "Initiating rollback procedure..."
 
     local previous_deployment_file="/tmp/${APP_NAME}-previous-deployment.txt"
-    
+
     if [[ ! -f "$previous_deployment_file" ]]; then
         log_error "No previous deployment information found"
         return 1
@@ -221,22 +221,22 @@ perform_rollback() {
 
     local previous_deployment
     previous_deployment=$(cat "$previous_deployment_file")
-    
+
     if [[ -z "$previous_deployment" ]]; then
         log_error "Previous deployment information is empty"
         return 1
     fi
 
     log "Rolling back to: $previous_deployment"
-    
+
     if flyctl deploy \
         --image "$previous_deployment" \
         --strategy immediate \
         --wait-timeout 300 \
         --app "$APP_NAME"; then
-        
+
         log_success "Rollback completed successfully"
-        
+
         # Validate rollback
         if validate_deployment; then
             log_success "Rollback validation passed"
@@ -258,10 +258,10 @@ perform_rollback() {
 send_deployment_notification() {
     local status="$1"
     local message="$2"
-    
+
     # This would integrate with your notification system (Slack, email, etc.)
     log "Notification: $status - $message"
-    
+
     # Example Slack webhook (if configured)
     if [[ -n "${SLACK_WEBHOOK:-}" ]]; then
         curl -X POST -H 'Content-type: application/json' \
@@ -276,7 +276,7 @@ send_deployment_notification() {
 
 run_performance_tests() {
     log "Running performance tests..."
-    
+
     if command -v artillery &> /dev/null; then
         # Create a basic performance test
         cat > /tmp/perf-test.yml << EOF
@@ -318,19 +318,19 @@ EOF
 main() {
     log "=== Paintbox Production Deployment Started ==="
     log "Log file: $LOG_FILE"
-    
+
     local deployment_success=false
-    
+
     # Trap for cleanup
     trap 'cleanup' EXIT
-    
+
     # Pre-deployment validation
     if ! validate_prerequisites; then
         log_error "Pre-deployment validation failed"
         send_deployment_notification "FAILED" "Pre-deployment validation failed"
         exit 1
     fi
-    
+
     # Perform deployment
     if perform_deployment; then
         # Validate deployment
@@ -338,13 +338,13 @@ main() {
             deployment_success=true
             log_success "Deployment successful!"
             send_deployment_notification "SUCCESS" "Deployment completed successfully"
-            
+
             # Run performance tests (optional)
             run_performance_tests
         else
             log_error "Deployment validation failed"
             send_deployment_notification "FAILED" "Deployment validation failed, initiating rollback"
-            
+
             # Attempt rollback
             if perform_rollback; then
                 log_warning "Deployment failed but rollback successful"
@@ -358,7 +358,7 @@ main() {
     else
         log_error "Deployment failed"
         send_deployment_notification "FAILED" "Deployment failed, attempting rollback"
-        
+
         # Attempt rollback
         if perform_rollback; then
             log_warning "Deployment failed but rollback successful"
@@ -369,7 +369,7 @@ main() {
             exit 1
         fi
     fi
-    
+
     if [[ "$deployment_success" == "true" ]]; then
         log_success "=== Deployment Completed Successfully ==="
         exit 0

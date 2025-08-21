@@ -2,6 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { OnboardingFlow } from './OnboardingFlow'
 import { AppHeader } from '@/components/ui/AppHeader'
 
@@ -12,13 +13,23 @@ interface AuthWrapperProps {
 export function AuthWrapper({ children }: AuthWrapperProps) {
   const { data: session, status } = useSession()
   const pathname = usePathname()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Public routes that don't need authentication
-  const publicRoutes = ['/login', '/']
-  const isPublicRoute = publicRoutes.includes(pathname)
+  const publicRoutes = ['/login', '/', '/api', '/offline', '/estimate', '/demo', '/system-analyzer', '/infrastructure', '/test-animations', '/simple-login']
+  const isPublicRoute = publicRoutes.some(route => pathname?.startsWith(route))
 
-  // Show loading state
-  if (status === 'loading') {
+  // Don't show loading for public routes or if not mounted
+  if (!mounted) {
+    return <>{children}</>
+  }
+
+  // Only show loading state for protected routes
+  if (status === 'loading' && !isPublicRoute) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex items-center space-x-3">

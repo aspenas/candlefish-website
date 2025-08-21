@@ -38,7 +38,7 @@ describe('Login Endpoint (/api/auth/login)', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     const { SecretsManagerClient } = require('@aws-sdk/client-secrets-manager');
     mockSecretsClient = new SecretsManagerClient();
 
@@ -77,7 +77,7 @@ describe('Login Endpoint (/api/auth/login)', () => {
       expect(data.success).toBe(true);
       expect(data.data).toHaveProperty('user');
       expect(data.data).toHaveProperty('tokens');
-      
+
       // Check user data
       expect(data.data.user).toHaveProperty('id', '1');
       expect(data.data.user).toHaveProperty('email', 'admin@paintbox.com');
@@ -319,7 +319,7 @@ describe('Login Endpoint (/api/auth/login)', () => {
 
     it('should handle SQL injection attempts in email', async () => {
       const maliciousEmail = "admin@paintbox.com'; DROP TABLE users; --";
-      
+
       const loginData = {
         email: maliciousEmail,
         password: 'admin',
@@ -339,7 +339,7 @@ describe('Login Endpoint (/api/auth/login)', () => {
 
     it('should handle XSS attempts in input fields', async () => {
       const xssPayload = "<script>alert('xss')</script>";
-      
+
       const loginData = {
         email: xssPayload,
         password: xssPayload,
@@ -363,7 +363,7 @@ describe('Login Endpoint (/api/auth/login)', () => {
     it('should be designed to work with rate limiting middleware', async () => {
       // This test validates that the endpoint structure supports rate limiting
       // The actual rate limiting would be implemented in middleware
-      
+
       const loginData = {
         email: 'admin@paintbox.com',
         password: 'wrong-password',
@@ -379,7 +379,7 @@ describe('Login Endpoint (/api/auth/login)', () => {
       });
 
       const response = await POST(request);
-      
+
       // Endpoint should handle headers that rate limiting middleware would check
       expect(response.status).toBe(401);
     });

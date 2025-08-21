@@ -1,7 +1,7 @@
 /**
  * Secure JWKS (JSON Web Key Set) API Endpoint
  * Implements all security best practices identified in the audit
- * 
+ *
  * Security Features:
  * - Rate limiting to prevent DoS attacks
  * - Strict CORS policy with allowed origins
@@ -12,8 +12,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-  SecretsManagerClient, 
+import {
+  SecretsManagerClient,
   GetSecretValueCommand,
   SecretsManagerClientConfig,
   ResourceNotFoundException,
@@ -53,7 +53,7 @@ function getSecretsManagerClient(): SecretsManagerClient {
       accessKeyId: process.env.AWS_ACCESS_KEY_ID,
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
     };
-    
+
     // Log configuration without exposing secrets
     securityLogger.debug('AWS client initialized', {
       event: 'aws_client_init',
@@ -78,29 +78,29 @@ function getSecretsManagerClient(): SecretsManagerClient {
 async function fetchJWKSFromAWS(): Promise<any> {
   const client = getSecretsManagerClient();
   const secretId = 'paintbox/production/jwt/public-keys';
-  
+
   try {
     const command = new GetSecretValueCommand({ SecretId: secretId });
     const response = await client.send(command);
-    
+
     if (!response.SecretString) {
       throw new Error('Secret value is empty');
     }
-    
+
     const publicKeys = JSON.parse(response.SecretString);
-    
+
     // Validate key structure
     if (!publicKeys || typeof publicKeys !== 'object') {
       throw new Error('Invalid secret structure');
     }
-    
+
     // Log success without exposing key details
     securityLogger.info('JWKS retrieved from AWS', {
       event: 'jwks_fetch_success',
       keyCount: Object.keys(publicKeys).length,
       secretId: secretId,
     });
-    
+
     // Format as JWKS response
     const jwks = {
       keys: Object.entries(publicKeys).map(([kid, key]: [string, any]) => ({
@@ -112,11 +112,11 @@ async function fetchJWKSFromAWS(): Promise<any> {
         e: key.e || 'AQAB',
       })).filter(key => key.n && key.e), // Filter out invalid keys
     };
-    
+
     if (jwks.keys.length === 0) {
       throw new Error('No valid keys found in secret');
     }
-    
+
     return jwks;
   } catch (error: any) {
     // Log error with appropriate context
@@ -126,7 +126,7 @@ async function fetchJWKSFromAWS(): Promise<any> {
       errorType: error.name || 'Unknown',
       errorCode: error.Code || error.$metadata?.httpStatusCode,
     };
-    
+
     if (error instanceof ResourceNotFoundException) {
       securityLogger.error('JWKS secret not found', {
         ...errorContext,
@@ -143,7 +143,7 @@ async function fetchJWKSFromAWS(): Promise<any> {
         errorMessage: error.message,
       });
     }
-    
+
     throw error;
   }
 }
@@ -153,7 +153,7 @@ async function fetchJWKSFromAWS(): Promise<any> {
  */
 async function getJWKS(): Promise<any> {
   const now = Date.now();
-  
+
   // Return fresh cache if available
   if (cachedJWKS && (now - cacheTimestamp) < CACHE_TTL) {
     securityLogger.debug('Returning cached JWKS', {
@@ -162,15 +162,15 @@ async function getJWKS(): Promise<any> {
     });
     return cachedJWKS;
   }
-  
+
   try {
     // Attempt to fetch fresh data
     const jwks = await fetchJWKSFromAWS();
-    
+
     // Update cache
     cachedJWKS = jwks;
     cacheTimestamp = now;
-    
+
     return jwks;
   } catch (error) {
     // If we have stale cache (up to 1 hour old), use it
@@ -182,7 +182,7 @@ async function getJWKS(): Promise<any> {
       });
       return cachedJWKS;
     }
-    
+
     // No cache available - return error response
     throw new Error('JWKS unavailable and no cache exists');
   }
@@ -193,10 +193,10 @@ async function getJWKS(): Promise<any> {
  */
 function getSecurityHeaders(origin?: string | null): HeadersInit {
   // Determine CORS origin
-  const corsOrigin = origin && ALLOWED_ORIGINS.includes(origin) 
-    ? origin 
+  const corsOrigin = origin && ALLOWED_ORIGINS.includes(origin)
+    ? origin
     : ALLOWED_ORIGINS[0];
-  
+
   return {
     // CORS headers
     'Access-Control-Allow-Origin': corsOrigin,
@@ -204,7 +204,7 @@ function getSecurityHeaders(origin?: string | null): HeadersInit {
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Max-Age': '86400',
     'Vary': 'Origin',
-    
+
     // Security headers
     'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
     'X-Content-Type-Options': 'nosniff',
@@ -213,7 +213,7 @@ function getSecurityHeaders(origin?: string | null): HeadersInit {
     'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none';",
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Permissions-Policy': 'interest-cohort=()',
-    
+
     // Content headers
     'Content-Type': 'application/json',
   };
@@ -225,15 +225,15 @@ function getSecurityHeaders(origin?: string | null): HeadersInit {
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
   const origin = request.headers.get('origin');
-  
+
   // Apply rate limiting
   return withRateLimit(request, jwksRateLimiter, async () => {
     try {
       // Log request for security monitoring
       securityLogger.info('JWKS endpoint accessed', {
         event: 'jwks_request',
-        ip: request.headers.get('x-forwarded-for') || 
-            request.headers.get('x-real-ip') || 
+        ip: request.headers.get('x-forwarded-for') ||
+            request.headers.get('x-real-ip') ||
             'unknown',
         userAgent: request.headers.get('user-agent'),
         origin: origin,
@@ -242,17 +242,17 @@ export async function GET(request: NextRequest) {
 
       // Get JWKS with caching
       const jwks = await getJWKS();
-      
+
       // Validate response structure
       if (!jwks || !jwks.keys || !Array.isArray(jwks.keys)) {
         throw new Error('Invalid JWKS structure');
       }
-      
+
       // Calculate cache control based on success
       const cacheControl = jwks.keys.length > 0
         ? 'public, max-age=600, must-revalidate' // 10 minutes for success
         : 'public, max-age=60, must-revalidate';  // 1 minute for empty/error
-      
+
       // Log successful response
       securityLogger.info('JWKS response sent', {
         event: 'jwks_response_success',
@@ -260,7 +260,7 @@ export async function GET(request: NextRequest) {
         responseTime: Date.now() - startTime,
         cacheStatus: cachedJWKS === jwks ? 'hit' : 'miss',
       });
-      
+
       // Return successful response
       return NextResponse.json(jwks, {
         status: 200,
@@ -277,7 +277,7 @@ export async function GET(request: NextRequest) {
         errorMessage: error.message,
         responseTime: Date.now() - startTime,
       });
-      
+
       // Return generic error response (don't leak internal details)
       return NextResponse.json(
         {
@@ -303,14 +303,14 @@ export async function GET(request: NextRequest) {
  */
 export async function OPTIONS(request: NextRequest) {
   const origin = request.headers.get('origin');
-  
+
   // Log CORS preflight request
   securityLogger.debug('CORS preflight request', {
     event: 'cors_preflight',
     origin: origin,
     allowed: origin ? ALLOWED_ORIGINS.includes(origin) : false,
   });
-  
+
   return new NextResponse(null, {
     status: 200,
     headers: getSecurityHeaders(origin),

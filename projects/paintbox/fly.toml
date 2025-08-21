@@ -1,7 +1,6 @@
 # fly.toml app configuration file
-#
+# Production-optimized configuration for Next.js Paintbox application
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
-#
 
 app = "paintbox"
 primary_region = "sjc"
@@ -13,33 +12,76 @@ primary_region = "sjc"
   NODE_ENV = "production"
   PORT = "8080"
   DATABASE_URL = "sqlite://:memory:"
+  # Production optimizations
+  NODE_OPTIONS = "--max-old-space-size=1536 --optimize-for-size"
+  NEXT_TELEMETRY_DISABLED = "1"
+  # Disable source maps in production for security
+  GENERATE_SOURCEMAP = "false"
+  # Connection pooling
+  POOL_MIN = "2"
+  POOL_MAX = "10"
+  POOL_IDLE_TIMEOUT = "30000"
 
 [http_service]
   internal_port = 8080
   force_https = true
   auto_stop_machines = "stop"
   auto_start_machines = true
-  min_machines_running = 1
+  min_machines_running = 2
+  max_machines_running = 6
   processes = ["app"]
 
+  # Connection limits for stability
+  concurrency = { type = "requests", hard_limit = 200, soft_limit = 150 }
+
+# Primary health check - quick response for load balancer
+[[http_service.checks]]
+  grace_period = "15s"
+  interval = "15s"
+  method = "GET"
+  timeout = "5s"
+  path = "/api/simple-health"
+  headers = { "User-Agent" = "fly-health-check" }
+
+# Comprehensive health check - deeper system validation
 [[http_service.checks]]
   grace_period = "30s"
-  interval = "30s"
+  interval = "45s"
   method = "GET"
   timeout = "10s"
   path = "/api/health"
+  headers = { "User-Agent" = "fly-deep-health-check" }
 
+# TCP health check as fallback
 [[http_service.checks]]
-  grace_period = "30s"
-  interval = "60s"
-  method = "GET"
-  timeout = "10s"
-  path = "/"
+  grace_period = "10s"
+  interval = "30s"
+  timeout = "3s"
+  type = "tcp"
+  port = 8080
 
+# Production VM configuration
 [[vm]]
-  size = "shared-cpu-1x"
-  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 2
+  memory_mb = 2048
 
+# Persistent volume for logs and cache
 [mounts]
   source = "paintbox_logs"
   destination = "/data"
+
+# Auto-scaling configuration
+[metrics]
+  port = 9091
+  path = "/metrics"
+
+# Deploy configuration for zero-downtime
+[deploy]
+  strategy = "rolling"
+  max_unavailable = 0.25
+  wait_timeout = "10m"
+
+# Kill configuration
+kill_signal = "SIGTERM"
+kill_timeout = "30s"

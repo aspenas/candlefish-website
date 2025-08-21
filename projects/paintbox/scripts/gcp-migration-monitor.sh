@@ -45,7 +45,7 @@ info() {
 check_app_health() {
     local health_url="https://paintbox.fly.dev/api/health"
     local status=$(curl -s -o /dev/null -w "%{http_code}" "$health_url" 2>/dev/null || echo "000")
-    
+
     if [ "$status" = "200" ]; then
         echo "✅ Healthy"
     elif [ "$status" = "000" ]; then
@@ -61,12 +61,12 @@ check_auth_endpoints() {
         "https://paintbox.fly.dev/api/auth/providers"
         "https://paintbox.fly.dev/api/auth/session"
     )
-    
+
     local all_good=true
     for endpoint in "${endpoints[@]}"; do
         local status=$(curl -s -o /dev/null -w "%{http_code}" "$endpoint" 2>/dev/null || echo "000")
         local endpoint_name=$(basename "$endpoint")
-        
+
         if [ "$status" = "200" ] || [ "$status" = "401" ]; then
             echo "  ✅ $endpoint_name: OK"
         else
@@ -74,7 +74,7 @@ check_auth_endpoints() {
             all_good=false
         fi
     done
-    
+
     if $all_good; then
         echo "true"
     else
@@ -86,7 +86,7 @@ check_auth_endpoints() {
 get_migration_metrics() {
     local metrics_url="https://paintbox.fly.dev/api/admin/oauth-migration-status"
     local response=$(curl -s "$metrics_url" 2>/dev/null || echo "{}")
-    
+
     if [ -n "$response" ] && [ "$response" != "{}" ]; then
         echo "$response" | jq '.' 2>/dev/null || echo "{}"
     else
@@ -99,7 +99,7 @@ get_migration_metrics() {
 check_error_logs() {
     local error_count=$(fly logs -a "$APP_NAME" | tail -100 | grep -c "ERROR\|error" || echo "0")
     local auth_errors=$(fly logs -a "$APP_NAME" | tail -100 | grep -c "auth.*error\|oauth.*error" || echo "0")
-    
+
     echo "Total errors: $error_count, Auth errors: $auth_errors"
 }
 
@@ -108,7 +108,7 @@ get_aws_migration_status() {
     local status=$(aws secretsmanager get-secret-value \
         --secret-id "paintbox/google-oauth-migration" \
         --query 'SecretString' --output text 2>/dev/null | jq -r '.migration_status' || echo "unknown")
-    
+
     echo "$status"
 }
 
@@ -122,7 +122,7 @@ show_dashboard() {
     echo -e "Project: ${YELLOW}$PROJECT_ID${NC}"
     echo -e "Application: ${YELLOW}$APP_NAME${NC}"
     echo ""
-    
+
     # Migration Status
     local migration_status=$(get_aws_migration_status)
     echo -e "${BLUE}Migration Status:${NC}"
@@ -141,18 +141,18 @@ show_dashboard() {
             ;;
     esac
     echo ""
-    
+
     # Application Health
     echo -e "${BLUE}Application Health:${NC}"
     local health=$(check_app_health)
     echo -e "  Status: $health"
     echo ""
-    
+
     # Authentication Endpoints
     echo -e "${BLUE}Authentication Endpoints:${NC}"
     check_auth_endpoints > /dev/null
     echo ""
-    
+
     # Migration Metrics
     echo -e "${BLUE}OAuth Client Usage:${NC}"
     local metrics=$(get_migration_metrics)
@@ -165,13 +165,13 @@ show_dashboard() {
         echo "  Metrics not available"
     fi
     echo ""
-    
+
     # Error Status
     echo -e "${BLUE}Error Status:${NC}"
     local errors=$(check_error_logs)
     echo "  $errors"
     echo ""
-    
+
     # Live Logs Preview
     echo -e "${BLUE}Recent Activity:${NC}"
     fly logs -a "$APP_NAME" | tail -5 | sed 's/^/  /'
@@ -185,7 +185,7 @@ show_dashboard() {
 monitor_loop() {
     log "Starting migration monitoring..."
     info "Checking every $CHECK_INTERVAL seconds"
-    
+
     while true; do
         show_dashboard
         sleep "$CHECK_INTERVAL"
@@ -196,9 +196,9 @@ monitor_loop() {
 export_monitoring_data() {
     local timestamp=$(date +%Y%m%d-%H%M%S)
     local export_file="migration-monitor-$timestamp.json"
-    
+
     log "Exporting monitoring data to $export_file..."
-    
+
     local data=$(cat <<EOF
 {
     "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
@@ -212,7 +212,7 @@ export_monitoring_data() {
 }
 EOF
 )
-    
+
     echo "$data" | jq '.' > "$export_file"
     success "Monitoring data exported to $export_file"
 }
@@ -221,17 +221,17 @@ EOF
 check_alerts() {
     local health=$(check_app_health)
     local auth_errors=$(fly logs -a "$APP_NAME" | tail -100 | grep -c "auth.*error" || echo "0")
-    
+
     if [[ "$health" == *"❌"* ]]; then
         error "ALERT: Application is unreachable!"
         return 1
     fi
-    
+
     if [ "$auth_errors" -gt 10 ]; then
         warning "ALERT: High number of authentication errors detected ($auth_errors in last 100 logs)"
         return 1
     fi
-    
+
     return 0
 }
 

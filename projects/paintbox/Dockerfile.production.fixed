@@ -1,0 +1,54 @@
+# Production Dockerfile with correct Next.js standalone build paths
+FROM node:20-alpine AS builder
+
+# Install dependencies
+RUN apk add --no-cache libc6-compat
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies with legacy peer deps
+RUN npm install --legacy-peer-deps
+
+# Copy app files
+COPY . .
+
+# Build the application with standalone output
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+RUN npm run build
+
+# Production image
+FROM node:20-alpine AS runner
+
+RUN apk add --no-cache libc6-compat
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copy the standalone build from the correct location
+# The standalone build structure in Next.js puts files in .next/standalone/[working-dir]/
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/projects/paintbox ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+# Copy node_modules from standalone build
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/node_modules ./node_modules
+
+USER nextjs
+
+EXPOSE 8080
+
+ENV PORT=8080
+ENV HOSTNAME="0.0.0.0"
+
+# Use the Next.js standalone server
+CMD ["node", "server.js"]

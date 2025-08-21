@@ -5,9 +5,9 @@
  * This helps diagnose why AWS Secrets Manager access is failing
  */
 
-const { 
-  STSClient, 
-  GetCallerIdentityCommand 
+const {
+  STSClient,
+  GetCallerIdentityCommand
 } = require('@aws-sdk/client-sts');
 const {
   IAMClient,
@@ -18,10 +18,10 @@ const {
   GetPolicyVersionCommand,
   ListAccessKeysCommand
 } = require('@aws-sdk/client-iam');
-const { 
-  SecretsManagerClient, 
+const {
+  SecretsManagerClient,
   GetSecretValueCommand,
-  ListSecretsCommand 
+  ListSecretsCommand
 } = require('@aws-sdk/client-secrets-manager');
 
 async function checkAWSPermissions() {
@@ -57,7 +57,7 @@ async function checkAWSPermissions() {
     console.log('✅ Identity:', JSON.stringify(identity, null, 2));
 
     const userName = identity.Arn.split('/').pop();
-    
+
     // 2. Check user details
     console.log('\n2️⃣ Checking IAM User Details...');
     try {
@@ -75,7 +75,7 @@ async function checkAWSPermissions() {
     try {
       const policiesCommand = new ListAttachedUserPoliciesCommand({ UserName: userName });
       const policies = await iamClient.send(policiesCommand);
-      
+
       if (policies.AttachedPolicies.length > 0) {
         console.log('✅ Attached Policies:');
         for (const policy of policies.AttachedPolicies) {
@@ -93,7 +93,7 @@ async function checkAWSPermissions() {
     try {
       const inlinePoliciesCommand = new ListUserPoliciesCommand({ UserName: userName });
       const inlinePolicies = await iamClient.send(inlinePoliciesCommand);
-      
+
       if (inlinePolicies.PolicyNames.length > 0) {
         console.log('✅ Inline Policies:');
         for (const policyName of inlinePolicies.PolicyNames) {
@@ -108,7 +108,7 @@ async function checkAWSPermissions() {
 
     // 5. Test Secrets Manager access
     console.log('\n5️⃣ Testing Secrets Manager Access...');
-    
+
     // Test listing secrets
     console.log('\n   Testing ListSecrets permission...');
     try {
@@ -127,7 +127,7 @@ async function checkAWSPermissions() {
       });
       const secret = await secretsClient.send(getSecretCommand);
       console.log('   ✅ Can retrieve paintbox/production/jwt/public-keys');
-      
+
       // Parse and validate the secret
       const publicKeys = JSON.parse(secret.SecretString);
       const keyCount = Object.keys(publicKeys).length;
@@ -135,7 +135,7 @@ async function checkAWSPermissions() {
     } catch (err) {
       console.log(`   ❌ Cannot retrieve secret: ${err.message}`);
       console.log(`      Error Code: ${err.Code || err.name}`);
-      
+
       // Check if it's a permissions issue
       if (err.name === 'AccessDeniedException') {
         console.log('\n   🔴 PERMISSION DENIED - User lacks GetSecretValue permission');

@@ -229,7 +229,7 @@ describe('JWKS Endpoint Functionality', () => {
       });
 
       const fastResponse = Promise.resolve({ success: true });
-      const slowResponse = new Promise(resolve => 
+      const slowResponse = new Promise(resolve =>
         setTimeout(() => resolve({ success: true }), timeout + 1000)
       );
 

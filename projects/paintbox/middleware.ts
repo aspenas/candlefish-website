@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from 'next-auth/middleware';
 import { getToken } from 'next-auth/jwt';
+import { jwksRateLimiter, authRateLimiter, apiRateLimiter } from '@/lib/security/rate-limiter';
 
 // Generate a per-request nonce for CSP
 function generateNonce(): string {
@@ -18,9 +19,19 @@ const publicRoutes = [
   '/api/auth/',
   '/api/health',
   '/api/webhooks/',
+  '/api/.well-known/', // JWKS endpoint
+  '/.well-known/', // JWKS endpoint alternative path
   '/api/v1/salesforce/test', // Allow Salesforce connection testing
   '/api/v1/salesforce/search', // Allow Salesforce search for customer lookup
   '/estimate', // Make estimate routes public for internal staff workflow
+];
+
+// Define route patterns for different rate limiters
+const RATE_LIMIT_RULES = [
+  { pattern: /^\/api\/auth/, limiter: authRateLimiter },
+  { pattern: /^\/api\/\.well-known\/jwks\.json/, limiter: jwksRateLimiter },
+  { pattern: /^\/\.well-known\/jwks\.json/, limiter: jwksRateLimiter },
+  { pattern: /^\/api/, limiter: apiRateLimiter },
 ];
 
 // Define protected routes that require authentication
@@ -83,14 +94,38 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    // Basic rate limiting for API routes (simplified for Edge Runtime)
-    if (pathname.startsWith('/api/')) {
-      const ip = request.ip ?? 'anonymous';
-      const rateLimit = 100; // requests per minute
+    // Apply rate limiting based on route patterns
+    for (const rule of RATE_LIMIT_RULES) {
+      if (rule.pattern.test(pathname)) {
+        const result = await rule.limiter.check(request);
 
-      // In production, you would use a proper rate limiting service
-      // For now, just add rate limiting headers
-      response.headers.set('X-RateLimit-Limit', rateLimit.toString());
+        if (!result.success) {
+          console.warn(`[RateLimit] Blocked request to ${pathname} from ${request.ip || 'unknown'}`);
+          return new NextResponse(
+            JSON.stringify({
+              error: 'Too many requests',
+              message: 'Rate limit exceeded. Please try again later.',
+              retryAfter: result.retryAfter,
+            }),
+            {
+              status: 429,
+              headers: {
+                'Content-Type': 'application/json',
+                'Retry-After': String(result.retryAfter || 60),
+                ...rule.limiter.getHeaders(result),
+              },
+            }
+          );
+        }
+
+        // Add rate limit headers to successful requests
+        const rateLimitHeaders = rule.limiter.getHeaders(result);
+        Object.entries(rateLimitHeaders).forEach(([key, value]) => {
+          response.headers.set(key, value);
+        });
+
+        break; // Only apply the first matching rate limiter
+      }
     }
 
     return response;

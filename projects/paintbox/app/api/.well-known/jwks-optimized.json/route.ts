@@ -66,13 +66,13 @@ async function fetchJWKSFromAWS(): Promise<any> {
     });
 
     const response = await client.send(command);
-    
+
     if (!response.SecretString) {
       throw new Error('Secret string is empty');
     }
 
     const publicKeys = JSON.parse(response.SecretString);
-    
+
     // Convert to JWKS format
     const keys = Object.entries(publicKeys).map(([kid, key]: [string, any]) => ({
       kty: key.kty || 'RSA',
@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
     // Check if we have valid memory cache
     if (memoryCache && (Date.now() - memoryCache.timestamp < MEMORY_CACHE_TTL)) {
       const responseTime = Date.now() - startTime;
-      
+
       logger.debug('JWKS served from memory cache', {
         responseTime,
         cacheAge: Date.now() - memoryCache.timestamp,
@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
     // If no cache or expired, return static JWKS immediately
     // and trigger background refresh
     const responseTime = Date.now() - startTime;
-    
+
     // Trigger background refresh without waiting
     if (!memoryCache || (Date.now() - memoryCache.timestamp >= MEMORY_CACHE_TTL)) {
       refreshCacheInBackground().catch(error => {
@@ -166,7 +166,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     const responseTime = Date.now() - startTime;
-    
+
     logger.error('JWKS endpoint error', {
       error: error instanceof Error ? error.message : String(error),
       responseTime,

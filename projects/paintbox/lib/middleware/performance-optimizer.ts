@@ -38,7 +38,7 @@ class ConnectionPool {
     }
 
     const pool = this.pools.get(service)!;
-    
+
     // Reuse existing connection if available
     const availableConnection = pool.find(conn => !conn.inUse);
     if (availableConnection) {
@@ -81,7 +81,7 @@ class ConnectionPool {
 
   releaseConnection(service: string, connection: any): void {
     if (!connection) return;
-    
+
     const pool = this.pools.get(service);
     if (pool) {
       const conn = pool.find(c => c.id === connection.id);
@@ -126,7 +126,7 @@ class MemoryOptimizer {
   checkMemoryPressure(): boolean {
     const memUsage = process.memoryUsage();
     const heapUsedPercent = memUsage.heapUsed / memUsage.heapTotal;
-    
+
     if (heapUsedPercent > this.memoryThreshold) {
       logger.warn('High memory pressure detected', {
         heapUsedPercent: (heapUsedPercent * 100).toFixed(2),
@@ -135,13 +135,13 @@ class MemoryOptimizer {
       });
       return true;
     }
-    
+
     return false;
   }
 
   async optimizeMemory(): Promise<void> {
     const now = Date.now();
-    
+
     // Check if enough time has passed since last GC
     if (now - this.lastGC < this.gcInterval) {
       return;
@@ -167,7 +167,7 @@ class MemoryOptimizer {
   private clearModuleCache(): void {
     // Clear require cache for non-essential modules
     const criticalModules = ['next', 'react', 'express', 'http', 'https', 'fs', 'path'];
-    
+
     Object.keys(require.cache).forEach(key => {
       const isCritical = criticalModules.some(mod => key.includes(mod));
       if (!isCritical && key.includes('node_modules')) {
@@ -231,9 +231,9 @@ export async function performanceMiddleware(
     if (cached) {
       logger.debug(`Cache hit: ${cacheKey}`);
       performanceProfiler.updateCacheMetrics('hit');
-      
+
       tracker.end(false);
-      
+
       return new NextResponse(
         JSON.stringify(cached.data),
         {
@@ -251,7 +251,7 @@ export async function performanceMiddleware(
 
     // Use request deduplication
     const response = await withRequestDeduplication(cacheKey, handler);
-    
+
     // Cache successful responses
     if (response.status === 200) {
       const data = await response.json();
@@ -273,7 +273,7 @@ export async function performanceMiddleware(
 
       // Return new response with cache headers
       tracker.end(false);
-      
+
       return new NextResponse(
         JSON.stringify(data),
         {
@@ -307,10 +307,10 @@ export async function optimizedFetch(
 ): Promise<Response> {
   const urlObj = new URL(url);
   const service = urlObj.hostname;
-  
+
   // Get connection from pool
   const connection = await connectionPool.getConnection(service);
-  
+
   try {
     // Add connection reuse headers
     const headers = {
@@ -327,7 +327,7 @@ export async function optimizedFetch(
     });
 
     return response;
-    
+
   } finally {
     // Release connection back to pool
     connectionPool.releaseConnection(service, connection);
@@ -347,7 +347,7 @@ export function getCacheStats() {
   const hits = performanceProfiler['metrics'].get('cache:hits') || 0;
   const misses = performanceProfiler['metrics'].get('cache:misses') || 0;
   const total = hits + misses;
-  
+
   if (total > 0) {
     stats.cacheHitRate = (hits / total) * 100;
   }

@@ -156,7 +156,7 @@ echo "$POLICY_DOCUMENT" > "$POLICY_FILE"
 
 log "Policy document created at: $POLICY_FILE"
 if command -v jq &> /dev/null; then
-    echo "$POLICY_DOCUMENT" | jq '.' 
+    echo "$POLICY_DOCUMENT" | jq '.'
 else
     cat "$POLICY_FILE"
 fi
@@ -188,13 +188,13 @@ POLICY_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:policy/${POLICY_NAME}"
 
 if aws iam get-policy --policy-arn "$POLICY_ARN" &> /dev/null; then
     log "Policy exists, creating new version..."
-    
+
     # Get and clean up old versions
     OLD_VERSIONS=$(aws iam list-policy-versions \
         --policy-arn "$POLICY_ARN" \
         --query 'Versions[?!IsDefaultVersion].VersionId' \
         --output text)
-    
+
     if [ -n "$OLD_VERSIONS" ]; then
         VERSION_COUNT=$(echo "$OLD_VERSIONS" | wc -w)
         if [ "$VERSION_COUNT" -ge 4 ]; then
@@ -205,7 +205,7 @@ if aws iam get-policy --policy-arn "$POLICY_ARN" &> /dev/null; then
                 --version-id "$OLDEST_VERSION" 2>/dev/null || true
         fi
     fi
-    
+
     # Create new version
     if aws iam create-policy-version \
         --policy-arn "$POLICY_ARN" \
@@ -254,17 +254,17 @@ SECRET_IDS=(
 
 for SECRET_ID in "${SECRET_IDS[@]}"; do
     log "Tagging secret: $SECRET_ID"
-    
+
     # Check if secret exists
     if aws secretsmanager describe-secret --secret-id "$SECRET_ID" --region "$AWS_REGION" &> /dev/null; then
         # Apply tags
         TAGS="Key=Environment,Value=${ENVIRONMENT} Key=Service,Value=${SERVICE_NAME}"
-        
+
         # Add specific tag for private keys
         if [[ "$SECRET_ID" == *"private-keys"* ]]; then
             TAGS="$TAGS Key=Access,Value=jwt-signing"
         fi
-        
+
         if aws secretsmanager tag-resource \
             --secret-id "$SECRET_ID" \
             --tags $TAGS \
@@ -291,7 +291,7 @@ echo ""
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     log "Creating new access keys..."
-    
+
     # Check if user already has 2 keys (AWS limit)
     KEY_COUNT=$(aws iam list-access-keys --user-name "$IAM_USER_NAME" --query 'AccessKeyMetadata | length(@)' --output text)
     if [ "$KEY_COUNT" -ge 2 ]; then
@@ -299,16 +299,16 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         log "Delete an old key first: aws iam delete-access-key --user-name $IAM_USER_NAME --access-key-id KEY_ID"
         exit 1
     fi
-    
+
     # Create new access key
     KEY_OUTPUT=$(aws iam create-access-key --user-name "$IAM_USER_NAME")
-    
+
     if [ $? -eq 0 ]; then
         ACCESS_KEY_ID=$(echo "$KEY_OUTPUT" | jq -r '.AccessKey.AccessKeyId' 2>/dev/null || echo "$KEY_OUTPUT" | grep -o '"AccessKeyId": "[^"]*' | cut -d'"' -f4)
         SECRET_ACCESS_KEY=$(echo "$KEY_OUTPUT" | jq -r '.AccessKey.SecretAccessKey' 2>/dev/null || echo "$KEY_OUTPUT" | grep -o '"SecretAccessKey": "[^"]*' | cut -d'"' -f4)
-        
+
         CREDENTIALS_FILE="/tmp/paintbox-aws-credentials-$$.txt"
-        
+
         cat > "$CREDENTIALS_FILE" <<EOF
 # AWS Credentials for Paintbox Production
 # Generated: $(date)
@@ -330,7 +330,7 @@ flyctl secrets set -a paintbox \\
 # - Never commit these to version control
 # - Delete this file after updating Fly.io
 EOF
-        
+
         echo ""
         log "================================================" "$GREEN"
         log "NEW AWS CREDENTIALS CREATED" "$GREEN"

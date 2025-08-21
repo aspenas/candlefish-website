@@ -248,7 +248,7 @@ describe('Authentication System Integration', () => {
           if (!checks.secrets.available) {
             results.errors.push('Secrets manager unavailable');
             results.fallbacks.push('Using cached credentials');
-            
+
             // Could still proceed with cached data in some cases
             if (email === 'admin@paintbox.com' && password === 'admin') {
               results.success = true;
@@ -292,7 +292,7 @@ describe('Authentication System Integration', () => {
           // Simulate variable response times
           const delay = Math.random() * 100; // 0-100ms
           await new Promise(resolve => setTimeout(resolve, delay));
-          
+
           return {
             id,
             success: true,
@@ -303,7 +303,7 @@ describe('Authentication System Integration', () => {
       };
 
       // Test concurrent requests
-      const concurrentRequests = Array.from({ length: 10 }, (_, i) => 
+      const concurrentRequests = Array.from({ length: 10 }, (_, i) =>
         concurrentAuthSystem.authenticate(i)
       );
 
@@ -314,7 +314,7 @@ describe('Authentication System Integration', () => {
       expect(results).toHaveLength(10);
       expect(results.every(r => r.success)).toBe(true);
       expect(totalTime).toBeLessThan(500); // Should complete in parallel
-      
+
       // All requests should have unique IDs
       const ids = results.map(r => r.id);
       const uniqueIds = new Set(ids);
@@ -325,7 +325,7 @@ describe('Authentication System Integration', () => {
       const cacheSystem = {
         jwksCache: new Map(),
         userCache: new Map(),
-        
+
         cacheJWKS: (keys, ttl = 600000) => { // 10 minutes
           const entry = {
             data: keys,
@@ -333,7 +333,7 @@ describe('Authentication System Integration', () => {
           };
           cacheSystem.jwksCache.set('jwks', entry);
         },
-        
+
         getJWKS: () => {
           const entry = cacheSystem.jwksCache.get('jwks');
           if (entry && Date.now() < entry.expiry) {
@@ -341,7 +341,7 @@ describe('Authentication System Integration', () => {
           }
           return { data: null, cached: false };
         },
-        
+
         cacheUser: (userId, userData, ttl = 300000) => { // 5 minutes
           const entry = {
             data: userData,
@@ -349,7 +349,7 @@ describe('Authentication System Integration', () => {
           };
           cacheSystem.userCache.set(userId, entry);
         },
-        
+
         getUser: (userId) => {
           const entry = cacheSystem.userCache.get(userId);
           if (entry && Date.now() < entry.expiry) {

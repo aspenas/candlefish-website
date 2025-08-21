@@ -4,8 +4,8 @@
  * This is critical for Fly.io deployments where environment variables need to be set
  */
 
-import { 
-  SecretsManagerClient, 
+import {
+  SecretsManagerClient,
   GetSecretValueCommand,
   SecretsManagerClientConfig,
   ListSecretsCommand
@@ -65,39 +65,39 @@ async function testConnectivity(client: SecretsManagerClient): Promise<boolean> 
  * Load a specific secret and optionally set environment variables
  */
 async function loadSecret(
-  client: SecretsManagerClient, 
-  secretId: string, 
+  client: SecretsManagerClient,
+  secretId: string,
   setEnvVars: boolean = true
 ): Promise<{ success: boolean; error?: string }> {
   try {
     console.log(`[AWS Init] Loading secret: ${secretId}`);
-    
+
     const command = new GetSecretValueCommand({ SecretId: secretId });
     const response = await client.send(command);
-    
+
     if (!response.SecretString) {
       throw new Error(`Secret ${secretId} has no value`);
     }
-    
+
     const secretData = JSON.parse(response.SecretString);
-    
+
     // Set environment variables based on secret type
     if (setEnvVars) {
       const secretName = secretId.split('/').pop();
-      
+
       switch (secretName) {
         case 'public-keys':
           // JWT public keys - store as JSON string
           process.env.JWT_PUBLIC_KEYS = JSON.stringify(secretData);
           console.log(`[AWS Init] ✅ Loaded JWT public keys (${Object.keys(secretData).length} keys)`);
           break;
-          
+
         case 'private-keys':
           // JWT private keys - store as JSON string
           process.env.JWT_PRIVATE_KEYS = JSON.stringify(secretData);
           console.log('[AWS Init] ✅ Loaded JWT private keys');
           break;
-          
+
         case 'app':
           // Application secrets
           if (secretData.jwt_secret) process.env.JWT_SECRET = secretData.jwt_secret;
@@ -105,38 +105,38 @@ async function loadSecret(
           if (secretData.session_secret) process.env.SESSION_SECRET = secretData.session_secret;
           console.log('[AWS Init] ✅ Loaded application secrets');
           break;
-          
+
         case 'database':
           // Database configuration
           const dbUrl = `postgresql://${secretData.username}:${secretData.password}@${secretData.host}:${secretData.port}/${secretData.database}${secretData.ssl ? '?sslmode=require' : ''}`;
           process.env.DATABASE_URL = dbUrl;
           console.log('[AWS Init] ✅ Loaded database configuration');
           break;
-          
+
         case 'redis':
           // Redis configuration
           const redisUrl = `redis://:${secretData.password}@${secretData.host}:${secretData.port}/${secretData.db || 0}`;
           process.env.REDIS_URL = redisUrl;
           console.log('[AWS Init] ✅ Loaded Redis configuration');
           break;
-          
+
         default:
           console.log(`[AWS Init] ✅ Loaded secret: ${secretName}`);
       }
     }
-    
+
     return { success: true };
   } catch (error: any) {
     const errorMessage = `Failed to load ${secretId}: ${error.message}`;
     console.error(`[AWS Init] ❌ ${errorMessage}`);
-    
+
     // Provide specific guidance for common errors
     if (error.name === 'AccessDeniedException') {
       console.error('[AWS Init] 💡 Solution: Add secretsmanager:GetSecretValue permission to IAM user/role');
     } else if (error.name === 'ResourceNotFoundException') {
       console.error('[AWS Init] 💡 Solution: Verify secret exists in AWS Secrets Manager');
     }
-    
+
     return { success: false, error: errorMessage };
   }
 }
@@ -166,28 +166,28 @@ export async function initializeAWSSecrets(): Promise<InitializationResult> {
   try {
     // Create client
     const client = createSecretsClient();
-    
+
     // Test connectivity
     const isConnected = await testConnectivity(client);
     if (!isConnected) {
       result.errors.push('AWS Secrets Manager connectivity test failed');
-      
+
       // If no credentials, provide helpful message
       if (!result.metadata.hasCredentials) {
         result.errors.push('No AWS credentials found in environment');
         console.error('[AWS Init] 💡 Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables');
       }
-      
+
       return result;
     }
-    
+
     // Define secrets to load
     const secretsToLoad = [
       // Critical secrets (failures will be errors)
       { id: 'paintbox/production/jwt/public-keys', critical: true },
       { id: 'paintbox/production/jwt/private-keys', critical: true },
       { id: 'paintbox/production/app', critical: true },
-      
+
       // Optional secrets (failures will be warnings)
       { id: 'paintbox/production/database', critical: false },
       { id: 'paintbox/production/redis', critical: false },
@@ -196,11 +196,11 @@ export async function initializeAWSSecrets(): Promise<InitializationResult> {
       { id: 'paintbox/production/monitoring', critical: false },
       { id: 'paintbox/production/email', critical: false }
     ];
-    
+
     // Load secrets in parallel for faster startup
     const loadPromises = secretsToLoad.map(async (secret) => {
       const loadResult = await loadSecret(client, secret.id);
-      
+
       if (loadResult.success) {
         result.secretsLoaded.push(secret.id);
       } else {
@@ -210,19 +210,19 @@ export async function initializeAWSSecrets(): Promise<InitializationResult> {
           result.warnings.push(loadResult.error || `Failed to load ${secret.id}`);
         }
       }
-      
+
       return loadResult;
     });
-    
+
     await Promise.all(loadPromises);
-    
+
     // Determine overall success (critical secrets must all load)
     const criticalSecretsLoaded = secretsToLoad
       .filter(s => s.critical)
       .every(s => result.secretsLoaded.includes(s.id));
-    
+
     result.success = criticalSecretsLoaded;
-    
+
     // Log summary
     console.log('=' .repeat(60));
     console.log('[AWS Init] Initialization Summary');
@@ -230,24 +230,24 @@ export async function initializeAWSSecrets(): Promise<InitializationResult> {
     console.log(`[AWS Init] Secrets Loaded: ${result.secretsLoaded.length}`);
     console.log(`[AWS Init] Errors: ${result.errors.length}`);
     console.log(`[AWS Init] Warnings: ${result.warnings.length}`);
-    
+
     if (result.errors.length > 0) {
       console.error('[AWS Init] Errors:');
       result.errors.forEach(err => console.error(`  - ${err}`));
     }
-    
+
     if (result.warnings.length > 0) {
       console.warn('[AWS Init] Warnings:');
       result.warnings.forEach(warn => console.warn(`  - ${warn}`));
     }
-    
+
     console.log('=' .repeat(60));
-    
+
   } catch (error: any) {
     console.error('[AWS Init] Unexpected error during initialization:', error);
     result.errors.push(`Unexpected error: ${error.message}`);
   }
-  
+
   return result;
 }
 
@@ -257,16 +257,16 @@ export async function initializeAWSSecrets(): Promise<InitializationResult> {
 export function verifyEnvironment(): { valid: boolean; missing: string[] } {
   const required = [
     'AWS_REGION',
-    'AWS_ACCESS_KEY_ID', 
+    'AWS_ACCESS_KEY_ID',
     'AWS_SECRET_ACCESS_KEY'
   ];
-  
+
   const missing = required.filter(key => !process.env[key]);
-  
+
   if (missing.length > 0) {
     console.error('[AWS Init] Missing required environment variables:', missing);
   }
-  
+
   return {
     valid: missing.length === 0,
     missing

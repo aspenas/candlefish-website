@@ -94,10 +94,10 @@ POLICY_ARN="arn:aws:iam::${ACCOUNT_ID}:policy/${POLICY_NAME}"
 
 if aws iam get-policy --policy-arn "$POLICY_ARN" > /dev/null 2>&1; then
     echo -e "${YELLOW}Policy exists, creating new version...${NC}"
-    
+
     # Get current policy versions
     VERSIONS=$(aws iam list-policy-versions --policy-arn "$POLICY_ARN" --query 'Versions[?!IsDefaultVersion].VersionId' --output text)
-    
+
     # Delete old versions if there are 5 (max allowed)
     VERSION_COUNT=$(echo "$VERSIONS" | wc -w)
     if [ "$VERSION_COUNT" -ge 4 ]; then
@@ -105,7 +105,7 @@ if aws iam get-policy --policy-arn "$POLICY_ARN" > /dev/null 2>&1; then
         echo "Deleting old policy version: $OLDEST_VERSION"
         aws iam delete-policy-version --policy-arn "$POLICY_ARN" --version-id "$OLDEST_VERSION"
     fi
-    
+
     # Create new policy version
     aws iam create-policy-version \
         --policy-arn "$POLICY_ARN" \
@@ -141,13 +141,13 @@ read -r CREATE_KEYS
 
 if [[ "$CREATE_KEYS" == "y" || "$CREATE_KEYS" == "Y" ]]; then
     echo "Creating new access keys..."
-    
+
     # Create new access key
     KEY_OUTPUT=$(aws iam create-access-key --user-name "$IAM_USER_NAME")
-    
+
     ACCESS_KEY_ID=$(echo "$KEY_OUTPUT" | jq -r '.AccessKey.AccessKeyId')
     SECRET_ACCESS_KEY=$(echo "$KEY_OUTPUT" | jq -r '.AccessKey.SecretAccessKey')
-    
+
     echo ""
     echo -e "${GREEN}✓ New access keys created${NC}"
     echo ""
@@ -165,7 +165,7 @@ if [[ "$CREATE_KEYS" == "y" || "$CREATE_KEYS" == "Y" ]]; then
     echo -e "${YELLOW}⚠️  IMPORTANT: Save these credentials securely!${NC}"
     echo -e "${YELLOW}The secret access key will not be shown again.${NC}"
     echo ""
-    
+
     # Save to a temporary file
     cat > /tmp/paintbox-fly-credentials.txt <<EOF
 AWS_ACCESS_KEY_ID=$ACCESS_KEY_ID
@@ -178,7 +178,7 @@ flyctl secrets set -a paintbox \\
   AWS_SECRET_ACCESS_KEY="$SECRET_ACCESS_KEY" \\
   AWS_REGION="$AWS_REGION"
 EOF
-    
+
     echo "Credentials also saved to: /tmp/paintbox-fly-credentials.txt"
     echo "(Delete this file after updating Fly.io)"
 else

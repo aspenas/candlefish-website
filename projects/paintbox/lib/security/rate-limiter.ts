@@ -52,7 +52,7 @@ export function rateLimit(config: RateLimitConfig) {
 
       // Get or create rate limit entry
       let entry = rateLimitStore.get(key);
-      
+
       if (!entry || entry.resetTime < now) {
         // Create new window
         entry = {
@@ -60,7 +60,7 @@ export function rateLimit(config: RateLimitConfig) {
           resetTime: now + windowMs,
         };
         rateLimitStore.set(key, entry);
-        
+
         return {
           success: true,
           limit: max,
@@ -98,7 +98,7 @@ export function rateLimit(config: RateLimitConfig) {
         headers['RateLimit-Limit'] = result.limit.toString();
         headers['RateLimit-Remaining'] = result.remaining.toString();
         headers['RateLimit-Reset'] = new Date(Date.now() + windowMs).toISOString();
-        
+
         if (result.retryAfter) {
           headers['RateLimit-RetryAfter'] = result.retryAfter.toString();
         }
@@ -108,7 +108,7 @@ export function rateLimit(config: RateLimitConfig) {
         headers['X-RateLimit-Limit'] = result.limit.toString();
         headers['X-RateLimit-Remaining'] = result.remaining.toString();
         headers['X-RateLimit-Reset'] = Math.floor((Date.now() + windowMs) / 1000).toString();
-        
+
         if (result.retryAfter) {
           headers['Retry-After'] = result.retryAfter.toString();
         }
@@ -122,14 +122,14 @@ export function rateLimit(config: RateLimitConfig) {
 // Default key generator using IP address
 function defaultKeyGenerator(request: NextRequest): string {
   // Try to get real IP from various headers
-  const ip = 
+  const ip =
     request.headers.get('x-real-ip') ||
     request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
     request.headers.get('cf-connecting-ip') || // Cloudflare
     request.headers.get('x-client-ip') ||
     request.ip ||
     'unknown';
-  
+
   return `rate-limit:${ip}`;
 }
 
@@ -167,7 +167,7 @@ export async function withRateLimit(
   handler: () => Promise<Response>
 ): Promise<Response> {
   const result = await limiter.check(request);
-  
+
   if (!result.success) {
     return new Response(
       JSON.stringify({

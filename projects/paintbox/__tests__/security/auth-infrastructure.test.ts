@@ -26,7 +26,7 @@ describe('Authentication Infrastructure Security', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     const { SecretsManagerClient } = require('@aws-sdk/client-secrets-manager');
     mockSecretsClient = new SecretsManagerClient();
   });
@@ -34,7 +34,7 @@ describe('Authentication Infrastructure Security', () => {
   describe('JWKS Endpoint Security', () => {
     it('should prevent timing attacks on JWKS retrieval', async () => {
       const { GET } = require('@/app/api/.well-known/jwks.json/route');
-      
+
       // Mock successful response
       mockSecretsClient.send.mockResolvedValue({
         SecretString: JSON.stringify({
@@ -49,10 +49,10 @@ describe('Authentication Infrastructure Security', () => {
       });
 
       const request = new NextRequest('https://test.com/.well-known/jwks.json');
-      
+
       // Multiple requests should have consistent timing
       const times: number[] = [];
-      
+
       for (let i = 0; i < 3; i++) {
         const start = Date.now();
         await GET(request);
@@ -68,7 +68,7 @@ describe('Authentication Infrastructure Security', () => {
 
     it('should not expose sensitive AWS credentials in errors', async () => {
       const { GET } = require('@/app/api/.well-known/jwks.json/route');
-      
+
       // Mock AWS error with potentially sensitive info
       mockSecretsClient.send.mockRejectedValue(
         new Error('The security token included in the request is expired')
@@ -86,7 +86,7 @@ describe('Authentication Infrastructure Security', () => {
 
     it('should validate JWKS key structure to prevent malicious keys', async () => {
       const { GET } = require('@/app/api/.well-known/jwks.json/route');
-      
+
       // Mock malicious key structure
       mockSecretsClient.send.mockResolvedValue({
         SecretString: JSON.stringify({
@@ -105,7 +105,7 @@ describe('Authentication Infrastructure Security', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      
+
       // Should sanitize/normalize the key
       const key = data.keys[0];
       expect(key.alg).toBe('RS256'); // Should default to secure algorithm
@@ -115,7 +115,7 @@ describe('Authentication Infrastructure Security', () => {
 
     it('should implement proper CORS policy', async () => {
       const { GET, OPTIONS } = require('@/app/api/.well-known/jwks.json/route');
-      
+
       mockSecretsClient.send.mockResolvedValue({
         SecretString: JSON.stringify({
           'key-1': {
@@ -131,7 +131,7 @@ describe('Authentication Infrastructure Security', () => {
       // Test GET request CORS headers
       const getRequest = new NextRequest('https://test.com/.well-known/jwks.json');
       const getResponse = await GET(getRequest);
-      
+
       expect(getResponse.headers.get('Access-Control-Allow-Origin')).toBe('*');
       expect(getResponse.headers.get('Access-Control-Allow-Methods')).toBe('GET, OPTIONS');
       expect(getResponse.headers.get('Access-Control-Allow-Headers')).toBe('Content-Type');
@@ -141,14 +141,14 @@ describe('Authentication Infrastructure Security', () => {
         method: 'OPTIONS',
       });
       const optionsResponse = await OPTIONS(optionsRequest);
-      
+
       expect(optionsResponse.status).toBe(200);
       expect(optionsResponse.headers.get('Access-Control-Max-Age')).toBe('86400');
     });
 
     it('should have secure cache headers to prevent sensitive data caching', async () => {
       const { GET } = require('@/app/api/.well-known/jwks.json/route');
-      
+
       mockSecretsClient.send.mockResolvedValue({
         SecretString: JSON.stringify({
           'key-1': {
@@ -173,7 +173,7 @@ describe('Authentication Infrastructure Security', () => {
 
     it('should handle cache poisoning attempts', async () => {
       const { GET } = require('@/app/api/.well-known/jwks.json/route');
-      
+
       // First request with normal keys
       mockSecretsClient.send.mockResolvedValueOnce({
         SecretString: JSON.stringify({
@@ -204,7 +204,7 @@ describe('Authentication Infrastructure Security', () => {
   describe('Login Endpoint Security', () => {
     it('should implement proper rate limiting structure', async () => {
       const { POST } = require('@/app/api/auth/login/route');
-      
+
       mockSecretsClient.send.mockResolvedValue({
         SecretString: JSON.stringify({
           kid: 'test-key',
@@ -232,7 +232,7 @@ describe('Authentication Infrastructure Security', () => {
       }
 
       const responses = await Promise.all(requests);
-      
+
       // All should fail with 401 (rate limiting would be handled by middleware)
       responses.forEach((response) => {
         expect(response.status).toBe(401);
@@ -241,7 +241,7 @@ describe('Authentication Infrastructure Security', () => {
 
     it('should prevent username enumeration attacks', async () => {
       const { POST } = require('@/app/api/auth/login/route');
-      
+
       mockSecretsClient.send.mockResolvedValue({
         SecretString: JSON.stringify({
           kid: 'test-key',
@@ -284,7 +284,7 @@ describe('Authentication Infrastructure Security', () => {
 
     it('should implement timing attack protection', async () => {
       const { POST } = require('@/app/api/auth/login/route');
-      
+
       mockSecretsClient.send.mockResolvedValue({
         SecretString: JSON.stringify({
           kid: 'test-key',
@@ -322,14 +322,14 @@ describe('Authentication Infrastructure Security', () => {
 
       // Invalid email should take at least 1000ms (timing attack protection)
       expect(invalidTime).toBeGreaterThanOrEqual(1000);
-      
+
       // Time difference should be minimal (within 100ms tolerance)
       expect(Math.abs(validTime - invalidTime)).toBeLessThan(100);
     });
 
     it('should sanitize input to prevent injection attacks', async () => {
       const { POST } = require('@/app/api/auth/login/route');
-      
+
       mockSecretsClient.send.mockResolvedValue({
         SecretString: JSON.stringify({
           kid: 'test-key',
@@ -371,13 +371,13 @@ describe('Authentication Infrastructure Security', () => {
       ];
 
       const responses = await Promise.all(requests.map(req => POST(req)));
-      
+
       // All should be handled gracefully without execution
       responses.forEach(async (response) => {
         expect([400, 401, 500]).toContain(response.status);
         const data = await response.json();
         expect(data.success).toBe(false);
-        
+
         // Should not contain the malicious payload in response
         const responseText = JSON.stringify(data);
         expect(responseText).not.toContain('DROP TABLE');
@@ -388,7 +388,7 @@ describe('Authentication Infrastructure Security', () => {
 
     it('should not expose sensitive information in error responses', async () => {
       const { POST } = require('@/app/api/auth/login/route');
-      
+
       // Mock AWS error
       mockSecretsClient.send.mockRejectedValue(new Error('InvalidSignatureException: The request signature we calculated does not match the signature you provided'));
 
@@ -407,7 +407,7 @@ describe('Authentication Infrastructure Security', () => {
 
       expect(response.status).toBe(500);
       expect(data.error.message).toBe('Authentication service error');
-      
+
       // Should not expose AWS error details
       expect(data.error.message).not.toContain('InvalidSignatureException');
       expect(data.error.message).not.toContain('signature');
@@ -417,9 +417,9 @@ describe('Authentication Infrastructure Security', () => {
     it('should validate JWT token structure (when implemented)', async () => {
       // This test is for future JWT implementation
       // Currently the endpoint returns mock tokens
-      
+
       const { POST } = require('@/app/api/auth/login/route');
-      
+
       mockSecretsClient.send.mockResolvedValue({
         SecretString: JSON.stringify({
           kid: 'test-key',
@@ -446,7 +446,7 @@ describe('Authentication Infrastructure Security', () => {
         expect(data.data.tokens).toHaveProperty('refreshToken');
         expect(data.data.tokens).toHaveProperty('tokenType', 'Bearer');
         expect(data.data.tokens).toHaveProperty('expiresIn');
-        
+
         // Token should not be empty
         expect(data.data.tokens.accessToken).toBeTruthy();
         expect(data.data.tokens.refreshToken).toBeTruthy();
@@ -455,7 +455,7 @@ describe('Authentication Infrastructure Security', () => {
 
     it('should implement secure session management', async () => {
       const { POST } = require('@/app/api/auth/login/route');
-      
+
       mockSecretsClient.send.mockResolvedValue({
         SecretString: JSON.stringify({
           kid: 'test-key',
@@ -478,7 +478,7 @@ describe('Authentication Infrastructure Security', () => {
 
       // Should not set insecure cookies or session headers
       expect(response.headers.get('Set-Cookie')).toBeNull();
-      
+
       // Should not expose session IDs in headers
       const sessionHeaders = ['X-Session-ID', 'Session-ID', 'JSESSIONID'];
       sessionHeaders.forEach(header => {
@@ -491,7 +491,7 @@ describe('Authentication Infrastructure Security', () => {
     it('should maintain consistent error handling across auth endpoints', async () => {
       const jwksModule = require('@/app/api/.well-known/jwks.json/route');
       const loginModule = require('@/app/api/auth/login/route');
-      
+
       // Force errors in both endpoints
       mockSecretsClient.send.mockRejectedValue(new Error('Service unavailable'));
 
@@ -524,7 +524,7 @@ describe('Authentication Infrastructure Security', () => {
 
     it('should prevent CSRF attacks on state-changing endpoints', async () => {
       const { POST } = require('@/app/api/auth/login/route');
-      
+
       mockSecretsClient.send.mockResolvedValue({
         SecretString: JSON.stringify({
           kid: 'test-key',
@@ -549,7 +549,7 @@ describe('Authentication Infrastructure Security', () => {
 
       // Currently no CSRF protection implemented, but structure should support it
       const response = await POST(csrfRequest);
-      
+
       // Test passes if endpoint handles the request (CSRF protection would be middleware)
       expect([200, 401, 403]).toContain(response.status);
     });
@@ -558,7 +558,7 @@ describe('Authentication Infrastructure Security', () => {
   describe('Infrastructure Security', () => {
     it('should not expose internal service URLs or paths', async () => {
       const healthModule = require('@/app/api/health/route');
-      
+
       // Mock services to return internal information
       const mockCache = require('@/lib/cache/cache-service')();
       mockCache.set.mockResolvedValue(true);
@@ -588,18 +588,18 @@ describe('Authentication Infrastructure Security', () => {
     it('should implement proper error boundaries', async () => {
       // Test that critical errors don't crash the entire auth system
       const jwksModule = require('@/app/api/.well-known/jwks.json/route');
-      
+
       // Mock a critical system error
       mockSecretsClient.send.mockImplementation(() => {
         throw new Error('System.exit(1)'); // Simulate critical error
       });
 
       const request = new NextRequest('https://test.com/.well-known/jwks.json');
-      
+
       // Should not crash, should return error response
       const response = await jwksModule.GET(request);
       expect(response.status).toBe(500);
-      
+
       const data = await response.json();
       expect(data).toHaveProperty('error');
       expect(data).toHaveProperty('keys', []);
