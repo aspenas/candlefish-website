@@ -1,0 +1,55 @@
+name: Deploy Brand Website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'brand/website/**'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+  WORKING_DIRECTORY: brand/website
+
+jobs:
+  deploy:
+    name: Build and Deploy to Netlify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm ci
+
+      - name: Run build
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run build
+
+      - name: Deploy to Netlify
+        uses: netlify/actions/deploy@master
+        with:
+          publish-dir: ${{ env.WORKING_DIRECTORY }}/out
+          production-deploy: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: |
+            Deploy from GitHub Actions
+            Commit: ${{ github.sha }}
+            Ref: ${{ github.ref }}
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+
+      - name: Test deployment
+        run: |
+          echo "Deployment completed successfully!"
+          echo "Site should be available at: https://test.candlefish.ai"
