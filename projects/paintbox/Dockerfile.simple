@@ -13,14 +13,9 @@ RUN npm install --legacy-peer-deps --production=false
 COPY . .
 
 # Set environment variables
-ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=8080
 ENV HOSTNAME="0.0.0.0"
-
-# Skip the problematic build step and run in development mode for now
-# This ensures the application can start and serve the UI improvements
-ENV NODE_ENV=development
 
 # Create a non-root user
 RUN addgroup --system --gid 1001 nodejs
