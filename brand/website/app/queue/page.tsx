@@ -13,16 +13,16 @@ interface QueueEntry {
 }
 
 export default function QueuePage() {
-  const [queuePosition, setQueuePosition] = useState(47);
-  const [totalQueue, setTotalQueue] = useState(127);
+  const [queuePosition, setQueuePosition] = useState(7);
+  const [totalQueue, setTotalQueue] = useState(7);
   const [averageWait, setAverageWait] = useState("12-18 weeks");
 
   const [recentEntries] = useState<QueueEntry[]>([
-    { position: 45, id: 'q-2025-156', type: 'collaboration', submittedAt: '2025-08-18', estimatedWait: '14-16 weeks', status: 'under_review' },
-    { position: 46, id: 'q-2025-157', type: 'workshop_visit', submittedAt: '2025-08-19', estimatedWait: '16-20 weeks', status: 'waiting' },
-    { position: 47, id: 'q-2025-158', type: 'consultation', submittedAt: '2025-08-20', estimatedWait: '12-14 weeks', status: 'waiting' },
-    { position: 48, id: 'q-2025-159', type: 'collaboration', submittedAt: '2025-08-20', estimatedWait: '18-22 weeks', status: 'waiting' },
-    { position: 49, id: 'q-2025-160', type: 'workshop_visit', submittedAt: '2025-08-21', estimatedWait: '20-24 weeks', status: 'waiting' },
+    { position: 3, id: 'q-2025-156', type: 'collaboration', submittedAt: '2025-08-18', estimatedWait: '14-16 weeks', status: 'under_review' },
+    { position: 4, id: 'q-2025-157', type: 'workshop_visit', submittedAt: '2025-08-19', estimatedWait: '16-20 weeks', status: 'waiting' },
+    { position: 5, id: 'q-2025-158', type: 'consultation', submittedAt: '2025-08-20', estimatedWait: '12-14 weeks', status: 'waiting' },
+    { position: 6, id: 'q-2025-159', type: 'collaboration', submittedAt: '2025-08-20', estimatedWait: '18-22 weeks', status: 'waiting' },
+    { position: 7, id: 'q-2025-160', type: 'workshop_visit', submittedAt: '2025-08-21', estimatedWait: '20-24 weeks', status: 'waiting' },
   ]);
 
   useEffect(() => {

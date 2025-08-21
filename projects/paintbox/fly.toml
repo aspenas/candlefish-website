@@ -6,7 +6,7 @@ app = "paintbox"
 primary_region = "sjc"
 
 [build]
-  dockerfile = "Dockerfile.production"
+  dockerfile = "Dockerfile.simple"
 
 [env]
   NODE_ENV = "production"
