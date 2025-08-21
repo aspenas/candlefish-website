@@ -36,18 +36,13 @@ jobs:
         run: npm run build
 
       - name: Deploy to Netlify
-        uses: netlify/actions/deploy@master
-        with:
-          publish-dir: ${{ env.WORKING_DIRECTORY }}/out
-          production-deploy: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          deploy-message: |
-            Deploy from GitHub Actions
-            Commit: ${{ github.sha }}
-            Ref: ${{ github.ref }}
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          npm install -g netlify-cli
+          netlify deploy --prod --dir=out --site=$NETLIFY_SITE_ID --message="Deploy from GitHub Actions - ${{ github.sha }}"
 
       - name: Test deployment
         run: |
