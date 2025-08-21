@@ -6,7 +6,8 @@ import { OperationalPortraitCanvas } from './portrait-canvas'
 import { InterventionTimeline } from './intervention-timeline'
 import { trackReportDownload, trackConsultationRequest } from '@/lib/assessment/analytics'
 import { downloadJSON } from '@/lib/assessment/utils'
-import { generateAssessmentPDF } from '@/utils/generate-pdf'
+import { copyToClipboard, createShareableText, showShareDialog, checkBrowserSupport } from '@/lib/assessment/share-utils'
+import { generateAssessmentPDF, openAssessmentForPrint } from '@/utils/generate-pdf'
 import type { AssessmentScore, OperationalPortrait, AssessmentResponse } from '@/types/assessment'
 
 interface ResultsViewProps {
@@ -25,21 +26,44 @@ export const ResultsView = ({
   onRequestConsultation
 }: ResultsViewProps) => {
   const [downloading, setDownloading] = useState(false)
+  const [sharing, setSharing] = useState(false)
+  const [browserSupport] = useState(() => checkBrowserSupport())
 
   const downloadPDF = async () => {
     setDownloading(true)
     try {
-      // Use client-side PDF generation
-      generateAssessmentPDF(score, portrait, sessionId)
-      trackReportDownload(sessionId, 'html-pdf')
-      
-      // Brief delay for UX feedback
-      await new Promise(resolve => setTimeout(resolve, 500))
+      if (!browserSupport.canDownload) {
+        throw new Error('Your browser does not support file downloads. Please try a different browser.')
+      }
+
+      // Use improved PDF generation with error handling
+      await generateAssessmentPDF(score, portrait, sessionId)
+      trackReportDownload(sessionId, 'pdf')
+
+      // Show success feedback
+      alert('Report downloaded successfully! To save as PDF, open the HTML file and use your browser\'s print function (Ctrl+P or Cmd+P) and select "Save as PDF".')
+
     } catch (error) {
       console.error('PDF generation failed:', error)
-      // Fallback to JSON download
-      downloadJSON({ score, portrait, responses }, `assessment-${sessionId}.json`)
-      trackReportDownload(sessionId, 'json')
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+
+      // Try fallback to print window
+      try {
+        await openAssessmentForPrint(score, portrait, sessionId)
+        alert(`Download failed, but opened print view instead. Error: ${errorMessage}`)
+      } catch (printError) {
+        console.error('Print fallback also failed:', printError)
+
+        // Final fallback to JSON download
+        try {
+          downloadJSON({ score, portrait, responses }, `assessment-${sessionId}.json`)
+          trackReportDownload(sessionId, 'json')
+          alert(`Both PDF and print failed. Downloaded data as JSON instead. Original error: ${errorMessage}`)
+        } catch (jsonError) {
+          console.error('JSON fallback failed:', jsonError)
+          alert(`All download methods failed. Please try:\n1. Using a different browser\n2. Disabling pop-up blockers\n3. Contacting support at hello@candlefish.ai\n\nError: ${errorMessage}`)
+        }
+      }
     } finally {
       setDownloading(false)
     }
@@ -219,19 +243,45 @@ export const ResultsView = ({
         </button>
 
         <button
-          onClick={() => {
-            if (navigator.share) {
-              navigator.share({
-                title: 'Operational Maturity Assessment',
-                text: `${score.level} - ${score.percentile}th percentile`,
-                url: `${window.location.origin}/maturity-map/results/${sessionId}`
-              })
+          onClick={async () => {
+            setSharing(true)
+            try {
+              const shareData = {
+                title: 'Operational Maturity Assessment Results',
+                text: `I scored ${score.percentage || 0}% (${score.level || 'Assessment'}) - ${score.percentile || 0}th percentile in operational maturity.`,
+                url: `${window.location.origin}/assessment/results/${sessionId}`
+              }
+
+              if (browserSupport.canShare && navigator.share) {
+                try {
+                  await navigator.share(shareData)
+                  console.log('Results shared successfully')
+                } catch (shareError) {
+                  // Handle share cancellation or failure
+                  if ((shareError as Error).name !== 'AbortError') {
+                    console.error('Native share failed:', shareError)
+                    // Fall through to custom share dialog
+                    showShareDialog(score, sessionId)
+                  }
+                  // If AbortError, user cancelled - do nothing
+                }
+              } else {
+                // Use custom share dialog for better UX
+                showShareDialog(score, sessionId)
+              }
+            } catch (error) {
+              console.error('Share failed:', error)
+              const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+              alert(`Sharing failed: ${errorMessage}\n\nYou can manually copy this URL to share: ${window.location.origin}/assessment/results/${sessionId}`)
+            } finally {
+              setSharing(false)
             }
           }}
+          disabled={sharing}
           className="px-8 py-4 bg-[#1B263B] border border-[#415A77] text-[#E0E1DD]
-                   hover:border-[#3FD3C6] transition-all duration-300"
+                   hover:border-[#3FD3C6] transition-all duration-300 disabled:opacity-50"
         >
-          Share Results
+          {sharing ? 'Sharing...' : browserSupport.canShare ? 'Share Results' : 'Copy Share Link'}
         </button>
       </div>
     </motion.section>

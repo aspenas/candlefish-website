@@ -148,21 +148,26 @@ export default function RootLayout({
         <AuthProvider>
           <AuthWrapper>
             <div className="min-h-screen">
-              <header className="sticky top-0 z-30 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b border-[var(--color-paintbox-border)]">
-                <div className="mx-auto max-w-7xl px-6 py-3 flex items-center justify-between">
+              <header className="sticky top-0 z-30 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-[var(--color-paintbox-border)] shadow-sm">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 py-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <img src="/images/brand-paintbox.png" alt="Paintbox" className="h-7 w-7 rounded" />
-                    <span className="font-semibold tracking-tight">Paintbox</span>
+                    <img src="/images/brand-paintbox.png" alt="Paintbox" className="h-8 w-8 sm:h-7 sm:w-7 rounded" />
+                    <span className="font-semibold tracking-tight text-base sm:text-sm">Paintbox</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="hidden sm:block text-xs text-[var(--color-paintbox-text-muted)]">Estimator — Kind Home Paint Company</div>
+                    <div className="hidden lg:block text-xs text-[var(--color-paintbox-text-muted)]">
+                      Estimator — Kind Home Paint Company
+                    </div>
+                    <div className="hidden sm:block text-xs text-[var(--color-paintbox-text-muted)] text-right">
+                      Professional Estimator
+                    </div>
                     <HeaderControls />
                   </div>
                 </div>
                 <div style={{height:2,background: `linear-gradient(90deg, var(--stripe-red) 0%, var(--stripe-orange) 20%, var(--stripe-yellow) 40%, var(--stripe-green) 60%, var(--stripe-violet) 80%)`}} />
               </header>
 
-              <main className="mx-auto max-w-7xl px-6 py-8">
+              <main className="mx-auto max-w-7xl px-4 sm:px-6 py-4 sm:py-8">
                 {children}
               </main>
 

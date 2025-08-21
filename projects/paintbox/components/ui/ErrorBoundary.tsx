@@ -7,7 +7,7 @@
 'use client';
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
@@ -42,31 +42,31 @@ class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 text-center">
-            <div className="w-12 h-12 mx-auto mb-4 text-red-500">
-              <ExclamationTriangleIcon />
+        <div className="min-h-screen bg-paintbox-background flex items-center justify-center p-4 safe-area-inset">
+          <div className="max-w-md w-full paintbox-card p-8 text-center">
+            <div className="w-16 h-16 mx-auto mb-6 bg-red-100 rounded-full flex items-center justify-center">
+              <AlertTriangle className="w-8 h-8 text-red-500" />
             </div>
 
-            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-              Something went wrong
+            <h2 className="text-2xl font-bold text-paintbox-text mb-3">
+              Oops! Something went wrong
             </h2>
 
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              An unexpected error occurred while loading this component.
+            <p className="text-paintbox-text-muted mb-8 leading-relaxed">
+              Don't worry - this happens sometimes. The error has been logged and our team will look into it.
             </p>
 
             {process.env.NODE_ENV === 'development' && this.state.error && (
-              <details className="text-left mb-4">
-                <summary className="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Error Details
+              <details className="text-left mb-6">
+                <summary className="cursor-pointer text-sm font-medium text-paintbox-text mb-3 hover:text-paintbox-brand transition-colors">
+                  🔧 Developer Details
                 </summary>
-                <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 text-xs">
-                  <pre className="whitespace-pre-wrap text-red-600 dark:text-red-400">
+                <div className="bg-paintbox-background rounded-lg p-4 border border-paintbox-border text-xs">
+                  <pre className="whitespace-pre-wrap text-red-600 font-mono">
                     {this.state.error.toString()}
                   </pre>
                   {this.state.errorInfo && (
-                    <pre className="whitespace-pre-wrap text-gray-600 dark:text-gray-400 mt-2">
+                    <pre className="whitespace-pre-wrap text-paintbox-text-muted mt-3 font-mono">
                       {this.state.errorInfo.componentStack}
                     </pre>
                   )}
@@ -77,16 +77,25 @@ class ErrorBoundary extends Component<Props, State> {
             <div className="space-y-3">
               <button
                 onClick={() => this.setState({ hasError: false, error: undefined, errorInfo: undefined })}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-paintbox-brand to-paintbox-accent text-white rounded-lg hover:shadow-lg transition-all transform hover:scale-105 active:scale-95"
               >
+                <RefreshCw className="w-4 h-4" />
                 Try Again
               </button>
 
               <button
-                onClick={() => window.location.reload()}
-                className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                onClick={() => window.location.href = '/'}
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white text-paintbox-text border border-paintbox-border rounded-lg hover:bg-paintbox-background transition-colors"
               >
-                Reload Page
+                <Home className="w-4 h-4" />
+                Go Home
+              </button>
+
+              <button
+                onClick={() => window.location.reload()}
+                className="w-full text-sm text-paintbox-text-muted hover:text-paintbox-brand transition-colors"
+              >
+                Refresh the page
               </button>
             </div>
           </div>
