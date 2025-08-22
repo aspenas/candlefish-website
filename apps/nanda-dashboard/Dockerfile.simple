@@ -1,0 +1,52 @@
+# Simple static dashboard Dockerfile
+FROM node:20-alpine AS production
+
+# Create non-root user
+RUN addgroup -g 1001 -S nanda && \
+    adduser -S nanda -u 1001
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    dumb-init \
+    curl \
+    ca-certificates \
+    tzdata
+
+# Install sirv-cli globally for serving
+RUN npm install -g sirv-cli
+
+# Set timezone
+ENV TZ=UTC
+
+# Set working directory
+WORKDIR /app
+
+# Create dist directory and copy HTML files
+RUN mkdir -p /app/dist
+COPY simple-index.html /app/dist/index.html
+
+# Create health check endpoint
+RUN echo '{"status":"healthy","service":"nanda-dashboard","timestamp":"'$(date -Iseconds)'"}' > /app/dist/health
+
+# Set ownership
+RUN chown -R nanda:nanda /app
+
+# Switch to non-root user
+USER nanda
+
+# Expose port
+EXPOSE 3001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3001/health || exit 1
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=3001
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start the application
+CMD ["sirv", "dist", "--port", "3001", "--cors", "--single", "--host", "0.0.0.0"]

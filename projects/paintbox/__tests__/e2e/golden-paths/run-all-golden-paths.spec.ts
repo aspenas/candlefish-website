@@ -23,7 +23,7 @@ test.describe('Golden Paths Test Suite - Complete Execution', () => {
     try {
       await test.step('Initialize test suite', async () => {
         const suiteInfo = {
-          name: 'Paintbox/Eggshell Golden Paths E2E Test Suite',
+          name: 'Eggshell Recovery Golden Paths E2E Test Suite',
           version: '1.0.0',
           startTime: new Date().toISOString(),
           environment: process.env.NODE_ENV || 'test',

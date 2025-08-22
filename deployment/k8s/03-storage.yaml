@@ -1,0 +1,65 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: rtpm-ssd
+  labels:
+    app.kubernetes.io/name: rtmp
+    app.kubernetes.io/component: storage
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: gp3
+  fsType: ext4
+  encrypted: "true"
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: timescaledb-pvc
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: rtpm
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: timescaledb
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: rtpm-ssd
+  resources:
+    requests:
+      storage: 100Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: rtpm
+    app.kubernetes.io/component: redis
+    app.kubernetes.io/instance: redis
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: rtpm-ssd
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: logs-pvc
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: rtpm
+    app.kubernetes.io/component: logs
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: efs-sc  # EFS for shared logs across pods
+  resources:
+    requests:
+      storage: 50Gi

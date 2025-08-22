@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import PaintboxLogo from '@/components/ui/PaintboxLogo'
+import EggshellLogo from '@/components/ui/EggshellLogo'
 import { UserProfile } from '@/components/auth/UserProfile'
 import { Home, Calculator, FileText, Settings, Menu, X } from 'lucide-react'
 import { useState } from 'react'
@@ -44,7 +44,7 @@ export function AppHeader({
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-3 hover:opacity-90 transition-opacity">
-            <PaintboxLogo size="desktop" />
+            <EggshellLogo size="desktop" />
           </Link>
 
           {/* Desktop Navigation */}

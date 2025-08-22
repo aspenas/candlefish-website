@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { useOfflineStore } from './useOfflineStore';
 import { v4 as uuidv4 } from 'uuid';
 
 interface EstimateStore {
@@ -123,14 +122,19 @@ export const useEstimateStore = create<EstimateStore>()(
             set({ estimate });
           }
 
-          // Check if we're offline or in offline mode
-          const offlineStore = useOfflineStore.getState();
-          const shouldSaveOffline = !offlineStore.networkStatus.isOnline || state.isOfflineMode;
+          // Check if we're offline or in offline mode safely
+          const shouldSaveOffline = state.isOfflineMode || (typeof navigator !== 'undefined' && !navigator.onLine);
 
           if (shouldSaveOffline) {
             // Save to IndexedDB for offline use
-            await offlineStore.saveEstimateOffline(estimate.id, estimate);
-            console.log('Estimate saved offline');
+            try {
+              const { offlineDB } = await import('@/lib/db/offline-db');
+              await offlineDB.saveEstimate(estimate.id, estimate);
+              console.log('Estimate saved offline');
+            } catch (offlineError) {
+              console.error('Failed to save offline:', offlineError);
+              // Continue execution - don't block the UI
+            }
           } else {
             // Try to save to server
             try {
@@ -148,14 +152,27 @@ export const useEstimateStore = create<EstimateStore>()(
                 });
                 console.log('Estimate saved to server');
               } else {
-                // Server save failed, save offline as backup
-                await offlineStore.saveEstimateOffline(estimate.id, estimate);
-                console.log('Server save failed, saved offline as backup');
+                console.warn(`Server save failed with status ${response.status}`);
+                // Server save failed, try offline backup
+                try {
+                  const { offlineDB } = await import('@/lib/db/offline-db');
+                  await offlineDB.saveEstimate(estimate.id, estimate);
+                  console.log('Server save failed, saved offline as backup');
+                } catch (offlineError) {
+                  console.error('Both server and offline save failed:', offlineError);
+                }
               }
             } catch (error) {
-              // Network error, save offline
-              await offlineStore.saveEstimateOffline(estimate.id, estimate);
-              console.log('Network error, saved offline');
+              console.warn('Network error during server save:', error);
+              // Network error, try offline save
+              try {
+                const { offlineDB } = await import('@/lib/db/offline-db');
+                await offlineDB.saveEstimate(estimate.id, estimate);
+                console.log('Network error, saved offline');
+              } catch (offlineError) {
+                console.error('Offline save also failed:', offlineError);
+                // Continue execution - don't block the UI
+              }
             }
           }
 
@@ -167,10 +184,11 @@ export const useEstimateStore = create<EstimateStore>()(
 
       loadEstimate: async (estimateId: string) => {
         try {
-          const offlineStore = useOfflineStore.getState();
+          const state = get();
+          const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
 
           // Try to load from server first if online
-          if (offlineStore.networkStatus.isOnline && !get().isOfflineMode) {
+          if (isOnline && !state.isOfflineMode) {
             try {
               const response = await fetch(`/api/estimates/${estimateId}`);
               if (response.ok) {
@@ -187,8 +205,8 @@ export const useEstimateStore = create<EstimateStore>()(
           }
 
           // Load from offline storage
-          const offlineDB = await import('@/lib/db/offline-db');
-          const offlineEstimate = await offlineDB.offlineDB.getEstimate(estimateId);
+          const { offlineDB } = await import('@/lib/db/offline-db');
+          const offlineEstimate = await offlineDB.getEstimate(estimateId);
 
           if (offlineEstimate) {
             set({
@@ -225,13 +243,19 @@ export const useEstimateStore = create<EstimateStore>()(
       }
     }),
     {
-      name: 'paintbox-estimate-store',
+      name: 'eggshell-estimate-store',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         estimate: state.estimate,
         lastSavedAt: state.lastSavedAt,
         isOfflineMode: state.isOfflineMode
-      })
+      }),
+      skipHydration: typeof window === 'undefined', // Prevent SSR hydration issues
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          console.log('Estimate store rehydrated successfully');
+        }
+      }
     }
   )
 );

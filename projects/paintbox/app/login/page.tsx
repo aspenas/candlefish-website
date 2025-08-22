@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { signIn, getSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
-import PaintboxLogo from '@/components/ui/PaintboxLogo'
+import EggshellLogo from '@/components/ui/EggshellLogo'
 
 function LoginContent() {
   const [isLoading, setIsLoading] = useState(false)
@@ -65,16 +65,16 @@ function LoginContent() {
 
       <div className="relative w-full max-w-md">
         {/* Login Card */}
-        <div className="paintbox-card p-8 space-y-8">
+        <div className="eggshell-card p-8 space-y-8">
           {/* Header */}
           <div className="text-center space-y-4">
             <div className="flex justify-center">
-              <PaintboxLogo size="large" showText className="flex flex-col items-center gap-3" />
+              <EggshellLogo size="large" showText className="flex flex-col items-center gap-3" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Welcome to KindHome Paint</h1>
               <p className="text-gray-600 mt-2">
-                Sign in to access your professional painting estimates
+                Sign in to access your professional estimation suite
               </p>
             </div>
           </div>

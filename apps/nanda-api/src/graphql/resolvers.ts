@@ -24,7 +24,7 @@ export const resolvers = {
       },
       totalCount: 1
     }),
-    
+
     agent: async (_: any, { id }: { id: string }) => ({
       agent_id: id,
       name: 'Claude-3',
@@ -34,10 +34,10 @@ export const resolvers = {
       updated_at: new Date().toISOString(),
       metadata: { model: 'claude-3-opus' }
     }),
-    
+
     health: () => 'OK'
   },
-  
+
   Mutation: {
     registerAgent: async (_: any, { input }: any) => ({
       agent_id: `agent_${Date.now()}`,
@@ -45,14 +45,14 @@ export const resolvers = {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }),
-    
+
     updateAgent: async (_: any, { id, input }: any) => ({
       agent_id: id,
       ...input,
       created_at: new Date(Date.now() - 86400000).toISOString(),
       updated_at: new Date().toISOString()
     }),
-    
+
     deleteAgent: async () => true
   }
 }

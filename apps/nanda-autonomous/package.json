@@ -1,0 +1,31 @@
+{
+  "name": "nanda-autonomous",
+  "version": "1.0.0",
+  "description": "NANDA Autonomous Agent - Remote self-commit system",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "echo \"No tests yet\""
+  },
+  "dependencies": {
+    "@octokit/auth-app": "^6.1.4",
+    "@octokit/rest": "^20.1.2",
+    "aws-sdk": "^2.1692.0",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "node-cron": "^3.0.3",
+    "simple-git": "^3.28.0",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

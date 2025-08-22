@@ -1,46 +1,54 @@
 const CACHE_NAME = 'paintbox-v1.0.0';
 const OFFLINE_URL = '/offline';
 
-// Critical resources to cache immediately
+// Memory-aware cache limits
+const MAX_CACHE_SIZE = 25 * 1024 * 1024; // 25MB total cache limit
+const CACHE_CHECK_INTERVAL = 60000; // Check cache size every minute
+
+// Critical resources to cache immediately (minimal set)
 const PRECACHE_RESOURCES = [
   '/',
-  '/estimate/new',
-  '/estimate/new/details',
-  '/estimate/new/exterior',
-  '/estimate/new/interior',
-  '/estimate/new/review',
   '/offline',
-  '/manifest.json',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png'
+  '/manifest.json'
 ];
 
-// Runtime cache configurations
+// Runtime cache configurations with strict limits
 const CACHE_STRATEGIES = {
-  // Static assets - cache first with long TTL
+  // Static assets - cache first with memory limits
   STATIC_ASSETS: {
     cacheName: `${CACHE_NAME}-static`,
-    maxEntries: 100,
-    maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+    maxEntries: 50, // Reduced from 100
+    maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days (reduced from 30)
+    maxSize: 5 * 1024 * 1024, // 5MB max per cache
   },
-  // API calls - network first with fallback
+  // API calls - network first with minimal caching
   API_CALLS: {
     cacheName: `${CACHE_NAME}-api`,
-    maxEntries: 50,
-    maxAgeSeconds: 5 * 60, // 5 minutes
+    maxEntries: 20, // Reduced from 50
+    maxAgeSeconds: 2 * 60, // 2 minutes (reduced from 5)
+    maxSize: 2 * 1024 * 1024, // 2MB max
   },
-  // Images and media - cache first
+  // Images and media - cache with compression
   MEDIA: {
     cacheName: `${CACHE_NAME}-media`,
-    maxEntries: 200,
-    maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
+    maxEntries: 50, // Reduced from 200
+    maxAgeSeconds: 3 * 24 * 60 * 60, // 3 days (reduced from 7)
+    maxSize: 10 * 1024 * 1024, // 10MB max
   },
-  // HTML pages - network first with cache fallback
+  // HTML pages - network first with minimal cache
   PAGES: {
     cacheName: `${CACHE_NAME}-pages`,
-    maxEntries: 30,
-    maxAgeSeconds: 24 * 60 * 60, // 24 hours
+    maxEntries: 10, // Reduced from 30
+    maxAgeSeconds: 6 * 60 * 60, // 6 hours (reduced from 24)
+    maxSize: 1 * 1024 * 1024, // 1MB max
   }
+};
+
+// Track cache sizes
+let cacheStats = {
+  totalSize: 0,
+  lastCheck: Date.now(),
+  caches: {}
 };
 
 // Background sync tags
@@ -50,58 +58,68 @@ const SYNC_TAGS = {
   COMPANYCAM_SYNC: 'companycam-sync'
 };
 
-// Install event - precache critical resources
+// Install event - minimal precaching for memory efficiency
 self.addEventListener('install', (event) => {
-  console.log('Service Worker: Installing...');
+  console.log('[SW] Installing with memory optimization...');
 
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
-      console.log('Service Worker: Precaching critical resources...');
+      console.log('[SW] Precaching minimal critical resources...');
 
-      try {
-        await cache.addAll(PRECACHE_RESOURCES);
-        console.log('Service Worker: Precaching completed');
-      } catch (error) {
-        console.error('Service Worker: Precaching failed:', error);
-        // Cache resources individually if batch fails
-        for (const resource of PRECACHE_RESOURCES) {
-          try {
-            await cache.add(resource);
-          } catch (err) {
-            console.warn(`Service Worker: Failed to cache ${resource}:`, err);
+      // Only cache absolutely essential resources
+      for (const resource of PRECACHE_RESOURCES) {
+        try {
+          const response = await fetch(resource);
+          if (response.ok) {
+            // Check size before caching
+            const size = parseInt(response.headers.get('content-length') || '0');
+            if (size < 1024 * 1024) { // Only cache if < 1MB
+              await cache.put(resource, response);
+            }
           }
+        } catch (err) {
+          console.warn(`[SW] Skipped caching ${resource}:`, err);
         }
       }
 
-      // Force activation of new service worker
+      // Start cache monitoring
+      startCacheMonitoring();
+
+      // Force activation
       self.skipWaiting();
     })()
   );
 });
 
-// Activate event - clean up old caches
+// Activate event - aggressive cache cleanup
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker: Activating...');
+  console.log('[SW] Activating with memory optimization...');
 
   event.waitUntil(
     (async () => {
-      // Clean up old caches
+      // Delete ALL old caches
       const cacheNames = await caches.keys();
-      const oldCaches = cacheNames.filter(name =>
-        name.startsWith('paintbox-') && name !== CACHE_NAME
-      );
+      const cachesToDelete = cacheNames.filter(name => {
+        // Keep only current cache versions
+        return !Object.values(CACHE_STRATEGIES).some(strategy =>
+          strategy.cacheName === name
+        ) && name !== CACHE_NAME;
+      });
 
       await Promise.all(
-        oldCaches.map(cacheName => {
-          console.log(`Service Worker: Deleting old cache: ${cacheName}`);
+        cachesToDelete.map(cacheName => {
+          console.log(`[SW] Deleting cache: ${cacheName}`);
           return caches.delete(cacheName);
         })
       );
 
-      // Claim all clients immediately
+      // Calculate initial cache size
+      await calculateCacheSize();
+
+      // Claim all clients
       await self.clients.claim();
-      console.log('Service Worker: Activated successfully');
+      console.log('[SW] Activated with optimized memory usage');
     })()
   );
 });
@@ -189,41 +207,50 @@ function isHTMLPage(request) {
   return request.headers.get('accept')?.includes('text/html');
 }
 
-// Cache strategy implementations
+// Memory-optimized cache strategy implementations
 async function handleAPIRequest(request) {
-  const cache = await caches.open(CACHE_STRATEGIES.API_CALLS.cacheName);
+  const strategy = CACHE_STRATEGIES.API_CALLS;
+  const cache = await caches.open(strategy.cacheName);
 
   try {
-    // Network first strategy
-    const networkResponse = await fetch(request.clone());
+    // Network first with timeout
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    const networkResponse = await fetch(request.clone(), {
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
 
     if (networkResponse.ok) {
-      // Cache successful responses
-      cache.put(request.clone(), networkResponse.clone());
+      // Check size before caching
+      const contentLength = networkResponse.headers.get('content-length');
+      const size = parseInt(contentLength || '0');
+
+      if (size < 100 * 1024) { // Only cache API responses < 100KB
+        await cacheWithSizeCheck(cache, request, networkResponse.clone(), strategy);
+      }
     }
 
     return networkResponse;
   } catch (error) {
-    console.log('Service Worker: Network failed for API request, checking cache...');
-
+    // Fallback to cache
     const cachedResponse = await cache.match(request);
     if (cachedResponse) {
-      console.log('Service Worker: Serving API request from cache');
-      return cachedResponse;
+      // Check if cache is stale
+      const cacheAge = getCacheAge(cachedResponse);
+      if (cacheAge < strategy.maxAgeSeconds * 1000) {
+        return cachedResponse;
+      }
+      // Delete stale cache
+      await cache.delete(request);
     }
 
-    // Return offline response for critical API endpoints
+    // Return minimal offline response
     if (request.url.includes('/api/calculations')) {
       return new Response(
-        JSON.stringify({
-          error: 'offline',
-          message: 'Calculations available offline',
-          offline: true
-        }),
-        {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' }
-        }
+        JSON.stringify({ offline: true }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
@@ -232,46 +259,75 @@ async function handleAPIRequest(request) {
 }
 
 async function handleStaticAsset(request) {
-  const cache = await caches.open(CACHE_STRATEGIES.STATIC_ASSETS.cacheName);
+  const strategy = CACHE_STRATEGIES.STATIC_ASSETS;
+  const cache = await caches.open(strategy.cacheName);
 
-  // Cache first strategy for static assets
+  // Check cache first
   const cachedResponse = await cache.match(request);
   if (cachedResponse) {
-    return cachedResponse;
+    const age = getCacheAge(cachedResponse);
+    if (age < strategy.maxAgeSeconds * 1000) {
+      return cachedResponse;
+    }
+    // Remove stale cache
+    await cache.delete(request);
   }
 
   try {
     const networkResponse = await fetch(request);
     if (networkResponse.ok) {
-      cache.put(request.clone(), networkResponse.clone());
+      // Only cache small static assets
+      const size = parseInt(networkResponse.headers.get('content-length') || '0');
+      if (size < 500 * 1024) { // < 500KB
+        await cacheWithSizeCheck(cache, request, networkResponse.clone(), strategy);
+      }
     }
     return networkResponse;
   } catch (error) {
-    console.log('Service Worker: Failed to fetch static asset:', request.url);
+    // Return stale cache if available
+    if (cachedResponse) {
+      return cachedResponse;
+    }
     throw error;
   }
 }
 
 async function handleMediaFile(request) {
-  const cache = await caches.open(CACHE_STRATEGIES.MEDIA.cacheName);
+  const strategy = CACHE_STRATEGIES.MEDIA;
+  const cache = await caches.open(strategy.cacheName);
+  const url = new URL(request.url);
 
-  // Cache first strategy for media
+  // Skip caching large images
+  if (url.pathname.includes('original') || url.pathname.includes('full')) {
+    return fetch(request);
+  }
+
+  // Check cache
   const cachedResponse = await cache.match(request);
   if (cachedResponse) {
-    return cachedResponse;
+    const age = getCacheAge(cachedResponse);
+    if (age < strategy.maxAgeSeconds * 1000) {
+      return cachedResponse;
+    }
   }
 
   try {
     const networkResponse = await fetch(request);
     if (networkResponse.ok) {
-      cache.put(request.clone(), networkResponse.clone());
+      const size = parseInt(networkResponse.headers.get('content-length') || '0');
+      // Only cache images < 200KB
+      if (size < 200 * 1024) {
+        await cacheWithSizeCheck(cache, request, networkResponse.clone(), strategy);
+      }
     }
     return networkResponse;
   } catch (error) {
-    console.log('Service Worker: Failed to fetch media file:', request.url);
-    // Return placeholder image for failed media requests
+    if (cachedResponse) {
+      return cachedResponse; // Return stale cache
+    }
+    // Return tiny placeholder
     return new Response(
-      '<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#e5e7eb"/><text x="50%" y="50%" text-anchor="middle" dy="0.3em" fill="#6b7280">Image unavailable offline</text></svg>',
+      '<svg width="50" height="50" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#e5e7eb"/></svg>',
       { headers: { 'Content-Type': 'image/svg+xml' } }
     );
   }
@@ -443,33 +499,145 @@ async function forceSyncAll() {
   await syncCompanyCamPhotos();
 }
 
-// Placeholder functions for IndexedDB operations (will be implemented in separate module)
+// Memory management helper functions
+async function cacheWithSizeCheck(cache, request, response, strategy) {
+  try {
+    // Check current cache size
+    const cacheSize = await estimateCacheSize(strategy.cacheName);
+
+    if (cacheSize > strategy.maxSize) {
+      // Clean up old entries
+      await cleanupCache(cache, strategy.maxEntries / 2);
+    }
+
+    // Add timestamp header
+    const headers = new Headers(response.headers);
+    headers.set('sw-cached-at', new Date().toISOString());
+
+    const responseWithHeaders = new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: headers,
+    });
+
+    await cache.put(request, responseWithHeaders);
+  } catch (error) {
+    console.error('[SW] Cache storage failed:', error);
+  }
+}
+
+async function estimateCacheSize(cacheName) {
+  if (!cacheName) {
+    // Estimate total cache size
+    if ('estimate' in navigator.storage) {
+      const estimate = await navigator.storage.estimate();
+      return estimate.usage || 0;
+    }
+    return 0;
+  }
+
+  // Estimate specific cache size
+  const cache = await caches.open(cacheName);
+  const keys = await cache.keys();
+  let totalSize = 0;
+
+  for (const request of keys.slice(0, 10)) { // Sample first 10
+    const response = await cache.match(request);
+    if (response) {
+      const blob = await response.blob();
+      totalSize += blob.size;
+    }
+  }
+
+  // Extrapolate
+  return keys.length > 10 ? (totalSize / 10) * keys.length : totalSize;
+}
+
+async function cleanupCache(cache, keepCount = 10) {
+  const keys = await cache.keys();
+  const entries = [];
+
+  for (const request of keys) {
+    const response = await cache.match(request);
+    if (response) {
+      const age = getCacheAge(response);
+      entries.push({ request, age });
+    }
+  }
+
+  // Sort by age and delete oldest
+  entries.sort((a, b) => b.age - a.age);
+  const toDelete = entries.slice(keepCount);
+
+  for (const entry of toDelete) {
+    await cache.delete(entry.request);
+  }
+}
+
+function getCacheAge(response) {
+  const cachedAt = response.headers.get('sw-cached-at');
+  if (cachedAt) {
+    return Date.now() - new Date(cachedAt).getTime();
+  }
+  return 0;
+}
+
+async function calculateCacheSize() {
+  let totalSize = 0;
+
+  for (const strategy of Object.values(CACHE_STRATEGIES)) {
+    const size = await estimateCacheSize(strategy.cacheName);
+    cacheStats.caches[strategy.cacheName] = size;
+    totalSize += size;
+  }
+
+  cacheStats.totalSize = totalSize;
+  cacheStats.lastCheck = Date.now();
+
+  // Emergency cleanup if too large
+  if (totalSize > MAX_CACHE_SIZE) {
+    console.warn('[SW] Cache size exceeded limit, performing cleanup');
+    await emergencyCacheCleanup();
+  }
+
+  return totalSize;
+}
+
+async function emergencyCacheCleanup() {
+  for (const strategy of Object.values(CACHE_STRATEGIES)) {
+    const cache = await caches.open(strategy.cacheName);
+    await cleanupCache(cache, Math.floor(strategy.maxEntries / 3));
+  }
+}
+
+function startCacheMonitoring() {
+  // Periodic cache size check
+  setInterval(async () => {
+    await calculateCacheSize();
+  }, CACHE_CHECK_INTERVAL);
+}
+
+// Placeholder IndexedDB functions (minimal implementation)
 async function getStoredEstimates() {
-  // This will be implemented with the IndexedDB service
   return [];
 }
 
 async function markEstimateSynced(id) {
-  // This will be implemented with the IndexedDB service
-  console.log(`Marking estimate ${id} as synced`);
+  console.log(`[SW] Marked estimate ${id} as synced`);
 }
 
 async function getStoredSalesforceUpdates() {
-  // This will be implemented with the IndexedDB service
   return [];
 }
 
 async function markSalesforceUpdateSynced(id) {
-  // This will be implemented with the IndexedDB service
-  console.log(`Marking Salesforce update ${id} as synced`);
+  console.log(`[SW] Marked Salesforce update ${id} as synced`);
 }
 
 async function getStoredPhotos() {
-  // This will be implemented with the IndexedDB service
   return [];
 }
 
 async function markPhotoSynced(id) {
-  // This will be implemented with the IndexedDB service
-  console.log(`Marking photo ${id} as synced`);
+  console.log(`[SW] Marked photo ${id} as synced`);
 }

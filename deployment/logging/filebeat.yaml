@@ -1,0 +1,366 @@
+# Filebeat DaemonSet for RTPM Log Collection
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: filebeat
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: filebeat
+    app.kubernetes.io/component: logging
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: filebeat
+      app.kubernetes.io/component: logging
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: filebeat
+        app.kubernetes.io/component: logging
+    spec:
+      serviceAccountName: filebeat
+      terminationGracePeriodSeconds: 30
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+      - name: filebeat
+        image: docker.elastic.co/beats/filebeat:8.11.1
+        args: [
+          "-c", "/etc/filebeat.yml",
+          "-e",
+        ]
+        env:
+        - name: ELASTICSEARCH_HOST
+          value: "elasticsearch"
+        - name: ELASTICSEARCH_PORT
+          value: "9200"
+        - name: ELASTICSEARCH_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: elasticsearch-credentials
+              key: username
+        - name: ELASTICSEARCH_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: elasticsearch-credentials
+              key: password
+        - name: LOGSTASH_HOST
+          value: "logstash"
+        - name: LOGSTASH_PORT
+          value: "5044"
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        securityContext:
+          runAsUser: 0
+          capabilities:
+            add:
+            - SYS_ADMIN
+        resources:
+          limits:
+            memory: 200Mi
+            cpu: 100m
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        volumeMounts:
+        - name: config
+          mountPath: /etc/filebeat.yml
+          readOnly: true
+          subPath: filebeat.yml
+        - name: data
+          mountPath: /usr/share/filebeat/data
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+        - name: varlog
+          mountPath: /var/log
+          readOnly: true
+        - name: dockersock
+          mountPath: /var/run/docker.sock
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          defaultMode: 0640
+          name: filebeat-config
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: dockersock
+        hostPath:
+          path: /var/run/docker.sock
+      - name: data
+        hostPath:
+          path: /var/lib/filebeat-data
+          type: DirectoryOrCreate
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: filebeat
+  labels:
+    app.kubernetes.io/name: filebeat
+    app.kubernetes.io/component: logging
+rules:
+- apiGroups: [""]
+  resources:
+  - namespaces
+  - pods
+  - nodes
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups: ["apps"]
+  resources:
+  - replicasets
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: filebeat
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: filebeat
+    app.kubernetes.io/component: logging
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: filebeat
+  labels:
+    app.kubernetes.io/name: filebeat
+    app.kubernetes.io/component: logging
+subjects:
+- kind: ServiceAccount
+  name: filebeat
+  namespace: rtpm-system
+roleRef:
+  kind: ClusterRole
+  name: filebeat
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: filebeat
+    app.kubernetes.io/component: logging
+data:
+  filebeat.yml: |-
+    # Filebeat configuration for RTPM
+    filebeat.config:
+      inputs:
+        # Reload inputs configs as they change:
+        reload.enabled: false
+      modules:
+        path: ${path.config}/modules.d/*.yml
+        # Reload module configs as they change:
+        reload.enabled: false
+
+    # Auto-discover configuration for Kubernetes
+    filebeat.autodiscover:
+      providers:
+        - type: kubernetes
+          node: ${NODE_NAME}
+          hints.enabled: true
+          hints.default_config:
+            type: container
+            paths:
+              - /var/log/containers/*${data.kubernetes.container.id}.log
+          templates:
+            # RTPM API logs
+            - condition:
+                equals:
+                  kubernetes.container.name: "api"
+              config:
+                type: container
+                paths:
+                  - /var/log/containers/*${data.kubernetes.container.id}.log
+                processors:
+                  - add_kubernetes_metadata:
+                      host: ${NODE_NAME}
+                      matchers:
+                      - logs_path:
+                          logs_path: "/var/log/containers/"
+                  - decode_json_fields:
+                      fields: ["message"]
+                      target: ""
+                      overwrite_keys: true
+                fields:
+                  service: rtpm-api
+                  logtype: application
+                fields_under_root: true
+
+            # Celery worker logs
+            - condition:
+                equals:
+                  kubernetes.container.name: "worker"
+              config:
+                type: container
+                paths:
+                  - /var/log/containers/*${data.kubernetes.container.id}.log
+                processors:
+                  - add_kubernetes_metadata:
+                      host: ${NODE_NAME}
+                      matchers:
+                      - logs_path:
+                          logs_path: "/var/log/containers/"
+                fields:
+                  service: celery-worker
+                  logtype: application
+                fields_under_root: true
+
+            # TimescaleDB logs
+            - condition:
+                equals:
+                  kubernetes.container.name: "timescaledb"
+              config:
+                type: container
+                paths:
+                  - /var/log/containers/*${data.kubernetes.container.id}.log
+                processors:
+                  - add_kubernetes_metadata:
+                      host: ${NODE_NAME}
+                      matchers:
+                      - logs_path:
+                          logs_path: "/var/log/containers/"
+                fields:
+                  service: timescaledb
+                  logtype: database
+                fields_under_root: true
+
+            # Redis logs
+            - condition:
+                equals:
+                  kubernetes.container.name: "redis"
+              config:
+                type: container
+                paths:
+                  - /var/log/containers/*${data.kubernetes.container.id}.log
+                processors:
+                  - add_kubernetes_metadata:
+                      host: ${NODE_NAME}
+                      matchers:
+                      - logs_path:
+                          logs_path: "/var/log/containers/"
+                fields:
+                  service: redis
+                  logtype: database
+                fields_under_root: true
+
+            # Frontend/Nginx logs
+            - condition:
+                equals:
+                  kubernetes.container.name: "frontend"
+              config:
+                type: container
+                paths:
+                  - /var/log/containers/*${data.kubernetes.container.id}.log
+                processors:
+                  - add_kubernetes_metadata:
+                      host: ${NODE_NAME}
+                      matchers:
+                      - logs_path:
+                          logs_path: "/var/log/containers/"
+                fields:
+                  service: rtpm-frontend
+                  logtype: access
+                fields_under_root: true
+
+    # Additional inputs for system logs
+    filebeat.inputs:
+    - type: log
+      enabled: true
+      paths:
+        - /var/log/syslog
+        - /var/log/messages
+      fields:
+        service: system
+        logtype: system
+      fields_under_root: true
+      processors:
+        - add_host_metadata:
+            when.not.contains.tags: forwarded
+
+    - type: log
+      enabled: true
+      paths:
+        - /var/log/secure
+        - /var/log/auth.log
+      fields:
+        service: auth
+        logtype: security
+      fields_under_root: true
+      processors:
+        - add_host_metadata:
+            when.not.contains.tags: forwarded
+
+    # Global processors
+    processors:
+      - add_cloud_metadata:
+          timeout: 3s
+          overwrite: false
+      - add_docker_metadata:
+          host: "unix:///var/run/docker.sock"
+      - add_kubernetes_metadata:
+          host: ${NODE_NAME}
+          matchers:
+          - logs_path:
+              logs_path: "/var/log/containers/"
+
+    # Output to Logstash
+    output.logstash:
+      hosts: ["${LOGSTASH_HOST}:${LOGSTASH_PORT}"]
+      compression_level: 3
+      worker: 2
+      loadbalance: true
+      bulk_max_size: 2048
+      slow_start: true
+
+    # Alternative: Direct output to Elasticsearch (commented out)
+    # output.elasticsearch:
+    #   hosts: ["https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}"]
+    #   username: ${ELASTICSEARCH_USERNAME}
+    #   password: ${ELASTICSEARCH_PASSWORD}
+    #   ssl.verification_mode: none
+    #   index: "rtpm-logs-%{[service]}-%{+yyyy.MM.dd}"
+    #   template.name: "rtpm-logs"
+    #   template.pattern: "rtpm-logs-*"
+    #   template.settings:
+    #     index.number_of_shards: 3
+    #     index.number_of_replicas: 1
+
+    # Logging configuration
+    logging.level: info
+    logging.to_files: true
+    logging.files:
+      path: /var/log/filebeat
+      name: filebeat
+      keepfiles: 7
+      permissions: 0644
+
+    # Monitoring
+    monitoring.enabled: true
+
+    # Performance settings
+    queue.mem:
+      events: 4096
+      flush.min_events: 1024
+      flush.timeout: 1s
+
+    # HTTP endpoint for health checks
+    http.enabled: true
+    http.host: 0.0.0.0
+    http.port: 5066

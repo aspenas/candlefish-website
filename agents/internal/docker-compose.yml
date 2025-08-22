@@ -1,0 +1,205 @@
+version: '3.8'
+
+services:
+  # Redis for state persistence and pub/sub
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Consul for service discovery
+  consul:
+    image: consul:latest
+    ports:
+      - "8500:8500"
+      - "8600:8600/udp"
+    command: agent -server -ui -bootstrap-expect=1 -client=0.0.0.0
+    volumes:
+      - consul-data:/consul/data
+    environment:
+      - CONSUL_BIND_INTERFACE=eth0
+
+  # Orchestrator Agent
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.orchestrator
+    ports:
+      - "7010:7010"
+      - "7500:7500"
+    environment:
+      - PORT=7010
+      - WS_PORT=7500
+      - REDIS_URL=redis://redis:6379
+      - CONSUL_URL=http://consul:8500
+      - NODE_ENV=production
+    depends_on:
+      - redis
+      - consul
+    restart: unless-stopped
+    networks:
+      - nanda-network
+
+  # PKB Knowledge Agent
+  pkb:
+    build:
+      context: .
+      dockerfile: Dockerfile.pkb
+    ports:
+      - "7001:7001"
+    environment:
+      - PORT=7001
+      - REDIS_URL=redis://redis:6379
+      - CONSUL_URL=http://consul:8500
+      - NODE_ENV=production
+    depends_on:
+      - redis
+      - consul
+      - orchestrator
+    restart: unless-stopped
+    networks:
+      - nanda-network
+
+  # Paintbox Agent
+  paintbox:
+    build:
+      context: .
+      dockerfile: Dockerfile.paintbox
+    ports:
+      - "7003:7003"
+    environment:
+      - PORT=7003
+      - REDIS_URL=redis://redis:6379
+      - CONSUL_URL=http://consul:8500
+      - ORCHESTRATOR_URL=http://orchestrator:7010
+      - PKB_URL=http://pkb:7001
+      - SALESFORCE_INSTANCE_URL=${SALESFORCE_INSTANCE_URL}
+      - SALESFORCE_CLIENT_ID=${SALESFORCE_CLIENT_ID}
+      - SALESFORCE_CLIENT_SECRET=${SALESFORCE_CLIENT_SECRET}
+      - COMPANYCAM_API_KEY=${COMPANYCAM_API_KEY}
+      - NODE_ENV=production
+    depends_on:
+      - redis
+      - consul
+      - orchestrator
+      - pkb
+    restart: unless-stopped
+    networks:
+      - nanda-network
+
+  # Clark County Scraper Agent
+  clark-scraper:
+    build:
+      context: .
+      dockerfile: Dockerfile.clark
+    ports:
+      - "7004:7004"
+    environment:
+      - PORT=7004
+      - REDIS_URL=redis://redis:6379
+      - CONSUL_URL=http://consul:8500
+      - ORCHESTRATOR_URL=http://orchestrator:7010
+      - PKB_URL=http://pkb:7001
+      - CLARK_COUNTY_API_KEY=${CLARK_COUNTY_API_KEY}
+      - NODE_ENV=production
+    depends_on:
+      - redis
+      - consul
+      - orchestrator
+      - pkb
+    restart: unless-stopped
+    networks:
+      - nanda-network
+
+  # Intelligence Synthesis Agent
+  intelligence:
+    build:
+      context: .
+      dockerfile: Dockerfile.intelligence
+    ports:
+      - "7005:7005"
+    environment:
+      - PORT=7005
+      - REDIS_URL=redis://redis:6379
+      - CONSUL_URL=http://consul:8500
+      - ORCHESTRATOR_URL=http://orchestrator:7010
+      - PKB_URL=http://pkb:7001
+      - PAINTBOX_URL=http://paintbox:7003
+      - CLARK_URL=http://clark-scraper:7004
+      - NODE_ENV=production
+    depends_on:
+      - redis
+      - consul
+      - orchestrator
+      - pkb
+      - paintbox
+      - clark-scraper
+    restart: unless-stopped
+    networks:
+      - nanda-network
+
+  # Prometheus for metrics
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - nanda-network
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3006:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=candlefish
+      - GF_INSTALL_PLUGINS=redis-datasource
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana-dashboards:/etc/grafana/provisioning/dashboards
+    depends_on:
+      - prometheus
+    networks:
+      - nanda-network
+
+  # NGINX API Gateway
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./certs:/etc/nginx/certs
+    depends_on:
+      - orchestrator
+      - pkb
+      - paintbox
+      - clark-scraper
+      - intelligence
+    networks:
+      - nanda-network
+
+networks:
+  nanda-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  consul-data:
+  prometheus-data:
+  grafana-data:

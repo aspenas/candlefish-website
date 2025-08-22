@@ -67,8 +67,8 @@ const config: Config = {
           },
         },
 
-        // Legacy paintbox colors (updated for WCAG compliance)
-        paintbox: {
+        // Legacy colors (updated for WCAG compliance)
+        eggshell_legacy: {
           brand: '#6d634f',
           'brand-600': '#4a4335',
           'brand-500': '#5a5142',

@@ -1,0 +1,123 @@
+version: '3.8'
+
+services:
+  # NANDA Agent Registry
+  agent-registry:
+    build:
+      context: ../agents/nanda/agent-registry
+      dockerfile: infra/Dockerfile
+    env_file: [.env]
+    ports:
+      - "8087:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+  # Paintbox Agent - Work Orders & Estimates
+  paintbox-agent:
+    build:
+      context: ../agents/nanda/paintbox-agent
+      dockerfile: infra/Dockerfile
+    env_file: [.env]
+    ports:
+      - "8088:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    depends_on:
+      - agent-registry
+
+  # Crown Trophy Agent - Inventory & Engraving
+  crown-trophy-agent:
+    build:
+      context: ../agents/nanda/crown-trophy-agent
+      dockerfile: infra/Dockerfile
+    env_file: [.env]
+    ports:
+      - "8089:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    depends_on:
+      - agent-registry
+
+  # Temporal Agent - Workflow Orchestration
+  temporal-agent:
+    build:
+      context: ../agents/nanda/temporal-agent
+      dockerfile: infra/Dockerfile
+    env_file: [.env]
+    ports:
+      - "8090:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    depends_on:
+      - agent-registry
+
+  # Clark County Agent - Permit Tracking
+  clark-county-agent:
+    build:
+      context: ../agents/nanda/clark-county-agent
+      dockerfile: infra/Dockerfile
+    env_file: [.env]
+    ports:
+      - "8091:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    depends_on:
+      - agent-registry
+
+  # Observability - Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./obs/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    restart: unless-stopped
+
+  # Observability - Grafana
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./obs/grafana-datasources.yml:/etc/grafana/provisioning/datasources/prometheus.yml
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=nanda2025
+      - GF_INSTALL_PLUGINS=redis-datasource
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  default:
+    name: nanda-network
+    driver: bridge

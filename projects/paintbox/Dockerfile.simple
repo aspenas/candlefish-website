@@ -1,4 +1,4 @@
-# Simple working Dockerfile for Paintbox deployment
+# Simple working Dockerfile for Eggshell deployment
 FROM node:20-alpine
 
 WORKDIR /app
@@ -26,5 +26,8 @@ USER nextjs
 
 EXPOSE 8080
 
-# Start the application in dev mode to bypass build issues
-CMD ["npm", "run", "dev:next"]
+# Build the application first
+RUN npm run build:production
+
+# Start the application using standalone server
+CMD ["node", ".next/standalone/server.js"]

@@ -11,15 +11,15 @@ RUN apk add --no-cache python3 make g++ git
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies (production only)
-RUN npm ci --only=production && npm cache clean --force
+# Install all dependencies (needed for build)
+RUN npm install && npm cache clean --force
 
 # Copy source code
 COPY src ./src
 COPY tsconfig.json ./
 
-# Build the application
-RUN npm run build
+# Install ts-node for development deployment
+RUN npm install -g ts-node
 
 # Stage 2: Production stage
 FROM node:20-alpine AS production
@@ -35,14 +35,18 @@ RUN apk add --no-cache \
     ca-certificates \
     tzdata
 
+# Install ts-node globally
+RUN npm install -g ts-node
+
 # Set timezone
 ENV TZ=UTC
 
 # Set working directory
 WORKDIR /app
 
-# Copy built application from builder stage
-COPY --from=builder --chown=nanda:nanda /app/dist ./dist
+# Copy application from builder stage
+COPY --from=builder --chown=nanda:nanda /app/src ./src
+COPY --from=builder --chown=nanda:nanda /app/tsconfig.json ./tsconfig.json
 COPY --from=builder --chown=nanda:nanda /app/node_modules ./node_modules
 COPY --from=builder --chown=nanda:nanda /app/package.json ./
 
@@ -68,5 +72,5 @@ ENV LOG_LEVEL=info
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start the application
-CMD ["node", "dist/index.js"]
+# Start the application with ts-node
+CMD ["ts-node", "src/index.ts"]

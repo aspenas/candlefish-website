@@ -3,11 +3,7 @@ version: '3.8'
 services:
   # NANDA API Service
   nanda-api:
-    build:
-      context: ./apps/nanda-api
-      dockerfile: Dockerfile
-      target: production
-    image: nanda-api:latest
+    image: 681214184463.dkr.ecr.us-east-1.amazonaws.com/nanda-index/nanda-api:latest
     container_name: nanda-api-prod
     ports:
       - "3000:3000"
@@ -66,11 +62,7 @@ services:
 
   # NANDA Dashboard Service
   nanda-dashboard:
-    build:
-      context: ./apps/nanda-dashboard
-      dockerfile: Dockerfile
-      target: production
-    image: nanda-dashboard:latest
+    image: 681214184463.dkr.ecr.us-east-1.amazonaws.com/nanda-index/nanda-dashboard:latest
     container_name: nanda-dashboard-prod
     ports:
       - "3001:3001"
@@ -110,7 +102,7 @@ services:
     ports:
       - "6379:6379"
     command: >
-      redis-server 
+      redis-server
       --requirepass ${REDIS_PASSWORD:-changeme123}
       --appendonly yes
       --appendfsync everysec

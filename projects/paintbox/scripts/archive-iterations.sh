@@ -1,14 +1,14 @@
 #!/bin/bash
 # archive-iterations.sh
-# Canonicalize Paintbox and archive legacy code for Eggshell rebrand
+# Canonicalize Eggshell and archive legacy code for rebrand
 # Date: 2025-08-21
 
 set -e
 
-ARCHIVE_DIR="/Users/patricksmith/candlefish-ai/projects/paintbox/archive/2025-08-21-pre-eggshell"
-PROJECT_ROOT="/Users/patricksmith/candlefish-ai/projects/paintbox"
+ARCHIVE_DIR="/Users/patricksmith/candlefish-ai/projects/eggshell/archive/2025-08-21-pre-eggshell"
+PROJECT_ROOT="/Users/patricksmith/candlefish-ai/projects/eggshell"
 
-echo "🗄️  Starting Paintbox canonicalization for Eggshell rebrand..."
+echo "🗄️  Starting Eggshell canonicalization..."
 echo "📍 Project root: $PROJECT_ROOT"
 echo "📦 Archive destination: $ARCHIVE_DIR"
 echo ""
@@ -58,7 +58,7 @@ done
 
 # Create archive README
 cat > "$ARCHIVE_DIR/README.md" << 'EOF'
-# Paintbox Pre-Eggshell Archive
+# Eggshell Pre-Rebrand Archive
 **Archived**: 2025-08-21
 **Purpose**: Canonicalization for Eggshell rebrand
 **Canonical App**: /app directory with Next.js 15.4.5

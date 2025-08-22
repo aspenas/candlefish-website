@@ -32,7 +32,7 @@ describe('Input Component', () => {
     })
 
     it('applies wrapper className', () => {
-      renderInput({ wrapperClassName: 'custom-wrapper', 'data-testid': 'input-wrapper' })
+      renderInput({ wrapperClassName: 'custom-wrapper', 'data-testid': 'input-wrapper' } as any)
       const wrapper = screen.getByTestId('input-wrapper').parentElement
       expect(wrapper).toHaveClass('custom-wrapper')
     })
@@ -86,7 +86,7 @@ describe('Input Component', () => {
     })
 
     it('renders both icons when provided', () => {
-      renderInput({ 
+      renderInput({
         leftIcon: <span data-testid="left-icon">@</span>,
         rightIcon: <span data-testid="right-icon">✓</span>
       })
@@ -142,7 +142,7 @@ describe('Input Component', () => {
     })
 
     it('hides helper text when error is present', () => {
-      renderInput({ 
+      renderInput({
         helperText: 'Helper text',
         error: 'Error message'
       })
@@ -168,7 +168,7 @@ describe('Input Component', () => {
     it('focuses input when clicked', async () => {
       renderInput()
       const input = screen.getByRole('textbox')
-      
+
       await userEvent.click(input)
       expect(input).toHaveFocus()
     })
@@ -182,7 +182,7 @@ describe('Input Component', () => {
     it('accepts user input', async () => {
       renderInput()
       const input = screen.getByRole('textbox')
-      
+
       await userEvent.type(input, 'Hello World')
       expect(input).toHaveValue('Hello World')
     })
@@ -192,17 +192,17 @@ describe('Input Component', () => {
     it('calls onChange handler when value changes', async () => {
       const handleChange = jest.fn()
       renderInput({ onChange: handleChange })
-      
+
       const input = screen.getByRole('textbox')
       await userEvent.type(input, 'test')
-      
+
       expect(handleChange).toHaveBeenCalled()
     })
 
     it('calls onFocus handler when focused', async () => {
       const handleFocus = jest.fn()
       renderInput({ onFocus: handleFocus })
-      
+
       await userEvent.click(screen.getByRole('textbox'))
       expect(handleFocus).toHaveBeenCalledTimes(1)
     })
@@ -210,11 +210,11 @@ describe('Input Component', () => {
     it('calls onBlur handler when blurred', async () => {
       const handleBlur = jest.fn()
       renderInput({ onBlur: handleBlur })
-      
+
       const input = screen.getByRole('textbox')
       await userEvent.click(input)
       await userEvent.tab()
-      
+
       expect(handleBlur).toHaveBeenCalledTimes(1)
     })
   })
@@ -229,19 +229,19 @@ describe('Input Component', () => {
     it('supports keyboard navigation', () => {
       renderInput()
       const input = screen.getByRole('textbox')
-      
+
       input.focus()
       expect(input).toHaveFocus()
-      
+
       fireEvent.keyDown(input, { key: 'Tab' })
     })
 
     it('has proper aria-describedby with both error and helper', () => {
-      renderInput({ 
+      renderInput({
         helperText: 'Helper text',
         id: 'test-input'
       })
-      
+
       const input = screen.getByRole('textbox')
       expect(input).toHaveAttribute('aria-describedby', 'test-input-helper')
     })
@@ -251,7 +251,7 @@ describe('Input Component', () => {
     it('forwards ref to input element', () => {
       const ref = React.createRef<HTMLInputElement>()
       render(<Input ref={ref} />)
-      
+
       expect(ref.current).toBeInstanceOf(HTMLInputElement)
       expect(ref.current).toBe(screen.getByRole('textbox'))
     })
@@ -259,12 +259,12 @@ describe('Input Component', () => {
 
   describe('Additional Props', () => {
     it('passes through additional HTML attributes', () => {
-      renderInput({ 
+      renderInput({
         placeholder: 'Enter text',
         maxLength: 100,
         'data-testid': 'custom-input'
-      })
-      
+      } as any)
+
       const input = screen.getByRole('textbox')
       expect(input).toHaveAttribute('placeholder', 'Enter text')
       expect(input).toHaveAttribute('maxLength', '100')

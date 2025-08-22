@@ -11,7 +11,7 @@ import * as cbor from 'cbor-x';
 import murmurhash from 'murmurhash3js';
 import NodeCache from 'node-cache';
 import pLimit from 'p-limit';
-import { 
+import {
   DynamoDBClient,
   PutItemCommand,
   GetItemCommand,
@@ -21,7 +21,7 @@ import {
 } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { createClient } from '@redis/client';
-import type { 
+import type {
   NANDAIndexRecord,
   CompressedNANDARecord,
   CRDTOperation,
@@ -47,7 +47,7 @@ export class NANDAIndex extends EventEmitter {
   private privateKey: Buffer;
   private publicKey: Buffer;
   private concurrencyLimit: ReturnType<typeof pLimit>;
-  
+
   // Performance metrics
   private metrics: {
     totalQueries: number;
@@ -67,7 +67,7 @@ export class NANDAIndex extends EventEmitter {
     concurrency?: number;
   } = {}) {
     super();
-    
+
     // Initialize DynamoDB
     const client = new DynamoDBClient({
       region: config.region || 'us-east-1'
@@ -79,23 +79,23 @@ export class NANDAIndex extends EventEmitter {
         convertClassInstanceToMap: true
       }
     });
-    
+
     // Initialize Redis for caching and pub/sub
     this.redis = createClient({
       url: config.redisUrl || 'redis://localhost:6379'
     });
-    
+
     // Local cache for hot data
     this.cache = new NodeCache({
       stdTTL: 60, // 1 minute default TTL
       checkperiod: 10,
       useClones: false
     });
-    
+
     // Node identification for CRDT
     this.nodeId = config.nodeId || uuidv7();
     this.vectorClock = new Map();
-    
+
     // Ed25519 keys for signing
     if (config.privateKeyHex) {
       this.privateKey = Buffer.from(config.privateKeyHex, 'hex');
@@ -106,10 +106,10 @@ export class NANDAIndex extends EventEmitter {
       this.privateKey = keypair.privateKey;
       this.publicKey = keypair.publicKey;
     }
-    
+
     // Concurrency control
     this.concurrencyLimit = pLimit(config.concurrency || 100);
-    
+
     // Initialize metrics
     this.metrics = {
       totalQueries: 0,
@@ -119,7 +119,7 @@ export class NANDAIndex extends EventEmitter {
       errorCount: 0,
       startTime: Date.now()
     };
-    
+
     // Start background tasks
     this.startBackgroundTasks();
   }
@@ -130,20 +130,20 @@ export class NANDAIndex extends EventEmitter {
   async initialize(): Promise<void> {
     // Connect to Redis
     await this.redis.connect();
-    
+
     // Subscribe to CRDT updates
     const subscriber = this.redis.duplicate();
     await subscriber.connect();
     await subscriber.subscribe('nanda:updates', (message) => {
       this.handleCRDTUpdate(JSON.parse(message));
     });
-    
+
     // Create DynamoDB table if needed
     await this.ensureTableExists();
-    
+
     // Load initial data
     await this.loadInitialData();
-    
+
     this.emit('initialized');
   }
 
@@ -159,11 +159,11 @@ export class NANDAIndex extends EventEmitter {
     metadata?: Record<string, any>;
   }): Promise<NANDAIndexRecord> {
     const startTime = Date.now();
-    
+
     try {
       // Generate agent ID (UUID v7 for time-ordering)
       const agentId = uuidv7();
-      
+
       // Create the record
       const record: NANDAIndexRecord = {
         agent_id: agentId,
@@ -176,16 +176,16 @@ export class NANDAIndex extends EventEmitter {
         version: BigInt(1),
         updated_at: Date.now()
       };
-      
+
       // Sign the record
       record.signature = this.signRecord(record);
-      
+
       // Store in DynamoDB
       await this.storeRecord(record);
-      
+
       // Update cache
       this.cache.set(agentId, record, record.ttl);
-      
+
       // Publish CRDT update
       await this.publishCRDTUpdate({
         type: 'insert',
@@ -194,14 +194,14 @@ export class NANDAIndex extends EventEmitter {
         node_id: this.nodeId,
         vector_clock: this.incrementVectorClock()
       });
-      
+
       // Update metrics
       this.metrics.totalUpdates++;
       this.metrics.updateLatencies.push(Date.now() - startTime);
-      
+
       this.emit('agent:registered', record);
       return record;
-      
+
     } catch (error) {
       this.metrics.errorCount++;
       this.emit('error', error);
@@ -220,7 +220,7 @@ export class NANDAIndex extends EventEmitter {
     offset?: number;
   } = {}): Promise<NANDAIndexRecord[]> {
     const startTime = Date.now();
-    
+
     try {
       // Check cache first
       const cacheKey = `query:${JSON.stringify(params)}`;
@@ -229,19 +229,19 @@ export class NANDAIndex extends EventEmitter {
         this.metrics.totalQueries++;
         return cached;
       }
-      
+
       // Query from DynamoDB
       const results = await this.queryDynamoDB(params);
-      
+
       // Cache results
       this.cache.set(cacheKey, results, 30); // 30 seconds cache
-      
+
       // Update metrics
       this.metrics.totalQueries++;
       this.metrics.queryLatencies.push(Date.now() - startTime);
-      
+
       return results;
-      
+
     } catch (error) {
       this.metrics.errorCount++;
       this.emit('error', error);
@@ -254,7 +254,7 @@ export class NANDAIndex extends EventEmitter {
    */
   async getAgent(agentId: string): Promise<NANDAIndexRecord | null> {
     const startTime = Date.now();
-    
+
     try {
       // Check cache
       const cached = this.cache.get<NANDAIndexRecord>(agentId);
@@ -262,7 +262,7 @@ export class NANDAIndex extends EventEmitter {
         this.metrics.totalQueries++;
         return cached;
       }
-      
+
       // Get from DynamoDB
       const command = new GetItemCommand({
         TableName: 'nanda-index',
@@ -270,28 +270,28 @@ export class NANDAIndex extends EventEmitter {
           agent_id: { S: agentId }
         }
       });
-      
+
       const response = await this.dynamodb.send(command);
       if (!response.Item) {
         return null;
       }
-      
+
       const record = this.unmarshalRecord(response.Item);
-      
+
       // Verify signature
       if (!this.verifySignature(record)) {
         throw new Error('Invalid signature on record');
       }
-      
+
       // Cache the record
       this.cache.set(agentId, record, record.ttl);
-      
+
       // Update metrics
       this.metrics.totalQueries++;
       this.metrics.queryLatencies.push(Date.now() - startTime);
-      
+
       return record;
-      
+
     } catch (error) {
       this.metrics.errorCount++;
       this.emit('error', error);
@@ -303,18 +303,18 @@ export class NANDAIndex extends EventEmitter {
    * Update an existing agent
    */
   async updateAgent(
-    agentId: string, 
+    agentId: string,
     updates: Partial<NANDAIndexRecord>
   ): Promise<NANDAIndexRecord> {
     const startTime = Date.now();
-    
+
     try {
       // Get existing record
       const existing = await this.getAgent(agentId);
       if (!existing) {
         throw new Error(`Agent ${agentId} not found`);
       }
-      
+
       // Merge updates
       const updated: NANDAIndexRecord = {
         ...existing,
@@ -323,16 +323,16 @@ export class NANDAIndex extends EventEmitter {
         version: existing.version + BigInt(1),
         updated_at: Date.now()
       };
-      
+
       // Re-sign the record
       updated.signature = this.signRecord(updated);
-      
+
       // Store updated record
       await this.storeRecord(updated);
-      
+
       // Update cache
       this.cache.set(agentId, updated, updated.ttl);
-      
+
       // Publish CRDT update
       await this.publishCRDTUpdate({
         type: 'update',
@@ -341,14 +341,14 @@ export class NANDAIndex extends EventEmitter {
         node_id: this.nodeId,
         vector_clock: this.incrementVectorClock()
       });
-      
+
       // Update metrics
       this.metrics.totalUpdates++;
       this.metrics.updateLatencies.push(Date.now() - startTime);
-      
+
       this.emit('agent:updated', updated);
       return updated;
-      
+
     } catch (error) {
       this.metrics.errorCount++;
       this.emit('error', error);
@@ -362,10 +362,10 @@ export class NANDAIndex extends EventEmitter {
   compressRecord(record: NANDAIndexRecord): CompressedNANDARecord {
     // Use CBOR for efficient binary encoding
     const data = cbor.encode(record);
-    
+
     // Calculate checksum
     const checksum = murmurhash.x86.hash128(data);
-    
+
     return {
       data,
       checksum
@@ -381,7 +381,7 @@ export class NANDAIndex extends EventEmitter {
     if (checksum !== compressed.checksum) {
       throw new Error('Checksum mismatch - data corrupted');
     }
-    
+
     // Decode CBOR
     return cbor.decode(compressed.data);
   }
@@ -392,14 +392,14 @@ export class NANDAIndex extends EventEmitter {
   getStatistics(): IndexStatistics {
     const now = Date.now();
     const uptime = (now - this.metrics.startTime) / 1000;
-    
+
     const calculatePercentile = (arr: number[], p: number) => {
       if (arr.length === 0) return 0;
       const sorted = [...arr].sort((a, b) => a - b);
       const index = Math.ceil(sorted.length * p / 100) - 1;
       return sorted[Math.max(0, index)];
     };
-    
+
     return {
       total_agents: this.cache.keys().length,
       active_agents: this.cache.keys().filter(k => !this.cache.getTtl(k)).length,
@@ -417,7 +417,7 @@ export class NANDAIndex extends EventEmitter {
   /**
    * Private helper methods
    */
-  
+
   private formatAgentName(name: string): string {
     // Ensure URN format
     if (!name.startsWith('urn:')) {
@@ -438,7 +438,7 @@ export class NANDAIndex extends EventEmitter {
       version: record.version.toString(),
       updated_at: record.updated_at
     });
-    
+
     // Sign with Ed25519
     return Buffer.from(ed25519.Sign(payload, this.privateKey));
   }
@@ -454,7 +454,7 @@ export class NANDAIndex extends EventEmitter {
       version: record.version.toString(),
       updated_at: record.updated_at
     });
-    
+
     return ed25519.Verify(payload, record.signature, this.publicKey);
   }
 
@@ -523,7 +523,7 @@ export class NANDAIndex extends EventEmitter {
       TableName: 'nanda-index',
       Limit: params.limit || 100
     });
-    
+
     const response = await this.dynamodb.send(command);
     return (response.Items || []).map(item => this.unmarshalRecord(item));
   }
@@ -546,7 +546,7 @@ export class NANDAIndex extends EventEmitter {
     setInterval(() => {
       this.cleanupExpiredEntries();
     }, 60000); // Every minute
-    
+
     // Periodic metrics reporting
     setInterval(() => {
       this.emit('metrics', this.getStatistics());
@@ -557,7 +557,7 @@ export class NANDAIndex extends EventEmitter {
     // Remove expired entries from cache and optionally from DynamoDB
     const now = Date.now();
     const keys = this.cache.keys();
-    
+
     for (const key of keys) {
       const record = this.cache.get<NANDAIndexRecord>(key);
       if (record && record.updated_at + (record.ttl * 1000) < now) {

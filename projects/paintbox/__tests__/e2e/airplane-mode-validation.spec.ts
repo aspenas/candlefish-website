@@ -78,8 +78,8 @@ test.describe('Airplane Mode: Real Offline Validation', () => {
 
           // Check for offline database
           try {
-            checks.offlineDBAvailable = !!(window as any).PaintboxOfflineDB ||
-                                       localStorage.getItem('paintbox-offline-store') !== null;
+            checks.offlineDBAvailable = !!(window as any).EggshellOfflineDB ||
+                                       localStorage.getItem('eggshell-offline-store') !== null;
           } catch (e) {
             // Offline DB not available
           }
@@ -290,8 +290,8 @@ test.describe('Airplane Mode: Real Offline Validation', () => {
           }
 
           try {
-            // Check for Paintbox offline database
-            const dbRequest = indexedDB.open('PaintboxOfflineDB');
+            // Check for Eggshell offline database
+            const dbRequest = indexedDB.open('EggshellOfflineDB');
 
             return new Promise((resolve) => {
               dbRequest.onsuccess = (event) => {

@@ -24,10 +24,10 @@ export default function OfflinePage() {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Paintbox - Offline Mode
+            Eggshell - Offline Mode
           </h1>
           <p className="text-gray-600">
-            You're currently offline, but you can still use Paintbox for calculations and creating estimates.
+            You're currently offline, but you can still use Eggshell for calculations and creating estimates.
           </p>
         </div>
 
