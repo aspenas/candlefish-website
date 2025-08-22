@@ -70,7 +70,7 @@ describe('useAuth Hook', () => {
 
       // Initially loading should be true
       expect(result.current.loading).toBe(true)
-      
+
       // Wait for loading to complete
       await waitFor(() => {
         expect(result.current.loading).toBe(false)
@@ -83,7 +83,7 @@ describe('useAuth Hook', () => {
 
     it('throws error when used outside AuthProvider', () => {
       const { result } = renderHook(() => useAuth())
-      expect(result.error).toEqual(Error('useAuth must be used within an AuthProvider'))
+      expect((result as any).error).toEqual(Error('useAuth must be used within an AuthProvider'))
     })
 
     it('loads saved auth data from localStorage', async () => {

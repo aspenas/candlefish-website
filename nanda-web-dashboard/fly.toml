@@ -1,0 +1,57 @@
+# NANDA Web Dashboard - Fly.io Configuration
+app = "nanda-candlefish-ai"
+primary_region = "ord"
+
+[build]
+
+[env]
+  NODE_ENV = "production"
+  NEXT_TELEMETRY_DISABLED = "1"
+  PORT = "3000"
+
+  # NANDA Configuration
+  NANDA_REGISTRY_URL = "https://nanda-registry.candlefish.ai:8000"
+  PAINTBOX_STAGING_URL = "https://paintbox-staging.fly.dev"
+  PAINTBOX_PRODUCTION_URL = "https://paintbox.fly.dev"
+
+  # App Configuration
+  NEXT_PUBLIC_APP_URL = "https://nanda.candlefish.ai"
+  NEXT_PUBLIC_WS_URL = "wss://nanda.candlefish.ai/ws"
+
+[experimental]
+  allowed_public_ports = []
+  auto_rollback = true
+
+[[services]]
+  internal_port = 3000
+  processes = ["app"]
+  protocol = "tcp"
+  script_checks = []
+  [services.concurrency]
+    hard_limit = 25
+    soft_limit = 20
+    type = "connections"
+
+  [[services.ports]]
+    force_https = true
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+  [[services.tcp_checks]]
+    grace_period = "1s"
+    interval = "15s"
+    restart_limit = 0
+    timeout = "2s"
+
+  [[services.http_checks]]
+    interval = "10s"
+    grace_period = "5s"
+    method = "GET"
+    path = "/api/health"
+    protocol = "http"
+    restart_limit = 0
+    timeout = "2s"

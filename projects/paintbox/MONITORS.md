@@ -1,4 +1,4 @@
-# Paintbox SLOs and Monitors
+# Eggshell SLOs and Monitors
 
 ## SLO Targets
 - p95 page TTFB: < 300ms (staging)

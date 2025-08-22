@@ -1,8 +1,9 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useFocusManagement } from '../../hooks/useAccessibility'
 
 // Real-time capacity check
 const getSystemCapacity = () => {
@@ -19,6 +20,9 @@ const Navigation: React.FC = () => {
   const [scrolled, setScrolled] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const currentCapacity = getSystemCapacity()
+  const { trapFocus } = useFocusManagement()
+  const mobileMenuRef = useRef<HTMLDivElement>(null)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -28,10 +32,39 @@ const Navigation: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && mobileMenuOpen) {
+        setMobileMenuOpen(false)
+        menuButtonRef.current?.focus()
+      }
+    }
+
+    if (mobileMenuOpen) {
+      document.addEventListener('keydown', handleEscape)
+      if (mobileMenuRef.current) {
+        const cleanup = trapFocus(mobileMenuRef.current)
+        return () => {
+          document.removeEventListener('keydown', handleEscape)
+          cleanup?.()
+        }
+      }
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [mobileMenuOpen, trapFocus])
+
   return (
-    <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-      scrolled ? 'bg-[#0D1B2A]/95 backdrop-blur-sm border-b border-[#1B263B]' : 'bg-transparent'
-    }`}>
+    <nav
+      id="navigation"
+      role="navigation"
+      aria-label="Main navigation"
+      className={`fixed top-0 w-full z-50 transition-all duration-300 ${
+        scrolled ? 'bg-[#0D1B2A]/95 backdrop-blur-sm border-b border-[#1B263B]' : 'bg-transparent'
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
@@ -40,10 +73,12 @@ const Navigation: React.FC = () => {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-8" role="menubar">
             <Link
               href="/instruments"
-              className={`text-sm font-light transition-colors ${
+              role="menuitem"
+              aria-current={pathname === '/instruments' ? 'page' : undefined}
+              className={`text-sm font-light transition-colors focus:outline-none focus:ring-2 focus:ring-[#3FD3C6] focus:ring-offset-2 focus:ring-offset-[#0D1B2A] rounded-sm px-2 py-1 ${
                 pathname === '/instruments' ? 'text-[#3FD3C6]' : 'text-[#E0E1DD] hover:text-[#3FD3C6]'
               }`}
             >
@@ -51,7 +86,9 @@ const Navigation: React.FC = () => {
             </Link>
             <Link
               href="/workshop"
-              className={`text-sm font-light transition-colors ${
+              role="menuitem"
+              aria-current={pathname === '/workshop' ? 'page' : undefined}
+              className={`text-sm font-light transition-colors focus:outline-none focus:ring-2 focus:ring-[#3FD3C6] focus:ring-offset-2 focus:ring-offset-[#0D1B2A] rounded-sm px-2 py-1 ${
                 pathname === '/workshop' ? 'text-[#3FD3C6]' : 'text-[#E0E1DD] hover:text-[#3FD3C6]'
               }`}
             >
@@ -59,7 +96,9 @@ const Navigation: React.FC = () => {
             </Link>
             <Link
               href="/maturity-map"
-              className={`text-sm font-light transition-colors ${
+              role="menuitem"
+              aria-current={pathname === '/maturity-map' || pathname === '/assessment' ? 'page' : undefined}
+              className={`text-sm font-light transition-colors focus:outline-none focus:ring-2 focus:ring-[#3FD3C6] focus:ring-offset-2 focus:ring-offset-[#0D1B2A] rounded-sm px-2 py-1 ${
                 pathname === '/maturity-map' || pathname === '/assessment' ? 'text-[#3FD3C6]' : 'text-[#E0E1DD] hover:text-[#3FD3C6]'
               }`}
             >
@@ -67,7 +106,9 @@ const Navigation: React.FC = () => {
             </Link>
             <Link
               href="/manifesto"
-              className={`text-sm font-light transition-colors ${
+              role="menuitem"
+              aria-current={pathname === '/manifesto' ? 'page' : undefined}
+              className={`text-sm font-light transition-colors focus:outline-none focus:ring-2 focus:ring-[#3FD3C6] focus:ring-offset-2 focus:ring-offset-[#0D1B2A] rounded-sm px-2 py-1 ${
                 pathname === '/manifesto' ? 'text-[#3FD3C6]' : 'text-[#E0E1DD] hover:text-[#3FD3C6]'
               }`}
             >
@@ -75,11 +116,23 @@ const Navigation: React.FC = () => {
             </Link>
             <Link
               href="/workshop-notes"
-              className={`text-sm font-light transition-colors ${
+              role="menuitem"
+              aria-current={pathname === '/workshop-notes' ? 'page' : undefined}
+              className={`text-sm font-light transition-colors focus:outline-none focus:ring-2 focus:ring-[#3FD3C6] focus:ring-offset-2 focus:ring-offset-[#0D1B2A] rounded-sm px-2 py-1 ${
                 pathname === '/workshop-notes' ? 'text-[#3FD3C6]' : 'text-[#E0E1DD] hover:text-[#3FD3C6]'
               }`}
             >
               Notes
+            </Link>
+            <Link
+              href="/archive"
+              role="menuitem"
+              aria-current={pathname === '/archive' ? 'page' : undefined}
+              className={`text-sm font-light transition-colors focus:outline-none focus:ring-2 focus:ring-[#3FD3C6] focus:ring-offset-2 focus:ring-offset-[#0D1B2A] rounded-sm px-2 py-1 ${
+                pathname === '/archive' ? 'text-[#3FD3C6]' : 'text-[#E0E1DD] hover:text-[#3FD3C6]'
+              }`}
+            >
+              Archive
             </Link>
           </div>
 
@@ -101,9 +154,12 @@ const Navigation: React.FC = () => {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden text-[#E0E1DD] p-2"
+            ref={menuButtonRef}
+            className="md:hidden text-[#E0E1DD] p-2 focus:outline-none focus:ring-2 focus:ring-[#3FD3C6] focus:ring-offset-2 focus:ring-offset-[#0D1B2A] rounded"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Menu"
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-menu"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               {mobileMenuOpen ? (
@@ -118,42 +174,61 @@ const Navigation: React.FC = () => {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-[#0D1B2A]/95 backdrop-blur-sm border-t border-[#1B263B]">
+        <div
+          ref={mobileMenuRef}
+          id="mobile-menu"
+          className="md:hidden bg-[#0D1B2A]/95 backdrop-blur-sm border-t border-[#1B263B]"
+          role="menu"
+          aria-labelledby="mobile-menu-button"
+        >
           <div className="px-6 py-4 space-y-4">
             <Link
               href="/instruments"
-              className="block text-[#E0E1DD] hover:text-[#3FD3C6] transition-colors"
+              role="menuitem"
+              className="block text-[#E0E1DD] hover:text-[#3FD3C6] transition-colors focus:outline-none focus:ring-2 focus:ring-[#3FD3C6] focus:ring-offset-2 focus:ring-offset-[#0D1B2A] rounded px-2 py-1"
               onClick={() => setMobileMenuOpen(false)}
             >
               Instruments
             </Link>
             <Link
               href="/workshop"
-              className="block text-[#E0E1DD] hover:text-[#3FD3C6] transition-colors"
+              role="menuitem"
+              className="block text-[#E0E1DD] hover:text-[#3FD3C6] transition-colors focus:outline-none focus:ring-2 focus:ring-[#3FD3C6] focus:ring-offset-2 focus:ring-offset-[#0D1B2A] rounded px-2 py-1"
               onClick={() => setMobileMenuOpen(false)}
             >
               Workshop
             </Link>
             <Link
               href="/maturity-map"
-              className="block text-[#E0E1DD] hover:text-[#3FD3C6] transition-colors"
+              role="menuitem"
+              className="block text-[#E0E1DD] hover:text-[#3FD3C6] transition-colors focus:outline-none focus:ring-2 focus:ring-[#3FD3C6] focus:ring-offset-2 focus:ring-offset-[#0D1B2A] rounded px-2 py-1"
               onClick={() => setMobileMenuOpen(false)}
             >
               Assessment
             </Link>
             <Link
               href="/manifesto"
-              className="block text-[#E0E1DD] hover:text-[#3FD3C6] transition-colors"
+              role="menuitem"
+              className="block text-[#E0E1DD] hover:text-[#3FD3C6] transition-colors focus:outline-none focus:ring-2 focus:ring-[#3FD3C6] focus:ring-offset-2 focus:ring-offset-[#0D1B2A] rounded px-2 py-1"
               onClick={() => setMobileMenuOpen(false)}
             >
               Manifesto
             </Link>
             <Link
               href="/workshop-notes"
-              className="block text-[#E0E1DD] hover:text-[#3FD3C6] transition-colors"
+              role="menuitem"
+              className="block text-[#E0E1DD] hover:text-[#3FD3C6] transition-colors focus:outline-none focus:ring-2 focus:ring-[#3FD3C6] focus:ring-offset-2 focus:ring-offset-[#0D1B2A] rounded px-2 py-1"
               onClick={() => setMobileMenuOpen(false)}
             >
               Notes
+            </Link>
+            <Link
+              href="/archive"
+              role="menuitem"
+              className="block text-[#E0E1DD] hover:text-[#3FD3C6] transition-colors focus:outline-none focus:ring-2 focus:ring-[#3FD3C6] focus:ring-offset-2 focus:ring-offset-[#0D1B2A] rounded px-2 py-1"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Archive
             </Link>
 
             <div className="pt-4 border-t border-[#1B263B]">

@@ -1,5 +1,5 @@
 // Stub for Redis client on the client side
-export class Redis {
+export class RedisStub {
   constructor(...args: any[]) {}
   async get(key: string): Promise<string | null> { return null; }
   async set(key: string, value: string, ...args: any[]): Promise<string> { return 'OK'; }
@@ -13,4 +13,4 @@ export class Redis {
   disconnect(): void {}
 }
 
-export default Redis;
+export default RedisStub;

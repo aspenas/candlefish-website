@@ -1,0 +1,464 @@
+name: RTPM Production Deployment
+
+on:
+  push:
+    branches: [main, production]
+    paths:
+      - 'apps/rtpm-api/**'
+      - 'apps/nanda-dashboard/**'
+      - 'deployment/**'
+      - '.github/workflows/rtpm-ci-cd.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/rtpm-api/**'
+      - 'apps/nanda-dashboard/**'
+      - 'deployment/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+      force_deploy:
+        description: 'Force deployment without tests'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER_NAME: candlefish-eks-cluster
+  REGISTRY: 681214184463.dkr.ecr.us-east-1.amazonaws.com
+  API_IMAGE_NAME: rtpm-api
+  FRONTEND_IMAGE_NAME: rtpm-frontend
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+permissions:
+  id-token: write
+  contents: read
+  packages: write
+  security-events: write
+
+jobs:
+  # Security and code quality checks
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: Run CodeQL Analysis
+      uses: github/codeql-action/init@v2
+      with:
+        languages: python, javascript
+
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v2
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
+
+  # Backend API tests and build
+  api-test-build:
+    name: API Test & Build
+    runs-on: ubuntu-latest
+    outputs:
+      api-image-tag: ${{ steps.meta.outputs.tags }}
+      api-image-digest: ${{ steps.build.outputs.digest }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      working-directory: apps/rtpm-api
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio pytest-cov
+
+    - name: Run tests with coverage
+      working-directory: apps/rtpm-api
+      run: |
+        pytest --cov=src --cov-report=xml --cov-report=html
+      env:
+        DATABASE_URL: postgresql://test:test@localhost:5432/test_db
+        REDIS_URL: redis://localhost:6379/0
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: apps/rtpm-api/coverage.xml
+        flags: api
+        name: rtpm-api-coverage
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::681214184463:role/github-actions-role
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix=sha-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build and push API image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: deployment/Dockerfile.rtpm-api.production
+        target: production
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64
+
+    - name: Run container security scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:latest
+        format: 'table'
+        exit-code: '1'
+        ignore-unfixed: true
+        severity: 'CRITICAL,HIGH'
+
+  # Frontend tests and build
+  frontend-test-build:
+    name: Frontend Test & Build
+    runs-on: ubuntu-latest
+    outputs:
+      frontend-image-tag: ${{ steps.meta.outputs.tags }}
+      frontend-image-digest: ${{ steps.build.outputs.digest }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js 20
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: apps/nanda-dashboard/package-lock.json
+
+    - name: Install dependencies
+      working-directory: apps/nanda-dashboard
+      run: npm ci
+
+    - name: Run ESLint
+      working-directory: apps/nanda-dashboard
+      run: npm run lint
+
+    - name: Run TypeScript check
+      working-directory: apps/nanda-dashboard
+      run: npm run typecheck
+
+    - name: Run tests
+      working-directory: apps/nanda-dashboard
+      run: npm run test:coverage
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: apps/nanda-dashboard/coverage/lcov.info
+        flags: frontend
+        name: rtpm-frontend-coverage
+
+    - name: Run E2E tests
+      working-directory: apps/nanda-dashboard
+      run: |
+        npm run build
+        npm run e2e
+      env:
+        CI: true
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::681214184463:role/github-actions-role
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix=sha-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build and push frontend image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: deployment/Dockerfile.nanda-dashboard.production
+        target: production
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64
+
+  # Load testing
+  load-test:
+    name: Load Testing
+    runs-on: ubuntu-latest
+    needs: [api-test-build]
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up K6
+      run: |
+        sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+        echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+        sudo apt-get update
+        sudo apt-get install k6
+
+    - name: Run load tests
+      working-directory: apps/rtpm-api/tests/load_testing
+      run: k6 run k6_load_tests.js
+      env:
+        API_BASE_URL: https://api-staging.rtpm.candlefish.ai
+
+  # Staging deployment
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [security-scan, api-test-build, frontend-test-build]
+    if: github.ref == 'refs/heads/main' && !inputs.force_deploy
+    environment:
+      name: staging
+      url: https://staging.rtpm.candlefish.ai
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::681214184463:role/github-actions-role
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+
+    - name: Deploy to staging namespace
+      run: |
+        # Update image tags in manifests
+        sed -i "s|rtpm-api:latest|${{ needs.api-test-build.outputs.api-image-tag }}|g" deployment/k8s/*.yaml
+        sed -i "s|rtpm-frontend:latest|${{ needs.frontend-test-build.outputs.frontend-image-tag }}|g" deployment/k8s/*.yaml
+
+        # Create staging namespace if it doesn't exist
+        kubectl create namespace rtpm-staging --dry-run=client -o yaml | kubectl apply -f -
+
+        # Apply staging configurations
+        kubectl apply -f deployment/k8s/ -n rtpm-staging
+
+        # Wait for deployment to complete
+        kubectl rollout status deployment/rtpm-api -n rtpm-staging --timeout=300s
+        kubectl rollout status deployment/rtpm-frontend -n rtpm-staging --timeout=300s
+        kubectl rollout status deployment/rtpm-celery-worker -n rtpm-staging --timeout=300s
+
+    - name: Run smoke tests
+      run: |
+        # Wait for services to be ready
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=api -n rtpm-staging --timeout=300s
+
+        # Get staging endpoint
+        STAGING_API_URL=$(kubectl get service rtpm-api-service -n rtmp-staging -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+
+        # Run basic smoke tests
+        curl -f http://${STAGING_API_URL}:8000/health || exit 1
+        curl -f http://${STAGING_API_URL}:8000/metrics || exit 1
+
+    - name: Notify Slack
+      if: always()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        channel: '#deployments'
+        webhook_url: ${{ env.SLACK_WEBHOOK_URL }}
+        fields: repo,message,commit,author,action,eventName,ref,workflow
+
+  # Production deployment
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, load-test]
+    if: github.ref == 'refs/heads/production' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'production')
+    environment:
+      name: production
+      url: https://rtpm.candlefish.ai
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::681214184463:role/github-actions-role
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+
+    - name: Blue-Green Deployment
+      run: |
+        # Create production namespace if it doesn't exist
+        kubectl create namespace rtpm-system --dry-run=client -o yaml | kubectl apply -f -
+
+        # Update image tags in manifests
+        sed -i "s|rtpm-api:latest|${{ needs.api-test-build.outputs.api-image-tag }}|g" deployment/k8s/*.yaml
+        sed -i "s|rtpm-frontend:latest|${{ needs.frontend-test-build.outputs.frontend-image-tag }}|g" deployment/k8s/*.yaml
+
+        # Deploy new version (green)
+        kubectl apply -f deployment/k8s/ -n rtpm-system
+
+        # Wait for green deployment to be ready
+        kubectl rollout status deployment/rtpm-api -n rtpm-system --timeout=600s
+        kubectl rollout status deployment/rtpm-frontend -n rtpm-system --timeout=600s
+        kubectl rollout status deployment/rtpm-celery-worker -n rtpm-system --timeout=600s
+
+        # Health check on green deployment
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=api -n rtpm-system --timeout=300s
+
+    - name: Production smoke tests
+      run: |
+        # Wait for load balancer to be ready
+        sleep 60
+
+        # Get production endpoint
+        PROD_API_URL=$(kubectl get ingress rtpm-ingress -n rtpm-system -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+
+        # Run comprehensive smoke tests
+        curl -f https://${PROD_API_URL}/health || exit 1
+        curl -f https://${PROD_API_URL}/metrics || exit 1
+
+        # Test WebSocket connection
+        curl -f https://${PROD_API_URL}/ws/health || exit 1
+
+    - name: Database migration
+      run: |
+        # Run database migrations
+        kubectl exec -n rtpm-system deployment/rtpm-api -- python -m alembic upgrade head
+
+    - name: Cache warmup
+      run: |
+        # Warm up cache and precompute aggregations
+        kubectl exec -n rtmp-system deployment/rtpm-api -- python -c "
+        import requests
+        import asyncio
+        from src.services.cache import warm_cache
+        asyncio.run(warm_cache())
+        "
+
+    - name: Update CloudFront distribution
+      run: |
+        # Invalidate CloudFront cache
+        aws cloudfront create-invalidation \
+          --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+          --paths "/*"
+
+    - name: Notify Slack
+      if: always()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        channel: '#deployments'
+        webhook_url: ${{ env.SLACK_WEBHOOK_URL }}
+        fields: repo,message,commit,author,action,eventName,ref,workflow
+
+  # Rollback capability
+  rollback:
+    name: Rollback Production
+    runs-on: ubuntu-latest
+    if: failure() && github.ref == 'refs/heads/production'
+    environment:
+      name: production
+      url: https://rtpm.candlefish.ai
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::681214184463:role/github-actions-role
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+
+    - name: Rollback deployment
+      run: |
+        kubectl rollout undo deployment/rtpm-api -n rtpm-system
+        kubectl rollout undo deployment/rtpm-frontend -n rtpm-system
+        kubectl rollout undo deployment/rtpm-celery-worker -n rtpm-system
+
+        # Wait for rollback to complete
+        kubectl rollout status deployment/rtpm-api -n rtpm-system --timeout=300s
+        kubectl rollout status deployment/rtpm-frontend -n rtpm-system --timeout=300s
+
+    - name: Notify Slack about rollback
+      uses: 8398a7/action-slack@v3
+      with:
+        status: 'warning'
+        channel: '#alerts'
+        webhook_url: ${{ env.SLACK_WEBHOOK_URL }}
+        text: "🚨 RTPM Production deployment failed and was rolled back!"

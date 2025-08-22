@@ -1,0 +1,45 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # for AWS OIDC later
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Enable pnpm
+        run: corepack enable && corepack prepare pnpm@9.9.0 --activate
+
+      - name: Install JS deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup Python (uv)
+        uses: astral-sh/setup-uv@v3
+        with:
+          python-version: '3.12'
+
+      - name: Install Python deps
+        run: |
+          python -V
+          if command -v pipx >/dev/null 2>&1; then pipx install pre-commit || true; else pip install pre-commit; fi
+          find libs/py services apps -maxdepth 2 -name "pyproject.toml" -print0 | while IFS= read -r -d '' f; do
+            d=$(dirname "$f"); (cd "$d" && uv sync)
+          done
+
+      - name: Lint & test
+        run: |
+          pre-commit run -a || true
+          pnpm -r test || true
+          # add pytest invocations in each service/app directory if needed

@@ -216,7 +216,7 @@ function OfflineStatusModal({ onClose }: { onClose: () => void }) {
               disabled={!networkStatus.isOnline || syncStatus.isActive}
               className="flex-1 flex items-center justify-center space-x-2"
             >
-              <Sync className="w-4 h-4" />
+              <RefreshCw className="w-4 h-4" />
               <span>Sync Now</span>
             </Button>
 

@@ -12,28 +12,28 @@ import { z } from 'zod';
 export interface NANDAIndexRecord {
   // 16 bytes - Unique agent identifier (UUID v7 for time-ordering)
   agent_id: string;
-  
+
   // 32 bytes - URN-formatted agent name (e.g., "urn:nanda:openai:gpt-4")
   agent_name: string;
-  
+
   // 32 bytes - URL to public agent facts (HTTP/HTTPS/IPFS)
   primary_facts_url: string;
-  
+
   // 32 bytes - URL to private agent facts (Tor/IPFS/encrypted)
   private_facts_url: string;
-  
+
   // 32 bytes - URL to adaptive resolver for dynamic routing
   adaptive_resolver_url: string;
-  
+
   // 4 bytes - Time-to-live in seconds
   ttl: number;
-  
+
   // 64 bytes - Ed25519 signature for authenticity
   signature: Buffer;
-  
+
   // 8 bytes - CRDT vector clock for distributed updates
   version: BigInt;
-  
+
   // 8 bytes - Unix timestamp of last update
   updated_at: number;
 }
@@ -54,22 +54,22 @@ export const AgentFactsSchema = z.object({
     'https://www.w3.org/2018/credentials/v1',
     'https://nanda.candlefish.ai/v1/context'
   ]),
-  
+
   id: z.string().url(),
   type: z.array(z.string()).default(['VerifiableCredential', 'AgentFacts']),
-  
+
   issuer: z.object({
     id: z.string(),
     name: z.string().optional(),
     publicKey: z.string() // Ed25519 public key
   }),
-  
+
   issuanceDate: z.string().datetime(),
   expirationDate: z.string().datetime().optional(),
-  
+
   credentialSubject: z.object({
     id: z.string(), // Agent ID
-    
+
     capabilities: z.array(z.object({
       type: z.string(), // e.g., "text-generation", "image-analysis"
       version: z.string(),
@@ -85,14 +85,14 @@ export const AgentFactsSchema = z.object({
         }).optional()
       }))
     })),
-    
+
     pricing: z.object({
       model: z.enum(['free', 'freemium', 'usage', 'subscription', 'enterprise']),
       currency: z.string().default('USD'),
       rates: z.record(z.number()).optional(), // Key-value pairs for different metrics
       micropayment: z.boolean().default(false)
     }).optional(),
-    
+
     compliance: z.object({
       gdpr: z.boolean().optional(),
       ccpa: z.boolean().optional(),
@@ -100,7 +100,7 @@ export const AgentFactsSchema = z.object({
       sox: z.boolean().optional(),
       iso27001: z.boolean().optional()
     }).optional(),
-    
+
     metadata: z.object({
       name: z.string(),
       description: z.string(),
@@ -111,7 +111,7 @@ export const AgentFactsSchema = z.object({
       documentation: z.string().url().optional()
     })
   }),
-  
+
   proof: z.object({
     type: z.string().default('Ed25519Signature2020'),
     created: z.string().datetime(),
@@ -139,7 +139,7 @@ export interface CRDTOperation {
  */
 export interface AdaptiveResolverConfig {
   agent_id: string;
-  
+
   // Routing strategies
   strategies: {
     geographic: boolean; // Route to nearest endpoint
@@ -147,7 +147,7 @@ export interface AdaptiveResolverConfig {
     failover: boolean; // Automatic failover on errors
     canary: boolean; // Percentage-based rollout
   };
-  
+
   // Security settings
   security: {
     requireAuth: boolean;
@@ -159,7 +159,7 @@ export interface AdaptiveResolverConfig {
     };
     ddosProtection: boolean;
   };
-  
+
   // Performance settings
   performance: {
     cacheEnabled: boolean;
@@ -168,7 +168,7 @@ export interface AdaptiveResolverConfig {
     http2Enabled: boolean;
     http3Enabled: boolean;
   };
-  
+
   // Observability
   observability: {
     tracingEnabled: boolean;

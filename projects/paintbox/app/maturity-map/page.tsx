@@ -115,50 +115,50 @@ export default function MaturityMapPage() {
     const maturity = getMaturityLevel(score);
 
     return (
-      <div className="min-h-screen" style={{ backgroundColor: 'var(--color-paintbox-background)' }}>
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--color-eggshell-background)' }}>
         <div className="max-w-4xl mx-auto px-6 py-12">
           {/* Header */}
           <div className="text-center mb-12">
             <div className="flex justify-center mb-6">
-              <div className="w-16 h-16 bg-gradient-to-r from-paintbox-brand to-paintbox-accent rounded-2xl flex items-center justify-center shadow-lg">
+              <div className="w-16 h-16 bg-gradient-to-r from-eggshell-brand to-eggshell-accent rounded-2xl flex items-center justify-center shadow-lg">
                 <BarChart3 className="w-8 h-8 text-white" />
               </div>
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold mb-4" style={{ color: 'var(--color-paintbox-text)' }}>
-              Your <span className="paintbox-gradient-text">Maturity Assessment</span>
+            <h1 className="text-4xl md:text-5xl font-bold mb-4" style={{ color: 'var(--color-eggshell-text)' }}>
+              Your <span className="eggshell-gradient-text">Maturity Assessment</span>
             </h1>
-            <p className="text-xl max-w-2xl mx-auto" style={{ color: 'var(--color-paintbox-text-muted)' }}>
+            <p className="text-xl max-w-2xl mx-auto" style={{ color: 'var(--color-eggshell-text-muted)' }}>
               Here's your digital transformation roadmap
             </p>
           </div>
 
           {/* Results */}
-          <div className="paintbox-card p-8 mb-8">
+          <div className="eggshell-card p-8 mb-8">
             <div className="text-center mb-8">
-              <div className={`inline-flex items-center gap-3 px-6 py-3 ${maturity.bgColor} rounded-full`} style={{ borderColor: 'var(--color-paintbox-border)' }}>
+              <div className={`inline-flex items-center gap-3 px-6 py-3 ${maturity.bgColor} rounded-full`} style={{ borderColor: 'var(--color-eggshell-border)' }}>
                 <div className={`w-3 h-3 ${maturity.color.replace('text-', 'bg-')} rounded-full`}></div>
                 <span className={`font-semibold ${maturity.color}`}>{maturity.level} Level</span>
               </div>
               <div className="mt-6">
-                <div className="text-6xl font-bold mb-2" style={{ color: 'var(--color-paintbox-text)' }}>{score}%</div>
-                <p style={{ color: 'var(--color-paintbox-text-muted)' }}>Digital Maturity Score</p>
+                <div className="text-6xl font-bold mb-2" style={{ color: 'var(--color-eggshell-text)' }}>{score}%</div>
+                <p style={{ color: 'var(--color-eggshell-text-muted)' }}>Digital Maturity Score</p>
               </div>
             </div>
 
             {/* Category Breakdown */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               {assessmentQuestions.map((question) => (
-                <div key={question.id} className="rounded-lg p-4" style={{ borderColor: 'var(--color-paintbox-border)', borderWidth: '1px', borderStyle: 'solid' }}>
+                <div key={question.id} className="rounded-lg p-4" style={{ borderColor: 'var(--color-eggshell-border)', borderWidth: '1px', borderStyle: 'solid' }}>
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold" style={{ color: 'var(--color-paintbox-text)' }}>{question.category}</h3>
+                    <h3 className="font-semibold" style={{ color: 'var(--color-eggshell-text)' }}>{question.category}</h3>
                     <div className="flex items-center gap-2">
-                      <span className="text-2xl font-bold text-paintbox-brand">{answers[question.id] || 0}</span>
-                      <span className="text-sm" style={{ color: 'var(--color-paintbox-text-muted)' }}>/5</span>
+                      <span className="text-2xl font-bold text-eggshell-brand">{answers[question.id] || 0}</span>
+                      <span className="text-sm" style={{ color: 'var(--color-eggshell-text-muted)' }}>/5</span>
                     </div>
                   </div>
-                  <div className="w-full rounded-full h-2" style={{ backgroundColor: 'var(--color-paintbox-border)' }}>
+                  <div className="w-full rounded-full h-2" style={{ backgroundColor: 'var(--color-eggshell-border)' }}>
                     <div
-                      className="bg-gradient-to-r from-paintbox-brand to-paintbox-accent h-2 rounded-full transition-all duration-300"
+                      className="bg-gradient-to-r from-eggshell-brand to-eggshell-accent h-2 rounded-full transition-all duration-300"
                       style={{ width: `${((answers[question.id] || 0) / 5) * 100}%` }}
                     ></div>
                   </div>
@@ -167,8 +167,8 @@ export default function MaturityMapPage() {
             </div>
 
             {/* Next Steps */}
-            <div className="pt-8" style={{ borderTopColor: 'var(--color-paintbox-border)', borderTopWidth: '1px', borderTopStyle: 'solid' }}>
-              <h3 className="text-xl font-semibold mb-4 flex items-center gap-2" style={{ color: 'var(--color-paintbox-text)' }}>
+            <div className="pt-8" style={{ borderTopColor: 'var(--color-eggshell-border)', borderTopWidth: '1px', borderTopStyle: 'solid' }}>
+              <h3 className="text-xl font-semibold mb-4 flex items-center gap-2" style={{ color: 'var(--color-eggshell-text)' }}>
                 <CheckCircle className="w-5 h-5 text-emerald-600" />
                 Recommended Next Steps
               </h3>
@@ -201,12 +201,12 @@ export default function MaturityMapPage() {
                 setCurrentQuestionIndex(0);
                 setAnswers({});
               }}
-              className="paintbox-btn paintbox-btn-secondary"
+              className="eggshell-btn eggshell-btn-secondary"
             >
               <FileText className="w-4 h-4" />
               Retake Assessment
             </button>
-            <button className="paintbox-btn paintbox-btn-primary">
+            <button className="eggshell-btn eggshell-btn-primary">
               <ChevronRight className="w-4 h-4" />
               Get Custom Recommendations
             </button>
@@ -217,19 +217,19 @@ export default function MaturityMapPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--color-paintbox-background)' }}>
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--color-eggshell-background)' }}>
       <div className="max-w-4xl mx-auto px-6 py-12">
         {/* Header */}
         <div className="text-center mb-12">
           <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 bg-gradient-to-r from-paintbox-brand to-paintbox-accent rounded-2xl flex items-center justify-center shadow-lg">
+            <div className="w-16 h-16 bg-gradient-to-r from-eggshell-brand to-eggshell-accent rounded-2xl flex items-center justify-center shadow-lg">
               <FileText className="w-8 h-8 text-white" />
             </div>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4" style={{ color: 'var(--color-paintbox-text)' }}>
-            Digital <span className="paintbox-gradient-text">Maturity Assessment</span>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4" style={{ color: 'var(--color-eggshell-text)' }}>
+            Digital <span className="eggshell-gradient-text">Maturity Assessment</span>
           </h1>
-          <p className="text-xl max-w-2xl mx-auto" style={{ color: 'var(--color-paintbox-text-muted)' }}>
+          <p className="text-xl max-w-2xl mx-auto" style={{ color: 'var(--color-eggshell-text-muted)' }}>
             Discover your current digital transformation level and get a personalized roadmap for growth.
           </p>
         </div>
@@ -237,31 +237,31 @@ export default function MaturityMapPage() {
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium" style={{ color: 'var(--color-paintbox-text)' }}>
+            <span className="text-sm font-medium" style={{ color: 'var(--color-eggshell-text)' }}>
               Question {currentQuestionIndex + 1} of {assessmentQuestions.length}
             </span>
-            <span className="text-sm" style={{ color: 'var(--color-paintbox-text-muted)' }}>
+            <span className="text-sm" style={{ color: 'var(--color-eggshell-text-muted)' }}>
               {Math.round(progress)}% Complete
             </span>
           </div>
-          <div className="w-full rounded-full h-2" style={{ backgroundColor: 'var(--color-paintbox-border)' }}>
+          <div className="w-full rounded-full h-2" style={{ backgroundColor: 'var(--color-eggshell-border)' }}>
             <div
-              className="bg-gradient-to-r from-paintbox-brand to-paintbox-accent h-2 rounded-full transition-all duration-300"
+              className="bg-gradient-to-r from-eggshell-brand to-eggshell-accent h-2 rounded-full transition-all duration-300"
               style={{ width: `${progress}%` }}
             ></div>
           </div>
         </div>
 
         {/* Question Card */}
-        <div className="paintbox-card p-8 mb-8">
+        <div className="eggshell-card p-8 mb-8">
           <div className="mb-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 text-paintbox-brand rounded-full text-sm font-medium mb-4" style={{ backgroundColor: 'color-mix(in oklab, var(--color-paintbox-brand) 10%, transparent)' }}>
+            <div className="inline-flex items-center gap-2 px-3 py-1 text-eggshell-brand rounded-full text-sm font-medium mb-4" style={{ backgroundColor: 'color-mix(in oklab, var(--color-eggshell-brand) 10%, transparent)' }}>
               {currentQuestion.category}
             </div>
-            <h2 className="text-2xl font-bold mb-3" style={{ color: 'var(--color-paintbox-text)' }}>
+            <h2 className="text-2xl font-bold mb-3" style={{ color: 'var(--color-eggshell-text)' }}>
               {currentQuestion.question}
             </h2>
-            <p style={{ color: 'var(--color-paintbox-text-muted)' }}>
+            <p style={{ color: 'var(--color-eggshell-text-muted)' }}>
               {currentQuestion.description}
             </p>
           </div>
@@ -273,15 +273,15 @@ export default function MaturityMapPage() {
                 key={option.value}
                 className={`block cursor-pointer transition-all duration-200 rounded-lg p-4 ${
                   answers[currentQuestion.id] === option.value
-                    ? 'ring-2 ring-paintbox-brand'
+                    ? 'ring-2 ring-eggshell-brand'
                     : ''
                 }`}
                 style={{
-                  borderColor: 'var(--color-paintbox-border)',
+                  borderColor: 'var(--color-eggshell-border)',
                   borderWidth: '1px',
                   borderStyle: 'solid',
                   backgroundColor: answers[currentQuestion.id] === option.value
-                    ? 'color-mix(in oklab, var(--color-paintbox-brand) 5%, transparent)'
+                    ? 'color-mix(in oklab, var(--color-eggshell-brand) 5%, transparent)'
                     : 'transparent'
                 }}
               >
@@ -298,10 +298,10 @@ export default function MaturityMapPage() {
                     className="w-5 h-5 border-2 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
                     style={{
                       borderColor: answers[currentQuestion.id] === option.value
-                        ? 'var(--color-paintbox-brand)'
-                        : 'var(--color-paintbox-border)',
+                        ? 'var(--color-eggshell-brand)'
+                        : 'var(--color-eggshell-border)',
                       backgroundColor: answers[currentQuestion.id] === option.value
-                        ? 'var(--color-paintbox-brand)'
+                        ? 'var(--color-eggshell-brand)'
                         : 'transparent'
                     }}
                   >
@@ -310,14 +310,14 @@ export default function MaturityMapPage() {
                     )}
                   </div>
                   <div className="flex-1">
-                    <div className="font-semibold mb-1" style={{ color: 'var(--color-paintbox-text)' }}>
+                    <div className="font-semibold mb-1" style={{ color: 'var(--color-eggshell-text)' }}>
                       {option.label}
                     </div>
-                    <div className="text-sm" style={{ color: 'var(--color-paintbox-text-muted)' }}>
+                    <div className="text-sm" style={{ color: 'var(--color-eggshell-text-muted)' }}>
                       {option.description}
                     </div>
                   </div>
-                  <div className="text-sm font-bold text-paintbox-brand">
+                  <div className="text-sm font-bold text-eggshell-brand">
                     {option.value}
                   </div>
                 </div>
@@ -331,14 +331,14 @@ export default function MaturityMapPage() {
           <button
             onClick={handlePrevious}
             disabled={currentQuestionIndex === 0}
-            className={`paintbox-btn ${
+            className={`eggshell-btn ${
               currentQuestionIndex === 0
                 ? 'opacity-50 cursor-not-allowed'
-                : 'paintbox-btn-secondary'
+                : 'eggshell-btn-secondary'
             }`}
             style={currentQuestionIndex === 0 ? {
-              backgroundColor: 'var(--color-paintbox-border)',
-              color: 'var(--color-paintbox-text-muted)'
+              backgroundColor: 'var(--color-eggshell-border)',
+              color: 'var(--color-eggshell-text-muted)'
             } : {}}
           >
             Previous
@@ -346,7 +346,7 @@ export default function MaturityMapPage() {
 
           <div className="flex items-center gap-2">
             {!isAnswered && (
-              <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--color-paintbox-text-muted)' }}>
+              <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--color-eggshell-text-muted)' }}>
                 <AlertCircle className="w-4 h-4" />
                 Please select an answer
               </div>
@@ -356,14 +356,14 @@ export default function MaturityMapPage() {
           <button
             onClick={handleNext}
             disabled={!isAnswered}
-            className={`paintbox-btn ${
+            className={`eggshell-btn ${
               !isAnswered
                 ? 'opacity-50 cursor-not-allowed'
-                : 'paintbox-btn-primary'
+                : 'eggshell-btn-primary'
             }`}
             style={!isAnswered ? {
-              backgroundColor: 'var(--color-paintbox-border)',
-              color: 'var(--color-paintbox-text-muted)'
+              backgroundColor: 'var(--color-eggshell-border)',
+              color: 'var(--color-eggshell-text-muted)'
             } : {}}
           >
             {currentQuestionIndex === assessmentQuestions.length - 1 ? 'View Results' : 'Next'}

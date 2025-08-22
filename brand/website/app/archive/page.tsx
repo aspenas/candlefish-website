@@ -1,7 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useKeyboardNavigation, useAnnouncement } from '../../hooks/useAccessibility';
+import { createFilterLabel, formatDateForScreenReader, generateId, createExpandableAttributes } from '../../utils/accessibility';
+import ScreenReaderAnnouncement from '../../components/accessibility/ScreenReaderAnnouncement';
+import { logContrastResults } from '../../utils/colorContrast';
 
 interface ArchiveEntry {
   id: string;
@@ -74,6 +78,8 @@ export default function ArchivePage() {
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedAccess, setSelectedAccess] = useState<string>('public');
   const [selectedEntry, setSelectedEntry] = useState<string | null>(null);
+  const { announcement, announce } = useAnnouncement();
+  const mainContentRef = useRef<HTMLElement>(null);
 
   const types = ['all', 'study', 'framework', 'instrument', 'collaboration'];
   const accessLevels = ['public', 'collaborator', 'restricted'];
@@ -87,6 +93,20 @@ export default function ArchivePage() {
 
     return typeMatch && accessMatch;
   });
+
+  // Announce filter changes
+  useEffect(() => {
+    const resultCount = filteredEntries.length;
+    const message = `Showing ${resultCount} ${resultCount === 1 ? 'entry' : 'entries'} for ${selectedType === 'all' ? 'all types' : selectedType} with ${selectedAccess} access`;
+    announce(message);
+  }, [selectedType, selectedAccess, filteredEntries.length, announce]);
+
+  // Log color contrast results in development
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      logContrastResults();
+    }
+  }, []);
 
   const getTypeColor = (type: string) => {
     switch (type) {
@@ -114,109 +134,164 @@ export default function ArchivePage() {
 
   return (
     <div className="min-h-screen py-16 px-4">
+      <ScreenReaderAnnouncement message={announcement} />
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="text-center mb-16"
-        >
-          <h1 className="text-5xl font-light text-pearl mb-6">Workshop Archive</h1>
-          <p className="text-xl text-pearl/60 max-w-2xl mx-auto font-light">
-            Repository of operational insights, frameworks, and collaborative learnings.
-            Access levels reflect both value and exclusivity.
-          </p>
-        </motion.div>
+        <header>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="text-center mb-16"
+          >
+            <h1 className="text-5xl font-light text-pearl mb-6">Workshop Archive</h1>
+            <p className="text-xl text-pearl/60 max-w-2xl mx-auto font-light">
+              Repository of operational insights, frameworks, and collaborative learnings.
+              Access levels reflect both value and exclusivity.
+            </p>
+          </motion.div>
+        </header>
 
         {/* Filters */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3, duration: 0.8 }}
-          className="flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-8 mb-12"
-        >
+        <section aria-labelledby="filters-heading">
+          <h2 id="filters-heading" className="sr-only">Archive Filters</h2>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.8 }}
+            className="flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-8 mb-12"
+          >
           {/* Type Filter */}
-          <div className="flex space-x-1 bg-graphite/20 p-1 rounded backdrop-blur-workshop">
-            {types.map((type) => (
-              <button
-                key={type}
-                onClick={() => setSelectedType(type)}
-                className={`
-                  px-4 py-2 text-sm font-mono capitalize transition-all duration-300
-                  ${selectedType === type
-                    ? 'bg-copper/20 text-copper'
-                    : 'text-pearl/60 hover:text-pearl/80'
-                  }
-                `}
-              >
-                {type}
-              </button>
-            ))}
-          </div>
+          <fieldset className="flex space-x-1 bg-graphite/20 p-1 rounded backdrop-blur-workshop">
+            <legend className="sr-only">Filter by entry type</legend>
+            <div role="radiogroup" aria-labelledby="type-filter-label">
+              <span id="type-filter-label" className="sr-only">Entry Type</span>
+              {types.map((type) => {
+                const isSelected = selectedType === type;
+                const filterId = generateId('type-filter');
+                return (
+                  <button
+                    key={type}
+                    id={filterId}
+                    role="radio"
+                    aria-checked={isSelected}
+                    aria-label={createFilterLabel('type', type, isSelected, filteredEntries.length)}
+                    onClick={() => setSelectedType(type)}
+                    className={`
+                      px-4 py-2 text-sm font-mono capitalize transition-all duration-300
+                      focus:outline-none focus:ring-2 focus:ring-living-cyan focus:ring-offset-2 focus:ring-offset-graphite
+                      ${isSelected
+                        ? 'bg-copper/20 text-copper'
+                        : 'text-pearl/60 hover:text-pearl/80'
+                      }
+                    `}
+                  >
+                    {type}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
 
           {/* Access Filter */}
-          <div className="flex space-x-1 bg-graphite/20 p-1 rounded backdrop-blur-workshop">
-            {accessLevels.map((level) => (
-              <button
-                key={level}
-                onClick={() => setSelectedAccess(level)}
-                className={`
-                  px-4 py-2 text-sm font-mono capitalize transition-all duration-300
-                  ${selectedAccess === level
-                    ? 'bg-living-cyan/20 text-living-cyan'
-                    : 'text-pearl/60 hover:text-pearl/80'
-                  }
-                `}
-              >
-                {getAccessIcon(level)} {level}
-              </button>
-            ))}
-          </div>
-        </motion.div>
+          <fieldset className="flex space-x-1 bg-graphite/20 p-1 rounded backdrop-blur-workshop">
+            <legend className="sr-only">Filter by access level</legend>
+            <div role="radiogroup" aria-labelledby="access-filter-label">
+              <span id="access-filter-label" className="sr-only">Access Level</span>
+              {accessLevels.map((level) => {
+                const isSelected = selectedAccess === level;
+                const filterId = generateId('access-filter');
+                return (
+                  <button
+                    key={level}
+                    id={filterId}
+                    role="radio"
+                    aria-checked={isSelected}
+                    aria-label={createFilterLabel('access level', level, isSelected, filteredEntries.length)}
+                    onClick={() => setSelectedAccess(level)}
+                    className={`
+                      px-4 py-2 text-sm font-mono capitalize transition-all duration-300
+                      focus:outline-none focus:ring-2 focus:ring-living-cyan focus:ring-offset-2 focus:ring-offset-graphite
+                      ${isSelected
+                        ? 'bg-living-cyan/20 text-living-cyan'
+                        : 'text-pearl/60 hover:text-pearl/80'
+                      }
+                    `}
+                  >
+                    <span aria-hidden="true">{getAccessIcon(level)}</span> {level}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+          </motion.div>
+        </section>
 
         {/* Archive Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
-          {filteredEntries.map((entry, index) => {
-            const accessible = canAccess(entry.accessLevel);
+        <section aria-labelledby="archive-entries-heading">
+          <h2 id="archive-entries-heading" className="sr-only">
+            Archive Entries ({filteredEntries.length} {filteredEntries.length === 1 ? 'result' : 'results'})
+          </h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
+            {filteredEntries.map((entry, index) => {
+              const accessible = canAccess(entry.accessLevel);
+              const isExpanded = selectedEntry === entry.id;
+              const { trigger, content } = createExpandableAttributes(
+                isExpanded,
+                `entry-trigger-${entry.id}`,
+                `entry-content-${entry.id}`
+              );
 
-            return (
-              <motion.div
-                key={entry.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 * index, duration: 0.5 }}
-                className={`
-                  bg-graphite/30 border p-6 backdrop-blur-workshop
-                  transition-all duration-500
-                  ${accessible
-                    ? 'border-copper/10 hover:border-copper/30 cursor-pointer'
-                    : 'border-pearl/5 opacity-60'
-                  }
-                  ${selectedEntry === entry.id ? 'border-copper/50 bg-copper/5' : ''}
-                `}
-                onClick={() => accessible && setSelectedEntry(
-                  selectedEntry === entry.id ? null : entry.id
-                )}
-              >
+              return (
+                <motion.article
+                  key={entry.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 * index, duration: 0.5 }}
+                  className={`
+                    bg-graphite/30 border p-6 backdrop-blur-workshop
+                    transition-all duration-500
+                    ${accessible
+                      ? 'border-copper/10 hover:border-copper/30'
+                      : 'border-pearl/5 opacity-60'
+                    }
+                    ${isExpanded ? 'border-copper/50 bg-copper/5' : ''}
+                  `}
+                >
                 {/* Header */}
-                <div className="flex justify-between items-start mb-4">
+                <header className="flex justify-between items-start mb-4">
                   <div className="flex-1">
-                    <h3 className={`text-lg font-light mb-2 ${
-                      accessible ? 'text-pearl' : 'text-pearl/40'
-                    }`}>
-                      {entry.title}
-                    </h3>
+                    {accessible ? (
+                      <button
+                        {...trigger}
+                        onClick={() => setSelectedEntry(
+                          selectedEntry === entry.id ? null : entry.id
+                        )}
+                        className="text-left w-full focus:outline-none focus:ring-2 focus:ring-living-cyan focus:ring-offset-2 focus:ring-offset-graphite rounded"
+                      >
+                        <h3 className="text-lg font-light mb-2 text-pearl hover:text-copper transition-colors">
+                          {entry.title}
+                        </h3>
+                      </button>
+                    ) : (
+                      <h3 className="text-lg font-light mb-2 text-pearl/40">
+                        {entry.title}
+                      </h3>
+                    )}
                     <div className="flex items-center space-x-4 text-sm">
                       <span className={`font-mono ${getTypeColor(entry.type)}`}>
                         {entry.type}
                       </span>
-                      <span className="text-pearl/40 font-mono">
+                      <time
+                        dateTime={entry.date}
+                        className="text-pearl/40 font-mono"
+                        title={formatDateForScreenReader(entry.date)}
+                      >
                         {new Date(entry.date).toLocaleDateString('en-US', {
                           year: 'numeric',
                           month: 'short'
                         })}
-                      </span>
+                      </time>
                     </div>
                   </div>
 
@@ -265,6 +340,7 @@ export default function ArchivePage() {
                 {/* Expanded View */}
                 {accessible && selectedEntry === entry.id && (
                   <motion.div
+                    {...content}
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     transition={{ duration: 0.3 }}
@@ -277,9 +353,10 @@ export default function ArchivePage() {
                             px-6 py-2
                             bg-copper/10 border border-copper/30
                             text-copper font-mono text-sm
-                            hover:bg-copper/20
+                            hover:bg-copper/20 focus:outline-none focus:ring-2 focus:ring-living-cyan focus:ring-offset-2 focus:ring-offset-graphite
                             transition-all duration-300
                           "
+                          aria-label={`View full archive entry for ${entry.title}`}
                         >
                           View Full Archive Entry
                         </button>
@@ -287,67 +364,74 @@ export default function ArchivePage() {
                     </div>
                   </motion.div>
                 )}
-              </motion.div>
+              </motion.article>
             );
           })}
         </div>
 
-        {/* Archive Philosophy */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6, duration: 0.8 }}
-          className="text-center mb-16"
-        >
-          <div className="bg-graphite/20 border border-copper/20 p-12 backdrop-blur-workshop">
-            <blockquote className="text-lg text-pearl/60 font-light italic leading-relaxed mb-6">
-              "Knowledge shared selectively retains its power. Not every insight is meant
-              for every audience. The archive preserves both the work and the intention behind it."
-            </blockquote>
+        </section>
 
-            <div className="text-sm font-mono text-copper">
-              — Archive Principles
+        {/* Archive Philosophy */}
+        <section aria-labelledby="philosophy-heading">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6, duration: 0.8 }}
+            className="text-center mb-16"
+          >
+            <div className="bg-graphite/20 border border-copper/20 p-12 backdrop-blur-workshop">
+              <h2 id="philosophy-heading" className="sr-only">Archive Philosophy</h2>
+              <blockquote className="text-lg text-pearl/60 font-light italic leading-relaxed mb-6">
+                "Knowledge shared selectively retains its power. Not every insight is meant
+                for every audience. The archive preserves both the work and the intention behind it."
+              </blockquote>
+
+              <cite className="text-sm font-mono text-copper not-italic">
+                — Archive Principles
+              </cite>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        </section>
 
         {/* Access Notice */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.9, duration: 0.8 }}
-          className="text-center"
-        >
-          <div className="border border-copper/20 p-8 backdrop-blur-workshop">
-            <h3 className="text-lg text-pearl mb-4 font-light">Archive Access Levels</h3>
+        <section aria-labelledby="access-levels-heading">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.9, duration: 0.8 }}
+            className="text-center"
+          >
+            <div className="border border-copper/20 p-8 backdrop-blur-workshop">
+              <h2 id="access-levels-heading" className="text-lg text-pearl mb-4 font-light">Archive Access Levels</h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
-              <div className="text-center">
-                <div className="text-copper text-xl mb-2">◯</div>
-                <div className="text-pearl/70 mb-2">Public</div>
-                <div className="text-pearl/50">
-                  Open insights and foundational frameworks
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+                <div className="text-center">
+                  <div className="text-copper text-xl mb-2" aria-hidden="true">◯</div>
+                  <h3 className="text-pearl/70 mb-2">Public</h3>
+                  <p className="text-pearl/50">
+                    Open insights and foundational frameworks
+                  </p>
                 </div>
-              </div>
 
-              <div className="text-center">
-                <div className="text-living-cyan text-xl mb-2">◐</div>
-                <div className="text-pearl/70 mb-2">Collaborator</div>
-                <div className="text-pearl/50">
-                  Operational details and case studies
+                <div className="text-center">
+                  <div className="text-living-cyan text-xl mb-2" aria-hidden="true">◐</div>
+                  <h3 className="text-pearl/70 mb-2">Collaborator</h3>
+                  <p className="text-pearl/50">
+                    Operational details and case studies
+                  </p>
                 </div>
-              </div>
 
-              <div className="text-center">
-                <div className="text-pearl/40 text-xl mb-2">●</div>
-                <div className="text-pearl/70 mb-2">Restricted</div>
-                <div className="text-pearl/50">
-                  Core methodologies and sensitive data
+                <div className="text-center">
+                  <div className="text-pearl/40 text-xl mb-2" aria-hidden="true">●</div>
+                  <h3 className="text-pearl/70 mb-2">Restricted</h3>
+                  <p className="text-pearl/50">
+                    Core methodologies and sensitive data
+                  </p>
                 </div>
               </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        </section>
       </div>
     </div>
   );

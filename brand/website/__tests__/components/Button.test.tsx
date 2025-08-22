@@ -115,8 +115,8 @@ describe('Button Component', () => {
     })
 
     it('hides icons when loading', () => {
-      renderButton({ 
-        loading: true, 
+      renderButton({
+        loading: true,
         leftIcon: <span data-testid="left-icon">←</span>,
         rightIcon: <span data-testid="right-icon">→</span>
       })
@@ -137,7 +137,7 @@ describe('Button Component', () => {
     })
 
     it('renders both icons when provided', () => {
-      renderButton({ 
+      renderButton({
         leftIcon: <span data-testid="left-icon">←</span>,
         rightIcon: <span data-testid="right-icon">→</span>
       })
@@ -168,7 +168,7 @@ describe('Button Component', () => {
     it('calls onClick handler when clicked', async () => {
       const handleClick = jest.fn()
       renderButton({ onClick: handleClick })
-      
+
       await userEvent.click(screen.getByRole('button'))
       expect(handleClick).toHaveBeenCalledTimes(1)
     })
@@ -176,7 +176,7 @@ describe('Button Component', () => {
     it('does not call onClick when disabled', async () => {
       const handleClick = jest.fn()
       renderButton({ onClick: handleClick, disabled: true })
-      
+
       await userEvent.click(screen.getByRole('button'))
       expect(handleClick).not.toHaveBeenCalled()
     })
@@ -184,7 +184,7 @@ describe('Button Component', () => {
     it('does not call onClick when loading', async () => {
       const handleClick = jest.fn()
       renderButton({ onClick: handleClick, loading: true })
-      
+
       await userEvent.click(screen.getByRole('button'))
       expect(handleClick).not.toHaveBeenCalled()
     })
@@ -192,10 +192,10 @@ describe('Button Component', () => {
     it('handles keyboard navigation', () => {
       renderButton()
       const button = screen.getByRole('button')
-      
+
       button.focus()
       expect(button).toHaveFocus()
-      
+
       fireEvent.keyDown(button, { key: 'Enter' })
       fireEvent.keyDown(button, { key: ' ' })
     })
@@ -231,7 +231,7 @@ describe('Button Component', () => {
     it('forwards ref to button element', () => {
       const ref = React.createRef<HTMLButtonElement>()
       render(<Button ref={ref}>Test</Button>)
-      
+
       expect(ref.current).toBeInstanceOf(HTMLButtonElement)
       expect(ref.current).toBe(screen.getByRole('button'))
     })
@@ -239,12 +239,12 @@ describe('Button Component', () => {
 
   describe('Additional Props', () => {
     it('passes through additional HTML attributes', () => {
-      renderButton({ 
+      renderButton({
         'data-testid': 'custom-button',
         'aria-label': 'Custom label',
         type: 'submit'
-      })
-      
+      } as ButtonProps)
+
       const button = screen.getByRole('button')
       expect(button).toHaveAttribute('data-testid', 'custom-button')
       expect(button).toHaveAttribute('aria-label', 'Custom label')

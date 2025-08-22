@@ -75,7 +75,7 @@ export default function AnimationsDemo() {
 
       <div className="max-w-6xl mx-auto">
         <h1 className="text-4xl font-bold text-gray-900 mb-8">
-          Paintbox Animation Showcase
+          Eggshell Animation Showcase
         </h1>
 
         <div className="grid gap-8">

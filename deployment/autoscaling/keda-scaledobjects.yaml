@@ -1,0 +1,292 @@
+# KEDA ScaledObjects for Advanced Auto-scaling
+# Event-driven autoscaling based on external metrics
+
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: rtpm-api-redis-scaler
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: rtpm
+    app.kubernetes.io/component: api-keda-scaler
+spec:
+  scaleTargetRef:
+    name: rtpm-api
+  pollingInterval: 30
+  cooldownPeriod: 300
+  idleReplicaCount: 3
+  minReplicaCount: 3
+  maxReplicaCount: 50
+  triggers:
+  # Scale based on Redis queue depth
+  - type: redis
+    metadata:
+      address: rtpm-redis:6379
+      password: REDIS_PASSWORD
+      listName: celery
+      listLength: "10"
+      enableTLS: "false"
+
+  # Scale based on Prometheus metrics
+  - type: prometheus
+    metadata:
+      serverAddress: http://prometheus:9090
+      metricName: rtpm_active_agents_total
+      threshold: "100"
+      query: sum(rtpm_active_agents_total)
+
+  # Scale based on HTTP request rate
+  - type: prometheus
+    metadata:
+      serverAddress: http://prometheus:9090
+      metricName: http_requests_per_second
+      threshold: "1000"
+      query: sum(rate(http_requests_total{job="rtpm-api"}[2m]))
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: rtpm-celery-worker-scaler
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: rtpm
+    app.kubernetes.io/component: worker-keda-scaler
+spec:
+  scaleTargetRef:
+    name: rtpm-celery-worker
+  pollingInterval: 15
+  cooldownPeriod: 600
+  idleReplicaCount: 2
+  minReplicaCount: 4
+  maxReplicaCount: 100
+  triggers:
+  # Scale based on Celery queue length
+  - type: redis
+    metadata:
+      address: rtpm-redis:6379
+      password: REDIS_PASSWORD
+      listName: celery
+      listLength: "5"
+      enableTLS: "false"
+
+  # Scale based on pending tasks in different queues
+  - type: redis
+    metadata:
+      address: rtpm-redis:6379
+      password: REDIS_PASSWORD
+      listName: high_priority
+      listLength: "1"
+      enableTLS: "false"
+
+  - type: redis
+    metadata:
+      address: rtpm-redis:6379
+      password: REDIS_PASSWORD
+      listName: low_priority
+      listLength: "20"
+      enableTLS: "false"
+
+  # Scale based on failed task rate
+  - type: prometheus
+    metadata:
+      serverAddress: http://prometheus:9090
+      metricName: celery_failed_tasks_rate
+      threshold: "0.1"
+      query: sum(rate(celery_task_failed_total[5m])) / sum(rate(celery_task_sent_total[5m]))
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: rtpm-data-processor-scaler
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: rtpm
+    app.kubernetes.io/component: data-processor-keda-scaler
+spec:
+  scaleTargetRef:
+    name: rtpm-data-processor  # Assuming we have a data processor deployment
+  pollingInterval: 60
+  cooldownPeriod: 900
+  idleReplicaCount: 0
+  minReplicaCount: 0
+  maxReplicaCount: 20
+  triggers:
+  # Scale based on PostgreSQL connection count
+  - type: postgresql
+    metadata:
+      connectionString: postgresql://rtpm_user:password@rtpm-timescaledb:5432/rtpm_db?sslmode=require
+      query: "SELECT COUNT(*) FROM pg_stat_activity WHERE state = 'active'"
+      targetQueryValue: "50"
+
+  # Scale based on database lag (for real-time processing)
+  - type: prometheus
+    metadata:
+      serverAddress: http://prometheus:9090
+      metricName: pg_replication_lag_seconds
+      threshold: "10"
+      query: pg_replication_lag_seconds
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: rtpm-websocket-scaler
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: rtpm
+    app.kubernetes.io/component: websocket-keda-scaler
+spec:
+  scaleTargetRef:
+    name: rtpm-websocket-service  # Assuming we have a WebSocket service
+  pollingInterval: 30
+  cooldownPeriod: 300
+  idleReplicaCount: 1
+  minReplicaCount: 2
+  maxReplicaCount: 30
+  triggers:
+  # Scale based on active WebSocket connections
+  - type: prometheus
+    metadata:
+      serverAddress: http://prometheus:9090
+      metricName: websocket_connections
+      threshold: "100"
+      query: sum(rtpm_websocket_connections_active)
+
+  # Scale based on message throughput
+  - type: prometheus
+    metadata:
+      serverAddress: http://prometheus:9090
+      metricName: websocket_messages_per_second
+      threshold: "1000"
+      query: sum(rate(rtpm_websocket_messages_sent_total[2m]))
+---
+# KEDA TriggerAuthentication for secured scalers
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: redis-trigger-auth
+  namespace: rtpm-system
+spec:
+  secretTargetRef:
+  - parameter: password
+    name: rtpm-secrets
+    key: REDIS_PASSWORD
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: postgresql-trigger-auth
+  namespace: rtpm-system
+spec:
+  secretTargetRef:
+  - parameter: connectionString
+    name: rtpm-secrets
+    key: DATABASE_URL
+---
+# KEDA ClusterTriggerAuthentication for cross-namespace usage
+apiVersion: keda.sh/v1alpha1
+kind: ClusterTriggerAuthentication
+metadata:
+  name: prometheus-cluster-auth
+spec:
+  secretTargetRef:
+  - parameter: bearerToken
+    name: prometheus-auth
+    key: token
+    namespace: monitoring
+---
+# Schedule-based scaling for predictable load patterns
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: rtpm-api-schedule-scaler
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: rtpm
+    app.kubernetes.io/component: api-schedule-scaler
+spec:
+  scaleTargetRef:
+    name: rtpm-api
+  pollingInterval: 60
+  cooldownPeriod: 300
+  minReplicaCount: 3
+  maxReplicaCount: 20
+  triggers:
+  # Scale up during business hours (9 AM - 6 PM UTC)
+  - type: cron
+    metadata:
+      timezone: "UTC"
+      start: "0 9 * * 1-5"    # 9 AM on weekdays
+      end: "0 18 * * 1-5"     # 6 PM on weekdays
+      desiredReplicas: "10"
+
+  # Scale down during night hours
+  - type: cron
+    metadata:
+      timezone: "UTC"
+      start: "0 22 * * *"     # 10 PM every day
+      end: "0 6 * * *"        # 6 AM every day
+      desiredReplicas: "3"
+
+  # Weekend scaling
+  - type: cron
+    metadata:
+      timezone: "UTC"
+      start: "0 0 * * 6"      # Saturday midnight
+      end: "0 0 * * 1"        # Monday midnight
+      desiredReplicas: "5"
+---
+# Custom External Scaler for business metrics
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: rtpm-business-metrics-scaler
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: rtpm
+    app.kubernetes.io/component: business-metrics-scaler
+spec:
+  scaleTargetRef:
+    name: rtpm-api
+  pollingInterval: 120
+  cooldownPeriod: 600
+  minReplicaCount: 3
+  maxReplicaCount: 50
+  triggers:
+  # Custom external scaler for business logic
+  - type: external
+    metadata:
+      scalerAddress: rtpm-custom-scaler.rtpm-system.svc.cluster.local:9090
+      metricName: business_load_score
+      targetValue: "80"
+
+  # AWS CloudWatch metrics
+  - type: aws-cloudwatch
+    metadata:
+      awsRegion: "us-east-1"
+      namespace: "AWS/ApplicationELB"
+      metricName: "RequestCount"
+      targetMetricValue: "1000"
+      minMetricValue: "100"
+      dimensionName: "LoadBalancer"
+      dimensionValue: "app/rtpm-alb/1234567890123456"
+      metricStatType: "Sum"
+      metricUnit: "Count"
+    authenticationRef:
+      name: aws-credentials
+---
+# AWS credentials for CloudWatch scaler
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: aws-credentials
+  namespace: rtpm-system
+spec:
+  awsSecretManager:
+    region: us-east-1
+    secrets:
+    - name: aws-access-key-id
+      secretName: candlefish/aws-credentials
+      secretKey: access-key-id
+    - name: aws-secret-access-key
+      secretName: candlefish/aws-credentials
+      secretKey: secret-access-key

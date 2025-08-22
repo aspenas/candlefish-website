@@ -1,15 +1,15 @@
 {
-  "name": "paintbox-app",
+  "name": "eggshell-app",
   "version": "0.1.1",
   "private": true,
   "scripts": {
     "dev": "NODE_ENV=development ts-node -r tsconfig-paths/register --project tsconfig.server.json server/websocket-server.ts",
     "dev:next": "NEXT_DISABLE_TURBOPACK=1 next dev",
-    "build": "node scripts/generate-build-info.js && NODE_OPTIONS='--max-old-space-size=16384 --max-semi-space-size=512' next build",
-    "build:production": "NODE_OPTIONS='--max-old-space-size=32768 --max-semi-space-size=1024' SKIP_STATIC_OPTIMIZATION=1 DISABLE_ESLINT=1 DISABLE_TYPESCRIPT_CHECK=1 next build",
-    "build:deploy": "NODE_OPTIONS='--max-old-space-size=2048 --require ./server-polyfills.js' SKIP_STATIC_OPTIMIZATION=1 DISABLE_ESLINT=1 DISABLE_TYPESCRIPT_CHECK=1 next build",
-    "build:chunked": "NODE_OPTIONS='--max-old-space-size=32768 --max-semi-space-size=1024' NEXT_BUILD_SPLIT_CHUNKS=1 DISABLE_STATIC_OPTIMIZATION=1 next build",
-    "build:dynamic": "NODE_OPTIONS='--max-old-space-size=32768 --max-semi-space-size=1024' DISABLE_STATIC_OPTIMIZATION=1 DISABLE_ESLINT=1 DISABLE_TYPESCRIPT_CHECK=1 next build",
+    "build": "node scripts/generate-build-info.js && NODE_OPTIONS='--max-old-space-size=1536' next build",
+    "build:production": "NODE_OPTIONS='--max-old-space-size=1536 --optimize-for-size' SKIP_STATIC_OPTIMIZATION=1 DISABLE_ESLINT=1 DISABLE_TYPESCRIPT_CHECK=1 next build",
+    "build:deploy": "NODE_OPTIONS='--max-old-space-size=1536 --optimize-for-size --require ./server-polyfills.js' SKIP_STATIC_OPTIMIZATION=1 DISABLE_ESLINT=1 DISABLE_TYPESCRIPT_CHECK=1 next build",
+    "build:analyze": "ANALYZE=true NODE_OPTIONS='--max-old-space-size=1536' next build",
+    "build:optimized": "NODE_OPTIONS='--max-old-space-size=1536 --optimize-for-size --gc-interval=100' MINIMIZE_MEMORY=true next build",
     "export": "next export",
     "build:full": "next build && npx tsc server/websocket-server.ts --outDir dist --esModuleInterop --module commonjs",
     "build:websocket": "npx tsc server/websocket-server.ts --outDir dist --esModuleInterop --module commonjs",
@@ -90,6 +90,8 @@
     "deploy:logs": "./scripts/render-deploy.sh logs"
   },
   "dependencies": {
+    "compression-webpack-plugin": "^10.0.0",
+    "lru-cache": "^10.0.0",
     "@candlefish/jwt-auth": "file:../../packages/jwt-auth",
     "@anthropic-ai/sdk": "^0.57.0",
     "@apollo/client": "^3.13.9",

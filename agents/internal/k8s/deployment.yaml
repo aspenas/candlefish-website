@@ -1,0 +1,426 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nanda-agents
+
+---
+# ConfigMap for shared configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nanda-config
+  namespace: nanda-agents
+data:
+  REDIS_URL: "redis://redis-service:6379"
+  CONSUL_URL: "http://consul-service:8500"
+  NODE_ENV: "production"
+  NANDA_SHARED_SECRET: "candlefish-nanda-production-2025"
+
+---
+# Redis Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: nanda-agents
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - name: redis-storage
+          mountPath: /data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: redis-storage
+        persistentVolumeClaim:
+          claimName: redis-pvc
+
+---
+# Redis Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: nanda-agents
+spec:
+  selector:
+    app: redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+
+---
+# Orchestrator Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orchestrator
+  namespace: nanda-agents
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: orchestrator
+  template:
+    metadata:
+      labels:
+        app: orchestrator
+        nanda-agent: "true"
+    spec:
+      containers:
+      - name: orchestrator
+        image: candlefish/nanda-orchestrator:latest
+        ports:
+        - containerPort: 7010
+          name: http
+        - containerPort: 7500
+          name: websocket
+        envFrom:
+        - configMapRef:
+            name: nanda-config
+        env:
+        - name: PORT
+          value: "7010"
+        - name: WS_PORT
+          value: "7500"
+        - name: AGENT_ID
+          value: "candlefish:orchestrator"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 7010
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 7010
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+---
+# Orchestrator Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: orchestrator-service
+  namespace: nanda-agents
+spec:
+  selector:
+    app: orchestrator
+  ports:
+  - name: http
+    port: 7010
+    targetPort: 7010
+  - name: websocket
+    port: 7500
+    targetPort: 7500
+  type: LoadBalancer
+
+---
+# PKB Agent Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pkb-agent
+  namespace: nanda-agents
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: pkb-agent
+  template:
+    metadata:
+      labels:
+        app: pkb-agent
+        nanda-agent: "true"
+    spec:
+      containers:
+      - name: pkb
+        image: candlefish/nanda-pkb:latest
+        ports:
+        - containerPort: 7001
+        envFrom:
+        - configMapRef:
+            name: nanda-config
+        env:
+        - name: PORT
+          value: "7001"
+        - name: AGENT_ID
+          value: "candlefish:pkb-agent"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 7001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+
+---
+# PKB Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: pkb-service
+  namespace: nanda-agents
+spec:
+  selector:
+    app: pkb-agent
+  ports:
+  - port: 7001
+    targetPort: 7001
+
+---
+# Paintbox Agent Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paintbox-agent
+  namespace: nanda-agents
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: paintbox-agent
+  template:
+    metadata:
+      labels:
+        app: paintbox-agent
+        nanda-agent: "true"
+    spec:
+      containers:
+      - name: paintbox
+        image: candlefish/nanda-paintbox:latest
+        ports:
+        - containerPort: 7003
+        envFrom:
+        - configMapRef:
+            name: nanda-config
+        - secretRef:
+            name: paintbox-secrets
+        env:
+        - name: PORT
+          value: "7003"
+        - name: AGENT_ID
+          value: "candlefish:paintbox-agent"
+        - name: ORCHESTRATOR_URL
+          value: "http://orchestrator-service:7010"
+        - name: PKB_URL
+          value: "http://pkb-service:7001"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 7003
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+---
+# Clark Scraper Agent Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clark-scraper-agent
+  namespace: nanda-agents
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: clark-scraper-agent
+  template:
+    metadata:
+      labels:
+        app: clark-scraper-agent
+        nanda-agent: "true"
+    spec:
+      containers:
+      - name: clark-scraper
+        image: candlefish/nanda-clark-scraper:latest
+        ports:
+        - containerPort: 7004
+        envFrom:
+        - configMapRef:
+            name: nanda-config
+        - secretRef:
+            name: clark-secrets
+        env:
+        - name: PORT
+          value: "7004"
+        - name: AGENT_ID
+          value: "candlefish:clark-scraper"
+        - name: ORCHESTRATOR_URL
+          value: "http://orchestrator-service:7010"
+        - name: PKB_URL
+          value: "http://pkb-service:7001"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 7004
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+---
+# Intelligence Agent Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: intelligence-agent
+  namespace: nanda-agents
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: intelligence-agent
+  template:
+    metadata:
+      labels:
+        app: intelligence-agent
+        nanda-agent: "true"
+    spec:
+      containers:
+      - name: intelligence
+        image: candlefish/nanda-intelligence:latest
+        ports:
+        - containerPort: 7005
+        envFrom:
+        - configMapRef:
+            name: nanda-config
+        env:
+        - name: PORT
+          value: "7005"
+        - name: AGENT_ID
+          value: "candlefish:intelligence"
+        - name: ORCHESTRATOR_URL
+          value: "http://orchestrator-service:7010"
+        - name: PKB_URL
+          value: "http://pkb-service:7001"
+        - name: PAINTBOX_URL
+          value: "http://paintbox-service:7003"
+        - name: CLARK_URL
+          value: "http://clark-service:7004"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 7005
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+
+---
+# HPA for auto-scaling
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: orchestrator-hpa
+  namespace: nanda-agents
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: orchestrator
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+---
+# Ingress for external access
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nanda-ingress
+  namespace: nanda-agents
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+  - hosts:
+    - nanda.candlefish.ai
+    secretName: nanda-tls
+  rules:
+  - host: nanda.candlefish.ai
+    http:
+      paths:
+      - path: /orchestrate
+        pathType: Prefix
+        backend:
+          service:
+            name: orchestrator-service
+            port:
+              number: 7010
+      - path: /agents
+        pathType: Prefix
+        backend:
+          service:
+            name: orchestrator-service
+            port:
+              number: 7010
+      - path: /ws
+        pathType: Prefix
+        backend:
+          service:
+            name: orchestrator-service
+            port:
+              number: 7500

@@ -107,7 +107,7 @@ describe('useForm Hook', () => {
         email: { initialValue: 'test@example.com' },
         firstName: { initialValue: 'John' },
       })
-      
+
       const { result } = renderHook(() => useForm<TestFormData>(config))
 
       expect(result.current.values.email).toBe('test@example.com')
@@ -405,7 +405,7 @@ describe('useForm Hook', () => {
       const config = createTestConfig()
       const { result } = renderHook(() => useForm<TestFormData>(config))
 
-      let isValid: boolean
+      let isValid: boolean = false
 
       act(() => {
         isValid = result.current.validateForm()
@@ -469,7 +469,7 @@ describe('useForm Hook', () => {
         })
       })
 
-      let submitResult: TestFormData | null
+      let submitResult: TestFormData | null = null
 
       act(() => {
         submitResult = result.current.submit()
@@ -484,7 +484,7 @@ describe('useForm Hook', () => {
       const config = createTestConfig()
       const { result } = renderHook(() => useForm<TestFormData>(config, onSubmit))
 
-      let submitResult: TestFormData | null
+      let submitResult: TestFormData | null = null
 
       act(() => {
         submitResult = result.current.submit()
@@ -627,7 +627,7 @@ describe('useForm Hook', () => {
       expect(result.current.isValid).toBe(true)
       expect(result.current.isDirty).toBe(false)
 
-      let isValid: boolean
+      let isValid: boolean = false
 
       act(() => {
         isValid = result.current.validateForm()

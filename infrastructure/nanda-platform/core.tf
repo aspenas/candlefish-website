@@ -8,7 +8,7 @@ terraform {
       version = "~> 5.0"
     }
   }
-  
+
   backend "s3" {
     bucket = "candlefish-nanda-tf-state-1755830988"
     key    = "nanda-platform/terraform.tfstate"
@@ -29,7 +29,7 @@ data "aws_availability_zones" "available" {
 # S3 Buckets for artifacts and backups
 resource "aws_s3_bucket" "nanda_artifacts" {
   bucket = "nanda-index-artifacts-${random_id.bucket_suffix.hex}"
-  
+
   tags = {
     Name        = "nanda-index-artifacts"
     Environment = "production"
@@ -39,7 +39,7 @@ resource "aws_s3_bucket" "nanda_artifacts" {
 
 resource "aws_s3_bucket" "nanda_backups" {
   bucket = "nanda-index-backups-${random_id.bucket_suffix.hex}"
-  
+
   tags = {
     Name        = "nanda-index-backups"
     Environment = "production"
@@ -56,27 +56,27 @@ resource "aws_dynamodb_table" "agents" {
   name         = "nanda-index-agents"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "agent_id"
-  
+
   attribute {
     name = "agent_id"
     type = "S"
   }
-  
+
   attribute {
     name = "platform"
     type = "S"
   }
-  
+
   global_secondary_index {
     name            = "platform-index"
     hash_key        = "platform"
     projection_type = "ALL"
   }
-  
+
   point_in_time_recovery {
     enabled = true
   }
-  
+
   tags = {
     Name        = "nanda-index-agents-table"
     Environment = "production"
@@ -89,21 +89,21 @@ resource "aws_dynamodb_table" "agent_facts" {
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "agent_id"
   range_key    = "fact_id"
-  
+
   attribute {
     name = "agent_id"
     type = "S"
   }
-  
+
   attribute {
     name = "fact_id"
     type = "S"
   }
-  
+
   point_in_time_recovery {
     enabled = true
   }
-  
+
   tags = {
     Name        = "nanda-index-agent-facts-table"
     Environment = "production"
@@ -115,11 +115,11 @@ resource "aws_dynamodb_table" "agent_facts" {
 resource "aws_ecr_repository" "nanda_api" {
   name                 = "nanda-index/nanda-api"
   image_tag_mutability = "MUTABLE"
-  
+
   image_scanning_configuration {
     scan_on_push = true
   }
-  
+
   tags = {
     Name        = "nanda-index-nanda-api-repo"
     Environment = "production"
@@ -130,11 +130,11 @@ resource "aws_ecr_repository" "nanda_api" {
 resource "aws_ecr_repository" "nanda_dashboard" {
   name                 = "nanda-index/nanda-dashboard"
   image_tag_mutability = "MUTABLE"
-  
+
   image_scanning_configuration {
     scan_on_push = true
   }
-  
+
   tags = {
     Name        = "nanda-index-nanda-dashboard-repo"
     Environment = "production"
@@ -146,7 +146,7 @@ resource "aws_ecr_repository" "nanda_dashboard" {
 resource "aws_cloudwatch_log_group" "nanda_api_logs" {
   name              = "/aws/ecs/nanda-index/nanda-api"
   retention_in_days = 30
-  
+
   tags = {
     Name        = "nanda-index-nanda-api-logs"
     Environment = "production"
@@ -157,7 +157,7 @@ resource "aws_cloudwatch_log_group" "nanda_api_logs" {
 resource "aws_cloudwatch_log_group" "nanda_dashboard_logs" {
   name              = "/aws/ecs/nanda-index/nanda-dashboard"
   retention_in_days = 30
-  
+
   tags = {
     Name        = "nanda-index-nanda-dashboard-logs"
     Environment = "production"

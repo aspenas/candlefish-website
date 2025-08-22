@@ -1,20 +1,18 @@
-import React from 'react'
-import { Outlet } from '@tanstack/react-router'
+import { useEffect } from 'react'
 import { Toaster } from './components/ui/toaster'
+import { DashboardHome } from './pages/DashboardHome'
 
 function App() {
+  useEffect(() => {
+    // Enable dark mode by default for the enterprise dashboard look
+    document.documentElement.classList.add('dark')
+    document.documentElement.setAttribute('data-theme', 'dark')
+  }, [])
+
   return (
-    <div className="min-h-screen bg-background">
-      <main className="container mx-auto px-4 py-8">
-        <header className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground">
-            NANDA Index Dashboard
-          </h1>
-          <p className="text-lg text-muted-foreground mt-2">
-            Revolutionary AI Agent Discovery Platform
-          </p>
-        </header>
-        <Outlet />
+    <div className="min-h-screen bg-background dark">
+      <main className="container mx-auto px-4 py-8 max-w-7xl">
+        <DashboardHome />
       </main>
       <Toaster />
     </div>

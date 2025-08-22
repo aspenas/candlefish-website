@@ -57,23 +57,23 @@
   --color-error: #dc2626;     /* Warm red (AA - 4.6:1) */
   --color-info: #0369a1;      /* Deep blue */
 
-  /* Legacy Support (Paintbox compatibility) */
-  --color-paintbox-brand: var(--color-brown-primary);
-  --color-paintbox-brand-600: var(--color-brown-600);
-  --color-paintbox-brand-500: var(--color-brown-500);
-  --color-paintbox-brand-400: var(--color-brown-400);
-  --color-paintbox-accent: var(--color-brown-primary);
-  --color-paintbox-accent-2: var(--color-brown-400);
-  --color-paintbox-background: var(--color-eggshell-primary);
-  --color-paintbox-surface: var(--color-surface-primary);
-  --color-paintbox-overlay: var(--color-surface-elevated);
-  --color-paintbox-text: var(--color-text-primary);
-  --color-paintbox-text-muted: var(--color-text-secondary);
-  --color-paintbox-border: var(--color-border-primary);
-  --color-paintbox-error: var(--color-error);
-  --color-paintbox-success: var(--color-success);
-  --color-paintbox-warning: var(--color-warning);
-  --color-paintbox-primary: var(--color-brown-primary);
+  /* Legacy Support (for backward compatibility) */
+  --color-eggshell-legacy-brand: var(--color-brown-primary);
+  --color-eggshell-legacy-brand-600: var(--color-brown-600);
+  --color-eggshell-legacy-brand-500: var(--color-brown-500);
+  --color-eggshell-legacy-brand-400: var(--color-brown-400);
+  --color-eggshell-legacy-accent: var(--color-brown-primary);
+  --color-eggshell-legacy-accent-2: var(--color-brown-400);
+  --color-eggshell-legacy-background: var(--color-eggshell-primary);
+  --color-eggshell-legacy-surface: var(--color-surface-primary);
+  --color-eggshell-legacy-overlay: var(--color-surface-elevated);
+  --color-eggshell-legacy-text: var(--color-text-primary);
+  --color-eggshell-legacy-text-muted: var(--color-text-secondary);
+  --color-eggshell-legacy-border: var(--color-border-primary);
+  --color-eggshell-legacy-error: var(--color-error);
+  --color-eggshell-legacy-success: var(--color-success);
+  --color-eggshell-legacy-warning: var(--color-warning);
+  --color-eggshell-legacy-primary: var(--color-brown-primary);
 
   /* Elevation and Shadows - Eggshell-tinted (Updated for new brown primary) */
   --shadow-eggshell-sm: 0 1px 2px 0 rgba(109, 99, 79, 0.1);
@@ -103,199 +103,215 @@
 }
 
 /* Eggshell Design System Components */
-@layer components {
-  /* Primary Button - Warm Brown */
-  .eggshell-btn-primary {
-    @apply px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2;
-    @apply transform hover:scale-105 active:scale-95;
-    background-color: var(--color-interactive-primary);
-    color: var(--color-text-inverse);
-    box-shadow: var(--shadow-eggshell-sm);
-    border: 1px solid transparent;
-  }
 
-  .eggshell-btn-primary:hover {
-    background-color: var(--color-interactive-primary-hover);
-    box-shadow: var(--shadow-eggshell-md);
-  }
+/* Card Component - Clean and Warm */
+.eggshell-card {
+  background: var(--color-surface-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-eggshell-md);
+  border: 1px solid var(--color-border-secondary);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
 
-  .eggshell-btn-primary:active {
-    background-color: var(--color-interactive-primary-active);
-    transform: scale(0.98);
-  }
+.eggshell-card:hover {
+  box-shadow: var(--shadow-eggshell-lg);
+  transform: translateY(-1px);
+}
 
-  .eggshell-btn-primary:disabled {
-    background-color: var(--color-interactive-primary-disabled);
-    color: var(--color-text-tertiary);
-    cursor: not-allowed;
-    transform: none;
-  }
+/* Form Input - Accessible and Professional */
+.eggshell-input {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-primary);
+  background-color: var(--color-surface-primary);
+  color: var(--color-text-primary);
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+}
 
-  /* Secondary Button - Warm Eggshell */
-  .eggshell-btn-secondary {
-    @apply px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2;
-    @apply transform hover:scale-105 active:scale-95;
-    background-color: var(--color-surface-primary);
-    color: var(--color-text-primary);
-    border: 1px solid var(--color-border-primary);
-    box-shadow: var(--shadow-eggshell-sm);
-  }
+.eggshell-input::placeholder {
+  color: var(--color-text-tertiary);
+}
 
-  .eggshell-btn-secondary:hover {
-    background-color: var(--color-interactive-secondary-hover);
-    border-color: var(--color-border-focus);
-    color: var(--color-interactive-primary);
-    box-shadow: var(--shadow-eggshell-md);
-  }
+.eggshell-input:focus {
+  border-color: var(--color-border-focus);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(155, 139, 115, 0.1);
+  background-color: var(--color-surface-primary);
+}
 
-  .eggshell-btn-secondary:active {
-    background-color: var(--color-interactive-secondary-active);
-    transform: scale(0.98);
-  }
+.eggshell-input:disabled {
+  background-color: var(--color-background-tertiary);
+  color: var(--color-text-tertiary);
+  cursor: not-allowed;
+}
 
-  /* Card Component - Clean and Warm */
-  .eggshell-card {
-    background: var(--color-surface-primary);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-eggshell-md);
-    border: 1px solid var(--color-border-secondary);
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
-  }
+/* Form Label - Clear Hierarchy */
+.eggshell-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+  display: block;
+  letter-spacing: -0.01em;
+}
 
-  .eggshell-card:hover {
-    box-shadow: var(--shadow-eggshell-lg);
-    transform: translateY(-1px);
-  }
+/* Section Container - Organized Layout */
+.eggshell-section {
+  background-color: var(--color-surface-primary);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-eggshell-md);
+  border: 1px solid var(--color-border-secondary);
+}
 
-  /* Form Input - Accessible and Professional */
-  .eggshell-input {
-    width: 100%;
-    padding: var(--space-3) var(--space-4);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-border-primary);
-    background-color: var(--color-surface-primary);
-    color: var(--color-text-primary);
-    transition: all 0.2s ease;
-    font-size: 0.875rem;
-  }
+/* Navigation Component */
+.eggshell-nav {
+  background-color: var(--color-surface-primary);
+  border-bottom: 1px solid var(--color-border-secondary);
+  backdrop-filter: blur(10px);
+  background-color: rgba(255, 255, 255, 0.95);
+}
 
-  .eggshell-input::placeholder {
-    color: var(--color-text-tertiary);
-  }
+.eggshell-nav-link {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  padding: var(--space-4) var(--space-6);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+  font-weight: 500;
+  display: inline-block;
+}
 
-  .eggshell-input:focus {
-    border-color: var(--color-border-focus);
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(155, 139, 115, 0.1);
-    background-color: var(--color-surface-primary);
-  }
+.eggshell-nav-link:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-background-tertiary);
+}
 
-  .eggshell-input:disabled {
-    background-color: var(--color-background-tertiary);
-    color: var(--color-text-tertiary);
-    cursor: not-allowed;
-  }
+.eggshell-nav-link.active {
+  color: var(--color-interactive-primary);
+  background-color: var(--color-interactive-secondary);
+}
 
-  /* Form Label - Clear Hierarchy */
-  .eggshell-label {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--color-text-primary);
-    margin-bottom: var(--space-2);
-    display: block;
-    letter-spacing: -0.01em;
-  }
+/* Text Utilities */
+.eggshell-text-gradient {
+  background: linear-gradient(135deg, var(--color-brown-600), var(--color-brown-400));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
 
-  /* Section Container - Organized Layout */
-  .eggshell-section {
-    background-color: var(--color-surface-primary);
-    border-radius: var(--radius-xl);
-    padding: var(--space-6);
-    box-shadow: var(--shadow-eggshell-md);
-    border: 1px solid var(--color-border-secondary);
-  }
+.eggshell-text-primary {
+  color: var(--color-text-primary);
+}
 
-  /* Navigation Component */
-  .eggshell-nav {
-    background-color: var(--color-surface-primary);
-    border-bottom: 1px solid var(--color-border-secondary);
-    backdrop-filter: blur(10px);
-    background-color: rgba(255, 255, 255, 0.95);
-  }
+.eggshell-text-secondary {
+  color: var(--color-text-secondary);
+}
 
-  .eggshell-nav-link {
-    color: var(--color-text-secondary);
-    text-decoration: none;
-    padding: var(--space-4) var(--space-6);
-    border-radius: var(--radius-md);
-    transition: all 0.2s ease;
-    font-weight: 500;
-    display: inline-block;
-  }
+.eggshell-text-tertiary {
+  color: var(--color-text-tertiary);
+}
 
-  .eggshell-nav-link:hover {
-    color: var(--color-text-primary);
-    background-color: var(--color-background-tertiary);
-  }
+/* Background and Surface Utilities */
+.eggshell-background {
+  background-color: var(--color-background-primary);
+}
 
-  .eggshell-nav-link.active {
-    color: var(--color-interactive-primary);
-    background-color: var(--color-interactive-secondary);
-  }
+.eggshell-surface {
+  background-color: var(--color-surface-primary);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-lg);
+}
 
-  /* Text Utilities */
-  .eggshell-text-gradient {
-    background: linear-gradient(135deg, var(--color-brown-600), var(--color-brown-400));
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
+/* Border Utility */
+.eggshell-border {
+  border-color: var(--color-border-primary);
+}
 
-  .eggshell-text-primary {
-    color: var(--color-text-primary);
-  }
+/* Legacy Components (updated to use Eggshell tokens) */
+.eggshell-btn {
+  @apply px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2;
+  @apply transform hover:scale-105 active:scale-95;
+  background-color: var(--color-interactive-primary);
+  color: var(--color-text-inverse);
+  box-shadow: var(--shadow-eggshell-sm);
+  border: 1px solid transparent;
+}
 
-  .eggshell-text-secondary {
-    color: var(--color-text-secondary);
-  }
+.eggshell-btn:hover {
+  background-color: var(--color-interactive-primary-hover);
+  box-shadow: var(--shadow-eggshell-md);
+}
 
-  .eggshell-text-tertiary {
-    color: var(--color-text-tertiary);
-  }
+.eggshell-btn:active {
+  background-color: var(--color-interactive-primary-active);
+  transform: scale(0.98);
+}
 
-  /* Legacy Paintbox Components (updated to use Eggshell tokens) */
-  .paintbox-btn {
-    @apply eggshell-btn-primary;
-  }
+.eggshell-btn:disabled {
+  background-color: var(--color-interactive-primary-disabled);
+  color: var(--color-text-tertiary);
+  cursor: not-allowed;
+  transform: none;
+}
 
-  .paintbox-btn-primary {
-    @apply eggshell-btn-primary;
-  }
+.eggshell-gradient-text {
+  background: linear-gradient(135deg, var(--color-brown-600), var(--color-brown-400));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
 
-  .paintbox-btn-secondary {
-    @apply eggshell-btn-secondary;
-  }
+/* Primary Button - Warm Brown */
+.eggshell-btn-primary {
+  @apply px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2;
+  @apply transform hover:scale-105 active:scale-95;
+  background-color: var(--color-interactive-primary);
+  color: var(--color-text-inverse);
+  box-shadow: var(--shadow-eggshell-sm);
+  border: 1px solid transparent;
+}
 
-  .paintbox-card {
-    @apply eggshell-card;
-  }
+.eggshell-btn-primary:hover {
+  background-color: var(--color-interactive-primary-hover);
+  box-shadow: var(--shadow-eggshell-md);
+}
 
-  .paintbox-input {
-    @apply eggshell-input;
-  }
+.eggshell-btn-primary:active {
+  background-color: var(--color-interactive-primary-active);
+  transform: scale(0.98);
+}
 
-  .paintbox-label {
-    @apply eggshell-label;
-  }
+.eggshell-btn-primary:disabled {
+  background-color: var(--color-interactive-primary-disabled);
+  color: var(--color-text-tertiary);
+  cursor: not-allowed;
+  transform: none;
+}
 
-  .paintbox-section {
-    @apply eggshell-section;
-  }
+/* Secondary Button - Warm Eggshell */
+.eggshell-btn-secondary {
+  @apply px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2;
+  @apply transform hover:scale-105 active:scale-95;
+  background-color: var(--color-surface-primary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-primary);
+  box-shadow: var(--shadow-eggshell-sm);
+}
 
-  .paintbox-gradient-text {
-    @apply eggshell-text-gradient;
-  }
+.eggshell-btn-secondary:hover {
+  background-color: var(--color-interactive-secondary-hover);
+  border-color: var(--color-border-focus);
+  color: var(--color-interactive-primary);
+  box-shadow: var(--shadow-eggshell-md);
+}
+
+.eggshell-btn-secondary:active {
+  background-color: var(--color-interactive-secondary-active);
+  transform: scale(0.98);
 }
 
 /* Base styles - Eggshell Design System */
@@ -415,26 +431,26 @@ body {
 /* Glass morphism effects */
 .glass {
   backdrop-filter: blur(10px);
-  background-color: var(--color-paintbox-surface);
-  border: 1px solid var(--color-paintbox-border);
+  background-color: var(--color-eggshell-legacy-surface);
+  border: 1px solid var(--color-eggshell-legacy-border);
 }
 
 @media (prefers-color-scheme: dark) {
   .glass {
-    background-color: var(--color-paintbox-surface-dark);
-    border-color: var(--color-paintbox-border-dark);
+    background-color: var(--color-eggshell-legacy-surface-dark);
+    border-color: var(--color-eggshell-legacy-border-dark);
   }
 }
 
 /* Manual dark mode via .theme-dark on html or body */
 .theme-dark body {
-  background-color: var(--color-paintbox-background-dark);
-  color: var(--color-paintbox-text-dark);
+  background-color: var(--color-eggshell-legacy-background-dark);
+  color: var(--color-eggshell-legacy-text-dark);
 }
 .theme-dark .glass,
-.theme-dark .paintbox-card {
-  background-color: var(--color-paintbox-surface-dark);
-  border-color: var(--color-paintbox-border-dark);
+.theme-dark .eggshell-card {
+  background-color: var(--color-eggshell-legacy-surface-dark);
+  border-color: var(--color-eggshell-legacy-border-dark);
 }
 
 /* Smooth scrolling for containers */
@@ -461,7 +477,7 @@ body {
   a,
   input[type="checkbox"],
   input[type="radio"],
-  .paintbox-btn,
+  .eggshell-btn,
   [role="button"] {
     min-height: 44px;
     min-width: 44px;
@@ -471,7 +487,7 @@ body {
   @media (min-width: 768px) and (pointer: coarse) {
     button,
     a,
-    .paintbox-btn,
+    .eggshell-btn,
     [role="button"] {
       min-height: 48px;
       min-width: 48px;
@@ -482,12 +498,12 @@ body {
 /* iPad and tablet specific optimizations */
 @media (min-width: 768px) and (max-width: 1024px) {
   /* Increase spacing for tablet comfort */
-  .paintbox-card {
+  .eggshell-card {
     padding: 1.5rem;
   }
 
   /* Larger text for readability on tablets */
-  .paintbox-btn {
+  .eggshell-btn {
     font-size: 1rem;
     padding: 0.875rem 1.5rem;
   }
@@ -547,10 +563,10 @@ body {
 }
 
 /* Utility classes for common patterns */
-.bg-gradient-paintbox {
+.bg-gradient-eggshell {
   background: linear-gradient(135deg,
-    color-mix(in oklab, var(--color-paintbox-brand-500) 10%, transparent) 0%,
-    color-mix(in oklab, var(--color-paintbox-brand-400) 10%, transparent) 100%
+    color-mix(in oklab, var(--color-eggshell-legacy-brand-500) 10%, transparent) 0%,
+    color-mix(in oklab, var(--color-eggshell-legacy-brand-400) 10%, transparent) 100%
   );
 }
 
@@ -571,6 +587,6 @@ body {
     letter-spacing: -0.01em;
   }
   a {
-    color: var(--color-paintbox-brand-400);
+    color: var(--color-eggshell-legacy-brand-400);
   }
 }

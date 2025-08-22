@@ -14,7 +14,7 @@ interface ActionButtonProps {
 
 const ActionButton = ({ href, icon: Icon, title, description, variant }: ActionButtonProps) => {
   const variantClasses = {
-    primary: 'bg-gradient-to-r from-paintbox-brand to-paintbox-brand-400 text-white shadow-lg hover:shadow-xl hover-glow',
+    primary: 'bg-gradient-to-r from-eggshell-cream to-eggshell-cream-dark text-eggshell-charcoal shadow-lg hover:shadow-xl hover-glow',
     secondary: 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg hover:shadow-xl hover-glow',
     accent: 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-white shadow-lg hover:shadow-xl hover-glow',
     success: 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg hover:shadow-xl hover-glow'
@@ -111,10 +111,10 @@ export default function HomePage() {
               </div>
             </div>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-paintbox-text mb-4 tracking-tight slide-up-fade">
-              <span className="paintbox-gradient-text">Paintbox</span> Estimator
+              <span className="paintbox-gradient-text">Eggshell</span> Estimator
             </h1>
             <p className="text-xl md:text-2xl text-paintbox-text-muted max-w-3xl mx-auto leading-relaxed slide-up-fade">
-              Professional painting estimates designed for field contractors.
+              Professional estimates designed for field contractors.
               <br className="hidden sm:block" />
               <span className="font-medium text-paintbox-brand">Precise, fast, and ready for iPad.</span>
             </p>
@@ -212,12 +212,12 @@ export default function HomePage() {
               <StatusIndicator label="CDN" value="Global" />
               <div className="pt-2">
                 <a
-                  href="https://paintbox.candlefish.ai"
+                  href="https://eggshell.candlefish.ai"
                   className="text-sm text-paintbox-brand hover:text-paintbox-accent transition-colors font-medium"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  paintbox.candlefish.ai ↗
+                  eggshell.candlefish.ai ↗
                 </a>
               </div>
             </div>

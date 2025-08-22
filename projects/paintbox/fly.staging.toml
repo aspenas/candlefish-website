@@ -2,7 +2,7 @@
 # Generated: 2025-08-22
 # Purpose: Safe staging deployment before production
 
-app = "paintbox-staging"
+app = "eggshell-staging"
 primary_region = "sjc"
 
 [build]
@@ -12,11 +12,11 @@ primary_region = "sjc"
   NODE_ENV = "staging"
   PORT = "8080"
   # Fixed: Persistent database with WAL mode
-  DATABASE_URL = "file:/data/paintbox.db?mode=wal"
+  DATABASE_URL = "file:/data/eggshell.db?mode=wal"
   # App branding
   NEXT_PUBLIC_APP_NAME = "Eggshell (Staging)"
-  NEXT_PUBLIC_APP_URL = "https://paintbox-staging.fly.dev"
-  NEXT_PUBLIC_API_URL = "https://paintbox-staging.fly.dev"
+  NEXT_PUBLIC_APP_URL = "https://eggshell-staging.fly.dev"
+  NEXT_PUBLIC_API_URL = "https://eggshell-staging.fly.dev"
   # Performance settings
   NODE_OPTIONS = "--max-old-space-size=1536"
   NEXT_TELEMETRY_DISABLED = "1"
@@ -68,7 +68,7 @@ primary_region = "sjc"
 
 # Persistent volume for database
 [mounts]
-  source = "paintbox_staging_data"
+  source = "eggshell_staging_data"
   destination = "/data"
 
 # Deploy configuration

@@ -148,7 +148,7 @@ function applySecurityHeaders(response: NextResponse, nonce: string): NextRespon
     `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com`,
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: https: blob: https://lh3.googleusercontent.com",
-    "connect-src 'self' https://api.companycam.com https://*.salesforce.com https://paintbox-api.railway.app wss://paintbox-api.railway.app https://vitals.vercel-insights.com https://accounts.google.com https://oauth2.googleapis.com",
+    "connect-src 'self' https://api.companycam.com https://*.salesforce.com https://eggshell-api.railway.app wss://eggshell-api.railway.app https://vitals.vercel-insights.com https://accounts.google.com https://oauth2.googleapis.com",
     "frame-src https://accounts.google.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",

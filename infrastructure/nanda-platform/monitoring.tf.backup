@@ -1,7 +1,7 @@
 # CloudWatch Dashboards
 resource "aws_cloudwatch_dashboard" "nanda_main_dashboard" {
   dashboard_name = "${var.project_name}-main-dashboard"
-  
+
   dashboard_body = jsonencode({
     widgets = [
       {
@@ -10,7 +10,7 @@ resource "aws_cloudwatch_dashboard" "nanda_main_dashboard" {
         y      = 0
         width  = 12
         height = 6
-        
+
         properties = {
           metrics = [
             ["AWS/ECS", "CPUUtilization", "ServiceName", aws_ecs_service.nanda_api.name, "ClusterName", aws_ecs_cluster.nanda_cluster.name],
@@ -31,7 +31,7 @@ resource "aws_cloudwatch_dashboard" "nanda_main_dashboard" {
         y      = 6
         width  = 12
         height = 6
-        
+
         properties = {
           metrics = [
             ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", aws_lb.nanda_alb.arn_suffix],
@@ -52,7 +52,7 @@ resource "aws_cloudwatch_dashboard" "nanda_main_dashboard" {
         y      = 12
         width  = 12
         height = 6
-        
+
         properties = {
           metrics = [
             ["AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", aws_dynamodb_table.agents.name],
@@ -73,7 +73,7 @@ resource "aws_cloudwatch_dashboard" "nanda_main_dashboard" {
         y      = 18
         width  = 12
         height = 6
-        
+
         properties = {
           metrics = [
             ["AWS/ElastiCache", "CPUUtilization", "CacheClusterId", "${aws_elasticache_replication_group.redis.replication_group_id}-001"],
@@ -104,12 +104,12 @@ resource "aws_cloudwatch_metric_alarm" "api_response_time" {
   threshold           = "2"
   alarm_description   = "API response time is too high"
   alarm_actions       = [aws_sns_topic.nanda_alerts.arn]
-  
+
   dimensions = {
     LoadBalancer = aws_lb.nanda_alb.arn_suffix
     TargetGroup  = aws_lb_target_group.nanda_api_tg.arn_suffix
   }
-  
+
   tags = {
     Name = "${var.project_name}-api-response-time-alarm"
   }
@@ -126,12 +126,12 @@ resource "aws_cloudwatch_metric_alarm" "api_error_rate" {
   threshold           = "10"
   alarm_description   = "API error rate is too high"
   alarm_actions       = [aws_sns_topic.nanda_alerts.arn]
-  
+
   dimensions = {
     LoadBalancer = aws_lb.nanda_alb.arn_suffix
     TargetGroup  = aws_lb_target_group.nanda_api_tg.arn_suffix
   }
-  
+
   tags = {
     Name = "${var.project_name}-api-error-rate-alarm"
   }
@@ -148,11 +148,11 @@ resource "aws_cloudwatch_metric_alarm" "dynamodb_throttles" {
   threshold           = "0"
   alarm_description   = "DynamoDB requests are being throttled"
   alarm_actions       = [aws_sns_topic.nanda_alerts.arn]
-  
+
   dimensions = {
     TableName = aws_dynamodb_table.agents.name
   }
-  
+
   tags = {
     Name = "${var.project_name}-dynamodb-throttles-alarm"
   }
@@ -169,11 +169,11 @@ resource "aws_cloudwatch_metric_alarm" "redis_cpu_high" {
   threshold           = "80"
   alarm_description   = "Redis CPU utilization is high"
   alarm_actions       = [aws_sns_topic.nanda_alerts.arn]
-  
+
   dimensions = {
     CacheClusterId = "${aws_elasticache_replication_group.redis.replication_group_id}-001"
   }
-  
+
   tags = {
     Name = "${var.project_name}-redis-cpu-alarm"
   }
@@ -190,11 +190,11 @@ resource "aws_cloudwatch_metric_alarm" "redis_memory_high" {
   threshold           = "80"
   alarm_description   = "Redis memory utilization is high"
   alarm_actions       = [aws_sns_topic.nanda_alerts.arn]
-  
+
   dimensions = {
     CacheClusterId = "${aws_elasticache_replication_group.redis.replication_group_id}-001"
   }
-  
+
   tags = {
     Name = "${var.project_name}-redis-memory-alarm"
   }
@@ -203,7 +203,7 @@ resource "aws_cloudwatch_metric_alarm" "redis_memory_high" {
 # SNS Topic for Alerts
 resource "aws_sns_topic" "nanda_alerts" {
   name = "${var.project_name}-alerts"
-  
+
   tags = {
     Name = "${var.project_name}-alerts-topic"
   }
@@ -220,12 +220,12 @@ resource "aws_cloudwatch_log_metric_filter" "api_requests" {
   name           = "${var.project_name}-api-requests"
   log_group_name = aws_cloudwatch_log_group.nanda_api_logs.name
   pattern        = "[timestamp, request_id, method, path, status_code, response_time]"
-  
+
   metric_transformation {
     name      = "APIRequests"
     namespace = "NANDA/API"
     value     = "1"
-    
+
     default_value = "0"
   }
 }
@@ -234,12 +234,12 @@ resource "aws_cloudwatch_log_metric_filter" "agent_registrations" {
   name           = "${var.project_name}-agent-registrations"
   log_group_name = aws_cloudwatch_log_group.nanda_api_logs.name
   pattern        = "[timestamp, request_id, event=\"agent_registered\", agent_id, platform]"
-  
+
   metric_transformation {
     name      = "AgentRegistrations"
     namespace = "NANDA/Agents"
     value     = "1"
-    
+
     default_value = "0"
   }
 }
@@ -248,12 +248,12 @@ resource "aws_cloudwatch_log_metric_filter" "agent_discoveries" {
   name           = "${var.project_name}-agent-discoveries"
   log_group_name = aws_cloudwatch_log_group.nanda_api_logs.name
   pattern        = "[timestamp, request_id, event=\"agent_discovered\", agent_id, platform]"
-  
+
   metric_transformation {
     name      = "AgentDiscoveries"
     namespace = "NANDA/Agents"
     value     = "1"
-    
+
     default_value = "0"
   }
 }
@@ -262,12 +262,12 @@ resource "aws_cloudwatch_log_metric_filter" "privacy_layer_requests" {
   name           = "${var.project_name}-privacy-layer-requests"
   log_group_name = aws_cloudwatch_log_group.nanda_api_logs.name
   pattern        = "[timestamp, request_id, event=\"privacy_layer_request\", mix_hops]"
-  
+
   metric_transformation {
     name      = "PrivacyLayerRequests"
     namespace = "NANDA/Privacy"
     value     = "1"
-    
+
     default_value = "0"
   }
 }
@@ -285,7 +285,7 @@ resource "aws_xray_sampling_rule" "nanda_sampling" {
   service_type   = "*"
   service_name   = "*"
   resource_arn   = "*"
-  
+
   tags = {
     Name = "${var.project_name}-xray-sampling"
   }
@@ -294,93 +294,93 @@ resource "aws_xray_sampling_rule" "nanda_sampling" {
 # WAF for Additional Security
 resource "aws_wafv2_web_acl" "nanda_waf" {
   count = var.enable_waf ? 1 : 0
-  
+
   name  = "${var.project_name}-waf"
   scope = "REGIONAL"
-  
+
   default_action {
     allow {}
   }
-  
+
   # Rate limiting rule
   rule {
     name     = "RateLimitRule"
     priority = 1
-    
+
     override_action {
       none {}
     }
-    
+
     statement {
       rate_based_statement {
         limit              = 2000
         aggregate_key_type = "IP"
       }
     }
-    
+
     visibility_config {
       cloudwatch_metrics_enabled = true
       metric_name                = "${var.project_name}RateLimitRule"
       sampled_requests_enabled   = true
     }
-    
+
     action {
       block {}
     }
   }
-  
+
   # SQL injection protection
   rule {
     name     = "AWSManagedRulesCommonRuleSet"
     priority = 2
-    
+
     override_action {
       none {}
     }
-    
+
     statement {
       managed_rule_group_statement {
         name        = "AWSManagedRulesCommonRuleSet"
         vendor_name = "AWS"
       }
     }
-    
+
     visibility_config {
       cloudwatch_metrics_enabled = true
       metric_name                = "${var.project_name}CommonRuleSetMetric"
       sampled_requests_enabled   = true
     }
   }
-  
+
   # Known bad inputs
   rule {
     name     = "AWSManagedRulesKnownBadInputsRuleSet"
     priority = 3
-    
+
     override_action {
       none {}
     }
-    
+
     statement {
       managed_rule_group_statement {
         name        = "AWSManagedRulesKnownBadInputsRuleSet"
         vendor_name = "AWS"
       }
     }
-    
+
     visibility_config {
       cloudwatch_metrics_enabled = true
       metric_name                = "${var.project_name}KnownBadInputsRuleSetMetric"
       sampled_requests_enabled   = true
     }
   }
-  
+
   visibility_config {
     cloudwatch_metrics_enabled = true
     metric_name                = "${var.project_name}WAFMetric"
     sampled_requests_enabled   = true
   }
-  
+
   tags = {
     Name = "${var.project_name}-waf"
   }
@@ -389,7 +389,7 @@ resource "aws_wafv2_web_acl" "nanda_waf" {
 # Associate WAF with ALB
 resource "aws_wafv2_web_acl_association" "nanda_waf_association" {
   count = var.enable_waf ? 1 : 0
-  
+
   resource_arn = aws_lb.nanda_alb.arn
   web_acl_arn  = aws_wafv2_web_acl.nanda_waf[0].arn
 }
@@ -398,23 +398,23 @@ resource "aws_wafv2_web_acl_association" "nanda_waf_association" {
 resource "aws_cloudtrail" "nanda_api_trail" {
   name           = "${var.project_name}-api-trail"
   s3_bucket_name = aws_s3_bucket.nanda_cloudtrail.bucket
-  
+
   event_selector {
     read_write_type                 = "All"
     include_management_events       = true
     exclude_management_event_sources = ["kms.amazonaws.com", "rdsdata.amazonaws.com"]
-    
+
     data_resource {
       type   = "AWS::DynamoDB::Table"
       values = ["${aws_dynamodb_table.agents.arn}/*"]
     }
-    
+
     data_resource {
       type   = "AWS::S3::Object"
       values = ["${aws_s3_bucket.nanda_artifacts.arn}/*"]
     }
   }
-  
+
   tags = {
     Name = "${var.project_name}-cloudtrail"
   }
@@ -423,7 +423,7 @@ resource "aws_cloudtrail" "nanda_api_trail" {
 resource "aws_s3_bucket" "nanda_cloudtrail" {
   bucket        = "${var.project_name}-cloudtrail-${random_id.bucket_suffix.hex}"
   force_destroy = true
-  
+
   tags = {
     Name = "${var.project_name}-cloudtrail-bucket"
   }
@@ -431,7 +431,7 @@ resource "aws_s3_bucket" "nanda_cloudtrail" {
 
 resource "aws_s3_bucket_policy" "nanda_cloudtrail_policy" {
   bucket = aws_s3_bucket.nanda_cloudtrail.id
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [

@@ -1,8 +1,8 @@
 # fly.toml app configuration file
-# Production-optimized configuration for Next.js Paintbox application
+# Production-optimized configuration for Next.js Eggshell application
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 
-app = "paintbox"
+app = "eggshell"
 primary_region = "sjc"
 
 [build]
@@ -11,17 +11,26 @@ primary_region = "sjc"
 [env]
   NODE_ENV = "production"
   PORT = "8080"
-  # Fixed: Changed from :memory: to persistent file with WAL mode for concurrency
-  DATABASE_URL = "file:/data/paintbox.db?mode=wal"
-  # Production optimizations
-  NODE_OPTIONS = "--max-old-space-size=1536"
+  # Optimized database configuration
+  DATABASE_URL = "file:/data/eggshell.db?mode=wal&cache=shared&_journal_mode=WAL"
+  # Aggressive memory optimization
+  NODE_OPTIONS = "--max-old-space-size=1024 --optimize-for-size --gc-interval=100 --expose-gc"
   NEXT_TELEMETRY_DISABLED = "1"
-  # Disable source maps in production for security
+  # Disable source maps to save memory
   GENERATE_SOURCEMAP = "false"
-  # Connection pooling
-  POOL_MIN = "2"
-  POOL_MAX = "10"
-  POOL_IDLE_TIMEOUT = "30000"
+  # Optimized connection pooling
+  POOL_MIN = "1"
+  POOL_MAX = "3"
+  POOL_IDLE_TIMEOUT = "10000"
+  # Memory monitoring
+  ENABLE_MEMORY_MONITOR = "true"
+  MEMORY_CHECK_INTERVAL = "30000"
+  # Cache configuration
+  CACHE_MAX_SIZE = "25"
+  CACHE_TTL = "300"
+  # Performance optimizations
+  MINIMIZE_MEMORY = "true"
+  COMPRESS_RESPONSES = "true"
 
 [http_service]
   internal_port = 8080
@@ -32,8 +41,8 @@ primary_region = "sjc"
   max_machines_running = 6
   processes = ["app"]
 
-  # Connection limits for stability
-  concurrency = { type = "requests", hard_limit = 200, soft_limit = 150 }
+  # Reduced connection limits for memory efficiency
+  concurrency = { type = "requests", hard_limit = 100, soft_limit = 75 }
 
 # Primary health check - quick response for load balancer
 [[http_service.checks]]
@@ -61,21 +70,32 @@ primary_region = "sjc"
   type = "tcp"
   port = 8080
 
-# Production VM configuration
+# Optimized VM configuration
 [[vm]]
   cpu_kind = "shared"
   cpus = 2
   memory_mb = 2048
+  # Swap configuration for memory pressure relief
+  swap_size_mb = 512
 
 # Persistent volume for database, logs and cache
 [mounts]
-  source = "paintbox_data"
+  source = "eggshell_data"
   destination = "/data"
 
-# Auto-scaling configuration
+# Auto-scaling configuration with memory-based scaling
 [metrics]
   port = 9091
   path = "/metrics"
+
+# Process management
+[[processes]]
+  name = "app"
+  # Restart on high memory usage
+  [[processes.health_checks]]
+    type = "memory"
+    threshold_mb = 1800
+    action = "restart"
 
 # Deploy configuration for zero-downtime
 [deploy]
@@ -83,6 +103,13 @@ primary_region = "sjc"
   max_unavailable = 0.25
   wait_timeout = "10m"
 
-# Kill configuration
+# Graceful shutdown configuration
 kill_signal = "SIGTERM"
 kill_timeout = "30s"
+
+# Restart policy for memory issues
+[[restart]]
+  policy = "on-failure"
+  max_retries = 3
+  # Restart if memory exceeds 90%
+  memory_threshold_percentage = 90

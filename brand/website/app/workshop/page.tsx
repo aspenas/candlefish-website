@@ -1,238 +1,268 @@
 'use client'
 
-import React, { useState } from 'react'
-import type { Metadata } from 'next'
+import React, { useState, useMemo, useCallback, memo } from 'react'
+import Link from 'next/link'
+import { workshopLogs } from '../../data/workshop/workshop-logs'
+import type { WorkshopLog, WorkshopFailure, WorkshopComponent, WorkshopChangelogEntry } from '../../data/workshop/types'
 
-// Real project data from our actual work
-const activeProjects = [
-  {
-    id: 'crown-trophy',
-    client: 'Crown Trophy',
-    focus: 'Engraving Automation Platform',
-    status: 'Discovery Phase',
-    weekInProgress: 1,
-    systemsBuilt: {
-      'Document Parsing': 'in-progress',
-      'AI Text Extraction': 'in-progress',
-      'Corel Draw Integration': 'planned',
-      'QuickBooks Sync': 'planned',
-      'Multi-Franchise Rollout': 'planned'
-    },
-    realMetrics: {
-      'Current Process Time': '45+ minutes',
-      'Target Process Time': 'Under 1 minute',
-      'Franchise Potential': '150 locations',
-      'Weekly Jobs Analyzed': '276 items'
-    }
-  },
-  {
-    id: 'paintbox',
-    client: 'Paintbox',
-    focus: 'Paint Estimation Platform',
-    status: 'Production',
-    weekInProgress: 4,
-    systemsBuilt: {
-      'Excel Formula Engine': 'complete',
-      'Salesforce Integration': 'complete',
-      'Company Cam Integration': 'complete',
-      'PDF Generation': 'complete',
-      'Offline Architecture': 'complete'
-    },
-    realMetrics: {
-      'Excel Formulas Replicated': '14,000+',
-      'Calculation Speed': 'Sub-second',
-      'API Integrations': '3 platforms',
-      'Production Uptime': '99.9%'
-    }
-  },
-  {
-    id: 'promoteros',
-    client: 'PromoterOS',
-    focus: 'AI Concert Booking Intelligence',
-    status: 'Beta Testing',
-    weekInProgress: 4,
-    systemsBuilt: {
-      'Artist Analyzer': 'complete',
-      'Demand Mapping': 'complete',
-      'Social Metrics API': 'complete',
-      'Booking Score Algorithm': 'in-progress',
-      'Venue Matching': 'planned'
-    },
-    realMetrics: {
-      'Artists Analyzed': '1,200+',
-      'Data Points Per Artist': '47',
-      'API Response Time': '< 200ms',
-      'Prediction Accuracy': 'Calibrating'
-    }
-  }
-]
-
-const SystemStatus: React.FC<{ status: string }> = ({ status }) => {
-  const getStatusStyle = () => {
-    switch (status) {
-      case 'complete':
-        return 'text-[#8AC926]'
-      case 'in-progress':
-        return 'text-[#3FD3C6]'
-      case 'planned':
-        return 'text-[#415A77]'
-      default:
-        return 'text-[#415A77]'
-    }
-  }
-
-  const getStatusIcon = () => {
-    switch (status) {
-      case 'complete':
-        return '✓'
-      case 'in-progress':
-        return '◐'
-      case 'planned':
-        return '○'
-      default:
-        return '·'
-    }
-  }
-
-  return (
-    <span className={`${getStatusStyle()} text-sm font-mono`}>
-      {getStatusIcon()} {status}
-    </span>
-  )
-}
-
-const SystemPreview: React.FC<{ projectId: string }> = ({ projectId }) => {
-  // Real system status indicators
-  const systemStatus = {
-    'crown-trophy': 'Analyzing engraving patterns from 276 sample jobs',
-    'paintbox': 'Live in production · Processing estimates daily',
-    'promoteros': 'Beta testing with 3 regional promoters'
-  }
-
-  return (
-    <div className="text-center py-8">
-      <p className="text-[#3FD3C6] text-sm">
-        {systemStatus[projectId as keyof typeof systemStatus]}
+// Memoized sub-components for better performance
+const WorkshopHeader = memo(() => (
+  <header className="border-b border-[#333] px-6 py-4">
+    <div className="max-w-6xl mx-auto">
+      <Link href="/" className="text-xs text-[#888] hover:text-[#fff]">
+        ← Back to Codex
+      </Link>
+      <h1 className="text-lg text-[#fff] mt-2">Workshop Logs</h1>
+      <p className="text-xs text-[#666] mt-1">
+        Complete build history. Failures included. No sanitization.
       </p>
     </div>
-  )
-}
+  </header>
+))
+WorkshopHeader.displayName = 'WorkshopHeader'
 
-export default function WorkshopGlimpses() {
+const StatusBadge = memo(({ status }: { status: string }) => {
+  const getStatusColor = useCallback((status: string) => {
+    switch (status) {
+      case 'active-research': return 'text-[#00ff00] border-[#00ff00]'
+      case 'production': return 'text-[#00ffff] border-[#00ffff]'
+      case 'beta-testing': return 'text-[#ffff00] border-[#ffff00]'
+      default: return 'text-[#888] border-[#888]'
+    }
+  }, [])
+
   return (
-    <main className="min-h-screen bg-gradient-to-b from-[#0D1B2A] to-[#1C1C1C] pt-24">
-      <section className="max-w-7xl mx-auto px-6 pb-32">
-        <header className="mb-20">
-          <h1 className="text-5xl font-light text-[#F8F8F2] mb-4">
-            Current Workshop
-          </h1>
-          <p className="text-xl text-[#415A77] max-w-3xl font-light">
-            Three operational systems in active development. No embellishment.
-            Just the actual state of the craft.
-          </p>
-        </header>
+    <span className={`px-2 py-1 border ${getStatusColor(status)}`}>
+      {status}
+    </span>
+  )
+})
+StatusBadge.displayName = 'StatusBadge'
 
-        <div className="space-y-24">
-          {activeProjects.map(project => (
-            <article key={project.id} className="border-b border-[#1B263B] pb-16">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-                {/* Project Overview */}
-                <div className="lg:col-span-1">
-                  <h2 className="text-3xl font-light text-[#F8F8F2] mb-2">
-                    {project.client}
-                  </h2>
-                  <p className="text-[#3FD3C6] text-sm uppercase tracking-wider mb-4">
-                    {project.focus}
-                  </p>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-[#415A77]">Status</span>
-                      <span className="text-[#E0E1DD]">{project.status}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[#415A77]">Week</span>
-                      <span className="text-[#E0E1DD]">{project.weekInProgress} of ~16</span>
-                    </div>
-                  </div>
+const FailureItem = memo(({ failure }: { failure: WorkshopFailure }) => (
+  <div className="border-l-2 border-[#ff4444] pl-3 text-xs">
+    <div className="flex gap-4 text-[#888]">
+      <span>{failure.date}</span>
+      <span>{failure.version}</span>
+    </div>
+    <div className="text-[#d4d4d4] mt-1">
+      Attempt: {failure.attempt}
+    </div>
+    <div className="text-[#ff8888] mt-1">
+      {failure.result}
+    </div>
+    <div className="text-[#aaa] mt-1">
+      → {failure.learning}
+    </div>
+  </div>
+))
+FailureItem.displayName = 'FailureItem'
+
+const ComponentItem = memo(({
+  component,
+  logId,
+  index,
+  showCode,
+  onToggleCode
+}: {
+  component: WorkshopComponent
+  logId: string
+  index: number
+  showCode: boolean
+  onToggleCode: () => void
+}) => (
+  <div className="mb-4 border border-[#333] p-3">
+    <div className="flex justify-between items-center mb-2">
+      <span className="text-sm text-[#fff]">{component.name}</span>
+      <div className="flex gap-3 text-xs">
+        <span className={`px-2 py-1 border ${
+          component.status === 'production' ? 'border-[#00ff00] text-[#00ff00]' :
+          component.status === 'working' ? 'border-[#ffff00] text-[#ffff00]' :
+          'border-[#ff9500] text-[#ff9500]'
+        }`}>
+          {component.status}
+        </span>
+        {component.accuracy && (
+          <span className="text-[#888]">
+            Accuracy: {component.accuracy}
+          </span>
+        )}
+      </div>
+    </div>
+
+    {component.code && (
+      <div>
+        <button
+          onClick={onToggleCode}
+          className="text-xs text-[#6666ff] hover:text-[#8888ff]"
+        >
+          {showCode ? 'Hide' : 'Show'} Code
+        </button>
+
+        {showCode && (
+          <pre className="mt-2 p-2 bg-[#1a1a1a] text-xs overflow-x-auto">
+            <code>{component.code.trim()}</code>
+          </pre>
+        )}
+      </div>
+    )}
+  </div>
+))
+ComponentItem.displayName = 'ComponentItem'
+
+const ChangelogItem = memo(({ entry }: { entry: WorkshopChangelogEntry }) => (
+  <div className="text-xs">
+    <div className="flex gap-4 text-[#888]">
+      <span className="text-[#fff]">{entry.version}</span>
+      <span>{entry.date}</span>
+    </div>
+    <ul className="mt-1 space-y-1">
+      {entry.changes.map((change, j) => (
+        <li key={j} className={`
+          ${change.startsWith('ADD:') ? 'text-[#44ff44]' :
+            change.startsWith('FIX:') ? 'text-[#ff9944]' :
+            change.startsWith('IMPROVE:') ? 'text-[#4444ff]' :
+            change.startsWith('BREAKTHROUGH:') ? 'text-[#ffff00]' :
+            'text-[#aaa]'}
+        `}>
+          {change}
+        </li>
+      ))}
+    </ul>
+  </div>
+))
+ChangelogItem.displayName = 'ChangelogItem'
+
+const WorkshopLogItem = memo(({ log }: { log: WorkshopLog }) => {
+  const [showCode, setShowCode] = useState<{ [key: string]: boolean }>({})
+
+  const toggleCode = useCallback((key: string) => {
+    setShowCode(prev => ({ ...prev, [key]: !prev[key] }))
+  }, [])
+
+  return (
+    <article className="mb-12 border border-[#333] p-6">
+      {/* Header */}
+      <div className="flex justify-between items-start mb-6">
+        <div>
+          <h2 className="text-xl text-[#fff] mb-2">{log.title}</h2>
+          <div className="flex gap-3 text-xs">
+            <StatusBadge status={log.status} />
+            <span className="px-2 py-1 border border-[#666] text-[#aaa]">
+              {log.version}
+            </span>
+            <span className="text-[#666]">
+              Started: {log.startDate}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Problem Statement */}
+      <div className="mb-6">
+        <h3 className="text-xs uppercase text-[#888] mb-2">Initial Problem</h3>
+        <p className="text-sm text-[#d4d4d4] mb-3">{log.problem.initial}</p>
+
+        <div className="grid grid-cols-2 gap-4 text-xs">
+          <div>
+            <span className="text-[#888]">Constraints:</span>
+            <ul className="mt-1 space-y-1">
+              {log.problem.constraints.map((c, i) => (
+                <li key={i} className="text-[#aaa]">• {c}</li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <span className="text-[#888]">Initial Metrics:</span>
+            <dl className="mt-1 space-y-1">
+              {Object.entries(log.problem.metrics).map(([k, v]) => (
+                <div key={k} className="flex justify-between">
+                  <dt className="text-[#666]">{k}:</dt>
+                  <dd className="text-[#aaa]">{v}</dd>
                 </div>
+              ))}
+            </dl>
+          </div>
+        </div>
+      </div>
 
-                {/* Systems Progress */}
-                <div className="lg:col-span-1">
-                  <h3 className="text-sm uppercase tracking-wider text-[#3FD3C6] mb-4">
-                    Systems Architecture
-                  </h3>
-                  <div className="space-y-2">
-                    {Object.entries(project.systemsBuilt).map(([system, status]) => (
-                      <div key={system} className="flex items-center justify-between">
-                        <span className="text-[#E0E1DD] font-light">{system}</span>
-                        <SystemStatus status={status} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Real Metrics */}
-                <div className="lg:col-span-1">
-                  <h3 className="text-sm uppercase tracking-wider text-[#3FD3C6] mb-4">
-                    Operational Reality
-                  </h3>
-                  <dl className="space-y-3">
-                    {Object.entries(project.realMetrics).map(([metric, value]) => (
-                      <div key={metric}>
-                        <dt className="text-xs text-[#415A77]">{metric}</dt>
-                        <dd className="text-lg text-[#F8F8F2] font-light">{value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </div>
-              </div>
-
-              {/* Live System Preview */}
-              <div className="mt-8 p-8 bg-[#1B263B]/30 border border-[#415A77]/30">
-                <SystemPreview projectId={project.id} />
-              </div>
-            </article>
+      {/* Failures */}
+      <div className="mb-6">
+        <h3 className="text-xs uppercase text-[#888] mb-2">
+          Failures ({log.failures.length})
+        </h3>
+        <div className="space-y-2">
+          {log.failures.slice(0, 3).map((failure, i) => (
+            <FailureItem key={i} failure={failure} />
           ))}
         </div>
+      </div>
 
-        {/* The Workshop Team */}
-        <section className="mt-32">
-          <h2 className="text-4xl font-light text-[#F8F8F2] mb-12 text-center">The Workshop</h2>
+      {/* Current Solution */}
+      <div className="mb-6">
+        <h3 className="text-xs uppercase text-[#888] mb-2">Current Approach</h3>
+        <p className="text-sm text-[#d4d4d4] mb-3">
+          {log.currentSolution.approach}
+        </p>
 
-          <div className="grid md:grid-cols-2 gap-12 max-w-4xl mx-auto">
-            <div className="space-y-4">
-              <h3 className="text-2xl font-light text-[#3FD3C6]">System Architecture</h3>
-              <p className="text-xl text-[#E0E1DD] leading-relaxed">
-                Former operational designer for painting contractors, event promoters,
-                and retail operations. Believes every business contains hidden elegance
-                waiting to be revealed through thoughtful system design.
-              </p>
-            </div>
+        {log.currentSolution.components.map((comp, i) => (
+          <ComponentItem
+            key={i}
+            component={comp}
+            logId={log.id}
+            index={i}
+            showCode={showCode[`${log.id}-${i}`] || false}
+            onToggleCode={() => toggleCode(`${log.id}-${i}`)}
+          />
+        ))}
+      </div>
 
-            <div className="space-y-4">
-              <h3 className="text-2xl font-light text-[#3FD3C6]">Implementation Craft</h3>
-              <p className="text-xl text-[#E0E1DD] leading-relaxed">
-                Transforms architectural vision into living systems. Specializes in
-                making the complex feel simple, ensuring every interface feels
-                intuitive and every process runs smoothly.
-              </p>
-            </div>
-          </div>
+      {/* Changelog */}
+      <div className="mb-6" id={`${log.id}-changelog`}>
+        <h3 className="text-xs uppercase text-[#888] mb-2">Changelog</h3>
+        <div className="space-y-3">
+          {log.changelog.slice(0, 2).map((entry, i) => (
+            <ChangelogItem key={i} entry={entry} />
+          ))}
+        </div>
+      </div>
 
-          <p className="text-center text-[#415A77] mt-12 text-xl font-light">
-            We don't scale our team. We scale our impact through the systems we leave behind.
-            <br />
-            Each one running quietly, efficiently, indefinitely.
-          </p>
-        </section>
+      {/* Limitations & Next Steps */}
+      <div className="grid grid-cols-2 gap-6 text-xs">
+        <div>
+          <h3 className="uppercase text-[#888] mb-2">Known Limitations</h3>
+          <ul className="space-y-1">
+            {log.limitations.map((limit, i) => (
+              <li key={i} className="text-[#ff9944]">• {limit}</li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <h3 className="uppercase text-[#888] mb-2">Next Steps</h3>
+          <ul className="space-y-1">
+            {log.nextSteps.map((step, i) => (
+              <li key={i} className="text-[#44ff44]">• {step}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </article>
+  )
+})
+WorkshopLogItem.displayName = 'WorkshopLogItem'
 
-        {/* Bottom Note */}
-        <aside className="mt-24 text-center">
-          <p className="text-[#415A77] text-sm font-light">
-            Each system represents 12-16 weeks of focused craft.
-            We don't show past work. These are live operations.
-          </p>
-        </aside>
+export default function WorkshopLogs() {
+  // Memoize the logs to prevent unnecessary re-renders
+  const memoizedLogs = useMemo(() => workshopLogs, [])
+
+  return (
+    <main className="min-h-screen bg-[#0a0a0a] text-[#d4d4d4] font-mono">
+      <WorkshopHeader />
+
+      <section className="max-w-6xl mx-auto px-6 py-8">
+        {memoizedLogs.map((log) => (
+          <WorkshopLogItem key={log.id} log={log} />
+        ))}
       </section>
     </main>
   )

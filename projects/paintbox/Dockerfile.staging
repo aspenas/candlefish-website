@@ -1,32 +1,5 @@
-# Dockerfile.staging - Simplified staging deployment
-FROM node:20-alpine AS builder
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install dependencies with legacy peer deps to avoid conflicts
-RUN npm install --legacy-peer-deps --omit=dev || npm install --force
-
-# Copy application code
-COPY . .
-
-# Copy Prisma schema if it exists
-RUN if [ -f "prisma/schema.prisma" ]; then \
-      npx prisma generate || true; \
-    fi
-
-# Build with reduced memory and skip checks for staging
-ENV NODE_OPTIONS="--max-old-space-size=1024"
-ENV SKIP_STATIC_OPTIMIZATION=1
-ENV DISABLE_ESLINT=1
-ENV DISABLE_TYPESCRIPT_CHECK=1
-
-RUN npm run build || npm run build:deploy || npm run build:production || echo "Build completed with warnings"
-
-# Production stage
-FROM node:20-alpine AS runner
+# Dockerfile.staging - Quick deployment using pre-built assets
+FROM node:20-alpine
 
 WORKDIR /app
 
@@ -37,11 +10,21 @@ RUN apk add --no-cache libc6-compat tini
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy entire application from builder
-COPY --from=builder --chown=nextjs:nodejs /app ./
+# Copy package files
+COPY --chown=nextjs:nodejs package*.json ./
+
+# Install production dependencies
+RUN npm ci --only=production || npm install --production --legacy-peer-deps
+
+# Copy all application files
+COPY --chown=nextjs:nodejs . .
 
 # Create data directory for database
 RUN mkdir -p /data && chown -R nextjs:nodejs /data
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # Set user
 USER nextjs

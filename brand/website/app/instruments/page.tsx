@@ -1,300 +1,203 @@
-'use client';
+'use client'
 
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useMemo, useCallback, memo } from 'react'
+import Link from 'next/link'
+import { instruments } from '../../data/instruments/instruments-data'
+import type { Instrument } from '../../data/instruments/types'
 
-interface Instrument {
-  id: string;
-  name: string;
-  category: 'analysis' | 'synthesis' | 'calibration' | 'monitoring';
-  description: string;
-  status: 'active' | 'calibrating' | 'maintenance';
-  precision: number;
-  lastCalibrated: string;
-  accessLevel: 'public' | 'collaborator' | 'restricted';
-}
+// Memoized sub-components for better performance
+const InstrumentsHeader = memo(() => (
+  <header className="border-b border-[#333] px-6 py-4">
+    <div className="max-w-6xl mx-auto">
+      <Link href="/" className="text-xs text-[#888] hover:text-[#fff]">
+        ← Back to Codex
+      </Link>
+      <h1 className="text-lg text-[#fff] mt-2">Technical Instruments</h1>
+      <p className="text-xs text-[#666] mt-1">
+        Inputs → Methods → Outputs. No magic. Just tools.
+      </p>
+    </div>
+  </header>
+))
+InstrumentsHeader.displayName = 'InstrumentsHeader'
 
-const instruments: Instrument[] = [
-  {
-    id: 'inst-001',
-    name: 'Operational Pattern Analyzer',
-    category: 'analysis',
-    description: 'Deep pattern recognition across operational systems. Identifies efficiency opportunities and systemic bottlenecks.',
-    status: 'active',
-    precision: 0.97,
-    lastCalibrated: '2025-08-15',
-    accessLevel: 'collaborator'
-  },
-  {
-    id: 'inst-002',
-    name: 'Workflow Synthesis Engine',
-    category: 'synthesis',
-    description: 'Combines disparate operational elements into coherent, optimized workflows. Emphasizes human-system harmony.',
-    status: 'active',
-    precision: 0.94,
-    lastCalibrated: '2025-08-18',
-    accessLevel: 'collaborator'
-  },
-  {
-    id: 'inst-003',
-    name: 'Craft Quality Calibrator',
-    category: 'calibration',
-    description: 'Measures and maintains the craft integrity of all workshop outputs. Non-negotiable quality standards.',
-    status: 'calibrating',
-    precision: 0.99,
-    lastCalibrated: '2025-08-20',
-    accessLevel: 'restricted'
-  },
-  {
-    id: 'inst-004',
-    name: 'Collaboration Dynamics Monitor',
-    category: 'monitoring',
-    description: 'Tracks the health and productivity of ongoing collaborative relationships. Ensures mutual amplification.',
-    status: 'active',
-    precision: 0.91,
-    lastCalibrated: '2025-08-12',
-    accessLevel: 'collaborator'
-  },
-  {
-    id: 'inst-005',
-    name: 'System Load Predictor',
-    category: 'analysis',
-    description: 'Forecasts workshop capacity and optimal scheduling. Prevents cognitive overload and maintains flow states.',
-    status: 'maintenance',
-    precision: 0.88,
-    lastCalibrated: '2025-08-08',
-    accessLevel: 'public'
-  },
-  {
-    id: 'inst-006',
-    name: 'Selective Access Controller',
-    category: 'monitoring',
-    description: 'Maintains workshop boundaries and ensures only appropriate collaborations proceed. Quality over quantity.',
-    status: 'active',
-    precision: 1.00,
-    lastCalibrated: '2025-08-19',
-    accessLevel: 'restricted'
-  }
-];
+const CategoryFilter = memo(({
+  categories,
+  selectedCategory,
+  onCategoryChange
+}: {
+  categories: string[]
+  selectedCategory: string
+  onCategoryChange: (category: string) => void
+}) => (
+  <section className="max-w-6xl mx-auto px-6 py-6">
+    <div className="flex gap-2 flex-wrap text-xs">
+      {categories.map(cat => (
+        <button
+          key={cat}
+          onClick={() => onCategoryChange(cat)}
+          className={`px-3 py-1 border transition-colors ${
+            selectedCategory === cat
+              ? 'border-[#fff] text-[#fff]'
+              : 'border-[#333] text-[#888] hover:border-[#666]'
+          }`}
+        >
+          {cat}
+        </button>
+      ))}
+    </div>
+  </section>
+))
+CategoryFilter.displayName = 'CategoryFilter'
 
-export default function InstrumentsPage() {
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedInstrument, setSelectedInstrument] = useState<string | null>(null);
-
-  const categories = ['all', 'analysis', 'synthesis', 'calibration', 'monitoring'];
-
-  const filteredInstruments = selectedCategory === 'all'
-    ? instruments
-    : instruments.filter(inst => inst.category === selectedCategory);
-
-  const getStatusColor = (status: string) => {
+const StatusBadge = memo(({ status }: { status: string }) => {
+  const getStatusColor = useCallback((status: string) => {
     switch (status) {
-      case 'active': return 'text-copper';
-      case 'calibrating': return 'text-living-cyan';
-      case 'maintenance': return 'text-pearl/40';
-      default: return 'text-pearl/60';
+      case 'production': return 'text-[#00ff00] border-[#00ff00]'
+      case 'testing': return 'text-[#ffff00] border-[#ffff00]'
+      case 'calibrating': return 'text-[#ff9500] border-[#ff9500]'
+      default: return 'text-[#888] border-[#888]'
     }
-  };
-
-  const getAccessColor = (level: string) => {
-    switch (level) {
-      case 'public': return 'text-copper';
-      case 'collaborator': return 'text-living-cyan';
-      case 'restricted': return 'text-pearl/40';
-      default: return 'text-pearl/60';
-    }
-  };
+  }, [])
 
   return (
-    <div className="min-h-screen py-16 px-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="text-center mb-16"
-        >
-          <h1 className="text-5xl font-light text-pearl mb-6">Workshop Instruments</h1>
-          <p className="text-xl text-pearl/60 max-w-2xl mx-auto font-light">
-            Precision tools for operational excellence. Each instrument is calibrated for specific aspects of
-            collaborative creation and system optimization.
-          </p>
-        </motion.div>
+    <span className={`px-2 py-0.5 border ${getStatusColor(status)}`}>
+      {status}
+    </span>
+  )
+})
+StatusBadge.displayName = 'StatusBadge'
 
-        {/* Category Filter */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3, duration: 0.8 }}
-          className="flex justify-center mb-12"
-        >
-          <div className="flex space-x-1 bg-graphite/20 p-1 rounded backdrop-blur-workshop">
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`
-                  px-6 py-2 text-sm font-mono capitalize transition-all duration-300
-                  ${selectedCategory === category
-                    ? 'bg-copper/20 text-copper'
-                    : 'text-pearl/60 hover:text-pearl/80'
-                  }
-                `}
-              >
-                {category}
-              </button>
-            ))}
+const InstrumentCard = memo(({ instrument }: { instrument: Instrument }) => {
+  const [showCode, setShowCode] = useState(false)
+
+  const toggleCode = useCallback(() => {
+    setShowCode(prev => !prev)
+  }, [])
+
+  return (
+    <article className="border border-[#333] p-6 hover:border-[#666] transition-colors">
+      {/* Header */}
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <h2 className="text-lg text-[#fff]">{instrument.name}</h2>
+          <div className="flex gap-3 mt-1 text-xs">
+            <span className="text-[#666]">{instrument.version}</span>
+            <StatusBadge status={instrument.status} />
+            <span className="text-[#666]">Updated: {instrument.lastUpdated}</span>
           </div>
-        </motion.div>
+        </div>
+      </div>
 
-        {/* Instruments Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
-          {filteredInstruments.map((instrument, index) => (
-            <motion.div
-              key={instrument.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 * index, duration: 0.5 }}
-              className={`
-                bg-graphite/30 border p-6 backdrop-blur-workshop cursor-pointer
-                transition-all duration-500
-                ${selectedInstrument === instrument.id
-                  ? 'border-copper/50 bg-copper/5'
-                  : 'border-copper/10 hover:border-copper/30'
-                }
-              `}
-              onClick={() => setSelectedInstrument(
-                selectedInstrument === instrument.id ? null : instrument.id
-              )}
-            >
-              {/* Header */}
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-xl text-pearl font-light mb-2">
-                    {instrument.name}
-                  </h3>
-                  <span className="text-xs font-mono text-pearl/40 uppercase tracking-wide">
-                    {instrument.category}
-                  </span>
-                </div>
+      {/* I/O Specification */}
+      <div className="grid grid-cols-3 gap-4 mb-4 text-xs">
+        <div>
+          <h3 className="text-[#888] uppercase mb-2">Inputs</h3>
+          <ul className="space-y-1">
+            {instrument.inputs.map((input, i) => (
+              <li key={i} className="text-[#aaa]">• {input}</li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <h3 className="text-[#888] uppercase mb-2">Methods</h3>
+          <ul className="space-y-1">
+            {instrument.methods.map((method, i) => (
+              <li key={i} className="text-[#aaa]">• {method}</li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <h3 className="text-[#888] uppercase mb-2">Outputs</h3>
+          <ul className="space-y-1">
+            {instrument.outputs.map((output, i) => (
+              <li key={i} className="text-[#aaa]">• {output}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
 
-                <div className="text-right">
-                  <div className={`text-sm font-mono ${getStatusColor(instrument.status)}`}>
-                    {instrument.status}
-                  </div>
-                  <div className="w-2 h-2 bg-copper/60 rounded-full animate-pulse-slow mt-2 ml-auto" />
-                </div>
-              </div>
+      {/* Sample Code */}
+      <div className="mb-4">
+        <button
+          onClick={toggleCode}
+          className="text-xs text-[#6666ff] hover:text-[#8888ff]"
+        >
+          {showCode ? 'Hide' : 'Show'} Sample
+        </button>
 
-              {/* Description */}
-              <p className="text-pearl/60 text-lg leading-relaxed mb-4">
-                {instrument.description}
-              </p>
+        {showCode && (
+          <pre className="mt-2 p-2 bg-[#1a1a1a] text-xs overflow-x-auto">
+            <code>{instrument.sampleCode.trim()}</code>
+          </pre>
+        )}
+      </div>
 
-              {/* Metrics */}
-              <div className="grid grid-cols-3 gap-4 text-center text-xs font-mono">
-                <div>
-                  <div className="text-copper text-lg font-light">
-                    {(instrument.precision * 100).toFixed(0)}%
-                  </div>
-                  <div className="text-pearl/40">precision</div>
-                </div>
-
-                <div>
-                  <div className="text-living-cyan text-lg font-light">
-                    {new Date(instrument.lastCalibrated).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric'
-                    })}
-                  </div>
-                  <div className="text-pearl/40">calibrated</div>
-                </div>
-
-                <div>
-                  <div className={`text-lg font-light ${getAccessColor(instrument.accessLevel)}`}>
-                    {instrument.accessLevel === 'public' ? '◯' :
-                     instrument.accessLevel === 'collaborator' ? '◐' : '●'}
-                  </div>
-                  <div className="text-pearl/40">access</div>
-                </div>
-              </div>
-
-              {/* Expanded Details */}
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{
-                  height: selectedInstrument === instrument.id ? 'auto' : 0,
-                  opacity: selectedInstrument === instrument.id ? 1 : 0
-                }}
-                transition={{ duration: 0.3 }}
-                className="overflow-hidden"
-              >
-                {selectedInstrument === instrument.id && (
-                  <div className="pt-6 mt-6 border-t border-copper/10">
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className="text-sm font-mono text-copper mb-2">Access Protocol</h4>
-                        <p className="text-base text-pearl/50 leading-relaxed">
-                          {instrument.accessLevel === 'public'
-                            ? 'Available for demonstration purposes. Full functionality requires collaboration agreement.'
-                            : instrument.accessLevel === 'collaborator'
-                            ? 'Active collaborators have operational access during project phases. Usage monitored and logged.'
-                            : 'Restricted access. Core workshop infrastructure. Maintained by atelier staff only.'
-                          }
-                        </p>
-                      </div>
-
-                      <div>
-                        <h4 className="text-sm font-mono text-copper mb-2">Calibration Notes</h4>
-                        <p className="text-base text-pearl/50 leading-relaxed">
-                          Last precision verification completed {instrument.lastCalibrated}.
-                          Next scheduled maintenance based on usage patterns and drift detection.
-                          All instruments operate within acceptable tolerances.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </motion.div>
-            </motion.div>
+      {/* Performance Metrics */}
+      <div className="mb-4">
+        <h3 className="text-xs text-[#888] uppercase mb-2">Performance</h3>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          {Object.entries(instrument.performance).map(([metric, value]) => (
+            <div key={metric} className="flex justify-between">
+              <span className="text-[#666]">{metric}:</span>
+              <span className="text-[#aaa]">{value}</span>
+            </div>
           ))}
         </div>
-
-        {/* Instrument Philosophy */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6, duration: 0.8 }}
-          className="text-center max-w-3xl mx-auto mb-16"
-        >
-          <blockquote className="text-xl text-pearl/60 font-light italic leading-relaxed mb-6">
-            "An instrument is only as good as the craftsperson who wields it.
-            These tools amplify intention, they do not replace judgment.
-            Each has been shaped by years of operational practice and refined through careful use."
-          </blockquote>
-
-          <div className="text-sm font-mono text-pearl/40">
-            — On Instrumentation, Workshop Manual v3.2
-          </div>
-        </motion.div>
-
-        {/* Access Notice */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.9, duration: 0.8 }}
-          className="text-center"
-        >
-          <div className="bg-graphite/20 border border-copper/20 p-8 max-w-2xl mx-auto">
-            <p className="text-pearl/50 font-mono text-sm leading-relaxed">
-              Instrument access is granted based on collaboration requirements and demonstrated competency.
-              Misuse of workshop tools results in immediate access revocation.
-              All usage is logged and reviewed for continuous calibration improvement.
-            </p>
-          </div>
-        </motion.div>
       </div>
-    </div>
-  );
+
+      {/* Limitations */}
+      <div>
+        <h3 className="text-xs text-[#888] uppercase mb-2">Known Limitations</h3>
+        <ul className="text-xs space-y-1">
+          {instrument.limitations.map((limit, i) => (
+            <li key={i} className="text-[#ff9944]">• {limit}</li>
+          ))}
+        </ul>
+      </div>
+    </article>
+  )
+})
+InstrumentCard.displayName = 'InstrumentCard'
+
+export default function InstrumentsPage() {
+  const [selectedCategory, setSelectedCategory] = useState('all')
+
+  // Memoize categories array
+  const categories = useMemo(() =>
+    ['all', 'parsers', 'extractors', 'ml-models', 'orchestration', 'synchronization', 'analysis'],
+    []
+  )
+
+  // Memoize filtered instruments
+  const filteredInstruments = useMemo(() => {
+    return selectedCategory === 'all'
+      ? instruments
+      : instruments.filter(i => i.category === selectedCategory)
+  }, [selectedCategory])
+
+  const handleCategoryChange = useCallback((category: string) => {
+    setSelectedCategory(category)
+  }, [])
+
+  return (
+    <main className="min-h-screen bg-[#0a0a0a] text-[#d4d4d4] font-mono">
+      <InstrumentsHeader />
+
+      <CategoryFilter
+        categories={categories}
+        selectedCategory={selectedCategory}
+        onCategoryChange={handleCategoryChange}
+      />
+
+      {/* Instruments Grid */}
+      <section className="max-w-6xl mx-auto px-6 pb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {filteredInstruments.map(instrument => (
+            <InstrumentCard key={instrument.id} instrument={instrument} />
+          ))}
+        </div>
+      </section>
+    </main>
+  )
 }

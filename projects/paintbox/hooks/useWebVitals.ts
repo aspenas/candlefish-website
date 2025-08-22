@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
-import { onCLS, onFCP, onFID, onLCP, onTTFB, onINP, Metric } from 'web-vitals';
+// Temporarily disabled - web-vitals package needs to be installed
+// import { onCLS, onFCP, onFID, onLCP, onTTFB, onINP, Metric } from 'web-vitals';
+type Metric = any;
 
 export interface WebVitalsData {
   fcp?: number; // First Contentful Paint
@@ -90,12 +92,13 @@ export function useWebVitals(options: UseWebVitalsOptions = {}) {
     };
 
     // Register Web Vitals observers
-    onFCP(handleMetric);
-    onLCP(handleMetric);
-    onFID(handleMetric); // Deprecated but still tracked
-    onINP(handleMetric); // New metric replacing FID
-    onCLS(handleMetric);
-    onTTFB(handleMetric);
+    // Temporarily disabled - web-vitals package needs to be installed
+    // onFCP(handleMetric);
+    // onLCP(handleMetric);
+    // onFID(handleMetric); // Deprecated but still tracked
+    // onINP(handleMetric); // New metric replacing FID
+    // onCLS(handleMetric);
+    // onTTFB(handleMetric);
 
     // Calculate Time to Interactive (TTI)
     // This is a simplified calculation based on when the page becomes interactive
