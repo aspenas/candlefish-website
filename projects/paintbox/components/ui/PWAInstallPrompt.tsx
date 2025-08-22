@@ -233,7 +233,7 @@ export function PWAInstallPrompt() {
                       Why install the app?
                     </p>
                     <ul className="text-xs text-blue-700 mt-1 space-y-1">
-                      <li>• Works completely offline</li>
+                      <li>• Offline features in development</li>
                       <li>• Faster loading and better performance</li>
                       <li>• Full-screen experience without browser UI</li>
                       <li>• Easy access from your home screen</li>
