@@ -1,0 +1,237 @@
+output "vpc_id" {
+  description = "VPC ID"
+  value       = aws_vpc.nanda_vpc.id
+}
+
+output "vpc_cidr_block" {
+  description = "VPC CIDR block"
+  value       = aws_vpc.nanda_vpc.cidr_block
+}
+
+output "public_subnet_ids" {
+  description = "List of public subnet IDs"
+  value       = aws_subnet.public_subnets[*].id
+}
+
+output "private_subnet_ids" {
+  description = "List of private subnet IDs"
+  value       = aws_subnet.private_subnets[*].id
+}
+
+output "load_balancer_dns_name" {
+  description = "DNS name of the load balancer"
+  value       = aws_lb.nanda_alb.dns_name
+}
+
+output "load_balancer_zone_id" {
+  description = "Zone ID of the load balancer"
+  value       = aws_lb.nanda_alb.zone_id
+}
+
+output "domain_name" {
+  description = "Primary domain name"
+  value       = var.domain_name
+}
+
+output "api_domain_name" {
+  description = "API domain name"
+  value       = "api.${var.domain_name}"
+}
+
+output "route53_zone_id" {
+  description = "Route53 hosted zone ID"
+  value       = aws_route53_zone.nanda_zone.zone_id
+}
+
+output "route53_name_servers" {
+  description = "Route53 name servers"
+  value       = aws_route53_zone.nanda_zone.name_servers
+}
+
+output "ssl_certificate_arn" {
+  description = "ARN of the SSL certificate"
+  value       = aws_acm_certificate.nanda_cert.arn
+}
+
+output "ecs_cluster_name" {
+  description = "ECS cluster name"
+  value       = aws_ecs_cluster.nanda_cluster.name
+}
+
+output "ecs_cluster_arn" {
+  description = "ECS cluster ARN"
+  value       = aws_ecs_cluster.nanda_cluster.arn
+}
+
+output "ecs_api_service_name" {
+  description = "ECS API service name"
+  value       = aws_ecs_service.nanda_api.name
+}
+
+output "ecs_dashboard_service_name" {
+  description = "ECS dashboard service name"
+  value       = aws_ecs_service.nanda_dashboard.name
+}
+
+output "ecr_api_repository_url" {
+  description = "ECR repository URL for NANDA API"
+  value       = aws_ecr_repository.nanda_api.repository_url
+}
+
+output "ecr_dashboard_repository_url" {
+  description = "ECR repository URL for NANDA Dashboard"
+  value       = aws_ecr_repository.nanda_dashboard.repository_url
+}
+
+output "dynamodb_agents_table_name" {
+  description = "DynamoDB agents table name"
+  value       = aws_dynamodb_table.agents.name
+}
+
+output "dynamodb_agent_facts_table_name" {
+  description = "DynamoDB agent facts table name"
+  value       = aws_dynamodb_table.agent_facts.name
+}
+
+output "dynamodb_network_topology_table_name" {
+  description = "DynamoDB network topology table name"
+  value       = aws_dynamodb_table.network_topology.name
+}
+
+output "redis_cluster_endpoint" {
+  description = "Redis cluster configuration endpoint"
+  value       = aws_elasticache_replication_group.redis.configuration_endpoint_address
+  sensitive   = true
+}
+
+output "redis_cluster_port" {
+  description = "Redis cluster port"
+  value       = aws_elasticache_replication_group.redis.port
+}
+
+output "s3_artifacts_bucket_name" {
+  description = "S3 artifacts bucket name"
+  value       = aws_s3_bucket.nanda_artifacts.bucket
+}
+
+output "s3_backups_bucket_name" {
+  description = "S3 backups bucket name"
+  value       = aws_s3_bucket.nanda_backups.bucket
+}
+
+output "s3_artifacts_bucket_arn" {
+  description = "S3 artifacts bucket ARN"
+  value       = aws_s3_bucket.nanda_artifacts.arn
+}
+
+output "s3_backups_bucket_arn" {
+  description = "S3 backups bucket ARN"
+  value       = aws_s3_bucket.nanda_backups.arn
+}
+
+output "cloudwatch_log_group_api" {
+  description = "CloudWatch log group for API"
+  value       = aws_cloudwatch_log_group.nanda_api_logs.name
+}
+
+output "cloudwatch_log_group_dashboard" {
+  description = "CloudWatch log group for dashboard"
+  value       = aws_cloudwatch_log_group.nanda_dashboard_logs.name
+}
+
+output "sns_alerts_topic_arn" {
+  description = "SNS topic ARN for alerts"
+  value       = aws_sns_topic.nanda_alerts.arn
+}
+
+output "cloudwatch_dashboard_url" {
+  description = "CloudWatch dashboard URL"
+  value       = "https://console.aws.amazon.com/cloudwatch/home?region=${var.aws_region}#dashboards:name=${aws_cloudwatch_dashboard.nanda_main_dashboard.dashboard_name}"
+}
+
+output "waf_web_acl_arn" {
+  description = "WAF Web ACL ARN"
+  value       = var.enable_waf ? aws_wafv2_web_acl.nanda_waf[0].arn : null
+}
+
+output "cloudtrail_name" {
+  description = "CloudTrail name"
+  value       = aws_cloudtrail.nanda_api_trail.name
+}
+
+output "iam_ecs_task_role_arn" {
+  description = "ECS task role ARN"
+  value       = aws_iam_role.ecs_task_role.arn
+}
+
+output "iam_ecs_execution_role_arn" {
+  description = "ECS execution role ARN"
+  value       = aws_iam_role.ecs_execution_role.arn
+}
+
+# Application URLs
+output "api_url" {
+  description = "NANDA API URL"
+  value       = "https://api.${var.domain_name}"
+}
+
+output "dashboard_url" {
+  description = "NANDA Dashboard URL"
+  value       = "https://${var.domain_name}"
+}
+
+output "graphql_endpoint" {
+  description = "GraphQL endpoint URL"
+  value       = "https://api.${var.domain_name}/graphql"
+}
+
+output "websocket_endpoint" {
+  description = "WebSocket endpoint URL"
+  value       = "wss://api.${var.domain_name}/graphql"
+}
+
+output "health_check_url" {
+  description = "Health check endpoint URL"
+  value       = "https://api.${var.domain_name}/health"
+}
+
+output "metrics_endpoint" {
+  description = "Metrics endpoint URL"
+  value       = "https://api.${var.domain_name}/metrics"
+}
+
+output "swagger_ui_url" {
+  description = "Swagger UI URL"
+  value       = "https://api.${var.domain_name}/documentation"
+}
+
+# Deployment Information
+output "deployment_region" {
+  description = "AWS region for deployment"
+  value       = var.aws_region
+}
+
+output "deployment_environment" {
+  description = "Deployment environment"
+  value       = var.environment
+}
+
+output "deployment_timestamp" {
+  description = "Deployment timestamp"
+  value       = timestamp()
+}
+
+output "deployment_summary" {
+  description = "Deployment summary"
+  value = {
+    project_name     = var.project_name
+    environment      = var.environment
+    region          = var.aws_region
+    domain          = var.domain_name
+    api_url         = "https://api.${var.domain_name}"
+    dashboard_url   = "https://${var.domain_name}"
+    cluster_name    = aws_ecs_cluster.nanda_cluster.name
+    vpc_id          = aws_vpc.nanda_vpc.id
+    deployed_at     = timestamp()
+  }
+}

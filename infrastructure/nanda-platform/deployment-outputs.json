@@ -1,0 +1,57 @@
+{
+  "aws_account_id": {
+    "sensitive": false,
+    "type": "string",
+    "value": "681214184463"
+  },
+  "deployment_summary": {
+    "sensitive": false,
+    "type": [
+      "object",
+      {
+        "core_resources": "string",
+        "deployed_at": "string",
+        "environment": "string",
+        "project_name": "string",
+        "region": "string"
+      }
+    ],
+    "value": {
+      "core_resources": "ECR, DynamoDB, S3, CloudWatch",
+      "deployed_at": "2025-08-22T02:52:29Z",
+      "environment": "production",
+      "project_name": "nanda-index",
+      "region": "us-east-1"
+    }
+  },
+  "dynamodb_agent_facts_table_name": {
+    "sensitive": false,
+    "type": "string",
+    "value": "nanda-index-agent-facts"
+  },
+  "dynamodb_agents_table_name": {
+    "sensitive": false,
+    "type": "string",
+    "value": "nanda-index-agents"
+  },
+  "ecr_api_repository_url": {
+    "sensitive": false,
+    "type": "string",
+    "value": "681214184463.dkr.ecr.us-east-1.amazonaws.com/nanda-index/nanda-api"
+  },
+  "ecr_dashboard_repository_url": {
+    "sensitive": false,
+    "type": "string",
+    "value": "681214184463.dkr.ecr.us-east-1.amazonaws.com/nanda-index/nanda-dashboard"
+  },
+  "s3_artifacts_bucket_name": {
+    "sensitive": false,
+    "type": "string",
+    "value": "nanda-index-artifacts-886d7258"
+  },
+  "s3_backups_bucket_name": {
+    "sensitive": false,
+    "type": "string",
+    "value": "nanda-index-backups-886d7258"
+  }
+}

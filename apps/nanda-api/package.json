@@ -1,0 +1,57 @@
+{
+  "name": "@candlefish/nanda-api",
+  "version": "1.0.0",
+  "description": "NANDA Index API - REST and GraphQL interfaces for AI agent discovery",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "nodemon --exec ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "jest",
+    "test:e2e": "jest --config jest.e2e.config.js",
+    "test:load": "echo 'Load testing with k6 - install k6 separately'",
+    "lint": "eslint src --ext .ts",
+    "docker:build": "docker build -t nanda-api .",
+    "docker:run": "docker run -p 3000:3000 nanda-api"
+  },
+  "dependencies": {
+    "@apollo/server": "^4.10.0",
+    "@as-integrations/fastify": "^2.1.0",
+    "@fastify/cors": "^9.0.1",
+    "@fastify/helmet": "^11.1.1",
+    "@fastify/rate-limit": "^9.1.0",
+    "@fastify/swagger": "^8.14.0",
+    "@fastify/websocket": "^10.0.1",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.49.0",
+    "@opentelemetry/exporter-prometheus": "^0.52.0",
+    "@opentelemetry/sdk-node": "^0.52.0",
+    "@redis/client": "^1.5.16",
+    "fastify": "^4.26.0",
+    "graphql": "^16.8.1",
+    "graphql-subscriptions": "^2.0.0",
+    "graphql-ws": "^5.15.0",
+    "ioredis": "^5.3.2",
+    "pino": "^8.19.0",
+    "pino-pretty": "^10.3.1",
+    "ws": "^8.16.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.0",
+    "@types/ws": "^8.5.10",
+    "@typescript-eslint/eslint-plugin": "^6.20.0",
+    "@typescript-eslint/parser": "^6.20.0",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.3",
+    "supertest": "^6.3.4",
+    "ts-jest": "^29.1.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

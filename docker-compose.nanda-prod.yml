@@ -1,0 +1,260 @@
+version: '3.8'
+
+services:
+  # NANDA API Service
+  nanda-api:
+    build:
+      context: ./apps/nanda-api
+      dockerfile: Dockerfile
+      target: production
+    image: nanda-api:latest
+    container_name: nanda-api-prod
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - AWS_REGION=us-east-1
+      - DYNAMO_TABLE_AGENTS=nanda-index-agents
+      - DYNAMO_TABLE_AGENT_FACTS=nanda-index-agent-facts
+      - DYNAMO_TABLE_NETWORK_TOPOLOGY=nanda-index-network-topology
+      - REDIS_URL=redis://redis:6379
+      - S3_ARTIFACTS_BUCKET=nanda-index-artifacts
+      - S3_BACKUPS_BUCKET=nanda-index-backups
+      - CORS_ORIGINS=https://nanda.candlefish.ai,https://api.nanda.candlefish.ai
+      - JWKS_URL=https://paintbox.fly.dev/.well-known/jwks.json
+      - JWT_ISSUER=https://paintbox.fly.dev
+      - JWT_AUDIENCE=nanda-api
+      - ENABLE_PRIVACY_LAYER=true
+      - ENABLE_ENTERPRISE_CONNECTOR=true
+      - ENTERPRISE_REGISTRIES=https://registry.openai.com,https://registry.anthropic.com
+      - TRUSTED_REGISTRIES=https://registry.openai.com,https://registry.anthropic.com
+      - MIX_NODES=mix1.nanda.candlefish.ai,mix2.nanda.candlefish.ai,mix3.nanda.candlefish.ai
+      - ZK_PRIME=2^521 - 1
+      - CACHE_TTL=300
+      - ENABLE_HTTP2=true
+      - ENABLE_COMPRESSION=true
+      - LOG_LEVEL=info
+      - METRICS_ENABLED=true
+      - TRACING_ENABLED=true
+      - OTLP_ENDPOINT=https://api.honeycomb.io
+    secrets:
+      - redis_auth_token
+      - honeycomb_api_key
+      - aws_credentials
+    volumes:
+      - ./logs/nanda-api:/app/logs
+    depends_on:
+      - redis
+      - localstack
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - nanda-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # NANDA Dashboard Service
+  nanda-dashboard:
+    build:
+      context: ./apps/nanda-dashboard
+      dockerfile: Dockerfile
+      target: production
+    image: nanda-dashboard:latest
+    container_name: nanda-dashboard-prod
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - REACT_APP_API_URL=http://nanda-api:3000
+      - REACT_APP_GRAPHQL_URL=http://nanda-api:3000/graphql
+      - REACT_APP_WS_URL=ws://nanda-api:3000/graphql
+      - REACT_APP_DOMAIN=nanda.candlefish.ai
+      - REACT_APP_ENVIRONMENT=production
+    volumes:
+      - ./logs/nanda-dashboard:/app/logs
+    depends_on:
+      - nanda-api
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - nanda-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # Redis for caching and real-time features
+  redis:
+    image: redis:7-alpine
+    container_name: nanda-redis-prod
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server 
+      --requirepass ${REDIS_PASSWORD:-changeme123}
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+      - ./config/redis.conf:/etc/redis/redis.conf:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - nanda-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # LocalStack for AWS services emulation (development)
+  localstack:
+    image: localstack/localstack:latest
+    container_name: nanda-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=dynamodb,s3,secretsmanager
+      - DEBUG=1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - LOCALSTACK_API_KEY=${LOCALSTACK_API_KEY:-}
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - localstack-data:/tmp/localstack
+      - ./scripts/localstack-init.sh:/etc/localstack/init/ready.d/init-aws.sh
+    restart: unless-stopped
+    networks:
+      - nanda-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: nanda-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    restart: unless-stopped
+    networks:
+      - nanda-network
+
+  # Grafana for dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: nanda-grafana
+    ports:
+      - "3003:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=redis-datasource
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - nanda-network
+
+  # Jaeger for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: nanda-jaeger
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    restart: unless-stopped
+    networks:
+      - nanda-network
+
+  # NGINX as reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: nanda-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./config/ssl:/etc/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - nanda-api
+      - nanda-dashboard
+    restart: unless-stopped
+    networks:
+      - nanda-network
+
+# Named volumes
+volumes:
+  redis-data:
+    driver: local
+  localstack-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+# Secrets
+secrets:
+  redis_auth_token:
+    file: ./secrets/redis_auth_token.txt
+  honeycomb_api_key:
+    file: ./secrets/honeycomb_api_key.txt
+  aws_credentials:
+    file: ./secrets/aws_credentials.txt
+
+# Networks
+networks:
+  nanda-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
