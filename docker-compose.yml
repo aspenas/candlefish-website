@@ -1,51 +1,56 @@
+# Candlefish AI Monorepo - Development Environment
+# Use this for local development with hot reloading
 version: '3.8'
 
 services:
-  # PostgreSQL with TimescaleDB
+  # Core Services
   postgres:
     image: timescale/timescaledb:latest-pg15
-    container_name: rtpm-postgres
+    container_name: candlefish-postgres-dev
     environment:
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-candlefish_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
-      - ./data/postgres:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-postgres.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - candlefish
 
-  # Redis Cache
   redis:
     image: redis:7-alpine
-    container_name: rtpm-redis
+    container_name: candlefish-redis-dev
     ports:
       - "6379:6379"
     volumes:
-      - ./data/redis:/data
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - candlefish
 
-  # Backend API
-  api:
-    image: rtpm-api:latest
+  # RTPM API Service
+  rtpm-api:
     build:
       context: ./apps/rtpm-api
       dockerfile: Dockerfile
-    container_name: rtpm-api
+      target: development
+    container_name: candlefish-rtpm-api-dev
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=${JWT_SECRET}
-      - API_HOST=${API_HOST}
-      - API_PORT=${API_PORT}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-candlefish_dev}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_in_prod}
+      NODE_ENV: development
     ports:
       - "8080:8000"
     depends_on:
@@ -55,47 +60,113 @@ services:
         condition: service_healthy
     volumes:
       - ./apps/rtpm-api:/app
-    command: sh -c "cd /app && python -m uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload"
+      - /app/node_modules
+    networks:
+      - candlefish
 
-  # Frontend Dashboard
-  frontend:
-    image: rtpm-frontend:latest
+  # NANDA Services
+  nanda-api:
     build:
-      context: ./deployment/rtpm-dashboard/frontend
+      context: ./apps/nanda-api
       dockerfile: Dockerfile
-    container_name: rtpm-frontend
+      target: development
+    container_name: candlefish-nanda-api-dev
     environment:
-      - VITE_API_URL=http://localhost:8080
-      - VITE_WS_URL=ws://localhost:8080
+      NODE_ENV: development
+      PORT: 3000
+      AWS_REGION: ${AWS_REGION:-us-east-1}
     ports:
-      - "3003:80"
+      - "3000:3000"
+    volumes:
+      - ./apps/nanda-api:/app
+      - /app/node_modules
+    networks:
+      - candlefish
+
+  nanda-dashboard:
+    build:
+      context: ./apps/nanda-dashboard
+      dockerfile: Dockerfile
+      target: development
+    container_name: candlefish-nanda-dashboard-dev
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      VITE_API_URL: http://localhost:3000
+    ports:
+      - "3001:3001"
     depends_on:
-      - api
-
-  # Prometheus
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: rtpm-prometheus
+      - nanda-api
     volumes:
-      - ./deployment/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090"
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
+      - ./apps/nanda-dashboard:/app
+      - /app/node_modules
+    networks:
+      - candlefish
 
-  # Grafana
-  grafana:
-    image: grafana/grafana:latest
-    container_name: rtpm-grafana
+  # Temporal Platform
+  temporal-server:
+    build:
+      context: ./candlefish-temporal-platform
+      dockerfile: Dockerfile
+      target: development
+    container_name: candlefish-temporal-dev
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_USERS_ALLOW_SIGN_UP=false
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-candlefish_dev}
+      NODE_ENV: development
     ports:
-      - "3001:3000"
+      - "7233:7233"
+      - "8088:8088"
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
-      - ./deployment/monitoring/grafana:/etc/grafana/provisioning
+      - ./candlefish-temporal-platform:/app
+      - /app/node_modules
+    networks:
+      - candlefish
+
+  # Main Website
+  website:
+    build:
+      context: ./apps/website
+      dockerfile: Dockerfile
+      target: development
+    container_name: candlefish-website-dev
+    environment:
+      NODE_ENV: development
+      PORT: 3002
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./apps/website:/app
+      - /app/node_modules
+    networks:
+      - candlefish
+
+  # Development Tools
+  monitoring:
+    profiles: ["monitoring"]
+    image: grafana/grafana:latest
+    container_name: candlefish-monitoring-dev
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: false
+    ports:
+      - "3003:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - candlefish
+
+volumes:
+  postgres_data:
+    name: candlefish_postgres_dev
+  redis_data:
+    name: candlefish_redis_dev
+  grafana_data:
+    name: candlefish_grafana_dev
 
 networks:
-  default:
-    name: rtpm-network
+  candlefish:
+    name: candlefish-dev
+    driver: bridge

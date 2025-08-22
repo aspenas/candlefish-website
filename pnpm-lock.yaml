@@ -1264,14 +1264,14 @@ importers:
         specifier: ^4.2.1
         version: 4.3.0(react@18.3.1)
       '@tanstack/react-query':
-        specifier: ^5.62.11
-        version: 5.85.5(react@18.3.1)
+        specifier: ^4.36.1
+        version: 4.40.1(react-dom@18.3.1)(react@18.3.1)
       '@trpc/client':
         specifier: ^10.45.0
         version: 10.45.2(@trpc/server@10.45.2)
       '@trpc/react-query':
         specifier: ^10.45.0
-        version: 10.45.2(@tanstack/react-query@5.85.5)(@trpc/client@10.45.2)(@trpc/server@10.45.2)(react-dom@18.3.1)(react@18.3.1)
+        version: 10.45.2(@tanstack/react-query@4.40.1)(@trpc/client@10.45.2)(@trpc/server@10.45.2)(react-dom@18.3.1)(react@18.3.1)
       '@trpc/server':
         specifier: ^10.45.0
         version: 10.45.2
@@ -1636,6 +1636,9 @@ importers:
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
+      '@opentelemetry/auto-instrumentations-node':
+        specifier: ^0.49.0
+        version: 0.49.2(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-node':
         specifier: ^0.53.0
         version: 0.53.0(@opentelemetry/api@1.9.0)
@@ -13836,6 +13839,10 @@ packages:
       tailwindcss: 4.1.12
     dev: true
 
+  /@tanstack/query-core@4.40.0:
+    resolution: {integrity: sha512-7MJTtZkCSuehMC7IxMOCGsLvHS3jHx4WjveSrGsG1Nc1UQLjaFwwkpLA2LmPfvOAxnH4mszMOBFD6LlZE+aB+Q==}
+    dev: false
+
   /@tanstack/query-core@5.85.5:
     resolution: {integrity: sha512-KO0WTob4JEApv69iYp1eGvfMSUkgw//IpMnq+//cORBzXf0smyRwPLrUvEe5qtAEGjwZTXrjxg+oJNP/C00t6w==}
     dev: false
@@ -13853,6 +13860,24 @@ packages:
       '@tanstack/query-devtools': 5.84.0
       '@tanstack/react-query': 5.85.5(react@18.3.1)
       react: 18.3.1
+    dev: false
+
+  /@tanstack/react-query@4.40.1(react-dom@18.3.1)(react@18.3.1):
+    resolution: {integrity: sha512-mgD07S5N8e5v81CArKDWrHE4LM7HxZ9k/KLeD3+NUD9WimGZgKIqojUZf/rXkfAMYZU9p0Chzj2jOXm7xpgHHQ==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0
+      react-native: '*'
+    peerDependenciesMeta:
+      react-dom:
+        optional: true
+      react-native:
+        optional: true
+    dependencies:
+      '@tanstack/query-core': 4.40.0
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+      use-sync-external-store: 1.5.0(react@18.3.1)
     dev: false
 
   /@tanstack/react-query@5.85.5(react@18.3.1):
@@ -14045,7 +14070,7 @@ packages:
       '@trpc/server': 10.45.2
     dev: false
 
-  /@trpc/react-query@10.45.2(@tanstack/react-query@5.85.5)(@trpc/client@10.45.2)(@trpc/server@10.45.2)(react-dom@18.3.1)(react@18.3.1):
+  /@trpc/react-query@10.45.2(@tanstack/react-query@4.40.1)(@trpc/client@10.45.2)(@trpc/server@10.45.2)(react-dom@18.3.1)(react@18.3.1):
     resolution: {integrity: sha512-BAqb9bGZIscroradlNx+Cc9522R+idY3BOSf5z0jHUtkxdMbjeGKxSSMxxu7JzoLqSIEC+LVzL3VvF8sdDWaZQ==}
     peerDependencies:
       '@tanstack/react-query': ^4.18.0
@@ -14054,7 +14079,7 @@ packages:
       react: '>=16.8.0'
       react-dom: '>=16.8.0'
     dependencies:
-      '@tanstack/react-query': 5.85.5(react@18.3.1)
+      '@tanstack/react-query': 4.40.1(react-dom@18.3.1)(react@18.3.1)
       '@trpc/client': 10.45.2(@trpc/server@10.45.2)
       '@trpc/server': 10.45.2
       react: 18.3.1
@@ -14415,7 +14440,7 @@ packages:
   /@types/pg-pool@2.0.4:
     resolution: {integrity: sha512-qZAvkv1K3QbmHHFYSNRYPkRjOWRLBYrL4B9c+wG0GSVGBw0NtJwPcgx/DSddeDJvRGMHCEQ4VMEVfuJ/0gZ3XQ==}
     dependencies:
-      '@types/pg': 8.6.1
+      '@types/pg': 8.15.4
     dev: false
 
   /@types/pg-pool@2.0.6:
