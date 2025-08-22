@@ -1,0 +1,382 @@
+# Logstash Deployment for RTPM Log Processing
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logstash
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: logstash
+    app.kubernetes.io/component: logging
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: logstash
+      app.kubernetes.io/component: logging
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: logstash
+        app.kubernetes.io/component: logging
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: logstash
+        image: docker.elastic.co/logstash/logstash:8.11.1
+        ports:
+        - containerPort: 5044
+          name: beats
+        - containerPort: 9600
+          name: monitoring
+        env:
+        - name: LS_JAVA_OPTS
+          value: "-Xms1g -Xmx1g"
+        - name: ELASTICSEARCH_HOSTS
+          value: "https://elasticsearch:9200"
+        - name: ELASTICSEARCH_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: elasticsearch-credentials
+              key: username
+        - name: ELASTICSEARCH_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: elasticsearch-credentials
+              key: password
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 1
+            memory: 2Gi
+        volumeMounts:
+        - name: logstash-config
+          mountPath: /usr/share/logstash/pipeline
+        - name: logstash-settings
+          mountPath: /usr/share/logstash/config/logstash.yml
+          subPath: logstash.yml
+        - name: logstash-patterns
+          mountPath: /usr/share/logstash/patterns
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 9600
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 9600
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: logstash-config
+        configMap:
+          name: logstash-config
+      - name: logstash-settings
+        configMap:
+          name: logstash-settings
+      - name: logstash-patterns
+        configMap:
+          name: logstash-patterns
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: logstash
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: logstash
+    app.kubernetes.io/component: logging
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5044
+    targetPort: 5044
+    name: beats
+  - port: 9600
+    targetPort: 9600
+    name: monitoring
+  selector:
+    app.kubernetes.io/name: logstash
+    app.kubernetes.io/component: logging
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-config
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: logstash
+    app.kubernetes.io/component: logging
+data:
+  01-input.conf: |
+    input {
+      beats {
+        port => 5044
+      }
+      http {
+        port => 8080
+        codec => json
+      }
+    }
+  
+  10-filter-kubernetes.conf: |
+    filter {
+      if [kubernetes] {
+        # Parse Kubernetes metadata
+        mutate {
+          add_field => { "k8s_namespace" => "%{[kubernetes][namespace]}" }
+          add_field => { "k8s_pod" => "%{[kubernetes][pod][name]}" }
+          add_field => { "k8s_container" => "%{[kubernetes][container][name]}" }
+          add_field => { "k8s_node" => "%{[kubernetes][node][name]}" }
+        }
+        
+        # Add service identification
+        if [k8s_container] == "api" {
+          mutate { add_field => { "service" => "rtpm-api" } }
+        } else if [k8s_container] == "worker" {
+          mutate { add_field => { "service" => "celery-worker" } }
+        } else if [k8s_container] == "frontend" {
+          mutate { add_field => { "service" => "rtpm-frontend" } }
+        } else if [k8s_container] == "timescaledb" {
+          mutate { add_field => { "service" => "timescaledb" } }
+        } else if [k8s_container] == "redis" {
+          mutate { add_field => { "service" => "redis" } }
+        }
+      }
+    }
+  
+  20-filter-rtpm-api.conf: |
+    filter {
+      if [service] == "rtpm-api" {
+        # Parse JSON logs from FastAPI
+        if [message] =~ /^\{/ {
+          json {
+            source => "message"
+          }
+        }
+        
+        # Parse access logs
+        if [message] =~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/ {
+          grok {
+            match => { 
+              "message" => "%{COMBINEDAPACHELOG}" 
+            }
+          }
+          
+          # Convert response time to number
+          if [response] {
+            mutate {
+              convert => { "response" => "integer" }
+            }
+          }
+          
+          # Parse timestamp
+          date {
+            match => [ "timestamp", "dd/MMM/yyyy:HH:mm:ss Z" ]
+          }
+        }
+        
+        # Add severity levels
+        if [level] {
+          if [level] == "ERROR" or [level] == "CRITICAL" {
+            mutate { add_field => { "severity" => "error" } }
+          } else if [level] == "WARNING" {
+            mutate { add_field => { "severity" => "warning" } }
+          } else {
+            mutate { add_field => { "severity" => "info" } }
+          }
+        }
+      }
+    }
+  
+  21-filter-celery.conf: |
+    filter {
+      if [service] == "celery-worker" {
+        # Parse Celery logs
+        grok {
+          match => { 
+            "message" => "\[%{TIMESTAMP_ISO8601:timestamp}\] %{WORD:level}: %{GREEDYDATA:celery_message}" 
+          }
+        }
+        
+        # Extract task information
+        if [celery_message] =~ /Task/ {
+          grok {
+            match => { 
+              "celery_message" => "Task %{DATA:task_name}\[%{DATA:task_id}\]" 
+            }
+          }
+        }
+        
+        # Parse timestamp
+        date {
+          match => [ "timestamp", "yyyy-MM-dd HH:mm:ss,SSS" ]
+        }
+      }
+    }
+  
+  22-filter-database.conf: |
+    filter {
+      if [service] == "timescaledb" {
+        # Parse PostgreSQL logs
+        grok {
+          match => { 
+            "message" => "%{TIMESTAMP_ISO8601:timestamp} \[%{NUMBER:pid}\] %{WORD:level}:  %{GREEDYDATA:pg_message}" 
+          }
+        }
+        
+        # Extract SQL statements
+        if [pg_message] =~ /statement:/ {
+          grok {
+            match => { 
+              "pg_message" => "statement: %{GREEDYDATA:sql_statement}" 
+            }
+          }
+        }
+        
+        # Extract duration
+        if [pg_message] =~ /duration:/ {
+          grok {
+            match => { 
+              "pg_message" => "duration: %{NUMBER:duration_ms} ms" 
+            }
+          }
+          mutate {
+            convert => { "duration_ms" => "float" }
+          }
+        }
+      }
+    }
+  
+  30-filter-enrichment.conf: |
+    filter {
+      # Add environment tag
+      mutate {
+        add_field => { "environment" => "production" }
+        add_field => { "application" => "rtpm" }
+      }
+      
+      # Parse user agents for frontend logs
+      if [agent] {
+        useragent {
+          source => "agent"
+          target => "user_agent"
+        }
+      }
+      
+      # GeoIP for client IPs
+      if [clientip] {
+        geoip {
+          source => "clientip"
+          target => "geoip"
+        }
+      }
+      
+      # Add timestamp if not present
+      if ![timestamp] {
+        mutate {
+          add_field => { "timestamp" => "%{@timestamp}" }
+        }
+      }
+    }
+  
+  90-output.conf: |
+    output {
+      # Send to Elasticsearch
+      elasticsearch {
+        hosts => ["${ELASTICSEARCH_HOSTS}"]
+        user => "${ELASTICSEARCH_USERNAME}"
+        password => "${ELASTICSEARCH_PASSWORD}"
+        ssl => true
+        ssl_certificate_verification => false
+        
+        # Index strategy
+        index => "rtpm-logs-%{service}-%{+YYYY.MM.dd}"
+        
+        # Template management
+        template_name => "rtpm-logs"
+        template_pattern => "rtpm-logs-*"
+        template => {
+          "index_patterns" => ["rtpm-logs-*"]
+          "settings" => {
+            "number_of_shards" => 3
+            "number_of_replicas" => 1
+            "refresh_interval" => "30s"
+            "index.lifecycle.name" => "rtpm-logs-policy"
+          }
+          "mappings" => {
+            "properties" => {
+              "@timestamp" => { "type" => "date" }
+              "level" => { "type" => "keyword" }
+              "service" => { "type" => "keyword" }
+              "message" => { "type" => "text" }
+              "k8s_namespace" => { "type" => "keyword" }
+              "k8s_pod" => { "type" => "keyword" }
+              "k8s_container" => { "type" => "keyword" }
+              "duration_ms" => { "type" => "float" }
+              "response" => { "type" => "integer" }
+              "clientip" => { "type" => "ip" }
+            }
+          }
+        }
+      }
+      
+      # Debug output (optional)
+      # stdout { codec => rubydebug }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-settings
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: logstash
+    app.kubernetes.io/component: logging
+data:
+  logstash.yml: |
+    http.host: "0.0.0.0"
+    http.port: 9600
+    
+    # Pipeline settings
+    pipeline.workers: 4
+    pipeline.batch.size: 1000
+    pipeline.batch.delay: 100
+    
+    # Monitoring
+    monitoring.enabled: true
+    monitoring.elasticsearch.hosts: ["${ELASTICSEARCH_HOSTS}"]
+    monitoring.elasticsearch.username: "${ELASTICSEARCH_USERNAME}"
+    monitoring.elasticsearch.password: "${ELASTICSEARCH_PASSWORD}"
+    monitoring.elasticsearch.ssl.verification_mode: none
+    
+    # Logging
+    log.level: info
+    path.logs: /usr/share/logstash/logs
+    
+    # Performance
+    config.reload.automatic: false
+    config.reload.interval: 3s
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-patterns
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: logstash
+    app.kubernetes.io/component: logging
+data:
+  rtpm-patterns: |
+    # Custom RTPM patterns
+    RTPM_TIMESTAMP %{YEAR}-%{MONTHNUM}-%{MONTHDAY} %{TIME}
+    RTPM_LOGLEVEL (DEBUG|INFO|WARNING|ERROR|CRITICAL)
+    RTPM_AGENT_ID [a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}
+    RTPM_METRIC_NAME [a-zA-Z0-9_\.]+
+    RTPM_API_ENDPOINT \/[a-zA-Z0-9\/_\-]*

@@ -6,25 +6,25 @@
 
 @layer base {
   :root {
-    /* NANDA Index Dark Theme - Professional Enterprise Look */
-    --background: 222.2 84% 4.9%;
-    --foreground: 177 45% 92%;
-    --card: 215 39% 14%;
-    --card-foreground: 177 45% 92%;
-    --popover: 215 39% 14%;
-    --popover-foreground: 177 45% 92%;
+    /* Light mode - Clean professional look */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
     --primary: 166 76% 37%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 215 32% 17%;
-    --secondary-foreground: 177 45% 92%;
-    --muted: 215 32% 17%;
-    --muted-foreground: 215 20% 65%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
     --accent: 189 95% 55%;
-    --accent-foreground: 222.2 84% 4.9%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
-    --border: 166 76% 37% / 0.2;
-    --input: 215 32% 17%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
     --ring: 166 76% 37%;
     --radius: 0.75rem;
   }

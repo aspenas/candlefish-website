@@ -1,0 +1,106 @@
+{
+  "project": "paintbox",
+  "deployment": "staging",
+  "nanda_agents": {
+    "monitor_agent": {
+      "id": "paintbox-monitor-01",
+      "port": 7000,
+      "api_port": 7001,
+      "purpose": "Continuous health monitoring and self-healing",
+      "responsibilities": [
+        "Monitor memory usage every 60 seconds",
+        "Trigger optimizations when memory > 80%",
+        "Auto-restart services on failure",
+        "Log anomalies and patterns"
+      ],
+      "triggers": {
+        "memory_high": "curl -X POST https://paintbox-staging.fly.dev/api/memory/optimize",
+        "service_down": "fly machine restart d89642eae79628 --app paintbox-staging",
+        "error_spike": "fly logs --app paintbox-staging | grep ERROR > error_analysis.log"
+      }
+    },
+    "test_agent": {
+      "id": "paintbox-test-02",
+      "port": 7002,
+      "api_port": 7003,
+      "purpose": "Automated testing and validation",
+      "responsibilities": [
+        "Run Golden Path tests every hour",
+        "Validate API endpoints continuously",
+        "Test estimate creation flow",
+        "Report test failures immediately"
+      ],
+      "test_suite": "/scripts/test-golden-paths-staging.sh",
+      "alert_threshold": 90
+    },
+    "optimization_agent": {
+      "id": "paintbox-optimize-03",
+      "port": 7004,
+      "api_port": 7005,
+      "purpose": "Performance optimization and resource management",
+      "responsibilities": [
+        "Analyze bundle sizes",
+        "Optimize database queries",
+        "Manage cache efficiency",
+        "Implement lazy loading"
+      ],
+      "optimization_targets": {
+        "memory": "< 60%",
+        "response_time": "< 200ms",
+        "bundle_size": "< 5MB",
+        "cache_hit_rate": "> 85%"
+      }
+    },
+    "security_agent": {
+      "id": "paintbox-security-04",
+      "port": 7006,
+      "api_port": 7007,
+      "purpose": "Security monitoring and threat detection",
+      "responsibilities": [
+        "Monitor for suspicious API calls",
+        "Validate JWT tokens",
+        "Check for SQL injection attempts",
+        "Rotate secrets periodically"
+      ],
+      "security_checks": {
+        "rate_limiting": true,
+        "cors_validation": true,
+        "token_expiry": "24h",
+        "secret_rotation": "30d"
+      }
+    },
+    "deployment_agent": {
+      "id": "paintbox-deploy-05",
+      "port": 7008,
+      "api_port": 7009,
+      "purpose": "Automated deployment and rollback",
+      "responsibilities": [
+        "Deploy to staging on git push",
+        "Run smoke tests post-deployment",
+        "Rollback on failure",
+        "Promote to production when stable"
+      ],
+      "deployment_pipeline": {
+        "staging": "fly deploy --app paintbox-staging",
+        "production": "fly deploy --app paintbox-production",
+        "rollback": "fly releases rollback --app paintbox-staging"
+      }
+    }
+  },
+  "registry": {
+    "url": "https://nanda-registry.candlefish.ai:8000",
+    "sync_interval": 300,
+    "heartbeat": true
+  },
+  "communication": {
+    "protocol": "https",
+    "authentication": "jwt",
+    "encryption": "aes-256-gcm"
+  },
+  "consciousness_mesh": {
+    "enabled": true,
+    "agents_can_spawn": true,
+    "self_improvement": true,
+    "collective_learning": true
+  }
+}

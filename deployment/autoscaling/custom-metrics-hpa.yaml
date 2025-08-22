@@ -1,0 +1,349 @@
+# Custom Metrics Horizontal Pod Autoscaler for RTPM
+# Advanced auto-scaling based on business and technical metrics
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: rtpm-api-custom-hpa
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: rtpm
+    app.kubernetes.io/component: api-autoscaling
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: rtpm-api
+  minReplicas: 3
+  maxReplicas: 50
+  metrics:
+  # CPU utilization
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  
+  # Memory utilization
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  
+  # Custom metric: Active agent connections
+  - type: Pods
+    pods:
+      metric:
+        name: rtpm_active_agents_per_pod
+      target:
+        type: AverageValue
+        averageValue: "100"
+  
+  # Custom metric: Request rate per pod
+  - type: Pods
+    pods:
+      metric:
+        name: rtpm_requests_per_second_per_pod
+      target:
+        type: AverageValue
+        averageValue: "50"
+  
+  # Custom metric: Queue depth (for scaling based on work backlog)
+  - type: Object
+    object:
+      metric:
+        name: rtpm_queue_depth
+      describedObject:
+        apiVersion: v1
+        kind: Service
+        name: rtpm-api-service
+      target:
+        type: Value
+        value: "1000"
+  
+  # Custom metric: Response time p99
+  - type: Pods
+    pods:
+      metric:
+        name: rtpm_response_time_p99_seconds
+      target:
+        type: AverageValue
+        averageValue: "0.5"
+  
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+      - type: Pods
+        value: 2
+        periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 30
+      - type: Pods
+        value: 5
+        periodSeconds: 30
+      selectPolicy: Max
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: rtpm-celery-worker-custom-hpa
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: rtmp
+    app.kubernetes.io/component: worker-autoscaling
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: rtpm-celery-worker
+  minReplicas: 4
+  maxReplicas: 100
+  metrics:
+  # CPU utilization
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 80
+  
+  # Memory utilization
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 85
+  
+  # Custom metric: Celery queue length
+  - type: Object
+    object:
+      metric:
+        name: celery_queue_length
+      describedObject:
+        apiVersion: v1
+        kind: Service
+        name: rtpm-redis
+      target:
+        type: Value
+        value: "50"
+  
+  # Custom metric: Task processing rate
+  - type: Pods
+    pods:
+      metric:
+        name: celery_tasks_per_minute_per_pod
+      target:
+        type: AverageValue
+        averageValue: "30"
+  
+  # Custom metric: Failed task rate
+  - type: Pods
+    pods:
+      metric:
+        name: celery_failed_tasks_rate
+      target:
+        type: AverageValue
+        averageValue: "0.05"  # 5% failure rate threshold
+  
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 600  # Longer stabilization for workers
+      policies:
+      - type: Percent
+        value: 25
+        periodSeconds: 120
+      - type: Pods
+        value: 5
+        periodSeconds: 120
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 120
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 60
+      - type: Pods
+        value: 10
+        periodSeconds: 60
+      selectPolicy: Max
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: rtpm-frontend-custom-hpa
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: rtpm
+    app.kubernetes.io/component: frontend-autoscaling
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: rtpm-frontend
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+  # CPU utilization
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 60
+  
+  # Memory utilization
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 70
+  
+  # Custom metric: HTTP requests per second
+  - type: Pods
+    pods:
+      metric:
+        name: nginx_requests_per_second_per_pod
+      target:
+        type: AverageValue
+        averageValue: "100"
+  
+  # Custom metric: Active connections
+  - type: Pods
+    pods:
+      metric:
+        name: nginx_active_connections_per_pod
+      target:
+        type: AverageValue
+        averageValue: "50"
+  
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 30
+---
+# Vertical Pod Autoscaler for optimal resource sizing
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: rtpm-api-vpa
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: rtpm
+    app.kubernetes.io/component: api-vpa
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: rtpm-api
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+    - containerName: api
+      minAllowed:
+        cpu: 100m
+        memory: 128Mi
+      maxAllowed:
+        cpu: 4
+        memory: 8Gi
+      controlledResources: ["cpu", "memory"]
+      controlledValues: RequestsAndLimits
+---
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: rtpm-celery-worker-vpa
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: rtpm
+    app.kubernetes.io/component: worker-vpa
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: rtpm-celery-worker
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+    - containerName: worker
+      minAllowed:
+        cpu: 100m
+        memory: 128Mi
+      maxAllowed:
+        cpu: 2
+        memory: 4Gi
+      controlledResources: ["cpu", "memory"]
+      controlledValues: RequestsAndLimits
+---
+# Pod Disruption Budget for high availability during scaling
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rtpm-api-pdb
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: rtpm
+    app.kubernetes.io/component: api-pdb
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: rtpm
+      app.kubernetes.io/component: api
+      app.kubernetes.io/instance: rtpm-api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rtpm-celery-worker-pdb
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: rtpm
+    app.kubernetes.io/component: worker-pdb
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: rtpm
+      app.kubernetes.io/component: worker
+      app.kubernetes.io/instance: celery-worker
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rtpm-frontend-pdb
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: rtpm
+    app.kubernetes.io/component: frontend-pdb
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: rtpm
+      app.kubernetes.io/component: frontend
+      app.kubernetes.io/instance: rtpm-frontend

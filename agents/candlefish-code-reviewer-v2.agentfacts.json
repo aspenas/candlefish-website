@@ -1,0 +1,131 @@
+{
+  "id": "candlefish:code-reviewer-v2",
+  "agent_name": "urn:agent:candlefish/code-reviewer-v2",
+  "label": "Code Reviewer",
+  "description": "Reviews code quality, suggests improvements, ensures best practices",
+  "version": "2.0.0",
+  "provider": {
+    "name": "Candlefish AI",
+    "url": "https://candlefish.ai",
+    "did": "did:web:candlefish.ai"
+  },
+  "endpoints": {
+    "static": [
+      "https://api.candlefish.ai/v2/agents/code-reviewer-v2",
+      "https://nanda.candlefish.ai:6005"
+    ],
+    "adaptive_resolver": {
+      "url": "https://resolver.candlefish.ai/dispatch",
+      "policies": [
+        "geo",
+        "load",
+        "consensus"
+      ]
+    }
+  },
+  "capabilities": {
+    "modalities": [
+      "text",
+      "structured_data"
+    ],
+    "streaming": true,
+    "batch": true,
+    "authentication": {
+      "methods": [
+        "oauth2",
+        "jwt",
+        "api_key"
+      ],
+      "requiredScopes": [
+        "agent:execute"
+      ]
+    }
+  },
+  "skills": [
+    {
+      "id": "code-quality",
+      "description": "Performs code quality",
+      "inputModes": [
+        "text",
+        "structured_data"
+      ],
+      "outputModes": [
+        "structured_data"
+      ],
+      "maxTokens": 4096,
+      "latencyBudgetMs": 500
+    },
+    {
+      "id": "best-practices",
+      "description": "Performs best practices",
+      "inputModes": [
+        "text",
+        "structured_data"
+      ],
+      "outputModes": [
+        "structured_data"
+      ],
+      "maxTokens": 4096,
+      "latencyBudgetMs": 500
+    },
+    {
+      "id": "refactoring",
+      "description": "Performs refactoring",
+      "inputModes": [
+        "text",
+        "structured_data"
+      ],
+      "outputModes": [
+        "structured_data"
+      ],
+      "maxTokens": 4096,
+      "latencyBudgetMs": 500
+    },
+    {
+      "id": "security-review",
+      "description": "Performs security review",
+      "inputModes": [
+        "text",
+        "structured_data"
+      ],
+      "outputModes": [
+        "structured_data"
+      ],
+      "maxTokens": 4096,
+      "latencyBudgetMs": 500
+    }
+  ],
+  "certification": {
+    "level": "audited",
+    "issuer": "NANDA Foundation",
+    "issuanceDate": "2025-08-01T00:00:00Z",
+    "expirationDate": "2026-08-01T00:00:00Z"
+  },
+  "evaluations": {
+    "performanceScore": 4.8500000000000005,
+    "availability90d": "99.95%",
+    "lastAudited": "2025-08-15T12:00:00Z",
+    "auditTrail": "ipfs://Qmcandlefishcode-reviewer-v2Audit2025",
+    "auditorID": "NANDA Verification Service v2.0"
+  },
+  "telemetry": {
+    "enabled": true,
+    "retention": "30d",
+    "sampling": 0.1,
+    "metrics": {
+      "latency_p95_ms": 130,
+      "throughput_rps": 850,
+      "error_rate": 0.001,
+      "availability": "99.95%"
+    }
+  },
+  "trust": {
+    "reputation_score": 96.5,
+    "verified_by": [
+      "MIT NANDA Index",
+      "Candlefish AI"
+    ],
+    "blockchain_anchor": "ethereum:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "last_verification": "2025-08-21T00:00:00Z"
+  }
+}

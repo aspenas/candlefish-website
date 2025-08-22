@@ -1,0 +1,158 @@
+# Production-optimized Dockerfile for NANDA Dashboard
+# Multi-stage build with security hardening and CDN optimization
+
+# Build stage
+FROM node:20-alpine AS builder
+
+# Install system dependencies for building
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    git \
+    curl
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY apps/nanda-dashboard/package*.json ./
+COPY apps/nanda-dashboard/pnpm-lock.yaml ./
+
+# Install pnpm for faster builds
+RUN npm install -g pnpm
+
+# Install dependencies with cache optimization
+RUN pnpm install --frozen-lockfile --prefer-offline
+
+# Copy source code
+COPY apps/nanda-dashboard/src ./src
+COPY apps/nanda-dashboard/public ./public
+COPY apps/nanda-dashboard/index.html ./
+COPY apps/nanda-dashboard/vite.config.ts ./
+COPY apps/nanda-dashboard/tsconfig.json ./
+COPY apps/nanda-dashboard/tsconfig.node.json ./
+COPY apps/nanda-dashboard/tailwind.config.js ./
+COPY apps/nanda-dashboard/postcss.config.js ./
+
+# Set production build environment
+ENV NODE_ENV=production
+ENV VITE_API_URL=https://api.rtpm.candlefish.ai
+ENV VITE_WS_URL=wss://api.rtpm.candlefish.ai
+
+# Build the application with optimizations
+RUN pnpm run build
+
+# Optimize build output
+RUN find dist -name "*.js" -type f -exec gzip -9 -k {} \; && \
+    find dist -name "*.css" -type f -exec gzip -9 -k {} \; && \
+    find dist -name "*.html" -type f -exec gzip -9 -k {} \;
+
+# Production stage with nginx
+FROM nginx:alpine AS production
+
+# Security updates
+RUN apk upgrade --no-cache && \
+    apk add --no-cache \
+    dumb-init \
+    curl \
+    ca-certificates \
+    tzdata
+
+# Create non-root user
+RUN addgroup -g 1001 -S nanda && \
+    adduser -S nanda -u 1001 -G nanda
+
+# Copy built application from builder stage
+COPY --from=builder --chown=nanda:nanda /app/dist /usr/share/nginx/html
+
+# Copy optimized nginx configuration
+COPY deployment/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY deployment/nginx/default.conf /etc/nginx/conf.d/default.conf
+
+# Create necessary directories
+RUN mkdir -p /var/log/nginx /var/cache/nginx /var/run/nginx && \
+    chown -R nanda:nanda /var/log/nginx /var/cache/nginx /var/run/nginx /usr/share/nginx/html && \
+    chmod -R 755 /usr/share/nginx/html
+
+# Security: Remove default nginx user and run as non-root
+RUN sed -i 's/user nginx;/user nanda;/' /etc/nginx/nginx.conf
+
+# Set timezone
+ENV TZ=UTC
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:80/health || exit 1
+
+# Create health check endpoint
+RUN echo '<!DOCTYPE html><html><head><title>Health Check</title></head><body><h1>OK</h1></body></html>' > /usr/share/nginx/html/health
+
+# Switch to non-root user
+USER nanda
+
+# Expose port
+EXPOSE 80
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
+
+# Static file server alternative (lightweight)
+FROM node:20-alpine AS static-server
+
+# Security updates
+RUN apk upgrade --no-cache && \
+    apk add --no-cache \
+    dumb-init \
+    curl \
+    ca-certificates
+
+# Create non-root user
+RUN addgroup -g 1001 -S nanda && \
+    adduser -S nanda -u 1001 -G nanda
+
+# Install optimized static file server
+RUN npm install -g sirv-cli compression
+
+# Set working directory
+WORKDIR /app
+
+# Copy built application from builder stage
+COPY --from=builder --chown=nanda:nanda /app/dist ./dist
+
+# Create health check file
+RUN echo '{"status":"ok","timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'"}' > ./dist/health
+
+# Create necessary directories
+RUN mkdir -p /app/logs && \
+    chown -R nanda:nanda /app
+
+# Switch to non-root user
+USER nanda
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3001/health || exit 1
+
+# Set environment variables
+ENV NODE_ENV=production \
+    PORT=3001
+
+# Expose port
+EXPOSE 3001
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start the application with compression and caching
+CMD ["sirv", "dist", \
+     "--port", "3001", \
+     "--cors", \
+     "--single", \
+     "--host", "0.0.0.0", \
+     "--compression", \
+     "--etag", \
+     "--gzip"]

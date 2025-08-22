@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChartBarIcon,
   CpuChipIcon,
-  ClockIcon,
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
   LightBulbIcon,
@@ -11,7 +10,7 @@ import {
   ExclamationTriangleIcon,
   BeakerIcon
 } from '@heroicons/react/24/outline';
-import { Line, Bar, Doughnut } from 'react-chartjs-2';
+import { Line, Doughnut } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -168,7 +167,7 @@ const SelfOptimizationPanel: React.FC<Props> = ({
             agentId: agent.id,
             ...template,
             priority: Math.floor(Math.random() * 10) + 1,
-            status: Math.random() < 0.7 ? 'pending' : Math.random() < 0.5 ? 'testing' : 'implemented',
+            status: (Math.random() < 0.7 ? 'pending' : Math.random() < 0.5 ? 'testing' : 'implemented') as 'pending' | 'testing' | 'implemented',
             timestamp: new Date(Date.now() - Math.random() * 86400000)
           }));
 

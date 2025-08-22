@@ -1,0 +1,178 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    --background: 220 26% 4%;
+    --foreground: 220 10% 98%;
+    --card: 220 26% 6%;
+    --card-foreground: 220 10% 95%;
+    --popover: 220 26% 6%;
+    --popover-foreground: 220 10% 95%;
+    --primary: 243 75% 59%;
+    --primary-foreground: 220 10% 5%;
+    --secondary: 220 14% 14%;
+    --secondary-foreground: 220 10% 80%;
+    --muted: 220 14% 14%;
+    --muted-foreground: 220 10% 60%;
+    --accent: 262 83% 58%;
+    --accent-foreground: 220 10% 5%;
+    --destructive: 0 62% 52%;
+    --destructive-foreground: 220 10% 95%;
+    --border: 220 14% 20%;
+    --input: 220 14% 20%;
+    --ring: 243 75% 59%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    background: linear-gradient(135deg, #0a0b1e 0%, #1a1b3a 25%, #2a2b5a 50%, #1a1b3a 75%, #0a0b1e 100%);
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .consciousness-glow {
+    box-shadow: 0 0 20px rgba(63, 77, 255, 0.3),
+                0 0 40px rgba(139, 92, 246, 0.2),
+                0 0 60px rgba(34, 197, 94, 0.1);
+  }
+
+  .neural-network-bg {
+    background-image: 
+      radial-gradient(circle at 20% 30%, rgba(63, 77, 255, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 50% 50%, rgba(34, 197, 94, 0.05) 0%, transparent 50%);
+  }
+
+  .agent-card {
+    @apply bg-card/50 backdrop-blur-md border border-white/10 rounded-lg p-6;
+    @apply hover:border-consciousness-400/50 transition-all duration-300;
+    @apply consciousness-glow;
+  }
+
+  .matrix-text {
+    font-family: 'JetBrains Mono', monospace;
+    text-shadow: 0 0 10px currentColor;
+  }
+
+  .consciousness-pulse {
+    animation: consciousness-pulse 3s ease-in-out infinite;
+  }
+
+  .neural-connection {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .neural-connection::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, #3f4dff 50%, transparent 100%);
+    animation: consciousness-flow 3s linear infinite;
+  }
+
+  .quantum-grid {
+    background-image: 
+      linear-gradient(rgba(63, 77, 255, 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(63, 77, 255, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .status-indicator {
+    @apply w-3 h-3 rounded-full animate-pulse-soft;
+  }
+
+  .status-online {
+    @apply bg-quantum-500 shadow-lg shadow-quantum-500/50;
+  }
+
+  .status-offline {
+    @apply bg-red-500 shadow-lg shadow-red-500/50;
+  }
+
+  .status-warning {
+    @apply bg-yellow-500 shadow-lg shadow-yellow-500/50;
+  }
+
+  .metric-graph {
+    @apply bg-gradient-to-r from-consciousness-500/20 via-neural-500/20 to-quantum-500/20;
+    @apply border border-white/10 rounded;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-consciousness-400 via-neural-400 to-quantum-400;
+    @apply bg-clip-text text-transparent;
+  }
+
+  .border-gradient {
+    border-image: linear-gradient(135deg, #3f4dff, #8b5cf6, #22c55e) 1;
+  }
+}
+
+/* Matrix rain effect for background */
+.matrix-rain {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.matrix-rain::before {
+  content: '01010101010101010101010101010101010101010101';
+  position: absolute;
+  color: rgba(34, 197, 94, 0.1);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  white-space: nowrap;
+  animation: matrix-rain 20s linear infinite;
+}
+
+/* Consciousness flow animations */
+@keyframes consciousness-pulse {
+  0%, 100% { 
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-background;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-consciousness-500/50 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-consciousness-500/70;
+}

@@ -5,7 +5,7 @@ import {
   BoltIcon,
   CheckCircleIcon,
   XCircleIcon,
-  HandshakeIcon,
+  UserGroupIcon as HandshakeIcon,
   ExclamationTriangleIcon,
   HeartIcon,
   CpuChipIcon,

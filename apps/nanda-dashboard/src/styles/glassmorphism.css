@@ -180,7 +180,7 @@
 }
 
 .chart-title {
-  @apply text-lg font-semibold text-nanda-foreground;
+  @apply text-lg font-semibold text-gray-900;
 }
 
 .chart-wrapper {
@@ -236,7 +236,7 @@
 }
 
 .heat-map-legend {
-  @apply flex items-center justify-between text-xs text-nanda-muted-foreground;
+  @apply flex items-center justify-between text-xs text-gray-500;
 }
 
 /* Agent Status Grid */
@@ -261,7 +261,7 @@
 }
 
 .agent-name {
-  @apply font-medium text-nanda-foreground truncate;
+  @apply font-medium text-gray-900 truncate;
 }
 
 .agent-platform {
@@ -279,11 +279,11 @@
 }
 
 .agent-metric-value {
-  @apply font-bold text-nanda-primary;
+  @apply font-bold text-blue-600;
 }
 
 .agent-metric-label {
-  @apply text-xs text-nanda-muted-foreground;
+  @apply text-xs text-gray-500;
 }
 
 /* Loading Animations */

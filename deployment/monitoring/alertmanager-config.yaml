@@ -1,0 +1,322 @@
+# Alertmanager Configuration for RTPM
+# Production-ready alerting with multiple notification channels
+
+global:
+  smtp_smarthost: 'smtp.sendgrid.net:587'
+  smtp_from: 'alerts@candlefish.ai'
+  smtp_auth_username: 'apikey'
+  smtp_auth_password: '${SENDGRID_API_KEY}'
+  smtp_require_tls: true
+
+# Templates for alert notifications
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Route tree for alert routing
+route:
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+  receiver: 'web.hook'
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      repeat_interval: 5m
+      continue: true
+
+    # Database alerts
+    - match:
+        service: postgresql
+      receiver: 'database-team'
+      group_wait: 30s
+      repeat_interval: 30m
+
+    - match:
+        service: redis
+      receiver: 'database-team'
+      group_wait: 30s
+      repeat_interval: 30m
+
+    # API alerts
+    - match:
+        service: rtpm-api
+      receiver: 'api-team'
+      group_wait: 30s
+      repeat_interval: 15m
+
+    # Celery worker alerts
+    - match:
+        service: celery
+      receiver: 'backend-team'
+      group_wait: 1m
+      repeat_interval: 30m
+
+    # Kubernetes infrastructure alerts
+    - match:
+        service: kubernetes
+      receiver: 'infrastructure-team'
+      group_wait: 2m
+      repeat_interval: 1h
+
+    # Security alerts
+    - match:
+        service: security
+      receiver: 'security-team'
+      group_wait: 5s
+      repeat_interval: 5m
+
+    # Business logic alerts
+    - match:
+        service: business
+      receiver: 'product-team'
+      group_wait: 5m
+      repeat_interval: 2h
+
+    # Network alerts
+    - match:
+        service: network
+      receiver: 'infrastructure-team'
+      group_wait: 1m
+      repeat_interval: 30m
+
+    # Default route for other alerts
+    - receiver: 'default-team'
+
+# Inhibition rules to prevent alert spam
+inhibit_rules:
+  # Inhibit any warning-level alert if the same alert is firing as critical
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'service', 'instance']
+
+  # Inhibit specific alerts when related services are down
+  - source_match:
+      alertname: 'RTMPAPIDown'
+    target_match_re:
+      alertname: 'RTMP.*'
+    equal: ['instance']
+
+  - source_match:
+      alertname: 'PostgreSQLDown'
+    target_match_re:
+      alertname: 'PostgreSQL.*'
+    equal: ['instance']
+
+  - source_match:
+      alertname: 'RedisDown'
+    target_match_re:
+      alertname: 'Redis.*'
+    equal: ['instance']
+
+  - source_match:
+      alertname: 'KubernetesNodeDown'
+    target_match_re:
+      alertname: 'Kubernetes.*'
+    equal: ['node']
+
+# Receivers for different notification channels
+receivers:
+  # Default webhook (fallback)
+  - name: 'web.hook'
+    webhook_configs:
+      - url: 'http://localhost:9093/webhook'
+        send_resolved: true
+
+  # Critical alerts - multiple channels
+  - name: 'critical-alerts'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_CRITICAL}'
+        channel: '#alerts-critical'
+        title: '🚨 CRITICAL ALERT 🚨'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Severity:* {{ .Labels.severity }}
+          *Service:* {{ .Labels.service }}
+          *Runbook:* {{ .Annotations.runbook_url }}
+          {{ end }}
+        send_resolved: true
+        actions:
+          - type: button
+            text: 'View Runbook'
+            url: '{{ .Annotations.runbook_url }}'
+          - type: button
+            text: 'View Grafana'
+            url: 'https://grafana.rtmp.candlefish.ai'
+          - type: button
+            text: 'Silence Alert'
+            url: 'https://alertmanager.rtpm.candlefish.ai'
+
+    email_configs:
+      - to: 'oncall@candlefish.ai'
+        subject: '🚨 RTPM Critical Alert: {{ .GroupLabels.alertname }}'
+        html: |
+          <h2>Critical Alert Triggered</h2>
+          {{ range .Alerts }}
+          <h3>{{ .Annotations.summary }}</h3>
+          <p><strong>Description:</strong> {{ .Annotations.description }}</p>
+          <p><strong>Service:</strong> {{ .Labels.service }}</p>
+          <p><strong>Severity:</strong> {{ .Labels.severity }}</p>
+          <p><strong>Time:</strong> {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}</p>
+          <p><a href="{{ .Annotations.runbook_url }}">View Runbook</a></p>
+          {{ end }}
+
+    pagerduty_configs:
+      - routing_key: '${PAGERDUTY_INTEGRATION_KEY}'
+        description: '{{ .GroupLabels.alertname }}: {{ .Annotations.summary }}'
+        details:
+          alert_count: '{{ len .Alerts }}'
+          service: '{{ .GroupLabels.service }}'
+          severity: '{{ .GroupLabels.severity }}'
+          runbook_url: '{{ .Annotations.runbook_url }}'
+
+  # Database team notifications
+  - name: 'database-team'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_DATABASE}'
+        channel: '#database-alerts'
+        title: '📊 Database Alert'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Service:* {{ .Labels.service }}
+          *Instance:* {{ .Labels.instance }}
+          {{ end }}
+        send_resolved: true
+
+    email_configs:
+      - to: 'database-team@candlefish.ai'
+        subject: 'RTPM Database Alert: {{ .GroupLabels.alertname }}'
+
+  # API team notifications
+  - name: 'api-team'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_API}'
+        channel: '#api-alerts'
+        title: '🔧 API Alert'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Service:* {{ .Labels.service }}
+          *Instance:* {{ .Labels.instance }}
+          {{ end }}
+        send_resolved: true
+
+    email_configs:
+      - to: 'api-team@candlefish.ai'
+        subject: 'RTPM API Alert: {{ .GroupLabels.alertname }}'
+
+  # Backend team notifications
+  - name: 'backend-team'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_BACKEND}'
+        channel: '#backend-alerts'
+        title: '⚙️ Backend Alert'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Service:* {{ .Labels.service }}
+          {{ end }}
+        send_resolved: true
+
+  # Infrastructure team notifications
+  - name: 'infrastructure-team'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_INFRA}'
+        channel: '#infrastructure-alerts'
+        title: '🏗️ Infrastructure Alert'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Service:* {{ .Labels.service }}
+          {{ end }}
+        send_resolved: true
+
+    email_configs:
+      - to: 'infrastructure@candlefish.ai'
+        subject: 'RTPM Infrastructure Alert: {{ .GroupLabels.alertname }}'
+
+  # Security team notifications
+  - name: 'security-team'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_SECURITY}'
+        channel: '#security-alerts'
+        title: '🔒 Security Alert'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Service:* {{ .Labels.service }}
+          {{ end }}
+        send_resolved: true
+
+    email_configs:
+      - to: 'security@candlefish.ai'
+        subject: 'RTPM Security Alert: {{ .GroupLabels.alertname }}'
+
+  # Product team notifications
+  - name: 'product-team'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_PRODUCT}'
+        channel: '#product-alerts'
+        title: '📈 Business Metrics Alert'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Service:* {{ .Labels.service }}
+          {{ end }}
+        send_resolved: true
+
+  # Default team notifications
+  - name: 'default-team'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_DEFAULT}'
+        channel: '#general-alerts'
+        title: '📢 General Alert'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Service:* {{ .Labels.service }}
+          {{ end }}
+        send_resolved: true
+
+# Time intervals for muting alerts (e.g., during maintenance windows)
+time_intervals:
+  - name: maintenance_window
+    time_intervals:
+      - times:
+          - start_time: '02:00'
+            end_time: '04:00'
+        weekdays: ['sunday']
+        location: 'UTC'
+
+  - name: business_hours
+    time_intervals:
+      - times:
+          - start_time: '09:00'
+            end_time: '17:00'
+        weekdays: ['monday:friday']
+        location: 'America/New_York'
+
+  - name: off_hours
+    time_intervals:
+      - times:
+          - start_time: '17:00'
+            end_time: '09:00'
+        weekdays: ['monday:friday']
+        location: 'America/New_York'
+      - weekdays: ['saturday', 'sunday']
+        location: 'America/New_York'

@@ -12,7 +12,7 @@ RUN apk add --no-cache python3 make g++ git
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci && npm cache clean --force
+RUN npm install && npm cache clean --force
 
 # Copy source code
 COPY src ./src
@@ -20,6 +20,7 @@ COPY public ./public
 COPY index.html ./
 COPY vite.config.ts ./
 COPY tsconfig.json ./
+COPY tsconfig.node.json ./
 COPY tailwind.config.js ./
 COPY postcss.config.js ./
 

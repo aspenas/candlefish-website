@@ -1,0 +1,26 @@
+# Base image for all NANDA agents
+FROM node:20-alpine
+
+# Install dependencies for health checks and monitoring
+RUN apk add --no-cache curl redis
+
+# Create app directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production
+
+# Add healthcheck script
+COPY healthcheck.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/healthcheck.sh
+
+# Default environment variables
+ENV NODE_ENV=production
+ENV REDIS_URL=redis://redis:6379
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD /usr/local/bin/healthcheck.sh || exit 1

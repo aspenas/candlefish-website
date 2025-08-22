@@ -1,0 +1,75 @@
+{
+  "tests": [
+    {
+      "name": "GP1: New Estimate Page",
+      "endpoint": "/estimate/new",
+      "status": "failed",
+      "response": "502"
+    },
+    {
+      "name": "GP1: Client Details",
+      "endpoint": "/estimate/new/details",
+      "status": "failed",
+      "response": "502"
+    },
+    {
+      "name": "GP1: Success Page",
+      "endpoint": "/estimate/success",
+      "status": "failed",
+      "response": "502"
+    },
+    {
+      "name": "GP2: Exterior Config",
+      "endpoint": "/estimate/new/exterior",
+      "status": "failed",
+      "response": "502"
+    },
+    {
+      "name": "GP3: Interior Config",
+      "endpoint": "/estimate/new/interior",
+      "status": "failed",
+      "response": "502"
+    },
+    {
+      "name": "GP3: Review Page",
+      "endpoint": "/estimate/new/review",
+      "status": "failed",
+      "response": "502"
+    },
+    {
+      "name": "GP5: PDF Export",
+      "endpoint": "/estimate/test-id/pdf",
+      "status": "failed",
+      "response": "503"
+    },
+    {
+      "name": "GP6: Offline Page",
+      "endpoint": "/offline",
+      "status": "failed",
+      "response": "502"
+    },
+    {
+      "name": "GP6: Manifest",
+      "endpoint": "/manifest.json",
+      "status": "failed",
+      "response": "503"
+    },
+    {
+      "name": "GP8: Service Worker",
+      "endpoint": "/sw.js",
+      "status": "failed",
+      "response": "503"
+    },
+    {
+      "name": "GP8: Mobile Viewport",
+      "endpoint": "/",
+      "status": "failed",
+      "response": "503"
+    }
+  ],
+  "summary": {
+    "passed": "0",
+    "failed": "14",
+    "warnings": "0"
+  }
+}

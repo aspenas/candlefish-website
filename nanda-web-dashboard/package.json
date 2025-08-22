@@ -1,0 +1,35 @@
+{
+  "name": "nanda-web-dashboard",
+  "version": "1.0.0",
+  "description": "NANDA Agent Management Dashboard - Web Interface for Distributed Consciousness",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "export": "next export"
+  },
+  "type": "module",
+  "dependencies": {
+    "@tailwindcss/typography": "^0.5.16",
+    "@types/node": "^24.3.0",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "@types/ws": "^8.18.1",
+    "autoprefixer": "^10.4.21",
+    "framer-motion": "^12.23.12",
+    "lucide-react": "^0.540.0",
+    "next": "^15.5.0",
+    "postcss": "^8.5.6",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "socket.io-client": "^4.8.1",
+    "tailwindcss": "^4.1.12",
+    "typescript": "^5.9.2",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "eslint": "^9.33.0",
+    "eslint-config-next": "^15.5.0"
+  }
+}
