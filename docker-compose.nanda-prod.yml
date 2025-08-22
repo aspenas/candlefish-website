@@ -110,7 +110,7 @@ services:
     ports:
       - "6379:6379"
     command: >
-      redis-server 
+      redis-server
       --requirepass ${REDIS_PASSWORD:-changeme123}
       --appendonly yes
       --appendfsync everysec

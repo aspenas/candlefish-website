@@ -27,21 +27,21 @@ describe('cn utility function', () => {
     it('handles boolean conditions', () => {
       const isActive = true
       const isDisabled = false
-      
+
       const result = cn(
         'base-class',
         isActive && 'active',
         isDisabled && 'disabled'
       )
-      
+
       expect(result).toBe('base-class active')
     })
 
     it('handles complex conditional logic', () => {
-      const variant = 'primary'
-      const size = 'large'
+      const variant: 'primary' | 'secondary' = 'primary'
+      const size: 'large' | 'small' = 'large'
       const disabled = false
-      
+
       const result = cn(
         'btn',
         variant === 'primary' && 'btn-primary',
@@ -50,7 +50,7 @@ describe('cn utility function', () => {
         size === 'small' && 'btn-sm',
         disabled && 'btn-disabled'
       )
-      
+
       expect(result).toBe('btn btn-primary btn-lg')
     })
   })
@@ -62,7 +62,7 @@ describe('cn utility function', () => {
         'class2': false,
         'class3': true,
       })
-      
+
       expect(result).toBe('class1 class3')
     })
 
@@ -75,7 +75,7 @@ describe('cn utility function', () => {
         },
         'final-class'
       )
-      
+
       expect(result).toBe('base-class conditional-class final-class')
     })
   })
@@ -96,7 +96,7 @@ describe('cn utility function', () => {
         },
         ['final-array']
       )
-      
+
       expect(result).toBe('base array1 array2 conditional final-array')
     })
   })
@@ -106,22 +106,22 @@ describe('cn utility function', () => {
       const isLarge = true
       const isPrimary = true
       const isDisabled = false
-      
+
       const result = cn(
         'px-4 py-2 rounded-md font-medium transition-colors',
         isPrimary ? 'bg-blue-500 text-white hover:bg-blue-600' : 'bg-gray-200 text-gray-800',
         isLarge && 'text-lg px-6 py-3',
         isDisabled && 'opacity-50 cursor-not-allowed'
       )
-      
+
       expect(result).toBe('px-4 py-2 rounded-md font-medium transition-colors bg-blue-500 text-white hover:bg-blue-600 text-lg px-6 py-3')
     })
 
     it('handles component variant patterns', () => {
-      const variant = 'outline'
-      const size = 'md'
+      const variant: 'primary' | 'outline' | 'ghost' = 'outline'
+      const size: 'sm' | 'md' | 'lg' = 'md'
       const className = 'custom-class'
-      
+
       const result = cn(
         'inline-flex items-center justify-center rounded-md font-medium',
         {
@@ -136,27 +136,27 @@ describe('cn utility function', () => {
         },
         className
       )
-      
+
       expect(result).toBe('inline-flex items-center justify-center rounded-md font-medium border border-primary text-primary h-10 px-4 custom-class')
     })
 
     it('handles responsive classes', () => {
       const isMobile = false
       const isTablet = true
-      
+
       const result = cn(
         'w-full',
         isMobile && 'text-sm',
         isTablet && 'md:w-1/2 md:text-base',
         !isMobile && !isTablet && 'lg:w-1/3 lg:text-lg'
       )
-      
+
       expect(result).toBe('w-full md:w-1/2 md:text-base')
     })
 
     it('handles state-based classes', () => {
-      const state = 'loading'
-      
+      const state: 'loading' | 'success' | 'error' | 'idle' = 'loading'
+
       const result = cn(
         'btn',
         {
@@ -166,7 +166,7 @@ describe('cn utility function', () => {
           'btn-idle': state === 'idle',
         }
       )
-      
+
       expect(result).toBe('btn btn-loading')
     })
   })
@@ -175,7 +175,7 @@ describe('cn utility function', () => {
     it('handles very long class lists', () => {
       const classes = Array.from({ length: 100 }, (_, i) => `class-${i}`)
       const result = cn(...classes)
-      
+
       expect(result).toBe(classes.join(' '))
       expect(result.split(' ')).toHaveLength(100)
     })
@@ -185,7 +185,7 @@ describe('cn utility function', () => {
       const size = 'large'
       const variant = 'primary'
       const state = 'active'
-      
+
       const result = cn(
         'component',
         theme === 'dark' && [
@@ -197,7 +197,7 @@ describe('cn utility function', () => {
           ]
         ]
       )
-      
+
       expect(result).toBe('component dark-theme dark-large dark-primary dark-primary-active')
     })
 
@@ -225,7 +225,7 @@ describe('cn utility function', () => {
         false && 'class5',
         true && 'final'
       )
-      
+
       expect(result).toBe('base final')
     })
 
@@ -256,7 +256,7 @@ describe('cn utility function', () => {
         ['array', 'items'],
         { 'object': true, 'hidden': false }
       )
-      
+
       expect(result).toBe('string 123 conditional array items object')
     })
   })

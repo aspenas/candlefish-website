@@ -286,7 +286,7 @@ class QueueManager {
     return {
       success: true,
       entryId: entry.id,
-      position,
+      position: position ?? undefined,
       message: `Submission successful. Queue position: #${position}`,
     };
   }
@@ -302,6 +302,10 @@ class QueueManager {
     if (!entry) return false;
 
     entry.evaluation = evaluation;
+
+    if (!evaluation) {
+      return false;
+    }
 
     // Calculate overall score
     const weights = this.config.priorityWeights;

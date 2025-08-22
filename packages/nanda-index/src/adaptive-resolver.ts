@@ -77,11 +77,11 @@ export class AdaptiveResolver extends EventEmitter {
   private ddosProtection: DDoSProtection;
   private trafficShaping: TrafficShaping;
   private concurrencyLimit: ReturnType<typeof pLimit>;
-  
+
   // Shuffle sharding for isolation
   private shards: Map<string, string[]>;
   private currentShard: number;
-  
+
   // Performance tracking
   private metrics: {
     totalRequests: number;
@@ -95,20 +95,20 @@ export class AdaptiveResolver extends EventEmitter {
 
   constructor(config: AdaptiveResolverConfig) {
     super();
-    
+
     this.config = config;
     this.endpoints = new Map();
     this.sessions = new Map();
     this.shards = new Map();
     this.currentShard = 0;
-    
+
     // Initialize cache
     this.cache = new NodeCache({
       stdTTL: 60,
       checkperiod: 10,
       useClones: false
     });
-    
+
     // HTTP client
     this.http = axios.create({
       timeout: 5000,
@@ -116,7 +116,7 @@ export class AdaptiveResolver extends EventEmitter {
         'User-Agent': 'NANDA-AdaptiveResolver/1.0'
       }
     });
-    
+
     // DDoS protection
     this.ddosProtection = {
       enabled: config.security.ddosProtection,
@@ -125,7 +125,7 @@ export class AdaptiveResolver extends EventEmitter {
       requestPatterns: new Map(),
       challengeTokens: new Map()
     };
-    
+
     // Traffic shaping defaults
     this.trafficShaping = {
       canaryPercentage: 0,
@@ -140,10 +140,10 @@ export class AdaptiveResolver extends EventEmitter {
         halfOpenRequests: 3
       }
     };
-    
+
     // Concurrency control
     this.concurrencyLimit = pLimit(100);
-    
+
     // Initialize metrics
     this.metrics = {
       totalRequests: 0,
@@ -154,7 +154,7 @@ export class AdaptiveResolver extends EventEmitter {
       p99Latency: 0,
       activeConnections: 0
     };
-    
+
     // Start background tasks
     this.startBackgroundTasks();
   }
@@ -179,23 +179,23 @@ export class AdaptiveResolver extends EventEmitter {
     const startTime = Date.now();
     this.metrics.totalRequests++;
     this.metrics.activeConnections++;
-    
+
     try {
       // DDoS protection
       if (this.ddosProtection.enabled) {
         await this.checkDDoSProtection(request.clientIP);
       }
-      
+
       // Rate limiting
       await this.checkRateLimit(request.clientIP);
-      
+
       // Session binding
       if (request.sessionId) {
         const session = this.sessions.get(request.sessionId);
         if (session && this.isEndpointHealthy(session.endpointUrl)) {
           session.lastUsed = Date.now();
           session.requestCount++;
-          
+
           return {
             endpoint: session.endpointUrl,
             token: this.generateEphemeralToken(request),
@@ -204,14 +204,14 @@ export class AdaptiveResolver extends EventEmitter {
           };
         }
       }
-      
+
       // Select endpoint based on strategy
       const endpoint = await this.selectEndpoint(request);
-      
+
       if (!endpoint) {
         throw new Error('No healthy endpoints available');
       }
-      
+
       // Create session binding
       const sessionId = request.sessionId || this.generateSessionId();
       const session: SessionBinding = {
@@ -223,28 +223,28 @@ export class AdaptiveResolver extends EventEmitter {
         requestCount: 1
       };
       this.sessions.set(sessionId, session);
-      
+
       // Generate ephemeral token
       const token = this.generateEphemeralToken(request);
-      
+
       // Update metrics
       const latency = Date.now() - startTime;
       this.updateLatencyMetrics(latency);
       this.metrics.successfulRequests++;
-      
+
       this.emit('request:routed', {
         agentId: request.agentId,
         endpoint,
         latency
       });
-      
+
       return {
         endpoint,
         token,
         ttl: 300, // 5 minutes
         sessionId
       };
-      
+
     } catch (error) {
       this.metrics.failedRequests++;
       this.emit('error', error);
@@ -274,15 +274,15 @@ export class AdaptiveResolver extends EventEmitter {
       status: 'healthy',
       weight: params.weight || 1
     };
-    
+
     // Perform initial health check
     await this.healthCheck(metrics);
-    
+
     this.endpoints.set(params.url, metrics);
-    
+
     // Update shards
     this.updateShards();
-    
+
     this.emit('endpoint:registered', params.url);
   }
 
@@ -292,13 +292,13 @@ export class AdaptiveResolver extends EventEmitter {
   private async selectEndpoint(request: any): Promise<string | null> {
     const healthyEndpoints = Array.from(this.endpoints.values())
       .filter(e => e.status === 'healthy' || e.status === 'degraded');
-    
+
     if (healthyEndpoints.length === 0) {
       return null;
     }
-    
+
     let selected: EndpointMetrics | null = null;
-    
+
     if (this.config.strategies.geographic && request.region) {
       // Geographic routing
       const regional = healthyEndpoints.filter(e => e.region === request.region);
@@ -306,19 +306,19 @@ export class AdaptiveResolver extends EventEmitter {
         selected = this.selectByLatency(regional);
       }
     }
-    
+
     if (!selected && this.config.strategies.loadBalanced) {
       // Weighted round-robin with shuffle sharding
       selected = this.selectByShuffle(healthyEndpoints, request.clientIP);
     }
-    
+
     if (!selected) {
       // Fallback to least connections
       selected = healthyEndpoints.reduce((prev, curr) =>
         prev.requestCount < curr.requestCount ? prev : curr
       );
     }
-    
+
     // Apply traffic shaping
     if (selected && this.trafficShaping.canaryPercentage > 0) {
       const isCanary = Math.random() * 100 < this.trafficShaping.canaryPercentage;
@@ -328,7 +328,7 @@ export class AdaptiveResolver extends EventEmitter {
         if (canary) selected = canary;
       }
     }
-    
+
     return selected ? selected.url : null;
   }
 
@@ -337,8 +337,8 @@ export class AdaptiveResolver extends EventEmitter {
    */
   private selectByLatency(endpoints: EndpointMetrics[]): EndpointMetrics {
     return endpoints.reduce((prev, curr) => {
-      const prevAvg = prev.latency.length > 0 
-        ? prev.latency.reduce((a, b) => a + b, 0) / prev.latency.length 
+      const prevAvg = prev.latency.length > 0
+        ? prev.latency.reduce((a, b) => a + b, 0) / prev.latency.length
         : Infinity;
       const currAvg = curr.latency.length > 0
         ? curr.latency.reduce((a, b) => a + b, 0) / curr.latency.length
@@ -357,10 +357,10 @@ export class AdaptiveResolver extends EventEmitter {
     // Hash client IP to determine shard
     const hash = crypto.createHash('sha256').update(clientIP).digest();
     const shardIndex = hash.readUInt32BE(0) % 10; // 10 shards
-    
+
     const shardKey = `shard-${shardIndex}`;
     let shard = this.shards.get(shardKey);
-    
+
     if (!shard || shard.length === 0) {
       // Create shard with subset of endpoints
       const shardSize = Math.max(2, Math.floor(endpoints.length / 3));
@@ -370,19 +370,19 @@ export class AdaptiveResolver extends EventEmitter {
         .map(e => e.url);
       this.shards.set(shardKey, shard);
     }
-    
+
     // Select from shard using weighted round-robin
     const shardEndpoints = endpoints.filter(e => shard!.includes(e.url));
     if (shardEndpoints.length === 0) return null;
-    
+
     const totalWeight = shardEndpoints.reduce((sum, e) => sum + e.weight, 0);
     let random = Math.random() * totalWeight;
-    
+
     for (const endpoint of shardEndpoints) {
       random -= endpoint.weight;
       if (random <= 0) return endpoint;
     }
-    
+
     return shardEndpoints[0];
   }
 
@@ -395,20 +395,20 @@ export class AdaptiveResolver extends EventEmitter {
       const response = await this.http.get(`${endpoint.url}/health`, {
         timeout: 2000
       });
-      
+
       const latency = Date.now() - start;
       endpoint.latency.push(latency);
-      
+
       // Keep only last 100 latency measurements
       if (endpoint.latency.length > 100) {
         endpoint.latency.shift();
       }
-      
+
       // Update success rate
       endpoint.requestCount++;
-      endpoint.successRate = 
+      endpoint.successRate =
         ((endpoint.successRate * (endpoint.requestCount - 1)) + 100) / endpoint.requestCount;
-      
+
       // Determine status
       if (endpoint.successRate > 95 && latency < 1000) {
         endpoint.status = 'healthy';
@@ -417,15 +417,15 @@ export class AdaptiveResolver extends EventEmitter {
       } else {
         endpoint.status = 'unhealthy';
       }
-      
+
       endpoint.lastCheck = Date.now();
-      
+
     } catch (error) {
       endpoint.errorCount++;
-      endpoint.successRate = 
+      endpoint.successRate =
         ((endpoint.successRate * endpoint.requestCount) + 0) / (endpoint.requestCount + 1);
       endpoint.requestCount++;
-      
+
       if (endpoint.successRate < 50) {
         endpoint.status = 'unhealthy';
       }
@@ -448,29 +448,29 @@ export class AdaptiveResolver extends EventEmitter {
     if (this.ddosProtection.blockedIPs.has(clientIP)) {
       throw new Error('Access denied');
     }
-    
+
     // Track request pattern
     const now = Date.now();
     const pattern = this.ddosProtection.requestPatterns.get(clientIP) || [];
     pattern.push(now);
-    
+
     // Keep only last minute of requests
     const oneMinuteAgo = now - 60000;
     const recentRequests = pattern.filter(t => t > oneMinuteAgo);
     this.ddosProtection.requestPatterns.set(clientIP, recentRequests);
-    
+
     // Check for suspicious patterns
     if (recentRequests.length > 100) { // More than 100 requests per minute
       const suspiciousCount = (this.ddosProtection.suspiciousIPs.get(clientIP) || 0) + 1;
       this.ddosProtection.suspiciousIPs.set(clientIP, suspiciousCount);
-      
+
       if (suspiciousCount > 3) {
         // Block IP after 3 strikes
         this.ddosProtection.blockedIPs.add(clientIP);
         this.emit('ddos:blocked', clientIP);
         throw new Error('Access denied');
       }
-      
+
       // Require challenge
       const token = crypto.randomBytes(16).toString('hex');
       this.ddosProtection.challengeTokens.set(clientIP, token);
@@ -484,11 +484,11 @@ export class AdaptiveResolver extends EventEmitter {
   private async checkRateLimit(clientIP: string): Promise<void> {
     const key = `ratelimit:${clientIP}`;
     const current = this.cache.get<number>(key) || 0;
-    
+
     if (current >= this.trafficShaping.rateLimit.requests) {
       throw new Error('Rate limit exceeded');
     }
-    
+
     this.cache.set(
       key,
       current + 1,
@@ -507,15 +507,15 @@ export class AdaptiveResolver extends EventEmitter {
       timestamp: Date.now(),
       nonce: crypto.randomBytes(8).toString('hex')
     };
-    
+
     const token = crypto
       .createHmac('sha256', this.config.agent_id)
       .update(JSON.stringify(payload))
       .digest('hex');
-    
+
     // Cache token for validation
     this.cache.set(`token:${token}`, payload, 300);
-    
+
     return token;
   }
 
@@ -531,10 +531,10 @@ export class AdaptiveResolver extends EventEmitter {
    */
   private updateLatencyMetrics(latency: number): void {
     // Simple moving average
-    this.metrics.avgLatency = 
-      (this.metrics.avgLatency * (this.metrics.totalRequests - 1) + latency) / 
+    this.metrics.avgLatency =
+      (this.metrics.avgLatency * (this.metrics.totalRequests - 1) + latency) /
       this.metrics.totalRequests;
-    
+
     // Would need to maintain sorted list for accurate percentiles
     // For now, use approximations
     this.metrics.p95Latency = Math.max(this.metrics.p95Latency, latency * 0.95);
@@ -572,14 +572,14 @@ export class AdaptiveResolver extends EventEmitter {
         endpoint.weight = (100 - params.ratio) / params.blueEndpoints.length;
       }
     });
-    
+
     params.greenEndpoints.forEach(url => {
       const endpoint = this.endpoints.get(url);
       if (endpoint) {
         endpoint.weight = params.ratio / params.greenEndpoints.length;
       }
     });
-    
+
     this.trafficShaping.blueGreenRatio = params.ratio;
     this.emit('deployment:bluegreen', params);
   }
@@ -602,33 +602,33 @@ export class AdaptiveResolver extends EventEmitter {
     // Health checks
     setInterval(() => {
       this.endpoints.forEach(endpoint => {
-        this.healthCheck(endpoint).catch(err => 
+        this.healthCheck(endpoint).catch(err =>
           this.emit('error', { context: 'health check', error: err })
         );
       });
     }, 30000); // Every 30 seconds
-    
+
     // Session cleanup
     setInterval(() => {
       const now = Date.now();
       const timeout = 3600000; // 1 hour
-      
+
       this.sessions.forEach((session, id) => {
         if (now - session.lastUsed > timeout) {
           this.sessions.delete(id);
         }
       });
     }, 60000); // Every minute
-    
+
     // DDoS cleanup
     setInterval(() => {
       // Clear old suspicious IPs
       this.ddosProtection.suspiciousIPs.clear();
-      
+
       // Unblock IPs after cooldown
       // In production, this would be more sophisticated
     }, 300000); // Every 5 minutes
-    
+
     // Metrics reporting
     setInterval(() => {
       this.emit('metrics', this.getMetrics());
@@ -645,8 +645,8 @@ export class AdaptiveResolver extends EventEmitter {
         url: e.url,
         status: e.status,
         successRate: e.successRate,
-        avgLatency: e.latency.length > 0 
-          ? e.latency.reduce((a, b) => a + b, 0) / e.latency.length 
+        avgLatency: e.latency.length > 0
+          ? e.latency.reduce((a, b) => a + b, 0) / e.latency.length
           : 0
       })),
       activeSessions: this.sessions.size,

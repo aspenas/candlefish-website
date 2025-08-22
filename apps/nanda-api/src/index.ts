@@ -58,7 +58,7 @@ async function startServer() {
   // Initialize observability
   const { metricsRegistry } = setupMetrics();
   const { tracer } = setupTracing();
-  
+
   // Initialize Fastify
   const app = Fastify({
     logger: {
@@ -74,13 +74,13 @@ async function startServer() {
     },
     trustProxy: true
   });
-  
+
   // Register plugins
   await app.register(cors, {
     origin: config.corsOrigins,
     credentials: true
   });
-  
+
   await app.register(helmet, {
     contentSecurityPolicy: {
       directives: {
@@ -91,13 +91,13 @@ async function startServer() {
       }
     }
   });
-  
+
   await app.register(rateLimit, {
     max: config.rateLimits.requests,
     timeWindow: config.rateLimits.window,
     redis: createClient({ url: config.redisUrl })
   });
-  
+
   await app.register(swagger, {
     openapi: {
       info: {
@@ -125,9 +125,9 @@ async function startServer() {
       }
     }
   });
-  
+
   await app.register(websocket);
-  
+
   // Initialize NANDA components
   const nandaIndex = new NANDAIndex({
     region: config.aws.region,
@@ -135,13 +135,13 @@ async function startServer() {
     redisUrl: config.redisUrl,
     nodeId: config.nodeId
   });
-  
+
   const agentFactsResolver = new AgentFactsResolver({
     cacheTTL: 300,
     httpTimeout: 5000,
     maxConcurrency: 10
   });
-  
+
   const adaptiveResolver = new AdaptiveResolver({
     agent_id: config.nodeId,
     strategies: {
@@ -170,13 +170,13 @@ async function startServer() {
       openTelemetryEndpoint: config.observability.otlpEndpoint
     }
   });
-  
+
   const privacyLayer = new PrivacyLayer({
     mixNodes: config.privacy.mixNodes,
     zkPrime: config.privacy.zkPrime,
     cacheTTL: 300
   });
-  
+
   const enterpriseConnector = new EnterpriseConnector({
     registries: config.enterprise.registries,
     federationConfig: {
@@ -186,17 +186,17 @@ async function startServer() {
       conflictResolution: 'newest'
     }
   });
-  
+
   // Initialize authentication
   const auth = new CandlefishAuth({
     jwksUrl: config.auth.jwksUrl,
     issuer: config.auth.issuer,
     audience: config.auth.audience
   });
-  
+
   // Initialize services
   await nandaIndex.initialize();
-  
+
   // Create GraphQL server
   const apollo = new ApolloServer({
     typeDefs,
@@ -221,22 +221,22 @@ async function startServer() {
       tracer
     })
   });
-  
+
   await apollo.start();
-  
+
   // Register GraphQL handler
   app.route({
     url: '/graphql',
     method: ['GET', 'POST'],
     handler: fastifyApolloHandler(apollo)
   });
-  
+
   // Setup WebSocket server for subscriptions
   const wsServer = new WebSocketServer({
     server: app.server,
     path: '/graphql'
   });
-  
+
   useServer(
     {
       schema: apollo.schema,
@@ -250,7 +250,7 @@ async function startServer() {
     },
     wsServer
   );
-  
+
   // Register REST routes
   registerRESTRoutes(app, {
     nandaIndex,
@@ -260,14 +260,14 @@ async function startServer() {
     enterpriseConnector,
     auth
   });
-  
+
   // Setup WebSocket handlers
   setupWebSocketHandlers(app, {
     nandaIndex,
     adaptiveResolver,
     auth
   });
-  
+
   // Health check endpoint
   app.get('/health', async (request, reply) => {
     const health = {
@@ -282,10 +282,10 @@ async function startServer() {
         enterpriseConnector: enterpriseConnector.getMetrics()
       }
     };
-    
+
     return reply.code(200).send(health);
   });
-  
+
   // Metrics endpoint
   app.get('/metrics', async (request, reply) => {
     const metrics = await metricsRegistry.metrics();
@@ -293,11 +293,11 @@ async function startServer() {
       .header('Content-Type', metricsRegistry.contentType)
       .send(metrics);
   });
-  
+
   // Error handling
   app.setErrorHandler((error, request, reply) => {
     app.log.error(error);
-    
+
     const statusCode = error.statusCode || 500;
     const response = {
       error: {
@@ -307,44 +307,44 @@ async function startServer() {
         timestamp: new Date().toISOString()
       }
     };
-    
+
     reply.status(statusCode).send(response);
   });
-  
+
   // Graceful shutdown
   const gracefulShutdown = async () => {
     app.log.info('Shutting down gracefully...');
-    
+
     await apollo.stop();
     await nandaIndex.close();
     await app.close();
-    
+
     process.exit(0);
   };
-  
+
   process.on('SIGINT', gracefulShutdown);
   process.on('SIGTERM', gracefulShutdown);
-  
+
   // Start server
   try {
     const port = config.port || 3000;
     const host = config.host || '0.0.0.0';
-    
+
     await app.listen({ port, host });
-    
+
     app.log.info(`
       🚀 NANDA API Server is running!
-      
+
       🔗 REST API: http://${host}:${port}
       📊 GraphQL: http://${host}:${port}/graphql
       🔌 WebSocket: ws://${host}:${port}/ws
       📚 Swagger: http://${host}:${port}/documentation
       💓 Health: http://${host}:${port}/health
       📈 Metrics: http://${host}:${port}/metrics
-      
+
       Ready to revolutionize AI agent discovery!
     `);
-    
+
     // Log startup metrics
     app.log.info('Startup metrics:', {
       totalAgents: nandaIndex.getStatistics().total_agents,
@@ -352,7 +352,7 @@ async function startServer() {
       memoryUsage: process.memoryUsage(),
       nodeVersion: process.version
     });
-    
+
   } catch (err) {
     app.log.error(err);
     process.exit(1);

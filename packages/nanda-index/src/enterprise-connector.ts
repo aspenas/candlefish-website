@@ -91,12 +91,12 @@ export class EnterpriseConnector extends EventEmitter {
   private http: AxiosInstance;
   private concurrencyLimit: ReturnType<typeof pLimit>;
   private federationConfig: FederationConfig;
-  
+
   // Platform-specific clients
   private googleClient?: OAuth2Client;
   private microsoftClient?: any; // Would use @azure/identity
   private salesforceClient?: any; // Would use jsforce
-  
+
   // Metrics
   private metrics: {
     totalSynced: number;
@@ -112,17 +112,17 @@ export class EnterpriseConnector extends EventEmitter {
     maxConcurrency?: number;
   } = {}) {
     super();
-    
+
     this.registries = new Map();
     this.syncStatus = new Map();
-    
+
     // Initialize cache
     this.cache = new NodeCache({
       stdTTL: config.cacheTTL || 600, // 10 minutes default
       checkperiod: 60,
       useClones: false
     });
-    
+
     // HTTP client
     this.http = axios.create({
       timeout: 30000,
@@ -130,10 +130,10 @@ export class EnterpriseConnector extends EventEmitter {
         'User-Agent': 'NANDA-EnterpriseConnector/1.0'
       }
     });
-    
+
     // Concurrency control
     this.concurrencyLimit = pLimit(config.maxConcurrency || 5);
-    
+
     // Federation config
     this.federationConfig = config.federationConfig || {
       trustedRegistries: [],
@@ -141,7 +141,7 @@ export class EnterpriseConnector extends EventEmitter {
       sharedNamespace: 'urn:nanda:federated',
       conflictResolution: 'newest'
     };
-    
+
     // Initialize metrics
     this.metrics = {
       totalSynced: 0,
@@ -149,12 +149,12 @@ export class EnterpriseConnector extends EventEmitter {
       platformCounts: new Map(),
       syncDuration: new Map()
     };
-    
+
     // Load registries
     if (config.registries) {
       config.registries.forEach(reg => this.addRegistry(reg));
     }
-    
+
     // Start sync scheduler
     this.startSyncScheduler();
   }
@@ -165,7 +165,7 @@ export class EnterpriseConnector extends EventEmitter {
   addRegistry(registry: EnterpriseRegistry): void {
     const platform = this.detectPlatform(registry.type);
     this.registries.set(platform, registry);
-    
+
     // Initialize sync status
     this.syncStatus.set(platform, {
       platform,
@@ -176,10 +176,10 @@ export class EnterpriseConnector extends EventEmitter {
       failedAgents: 0,
       status: 'idle'
     });
-    
+
     // Initialize platform-specific client
     this.initializePlatformClient(platform, registry);
-    
+
     this.emit('registry:added', platform);
   }
 
@@ -191,43 +191,43 @@ export class EnterpriseConnector extends EventEmitter {
     if (!registry) {
       throw new Error(`Registry not found for platform: ${platform}`);
     }
-    
+
     const status = this.syncStatus.get(platform)!;
     status.status = 'syncing';
-    
+
     const startTime = Date.now();
-    
+
     try {
       // Fetch agents from platform
       const agents = await this.fetchPlatformAgents(platform, registry);
       status.totalAgents = agents.length;
-      
+
       // Convert to NANDA format and store
       const results = await Promise.allSettled(
-        agents.map(agent => 
+        agents.map(agent =>
           this.concurrencyLimit(() => this.importAgent(agent, registry))
         )
       );
-      
+
       // Update status
       status.syncedAgents = results.filter(r => r.status === 'fulfilled').length;
       status.failedAgents = results.filter(r => r.status === 'rejected').length;
       status.lastSync = Date.now();
       status.nextSync = Date.now() + (registry.syncInterval * 1000);
       status.status = 'idle';
-      
+
       // Update metrics
       this.metrics.totalSynced += status.syncedAgents;
       this.metrics.totalFailed += status.failedAgents;
-      
+
       const duration = Date.now() - startTime;
       const durations = this.metrics.syncDuration.get(platform) || [];
       durations.push(duration);
       this.metrics.syncDuration.set(platform, durations);
-      
+
       this.emit('sync:completed', { platform, status });
       return status;
-      
+
     } catch (error) {
       status.status = 'error';
       status.error = error instanceof Error ? error.message : 'Unknown error';
@@ -246,31 +246,31 @@ export class EnterpriseConnector extends EventEmitter {
     switch (platform) {
       case EnterprisePlatform.GOOGLE_A2A:
         return this.fetchGoogleA2AAgents(registry);
-      
+
       case EnterprisePlatform.MICROSOFT_NLWEB:
         return this.fetchMicrosoftNLWebAgents(registry);
-      
+
       case EnterprisePlatform.SALESFORCE_EINSTEIN:
         return this.fetchSalesforceEinsteinAgents(registry);
-      
+
       case EnterprisePlatform.AWS_BEDROCK:
         return this.fetchAWSBedrockAgents(registry);
-      
+
       case EnterprisePlatform.MCP_SERVER:
         return this.fetchMCPServerAgents(registry);
-      
+
       case EnterprisePlatform.OPENAI_GPT_STORE:
         return this.fetchOpenAIGPTStoreAgents(registry);
-      
+
       case EnterprisePlatform.ANTHROPIC_CLAUDE:
         return this.fetchAnthropicClaudeAgents(registry);
-      
+
       case EnterprisePlatform.HUGGINGFACE_HUB:
         return this.fetchHuggingFaceAgents(registry);
-      
+
       case EnterprisePlatform.WEB3_MARKET:
         return this.fetchWeb3MarketAgents(registry);
-      
+
       default:
         return this.fetchCustomAgents(registry);
     }
@@ -284,13 +284,13 @@ export class EnterpriseConnector extends EventEmitter {
     if (!this.googleClient) {
       throw new Error('Google client not initialized');
     }
-    
+
     const response = await this.http.get(`${registry.endpoint}/agents`, {
       headers: {
         'Authorization': `Bearer ${await this.getGoogleToken()}`
       }
     });
-    
+
     return response.data.agents.map((agent: any) => ({
       platform: EnterprisePlatform.GOOGLE_A2A,
       nativeId: agent.id,
@@ -326,7 +326,7 @@ export class EnterpriseConnector extends EventEmitter {
         'api-version': '2024-01-01'
       }
     });
-    
+
     return response.data.value.map((agent: any) => ({
       platform: EnterprisePlatform.MICROSOFT_NLWEB,
       nativeId: agent.id,
@@ -353,7 +353,7 @@ export class EnterpriseConnector extends EventEmitter {
         'Content-Type': 'application/json'
       }
     });
-    
+
     return response.data.agents.map((agent: any) => ({
       platform: EnterprisePlatform.SALESFORCE_EINSTEIN,
       nativeId: agent.Id,
@@ -380,7 +380,7 @@ export class EnterpriseConnector extends EventEmitter {
         'x-amz-target': 'BedrockAgent.ListAgents'
       }
     });
-    
+
     return response.data.agentSummaries.map((agent: any) => ({
       platform: EnterprisePlatform.AWS_BEDROCK,
       nativeId: agent.agentId,
@@ -401,11 +401,11 @@ export class EnterpriseConnector extends EventEmitter {
    */
   private async fetchMCPServerAgents(registry: EnterpriseRegistry): Promise<PlatformAgent[]> {
     const response = await this.http.get(`${registry.endpoint}/servers`, {
-      headers: registry.authentication.type === 'apikey' 
+      headers: registry.authentication.type === 'apikey'
         ? { 'X-API-Key': registry.authentication.credentials.apiKey }
         : {}
     });
-    
+
     return response.data.servers.map((server: any) => ({
       platform: EnterprisePlatform.MCP_SERVER,
       nativeId: server.id,
@@ -431,7 +431,7 @@ export class EnterpriseConnector extends EventEmitter {
         'OpenAI-Beta': 'assistants=v2'
       }
     });
-    
+
     return response.data.data.map((gpt: any) => ({
       platform: EnterprisePlatform.OPENAI_GPT_STORE,
       nativeId: gpt.id,
@@ -495,7 +495,7 @@ export class EnterpriseConnector extends EventEmitter {
         'Authorization': `Bearer ${registry.authentication.credentials.apiKey}`
       }
     });
-    
+
     return response.data.map((model: any) => ({
       platform: EnterprisePlatform.HUGGINGFACE_HUB,
       nativeId: model.id,
@@ -527,10 +527,10 @@ export class EnterpriseConnector extends EventEmitter {
     const response = await this.http.get(registry.endpoint, {
       headers: this.getAuthHeaders(registry)
     });
-    
+
     // Map based on configured mappings
     const agents = this.extractByPath(response.data, registry.mappings.agent_id);
-    
+
     return agents.map((agent: any) => ({
       platform: EnterprisePlatform.WEB3_MARKET,
       nativeId: this.extractByPath(agent, registry.mappings.agent_id),
@@ -555,7 +555,7 @@ export class EnterpriseConnector extends EventEmitter {
   ): Promise<NANDAIndexRecord> {
     // Generate NANDA-compatible URN
     const agentName = `urn:nanda:${agent.platform}:${agent.nativeId}`;
-    
+
     // Create agent facts
     const facts: AgentFacts = {
       '@context': [
@@ -600,10 +600,10 @@ export class EnterpriseConnector extends EventEmitter {
         proofValue: '' // Would be actual signature
       }
     };
-    
+
     // Store facts (would upload to actual storage)
     const factsUrl = await this.storeFacts(facts);
-    
+
     // Create NANDA record
     const record: NANDAIndexRecord = {
       agent_id: agent.nativeId,
@@ -616,14 +616,14 @@ export class EnterpriseConnector extends EventEmitter {
       version: BigInt(1),
       updated_at: Date.now()
     };
-    
+
     // Cache the imported agent
     this.cache.set(`imported:${agent.platform}:${agent.nativeId}`, record);
-    
+
     // Update platform count
     const count = this.metrics.platformCounts.get(agent.platform) || 0;
     this.metrics.platformCounts.set(agent.platform, count + 1);
-    
+
     this.emit('agent:imported', { platform: agent.platform, agent: record });
     return record;
   }
@@ -638,11 +638,11 @@ export class EnterpriseConnector extends EventEmitter {
     if (!this.federationConfig.crossSigningEnabled) {
       throw new Error('Cross-signing not enabled');
     }
-    
+
     if (!this.federationConfig.trustedRegistries.includes(targetRegistry)) {
       throw new Error('Target registry not trusted');
     }
-    
+
     // Add additional signature from target registry
     // This would involve key exchange and mutual authentication
     const crossSigned = { ...credential };
@@ -650,7 +650,7 @@ export class EnterpriseConnector extends EventEmitter {
       ...credential.proof,
       proofValue: credential.proof.proofValue + ':' + targetRegistry
     };
-    
+
     return crossSigned;
   }
 
@@ -664,17 +664,17 @@ export class EnterpriseConnector extends EventEmitter {
     switch (this.federationConfig.conflictResolution) {
       case 'local':
         return local;
-      
+
       case 'remote':
         return remote;
-      
+
       case 'newest':
         return local.updated_at > remote.updated_at ? local : remote;
-      
+
       case 'manual':
         this.emit('conflict:detected', { local, remote });
         return local; // Default to local, wait for manual resolution
-      
+
       default:
         return local;
     }
@@ -683,7 +683,7 @@ export class EnterpriseConnector extends EventEmitter {
   /**
    * Helper methods
    */
-  
+
   private detectPlatform(type: string): EnterprisePlatform {
     const mapping: Record<string, EnterprisePlatform> = {
       'google': EnterprisePlatform.GOOGLE_A2A,
@@ -696,7 +696,7 @@ export class EnterpriseConnector extends EventEmitter {
       'huggingface': EnterprisePlatform.HUGGINGFACE_HUB,
       'web3': EnterprisePlatform.WEB3_MARKET
     };
-    
+
     return mapping[type] || EnterprisePlatform.WEB3_MARKET;
   }
 
@@ -711,7 +711,7 @@ export class EnterpriseConnector extends EventEmitter {
           clientSecret: registry.authentication.credentials.clientSecret
         });
         break;
-      
+
       // Initialize other platform clients...
     }
   }
@@ -762,10 +762,10 @@ export class EnterpriseConnector extends EventEmitter {
   private startSyncScheduler(): void {
     setInterval(() => {
       const now = Date.now();
-      
+
       this.syncStatus.forEach((status, platform) => {
         if (status.status === 'idle' && now >= status.nextSync) {
-          this.syncPlatform(platform).catch(err => 
+          this.syncPlatform(platform).catch(err =>
             this.emit('error', { platform, error: err })
           );
         }

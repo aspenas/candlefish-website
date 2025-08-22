@@ -6,8 +6,8 @@ import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { Input } from '../ui/Input';
 import { LoadingState } from '../ui/LoadingSpinner';
-import { 
-  MagnifyingGlassIcon, 
+import {
+  MagnifyingGlassIcon,
   CalendarIcon,
   ClockIcon,
   ArrowRightIcon,
@@ -135,12 +135,12 @@ export const BlogGallery: React.FC<BlogGalleryProps> = ({
   // Filter and search logic
   const filteredPosts = useMemo(() => {
     return posts.filter(post => {
-      const matchesCategory = !filters.category || filters.category === 'All Categories' || 
+      const matchesCategory = !filters.category || filters.category === 'All Categories' ||
         post.categories.includes(filters.category);
-      const matchesSearch = !filters.search || 
-        post.title.toLowerCase().includes(filters.search.toLowerCase()) ||
-        post.excerpt.toLowerCase().includes(filters.search.toLowerCase()) ||
-        post.tags.some(tag => tag.toLowerCase().includes(filters.search.toLowerCase()));
+      const matchesSearch = !filters.search ||
+        post.title.toLowerCase().includes(filters.search?.toLowerCase() || '') ||
+        post.excerpt.toLowerCase().includes(filters.search?.toLowerCase() || '') ||
+        post.tags.some(tag => tag.toLowerCase().includes(filters.search?.toLowerCase() || ''));
 
       return matchesCategory && matchesSearch && post.published;
     });
@@ -200,7 +200,7 @@ export const BlogGallery: React.FC<BlogGalleryProps> = ({
             <h2 className="text-3xl font-bold text-slate mb-4">Latest Insights</h2>
             <p className="text-lg text-mist">Expert perspectives on automation strategy and implementation</p>
           </div>
-          
+
           <Card variant="elevated" className="overflow-hidden">
             <div className="md:flex">
               <div className="md:w-1/3">
@@ -217,12 +217,12 @@ export const BlogGallery: React.FC<BlogGalleryProps> = ({
                     </Badge>
                   ))}
                 </div>
-                
+
                 <h3 className="text-2xl font-bold text-slate mb-4 hover:text-sea-glow transition-colors cursor-pointer"
                     onClick={() => handleViewPost(featuredPost)}>
                   {featuredPost.title}
                 </h3>
-                
+
                 <p className="text-mist mb-6">
                   {featuredPost.excerpt}
                 </p>
@@ -244,7 +244,7 @@ export const BlogGallery: React.FC<BlogGalleryProps> = ({
                       {featuredPost.readTime} min read
                     </span>
                   </div>
-                  
+
                   <Button onClick={() => handleViewPost(featuredPost)}>
                     Read More
                     <ArrowRightIcon className="ml-2 h-4 w-4" />
@@ -270,7 +270,7 @@ export const BlogGallery: React.FC<BlogGalleryProps> = ({
               onChange={(e) => handleFilterChange('search', e.target.value)}
               leftIcon={<MagnifyingGlassIcon className="h-4 w-4" />}
             />
-            
+
             <select
               value={filters.category || 'All Categories'}
               onChange={(e) => handleFilterChange('category', e.target.value === 'All Categories' ? '' : e.target.value)}
@@ -280,7 +280,7 @@ export const BlogGallery: React.FC<BlogGalleryProps> = ({
                 <option key={category} value={category}>{category}</option>
               ))}
             </select>
-            
+
             <Button variant="outline" onClick={clearFilters}>
               Clear Filters
             </Button>
@@ -312,13 +312,13 @@ export const BlogGallery: React.FC<BlogGalleryProps> = ({
                     </Badge>
                   </div>
                 </div>
-                
+
                 <div className="p-6 flex-1 flex flex-col">
                   <h3 className="text-lg font-semibold text-slate mb-3 group-hover:text-sea-glow transition-colors line-clamp-2 cursor-pointer"
                       onClick={() => handleViewPost(post)}>
                     {post.title}
                   </h3>
-                  
+
                   <p className="text-mist mb-4 text-sm line-clamp-3 flex-1">
                     {post.excerpt}
                   </p>
@@ -348,9 +348,9 @@ export const BlogGallery: React.FC<BlogGalleryProps> = ({
                     </div>
                   </div>
 
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="w-full group-hover:bg-sea-glow group-hover:text-white transition-colors"
                     onClick={() => handleViewPost(post)}
                   >
@@ -375,7 +375,7 @@ export const BlogGallery: React.FC<BlogGalleryProps> = ({
           >
             Previous
           </Button>
-          
+
           <div className="flex space-x-1">
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <Button
@@ -389,7 +389,7 @@ export const BlogGallery: React.FC<BlogGalleryProps> = ({
               </Button>
             ))}
           </div>
-          
+
           <Button
             variant="outline"
             size="sm"

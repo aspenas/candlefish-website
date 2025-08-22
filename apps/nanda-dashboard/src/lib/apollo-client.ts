@@ -9,7 +9,7 @@ const httpLink = createHttpLink({
 // Auth link for JWT tokens
 const authLink = setContext((_, { headers }) => {
   const token = localStorage.getItem('nanda-auth-token')
-  
+
   return {
     headers: {
       ...headers,

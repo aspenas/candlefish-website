@@ -360,37 +360,37 @@ export function getOptimizedCalculator(options?: any): OptimizedPaintingCalculat
  */
 export function createWorkerCalculator() {
   // Only create workers in browser environment
-  if (typeof window !== 'undefined' && typeof Worker !== 'undefined') {
+  if (typeof window !== 'undefined' && typeof Worker !== 'undefined' && typeof Blob !== 'undefined') {
     // Create a blob URL for the worker
-    const workerCode = `
-      importScripts('https://cdn.jsdelivr.net/npm/decimal.js@10/decimal.min.js');
-
-      self.onmessage = function(e) {
-        const { id, formula, context } = e.data;
-
-        try {
-          // Perform calculation
-          const result = evaluateFormula(formula, context);
-
-          self.postMessage({
-            id,
-            result: result.toString(),
-            error: null
-          });
-        } catch (error) {
-          self.postMessage({
-            id,
-            result: null,
-            error: error.message
-          });
-        }
-      };
-
-      function evaluateFormula(formula, context) {
-        // Formula evaluation logic
-        return new Decimal(0);
-      }
-    `;
+    const workerCode = [
+      "importScripts('https://cdn.jsdelivr.net/npm/decimal.js@10/decimal.min.js');",
+      "",
+      "onmessage = function(e) {",
+      "  const { id, formula, context } = e.data;",
+      "",
+      "  try {",
+      "    // Perform calculation",
+      "    const result = evaluateFormula(formula, context);",
+      "",
+      "    postMessage({",
+      "      id,",
+      "      result: result.toString(),",
+      "      error: null",
+      "    });",
+      "  } catch (error) {",
+      "    postMessage({",
+      "      id,",
+      "      result: null,",
+      "      error: error.message",
+      "    });",
+      "  }",
+      "};",
+      "",
+      "function evaluateFormula(formula, context) {",
+      "  // Formula evaluation logic",
+      "  return new Decimal(0);",
+      "}"
+    ].join('\n');
 
     const blob = new Blob([workerCode], { type: 'application/javascript' });
     const workerUrl = URL.createObjectURL(blob);

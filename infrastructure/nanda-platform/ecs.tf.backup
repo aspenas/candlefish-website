@@ -7,12 +7,12 @@ resource "aws_ecs_task_definition" "nanda_api" {
   memory                   = var.memory
   execution_role_arn       = aws_iam_role.ecs_execution_role.arn
   task_role_arn           = aws_iam_role.ecs_task_role.arn
-  
+
   container_definitions = jsonencode([
     {
       name  = "nanda-api"
       image = "${aws_ecr_repository.nanda_api.repository_url}:${var.api_image_tag}"
-      
+
       portMappings = [
         {
           containerPort = 3000
@@ -20,7 +20,7 @@ resource "aws_ecs_task_definition" "nanda_api" {
           protocol      = "tcp"
         }
       ]
-      
+
       environment = [
         {
           name  = "NODE_ENV"
@@ -123,7 +123,7 @@ resource "aws_ecs_task_definition" "nanda_api" {
           value = "https://api.honeycomb.io"
         }
       ]
-      
+
       secrets = [
         {
           name      = "REDIS_AUTH_TOKEN"
@@ -134,7 +134,7 @@ resource "aws_ecs_task_definition" "nanda_api" {
           valueFrom = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.project_name}/honeycomb-api-key"
         }
       ]
-      
+
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -143,7 +143,7 @@ resource "aws_ecs_task_definition" "nanda_api" {
           awslogs-stream-prefix = "ecs"
         }
       }
-      
+
       healthCheck = {
         command     = ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
         interval    = 30
@@ -151,11 +151,11 @@ resource "aws_ecs_task_definition" "nanda_api" {
         retries     = 3
         startPeriod = 60
       }
-      
+
       essential = true
     }
   ])
-  
+
   tags = {
     Name = "${var.project_name}-api-task-definition"
   }
@@ -169,12 +169,12 @@ resource "aws_ecs_task_definition" "nanda_dashboard" {
   memory                   = var.memory
   execution_role_arn       = aws_iam_role.ecs_execution_role.arn
   task_role_arn           = aws_iam_role.ecs_task_role.arn
-  
+
   container_definitions = jsonencode([
     {
       name  = "nanda-dashboard"
       image = "${aws_ecr_repository.nanda_dashboard.repository_url}:${var.dashboard_image_tag}"
-      
+
       portMappings = [
         {
           containerPort = 3001
@@ -182,7 +182,7 @@ resource "aws_ecs_task_definition" "nanda_dashboard" {
           protocol      = "tcp"
         }
       ]
-      
+
       environment = [
         {
           name  = "NODE_ENV"
@@ -213,7 +213,7 @@ resource "aws_ecs_task_definition" "nanda_dashboard" {
           value = var.dashboard_image_tag
         }
       ]
-      
+
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -222,7 +222,7 @@ resource "aws_ecs_task_definition" "nanda_dashboard" {
           awslogs-stream-prefix = "ecs"
         }
       }
-      
+
       healthCheck = {
         command     = ["CMD-SHELL", "curl -f http://localhost:3001/health || exit 1"]
         interval    = 30
@@ -230,11 +230,11 @@ resource "aws_ecs_task_definition" "nanda_dashboard" {
         retries     = 3
         startPeriod = 60
       }
-      
+
       essential = true
     }
   ])
-  
+
   tags = {
     Name = "${var.project_name}-dashboard-task-definition"
   }
@@ -247,36 +247,36 @@ resource "aws_ecs_service" "nanda_api" {
   task_definition = aws_ecs_task_definition.nanda_api.arn
   desired_count   = var.ecs_desired_capacity
   launch_type     = "FARGATE"
-  
+
   network_configuration {
     subnets          = aws_subnet.private_subnets[*].id
     security_groups  = [aws_security_group.ecs_sg.id]
     assign_public_ip = false
   }
-  
+
   load_balancer {
     target_group_arn = aws_lb_target_group.nanda_api_tg.arn
     container_name   = "nanda-api"
     container_port   = 3000
   }
-  
+
   depends_on = [
     aws_lb_listener.nanda_https_listener,
     aws_iam_role_policy_attachment.ecs_execution_role_policy
   ]
-  
+
   deployment_configuration {
     maximum_percent         = 200
     minimum_healthy_percent = 100
-    
+
     deployment_circuit_breaker {
       enable   = true
       rollback = true
     }
   }
-  
+
   enable_execute_command = true
-  
+
   tags = {
     Name = "${var.project_name}-api-service"
   }
@@ -288,36 +288,36 @@ resource "aws_ecs_service" "nanda_dashboard" {
   task_definition = aws_ecs_task_definition.nanda_dashboard.arn
   desired_count   = var.ecs_desired_capacity
   launch_type     = "FARGATE"
-  
+
   network_configuration {
     subnets          = aws_subnet.private_subnets[*].id
     security_groups  = [aws_security_group.ecs_sg.id]
     assign_public_ip = false
   }
-  
+
   load_balancer {
     target_group_arn = aws_lb_target_group.nanda_dashboard_tg.arn
     container_name   = "nanda-dashboard"
     container_port   = 3001
   }
-  
+
   depends_on = [
     aws_lb_listener.nanda_https_listener,
     aws_iam_role_policy_attachment.ecs_execution_role_policy
   ]
-  
+
   deployment_configuration {
     maximum_percent         = 200
     minimum_healthy_percent = 100
-    
+
     deployment_circuit_breaker {
       enable   = true
       rollback = true
     }
   }
-  
+
   enable_execute_command = true
-  
+
   tags = {
     Name = "${var.project_name}-dashboard-service"
   }
@@ -338,12 +338,12 @@ resource "aws_appautoscaling_policy" "ecs_dashboard_scale_up" {
   resource_id        = aws_appautoscaling_target.ecs_dashboard_target.resource_id
   scalable_dimension = aws_appautoscaling_target.ecs_dashboard_target.scalable_dimension
   service_namespace  = aws_appautoscaling_target.ecs_dashboard_target.service_namespace
-  
+
   step_scaling_policy_configuration {
     adjustment_type         = "ChangeInCapacity"
     cooldown               = 300
     metric_aggregation_type = "Average"
-    
+
     step_adjustment {
       metric_interval_lower_bound = 0
       scaling_adjustment         = 2
@@ -357,12 +357,12 @@ resource "aws_appautoscaling_policy" "ecs_dashboard_scale_down" {
   resource_id        = aws_appautoscaling_target.ecs_dashboard_target.resource_id
   scalable_dimension = aws_appautoscaling_target.ecs_dashboard_target.scalable_dimension
   service_namespace  = aws_appautoscaling_target.ecs_dashboard_target.service_namespace
-  
+
   step_scaling_policy_configuration {
     adjustment_type         = "ChangeInCapacity"
     cooldown               = 300
     metric_aggregation_type = "Average"
-    
+
     step_adjustment {
       metric_interval_upper_bound = 0
       scaling_adjustment         = -1
@@ -382,7 +382,7 @@ resource "aws_cloudwatch_metric_alarm" "dashboard_cpu_high" {
   threshold           = "80"
   alarm_description   = "This metric monitors ECS Dashboard CPU utilization"
   alarm_actions       = [aws_appautoscaling_policy.ecs_dashboard_scale_up.arn]
-  
+
   dimensions = {
     ServiceName = aws_ecs_service.nanda_dashboard.name
     ClusterName = aws_ecs_cluster.nanda_cluster.name
@@ -400,7 +400,7 @@ resource "aws_cloudwatch_metric_alarm" "dashboard_cpu_low" {
   threshold           = "20"
   alarm_description   = "This metric monitors ECS Dashboard CPU utilization"
   alarm_actions       = [aws_appautoscaling_policy.ecs_dashboard_scale_down.arn]
-  
+
   dimensions = {
     ServiceName = aws_ecs_service.nanda_dashboard.name
     ClusterName = aws_ecs_cluster.nanda_cluster.name

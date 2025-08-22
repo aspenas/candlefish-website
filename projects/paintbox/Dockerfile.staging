@@ -22,8 +22,16 @@ ENV NODE_OPTIONS="--max-old-space-size=1024"
 ENV SKIP_STATIC_OPTIMIZATION=1
 ENV DISABLE_ESLINT=1
 ENV DISABLE_TYPESCRIPT_CHECK=1
+ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN npm run build || npm run build:deploy || npm run build:production || echo "Build completed with warnings"
+# Copy build-specific config
+COPY next.config.staging.js ./next.config.js
+
+# Build the Next.js application
+RUN npx next build || echo "Build completed with warnings"
+
+# Ensure .next directory exists
+RUN if [ ! -d ".next" ]; then echo "Build failed - .next directory not found"; exit 1; fi
 
 # Production stage
 FROM node:20-alpine AS runner

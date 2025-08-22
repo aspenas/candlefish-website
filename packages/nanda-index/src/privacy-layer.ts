@@ -87,14 +87,14 @@ export class PrivacyLayer extends EventEmitter {
   private privateStorage: Map<string, PrivateStorage>;
   private auditLog: AuditEntry[];
   private lastAuditHash: string;
-  
+
   // Cryptographic parameters
   private zkParams: {
     p: bigint; // Prime modulus
     g: bigint; // Generator
     h: bigint; // Secondary generator
   };
-  
+
   // Privacy metrics
   private metrics: {
     zkProofsGenerated: number;
@@ -110,14 +110,14 @@ export class PrivacyLayer extends EventEmitter {
     cacheTTL?: number;
   } = {}) {
     super();
-    
+
     // Initialize cache
     this.cache = new NodeCache({
       stdTTL: config.cacheTTL || 300,
       checkperiod: 60,
       useClones: false
     });
-    
+
     // HTTP client for mix-net communication
     this.http = axios.create({
       timeout: 10000,
@@ -125,21 +125,21 @@ export class PrivacyLayer extends EventEmitter {
         'User-Agent': 'NANDA-PrivacyLayer/1.0'
       }
     });
-    
+
     // Initialize mix nodes
     this.mixNodes = new Map();
     this.loadMixNodes(config.mixNodes || this.getDefaultMixNodes());
-    
+
     // Initialize private storage backends
     this.privateStorage = new Map();
-    
+
     // Initialize ZK parameters
     this.zkParams = this.initializeZKParams(config.zkPrime);
-    
+
     // Initialize audit log
     this.auditLog = [];
     this.lastAuditHash = '0'.repeat(64);
-    
+
     // Initialize metrics
     this.metrics = {
       zkProofsGenerated: 0,
@@ -148,7 +148,7 @@ export class PrivacyLayer extends EventEmitter {
       privacyViolations: 0,
       auditEntries: 0
     };
-    
+
     // Start background tasks
     this.startBackgroundTasks();
   }
@@ -171,7 +171,7 @@ export class PrivacyLayer extends EventEmitter {
           throw new Error('Invalid zero-knowledge proof');
         }
       }
-      
+
       // Route through mix-net if requested
       let response: any;
       if (request.mix_net_route && request.mix_net_route.length > 0) {
@@ -183,12 +183,12 @@ export class PrivacyLayer extends EventEmitter {
         // Direct lookup (still privacy-preserving via hash)
         response = await this.directLookup(request.query_hash);
       }
-      
+
       // Encrypt response if ephemeral key provided
       if (request.ephemeral_key) {
         response = this.encryptResponse(response, request.ephemeral_key);
       }
-      
+
       // Log to audit trail
       await this.addAuditEntry({
         action: 'private_lookup',
@@ -196,13 +196,13 @@ export class PrivacyLayer extends EventEmitter {
         resource: request.query_hash.substring(0, 8) + '...',
         result: 'allowed'
       });
-      
+
       return {
         success: true,
         data: response,
         proof: zkProof
       };
-      
+
     } catch (error) {
       this.emit('error', error);
       throw error;
@@ -218,21 +218,21 @@ export class PrivacyLayer extends EventEmitter {
     challenge?: string;
   }): Promise<ZKProof> {
     this.metrics.zkProofsGenerated++;
-    
+
     // Generate commitment (Pedersen commitment)
     const secret = BigInt('0x' + crypto.randomBytes(32).toString('hex'));
     const commitment = this.pedersenCommit(
       BigInt('0x' + Buffer.from(params.capability).toString('hex')),
       secret
     );
-    
+
     // Generate challenge (Fiat-Shamir heuristic)
     const challenge = params.challenge || crypto.randomBytes(32).toString('hex');
     const challengeInt = BigInt('0x' + challenge);
-    
+
     // Calculate response
     const response = (secret + challengeInt * BigInt('0x' + Buffer.from(params.agentId).toString('hex'))) % (this.zkParams.p - 1n);
-    
+
     const proof: ZKProof = {
       commitment: commitment.toString(16),
       challenge,
@@ -240,10 +240,10 @@ export class PrivacyLayer extends EventEmitter {
       publicInputs: [params.capability],
       proofType: 'capability'
     };
-    
+
     // Cache proof for verification
     this.cache.set(`proof:${proof.commitment}`, proof, 300);
-    
+
     this.emit('proof:generated', proof.proofType);
     return proof;
   }
@@ -253,32 +253,32 @@ export class PrivacyLayer extends EventEmitter {
    */
   async verifyZKProof(proofData: string): Promise<ZKProof | null> {
     this.metrics.zkProofsVerified++;
-    
+
     try {
       const proof: ZKProof = JSON.parse(proofData);
-      
+
       // Check cache first
       const cached = this.cache.get<ZKProof>(`proof:${proof.commitment}`);
       if (cached && this.compareProofs(cached, proof)) {
         return proof;
       }
-      
+
       // Verify the proof mathematically
       const commitment = BigInt('0x' + proof.commitment);
       const challenge = BigInt('0x' + proof.challenge);
       const response = BigInt('0x' + proof.response);
-      
+
       // Verify: g^response = commitment * publicKey^challenge (mod p)
       const left = this.modExp(this.zkParams.g, response, this.zkParams.p);
       const right = (commitment * this.modExp(this.zkParams.h, challenge, this.zkParams.p)) % this.zkParams.p;
-      
+
       if (left === right) {
         this.emit('proof:verified', proof.proofType);
         return proof;
       }
-      
+
       return null;
-      
+
     } catch (error) {
       this.emit('error', { context: 'ZK proof verification', error });
       return null;
@@ -293,16 +293,16 @@ export class PrivacyLayer extends EventEmitter {
     route: string[]
   ): Promise<any> {
     this.metrics.mixnetRoutings++;
-    
+
     // Build onion layers
     const layers = this.buildOnionLayers(queryHash, route);
-    
+
     // Send through first node
     const firstNode = this.mixNodes.get(route[0]);
     if (!firstNode) {
       throw new Error('Invalid mix node in route');
     }
-    
+
     const response = await this.http.post(
       `${firstNode.endpoint}/relay`,
       {
@@ -313,7 +313,7 @@ export class PrivacyLayer extends EventEmitter {
         timeout: 30000 // Longer timeout for mix-net
       }
     );
-    
+
     this.emit('mixnet:routed', route.length);
     return response.data;
   }
@@ -324,22 +324,22 @@ export class PrivacyLayer extends EventEmitter {
   private buildOnionLayers(payload: string, route: string[]): OnionLayer[] {
     const layers: OnionLayer[] = [];
     let currentPayload = Buffer.from(payload);
-    
+
     // Build layers in reverse order
     for (let i = route.length - 1; i >= 0; i--) {
       const node = this.mixNodes.get(route[i]);
       if (!node) continue;
-      
+
       // Generate ephemeral key pair
       const ephemeralPrivate = crypto.randomBytes(32);
       const ephemeralPublic = ed25519.publicKey(ephemeralPrivate);
-      
+
       // Derive shared secret
       const nodePublicKey = Buffer.from(node.publicKey, 'hex');
       const sharedSecret = crypto.createHash('sha256')
         .update(Buffer.concat([ephemeralPublic, nodePublicKey]))
         .digest();
-      
+
       // Encrypt payload
       const iv = crypto.randomBytes(16);
       const cipher = crypto.createCipheriv('aes-256-gcm', sharedSecret, iv);
@@ -348,18 +348,18 @@ export class PrivacyLayer extends EventEmitter {
         cipher.final(),
         cipher.getAuthTag()
       ]);
-      
+
       const layer: OnionLayer = {
         nodeId: node.id,
         encryptedPayload: Buffer.concat([iv, encrypted]),
         nextHop: i < route.length - 1 ? route[i + 1] : null,
         ephemeralKey: ephemeralPublic
       };
-      
+
       layers.unshift(layer);
       currentPayload = layer.encryptedPayload;
     }
-    
+
     return layers;
   }
 
@@ -383,13 +383,13 @@ export class PrivacyLayer extends EventEmitter {
     const key = Buffer.from(ephemeralKey, 'hex');
     const iv = crypto.randomBytes(16);
     const cipher = crypto.createCipheriv('aes-256-gcm', key.slice(0, 32), iv);
-    
+
     const encrypted = Buffer.concat([
       cipher.update(JSON.stringify(data)),
       cipher.final(),
       cipher.getAuthTag()
     ]);
-    
+
     return Buffer.concat([iv, encrypted]);
   }
 
@@ -407,7 +407,7 @@ export class PrivacyLayer extends EventEmitter {
   }> {
     // Generate encryption key
     const encryptionKey = crypto.randomBytes(32);
-    
+
     // Encrypt facts
     const iv = crypto.randomBytes(16);
     const cipher = crypto.createCipheriv('aes-256-gcm', encryptionKey, iv);
@@ -416,7 +416,7 @@ export class PrivacyLayer extends EventEmitter {
       cipher.final(),
       cipher.getAuthTag()
     ]);
-    
+
     // Store based on type
     let url: string;
     switch (params.storageType) {
@@ -432,7 +432,7 @@ export class PrivacyLayer extends EventEmitter {
       default:
         throw new Error('Invalid storage type');
     }
-    
+
     // Register storage backend
     const storage: PrivateStorage = {
       type: params.storageType,
@@ -441,7 +441,7 @@ export class PrivacyLayer extends EventEmitter {
       accessPolicy: params.accessPolicy
     };
     this.privateStorage.set(params.agentId, storage);
-    
+
     // Add to audit log
     await this.addAuditEntry({
       action: 'store_private_facts',
@@ -449,7 +449,7 @@ export class PrivacyLayer extends EventEmitter {
       resource: url,
       result: 'allowed'
     });
-    
+
     return {
       url,
       encryptionKey: encryptionKey.toString('hex')
@@ -468,12 +468,12 @@ export class PrivacyLayer extends EventEmitter {
     if (!storage) {
       throw new Error('Private facts not found');
     }
-    
+
     // Verify access policy
     if (storage.accessPolicy.requiredProofs.length > 0 && !params.proof) {
       throw new Error('Proof required for access');
     }
-    
+
     // Fetch encrypted data
     let encryptedData: Buffer;
     switch (storage.type) {
@@ -489,24 +489,24 @@ export class PrivacyLayer extends EventEmitter {
       default:
         throw new Error('Invalid storage type');
     }
-    
+
     // Decrypt
     const iv = encryptedData.slice(0, 16);
     const encrypted = encryptedData.slice(16, -16);
     const authTag = encryptedData.slice(-16);
-    
+
     const decipher = crypto.createDecipheriv(
       'aes-256-gcm',
       Buffer.from(params.encryptionKey, 'hex'),
       iv
     );
     decipher.setAuthTag(authTag);
-    
+
     const decrypted = Buffer.concat([
       decipher.update(encrypted),
       decipher.final()
     ]);
-    
+
     // Add to audit log
     await this.addAuditEntry({
       action: 'retrieve_private_facts',
@@ -514,7 +514,7 @@ export class PrivacyLayer extends EventEmitter {
       resource: params.agentId,
       result: 'allowed'
     });
-    
+
     return JSON.parse(decrypted.toString());
   }
 
@@ -537,18 +537,18 @@ export class PrivacyLayer extends EventEmitter {
       proofHash: '',
       previousHash: this.lastAuditHash
     };
-    
+
     // Calculate proof hash (includes previous hash for tamper-evidence)
     const hashData = JSON.stringify({
       ...entry,
       proofHash: undefined
     });
     entry.proofHash = crypto.createHash('sha256').update(hashData).digest('hex');
-    
+
     this.auditLog.push(entry);
     this.lastAuditHash = entry.proofHash;
     this.metrics.auditEntries++;
-    
+
     this.emit('audit:entry', entry);
   }
 
@@ -557,31 +557,31 @@ export class PrivacyLayer extends EventEmitter {
    */
   verifyAuditLog(): boolean {
     let previousHash = '0'.repeat(64);
-    
+
     for (const entry of this.auditLog) {
       if (entry.previousHash !== previousHash) {
         return false;
       }
-      
+
       const { proofHash, ...entryWithoutProof } = entry;
       const calculatedHash = crypto.createHash('sha256')
         .update(JSON.stringify({ ...entryWithoutProof, proofHash: undefined }))
         .digest('hex');
-      
+
       if (calculatedHash !== proofHash) {
         return false;
       }
-      
+
       previousHash = proofHash;
     }
-    
+
     return true;
   }
 
   /**
    * Helper cryptographic functions
    */
-  
+
   private pedersenCommit(value: bigint, randomness: bigint): bigint {
     // Commitment = g^value * h^randomness (mod p)
     const gPart = this.modExp(this.zkParams.g, value, this.zkParams.p);
@@ -611,7 +611,7 @@ export class PrivacyLayer extends EventEmitter {
   /**
    * Storage backend implementations (simplified)
    */
-  
+
   private async storeToIPFS(data: Buffer): Promise<string> {
     // In production, would use actual IPFS client
     const hash = crypto.createHash('sha256').update(data).digest('hex');
@@ -652,13 +652,13 @@ export class PrivacyLayer extends EventEmitter {
    */
   private initializeZKParams(customPrime?: string): typeof this.zkParams {
     // Use a safe prime for cryptographic operations
-    const p = customPrime 
+    const p = customPrime
       ? BigInt('0x' + customPrime)
       : BigInt('0xFFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7EDEE386BFB5A899FA5AE9F24117C4B1FE649286651ECE45B3DC2007CB8A163BF0598DA48361C55D39A69163FA8FD24CF5F83655D23DCA3AD961C62F356208552BB9ED529077096966D670C354E4ABC9804F1746C08CA18217C32905E462E36CE3BE39E772C180E86039B2783A2EC07A28FB5C55DF06F4C52C9DE2BCBF6955817183995497CEA956AE515D2261898FA051015728E5A8AACAA68FFFFFFFFFFFFFFFF');
-    
+
     const g = 2n; // Generator
     const h = 3n; // Secondary generator for Pedersen commitments
-    
+
     return { p, g, h };
   }
 
@@ -715,7 +715,7 @@ export class PrivacyLayer extends EventEmitter {
         this.emit('audit:tampered');
       }
     }, 60000); // Every minute
-    
+
     // Metrics reporting
     setInterval(() => {
       this.emit('metrics', this.getMetrics());

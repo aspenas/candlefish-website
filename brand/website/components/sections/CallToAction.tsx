@@ -138,7 +138,7 @@ const CallToAction: React.FC<CTAProps> = ({
                   size="lg"
                   variant={getButtonVariant()}
                   className="group"
-                  onClick={primaryCTA.onClick || (() => window.location.href = primaryCTA.href)}
+                  onClick={primaryCTA.onClick || (() => window.location.href = primaryCTA.href || '')}
                 >
                   {primaryCTA.text}
                   <ArrowRightIcon className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -163,7 +163,7 @@ const CallToAction: React.FC<CTAProps> = ({
                     variant="outline"
                     size="lg"
                     className={getSecondaryButtonClasses()}
-                    onClick={secondaryCTA.onClick || (() => window.location.href = secondaryCTA.href)}
+                    onClick={secondaryCTA.onClick || (() => window.location.href = secondaryCTA.href || '')}
                   >
                     {secondaryCTA.text}
                   </Button>
