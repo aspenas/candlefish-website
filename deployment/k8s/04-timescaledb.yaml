@@ -141,12 +141,12 @@ data:
   01-init.sql: |
     -- Initialize TimescaleDB extension
     CREATE EXTENSION IF NOT EXISTS timescaledb;
-    
+
     -- Create database schemas
     CREATE SCHEMA IF NOT EXISTS metrics;
     CREATE SCHEMA IF NOT EXISTS agents;
     CREATE SCHEMA IF NOT EXISTS monitoring;
-    
+
     -- Create agent_metrics hypertable
     CREATE TABLE IF NOT EXISTS metrics.agent_metrics (
         id BIGSERIAL PRIMARY KEY,
@@ -156,14 +156,14 @@ data:
         tags JSONB,
         timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    
+
     SELECT create_hypertable('metrics.agent_metrics', 'timestamp', if_not_exists => TRUE);
-    
+
     -- Create indexes for performance
     CREATE INDEX IF NOT EXISTS idx_agent_metrics_agent_id ON metrics.agent_metrics (agent_id, timestamp DESC);
     CREATE INDEX IF NOT EXISTS idx_agent_metrics_name ON metrics.agent_metrics (metric_name, timestamp DESC);
     CREATE INDEX IF NOT EXISTS idx_agent_metrics_tags ON metrics.agent_metrics USING GIN (tags);
-    
+
     -- Create agents table
     CREATE TABLE IF NOT EXISTS agents.agents (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -174,7 +174,7 @@ data:
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    
+
     -- Create monitoring tables
     CREATE TABLE IF NOT EXISTS monitoring.system_metrics (
         id BIGSERIAL PRIMARY KEY,
@@ -183,13 +183,13 @@ data:
         labels JSONB,
         timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    
+
     SELECT create_hypertable('monitoring.system_metrics', 'timestamp', if_not_exists => TRUE);
-    
+
     -- Set up retention policies (keep data for 30 days)
     SELECT add_retention_policy('metrics.agent_metrics', INTERVAL '30 days', if_not_exists => TRUE);
     SELECT add_retention_policy('monitoring.system_metrics', INTERVAL '30 days', if_not_exists => TRUE);
-    
+
     -- Create continuous aggregates for performance
     CREATE MATERIALIZED VIEW IF NOT EXISTS metrics.agent_metrics_hourly
     WITH (timescaledb.continuous) AS
@@ -203,7 +203,7 @@ data:
     FROM metrics.agent_metrics
     GROUP BY agent_id, metric_name, hour
     WITH NO DATA;
-    
+
     -- Refresh policy for continuous aggregate
     SELECT add_continuous_aggregate_policy('metrics.agent_metrics_hourly',
         start_offset => INTERVAL '3 hours',

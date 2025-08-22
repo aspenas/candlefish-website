@@ -10,7 +10,7 @@ variable "environment" {
   description = "Environment name (staging, production)"
   type        = string
   default     = "production"
-  
+
   validation {
     condition     = contains(["staging", "production"], var.environment)
     error_message = "Environment must be either 'staging' or 'production'."
@@ -153,7 +153,7 @@ variable "cloudfront_price_class" {
   description = "Price class for CloudFront distribution"
   type        = string
   default     = "PriceClass_100"
-  
+
   validation {
     condition     = contains(["PriceClass_All", "PriceClass_200", "PriceClass_100"], var.cloudfront_price_class)
     error_message = "CloudFront price class must be PriceClass_All, PriceClass_200, or PriceClass_100."
@@ -296,7 +296,7 @@ variable "availability_zones" {
   description = "Number of availability zones to use"
   type        = number
   default     = 3
-  
+
   validation {
     condition     = var.availability_zones >= 2 && var.availability_zones <= 6
     error_message = "Number of availability zones must be between 2 and 6."

@@ -62,7 +62,7 @@ resource "aws_s3_bucket_public_access_block" "cloudfront_logs" {
 
 resource "aws_wafv2_web_acl" "cloudfront" {
   count = var.enable_waf ? 1 : 0
-  
+
   name  = "${local.name}-cloudfront-waf"
   scope = "CLOUDFRONT"
 
@@ -170,19 +170,19 @@ resource "aws_wafv2_web_acl" "cloudfront" {
 # CloudWatch log group for WAF
 resource "aws_cloudwatch_log_group" "waf_log_group" {
   count = var.enable_waf ? 1 : 0
-  
+
   name              = "/aws/wafv2/${local.name}-cloudfront"
   retention_in_days = var.cloudwatch_log_retention_days
 
   tags = local.tags
-  
+
   provider = aws.us_east_1
 }
 
 # WAF logging configuration
 resource "aws_wafv2_web_acl_logging_configuration" "cloudfront" {
   count = var.enable_waf ? 1 : 0
-  
+
   resource_arn            = aws_wafv2_web_acl.cloudfront[0].arn
   log_destination_configs = [aws_cloudwatch_log_group.waf_log_group[0].arn]
 
@@ -241,7 +241,7 @@ resource "aws_cloudfront_distribution" "rtpm_frontend" {
 
     # Cache policy for dynamic content
     cache_policy_id = data.aws_cloudfront_cache_policy.caching_disabled.id
-    
+
     # Origin request policy
     origin_request_policy_id = data.aws_cloudfront_origin_request_policy.cors_s3origin.id
 
@@ -279,7 +279,7 @@ resource "aws_cloudfront_distribution" "rtpm_frontend" {
 
     # No caching for API requests
     cache_policy_id = data.aws_cloudfront_cache_policy.caching_disabled.id
-    
+
     # Origin request policy for API
     origin_request_policy_id = data.aws_cloudfront_origin_request_policy.cors_s3origin.id
 
@@ -298,7 +298,7 @@ resource "aws_cloudfront_distribution" "rtpm_frontend" {
 
     # No caching for WebSocket
     cache_policy_id = data.aws_cloudfront_cache_policy.caching_disabled.id
-    
+
     # Origin request policy
     origin_request_policy_id = data.aws_cloudfront_origin_request_policy.cors_s3origin.id
 

@@ -72,7 +72,7 @@ spec:
             configMapKeyRef:
               name: rtpm-config
               key: CORS_ORIGINS
-        
+
         # Database configuration
         - name: DATABASE_URL
           value: "postgresql+asyncpg://$(DATABASE_USER):$(DATABASE_PASSWORD)@$(DATABASE_HOST):$(DATABASE_PORT)/$(DATABASE_NAME)"
@@ -101,7 +101,7 @@ spec:
             secretKeyRef:
               name: rtpm-secrets
               key: DATABASE_PASSWORD
-        
+
         # Redis configuration
         - name: REDIS_URL
           value: "redis://:$(REDIS_PASSWORD)@$(REDIS_HOST):$(REDIS_PORT)/$(REDIS_DB)"
@@ -125,7 +125,7 @@ spec:
             secretKeyRef:
               name: rtpm-secrets
               key: REDIS_PASSWORD
-        
+
         # Celery configuration
         - name: CELERY_BROKER_URL
           value: "redis://:$(REDIS_PASSWORD)@$(REDIS_HOST):$(REDIS_PORT)/$(CELERY_BROKER_DB)"
@@ -141,7 +141,7 @@ spec:
             configMapKeyRef:
               name: rtpm-config
               key: CELERY_RESULT_DB
-        
+
         # Secrets
         - name: SECRET_KEY
           valueFrom:
@@ -153,7 +153,7 @@ spec:
             secretKeyRef:
               name: rtpm-secrets
               key: JWT_SECRET_KEY
-        
+
         # Performance settings
         - name: GUNICORN_WORKERS
           valueFrom:
@@ -175,7 +175,7 @@ spec:
             configMapKeyRef:
               name: rtpm-config
               key: GUNICORN_TIMEOUT
-        
+
         resources:
           requests:
             cpu: 500m

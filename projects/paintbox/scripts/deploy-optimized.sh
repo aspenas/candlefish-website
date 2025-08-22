@@ -68,7 +68,7 @@ npm run build:optimized || npm run build
 if [ -d ".next" ]; then
     build_size=$(du -sh .next | cut -f1)
     echo "Build size: $build_size"
-    
+
     # Check if build is too large
     if [[ "$build_size" == *"G"* ]]; then
         echo -e "${RED}Warning: Build size exceeds 1GB${NC}"
@@ -94,62 +94,62 @@ echo -e "\n${YELLOW}Step 7: Deploying to $DEPLOYMENT_TYPE${NC}"
 case $DEPLOYMENT_TYPE in
     "fly")
         echo "Deploying to Fly.io..."
-        
+
         # Update fly.toml with optimizations if not already done
         if ! grep -q "MINIMIZE_MEMORY" fly.toml; then
             echo "Note: fly.toml has been optimized for memory efficiency"
         fi
-        
+
         # Use optimized Dockerfile if available
         if [ -f "Dockerfile.optimized" ]; then
             echo "Using optimized Dockerfile..."
             mv Dockerfile Dockerfile.backup 2>/dev/null || true
             cp Dockerfile.optimized Dockerfile
         fi
-        
+
         # Deploy with memory monitoring
         fly deploy \
             --strategy rolling \
             --wait-timeout 300 \
             --local-only \
             --verbose
-        
+
         # Restore original Dockerfile
         if [ -f "Dockerfile.backup" ]; then
             mv Dockerfile.backup Dockerfile
         fi
-        
+
         # Scale to optimize memory
         echo "Optimizing instance scaling..."
         fly scale memory=2048 --yes
         fly autoscale set min=2 max=4 --yes
-        
+
         # Monitor deployment
         echo -e "\n${GREEN}Deployment complete. Monitoring memory...${NC}"
         fly status
-        
+
         # Check memory usage
         echo -e "\nChecking memory usage..."
         fly ssh console -C "cat /proc/meminfo | head -5"
-        
+
         # Test health endpoint
         echo -e "\nTesting health endpoint..."
         curl -s https://${APP_NAME}.fly.dev/api/health | jq '.memory' || true
-        
+
         # Check memory metrics
         echo -e "\nMemory metrics:"
         curl -s https://${APP_NAME}.fly.dev/api/memory | jq '.' || true
         ;;
-        
+
     "docker")
         echo "Building Docker image..."
-        
+
         if [ -f "Dockerfile.optimized" ]; then
             docker build -f Dockerfile.optimized -t ${APP_NAME}:optimized .
         else
             docker build -t ${APP_NAME}:latest .
         fi
-        
+
         echo "Running container with memory limits..."
         docker run -d \
             --name ${APP_NAME} \
@@ -159,29 +159,29 @@ case $DEPLOYMENT_TYPE in
             -p 8080:8080 \
             -e NODE_OPTIONS="--max-old-space-size=1024" \
             ${APP_NAME}:optimized
-        
+
         echo "Container started with memory limits"
         docker stats --no-stream ${APP_NAME}
         ;;
-        
+
     "local")
         echo "Starting locally with optimizations..."
-        
+
         export NODE_OPTIONS="--max-old-space-size=1024 --optimize-for-size"
         export NODE_ENV=production
-        
+
         npm start &
         LOCAL_PID=$!
-        
+
         echo "Server started with PID: $LOCAL_PID"
-        
+
         # Wait for server to start
         sleep 10
-        
+
         # Check memory usage
         ps aux | grep $LOCAL_PID | grep -v grep
         ;;
-        
+
     *)
         echo -e "${RED}Unknown deployment type: $DEPLOYMENT_TYPE${NC}"
         exit 1
@@ -208,11 +208,11 @@ http_code=$(echo "$health_response" | tail -n1)
 
 if [ "$http_code" = "200" ]; then
     echo -e "${GREEN}✓ Health check passed${NC}"
-    
+
     # Parse memory usage
     memory_percentage=$(echo "$health_response" | head -n-1 | jq -r '.memory.percentage' 2>/dev/null || echo "unknown")
     echo "Memory usage: ${memory_percentage}%"
-    
+
     if [ "$memory_percentage" != "unknown" ] && (( $(echo "$memory_percentage < 60" | bc -l) )); then
         echo -e "${GREEN}✓ Memory usage is below 60% target!${NC}"
     elif [ "$memory_percentage" != "unknown" ]; then

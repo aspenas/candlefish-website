@@ -63,7 +63,7 @@ spec:
             configMapKeyRef:
               name: rtpm-config
               key: LOG_LEVEL
-        
+
         # Database configuration
         - name: DATABASE_URL
           value: "postgresql+asyncpg://$(DATABASE_USER):$(DATABASE_PASSWORD)@$(DATABASE_HOST):$(DATABASE_PORT)/$(DATABASE_NAME)"
@@ -92,7 +92,7 @@ spec:
             secretKeyRef:
               name: rtpm-secrets
               key: DATABASE_PASSWORD
-        
+
         # Redis/Celery configuration
         - name: REDIS_HOST
           valueFrom:
@@ -123,14 +123,14 @@ spec:
             configMapKeyRef:
               name: rtpm-config
               key: CELERY_RESULT_DB
-        
+
         # Secrets
         - name: SECRET_KEY
           valueFrom:
             secretKeyRef:
               name: rtpm-secrets
               key: SECRET_KEY
-        
+
         resources:
           requests:
             cpu: 300m
@@ -303,7 +303,7 @@ spec:
             configMapKeyRef:
               name: rtpm-config
               key: CELERY_RESULT_DB
-        
+
         resources:
           requests:
             cpu: 100m

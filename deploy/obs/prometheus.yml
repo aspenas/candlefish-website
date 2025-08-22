@@ -6,19 +6,19 @@ scrape_configs:
   - job_name: 'agent-registry'
     static_configs:
       - targets: ['agent-registry:8080']
-  
+
   - job_name: 'paintbox-agent'
     static_configs:
       - targets: ['paintbox-agent:8080']
-  
+
   - job_name: 'crown-trophy-agent'
     static_configs:
       - targets: ['crown-trophy-agent:8080']
-  
+
   - job_name: 'temporal-agent'
     static_configs:
       - targets: ['temporal-agent:8080']
-  
+
   - job_name: 'clark-county-agent'
     static_configs:
       - targets: ['clark-county-agent:8080']
