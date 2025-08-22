@@ -9,7 +9,6 @@
     "lint": "next lint",
     "export": "next export"
   },
-  "type": "module",
   "dependencies": {
     "@tailwindcss/typography": "^0.5.16",
     "@types/node": "^24.3.0",
