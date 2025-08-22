@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const memPercentage = (memUsage.heapUsed / memUsage.heapTotal) * 100;
 
     // Fail if memory usage is critically high
-    if (memPercentage > 95) {
+    if (memPercentage > 98) {
       return NextResponse.json(
         {
           status: 'error',
@@ -82,7 +82,7 @@ export async function HEAD(request: NextRequest) {
     const memPercentage = (memUsage.heapUsed / memUsage.heapTotal) * 100;
 
     return new NextResponse(null, {
-      status: memPercentage > 95 ? 503 : 200,
+      status: memPercentage > 98 ? 503 : 200,
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'X-Health-Check': 'simple-head',

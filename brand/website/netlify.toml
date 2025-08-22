@@ -6,6 +6,10 @@
   NODE_VERSION = "20"
   NPM_FLAGS = "--production=false"
 
+# Functions configuration
+[functions]
+  node_bundler = "esbuild"
+
 # Redirect rules for SPA routing
 [[redirects]]
   from = "/*"

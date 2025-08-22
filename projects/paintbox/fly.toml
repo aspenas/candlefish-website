@@ -11,7 +11,8 @@ primary_region = "sjc"
 [env]
   NODE_ENV = "production"
   PORT = "8080"
-  DATABASE_URL = "sqlite://:memory:"
+  # Fixed: Changed from :memory: to persistent file with WAL mode for concurrency
+  DATABASE_URL = "file:/data/paintbox.db?mode=wal"
   # Production optimizations
   NODE_OPTIONS = "--max-old-space-size=1536"
   NEXT_TELEMETRY_DISABLED = "1"
@@ -43,10 +44,10 @@ primary_region = "sjc"
   path = "/api/simple-health"
   headers = { "User-Agent" = "fly-health-check" }
 
-# Comprehensive health check - deeper system validation
+# Comprehensive health check - re-enabled with adjusted memory thresholds
 [[http_service.checks]]
   grace_period = "30s"
-  interval = "45s"
+  interval = "60s"
   method = "GET"
   timeout = "10s"
   path = "/api/health"
@@ -66,9 +67,9 @@ primary_region = "sjc"
   cpus = 2
   memory_mb = 2048
 
-# Persistent volume for logs and cache
+# Persistent volume for database, logs and cache
 [mounts]
-  source = "paintbox_logs"
+  source = "paintbox_data"
   destination = "/data"
 
 # Auto-scaling configuration

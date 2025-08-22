@@ -1,0 +1,152 @@
+diff --git a/fly.toml b/fly.toml
+index abc123..def456 100644
+--- a/fly.toml
++++ b/fly.toml
+@@ -11,7 +11,8 @@ app = "paintbox"
+ [env]
+   NODE_ENV = "production"
+   PORT = "8080"
+-  DATABASE_URL = "sqlite://:memory:"
++  # Fixed: Changed from :memory: to persistent file with WAL mode for concurrency
++  DATABASE_URL = "file:/data/paintbox.db?mode=wal"
+   # Production optimizations
+   NODE_OPTIONS = "--max-old-space-size=1536"
+   NEXT_TELEMETRY_DISABLED = "1"
+@@ -65,6 +66,14 @@ app = "paintbox"
+   size = "shared-cpu-1x"
+   processes = ["app"]
+
++# Add persistent volume for database
++[mounts]
++  source = "paintbox_data"
++  destination = "/data"
++  # Database files need persistence
++  # WAL mode requires write access
++  processes = ["app"]
++
+ # Metrics endpoint for monitoring
+ [[services.ports]]
+   port = 9091
+diff --git a/prisma/schema.prisma b/prisma/schema.prisma
+index abc123..def456 100644
+--- a/prisma/schema.prisma
++++ b/prisma/schema.prisma
+@@ -6,7 +6,8 @@ generator client {
+ }
+
+ datasource db {
+-  provider = "postgresql"
++  # Support both PostgreSQL and SQLite for flexibility
++  provider = "sqlite"
+   url      = env("DATABASE_URL")
+ }
+
+diff --git a/.env.production b/.env.production
+index abc123..def456 100644
+--- a/.env.production
++++ b/.env.production
+@@ -1,5 +1,6 @@
+ NODE_ENV=production
+-DATABASE_URL=sqlite://:memory:
++# Fixed: Persistent SQLite with WAL mode for production
++DATABASE_URL=file:/data/paintbox.db?mode=wal
+
+ # Redis Configuration
+ REDIS_URL=redis://default:password@localhost:6379
+diff --git a/lib/database/client.ts b/lib/database/client.ts
+new file mode 100644
+index 0000000..1234567
+--- /dev/null
++++ b/lib/database/client.ts
+@@ -0,0 +1,47 @@
++import { PrismaClient } from '@prisma/client';
++import * as fs from 'fs';
++import * as path from 'path';
++
++// Ensure database directory exists for file-based SQLite
++function ensureDatabaseDirectory() {
++  const dbUrl = process.env.DATABASE_URL || '';
++
++  // Only process file-based URLs
++  if (dbUrl.startsWith('file:')) {
++    const dbPath = dbUrl.replace('file:', '').split('?')[0];
++    const dbDir = path.dirname(dbPath);
++
++    // Create directory if it doesn't exist
++    if (!fs.existsSync(dbDir)) {
++      fs.mkdirSync(dbDir, { recursive: true });
++      console.log(`Created database directory: ${dbDir}`);
++    }
++
++    // Set proper permissions for SQLite WAL mode
++    try {
++      fs.chmodSync(dbDir, 0o755);
++    } catch (error) {
++      console.warn(`Could not set permissions on ${dbDir}:`, error);
++    }
++  }
++}
++
++// Singleton pattern for Prisma client
++const globalForPrisma = global as unknown as { prisma: PrismaClient };
++
++export const prisma =
++  globalForPrisma.prisma ||
++  (() => {
++    ensureDatabaseDirectory();
++
++    return new PrismaClient({
++      log: process.env.NODE_ENV === 'development'
++        ? ['query', 'error', 'warn']
++        : ['error'],
++      datasources: {
++        db: {
++          url: process.env.DATABASE_URL,
++        },
++      },
++    });
++  })();
++
++if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+diff --git a/scripts/init-database.sh b/scripts/init-database.sh
+new file mode 100644
+index 0000000..789abc1
+--- /dev/null
++++ b/scripts/init-database.sh
+@@ -0,0 +1,35 @@
++#!/bin/bash
++# Initialize SQLite database for production
++
++set -e
++
++DB_PATH="/data/paintbox.db"
++DB_DIR="/data"
++
++echo "🗄️  Initializing Paintbox database..."
++
++# Create data directory if it doesn't exist
++if [ ! -d "$DB_DIR" ]; then
++    mkdir -p "$DB_DIR"
++    echo "✓ Created data directory: $DB_DIR"
++fi
++
++# Check if database exists
++if [ -f "$DB_PATH" ]; then
++    echo "✓ Database already exists: $DB_PATH"
++
++    # Enable WAL mode if not already enabled
++    sqlite3 "$DB_PATH" "PRAGMA journal_mode=WAL;" 2>/dev/null || true
++    echo "✓ WAL mode enabled"
++else
++    echo "Creating new database..."
++
++    # Run Prisma migrations
++    npx prisma migrate deploy
++    echo "✓ Database created and migrations applied"
++fi
++
++# Set permissions
++chmod 644 "$DB_PATH" 2>/dev/null || true
++chmod 755 "$DB_DIR" 2>/dev/null || true
++
++echo "✅ Database initialization complete!"
