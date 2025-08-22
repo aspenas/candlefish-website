@@ -25,10 +25,11 @@
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: #1e293b;
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: #020617;
+    color: #f1f5f9;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }

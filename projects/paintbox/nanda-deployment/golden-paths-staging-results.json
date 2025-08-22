@@ -22,7 +22,7 @@
       "name": "GP2: Exterior Config",
       "endpoint": "/estimate/new/exterior",
       "status": "failed",
-      "response": "502"
+      "response": "503"
     },
     {
       "name": "GP3: Interior Config",

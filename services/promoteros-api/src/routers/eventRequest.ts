@@ -245,7 +245,7 @@ export const eventRequestRouter = router({
       await ctx.prisma.decisionLog.create({
         data: {
           eventRequestId: input.id,
-          userId: ctx.session!.user.id,
+          userId: ctx.session!.id,
           action: input.status,
           note: input.note,
         },
@@ -254,7 +254,7 @@ export const eventRequestRouter = router({
       // Create audit log
       await createAuditLog(ctx.prisma, {
         organizationId: ctx.session!.organizationId,
-        actorUserId: ctx.session!.user.id,
+        actorUserId: ctx.session!.id,
         action: `UPDATE_STATUS_${input.status}`,
         entityType: 'EventRequest',
         entityId: input.id,

@@ -1,20 +1,37 @@
 import { inferAsyncReturnType } from '@trpc/server';
 import { CreateExpressContextOptions } from '@trpc/server/adapters/express';
-import { prisma } from './db';
-import { verifyJWT } from './utils/auth';
-import type { Session } from './types';
+import { PrismaClient } from '@prisma/client';
+import jwt from 'jsonwebtoken';
+import { config } from './config';
 
+// Initialize Prisma client
+const prisma = new PrismaClient({
+  log: config.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+});
+
+// User session type
+export interface UserSession {
+  id: string;
+  email: string;
+  name?: string;
+  organizationId: string;
+  role: string;
+}
+
+// Context creator function
 export async function createContext({ req, res }: CreateExpressContextOptions) {
-  // Get session from Authorization header
-  let session: Session | null = null;
+  // Try to get user from JWT token
+  let session: UserSession | null = null;
 
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (token) {
+  const authorization = req.headers.authorization;
+  if (authorization?.startsWith('Bearer ')) {
+    const token = authorization.slice(7);
     try {
-      const decoded = await verifyJWT(token);
-      session = decoded as Session;
+      const decoded = jwt.verify(token, config.JWT_SECRET) as any;
+      session = decoded;
     } catch (error) {
-      // Invalid token, continue as unauthenticated
+      // Token is invalid, but we'll continue without authentication
+      console.warn('Invalid JWT token:', error);
     }
   }
 
