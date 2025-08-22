@@ -32,7 +32,7 @@ import { EstimatorDropdown } from "@/components/ui/EstimatorDropdown";
 import { Button } from "@/components/ui/Button";
 import { useEstimateStore } from "@/stores/useEstimateStore";
 import { trackFormInteraction } from "@/lib/monitoring/logrocket";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/cn";
 
 interface ClientInfoFormEnhancedProps {
   onNext: () => void;

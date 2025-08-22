@@ -1,0 +1,136 @@
+{
+  "plans": [
+    {
+      "id": "developer-free",
+      "name": "Developer Free",
+      "description": "Perfect for exploring AI agents and building prototypes",
+      "price": 0,
+      "currency": "USD",
+      "billing_cycle": "monthly",
+      "features": {
+        "queries_per_month": 1000,
+        "agents_accessible": "all",
+        "rate_limit": "100/hour",
+        "support": "community",
+        "analytics": "basic",
+        "api_access": true,
+        "webhook_support": false,
+        "custom_integrations": false
+      },
+      "limits": {
+        "concurrent_requests": 5,
+        "data_retention_days": 30,
+        "team_members": 1
+      }
+    },
+    {
+      "id": "developer-pro",
+      "name": "Developer Pro",
+      "description": "For serious developers building AI-powered applications",
+      "price": 29,
+      "currency": "USD",
+      "billing_cycle": "monthly",
+      "features": {
+        "queries_per_month": 25000,
+        "agents_accessible": "all",
+        "rate_limit": "1000/hour",
+        "support": "email",
+        "analytics": "advanced",
+        "api_access": true,
+        "webhook_support": true,
+        "custom_integrations": false
+      },
+      "limits": {
+        "concurrent_requests": 25,
+        "data_retention_days": 90,
+        "team_members": 5
+      }
+    },
+    {
+      "id": "business-scale",
+      "name": "Business Scale",
+      "description": "For scaling businesses requiring reliable AI infrastructure",
+      "price": 149,
+      "currency": "USD",
+      "billing_cycle": "monthly",
+      "features": {
+        "queries_per_month": 250000,
+        "agents_accessible": "all",
+        "rate_limit": "5000/hour",
+        "support": "priority",
+        "analytics": "enterprise",
+        "api_access": true,
+        "webhook_support": true,
+        "custom_integrations": true
+      },
+      "limits": {
+        "concurrent_requests": 100,
+        "data_retention_days": 365,
+        "team_members": 25
+      }
+    },
+    {
+      "id": "enterprise",
+      "name": "Enterprise",
+      "description": "Custom solutions for large organizations with dedicated support",
+      "price": "custom",
+      "currency": "USD",
+      "billing_cycle": "annual",
+      "features": {
+        "queries_per_month": "unlimited",
+        "agents_accessible": "all + custom",
+        "rate_limit": "custom",
+        "support": "dedicated",
+        "analytics": "custom",
+        "api_access": true,
+        "webhook_support": true,
+        "custom_integrations": true,
+        "white_label": true,
+        "sla": "99.9%",
+        "dedicated_infrastructure": true
+      },
+      "limits": {
+        "concurrent_requests": "unlimited",
+        "data_retention_days": "unlimited",
+        "team_members": "unlimited"
+      }
+    }
+  ],
+  "add_ons": [
+    {
+      "id": "extra-queries",
+      "name": "Additional Queries",
+      "description": "Extra queries beyond plan limits",
+      "price": 0.001,
+      "unit": "per query",
+      "applies_to": ["developer-pro", "business-scale"]
+    },
+    {
+      "id": "premium-support",
+      "name": "Premium Support",
+      "description": "24/7 phone and chat support",
+      "price": 99,
+      "unit": "per month",
+      "applies_to": ["developer-pro", "business-scale"]
+    },
+    {
+      "id": "custom-agents",
+      "name": "Custom Agent Development",
+      "description": "Professional services for custom agent development",
+      "price": "quote",
+      "unit": "per project",
+      "applies_to": ["business-scale", "enterprise"]
+    }
+  ],
+  "usage_tracking": {
+    "metrics": [
+      "total_queries",
+      "unique_agents_used",
+      "data_transferred",
+      "api_calls",
+      "webhook_deliveries"
+    ],
+    "billing_period": "calendar_month",
+    "overage_policy": "soft_limit_with_notification"
+  }
+}

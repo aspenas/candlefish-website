@@ -1,0 +1,347 @@
+# Cert-Manager Configuration for RTPM SSL/TLS
+# Automated SSL certificate management with Let's Encrypt
+
+# Cert-Manager ClusterIssuer for Let's Encrypt production
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/component: cluster-issuer
+spec:
+  acme:
+    # Production Let's Encrypt server
+    server: https://acme-v02.api.letsencrypt.org/directory
+    
+    # Email for notifications
+    email: admin@candlefish.ai
+    
+    # Private key secret name
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    
+    # Solvers for domain validation
+    solvers:
+    # HTTP-01 challenge for standard domains
+    - http01:
+        ingress:
+          class: nginx
+          podTemplate:
+            spec:
+              nodeSelector:
+                "kubernetes.io/os": linux
+    
+    # DNS-01 challenge for wildcard certificates
+    - dns01:
+        route53:
+          region: us-east-1
+          accessKeyID: AKIAIOSFODNN7EXAMPLE
+          secretAccessKeySecretRef:
+            name: route53-credentials-secret
+            key: secret-access-key
+      selector:
+        dnsNames:
+        - "*.rtpm.candlefish.ai"
+        - "*.candlefish.ai"
+---
+# Cert-Manager ClusterIssuer for Let's Encrypt staging (testing)
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/component: cluster-issuer-staging
+spec:
+  acme:
+    # Staging Let's Encrypt server
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    
+    # Email for notifications
+    email: admin@candlefish.ai
+    
+    # Private key secret name
+    privateKeySecretRef:
+      name: letsencrypt-staging
+    
+    # Solvers for domain validation
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+    - dns01:
+        route53:
+          region: us-east-1
+          accessKeyID: AKIAIOSFODNN7EXAMPLE
+          secretAccessKeySecretRef:
+            name: route53-credentials-secret
+            key: secret-access-key
+      selector:
+        dnsNames:
+        - "*.rtpm.candlefish.ai"
+        - "*.candlefish.ai"
+---
+# Route53 credentials for DNS challenge
+apiVersion: v1
+kind: Secret
+metadata:
+  name: route53-credentials-secret
+  namespace: cert-manager
+type: Opaque
+data:
+  # Base64 encoded AWS secret access key
+  secret-access-key: ""  # Should be populated from AWS Secrets Manager
+---
+# Self-signed ClusterIssuer for internal certificates
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-cluster-issuer
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/component: cluster-issuer-selfsigned
+spec:
+  selfSigned: {}
+---
+# Root CA Certificate for internal services
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: rtpm-root-ca
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: RTPM Root CA
+  secretName: rtpm-root-ca-secret
+  duration: 43800h # 5 years
+  renewBefore: 8760h # 1 year
+  subject:
+    organizationalUnits:
+    - Candlefish
+    organizations:
+    - RTPM Platform
+    countries:
+    - US
+    provinces:
+    - Nevada
+    localities:
+    - Las Vegas
+  issuerRef:
+    name: selfsigned-cluster-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+# CA ClusterIssuer using root CA
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: rtpm-ca-issuer
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/component: ca-issuer
+spec:
+  ca:
+    secretName: rtpm-root-ca-secret
+---
+# Wildcard certificate for RTPM domains
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: rtpm-wildcard-cert
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: rtpm
+    app.kubernetes.io/component: wildcard-cert
+spec:
+  secretName: rtpm-wildcard-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - "rtpm.candlefish.ai"
+  - "*.rtpm.candlefish.ai"
+  - "api.rtpm.candlefish.ai"
+  - "dashboard.rtpm.candlefish.ai"
+  - "logs.rtpm.candlefish.ai"
+  - "grafana.rtpm.candlefish.ai"
+  - "prometheus.rtpm.candlefish.ai"
+  - "kibana.rtpm.candlefish.ai"
+  duration: 2160h # 90 days
+  renewBefore: 720h # 30 days
+---
+# Certificate for internal service communication
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: rtpm-internal-cert
+  namespace: rtpm-system
+  labels:
+    app.kubernetes.io/name: rtpm
+    app.kubernetes.io/component: internal-cert
+spec:
+  secretName: rtpm-internal-tls
+  issuerRef:
+    name: rtpm-ca-issuer
+    kind: ClusterIssuer
+  dnsNames:
+  - "rtpm-api-service.rtpm-system.svc.cluster.local"
+  - "rtpm-frontend-service.rtpm-system.svc.cluster.local"
+  - "rtpm-timescaledb.rtpm-system.svc.cluster.local"
+  - "rtpm-redis.rtpm-system.svc.cluster.local"
+  - "elasticsearch.rtpm-system.svc.cluster.local"
+  - "logstash.rtpm-system.svc.cluster.local"
+  - "kibana.rtpm-system.svc.cluster.local"
+  duration: 8760h # 1 year
+  renewBefore: 2160h # 90 days
+  subject:
+    organizationalUnits:
+    - RTPM Internal Services
+    organizations:
+    - Candlefish
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+---
+# Certificate monitoring and alerting
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cert-manager-metrics
+  namespace: cert-manager
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/component: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cert-manager
+  endpoints:
+  - port: tcp-prometheus-servicemonitor
+    interval: 60s
+    path: /metrics
+---
+# Cert-Manager Webhook Configuration
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionWebhook
+metadata:
+  name: webhook.cert-manager.io
+  labels:
+    app: webhook
+    app.kubernetes.io/name: webhook
+    app.kubernetes.io/instance: cert-manager
+    app.kubernetes.io/component: webhook
+spec:
+  rules:
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: ["cert-manager.io"]
+    apiVersions: ["v1"]
+    resources: ["*/*"]
+  clientConfig:
+    service:
+      name: cert-manager-webhook
+      namespace: cert-manager
+      path: /validate
+  admissionReviewVersions: ["v1"]
+  sideEffects: None
+  failurePolicy: Fail
+---
+# Network Policy for cert-manager
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cert-manager-network-policy
+  namespace: cert-manager
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: cert-manager
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow webhook traffic
+  - from:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 9443
+  # Allow metrics scraping
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9402
+  egress:
+  # Allow DNS
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Allow HTTPS (Let's Encrypt, AWS API)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+  # Allow HTTP for Let's Encrypt challenges
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 80
+  # Allow Kubernetes API
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: TCP
+      port: 6443
+---
+# Certificate renewal CronJob
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: certificate-renewal-check
+  namespace: cert-manager
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/component: renewal-check
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: cert-check
+            image: bitnami/kubectl:latest
+            command:
+            - /bin/bash
+            - -c
+            - |
+              echo "Checking certificate status..."
+              
+              # Check all certificates in rtpm-system namespace
+              kubectl get certificates -n rtpm-system -o json | jq -r '
+                .items[] | 
+                select(.status.conditions[]?.type == "Ready" and .status.conditions[]?.status == "False") |
+                "Certificate \(.metadata.name) is not ready: \(.status.conditions[]?.message)"
+              '
+              
+              # Check expiration dates
+              kubectl get certificates -n rtpm-system -o json | jq -r '
+                .items[] | 
+                select(.status.notAfter) |
+                select((now + 30*24*3600) > (.status.notAfter | fromdateiso8601)) |
+                "Certificate \(.metadata.name) expires soon: \(.status.notAfter)"
+              '
+              
+              echo "Certificate check completed"
+          restartPolicy: OnFailure
+      successfulJobsHistoryLimit: 3
+      failedJobsHistoryLimit: 1

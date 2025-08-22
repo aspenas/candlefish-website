@@ -11,14 +11,6 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react'],
   },
-  // Ensure API routes work
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
-  },
-  // Skip problematic optimizations
-  swcMinify: false,
   productionBrowserSourceMaps: false,
 };
 

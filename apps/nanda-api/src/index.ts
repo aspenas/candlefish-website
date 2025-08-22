@@ -13,6 +13,7 @@ import { ApolloServer } from '@apollo/server';
 import { fastifyApolloDrainPlugin, fastifyApolloHandler } from '@as-integrations/fastify';
 import { WebSocketServer } from 'ws';
 import { useServer } from 'graphql-ws/lib/use/ws';
+import { makeExecutableSchema } from '@graphql-tools/schema';
 import { createClient } from '@redis/client';
 // Mock NANDA components for initial deployment
 class NANDAIndex {
@@ -210,16 +211,7 @@ async function startServer() {
         timestamp: new Date().toISOString()
       };
     },
-    context: async ({ request }) => ({
-      nandaIndex,
-      agentFactsResolver,
-      adaptiveResolver,
-      privacyLayer,
-      enterpriseConnector,
-      auth,
-      user: await auth.verifyRequest(request),
-      tracer
-    })
+    // Context will be handled by the handler
   });
 
   await apollo.start();
@@ -237,16 +229,22 @@ async function startServer() {
     path: '/graphql'
   });
 
+  // Create executable schema for GraphQL WebSocket
+  const executableSchema = makeExecutableSchema({
+    typeDefs,
+    resolvers
+  });
+
   useServer(
     {
-      schema: apollo.schema,
-      context: {
+      schema: executableSchema,
+      context: () => ({
         nandaIndex,
         agentFactsResolver,
         adaptiveResolver,
         privacyLayer,
         enterpriseConnector
-      }
+      })
     },
     wsServer
   );
@@ -346,7 +344,7 @@ async function startServer() {
     `);
 
     // Log startup metrics
-    app.log.info('Startup metrics:', {
+    app.log.info('Startup metrics', {
       totalAgents: nandaIndex.getStatistics().total_agents,
       connectedPlatforms: enterpriseConnector.getMetrics().registries,
       memoryUsage: process.memoryUsage(),

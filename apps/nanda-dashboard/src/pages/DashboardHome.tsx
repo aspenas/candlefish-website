@@ -7,11 +7,13 @@ import { ActivityFeed } from '../components/monitoring/ActivityFeed'
 import { PerformanceChart } from '../components/charts/PerformanceChart'
 import { GlobalHeatMap } from '../components/monitoring/GlobalHeatMap'
 import { LivingAgentEcosystem } from '../components/living-agents/LivingAgentEcosystem'
+import { ReportsPage } from './ReportsPage'
 
 export function DashboardHome() {
   const { agents, systemMetrics, activity, performanceHistory, isConnected } = useRealtimeData()
   const [selectedAgent, setSelectedAgent] = useState<AgentMetrics | null>(null)
   const [selectedTab, setSelectedTab] = useState<'ecosystem' | 'overview' | 'agents' | 'performance' | 'globe'>('ecosystem')
+  const [showReports, setShowReports] = useState(false)
 
   const handleAgentSelect = (agent: AgentMetrics) => {
     setSelectedAgent(agent)
@@ -63,6 +65,21 @@ export function DashboardHome() {
       )}
     </div>
   )
+
+  // Show Reports Page if requested
+  if (showReports) {
+    return (
+      <>
+        <ReportsPage />
+        <button
+          onClick={() => setShowReports(false)}
+          className="fixed bottom-8 right-8 z-50 btn-primary shadow-lg"
+        >
+          Back to Dashboard
+        </button>
+      </>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
@@ -121,7 +138,10 @@ export function DashboardHome() {
               <button className="btn-primary">
                 Discover Agents
               </button>
-              <button className="px-6 py-3 text-sm font-medium border border-border rounded-lg hover:bg-muted/50 transition-colors">
+              <button 
+                onClick={() => setShowReports(true)}
+                className="px-6 py-3 text-sm font-medium border border-border rounded-lg hover:bg-muted/50 transition-colors"
+              >
                 View Reports
               </button>
             </motion.div>

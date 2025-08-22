@@ -33,7 +33,6 @@ export default defineConfig({
         manualChunks: {
           react: ['react', 'react-dom'],
           apollo: ['@apollo/client'],
-          ui: ['@radix-ui/react-button', '@radix-ui/react-card'],
         },
       },
     },

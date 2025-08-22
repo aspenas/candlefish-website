@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import ForceGraph2D, { ForceGraphMethods } from 'react-force-graph-2d';
-import * as d3 from 'd3';
+import ForceGraph2D from 'react-force-graph-2d';
 import { motion } from 'framer-motion';
 import { LivingAgent, AgentMessage, AgentNegotiation } from '../../types/agent.types';
 
@@ -44,7 +43,7 @@ const LivingNetworkVisualization: React.FC<Props> = ({
   onAgentSelect,
   className = ''
 }) => {
-  const fgRef = useRef<ForceGraphMethods>();
+  const fgRef = useRef<any>();
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [networkData, setNetworkData] = useState<{ nodes: NetworkNode[], links: NetworkLink[] }>({
     nodes: [],

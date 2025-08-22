@@ -1,0 +1,419 @@
+# Prometheus Alerting Rules for RTPM
+# Production-ready alert rules for comprehensive monitoring
+
+groups:
+  - name: rtpm-api.rules
+    interval: 30s
+    rules:
+      # API Health Checks
+      - alert: RTMPAPIDown
+        expr: up{job="rtpm-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: rtpm-api
+        annotations:
+          summary: "RTPM API is down"
+          description: "RTPM API has been down for more than 1 minute. Instance: {{ $labels.instance }}"
+          runbook_url: "https://docs.candlefish.ai/runbooks/api-down"
+
+      - alert: RTMPAPIHighErrorRate
+        expr: |
+          (
+            rate(http_requests_total{job="rtpm-api",status=~"5.."}[5m]) /
+            rate(http_requests_total{job="rtpm-api"}[5m])
+          ) * 100 > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: rtpm-api
+        annotations:
+          summary: "High error rate on RTPM API"
+          description: "Error rate is {{ $value }}% for the last 5 minutes on {{ $labels.instance }}"
+          runbook_url: "https://docs.candlefish.ai/runbooks/high-error-rate"
+
+      - alert: RTMPAPIHighLatency
+        expr: |
+          histogram_quantile(0.99,
+            rate(http_request_duration_seconds_bucket{job="rtpm-api"}[5m])
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: rtpm-api
+        annotations:
+          summary: "High latency on RTMP API"
+          description: "99th percentile latency is {{ $value }}s for the last 5 minutes on {{ $labels.instance }}"
+          runbook_url: "https://docs.candlefish.ai/runbooks/high-latency"
+
+      - alert: RTMPAPIHighMemoryUsage
+        expr: |
+          (
+            container_memory_working_set_bytes{container="api",namespace="rtpm-system"} /
+            container_spec_memory_limit_bytes{container="api",namespace="rtpm-system"}
+          ) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: rtpm-api
+        annotations:
+          summary: "High memory usage on RTPM API"
+          description: "Memory usage is {{ $value }}% on {{ $labels.pod }}"
+          runbook_url: "https://docs.candlefish.ai/runbooks/high-memory"
+
+      - alert: RTMPAPIHighCPUUsage
+        expr: |
+          rate(container_cpu_usage_seconds_total{container="api",namespace="rtpm-system"}[5m]) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+          service: rtpm-api
+        annotations:
+          summary: "High CPU usage on RTPM API"
+          description: "CPU usage is {{ $value }}% on {{ $labels.pod }}"
+          runbook_url: "https://docs.candlefish.ai/runbooks/high-cpu"
+
+  - name: rtpm-database.rules
+    interval: 30s
+    rules:
+      # Database Health
+      - alert: PostgreSQLDown
+        expr: up{job="postgresql"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL database has been down for more than 1 minute"
+          runbook_url: "https://docs.candlefish.ai/runbooks/postgres-down"
+
+      - alert: PostgreSQLHighConnections
+        expr: |
+          pg_stat_database_numbackends / pg_settings_max_connections * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL high number of connections"
+          description: "PostgreSQL has {{ $value }}% connections used"
+          runbook_url: "https://docs.candlefish.ai/runbooks/postgres-connections"
+
+      - alert: PostgreSQLSlowQueries
+        expr: |
+          rate(pg_stat_database_tup_fetched[5m]) / rate(pg_stat_database_tup_returned[5m]) < 0.1
+        for: 10m
+        labels:
+          severity: warning
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL slow queries detected"
+          description: "PostgreSQL query efficiency is {{ $value }}"
+          runbook_url: "https://docs.candlefish.ai/runbooks/postgres-slow-queries"
+
+      - alert: PostgreSQLDiskSpaceHigh
+        expr: |
+          pg_database_size_bytes / (1024*1024*1024) > 50
+        for: 5m
+        labels:
+          severity: warning
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL disk space usage high"
+          description: "Database size is {{ $value }}GB"
+          runbook_url: "https://docs.candlefish.ai/runbooks/postgres-disk-space"
+
+  - name: rtpm-redis.rules
+    interval: 30s
+    rules:
+      # Redis Health
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: redis
+        annotations:
+          summary: "Redis is down"
+          description: "Redis cache has been down for more than 1 minute"
+          runbook_url: "https://docs.candlefish.ai/runbooks/redis-down"
+
+      - alert: RedisHighMemoryUsage
+        expr: |
+          redis_memory_used_bytes / redis_memory_max_bytes * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+          service: redis
+        annotations:
+          summary: "Redis high memory usage"
+          description: "Redis memory usage is {{ $value }}%"
+          runbook_url: "https://docs.candlefish.ai/runbooks/redis-memory"
+
+      - alert: RedisHighConnections
+        expr: |
+          redis_connected_clients > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: redis
+        annotations:
+          summary: "Redis high number of connections"
+          description: "Redis has {{ $value }} connected clients"
+          runbook_url: "https://docs.candlefish.ai/runbooks/redis-connections"
+
+      - alert: RedisSlowQueries
+        expr: |
+          redis_slowlog_length > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: redis
+        annotations:
+          summary: "Redis slow queries detected"
+          description: "Redis has {{ $value }} slow queries in the log"
+          runbook_url: "https://docs.candlefish.ai/runbooks/redis-slow"
+
+  - name: rtpm-celery.rules
+    interval: 30s
+    rules:
+      # Celery Worker Health
+      - alert: CeleryWorkerDown
+        expr: up{job="celery-workers"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: celery
+        annotations:
+          summary: "Celery worker is down"
+          description: "Celery worker {{ $labels.instance }} has been down for more than 2 minutes"
+          runbook_url: "https://docs.candlefish.ai/runbooks/celery-down"
+
+      - alert: CeleryQueueBacklog
+        expr: |
+          celery_task_queue_length > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: celery
+        annotations:
+          summary: "High Celery queue backlog"
+          description: "Celery queue has {{ $value }} pending tasks"
+          runbook_url: "https://docs.candlefish.ai/runbooks/celery-backlog"
+
+      - alert: CeleryHighTaskFailureRate
+        expr: |
+          (
+            rate(celery_task_failed_total[5m]) /
+            rate(celery_task_sent_total[5m])
+          ) * 100 > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: celery
+        annotations:
+          summary: "High Celery task failure rate"
+          description: "Celery task failure rate is {{ $value }}%"
+          runbook_url: "https://docs.candlefish.ai/runbooks/celery-failures"
+
+      - alert: CeleryTaskLatency
+        expr: |
+          histogram_quantile(0.95,
+            rate(celery_task_runtime_seconds_bucket[5m])
+          ) > 300
+        for: 5m
+        labels:
+          severity: warning
+          service: celery
+        annotations:
+          summary: "High Celery task latency"
+          description: "95th percentile task runtime is {{ $value }}s"
+          runbook_url: "https://docs.candlefish.ai/runbooks/celery-latency"
+
+  - name: rtpm-kubernetes.rules
+    interval: 30s
+    rules:
+      # Kubernetes Cluster Health
+      - alert: KubernetesNodeDown
+        expr: kube_node_status_ready{condition="Ready"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          service: kubernetes
+        annotations:
+          summary: "Kubernetes node is down"
+          description: "Node {{ $labels.node }} has been not ready for more than 5 minutes"
+          runbook_url: "https://docs.candlefish.ai/runbooks/k8s-node-down"
+
+      - alert: KubernetesPodCrashLooping
+        expr: |
+          rate(kube_pod_container_status_restarts_total[15m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: kubernetes
+        annotations:
+          summary: "Pod is crash looping"
+          description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is restarting frequently"
+          runbook_url: "https://docs.candlefish.ai/runbooks/k8s-crashloop"
+
+      - alert: KubernetesPodNotReady
+        expr: |
+          kube_pod_status_ready{condition="Ready",namespace="rtpm-system"} == 0
+        for: 10m
+        labels:
+          severity: warning
+          service: kubernetes
+        annotations:
+          summary: "Pod not ready"
+          description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} has been not ready for more than 10 minutes"
+          runbook_url: "https://docs.candlefish.ai/runbooks/k8s-pod-not-ready"
+
+      - alert: KubernetesDeploymentReplicasMismatch
+        expr: |
+          kube_deployment_spec_replicas{namespace="rtpm-system"} != kube_deployment_status_replicas_available{namespace="rtmp-system"}
+        for: 10m
+        labels:
+          severity: warning
+          service: kubernetes
+        annotations:
+          summary: "Deployment replicas mismatch"
+          description: "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} replica count mismatch"
+          runbook_url: "https://docs.candlefish.ai/runbooks/k8s-replica-mismatch"
+
+      - alert: KubernetesHPAReplicasMismatch
+        expr: |
+          kube_horizontalpodautoscaler_status_desired_replicas{namespace="rtpm-system"} != kube_horizontalpodautoscaler_status_current_replicas{namespace="rtpm-system"}
+        for: 15m
+        labels:
+          severity: warning
+          service: kubernetes
+        annotations:
+          summary: "HPA replicas mismatch"
+          description: "HPA {{ $labels.namespace }}/{{ $labels.horizontalpodautoscaler }} replica count mismatch"
+          runbook_url: "https://docs.candlefish.ai/runbooks/k8s-hpa-mismatch"
+
+  - name: rtpm-network.rules
+    interval: 30s
+    rules:
+      # Network and Load Balancer
+      - alert: LoadBalancerDown
+        expr: probe_success{job="blackbox"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: loadbalancer
+        annotations:
+          summary: "Load balancer endpoint is down"
+          description: "Load balancer endpoint {{ $labels.instance }} is not responding"
+          runbook_url: "https://docs.candlefish.ai/runbooks/lb-down"
+
+      - alert: HighNetworkLatency
+        expr: |
+          histogram_quantile(0.99,
+            rate(probe_duration_seconds_bucket{job="blackbox"}[5m])
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          service: network
+        annotations:
+          summary: "High network latency detected"
+          description: "99th percentile latency is {{ $value }}s to {{ $labels.instance }}"
+          runbook_url: "https://docs.candlefish.ai/runbooks/network-latency"
+
+  - name: rtpm-business.rules
+    interval: 60s
+    rules:
+      # Business Logic Alerts
+      - alert: LowAgentConnections
+        expr: |
+          rtpm_active_agents_total < 10
+        for: 10m
+        labels:
+          severity: warning
+          service: business
+        annotations:
+          summary: "Low number of active agents"
+          description: "Only {{ $value }} agents are currently active"
+          runbook_url: "https://docs.candlefish.ai/runbooks/low-agents"
+
+      - alert: HighAgentErrorRate
+        expr: |
+          (
+            rate(rtpm_agent_errors_total[10m]) /
+            rate(rtpm_agent_operations_total[10m])
+          ) * 100 > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: business
+        annotations:
+          summary: "High agent error rate"
+          description: "Agent error rate is {{ $value }}% over the last 10 minutes"
+          runbook_url: "https://docs.candlefish.ai/runbooks/agent-errors"
+
+      - alert: DataIngestionStalled
+        expr: |
+          increase(rtpm_metrics_ingested_total[5m]) == 0
+        for: 10m
+        labels:
+          severity: critical
+          service: business
+        annotations:
+          summary: "Data ingestion has stalled"
+          description: "No new metrics have been ingested in the last 10 minutes"
+          runbook_url: "https://docs.candlefish.ai/runbooks/ingestion-stalled"
+
+      - alert: UnusuallyHighAgentLoad
+        expr: |
+          rtpm_active_agents_total > 10000
+        for: 5m
+        labels:
+          severity: info
+          service: business
+        annotations:
+          summary: "Unusually high number of active agents"
+          description: "{{ $value }} agents are currently active, which is above normal levels"
+          runbook_url: "https://docs.candlefish.ai/runbooks/high-agent-load"
+
+  - name: rtpm-security.rules
+    interval: 60s
+    rules:
+      # Security Alerts
+      - alert: HighFailedLoginRate
+        expr: |
+          rate(rtpm_login_failures_total[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+          service: security
+        annotations:
+          summary: "High rate of failed login attempts"
+          description: "{{ $value }} failed logins per second detected"
+          runbook_url: "https://docs.candlefish.ai/runbooks/failed-logins"
+
+      - alert: SuspiciousAPIActivity
+        expr: |
+          rate(http_requests_total{status="401"}[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          service: security
+        annotations:
+          summary: "Suspicious API activity detected"
+          description: "High rate of 401 responses: {{ $value }} per second"
+          runbook_url: "https://docs.candlefish.ai/runbooks/suspicious-api"
+
+      - alert: UnauthorizedAccessAttempts
+        expr: |
+          rate(http_requests_total{status="403"}[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+          service: security
+        annotations:
+          summary: "Unauthorized access attempts detected"
+          description: "High rate of 403 responses: {{ $value }} per second"
+          runbook_url: "https://docs.candlefish.ai/runbooks/unauthorized-access"

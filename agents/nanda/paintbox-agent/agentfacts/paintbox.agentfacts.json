@@ -1,0 +1,72 @@
+{
+  "agent": {
+    "username": "@candlefish:paintbox/ops",
+    "display_name": "Paintbox Ops Agent",
+    "description": "Work order management and estimate calculation for painting services",
+    "owner": {
+      "did": "did:key:z6MkCandlefishOwnerDID",
+      "org": "Candlefish.ai"
+    }
+  },
+  "endpoints": [
+    { 
+      "protocol": "mcp+sse", 
+      "url": "https://api.nanda.candlefish.ai/agents/paintbox/mcp",
+      "description": "MCP SSE endpoint for real-time communication"
+    },
+    { 
+      "protocol": "https", 
+      "url": "https://api.nanda.candlefish.ai/agents/paintbox/rest/call",
+      "description": "REST endpoint for synchronous tool calls"
+    }
+  ],
+  "capabilities": [
+    {
+      "urn": "urn:tool:workorders.create",
+      "description": "Create new painting work orders",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "customer": {"type": "string"},
+          "service": {"type": "string"},
+          "estimated_hours": {"type": "number"}
+        }
+      }
+    },
+    {
+      "urn": "urn:tool:workorders.search",
+      "description": "Search existing work orders",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "status": {"type": "string", "enum": ["pending", "in_progress", "completed"]},
+          "customer": {"type": "string"}
+        }
+      }
+    },
+    {
+      "urn": "urn:tool:estimates.calculate",
+      "description": "Calculate painting estimates based on square footage",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "square_feet": {"type": "number"},
+          "rate_per_sqft": {"type": "number"}
+        },
+        "required": ["square_feet"]
+      }
+    }
+  ],
+  "auth": {
+    "method": "bearer",
+    "jwks_url": "https://api.nanda.candlefish.ai/.well-known/jwks.json"
+  },
+  "compliance": ["gdpr:na", "pci:none"],
+  "version": "1.0.0",
+  "ttl_seconds": 3600,
+  "metadata": {
+    "language": "python",
+    "framework": "fastapi",
+    "deployment": "docker"
+  }
+}

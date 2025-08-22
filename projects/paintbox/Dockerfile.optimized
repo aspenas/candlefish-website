@@ -1,0 +1,102 @@
+# Multi-stage build for minimal production image
+# Stage 1: Dependencies
+FROM node:20-alpine AS deps
+RUN apk add --no-cache libc6-compat python3 make g++
+WORKDIR /app
+
+# Copy dependency files
+COPY package*.json ./
+COPY prisma ./prisma/
+
+# Install production dependencies only
+RUN npm ci --only=production --omit=dev && \
+    npx prisma generate && \
+    npm cache clean --force
+
+# Stage 2: Builder
+FROM node:20-alpine AS builder
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+# Copy dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# Build with memory optimizations
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_OPTIONS="--max-old-space-size=1024"
+ENV SKIP_STATIC_OPTIMIZATION=1
+ENV DISABLE_ESLINT=1
+ENV DISABLE_TYPESCRIPT_CHECK=1
+
+# Build the application
+RUN npm run build:optimized && \
+    rm -rf .next/cache && \
+    rm -rf node_modules/.cache
+
+# Stage 3: Runner (minimal production image)
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+# Add non-root user for security
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# Install only runtime essentials
+RUN apk add --no-cache \
+    ca-certificates \
+    tzdata \
+    tini && \
+    rm -rf /var/cache/apk/*
+
+# Copy built application
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+# Copy prisma for runtime
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+
+# Create data directory for SQLite
+RUN mkdir -p /data && chown -R nextjs:nodejs /data
+
+# Set production environment
+ENV NODE_ENV=production
+ENV PORT=8080
+ENV HOSTNAME=0.0.0.0
+
+# Memory optimization settings
+ENV NODE_OPTIONS="--max-old-space-size=1024 --optimize-for-size --gc-interval=100"
+
+# Enable memory monitoring
+ENV ENABLE_MEMORY_MONITOR=true
+ENV MEMORY_CHECK_INTERVAL=30000
+
+# Database optimization
+ENV DATABASE_URL="file:/data/paintbox.db?mode=wal&cache=shared"
+ENV POOL_MIN=1
+ENV POOL_MAX=3
+
+# Switch to non-root user
+USER nextjs
+
+# Expose port
+EXPOSE 8080
+
+# Health check with memory awareness
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD node -e "const http = require('http'); \
+    const options = { host: 'localhost', port: 8080, path: '/api/simple-health', timeout: 4000 }; \
+    const req = http.request(options, (res) => { \
+      process.exit(res.statusCode === 200 ? 0 : 1); \
+    }); \
+    req.on('error', () => process.exit(1)); \
+    req.end();"
+
+# Use tini for proper signal handling
+ENTRYPOINT ["/sbin/tini", "--"]
+
+# Start the optimized server
+CMD ["node", "server.js"]

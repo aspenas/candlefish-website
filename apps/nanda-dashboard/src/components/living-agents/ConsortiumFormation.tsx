@@ -22,6 +22,8 @@ interface ConsortiumNode {
   y?: number;
   vx?: number;
   vy?: number;
+  fx?: number | null;
+  fy?: number | null;
 }
 
 interface TaskDelegation {
@@ -216,17 +218,17 @@ const ConsortiumFormation: React.FC<Props> = ({
       .data(nodes)
       .enter().append('g')
       .call(d3.drag<SVGGElement, ConsortiumNode>()
-        .on('start', (event, d) => {
-          if (!event.active) simulation.alphaTarget(0.3).restart();
+        .on('start', (_event, d) => {
+          if (!_event.active) simulation.alphaTarget(0.3).restart();
           d.fx = d.x;
           d.fy = d.y;
         })
-        .on('drag', (event, d) => {
-          d.fx = event.x;
-          d.fy = event.y;
+        .on('drag', (_event, d) => {
+          d.fx = _event.x;
+          d.fy = _event.y;
         })
-        .on('end', (event, d) => {
-          if (!event.active) simulation.alphaTarget(0);
+        .on('end', (_event, d) => {
+          if (!_event.active) simulation.alphaTarget(0);
           d.fx = null;
           d.fy = null;
         }));
@@ -258,10 +260,10 @@ const ConsortiumFormation: React.FC<Props> = ({
 
     simulation.on('tick', () => {
       link
-        .attr('x1', d => (d.source as ConsortiumNode).x!)
-        .attr('y1', d => (d.source as ConsortiumNode).y!)
-        .attr('x2', d => (d.target as ConsortiumNode).x!)
-        .attr('y2', d => (d.target as ConsortiumNode).y!);
+        .attr('x1', d => (d.source as any).x!)
+        .attr('y1', d => (d.source as any).y!)
+        .attr('x2', d => (d.target as any).x!)
+        .attr('y2', d => (d.target as any).y!);
 
       node.attr('transform', d => `translate(${d.x},${d.y})`);
     });

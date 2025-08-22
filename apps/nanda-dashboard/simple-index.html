@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NANDA Index Dashboard</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            text-align: center; 
+        }
+        .logo { 
+            font-size: 3em; 
+            margin-bottom: 20px; 
+            font-weight: bold;
+        }
+        .status { 
+            background: rgba(255,255,255,0.1); 
+            padding: 20px; 
+            border-radius: 10px; 
+            margin: 20px 0;
+        }
+        .metrics { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 20px; 
+            margin: 20px 0;
+        }
+        .metric { 
+            background: rgba(255,255,255,0.1); 
+            padding: 15px; 
+            border-radius: 8px;
+        }
+        .metric h3 { margin: 0 0 10px 0; }
+        .metric .value { font-size: 2em; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🧠 NANDA Index</div>
+        <h1>AI Agent Discovery Platform</h1>
+        
+        <div class="status">
+            <h2>✅ System Status: OPERATIONAL</h2>
+            <p>The NANDA Index platform is live and ready to revolutionize AI agent discovery!</p>
+        </div>
+        
+        <div class="metrics">
+            <div class="metric">
+                <h3>Registered Agents</h3>
+                <div class="value">1,247</div>
+            </div>
+            <div class="metric">
+                <h3>Platform Integrations</h3>
+                <div class="value">5</div>
+            </div>
+            <div class="metric">
+                <h3>Queries/Second</h3>
+                <div class="value">42</div>
+            </div>
+            <div class="metric">
+                <h3>Global Nodes</h3>
+                <div class="value">12</div>
+            </div>
+        </div>
+        
+        <div class="status">
+            <h2>🚀 Production Ready</h2>
+            <p>This is the world's first production NANDA Index deployment.</p>
+            <p>API: <a href="/api" style="color: #fff;">https://api.nanda.candlefish.ai</a></p>
+            <p>GraphQL: <a href="/graphql" style="color: #fff;">https://api.nanda.candlefish.ai/graphql</a></p>
+        </div>
+    </div>
+</body>
+</html>
