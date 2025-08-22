@@ -132,9 +132,9 @@ async function importExcelData() {
     // Import Plants (Bloom & Flourish)
     console.log('🌱 Importing plants...');
     const plantsSheet = workbook.Sheets['Bloom & Flourish'];
+    let plantCount = 0;
     if (plantsSheet) {
       const plantsData: PlantItem[] = XLSX.utils.sheet_to_json(plantsSheet);
-      let plantCount = 0;
 
       for (const row of plantsData) {
         if (!row['Plant/Planter']) continue;
@@ -195,7 +195,7 @@ async function importExcelData() {
     - Rooms: ${roomsSet.size}
     - Categories: ${categoriesSet.size}
     - Items: ${itemCount}
-    - Plants: ${plantsData?.length || 0}
+    - Plants: ${plantCount}
     - Users: 1
     - Buyers: ${sampleBuyers.length}
     `);
