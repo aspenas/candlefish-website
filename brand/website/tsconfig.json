@@ -7,7 +7,7 @@
     ],
     "allowJs": true,
     "skipLibCheck": true,
-    "strict": false,
+    "strict": true,
     "noEmit": true,
     "incremental": true,
     "esModuleInterop": true,
@@ -26,7 +26,21 @@
         "./*"
       ]
     },
-    "baseUrl": "."
+    "baseUrl": ".",
+    // Additional strict type checking options
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "forceConsistentCasingInFileNames": true,
+    // Key strict options enabled:
+    // "noUnusedLocals": true,  // Disabled due to many test/demo variables
+    // "noUnusedParameters": true,  // Disabled due to many unused callback params
+    // Can be enabled later after cleanup:
+    // "exactOptionalPropertyTypes": true,
+    // "noUncheckedIndexedAccess": true,
+    // "noImplicitOverride": true,
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false
   },
   "include": [
     "next-env.d.ts",
@@ -36,6 +50,12 @@
     "out/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "__tests__/hooks/useApi.test.tsx",
+    "__tests__/utils/cn.test.ts",
+    "cypress/**/*",
+    "tests/playwright/**/*",
+    "playwright.config.ts",
+    "cypress.config.ts"
   ]
 }

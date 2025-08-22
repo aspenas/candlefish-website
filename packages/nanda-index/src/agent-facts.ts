@@ -74,7 +74,7 @@ export class AgentFactsResolver extends EventEmitter {
   private trustedIssuers: Map<string, TrustedIssuer>;
   private concurrencyLimit: ReturnType<typeof pLimit>;
   private revocationList: Set<string>;
-  
+
   // Performance tracking
   private metrics: {
     resolutions: number;
@@ -91,14 +91,14 @@ export class AgentFactsResolver extends EventEmitter {
     trustedIssuers?: TrustedIssuer[];
   } = {}) {
     super();
-    
+
     // Initialize cache with TTL
     this.cache = new NodeCache({
       stdTTL: config.cacheTTL || 300, // 5 minutes default
       checkperiod: 60,
       useClones: false
     });
-    
+
     // HTTP client with timeout
     this.http = axios.create({
       timeout: config.httpTimeout || 5000,
@@ -107,17 +107,17 @@ export class AgentFactsResolver extends EventEmitter {
         'Accept': 'application/json, application/ld+json'
       }
     });
-    
+
     // Initialize trusted issuers
     this.trustedIssuers = new Map();
     this.loadTrustedIssuers(config.trustedIssuers || this.getDefaultIssuers());
-    
+
     // Concurrency control
     this.concurrencyLimit = pLimit(config.maxConcurrency || 10);
-    
+
     // Revocation list (would be loaded from VC-Status-List)
     this.revocationList = new Set();
-    
+
     // Initialize metrics
     this.metrics = {
       resolutions: 0,
@@ -126,7 +126,7 @@ export class AgentFactsResolver extends EventEmitter {
       cacheMisses: 0,
       errors: 0
     };
-    
+
     // Start background tasks
     this.startBackgroundTasks();
   }
@@ -152,41 +152,41 @@ export class AgentFactsResolver extends EventEmitter {
         this.emit('cache:hit', factsUrl);
         return cached;
       }
-      
+
       this.metrics.cacheMisses++;
       this.metrics.resolutions++;
-      
+
       // Fetch from URL
-      const response = await this.concurrencyLimit(() => 
+      const response = await this.concurrencyLimit(() =>
         this.http.get(factsUrl, {
           maxRedirects: options.maxRedirects || 3,
           timeout: options.timeout || this.http.defaults.timeout,
           validateStatus: (status) => status === 200
         })
       );
-      
+
       // Parse and validate
       const facts = AgentFactsSchema.parse(response.data);
-      
+
       // Verify signature if requested
       if (options.verifySignature !== false) {
         await this.verifyCredential(facts, options.allowSelfSigned || false);
       }
-      
+
       // Check revocation status
       if (this.isRevoked(facts.id)) {
         throw new Error(`Credential ${facts.id} has been revoked`);
       }
-      
+
       // Calculate dynamic TTL based on endpoint TTLs
       const ttl = this.calculateTTL(facts);
-      
+
       // Cache the verified facts
       this.cache.set(cacheKey, facts, ttl);
-      
+
       this.emit('facts:resolved', facts);
       return facts;
-      
+
     } catch (error) {
       this.metrics.errors++;
       this.emit('error', { factsUrl, error });
@@ -202,15 +202,15 @@ export class AgentFactsResolver extends EventEmitter {
     capabilityType: string
   ): Promise<AgentCapability | null> {
     const facts = await this.resolveAgentFacts(factsUrl);
-    
+
     const capability = facts.credentialSubject.capabilities.find(
       cap => cap.type === capabilityType
     );
-    
+
     if (!capability) {
       return null;
     }
-    
+
     // Enhance with runtime metrics
     const enhanced: AgentCapability = {
       type: capability.type,
@@ -220,7 +220,7 @@ export class AgentFactsResolver extends EventEmitter {
       limits: this.extractRateLimits(capability.endpoints),
       sla: await this.getSLAInfo(factsUrl)
     };
-    
+
     return enhanced;
   }
 
@@ -237,46 +237,46 @@ export class AgentFactsResolver extends EventEmitter {
     } = {}
   ): Promise<EndpointInfo | null> {
     const allEndpoints: EndpointInfo[] = [];
-    
+
     // Collect all endpoints from all capabilities
     for (const capability of facts.credentialSubject.capabilities) {
       const enhanced = await this.enhanceEndpoints(capability.endpoints);
       allEndpoints.push(...enhanced);
     }
-    
+
     // Filter by criteria
     let filtered = allEndpoints;
-    
+
     if (criteria.region) {
       filtered = filtered.filter(e => e.region === criteria.region);
     }
-    
+
     if (criteria.protocol) {
       filtered = filtered.filter(e => e.protocol === criteria.protocol);
     }
-    
+
     if (criteria.minPriority !== undefined) {
       filtered = filtered.filter(e => e.priority >= criteria.minPriority);
     }
-    
+
     if (criteria.maxLatency !== undefined) {
-      filtered = filtered.filter(e => 
+      filtered = filtered.filter(e =>
         e.latency !== undefined && e.latency <= criteria.maxLatency
       );
     }
-    
+
     // Sort by priority and latency
     filtered.sort((a, b) => {
       // Higher priority is better
       const priorityDiff = b.priority - a.priority;
       if (priorityDiff !== 0) return priorityDiff;
-      
+
       // Lower latency is better
       const aLatency = a.latency || Infinity;
       const bLatency = b.latency || Infinity;
       return aLatency - bLatency;
     });
-    
+
     return filtered[0] || null;
   }
 
@@ -288,39 +288,39 @@ export class AgentFactsResolver extends EventEmitter {
     allowSelfSigned: boolean
   ): Promise<void> {
     this.metrics.verifications++;
-    
+
     // Extract issuer
     const issuerId = facts.issuer.id;
     const issuerKey = facts.issuer.publicKey;
-    
+
     // Check if issuer is trusted
     const trustedIssuer = this.trustedIssuers.get(issuerId);
-    
+
     if (!trustedIssuer && !allowSelfSigned) {
       throw new Error(`Untrusted issuer: ${issuerId}`);
     }
-    
+
     // Get public key for verification
-    const publicKey = trustedIssuer 
+    const publicKey = trustedIssuer
       ? Buffer.from(trustedIssuer.publicKey, 'hex')
       : Buffer.from(issuerKey, 'hex');
-    
+
     // Prepare verification payload
     const payload = this.canonicalizeCredential(facts);
-    
+
     // Extract and verify signature
     const signature = Buffer.from(facts.proof.proofValue, 'base64');
-    
+
     const isValid = ed25519.Verify(
       Buffer.from(payload),
       signature,
       publicKey
     );
-    
+
     if (!isValid) {
       throw new Error('Invalid credential signature');
     }
-    
+
     // Check expiration
     if (facts.expirationDate) {
       const expiry = new Date(facts.expirationDate);
@@ -328,7 +328,7 @@ export class AgentFactsResolver extends EventEmitter {
         throw new Error('Credential has expired');
       }
     }
-    
+
     this.emit('credential:verified', facts.id);
   }
 
@@ -338,7 +338,7 @@ export class AgentFactsResolver extends EventEmitter {
   private canonicalizeCredential(facts: AgentFacts): string {
     // Remove proof before canonicalization
     const { proof, ...credentialWithoutProof } = facts;
-    
+
     // Sort keys and stringify (simplified canonicalization)
     return JSON.stringify(credentialWithoutProof, Object.keys(credentialWithoutProof).sort());
   }
@@ -348,7 +348,7 @@ export class AgentFactsResolver extends EventEmitter {
    */
   private calculateTTL(facts: AgentFacts): number {
     let minTTL = Infinity;
-    
+
     for (const capability of facts.credentialSubject.capabilities) {
       for (const endpoint of capability.endpoints) {
         if (endpoint.ttl < minTTL) {
@@ -356,7 +356,7 @@ export class AgentFactsResolver extends EventEmitter {
         }
       }
     }
-    
+
     // Use minimum TTL from endpoints, but cap at 1 hour
     return Math.min(minTTL, 3600);
   }
@@ -375,11 +375,11 @@ export class AgentFactsResolver extends EventEmitter {
         priority: endpoint.priority,
         region: endpoint.region
       };
-      
+
       // Get cached metrics
       const metricsKey = `metrics:${endpoint.url}`;
       const metrics = this.cache.get<{ latency: number; availability: number }>(metricsKey);
-      
+
       if (metrics) {
         enhanced.latency = metrics.latency;
         enhanced.availability = metrics.availability;
@@ -390,7 +390,7 @@ export class AgentFactsResolver extends EventEmitter {
           await this.http.head(endpoint.url, { timeout: 2000 });
           enhanced.latency = Date.now() - start;
           enhanced.availability = 100; // Successful response
-          
+
           // Cache metrics
           this.cache.set(metricsKey, {
             latency: enhanced.latency,
@@ -400,7 +400,7 @@ export class AgentFactsResolver extends EventEmitter {
           enhanced.availability = 0; // Failed health check
         }
       }
-      
+
       return enhanced;
     }));
   }
@@ -412,7 +412,7 @@ export class AgentFactsResolver extends EventEmitter {
     // Find the most restrictive rate limit
     let minRequests = Infinity;
     let window = 0;
-    
+
     for (const endpoint of endpoints) {
       if (endpoint.rateLimit) {
         if (endpoint.rateLimit.requests < minRequests) {
@@ -421,11 +421,11 @@ export class AgentFactsResolver extends EventEmitter {
         }
       }
     }
-    
+
     if (minRequests === Infinity) {
       return undefined;
     }
-    
+
     return {
       requests: minRequests,
       window: window
@@ -459,10 +459,10 @@ export class AgentFactsResolver extends EventEmitter {
     try {
       const response = await this.http.get(statusListUrl);
       const revoked = response.data.revoked || [];
-      
+
       this.revocationList.clear();
       revoked.forEach((id: string) => this.revocationList.add(id));
-      
+
       this.emit('revocation:updated', revoked.length);
     } catch (error) {
       this.emit('error', { context: 'revocation update', error });
@@ -519,7 +519,7 @@ export class AgentFactsResolver extends EventEmitter {
       this.updateRevocationList('https://nanda.candlefish.ai/revocation-list')
         .catch(err => this.emit('error', err));
     }, 3600000); // Every hour
-    
+
     // Periodic metrics reporting
     setInterval(() => {
       this.emit('metrics', this.getMetrics());
