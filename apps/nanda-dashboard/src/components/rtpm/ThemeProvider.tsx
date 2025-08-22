@@ -43,7 +43,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 
   useEffect(() => {
     const root = window.document.documentElement;
-    
+
     // Remove existing theme classes
     root.classList.remove('light', 'dark');
 
@@ -72,7 +72,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     const handleChange = () => {
       const root = window.document.documentElement;
       root.classList.remove('light', 'dark');
-      
+
       const systemTheme = mediaQuery.matches ? 'dark' : 'light';
       root.classList.add(systemTheme);
       setActualTheme(systemTheme);
@@ -366,8 +366,8 @@ export const AdaptiveCard: React.FC<{
       layout
       className={`
         backdrop-blur-sm border rounded-xl transition-all duration-200
-        ${isMobile || compact 
-          ? 'p-3 bg-gray-800/30 border-gray-700/50' 
+        ${isMobile || compact
+          ? 'p-3 bg-gray-800/30 border-gray-700/50'
           : 'p-6 bg-gray-800/50 border-gray-700'
         }
         hover:border-gray-600 hover:shadow-lg hover:shadow-black/10

@@ -105,37 +105,37 @@ const realAgents = [
   { id: 'openai-gpt4o', name: 'GPT-4o', platform: 'OpenAI', category: 'LLM', status: 'active', capabilities: ['text-generation', 'vision', 'multimodal'], endpoint: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o' },
   { id: 'openai-dalle3', name: 'DALL-E 3', platform: 'OpenAI', category: 'Image', status: 'active', capabilities: ['image-generation'], endpoint: 'https://api.openai.com/v1/images/generations', model: 'dall-e-3' },
   { id: 'openai-whisper', name: 'Whisper', platform: 'OpenAI', category: 'Audio', status: 'active', capabilities: ['speech-to-text'], endpoint: 'https://api.openai.com/v1/audio/transcriptions', model: 'whisper-1' },
-  
+
   // Anthropic
   { id: 'anthropic-claude-opus', name: 'Claude 3 Opus', platform: 'Anthropic', category: 'LLM', status: 'active', capabilities: ['text-generation', 'code', 'reasoning'], endpoint: 'https://api.anthropic.com/v1/messages', model: 'claude-3-opus-20240229' },
   { id: 'anthropic-claude-sonnet', name: 'Claude 3.5 Sonnet', platform: 'Anthropic', category: 'LLM', status: 'active', capabilities: ['text-generation', 'code', 'vision'], endpoint: 'https://api.anthropic.com/v1/messages', model: 'claude-3-5-sonnet-20241022' },
   { id: 'anthropic-claude-haiku', name: 'Claude 3 Haiku', platform: 'Anthropic', category: 'LLM', status: 'active', capabilities: ['text-generation', 'fast-inference'], endpoint: 'https://api.anthropic.com/v1/messages', model: 'claude-3-haiku-20240307' },
-  
+
   // Google
   { id: 'google-gemini-pro', name: 'Gemini 1.5 Pro', platform: 'Google', category: 'LLM', status: 'active', capabilities: ['text-generation', 'vision', 'multimodal'], endpoint: 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro', model: 'gemini-1.5-pro' },
   { id: 'google-gemini-flash', name: 'Gemini 1.5 Flash', platform: 'Google', category: 'LLM', status: 'active', capabilities: ['text-generation', 'fast-inference'], endpoint: 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash', model: 'gemini-1.5-flash' },
-  
+
   // Meta
   { id: 'meta-llama3-70b', name: 'Llama 3 70B', platform: 'Meta', category: 'LLM', status: 'active', capabilities: ['text-generation', 'open-source'], endpoint: 'various', model: 'llama-3-70b' },
   { id: 'meta-llama3-8b', name: 'Llama 3 8B', platform: 'Meta', category: 'LLM', status: 'active', capabilities: ['text-generation', 'edge-deployment'], endpoint: 'various', model: 'llama-3-8b' },
-  
+
   // Mistral
   { id: 'mistral-large', name: 'Mistral Large', platform: 'Mistral', category: 'LLM', status: 'active', capabilities: ['text-generation', 'code', 'reasoning'], endpoint: 'https://api.mistral.ai/v1/chat/completions', model: 'mistral-large-latest' },
   { id: 'mistral-medium', name: 'Mistral Medium', platform: 'Mistral', category: 'LLM', status: 'active', capabilities: ['text-generation', 'multilingual'], endpoint: 'https://api.mistral.ai/v1/chat/completions', model: 'mistral-medium-latest' },
-  
+
   // Stability AI
   { id: 'stability-sdxl', name: 'Stable Diffusion XL', platform: 'Stability', category: 'Image', status: 'active', capabilities: ['image-generation'], endpoint: 'https://api.stability.ai/v1/generation', model: 'stable-diffusion-xl-1024-v1-0' },
   { id: 'stability-sdxl-turbo', name: 'SDXL Turbo', platform: 'Stability', category: 'Image', status: 'active', capabilities: ['image-generation', 'fast-inference'], endpoint: 'https://api.stability.ai/v1/generation', model: 'sdxl-turbo' },
-  
+
   // ElevenLabs
   { id: 'elevenlabs-multilingual', name: 'Multilingual v2', platform: 'ElevenLabs', category: 'Audio', status: 'active', capabilities: ['text-to-speech', 'multilingual'], endpoint: 'https://api.elevenlabs.io/v1/text-to-speech', model: 'eleven_multilingual_v2' },
-  
+
   // Cohere
   { id: 'cohere-command-r', name: 'Command R+', platform: 'Cohere', category: 'LLM', status: 'active', capabilities: ['text-generation', 'rag', 'tools'], endpoint: 'https://api.cohere.ai/v1/chat', model: 'command-r-plus' },
-  
+
   // Perplexity
   { id: 'perplexity-online', name: 'Perplexity Online', platform: 'Perplexity', category: 'LLM', status: 'active', capabilities: ['text-generation', 'web-search', 'citations'], endpoint: 'https://api.perplexity.ai/chat/completions', model: 'pplx-70b-online' },
-  
+
   // Candlefish Services
   { id: 'candlefish-paintbox', name: 'Paintbox Estimator', platform: 'Candlefish', category: 'Business', status: 'active', capabilities: ['excel-parsing', 'estimation', 'crm-integration'], endpoint: 'https://paintbox.fly.dev/api', service: 'paintbox' },
   { id: 'candlefish-temporal', name: 'Temporal Orchestrator', platform: 'Candlefish', category: 'Workflow', status: 'active', capabilities: ['workflow-orchestration', 'task-scheduling'], endpoint: 'https://temporal.candlefish.ai', service: 'temporal' },
@@ -158,7 +158,7 @@ async function seedAgents() {
         }
       }
     };
-    
+
     try {
       await dynamodb.put(params).promise();
       console.log(`✅ Seeded: ${agent.name}`);

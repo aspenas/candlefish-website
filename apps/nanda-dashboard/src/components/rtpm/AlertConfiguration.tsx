@@ -114,7 +114,7 @@ const actionIcons = {
 const SeverityBadge: React.FC<{ severity: AlertSeverity; className?: string }> = ({ severity, className = '' }) => {
   const config = severityConfig[severity];
   const Icon = config.icon;
-  
+
   return (
     <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium ${config.color} ${config.bg} ${config.border} border ${className}`}>
       <Icon className="w-3 h-3" />
@@ -133,7 +133,7 @@ const AlertCard: React.FC<{
   onDuplicate: () => void;
 }> = ({ alert, agents, onEdit, onDelete, onToggle, onTest, onDuplicate }) => {
   const agent = alert.agentId ? agents.find(a => a.id === alert.agentId) : null;
-  
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -157,7 +157,7 @@ const AlertCard: React.FC<{
           >
             {alert.enabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
           </button>
-          
+
           <div>
             <h3 className="text-white font-medium">{alert.name}</h3>
             <p className="text-gray-400 text-sm">{alert.description}</p>
@@ -166,7 +166,7 @@ const AlertCard: React.FC<{
 
         <div className="flex items-center gap-2">
           <SeverityBadge severity={alert.severity} />
-          
+
           <div className="flex items-center gap-1">
             <button
               onClick={onTest}
@@ -175,7 +175,7 @@ const AlertCard: React.FC<{
             >
               <Eye className="w-4 h-4" />
             </button>
-            
+
             <button
               onClick={onDuplicate}
               className="p-1.5 rounded hover:bg-gray-700/50 text-gray-400 hover:text-white"
@@ -183,7 +183,7 @@ const AlertCard: React.FC<{
             >
               <Copy className="w-4 h-4" />
             </button>
-            
+
             <button
               onClick={onEdit}
               className="p-1.5 rounded hover:bg-gray-700/50 text-gray-400 hover:text-white"
@@ -191,7 +191,7 @@ const AlertCard: React.FC<{
             >
               <Edit3 className="w-4 h-4" />
             </button>
-            
+
             <button
               onClick={onDelete}
               className="p-1.5 rounded hover:bg-red-500/20 text-gray-400 hover:text-red-400"
@@ -210,7 +210,7 @@ const AlertCard: React.FC<{
             {agent ? agent.name : 'All Agents'}
           </p>
         </div>
-        
+
         <div>
           <span className="text-gray-400 text-xs">Condition:</span>
           <p className="text-white text-sm">
@@ -245,7 +245,7 @@ const AlertCard: React.FC<{
             <Clock className="w-3 h-3" />
             <span>Cooldown: {alert.cooldownPeriod}s</span>
           </div>
-          
+
           {alert.lastTriggered && (
             <div>
               Last triggered: {new Date(alert.lastTriggered).toLocaleString()}
@@ -486,7 +486,7 @@ const AlertForm: React.FC<{
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Actions
                   </label>
-                  
+
                   <div className="space-y-2 mb-4">
                     {formData.actions.map((action, index) => (
                       <div key={index} className="flex items-center justify-between p-3 bg-gray-700/30 rounded-lg">
@@ -518,7 +518,7 @@ const AlertForm: React.FC<{
                       <option value="sms">SMS</option>
                       <option value="dashboard">Dashboard</option>
                     </select>
-                    
+
                     <button
                       type="button"
                       onClick={addAction}
@@ -538,7 +538,7 @@ const AlertForm: React.FC<{
                     <Save className="w-4 h-4" />
                     {initialData ? 'Update Alert' : 'Create Alert'}
                   </button>
-                  
+
                   <button
                     type="button"
                     onClick={onClose}
@@ -573,12 +573,12 @@ export const AlertConfiguration: React.FC<AlertConfigurationProps> = ({
 
   const filteredAlerts = useMemo(() => {
     return alerts.filter(alert => {
-      const matchesSearch = !searchTerm || 
+      const matchesSearch = !searchTerm ||
         alert.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         alert.description?.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesSeverity = filterSeverity === 'all' || alert.severity === filterSeverity;
-      const matchesEnabled = filterEnabled === 'all' || 
+      const matchesEnabled = filterEnabled === 'all' ||
         (filterEnabled === 'enabled' && alert.enabled) ||
         (filterEnabled === 'disabled' && !alert.enabled);
 
@@ -682,7 +682,7 @@ export const AlertConfiguration: React.FC<AlertConfigurationProps> = ({
           <div className="text-sm text-gray-400">
             Showing {filteredAlerts.length} of {alerts.length} alerts
           </div>
-          
+
           <div className="flex items-center gap-4 text-sm text-gray-400">
             <div className="flex items-center gap-1">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>

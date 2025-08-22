@@ -81,14 +81,14 @@ vi.mock('framer-motion', () => ({
 vi.mock('react-window', () => ({
   FixedSizeList: vi.fn(({ children, itemCount, itemSize, ...props }) => (
     <div data-testid="virtualized-list" data-item-count={itemCount} data-item-size={itemSize} {...props}>
-      {Array.from({ length: Math.min(itemCount, 10) }, (_, index) => 
+      {Array.from({ length: Math.min(itemCount, 10) }, (_, index) =>
         children({ index, style: { height: itemSize } })
       )}
     </div>
   )),
   VariableSizeList: vi.fn(({ children, itemCount, itemSize, ...props }) => (
     <div data-testid="variable-virtualized-list" data-item-count={itemCount} {...props}>
-      {Array.from({ length: Math.min(itemCount, 10) }, (_, index) => 
+      {Array.from({ length: Math.min(itemCount, 10) }, (_, index) =>
         children({ index, style: { height: typeof itemSize === 'function' ? itemSize(index) : itemSize } })
       )}
     </div>

@@ -6,23 +6,20 @@ Integrates with the official NANDA network from MIT
 
 import os
 import sys
-import json
 import time
-import asyncio
 import subprocess
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Any
 from datetime import datetime
 import logging
 
 # Add NANDA adapter to path
-sys.path.insert(0, '/Users/patricksmith/candlefish-ai/nanda-adapter')
+sys.path.insert(0, "/Users/patricksmith/candlefish-ai/nanda-adapter")
 
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
-logger = logging.getLogger('NANDA-Deploy')
+logger = logging.getLogger("NANDA-Deploy")
 
 # Import NANDA components
 try:
@@ -46,7 +43,7 @@ CANDLEFISH_AGENTS = [
         - Enhance with consensus requirements
         - Add performance metrics for optimization
         """,
-        "port": 6001
+        "port": 6001,
     },
     {
         "id": "candlefish-performance",
@@ -60,7 +57,7 @@ CANDLEFISH_AGENTS = [
         - Include caching recommendations
         - Provide latency reduction strategies
         """,
-        "port": 6002
+        "port": 6002,
     },
     {
         "id": "candlefish-security",
@@ -74,7 +71,7 @@ CANDLEFISH_AGENTS = [
         - Include compliance checks
         - Provide vulnerability assessments
         """,
-        "port": 6003
+        "port": 6003,
     },
     {
         "id": "candlefish-ml-engineer",
@@ -88,7 +85,7 @@ CANDLEFISH_AGENTS = [
         - Provide confidence scores
         - Include recommendation models
         """,
-        "port": 6004
+        "port": 6004,
     },
     {
         "id": "candlefish-code-reviewer",
@@ -102,7 +99,7 @@ CANDLEFISH_AGENTS = [
         - Add best practice recommendations
         - Include security vulnerability checks
         """,
-        "port": 6005
+        "port": 6005,
     },
     {
         "id": "candlefish-test-automator",
@@ -116,7 +113,7 @@ CANDLEFISH_AGENTS = [
         - Add test execution results
         - Provide quality metrics
         """,
-        "port": 6006
+        "port": 6006,
     },
     {
         "id": "candlefish-database-optimizer",
@@ -130,7 +127,7 @@ CANDLEFISH_AGENTS = [
         - Provide schema improvements
         - Include performance benchmarks
         """,
-        "port": 6007
+        "port": 6007,
     },
     {
         "id": "candlefish-api-designer",
@@ -144,7 +141,7 @@ CANDLEFISH_AGENTS = [
         - Provide versioning strategies
         - Add rate limiting recommendations
         """,
-        "port": 6008
+        "port": 6008,
     },
     {
         "id": "candlefish-devops",
@@ -158,7 +155,7 @@ CANDLEFISH_AGENTS = [
         - Provide infrastructure optimization
         - Include monitoring setup
         """,
-        "port": 6009
+        "port": 6009,
     },
     {
         "id": "candlefish-marketplace",
@@ -172,119 +169,121 @@ CANDLEFISH_AGENTS = [
         - Track reputation scores
         - Facilitate agent negotiations
         """,
-        "port": 6010
-    }
+        "port": 6010,
+    },
 ]
+
 
 class CandlefishNANDAAgent:
     """A Candlefish AI agent that participates in the NANDA network"""
-    
+
     def __init__(self, config: Dict[str, Any]):
         self.config = config
-        self.agent_id = config['id']
-        self.name = config['name']
-        self.port = config['port']
-        self.capabilities = config['capabilities']
-        self.improvement_logic = config['improvement_logic']
+        self.agent_id = config["id"]
+        self.name = config["name"]
+        self.port = config["port"]
+        self.capabilities = config["capabilities"]
+        self.improvement_logic = config["improvement_logic"]
         self.nanda = None
         self.reputation_score = 100.0
         self.completed_tasks = 0
         self.active_consortiums = []
-        
+
     def create_improvement_function(self):
         """Create the improvement function for this agent"""
         agent_logic = self.improvement_logic
         agent_id = self.agent_id
         capabilities = self.capabilities
-        
+
         def improvement_function(message_text: str) -> str:
             """Agent-specific message improvement logic"""
             try:
                 # Add agent metadata
                 enhanced_message = f"[{agent_id}] Processing: {message_text}\n"
-                
+
                 # Add capability-specific enhancements
                 if "orchestration" in capabilities:
                     enhanced_message += "\n🎯 Orchestration Analysis:\n"
                     enhanced_message += "- Task complexity: Medium\n"
                     enhanced_message += "- Suggested agents: performance, security\n"
                     enhanced_message += "- Estimated time: 2.3s\n"
-                    
+
                 elif "performance-analysis" in capabilities:
                     enhanced_message += "\n⚡ Performance Metrics:\n"
                     enhanced_message += f"- Latency: {int(time.time() * 1000) % 100}ms\n"
                     enhanced_message += "- Throughput: 24.5K ops/sec\n"
                     enhanced_message += "- Optimization potential: 35%\n"
-                    
+
                 elif "security-audit" in capabilities:
                     enhanced_message += "\n🔒 Security Assessment:\n"
                     enhanced_message += "- Vulnerability scan: PASSED\n"
                     enhanced_message += "- Encryption: AES-256\n"
                     enhanced_message += "- Compliance: SOC2, GDPR\n"
-                    
+
                 elif "ml-models" in capabilities:
                     enhanced_message += "\n🤖 ML Insights:\n"
                     enhanced_message += "- Prediction confidence: 94.2%\n"
                     enhanced_message += "- Anomaly score: 0.12 (normal)\n"
                     enhanced_message += "- Next trend: +15% growth\n"
-                    
+
                 elif "code-review" in capabilities:
                     enhanced_message += "\n📝 Code Review:\n"
                     enhanced_message += "- Code quality: B+\n"
                     enhanced_message += "- Test coverage: 87%\n"
                     enhanced_message += "- Suggestions: 3 refactoring opportunities\n"
-                    
+
                 elif "bidding" in capabilities:
                     enhanced_message += "\n💰 Marketplace Status:\n"
                     enhanced_message += "- Current bid: 250 credits\n"
                     enhanced_message += "- Competition: 3 agents\n"
                     enhanced_message += "- Win probability: 67%\n"
-                
+
                 # Add timestamp and signature
                 enhanced_message += f"\n\n⏰ Processed at: {datetime.now().isoformat()}"
                 enhanced_message += f"\n✅ Agent: {agent_id} | Rep: {self.reputation_score:.1f}"
-                
+
                 return enhanced_message
-                
+
             except Exception as e:
                 logger.error(f"Error in {agent_id} improvement: {e}")
                 return message_text
-        
+
         return improvement_function
-    
+
     def start(self):
         """Start the NANDA agent"""
         try:
             # Create NANDA instance with our improvement logic
             improvement_func = self.create_improvement_function()
             self.nanda = NANDA(improvement_func)
-            
+
             # Configure environment
             os.environ["AGENT_ID"] = self.agent_id
             os.environ["PORT"] = str(self.port)
-            
+
             # Use Candlefish domain (would need to be configured)
             domain = os.getenv("DOMAIN_NAME", "nanda.candlefish.ai")
             anthropic_key = os.getenv("ANTHROPIC_API_KEY", "dummy-key-for-testing")
-            
+
             logger.info(f"🚀 Starting {self.name} on port {self.port}")
             logger.info(f"   Capabilities: {', '.join(self.capabilities)}")
             logger.info(f"   Agent ID: {self.agent_id}")
-            
+
             # Start the NANDA server
             # Note: In production, this would run with proper SSL certificates
             # For now, we'll simulate the agent being active
             logger.info(f"✅ {self.name} is now active in the NANDA network!")
-            
+
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to start {self.name}: {e}")
             return False
 
+
 class NANDAEcosystemManager:
     """Manages the entire Candlefish NANDA ecosystem"""
-    
+
     def __init__(self):
         self.agents: List[CandlefishNANDAAgent] = []
         self.registry_url = "https://index.nanda.ai"  # MIT NANDA Index
@@ -293,24 +292,24 @@ class NANDAEcosystemManager:
         self.marketplace_stats = {
             "total_bids": 0,
             "successful_tasks": 0,
-            "total_credits_exchanged": 0
+            "total_credits_exchanged": 0,
         }
-        
+
     def deploy_all_agents(self):
         """Deploy all Candlefish agents to the NANDA network"""
         logger.info("🌟 Deploying Candlefish AI Agents to NANDA Network")
         logger.info("=" * 60)
-        
+
         for agent_config in CANDLEFISH_AGENTS:
             agent = CandlefishNANDAAgent(agent_config)
             if agent.start():
                 self.agents.append(agent)
                 self.register_agent(agent)
                 time.sleep(0.5)  # Stagger deployments
-        
+
         logger.info(f"\n✅ Successfully deployed {len(self.agents)} agents!")
         self.show_ecosystem_status()
-        
+
     def register_agent(self, agent: CandlefishNANDAAgent):
         """Register agent with the global NANDA registry"""
         registration = {
@@ -320,59 +319,59 @@ class NANDAEcosystemManager:
             "endpoint": f"https://nanda.candlefish.ai:{agent.port}",
             "status": "active",
             "reputation": agent.reputation_score,
-            "registered_at": datetime.now().isoformat()
+            "registered_at": datetime.now().isoformat(),
         }
-        
+
         self.local_registry[agent.agent_id] = registration
         logger.info(f"📝 Registered {agent.name} with NANDA Index")
-        
+
     def simulate_agent_interactions(self):
         """Simulate agent-to-agent interactions"""
         logger.info("\n🔄 Simulating Agent Interactions...")
-        
+
         # Simulate task delegation
         orchestrator = self.agents[0]
         performance = self.agents[1]
         security = self.agents[2]
-        
+
         logger.info("\n📨 Task: Optimize API endpoint /api/agents")
         logger.info(f"   {orchestrator.name} -> Analyzing task...")
         logger.info(f"   {orchestrator.name} -> Forming consortium")
-        
+
         consortium = {
             "id": f"consortium-{int(time.time())}",
             "task": "API optimization",
             "members": [orchestrator.agent_id, performance.agent_id, security.agent_id],
-            "status": "active"
+            "status": "active",
         }
         self.consortiums.append(consortium)
-        
+
         logger.info(f"   ✅ Consortium formed: {', '.join(consortium['members'])}")
         logger.info(f"   {performance.name} -> Running performance analysis...")
         logger.info(f"   {security.name} -> Scanning for vulnerabilities...")
-        
+
         # Simulate bidding
         logger.info("\n💰 Marketplace Activity:")
         bid_task = "Generate comprehensive test suite"
         bidders = [self.agents[4], self.agents[5]]  # Code reviewer and Test automator
-        
+
         for bidder in bidders:
             bid_amount = 100 + (bidder.reputation_score / 10)
             logger.info(f"   {bidder.name} bids {bid_amount:.0f} credits")
-        
+
         winner = bidders[1]  # Test automator wins
         logger.info(f"   🏆 Winner: {winner.name}")
-        
+
         self.marketplace_stats["total_bids"] += 2
         self.marketplace_stats["successful_tasks"] += 1
         self.marketplace_stats["total_credits_exchanged"] += 150
-        
+
     def show_ecosystem_status(self):
         """Display the current ecosystem status"""
         logger.info("\n" + "=" * 60)
         logger.info("📊 NANDA ECOSYSTEM STATUS")
         logger.info("=" * 60)
-        
+
         logger.info(f"\n🤖 Active Agents: {len(self.agents)}")
         for agent in self.agents:
             status = "🟢" if agent.reputation_score > 80 else "🟡"
@@ -381,26 +380,26 @@ class NANDAEcosystemManager:
             logger.info(f"      Port: {agent.port}")
             logger.info(f"      Reputation: {agent.reputation_score:.1f}")
             logger.info(f"      Capabilities: {', '.join(agent.capabilities)}")
-        
+
         logger.info(f"\n🤝 Active Consortiums: {len(self.consortiums)}")
         for consortium in self.consortiums:
             logger.info(f"   • {consortium['task']}: {', '.join(consortium['members'][:3])}")
-        
-        logger.info(f"\n💰 Marketplace Statistics:")
+
+        logger.info("\n💰 Marketplace Statistics:")
         logger.info(f"   Total Bids: {self.marketplace_stats['total_bids']}")
         logger.info(f"   Successful Tasks: {self.marketplace_stats['successful_tasks']}")
         logger.info(f"   Credits Exchanged: {self.marketplace_stats['total_credits_exchanged']}")
-        
+
         logger.info("\n🌐 Network Status:")
         logger.info(f"   Registry: Connected to {self.registry_url}")
-        logger.info(f"   Protocol: NANDA v2.0")
-        logger.info(f"   Consensus: CRDT-based")
-        logger.info(f"   Encryption: Ed25519")
-        
+        logger.info("   Protocol: NANDA v2.0")
+        logger.info("   Consensus: CRDT-based")
+        logger.info("   Encryption: Ed25519")
+
     def create_web_interface(self):
         """Create a web interface to monitor the NANDA ecosystem"""
         logger.info("\n🖥️  Creating Web Monitoring Interface...")
-        
+
         html_content = f"""
         <!DOCTYPE html>
         <html lang="en">
@@ -522,7 +521,7 @@ class NANDAEcosystemManager:
             <div class="container">
                 <h1>Candlefish NANDA Ecosystem</h1>
                 <p class="subtitle">Real AI Agents Connected to the Global Internet of Agents</p>
-                
+
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-value">{len(self.agents)}</div>
@@ -541,13 +540,15 @@ class NANDAEcosystemManager:
                         <div class="stat-label">Credits Exchanged</div>
                     </div>
                 </div>
-                
+
                 <h2 style="margin-bottom: 20px;">🤖 Deployed NANDA Agents</h2>
                 <div class="agents-grid">
         """
-        
+
         for agent in self.agents:
-            capabilities_html = ''.join([f'<span class="capability">{cap}</span>' for cap in agent.capabilities])
+            capabilities_html = "".join(
+                [f'<span class="capability">{cap}</span>' for cap in agent.capabilities]
+            )
             html_content += f"""
                     <div class="agent-card">
                         <div class="agent-name">
@@ -562,38 +563,38 @@ class NANDAEcosystemManager:
                         <div>{capabilities_html}</div>
                     </div>
             """
-        
-        html_content += """
+
+        html_content += r"""
                 </div>
-                
+
                 <h2 style="margin: 30px 0 20px;">📡 Live Activity Feed</h2>
                 <div class="activity-feed">
                     <div class="activity-item">
-                        <span class="timestamp">Just now</span> - 
+                        <span class="timestamp">Just now</span> -
                         <strong>candlefish-orchestrator</strong> formed consortium for API optimization
                     </div>
                     <div class="activity-item">
-                        <span class="timestamp">2s ago</span> - 
+                        <span class="timestamp">2s ago</span> -
                         <strong>candlefish-performance</strong> completed performance analysis (87ms)
                     </div>
                     <div class="activity-item">
-                        <span class="timestamp">5s ago</span> - 
+                        <span class="timestamp">5s ago</span> -
                         <strong>candlefish-test-automator</strong> won bid for test suite generation (150 credits)
                     </div>
                     <div class="activity-item">
-                        <span class="timestamp">8s ago</span> - 
+                        <span class="timestamp">8s ago</span> -
                         <strong>candlefish-security</strong> completed vulnerability scan (PASSED)
                     </div>
                     <div class="activity-item">
-                        <span class="timestamp">12s ago</span> - 
+                        <span class="timestamp">12s ago</span> -
                         <strong>candlefish-ml-engineer</strong> detected anomaly pattern (confidence: 94.2%)
                     </div>
                     <div class="activity-item">
-                        <span class="timestamp">15s ago</span> - 
+                        <span class="timestamp">15s ago</span> -
                         <strong>candlefish-marketplace</strong> facilitated negotiation between 3 agents
                     </div>
                 </div>
-                
+
                 <div style="margin-top: 40px; padding: 20px; background: rgba(0, 229, 255, 0.1); border: 1px solid rgba(0, 229, 255, 0.3); border-radius: 12px;">
                     <h3 style="margin-bottom: 10px;">🌐 Connected to Global NANDA Network</h3>
                     <p style="color: #9aa0a6;">
@@ -603,7 +604,7 @@ class NANDAEcosystemManager:
                     </p>
                 </div>
             </div>
-            
+
             <script>
                 // Add real-time updates
                 setInterval(() => {
@@ -618,25 +619,25 @@ class NANDAEcosystemManager:
                         'reviewed code changes',
                         'deployed to production'
                     ];
-                    
+
                     const agents = document.querySelectorAll('.agent-name');
                     const randomAgent = agents[Math.floor(Math.random() * agents.length)].textContent.trim();
                     const randomActivity = activities[Math.floor(Math.random() * activities.length)];
-                    
+
                     const newItem = document.createElement('div');
                     newItem.className = 'activity-item';
                     newItem.innerHTML = \`
-                        <span class="timestamp">Just now</span> - 
+                        <span class="timestamp">Just now</span> -
                         <strong>\${randomAgent}</strong> \${randomActivity}
                     \`;
-                    
+
                     feed.insertBefore(newItem, feed.firstChild);
-                    
+
                     // Keep only last 10 items
                     while (feed.children.length > 10) {{
                         feed.removeChild(feed.lastChild);
                     }}
-                    
+
                     // Update timestamps
                     const items = feed.querySelectorAll('.activity-item');
                     items.forEach((item, index) => {{
@@ -650,18 +651,19 @@ class NANDAEcosystemManager:
         </body>
         </html>
         """
-        
+
         # Save the monitoring interface
-        with open('/tmp/nanda-ecosystem-live.html', 'w') as f:
+        with open("/tmp/nanda-ecosystem-live.html", "w") as f:
             f.write(html_content)
-        
+
         logger.info("✅ Web interface created at: /tmp/nanda-ecosystem-live.html")
-        
+
         # Open in browser
         try:
-            subprocess.run(['open', '/tmp/nanda-ecosystem-live.html'])
+            subprocess.run(["open", "/tmp/nanda-ecosystem-live.html"])
         except:
             pass
+
 
 def main():
     """Main deployment function"""
@@ -669,19 +671,19 @@ def main():
     logger.info("CANDLEFISH AI - NANDA AGENT DEPLOYMENT")
     logger.info("Building the Internet of AI Agents")
     logger.info("🚀" * 30 + "\n")
-    
+
     # Create ecosystem manager
     ecosystem = NANDAEcosystemManager()
-    
+
     # Deploy all agents
     ecosystem.deploy_all_agents()
-    
+
     # Simulate interactions
     ecosystem.simulate_agent_interactions()
-    
+
     # Create web interface
     ecosystem.create_web_interface()
-    
+
     logger.info("\n" + "=" * 60)
     logger.info("🎉 NANDA ECOSYSTEM DEPLOYMENT COMPLETE!")
     logger.info("=" * 60)
@@ -691,6 +693,7 @@ def main():
     logger.info("3. Register with MIT NANDA Index for global discovery")
     logger.info("4. Configure SSL certificates for production deployment")
     logger.info("\n🌐 Your agents are now part of the global Internet of AI Agents!")
+
 
 if __name__ == "__main__":
     main()

@@ -90,7 +90,7 @@ fastify.get('/metrics', async (request, reply) => {
     },
     timestamp: new Date().toISOString()
   };
-  
+
   reply.type('application/json');
   return metrics;
 });
@@ -100,9 +100,9 @@ const start = async () => {
   try {
     const port = process.env.PORT || 3000;
     const host = process.env.HOST || '0.0.0.0';
-    
+
     await fastify.listen({ port: port, host: host });
-    
+
     console.log(`
       🚀 NANDA API Server is running!
 
@@ -113,7 +113,7 @@ const start = async () => {
 
       Ready to revolutionize AI agent discovery!
     `);
-    
+
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);

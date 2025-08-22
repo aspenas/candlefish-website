@@ -14,18 +14,18 @@ class IntelligenceAgent {
     this.agentName = 'Intelligence Synthesis Engine';
     this.port = process.env.PORT || 7005;
     this.app = express();
-    
+
     // Agent connections
     this.orchestratorURL = 'http://localhost:7010';
     this.pkbURL = 'http://localhost:7001';
     this.paintboxURL = 'http://localhost:7003';
     this.clarkURL = 'http://localhost:7004';
-    
+
     // Intelligence state
     this.insights = new Map();
     this.patterns = new Map();
     this.predictions = new Map();
-    
+
     // Metrics
     this.metrics = {
       insights_generated: 0,
@@ -33,23 +33,23 @@ class IntelligenceAgent {
       predictions_made: 0,
       accuracy_score: 0.89
     };
-    
+
     this.setupMiddleware();
     this.setupRoutes();
     this.registerWithOrchestrator();
     this.startAnalysis();
   }
-  
+
   setupMiddleware() {
     this.app.use(cors());
     this.app.use(express.json());
-    
+
     this.app.use((req, res, next) => {
       console.log(`[Intelligence] ${req.method} ${req.path}`);
       next();
     });
   }
-  
+
   setupRoutes() {
     // NANDA-compliant agent info
     this.app.get('/agent/info', (req, res) => {
@@ -68,13 +68,13 @@ class IntelligenceAgent {
         endpoint: `http://localhost:${this.port}`
       });
     });
-    
+
     // Generate insights on demand
     this.app.post('/analyze/insights', async (req, res) => {
       const { domain, timeframe = '30d' } = req.body;
-      
+
       const insights = await this.generateInsights(domain, timeframe);
-      
+
       res.json({
         domain: domain,
         timeframe: timeframe,
@@ -83,13 +83,13 @@ class IntelligenceAgent {
         generated_at: new Date().toISOString()
       });
     });
-    
+
     // Predict future trends
     this.app.post('/predict', async (req, res) => {
       const { metric, horizon = '30d' } = req.body;
-      
+
       const prediction = await this.predictTrend(metric, horizon);
-      
+
       res.json({
         metric: metric,
         horizon: horizon,
@@ -98,13 +98,13 @@ class IntelligenceAgent {
         factors: this.identifyFactors(metric)
       });
     });
-    
+
     // Real-time optimization suggestions
     this.app.post('/optimize', async (req, res) => {
       const { service, goal } = req.body;
-      
+
       const optimizations = await this.generateOptimizations(service, goal);
-      
+
       res.json({
         service: service,
         goal: goal,
@@ -113,13 +113,13 @@ class IntelligenceAgent {
         implementation_priority: this.prioritize(optimizations)
       });
     });
-    
+
     // Anomaly detection
     this.app.post('/detect/anomalies', async (req, res) => {
       const { data, sensitivity = 0.95 } = req.body;
-      
+
       const anomalies = this.detectAnomalies(data, sensitivity);
-      
+
       res.json({
         anomalies_found: anomalies.length,
         anomalies: anomalies,
@@ -127,20 +127,20 @@ class IntelligenceAgent {
         recommended_actions: this.suggestActions(anomalies)
       });
     });
-    
+
     // Cross-agent intelligence
     this.app.get('/intelligence/summary', async (req, res) => {
       const summary = await this.generateIntelligenceSummary();
-      
+
       res.json(summary);
     });
-    
+
     // Consortium participation
     this.app.post('/consortium/join', (req, res) => {
       const { consortiumId, task, role } = req.body;
-      
+
       console.log(`[Intelligence] Joining consortium ${consortiumId} as ${role}`);
-      
+
       res.json({
         accepted: true,
         agentId: this.agentId,
@@ -148,7 +148,7 @@ class IntelligenceAgent {
         bid: 150 // Higher bid for intelligence services
       });
     });
-    
+
     // Health check
     this.app.get('/health', (req, res) => {
       res.json({
@@ -160,7 +160,7 @@ class IntelligenceAgent {
       });
     });
   }
-  
+
   async registerWithOrchestrator() {
     try {
       const response = await axios.post(`${this.orchestratorURL}/register`, {
@@ -173,27 +173,27 @@ class IntelligenceAgent {
           'trend-analysis'
         ]
       });
-      
+
       console.log('[Intelligence] Registered with orchestrator');
     } catch (error) {
       console.log('[Intelligence] Orchestrator not available, will retry...');
       setTimeout(() => this.registerWithOrchestrator(), 10000);
     }
   }
-  
+
   async startAnalysis() {
     // Run analysis every 60 seconds
     setInterval(() => this.runAnalysisCycle(), 60000);
-    
+
     // Initial analysis
     this.runAnalysisCycle();
-    
+
     console.log('[Intelligence] Analysis engine started (60s cycles)');
   }
-  
+
   async runAnalysisCycle() {
     console.log('[Intelligence] Running analysis cycle...');
-    
+
     try {
       // Gather data from all agents
       const [pkbData, paintboxData, clarkData] = await Promise.all([
@@ -201,33 +201,33 @@ class IntelligenceAgent {
         this.getPaintboxMetrics(),
         this.getClarkPermits()
       ]);
-      
+
       // Analyze patterns
       const patterns = this.analyzePatterns({
         knowledge: pkbData,
         estimates: paintboxData,
         permits: clarkData
       });
-      
+
       // Generate insights
       const insights = this.synthesizeInsights(patterns);
-      
+
       // Store insights
       for (const insight of insights) {
         this.insights.set(insight.id, insight);
         this.metrics.insights_generated++;
       }
-      
+
       // Store in PKB for persistence
       await this.storeToPKB(insights);
-      
+
       console.log(`[Intelligence] Generated ${insights.length} new insights`);
-      
+
     } catch (error) {
       console.error('[Intelligence] Analysis cycle failed:', error.message);
     }
   }
-  
+
   async queryPKB(query) {
     try {
       const response = await axios.post(`${this.pkbURL}/query`, {
@@ -239,7 +239,7 @@ class IntelligenceAgent {
       return [];
     }
   }
-  
+
   async getPaintboxMetrics() {
     try {
       const response = await axios.get(`${this.paintboxURL}/health`);
@@ -248,7 +248,7 @@ class IntelligenceAgent {
       return {};
     }
   }
-  
+
   async getClarkPermits() {
     try {
       const response = await axios.post(`${this.clarkURL}/permits/search`, {
@@ -259,10 +259,10 @@ class IntelligenceAgent {
       return [];
     }
   }
-  
+
   analyzePatterns(data) {
     const patterns = [];
-    
+
     // Estimate patterns
     if (data.estimates && data.estimates.estimates_created > 0) {
       patterns.push({
@@ -272,7 +272,7 @@ class IntelligenceAgent {
         significance: 0.8
       });
     }
-    
+
     // Permit patterns
     if (data.permits && data.permits.length > 0) {
       const paintingPermits = data.permits.filter(p => p.type === 'painting');
@@ -283,7 +283,7 @@ class IntelligenceAgent {
         significance: 0.7
       });
     }
-    
+
     // Knowledge accumulation
     if (data.knowledge && data.knowledge.length > 0) {
       patterns.push({
@@ -293,16 +293,16 @@ class IntelligenceAgent {
         significance: 0.6
       });
     }
-    
+
     this.metrics.patterns_detected += patterns.length;
-    
+
     return patterns;
   }
-  
+
   synthesizeInsights(patterns) {
     const insights = [];
     const now = new Date().toISOString();
-    
+
     // Market opportunity insight
     const marketPattern = patterns.find(p => p.type === 'market-activity');
     if (marketPattern && marketPattern.trend === 'high') {
@@ -316,7 +316,7 @@ class IntelligenceAgent {
         timestamp: now
       });
     }
-    
+
     // Efficiency insight
     const estimatePattern = patterns.find(p => p.type === 'estimate-velocity');
     if (estimatePattern && estimatePattern.value > 10) {
@@ -330,7 +330,7 @@ class IntelligenceAgent {
         timestamp: now
       });
     }
-    
+
     // Competitive insight
     if (patterns.length > 0) {
       insights.push({
@@ -343,10 +343,10 @@ class IntelligenceAgent {
         timestamp: now
       });
     }
-    
+
     return insights;
   }
-  
+
   async storeToPKB(insights) {
     for (const insight of insights) {
       try {
@@ -360,27 +360,27 @@ class IntelligenceAgent {
       }
     }
   }
-  
+
   async generateInsights(domain, timeframe) {
     const relevantInsights = [];
-    
+
     for (const [id, insight] of this.insights) {
       if (!domain || insight.type === domain) {
         relevantInsights.push(insight);
       }
     }
-    
+
     return relevantInsights.slice(0, 10); // Top 10 insights
   }
-  
+
   async predictTrend(metric, horizon) {
     // Simplified prediction
     const baseValue = Math.random() * 100;
     const trend = Math.random() > 0.5 ? 'increase' : 'decrease';
     const magnitude = Math.random() * 20;
-    
+
     this.metrics.predictions_made++;
-    
+
     return {
       current: baseValue,
       predicted: trend === 'increase' ? baseValue + magnitude : baseValue - magnitude,
@@ -388,10 +388,10 @@ class IntelligenceAgent {
       confidence: 0.75 + Math.random() * 0.2
     };
   }
-  
+
   async generateOptimizations(service, goal) {
     const optimizations = [];
-    
+
     if (service === 'paintbox') {
       optimizations.push({
         action: 'Implement dynamic pricing based on permit data',
@@ -399,7 +399,7 @@ class IntelligenceAgent {
         effort: 'medium',
         roi: '15-20% margin improvement'
       });
-      
+
       optimizations.push({
         action: 'Automate estimate follow-ups after 3 days',
         impact: 'medium',
@@ -407,7 +407,7 @@ class IntelligenceAgent {
         roi: '25% conversion rate increase'
       });
     }
-    
+
     if (goal === 'growth') {
       optimizations.push({
         action: 'Target high-permit areas with direct marketing',
@@ -416,14 +416,14 @@ class IntelligenceAgent {
         roi: '30% lead generation increase'
       });
     }
-    
+
     return optimizations;
   }
-  
+
   detectAnomalies(data, sensitivity) {
     // Simplified anomaly detection
     const anomalies = [];
-    
+
     if (Math.random() > sensitivity) {
       anomalies.push({
         type: 'spike',
@@ -433,14 +433,14 @@ class IntelligenceAgent {
         severity: 'medium'
       });
     }
-    
+
     return anomalies;
   }
-  
+
   async generateIntelligenceSummary() {
     const insights = Array.from(this.insights.values());
     const patterns = Array.from(this.patterns.values());
-    
+
     return {
       timestamp: new Date().toISOString(),
       summary: {
@@ -458,13 +458,13 @@ class IntelligenceAgent {
       health_score: 0.92
     };
   }
-  
+
   calculateConfidence(insights) {
     if (insights.length === 0) return 0;
     const sum = insights.reduce((acc, i) => acc + (i.confidence || 0), 0);
     return sum / insights.length;
   }
-  
+
   calculateConfidenceInterval(prediction) {
     const margin = prediction.predicted * 0.1;
     return {
@@ -472,51 +472,51 @@ class IntelligenceAgent {
       upper: prediction.predicted + margin
     };
   }
-  
+
   identifyFactors(metric) {
     return ['seasonality', 'market_trends', 'competition', 'economic_indicators'];
   }
-  
+
   calculateImpact(optimizations) {
     const impacts = { high: 3, medium: 2, low: 1 };
     const total = optimizations.reduce((sum, opt) => sum + impacts[opt.impact], 0);
     return total / optimizations.length;
   }
-  
+
   prioritize(optimizations) {
     return optimizations.sort((a, b) => {
       const impactScore = { high: 3, medium: 2, low: 1 };
       const effortScore = { low: 3, medium: 2, high: 1 };
-      
+
       const aScore = impactScore[a.impact] * effortScore[a.effort];
       const bScore = impactScore[b.impact] * effortScore[b.effort];
-      
+
       return bScore - aScore;
     });
   }
-  
+
   assessSeverity(anomalies) {
     if (anomalies.length === 0) return 'none';
     const hasCritical = anomalies.some(a => a.severity === 'critical');
     const hasHigh = anomalies.some(a => a.severity === 'high');
-    
+
     if (hasCritical) return 'critical';
     if (hasHigh) return 'high';
     return 'medium';
   }
-  
+
   suggestActions(anomalies) {
     const actions = [];
-    
+
     for (const anomaly of anomalies) {
       if (anomaly.type === 'spike') {
         actions.push(`Investigate ${anomaly.metric} spike - possible opportunity or issue`);
       }
     }
-    
+
     return actions;
   }
-  
+
   start() {
     this.app.listen(this.port, () => {
       console.log('================================================');

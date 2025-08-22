@@ -9,13 +9,13 @@
     }
   },
   "endpoints": [
-    { 
-      "protocol": "mcp+sse", 
+    {
+      "protocol": "mcp+sse",
       "url": "https://api.nanda.candlefish.ai/agents/paintbox/mcp",
       "description": "MCP SSE endpoint for real-time communication"
     },
-    { 
-      "protocol": "https", 
+    {
+      "protocol": "https",
       "url": "https://api.nanda.candlefish.ai/agents/paintbox/rest/call",
       "description": "REST endpoint for synchronous tool calls"
     }

@@ -52,31 +52,31 @@ ssh ${SSH_USER}@${SERVER_ADDRESS} << 'ENDSSH'
     # Backup current version
     echo "Backing up current dashboard..."
     cp -r /var/www/nanda-dashboard /var/www/nanda-dashboard.backup.$(date +%Y%m%d-%H%M%S)
-    
+
     # Extract new version
     echo "Extracting new version..."
     cd /tmp
     tar -xzf nanda-dashboard-fix.tar.gz
-    
+
     # Deploy new version
     echo "Deploying new version..."
     rm -rf /var/www/nanda-dashboard/dist
     mv dist /var/www/nanda-dashboard/
-    
+
     # Set permissions
     chown -R www-data:www-data /var/www/nanda-dashboard
-    
+
     # Restart services if needed
     if command -v nginx &> /dev/null; then
         echo "Restarting nginx..."
         systemctl reload nginx
     fi
-    
+
     if command -v pm2 &> /dev/null; then
         echo "Restarting PM2 apps..."
         pm2 restart all
     fi
-    
+
     echo "Deployment complete!"
 ENDSSH
 

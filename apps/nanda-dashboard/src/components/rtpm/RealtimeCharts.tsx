@@ -19,22 +19,22 @@ import {
   RadialBar
 } from 'recharts';
 import { motion } from 'framer-motion';
-import { 
-  Activity, 
-  Cpu, 
-  MemoryStick, 
-  Clock, 
+import {
+  Activity,
+  Cpu,
+  MemoryStick,
+  Clock,
   AlertTriangle,
   TrendingUp,
   TrendingDown,
   Minus
 } from 'lucide-react';
-import { 
-  RealtimeMetrics, 
-  AgentMetrics, 
+import {
+  RealtimeMetrics,
+  AgentMetrics,
   ChartConfig,
   MetricType,
-  TimeRange 
+  TimeRange
 } from '../../types/rtpm.types';
 
 interface RealtimeChartsProps {
@@ -116,14 +116,14 @@ const MetricChart: React.FC<MetricChartProps> = ({
         return (
           <AreaChart {...commonProps}>
             {showGrid && <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />}
-            <XAxis 
-              dataKey="timestamp" 
+            <XAxis
+              dataKey="timestamp"
               tickFormatter={formatTimestamp}
               axisLine={false}
               tickLine={false}
               tick={{ fill: '#9CA3AF', fontSize: 12 }}
             />
-            <YAxis 
+            <YAxis
               tickFormatter={formatValue}
               axisLine={false}
               tickLine={false}
@@ -147,14 +147,14 @@ const MetricChart: React.FC<MetricChartProps> = ({
         return (
           <BarChart {...commonProps}>
             {showGrid && <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />}
-            <XAxis 
-              dataKey="timestamp" 
+            <XAxis
+              dataKey="timestamp"
               tickFormatter={formatTimestamp}
               axisLine={false}
               tickLine={false}
               tick={{ fill: '#9CA3AF', fontSize: 12 }}
             />
-            <YAxis 
+            <YAxis
               tickFormatter={formatValue}
               axisLine={false}
               tickLine={false}
@@ -175,14 +175,14 @@ const MetricChart: React.FC<MetricChartProps> = ({
         return (
           <LineChart {...commonProps}>
             {showGrid && <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />}
-            <XAxis 
-              dataKey="timestamp" 
+            <XAxis
+              dataKey="timestamp"
               tickFormatter={formatTimestamp}
               axisLine={false}
               tickLine={false}
               tick={{ fill: '#9CA3AF', fontSize: 12 }}
             />
-            <YAxis 
+            <YAxis
               tickFormatter={formatValue}
               axisLine={false}
               tickLine={false}
@@ -423,7 +423,7 @@ export const RealtimeCharts: React.FC<RealtimeChartsProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <SystemHealthRadial data={currentMetrics} />
         <AgentStatusPie data={currentMetrics} />
-        
+
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -434,31 +434,31 @@ export const RealtimeCharts: React.FC<RealtimeChartsProps> = ({
             <TrendingUp className="w-5 h-5 text-blue-400" />
             Key Metrics
           </h3>
-          
+
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <span className="text-gray-400">Active Agents</span>
               <span className="text-2xl font-bold text-white">{currentMetrics.agents.online}</span>
             </div>
-            
+
             <div className="flex justify-between items-center">
               <span className="text-gray-400">Avg Response</span>
               <span className="text-2xl font-bold text-white">
                 {Math.round(currentMetrics.system.avgResponseTime)}ms
               </span>
             </div>
-            
+
             <div className="flex justify-between items-center">
               <span className="text-gray-400">Request Rate</span>
               <span className="text-2xl font-bold text-white">
                 {Math.round(currentMetrics.system.requestRate)}/s
               </span>
             </div>
-            
+
             <div className="flex justify-between items-center">
               <span className="text-gray-400">Error Rate</span>
               <span className={`text-2xl font-bold ${
-                currentMetrics.system.errorRate > 5 ? 'text-red-400' : 
+                currentMetrics.system.errorRate > 5 ? 'text-red-400' :
                 currentMetrics.system.errorRate > 2 ? 'text-yellow-400' : 'text-green-400'
               }`}>
                 {currentMetrics.system.errorRate.toFixed(1)}%

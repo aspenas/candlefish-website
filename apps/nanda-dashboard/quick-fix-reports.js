@@ -3,11 +3,11 @@
 
 (function() {
     'use strict';
-    
+
     // Wait for DOM to load
     document.addEventListener('DOMContentLoaded', function() {
         console.log('🔧 Applying View Reports button fix...');
-        
+
         // Find the View Reports button
         function findReportsButton() {
             // Try multiple selectors
@@ -17,7 +17,7 @@
                 '.btn-reports',
                 'button'
             ];
-            
+
             // Find button by text content
             const buttons = document.querySelectorAll('button');
             for (let button of buttons) {
@@ -25,10 +25,10 @@
                     return button;
                 }
             }
-            
+
             return null;
         }
-        
+
         // Create reports modal
         function createReportsModal() {
             const modal = document.createElement('div');
@@ -45,7 +45,7 @@
                 overflow-y: auto;
                 padding: 20px;
             `;
-            
+
             modal.innerHTML = `
                 <div style="
                     max-width: 1200px;
@@ -66,11 +66,11 @@
                         font-size: 24px;
                         cursor: pointer;
                     ">✕</button>
-                    
+
                     <h1 style="margin: 0 0 20px; font-size: 28px; color: #0eb8a6;">
                         Agent Performance Reports
                     </h1>
-                    
+
                     <div style="margin-bottom: 30px;">
                         <h2 style="font-size: 20px; margin-bottom: 15px; color: #fff;">
                             Quick Stats
@@ -94,7 +94,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div style="margin-bottom: 30px;">
                         <h2 style="font-size: 20px; margin-bottom: 15px; color: #fff;">
                             Generate Report
@@ -113,7 +113,7 @@
                                 <option value="30d">Last 30 Days</option>
                                 <option value="custom">Custom Range</option>
                             </select>
-                            
+
                             <select id="report-type" style="
                                 background: #2a2a2a;
                                 border: 1px solid #444;
@@ -127,7 +127,7 @@
                                 <option value="errors">Error Analysis</option>
                                 <option value="comprehensive">Comprehensive</option>
                             </select>
-                            
+
                             <button onclick="generateReport()" style="
                                 background: #0eb8a6;
                                 color: #000;
@@ -141,7 +141,7 @@
                             </button>
                         </div>
                     </div>
-                    
+
                     <div id="report-output" style="
                         background: #2a2a2a;
                         padding: 20px;
@@ -151,7 +151,7 @@
                     ">
                         <p>Select options above and click "Generate Report" to create a new report.</p>
                     </div>
-                    
+
                     <div style="margin-top: 30px;">
                         <h2 style="font-size: 20px; margin-bottom: 15px; color: #fff;">
                             Recent Reports
@@ -186,19 +186,19 @@
                     </div>
                 </div>
             `;
-            
+
             document.body.appendChild(modal);
             return modal;
         }
-        
+
         // Generate report function
         window.generateReport = function() {
             const period = document.getElementById('report-period').value;
             const type = document.getElementById('report-type').value;
             const output = document.getElementById('report-output');
-            
+
             output.innerHTML = '<p style="color: #0eb8a6;">Generating report...</p>';
-            
+
             // Simulate fetching agent data
             setTimeout(() => {
                 const reportData = {
@@ -214,7 +214,7 @@
                         uptime: (99 + Math.random()).toFixed(2)
                     }
                 };
-                
+
                 output.innerHTML = `
                     <h3 style="color: #0eb8a6; margin-bottom: 15px;">Report Generated Successfully</h3>
                     <pre style="
@@ -237,7 +237,7 @@
                         Download JSON Report
                     </button>
                 `;
-                
+
                 // Update stats
                 document.getElementById('total-agents').textContent = reportData.metrics.totalAgents;
                 document.getElementById('active-agents').textContent = reportData.metrics.activeAgents;
@@ -245,7 +245,7 @@
                 document.getElementById('uptime').textContent = reportData.metrics.uptime + '%';
             }, 2000);
         };
-        
+
         // Download report function
         window.downloadReport = function(type) {
             const reportData = {
@@ -259,7 +259,7 @@
                     uptime: document.getElementById('uptime').textContent
                 }
             };
-            
+
             const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -269,30 +269,30 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            
+
             alert('Report downloaded successfully!');
         };
-        
+
         // Apply the fix
         const button = findReportsButton();
         if (button) {
             console.log('✅ Found View Reports button, applying fix...');
-            
+
             // Create modal if it doesn't exist
             if (!document.getElementById('reports-modal')) {
                 createReportsModal();
             }
-            
+
             // Remove any existing click handlers
             const newButton = button.cloneNode(true);
             button.parentNode.replaceChild(newButton, button);
-            
+
             // Add new click handler
             newButton.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
                 console.log('📊 Opening reports modal...');
-                
+
                 const modal = document.getElementById('reports-modal');
                 if (modal) {
                     modal.style.display = 'block';
@@ -301,11 +301,11 @@
                     createReportsModal();
                 }
             });
-            
+
             // Add visual feedback
             newButton.style.cursor = 'pointer';
             newButton.title = 'View agent performance reports';
-            
+
             console.log('✅ View Reports button fixed successfully!');
         } else {
             console.warn('⚠️ Could not find View Reports button. Retrying in 2 seconds...');

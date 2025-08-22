@@ -171,12 +171,12 @@ export interface WebSocketMessage {
 // Enums and Type Unions
 export type TimeRange = '1h' | '6h' | '24h' | '7d' | '30d' | 'custom';
 
-export type MetricType = 
-  | 'cpu' 
-  | 'memory' 
-  | 'responseTime' 
-  | 'requestRate' 
-  | 'errorRate' 
+export type MetricType =
+  | 'cpu'
+  | 'memory'
+  | 'responseTime'
+  | 'requestRate'
+  | 'errorRate'
   | 'throughput'
   | 'activeConnections'
   | 'queueDepth'
@@ -184,19 +184,19 @@ export type MetricType =
   | 'networkLatency'
   | 'uptime';
 
-export type AlertOperator = 
-  | 'gt' 
-  | 'gte' 
-  | 'lt' 
-  | 'lte' 
-  | 'eq' 
+export type AlertOperator =
+  | 'gt'
+  | 'gte'
+  | 'lt'
+  | 'lte'
+  | 'eq'
   | 'neq'
   | 'contains'
   | 'not_contains';
 
 export type AlertSeverity = 'info' | 'warning' | 'error' | 'critical';
 
-export type WidgetType = 
+export type WidgetType =
   | 'metrics_overview'
   | 'agent_grid'
   | 'historical_chart'

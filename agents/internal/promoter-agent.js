@@ -14,19 +14,19 @@ class PromoterAgent {
     this.agentName = 'PromoterOS Event Management';
     this.port = process.env.PORT || 7006;
     this.app = express();
-    
+
     // Integration endpoints
     this.promoterAPI = process.env.PROMOTER_API || 'https://promoter.candlefish.ai/api';
     this.orchestratorURL = 'http://localhost:7010';
     this.pkbURL = 'http://localhost:7001';
     this.intelligenceURL = 'http://localhost:7005';
     this.paintboxURL = 'http://localhost:7003';
-    
+
     // Event management state
     this.events = new Map();
     this.tickets = new Map();
     this.attendees = new Map();
-    
+
     // Metrics
     this.metrics = {
       events_created: 0,
@@ -35,23 +35,23 @@ class PromoterAgent {
       marketing_campaigns: 0,
       conversion_rate: 0
     };
-    
+
     this.setupMiddleware();
     this.setupRoutes();
     this.registerWithOrchestrator();
     this.initializeEventTracking();
   }
-  
+
   setupMiddleware() {
     this.app.use(cors());
     this.app.use(express.json());
-    
+
     this.app.use((req, res, next) => {
       console.log(`[Promoter Agent] ${req.method} ${req.path}`);
       next();
     });
   }
-  
+
   setupRoutes() {
     // NANDA-compliant agent info
     this.app.get('/agent/info', (req, res) => {
@@ -76,11 +76,11 @@ class PromoterAgent {
         }
       });
     });
-    
+
     // Create event with intelligent promotion
     this.app.post('/event/create', async (req, res) => {
       const { title, description, date, venue, capacity, pricing } = req.body;
-      
+
       const eventId = `EVT-${Date.now()}`;
       const event = {
         id: eventId,
@@ -95,19 +95,19 @@ class PromoterAgent {
         status: 'upcoming',
         created_at: new Date().toISOString()
       };
-      
+
       this.events.set(eventId, event);
       this.metrics.events_created++;
-      
+
       // Store in PKB for context
       await this.storeInPKB(event, 'event');
-      
+
       // Get marketing insights from Intelligence
       const insights = await this.getMarketingInsights(event);
-      
+
       // Form marketing consortium
       const consortium = await this.formMarketingConsortium(event, insights);
-      
+
       res.json({
         success: true,
         event: event,
@@ -115,20 +115,20 @@ class PromoterAgent {
         consortium_id: consortium
       });
     });
-    
+
     // Sell ticket with cross-service integration
     this.app.post('/ticket/purchase', async (req, res) => {
       const { eventId, customer, quantity, paymentMethod } = req.body;
-      
+
       const event = this.events.get(eventId);
       if (!event) {
         return res.status(404).json({ error: 'Event not found' });
       }
-      
+
       if (event.tickets_available < quantity) {
         return res.status(400).json({ error: 'Not enough tickets available' });
       }
-      
+
       // Process ticket sale
       const ticketId = `TKT-${Date.now()}`;
       const ticket = {
@@ -141,21 +141,21 @@ class PromoterAgent {
         status: 'confirmed',
         purchased_at: new Date().toISOString()
       };
-      
+
       // Update event capacity
       event.tickets_available -= quantity;
       event.tickets_sold += quantity;
-      
+
       this.tickets.set(ticketId, ticket);
       this.metrics.tickets_sold += quantity;
       this.metrics.revenue_generated += ticket.total_amount;
-      
+
       // Store customer in PKB for future marketing
       await this.storeCustomerData(customer, ticket);
-      
+
       // Check for cross-promotion opportunities
       const crossPromo = await this.checkCrossPromotion(customer);
-      
+
       res.json({
         success: true,
         ticket: ticket,
@@ -163,24 +163,24 @@ class PromoterAgent {
         remaining_tickets: event.tickets_available
       });
     });
-    
+
     // Marketing automation
     this.app.post('/marketing/campaign', async (req, res) => {
       const { eventId, campaignType, targetAudience } = req.body;
-      
+
       const event = this.events.get(eventId);
       if (!event) {
         return res.status(404).json({ error: 'Event not found' });
       }
-      
+
       // Get audience insights from PKB
       const audienceData = await this.getAudienceData(targetAudience);
-      
+
       // Create optimized campaign
       const campaign = await this.createOptimizedCampaign(event, campaignType, audienceData);
-      
+
       this.metrics.marketing_campaigns++;
-      
+
       res.json({
         success: true,
         campaign: campaign,
@@ -188,33 +188,33 @@ class PromoterAgent {
         expected_conversions: campaign.conversions
       });
     });
-    
+
     // Cross-service event recommendations
     this.app.post('/recommend/events', async (req, res) => {
       const { customerId, preferences } = req.body;
-      
+
       // Get customer history from PKB
       const history = await this.getCustomerHistory(customerId);
-      
+
       // Get intelligence insights
       const insights = await this.getCustomerInsights(customerId);
-      
+
       // Generate recommendations
       const recommendations = this.generateRecommendations(history, insights, preferences);
-      
+
       res.json({
         customer_id: customerId,
         recommendations: recommendations,
         personalization_score: 0.85
       });
     });
-    
+
     // Consortium participation
     this.app.post('/consortium/join', (req, res) => {
       const { consortiumId, task, role } = req.body;
-      
+
       console.log(`[Promoter Agent] Joining consortium ${consortiumId} as ${role}`);
-      
+
       res.json({
         accepted: true,
         agentId: this.agentId,
@@ -222,42 +222,42 @@ class PromoterAgent {
         bid: 120
       });
     });
-    
+
     // Execute task from orchestrator
     this.app.post('/execute', async (req, res) => {
       const { type, data } = req.body;
-      
+
       switch (type) {
         case 'event_promotion':
           const result = await this.executePromotion(data);
           res.json(result);
           break;
-          
+
         case 'audience_analysis':
           const analysis = await this.analyzeAudience(data);
           res.json(analysis);
           break;
-          
+
         default:
           res.json({ message: `Task ${type} acknowledged` });
       }
     });
-    
+
     // Analytics endpoint
     this.app.get('/analytics/events', async (req, res) => {
       const analytics = {
         total_events: this.events.size,
         active_events: Array.from(this.events.values()).filter(e => e.status === 'upcoming').length,
         total_revenue: this.metrics.revenue_generated,
-        avg_ticket_price: this.metrics.tickets_sold > 0 ? 
+        avg_ticket_price: this.metrics.tickets_sold > 0 ?
           this.metrics.revenue_generated / this.metrics.tickets_sold : 0,
         conversion_rate: this.calculateConversionRate(),
         top_events: this.getTopEvents()
       };
-      
+
       res.json(analytics);
     });
-    
+
     // Health check
     this.app.get('/health', (req, res) => {
       res.json({
@@ -269,7 +269,7 @@ class PromoterAgent {
       });
     });
   }
-  
+
   async registerWithOrchestrator() {
     try {
       const response = await axios.post(`${this.orchestratorURL}/register`, {
@@ -282,14 +282,14 @@ class PromoterAgent {
           'revenue-optimization'
         ]
       });
-      
+
       console.log('[Promoter Agent] Registered with orchestrator');
     } catch (error) {
       console.log('[Promoter Agent] Orchestrator not available, will retry...');
       setTimeout(() => this.registerWithOrchestrator(), 10000);
     }
   }
-  
+
   async storeInPKB(data, type) {
     try {
       await axios.post(`${this.pkbURL}/ingest`, {
@@ -301,21 +301,21 @@ class PromoterAgent {
       console.error('[Promoter Agent] Failed to store in PKB:', error.message);
     }
   }
-  
+
   async getMarketingInsights(event) {
     try {
       const response = await axios.post(`${this.intelligenceURL}/analyze/insights`, {
         domain: 'event_marketing',
         data: event
       });
-      
+
       return response.data.insights;
     } catch (error) {
       console.error('[Promoter Agent] Failed to get insights:', error.message);
       return [];
     }
   }
-  
+
   async formMarketingConsortium(event, insights) {
     try {
       const response = await axios.post(`${this.orchestratorURL}/orchestrate`, {
@@ -327,14 +327,14 @@ class PromoterAgent {
         },
         priority: 'high'
       });
-      
+
       return response.data.taskId;
     } catch (error) {
       console.error('[Promoter Agent] Failed to form consortium:', error.message);
       return null;
     }
   }
-  
+
   async storeCustomerData(customer, ticket) {
     const customerData = {
       ...customer,
@@ -342,9 +342,9 @@ class PromoterAgent {
       lifetime_value: ticket.total_amount,
       last_purchase: ticket.purchased_at
     };
-    
+
     await this.storeInPKB(customerData, 'customer');
-    
+
     // Update attendee tracking
     if (!this.attendees.has(customer.email)) {
       this.attendees.set(customer.email, {
@@ -352,10 +352,10 @@ class PromoterAgent {
         events_attended: []
       });
     }
-    
+
     this.attendees.get(customer.email).events_attended.push(ticket.event_id);
   }
-  
+
   async checkCrossPromotion(customer) {
     // Check with Paintbox for home improvement interest
     try {
@@ -363,9 +363,9 @@ class PromoterAgent {
         email: customer.email,
         phone: customer.phone
       });
-      
+
       const promotions = [];
-      
+
       if (paintboxResponse.data.is_customer) {
         promotions.push({
           service: 'paintbox',
@@ -373,26 +373,26 @@ class PromoterAgent {
           code: 'EVENT10'
         });
       }
-      
+
       return promotions;
     } catch (error) {
       return [];
     }
   }
-  
+
   async getAudienceData(targetAudience) {
     try {
       const response = await axios.post(`${this.pkbURL}/query`, {
         query: `audience ${targetAudience}`,
         requester: this.agentId
       });
-      
+
       return response.data.results;
     } catch (error) {
       return [];
     }
   }
-  
+
   async createOptimizedCampaign(event, campaignType, audienceData) {
     const campaign = {
       id: `CAMP-${Date.now()}`,
@@ -404,14 +404,14 @@ class PromoterAgent {
       expected_roi: 2.5,
       status: 'active'
     };
-    
+
     // Calculate expected metrics
     campaign.reach = audienceData.length * 0.7;
     campaign.conversions = campaign.reach * 0.15;
-    
+
     return campaign;
   }
-  
+
   selectChannels(campaignType) {
     const channelMap = {
       'social': ['facebook', 'instagram', 'twitter'],
@@ -419,55 +419,55 @@ class PromoterAgent {
       'paid': ['google-ads', 'facebook-ads'],
       'organic': ['seo', 'content-marketing']
     };
-    
+
     return channelMap[campaignType] || ['email'];
   }
-  
+
   calculateBudget(event, audienceSize) {
     const baseRate = 0.50; // $0.50 per potential attendee
     const eventValue = event.pricing.standard;
     const budgetRatio = 0.1; // 10% of expected revenue
-    
+
     return Math.min(
       audienceSize * baseRate,
       eventValue * event.capacity * budgetRatio
     );
   }
-  
+
   async getCustomerHistory(customerId) {
     try {
       const response = await axios.post(`${this.pkbURL}/query`, {
         query: `customer ${customerId}`,
         requester: this.agentId
       });
-      
+
       return response.data.results;
     } catch (error) {
       return [];
     }
   }
-  
+
   async getCustomerInsights(customerId) {
     try {
       const response = await axios.post(`${this.intelligenceURL}/analyze/insights`, {
         domain: 'customer_behavior',
         filter: { customer_id: customerId }
       });
-      
+
       return response.data.insights;
     } catch (error) {
       return [];
     }
   }
-  
+
   generateRecommendations(history, insights, preferences) {
     const recommendations = [];
     const upcomingEvents = Array.from(this.events.values())
       .filter(e => e.status === 'upcoming');
-    
+
     for (const event of upcomingEvents) {
       let score = 0;
-      
+
       // Score based on preferences
       if (preferences && preferences.categories) {
         for (const cat of preferences.categories) {
@@ -476,18 +476,18 @@ class PromoterAgent {
           }
         }
       }
-      
+
       // Score based on history
       if (history.length > 0) {
         // Similar events attended
         score += 5;
       }
-      
+
       // Score based on insights
       if (insights.length > 0) {
         score += 3;
       }
-      
+
       if (score > 0) {
         recommendations.push({
           event: event,
@@ -496,24 +496,24 @@ class PromoterAgent {
         });
       }
     }
-    
+
     return recommendations
       .sort((a, b) => b.score - a.score)
       .slice(0, 5);
   }
-  
+
   generateReason(score) {
     if (score >= 15) return 'Highly recommended based on your preferences';
     if (score >= 10) return 'Matches your interests';
     if (score >= 5) return 'Similar to events you enjoyed';
     return 'You might be interested';
   }
-  
+
   calculateConversionRate() {
     if (this.metrics.marketing_campaigns === 0) return 0;
     return (this.metrics.tickets_sold / (this.metrics.marketing_campaigns * 100)) * 100;
   }
-  
+
   getTopEvents() {
     return Array.from(this.events.values())
       .sort((a, b) => b.tickets_sold - a.tickets_sold)
@@ -525,7 +525,7 @@ class PromoterAgent {
         revenue: e.tickets_sold * e.pricing.standard
       }));
   }
-  
+
   async executePromotion(data) {
     // Execute targeted promotion
     const campaign = await this.createOptimizedCampaign(
@@ -533,17 +533,17 @@ class PromoterAgent {
       'social',
       data.audience || []
     );
-    
+
     return {
       success: true,
       campaign_id: campaign.id,
       expected_reach: campaign.reach
     };
   }
-  
+
   async analyzeAudience(data) {
     const audienceData = await this.getAudienceData(data.segment);
-    
+
     return {
       segment: data.segment,
       size: audienceData.length,
@@ -551,7 +551,7 @@ class PromoterAgent {
       recommendations: ['Use social media', 'Email campaign', 'Early bird pricing']
     };
   }
-  
+
   extractCharacteristics(audienceData) {
     // Analyze audience characteristics
     return {
@@ -560,29 +560,29 @@ class PromoterAgent {
       preferred_channels: ['email', 'instagram']
     };
   }
-  
+
   initializeEventTracking() {
     // Periodic event status updates
     setInterval(() => {
       this.updateEventStatuses();
     }, 60000); // Every minute
-    
+
     console.log('[Promoter Agent] Event tracking initialized');
   }
-  
+
   updateEventStatuses() {
     const now = new Date();
-    
+
     for (const [id, event] of this.events) {
       const eventDate = new Date(event.date);
-      
+
       if (eventDate < now && event.status === 'upcoming') {
         event.status = 'completed';
         console.log(`[Promoter Agent] Event ${id} marked as completed`);
       }
     }
   }
-  
+
   start() {
     this.app.listen(this.port, () => {
       console.log('================================================');

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  EyeIcon, 
-  CurrencyDollarIcon, 
-  UsersIcon, 
+import {
+  EyeIcon,
+  CurrencyDollarIcon,
+  UsersIcon,
   ChatBubbleLeftRightIcon,
   ArrowTrendingUpIcon
 } from '@heroicons/react/24/outline';
@@ -21,10 +21,10 @@ import AgentCommunicationFeed from './AgentCommunicationFeed';
 
 // Import mock service and types
 import { mockAgentService } from '../../services/mockAgentService';
-import { 
-  LivingAgent, 
-  AgentMessage, 
-  AgentConsortium, 
+import {
+  LivingAgent,
+  AgentMessage,
+  AgentConsortium,
   AgentNegotiation,
   PerformanceOptimization
 } from '../../types/agent.types';
@@ -52,7 +52,7 @@ export function LivingAgentEcosystem() {
   const [negotiations, setNegotiations] = useState<AgentNegotiation[]>([]);
   const [optimizations, setOptimizations] = useState<PerformanceOptimization[]>([]);
   const [marketplaceTasks, setMarketplaceTasks] = useState<MarketplaceTask[]>([]);
-  
+
   const [activeView, setActiveView] = useState<ViewType>('network');
   const [, setSelectedAgent] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
@@ -110,7 +110,7 @@ export function LivingAgentEcosystem() {
         status: 'bidding'
       }
     ];
-    
+
     setMarketplaceTasks(mockTasks);
   }, []);
 
@@ -126,7 +126,7 @@ export function LivingAgentEcosystem() {
   }, []);
 
   const handleTaskUpdate = (taskId: string, updates: Partial<MarketplaceTask>) => {
-    setMarketplaceTasks(prev => prev.map(task => 
+    setMarketplaceTasks(prev => prev.map(task =>
       task.id === taskId ? { ...task, ...updates } : task
     ));
   };
@@ -154,8 +154,8 @@ export function LivingAgentEcosystem() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[600px] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        <LoadingSpinner 
-          message="Initializing AI Agent Ecosystem..." 
+        <LoadingSpinner
+          message="Initializing AI Agent Ecosystem..."
           size="lg"
         />
       </div>
@@ -174,7 +174,7 @@ export function LivingAgentEcosystem() {
           NANDA Living Agent Ecosystem
         </h1>
         <p className="text-slate-300 text-lg max-w-3xl mx-auto">
-          Watch AI agents communicate, negotiate, and self-optimize in real-time as they form consortiums, 
+          Watch AI agents communicate, negotiate, and self-optimize in real-time as they form consortiums,
           compete in the marketplace, and continuously evolve their performance.
         </p>
       </motion.div>
@@ -189,24 +189,24 @@ export function LivingAgentEcosystem() {
           <div className="text-2xl font-bold text-blue-400">{agents.length}</div>
           <div className="text-slate-300 text-sm">Active Agents</div>
         </div>
-        
+
         <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-4 border border-slate-700">
           <div className="text-2xl font-bold text-green-400">{consortiums.length}</div>
           <div className="text-slate-300 text-sm">Consortiums</div>
         </div>
-        
+
         <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-4 border border-slate-700">
           <div className="text-2xl font-bold text-yellow-400">{negotiations.length}</div>
           <div className="text-slate-300 text-sm">Negotiations</div>
         </div>
-        
+
         <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-4 border border-slate-700">
           <div className="text-2xl font-bold text-purple-400">
             {messages.filter(m => Date.now() - m.timestamp.getTime() < 60000).length}
           </div>
           <div className="text-slate-300 text-sm">Messages/Min</div>
         </div>
-        
+
         <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-4 border border-slate-700">
           <div className="text-2xl font-bold text-red-400">{optimizations.length}</div>
           <div className="text-slate-300 text-sm">Optimizations</div>
@@ -381,14 +381,14 @@ export function LivingAgentEcosystem() {
           <div>Success Rate: 94.2%</div>
           <div>Network Health: 89%</div>
         </div>
-        
+
         <div className="bg-slate-800/30 rounded-lg p-3">
           <div className="font-medium mb-1">Agent Economics</div>
           <div>Total Credits Traded: {agents.reduce((sum, agent) => sum + agent.wallet.credits, 0).toLocaleString()}</div>
           <div>Active Bids: {marketplaceTasks.reduce((sum, task) => sum + task.bids.length, 0)}</div>
           <div>Avg Trust Score: {(agents.reduce((sum, agent) => sum + agent.reputation.trustScore, 0) / agents.length).toFixed(1)}</div>
         </div>
-        
+
         <div className="bg-slate-800/30 rounded-lg p-3">
           <div className="font-medium mb-1">Ecosystem Health</div>
           <div>Agent Utilization: {(agents.reduce((sum, agent) => sum + agent.load, 0) / agents.length).toFixed(1)}%</div>

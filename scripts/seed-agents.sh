@@ -20,13 +20,13 @@ add_agent() {
     local pricing="${10}"
     local context_window="${11:-8192}"
     local max_tokens="${12:-4096}"
-    
+
     local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
     local requests=$((RANDOM % 10000))
     local latency=$((RANDOM % 450 + 50))
     local uptime=$(echo "95 + $RANDOM / 32767 * 5" | bc -l | cut -c1-5)
     local success_rate=$(echo "95 + $RANDOM / 32767 * 5" | bc -l | cut -c1-5)
-    
+
     aws dynamodb put-item \
         --table-name nanda-index-agents \
         --item "{
@@ -54,7 +54,7 @@ add_agent() {
             \"provider_verified\": {\"BOOL\": true}
         }" \
         --region us-east-1 > /dev/null
-    
+
     echo "✅ Seeded: $name ($platform)"
 }
 
@@ -79,7 +79,7 @@ add_agent "google-gemini-pro" "Gemini 1.5 Pro" "Google" "LLM" "active" "text-gen
 
 add_agent "google-gemini-flash" "Gemini 1.5 Flash" "Google" "LLM" "active" "text-generation,fast-inference,multimodal" "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash" "gemini-1.5-flash" "Faster, more efficient version of Gemini with multimodal capabilities" "Input: $0.000075/1K tokens, Output: $0.0003/1K tokens" "1000000" "8192"
 
-# Meta Agents  
+# Meta Agents
 add_agent "meta-llama3-70b" "Llama 3 70B" "Meta" "LLM" "active" "text-generation,open-source,instruction-following" "various" "llama-3-70b" "Large open-source model with strong performance across many tasks" "Varies by provider" "8192" "4096"
 
 add_agent "meta-llama3-8b" "Llama 3 8B" "Meta" "LLM" "active" "text-generation,edge-deployment,efficient" "various" "llama-3-8b" "Smaller, efficient open-source model suitable for edge deployment" "Varies by provider" "8192" "4096"

@@ -114,14 +114,14 @@ async def mcp_sse(request: Request, authorization: str = Header(None)):
     async def event_stream():
         # Send initial connection
         yield f"event: hello\ndata: {json.dumps({'agent': 'paintbox', 'version': '1.0.0'})}\n\n"
-        
+
         # Keep connection alive with heartbeats
         while True:
-            if await request.is_disconnected(): 
+            if await request.is_disconnected():
                 break
             await asyncio.sleep(10)
             yield f"event: heartbeat\ndata: {json.dumps({'timestamp': time.time()})}\n\n"
-    
+
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 @app.post("/agents/paintbox/rest/call")
@@ -130,11 +130,11 @@ async def rest_call(req: Request, authorization: str = Header(None)):
     body = await req.json()
     urn = body.get("tool")
     payload = body.get("input", {})
-    
+
     fn = TOOLS.get(urn)
     if not fn:
         return JSONResponse({"error": "unknown_tool", "available": list(TOOLS.keys())}, status_code=400)
-    
+
     try:
         result = await fn(payload)
         return JSONResponse(result)
@@ -142,7 +142,7 @@ async def rest_call(req: Request, authorization: str = Header(None)):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.get("/healthz")
-async def healthz(): 
+async def healthz():
     """Health check endpoint"""
     return Response(content="ok", media_type="text/plain")
 
@@ -192,13 +192,13 @@ cat > "${AGENT_DIR}/agentfacts/paintbox.agentfacts.json" <<JSON
     }
   },
   "endpoints": [
-    { 
-      "protocol": "mcp+sse", 
+    {
+      "protocol": "mcp+sse",
       "url": "https://${DOMAIN}/${SERVICE_PATH}/mcp",
       "description": "MCP SSE endpoint for real-time communication"
     },
-    { 
-      "protocol": "https", 
+    {
+      "protocol": "https",
       "url": "https://${DOMAIN}/${SERVICE_PATH}/rest/call",
       "description": "REST endpoint for synchronous tool calls"
     }
@@ -265,7 +265,7 @@ SERVICE_BLOCK=$(cat <<YAML
     environment:
       - JWT_ISSUER=${JWT_ISSUER}
       - AWS_REGION=${AWS_REGION}
-    ports: 
+    ports:
       - "${SERVICE_PORT}:8080"
     restart: unless-stopped
     healthcheck:

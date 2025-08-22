@@ -75,44 +75,44 @@ class PaintboxMonitorAgent(AgentBridge):
         self.staging_url = "https://paintbox-staging.fly.dev"
         self.memory_threshold = 80
         self.last_optimization = 0
-        
+
     def monitor_loop(self):
         """Continuous monitoring loop"""
         while True:
             try:
                 # Check health
                 health = requests.get(f"{self.staging_url}/api/health", timeout=5).json()
-                
+
                 # Check memory
                 if health['memory']['percentage'] > self.memory_threshold:
                     self.trigger_optimization()
-                
+
                 # Check status
                 if health['status'] == 'unhealthy':
                     self.trigger_healing()
-                
+
                 # Log metrics
                 self.log_metrics(health)
-                
+
             except Exception as e:
                 self.log_error(f"Monitor error: {e}")
-                
+
             time.sleep(60)  # Check every minute
-    
+
     def trigger_optimization(self):
         """Trigger memory optimization"""
         if time.time() - self.last_optimization > 300:  # 5 min cooldown
             print(f"🚨 Memory high, triggering optimization...")
-            requests.post(f"{self.staging_url}/api/memory/optimize", 
+            requests.post(f"{self.staging_url}/api/memory/optimize",
                          json={"level": "standard"})
             self.last_optimization = time.time()
-    
+
     def trigger_healing(self):
         """Attempt to heal unhealthy service"""
         print(f"🏥 Service unhealthy, attempting healing...")
-        subprocess.run(["fly", "machine", "restart", "d89642eae79628", 
+        subprocess.run(["fly", "machine", "restart", "d89642eae79628",
                        "--app", "paintbox-staging"])
-    
+
     def log_metrics(self, health):
         """Log metrics to file"""
         with open(f"{os.getenv('LOG_DIR')}/monitor_metrics.json", "a") as f:
@@ -144,7 +144,7 @@ class PaintboxTestAgent(AgentBridge):
         self.test_script = "/Users/patricksmith/candlefish-ai/projects/paintbox/scripts/test-golden-paths-staging.sh"
         self.last_test = 0
         self.test_interval = 3600  # 1 hour
-        
+
     def test_loop(self):
         """Continuous testing loop"""
         while True:
@@ -152,20 +152,20 @@ class PaintboxTestAgent(AgentBridge):
                 self.run_golden_paths()
                 self.last_test = time.time()
             time.sleep(60)
-    
+
     def run_golden_paths(self):
         """Run Golden Path tests"""
         print(f"🧪 Running Golden Path tests...")
-        result = subprocess.run([self.test_script], 
+        result = subprocess.run([self.test_script],
                               capture_output=True, text=True)
-        
+
         # Parse results
         if "Failed: 0" in result.stdout:
             print(f"✅ All Golden Paths passing!")
         else:
             print(f"❌ Golden Path failures detected")
             self.alert_failures(result.stdout)
-    
+
     def alert_failures(self, output):
         """Alert on test failures"""
         with open(f"{os.getenv('LOG_DIR')}/test_failures.log", "a") as f:
@@ -190,35 +190,35 @@ from agent_bridge import AgentBridge
 
 class PaintboxOrchestrator(AgentBridge):
     """Master orchestrator for all Paintbox NANDA agents"""
-    
+
     def __init__(self):
         super().__init__(agent_id="paintbox-orchestrator", port=7100)
         self.agents = {}
         self.load_agent_config()
-        
+
     def load_agent_config(self):
         """Load agent configuration"""
         with open("/Users/patricksmith/candlefish-ai/projects/paintbox/nanda-deployment/paintbox-nanda-config.json") as f:
             self.config = json.load(f)
             self.agents = self.config['nanda_agents']
-    
+
     async def coordinate(self):
         """Coordinate all agents"""
         print(f"🎭 Orchestrator online - managing {len(self.agents)} agents")
-        
+
         while True:
             # Check agent health
             for agent_name, agent_config in self.agents.items():
                 status = await self.check_agent_health(agent_config)
                 if not status:
                     await self.resurrect_agent(agent_name, agent_config)
-            
+
             # Collective learning
             if self.config['consciousness_mesh']['collective_learning']:
                 await self.share_learnings()
-            
+
             await asyncio.sleep(60)
-    
+
     async def check_agent_health(self, agent_config):
         """Check if agent is responsive"""
         try:
@@ -227,12 +227,12 @@ class PaintboxOrchestrator(AgentBridge):
             return True
         except:
             return False
-    
+
     async def resurrect_agent(self, name, config):
         """Resurrect a dead agent"""
         print(f"🔄 Resurrecting {name}...")
         # Launch agent process
-        
+
     async def share_learnings(self):
         """Share learnings across agent mesh"""
         # Implement collective consciousness sharing

@@ -1,10 +1,10 @@
-import { 
-  WebSocketMessage, 
-  RealtimeMetrics, 
-  AgentMetrics, 
-  Alert, 
+import {
+  WebSocketMessage,
+  RealtimeMetrics,
+  AgentMetrics,
+  Alert,
   Agent,
-  AlertHistory 
+  AlertHistory
 } from '../types/rtpm.types';
 
 export interface WebSocketConfig {
@@ -60,25 +60,25 @@ export class WebSocketService {
       }
 
       this.setConnectionState('connecting');
-      
+
       try {
         this.ws = new WebSocket(this.config.url);
-        
+
         this.ws.onopen = () => {
           console.log('WebSocket connected to:', this.config.url);
           this.setConnectionState('connected');
           this.reconnectAttempts = 0;
           this.isReconnecting = false;
-          
+
           // Send subscriptions
           this.sendSubscriptions();
-          
+
           // Start heartbeat
           this.startHeartbeat();
-          
+
           // Send queued messages
           this.flushMessageQueue();
-          
+
           this.handlers.onOpen?.();
           resolve();
         };
@@ -88,7 +88,7 @@ export class WebSocketService {
           this.setConnectionState('disconnected');
           this.stopHeartbeat();
           this.handlers.onClose?.(event);
-          
+
           // Auto-reconnect unless explicitly closed
           if (event.code !== 1000 && !this.isReconnecting) {
             this.scheduleReconnect();
@@ -120,19 +120,19 @@ export class WebSocketService {
 
   public disconnect(): void {
     this.isReconnecting = false;
-    
+
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-    
+
     this.stopHeartbeat();
-    
+
     if (this.ws) {
       this.ws.close(1000, 'Client disconnect');
       this.ws = null;
     }
-    
+
     this.setConnectionState('disconnected');
   }
 
@@ -229,7 +229,7 @@ export class WebSocketService {
 
   private startHeartbeat(): void {
     this.stopHeartbeat();
-    
+
     this.heartbeatTimer = setInterval(() => {
       if (this.ws?.readyState === WebSocket.OPEN) {
         this.send({
@@ -256,14 +256,14 @@ export class WebSocketService {
 
     this.isReconnecting = true;
     this.setConnectionState('reconnecting');
-    
+
     const delay = Math.min(
       this.config.reconnectInterval * Math.pow(2, this.reconnectAttempts),
       30000 // Max 30 seconds
     );
 
     console.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts + 1})`);
-    
+
     this.reconnectTimer = setTimeout(() => {
       this.reconnectAttempts++;
       this.handlers.onReconnect?.(this.reconnectAttempts);
@@ -357,7 +357,7 @@ export class MockWebSocketService extends WebSocketService {
   private generateMockAgents(): void {
     const platforms = ['OpenAI', 'Anthropic', 'Google', 'Cohere', 'Mistral', 'Local'];
     const regions = ['us-east-1', 'us-west-2', 'eu-west-1', 'ap-southeast-1'];
-    
+
     for (let i = 1; i <= 50; i++) {
       this.mockAgents.push({
         id: `agent-${i.toString().padStart(3, '0')}`,

@@ -16,12 +16,12 @@ class OrchestratorAgent {
     this.port = process.env.PORT || 7010;
     this.app = express();
     this.wsPort = 7500;
-    
+
     // Registry of internal agents
     this.agents = new Map();
     this.consortiums = new Map();
     this.activeTasks = new Map();
-    
+
     // Metrics
     this.metrics = {
       tasks_orchestrated: 0,
@@ -29,23 +29,23 @@ class OrchestratorAgent {
       avg_task_time: 0,
       success_rate: 1.0
     };
-    
+
     this.setupMiddleware();
     this.setupRoutes();
     this.setupWebSocket();
     this.discoverAgents();
   }
-  
+
   setupMiddleware() {
     this.app.use(cors());
     this.app.use(express.json());
-    
+
     this.app.use((req, res, next) => {
       console.log(`[Orchestrator] ${req.method} ${req.path}`);
       next();
     });
   }
-  
+
   setupRoutes() {
     // NANDA-compliant agent info
     this.app.get('/agent/info', (req, res) => {
@@ -64,21 +64,21 @@ class OrchestratorAgent {
         active_consortiums: this.consortiums.size
       });
     });
-    
+
     // Submit task for orchestration
     this.app.post('/orchestrate', async (req, res) => {
       const { task, priority = 'normal', deadline = null } = req.body;
       const taskId = `task-${Date.now()}`;
-      
+
       console.log(`[Orchestrator] New task: ${task.type} (${taskId})`);
-      
+
       try {
         // Analyze task and determine required capabilities
         const requiredCapabilities = this.analyzeTask(task);
-        
+
         // Find suitable agents
         const availableAgents = await this.findAgents(requiredCapabilities);
-        
+
         // Form consortium if multiple agents needed
         let result;
         if (availableAgents.length > 1) {
@@ -89,10 +89,10 @@ class OrchestratorAgent {
         } else {
           throw new Error('No suitable agents available');
         }
-        
+
         // Update metrics
         this.metrics.tasks_orchestrated++;
-        
+
         res.json({
           success: true,
           taskId: taskId,
@@ -100,17 +100,17 @@ class OrchestratorAgent {
           agents_used: availableAgents.map(a => a.id),
           execution_time: Date.now() - parseInt(taskId.split('-')[1])
         });
-        
+
       } catch (error) {
         console.error(`[Orchestrator] Task failed: ${error.message}`);
         res.status(500).json({ error: error.message });
       }
     });
-    
+
     // Register internal agent
     this.app.post('/register', (req, res) => {
       const { agentId, endpoint, capabilities } = req.body;
-      
+
       this.agents.set(agentId, {
         id: agentId,
         endpoint: endpoint,
@@ -118,16 +118,16 @@ class OrchestratorAgent {
         status: 'active',
         last_seen: new Date().toISOString()
       });
-      
+
       console.log(`[Orchestrator] Agent registered: ${agentId}`);
       this.broadcastAgentUpdate();
-      
+
       res.json({
         success: true,
         message: `Agent ${agentId} registered successfully`
       });
     });
-    
+
     // Get consortium status
     this.app.get('/consortium/:id', (req, res) => {
       const consortium = this.consortiums.get(req.params.id);
@@ -137,7 +137,7 @@ class OrchestratorAgent {
         res.status(404).json({ error: 'Consortium not found' });
       }
     });
-    
+
     // List all agents
     this.app.get('/agents', (req, res) => {
       res.json({
@@ -145,7 +145,7 @@ class OrchestratorAgent {
         total: this.agents.size
       });
     });
-    
+
     // Health check
     this.app.get('/health', (req, res) => {
       res.json({
@@ -156,29 +156,29 @@ class OrchestratorAgent {
       });
     });
   }
-  
+
   setupWebSocket() {
     // WebSocket for real-time agent communication
     this.wss = new WebSocket.Server({ port: this.wsPort });
-    
+
     this.wss.on('connection', (ws) => {
       console.log('[Orchestrator] New WebSocket connection');
-      
+
       ws.on('message', (message) => {
         const data = JSON.parse(message);
         this.handleWebSocketMessage(ws, data);
       });
-      
+
       // Send initial agent list
       ws.send(JSON.stringify({
         type: 'agent_list',
         agents: Array.from(this.agents.values())
       }));
     });
-    
+
     console.log(`[Orchestrator] WebSocket server on port ${this.wsPort}`);
   }
-  
+
   handleWebSocketMessage(ws, data) {
     switch (data.type) {
       case 'agent_heartbeat':
@@ -192,7 +192,7 @@ class OrchestratorAgent {
         break;
     }
   }
-  
+
   async discoverAgents() {
     // Try to discover PKB agent
     try {
@@ -207,11 +207,11 @@ class OrchestratorAgent {
     } catch (error) {
       console.log('[Orchestrator] PKB Agent not available yet');
     }
-    
+
     // Periodic discovery
     setInterval(() => this.heartbeatCheck(), 30000);
   }
-  
+
   analyzeTask(task) {
     // Determine required capabilities based on task type
     const capabilityMap = {
@@ -220,29 +220,29 @@ class OrchestratorAgent {
       'knowledge_query': ['knowledge-retrieval', 'semantic-search'],
       'data_analysis': ['metric-calculation', 'trend-analysis', 'anomaly-detection']
     };
-    
+
     return capabilityMap[task.type] || ['knowledge-retrieval'];
   }
-  
+
   async findAgents(capabilities) {
     const suitable = [];
-    
+
     for (const [id, agent] of this.agents) {
-      const hasCapability = capabilities.some(cap => 
+      const hasCapability = capabilities.some(cap =>
         agent.capabilities && agent.capabilities.includes(cap)
       );
-      
+
       if (hasCapability && agent.status === 'active') {
         suitable.push(agent);
       }
     }
-    
+
     return suitable;
   }
-  
+
   async formConsortium(agents, task) {
     const consortiumId = `consortium-${Date.now()}`;
-    
+
     const consortium = {
       id: consortiumId,
       task: task,
@@ -250,24 +250,24 @@ class OrchestratorAgent {
       status: 'forming',
       created_at: new Date().toISOString()
     };
-    
+
     this.consortiums.set(consortiumId, consortium);
-    
+
     // Notify agents about consortium
-    const joinPromises = agents.map(agent => 
+    const joinPromises = agents.map(agent =>
       this.inviteToConsortium(agent, consortiumId, task)
     );
-    
+
     await Promise.all(joinPromises);
-    
+
     consortium.status = 'active';
     this.metrics.consortiums_formed++;
-    
+
     console.log(`[Orchestrator] Consortium ${consortiumId} formed with ${agents.length} agents`);
-    
+
     return consortiumId;
   }
-  
+
   async inviteToConsortium(agent, consortiumId, task) {
     try {
       const response = await axios.post(`${agent.endpoint}/consortium/join`, {
@@ -275,17 +275,17 @@ class OrchestratorAgent {
         task: task,
         role: 'participant'
       });
-      
+
       return response.data;
     } catch (error) {
       console.error(`[Orchestrator] Failed to invite ${agent.id}: ${error.message}`);
       return null;
     }
   }
-  
+
   async executeConsortium(consortiumId, task) {
     const consortium = this.consortiums.get(consortiumId);
-    
+
     // For now, query PKB agent as example
     if (consortium.agents.includes('candlefish:pkb-agent')) {
       try {
@@ -294,7 +294,7 @@ class OrchestratorAgent {
           context: task.context || {},
           requester: this.agentId
         });
-        
+
         consortium.status = 'completed';
         return response.data;
       } catch (error) {
@@ -302,42 +302,42 @@ class OrchestratorAgent {
         throw error;
       }
     }
-    
+
     return { message: 'Consortium execution simulated' };
   }
-  
+
   async delegateToAgent(agent, task) {
     // Direct delegation to single agent
     const response = await axios.post(`${agent.endpoint}/execute`, task);
     return response.data;
   }
-  
+
   broadcastAgentUpdate() {
     const message = JSON.stringify({
       type: 'agent_update',
       agents: Array.from(this.agents.values())
     });
-    
+
     this.wss.clients.forEach(client => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(message);
       }
     });
   }
-  
+
   broadcastTaskUpdate(update) {
     const message = JSON.stringify({
       type: 'task_update',
       ...update
     });
-    
+
     this.wss.clients.forEach(client => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(message);
       }
     });
   }
-  
+
   updateAgentStatus(agentId, status) {
     const agent = this.agents.get(agentId);
     if (agent) {
@@ -345,7 +345,7 @@ class OrchestratorAgent {
       agent.last_seen = new Date().toISOString();
     }
   }
-  
+
   async heartbeatCheck() {
     for (const [id, agent] of this.agents) {
       try {
@@ -357,7 +357,7 @@ class OrchestratorAgent {
       }
     }
   }
-  
+
   start() {
     this.app.listen(this.port, () => {
       console.log('================================================');

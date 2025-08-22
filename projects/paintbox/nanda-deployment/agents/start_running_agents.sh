@@ -85,19 +85,19 @@ for i in "${!BRIDGE_PORTS[@]}"; do
     API_PORT=${API_PORTS[$i]}
     PUBLIC_URL="http://$SERVER_IP:$BRIDGE_PORT"
     API_URL="https://${DOMAIN_NAME}:$API_PORT"
-    
+
     echo "Starting $AGENT_ID on bridge port $BRIDGE_PORT and API port $API_PORT"
     echo "Public URL: $PUBLIC_URL"
     echo "API URL: $API_URL"
-    
+
     PYTHONUNBUFFERED=1
     nohup python3 -u run_ui_agent_https.py --id "$AGENT_ID" --port "$BRIDGE_PORT" --api-port "$API_PORT" --public-url "$PUBLIC_URL" --api-url "$API_URL" --registry "$REGISTRY_URL" --ssl --cert "$CERT_PATH" --key "$KEY_PATH" > "logs/${AGENT_ID}_logs.txt" 2>&1 &
-    
+
     # Store the process ID for later reference
     echo "$!" > "logs/${AGENT_ID}.pid"
-    
+
     echo "$AGENT_ID started with PID $!"
-    
+
     # Wait a few seconds between agent starts to avoid race conditions
     sleep 2
 done
@@ -107,7 +107,7 @@ echo "Use the following command to check if agents are running:"
 echo "ps aux | grep run_ui_agent_https"
 echo ""
 echo "To stop all agents:"
-echo 'for pid in logs/*.pid; do kill $(cat "$pid"); done' 
+echo 'for pid in logs/*.pid; do kill $(cat "$pid"); done'
 
 # Wait for 20 seconds before sending the email to ensure all the files are created
 # sleep 20

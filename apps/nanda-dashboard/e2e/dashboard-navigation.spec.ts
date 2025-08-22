@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Dashboard Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    
+
     // Wait for the dashboard to load
     await expect(page.getByText('RTPM Dashboard')).toBeVisible();
     await expect(page.getByText('Real-time Performance Monitoring')).toBeVisible();
@@ -105,7 +105,7 @@ test.describe('Dashboard Navigation', () => {
 
     // Button should briefly show loading state
     await expect(refreshButton).toBeDisabled();
-    
+
     // Should re-enable after refresh
     await expect(refreshButton).toBeEnabled({ timeout: 5000 });
   });
@@ -213,12 +213,12 @@ test.describe('Dashboard Responsiveness', () => {
 test.describe('Dashboard Performance', () => {
   test('should load within acceptable time', async ({ page }) => {
     const startTime = Date.now();
-    
+
     await page.goto('/');
     await expect(page.getByText('RTPM Dashboard')).toBeVisible();
-    
+
     const loadTime = Date.now() - startTime;
-    
+
     // Should load within 3 seconds
     expect(loadTime).toBeLessThan(3000);
   });
@@ -260,7 +260,7 @@ test.describe('Dashboard Performance', () => {
       const startTime = Date.now();
       await interaction();
       const responseTime = Date.now() - startTime;
-      
+
       // Each interaction should respond within 500ms
       expect(responseTime).toBeLessThan(500);
     }
@@ -298,7 +298,7 @@ test.describe('Dashboard Error Handling', () => {
 
   test('should display connection status correctly', async ({ page }) => {
     await page.goto('/');
-    
+
     // Should initially show connected state
     await expect(page.getByText('Connected')).toBeVisible();
 

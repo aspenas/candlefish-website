@@ -30,9 +30,9 @@ import {
   Filter,
   RefreshCw
 } from 'lucide-react';
-import { 
-  AggregatedMetrics, 
-  TimeRange, 
+import {
+  AggregatedMetrics,
+  TimeRange,
   MetricType,
   HistoricalDataPoint,
   Agent
@@ -76,8 +76,8 @@ const TimeRangeButton: React.FC<TimeRangeButtonProps> = ({ range, active, onClic
     onClick={onClick}
     className={`
       px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200
-      ${active 
-        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25' 
+      ${active
+        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25'
         : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50 hover:text-white'
       }
     `}
@@ -146,7 +146,7 @@ const ChartControls: React.FC<ChartControlsProps> = ({
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </motion.button>
-          
+
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -227,7 +227,7 @@ const MetricTrendChart: React.FC<{
     const date = new Date(timestamp);
     const now = new Date();
     const diffHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    
+
     if (diffHours < 24) {
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } else if (diffHours < 168) { // 7 days
@@ -272,21 +272,21 @@ const MetricTrendChart: React.FC<{
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
-            <XAxis 
-              dataKey="timestamp" 
+            <XAxis
+              dataKey="timestamp"
               tickFormatter={formatTimestamp}
               axisLine={false}
               tickLine={false}
               tick={{ fill: '#9CA3AF', fontSize: 12 }}
             />
-            <YAxis 
+            <YAxis
               axisLine={false}
               tickLine={false}
               tick={{ fill: '#9CA3AF', fontSize: 12 }}
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend />
-            
+
             {metrics.map(metric => (
               <Line
                 key={metric}
@@ -300,11 +300,11 @@ const MetricTrendChart: React.FC<{
                 name={metric.charAt(0).toUpperCase() + metric.slice(1)}
               />
             ))}
-            
+
             {showBrush && (
-              <Brush 
-                dataKey="timestamp" 
-                height={30} 
+              <Brush
+                dataKey="timestamp"
+                height={30}
                 stroke="#6B7280"
                 tickFormatter={formatTimestamp}
               />
@@ -426,7 +426,7 @@ export const HistoricalCharts: React.FC<HistoricalChartsProps> = ({
     // Export data as CSV
     const csv = [
       ['Timestamp', ...selectedMetrics].join(','),
-      ...chartData.map(row => 
+      ...chartData.map(row =>
         [row.timestamp, ...selectedMetrics.map(metric => row[metric])].join(',')
       )
     ].join('\n');
@@ -517,7 +517,7 @@ export const HistoricalCharts: React.FC<HistoricalChartsProps> = ({
             title="Resource Utilization"
             height={300}
           />
-          
+
           <MetricTrendChart
             data={chartData}
             metrics={['responseTime', 'errorRate']}
