@@ -106,5 +106,58 @@ node_modules/
 .env*
 !.env.example
 !.env.*.example
+
+# Docker volumes and data
+docker-compose.override.yml
+.docker/
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+PIPFILE.lock
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Performance and monitoring
 performance-results.json
+logs/
+*.log
+
+# Service-specific ignores
 apps/n8n/
+nanda-evolution.log
+
+# Backup files
+*.backup
+*.bak
+*~
+
+# Archive files
+*.7z
+*.zip
+*.tar.gz
+*.tgz
