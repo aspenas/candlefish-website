@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { format } from 'date-fns'
 import {
   CheckCircle,
-  AlertCircle,
   XCircle,
   Info,
   Wrench,
@@ -283,7 +282,7 @@ export function ActivityFeed({ activities, maxItems = 50, showFilters = true }: 
 
         {filteredActivities.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">
-            <InformationCircleIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
+            <Info className="w-12 h-12 mx-auto mb-2 opacity-50" />
             <p>No activities match the selected filters.</p>
           </div>
         )}

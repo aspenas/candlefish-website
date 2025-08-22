@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRealtimeData, type AgentMetrics } from '../hooks/useRealtimeData'
 import { MetricsDashboard } from '../components/monitoring/MetricsDashboard'
