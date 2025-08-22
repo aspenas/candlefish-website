@@ -165,9 +165,14 @@ export async function GET(request: NextRequest) {
 async function getPaintboxAgents() {
   try {
     const stagingUrl = process.env.PAINTBOX_STAGING_URL || 'https://paintbox-staging.fly.dev'
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 5000)
+    
     const response = await fetch(`${stagingUrl}/api/health`, {
-      timeout: 5000
+      signal: controller.signal
     })
+    
+    clearTimeout(timeoutId)
     
     if (response.ok) {
       const health = await response.json()
