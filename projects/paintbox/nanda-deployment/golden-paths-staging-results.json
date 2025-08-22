@@ -4,7 +4,7 @@
       "name": "GP1: New Estimate Page",
       "endpoint": "/estimate/new",
       "status": "failed",
-      "response": "502"
+      "response": "503"
     },
     {
       "name": "GP1: Client Details",
@@ -16,25 +16,25 @@
       "name": "GP1: Success Page",
       "endpoint": "/estimate/success",
       "status": "failed",
-      "response": "502"
+      "response": "503"
     },
     {
       "name": "GP2: Exterior Config",
       "endpoint": "/estimate/new/exterior",
       "status": "failed",
-      "response": "502"
+      "response": "503"
     },
     {
       "name": "GP3: Interior Config",
       "endpoint": "/estimate/new/interior",
       "status": "failed",
-      "response": "502"
+      "response": "503"
     },
     {
       "name": "GP3: Review Page",
       "endpoint": "/estimate/new/review",
       "status": "failed",
-      "response": "502"
+      "response": "503"
     },
     {
       "name": "GP5: PDF Export",
@@ -46,7 +46,7 @@
       "name": "GP6: Offline Page",
       "endpoint": "/offline",
       "status": "failed",
-      "response": "502"
+      "response": "503"
     },
     {
       "name": "GP6: Manifest",
