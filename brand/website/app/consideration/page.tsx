@@ -11,6 +11,8 @@ const expectedConsiderationDate = 'January-February 2026'
 export default function ConsiderationRequest() {
   const [stage, setStage] = useState<'initial' | 'assessment' | 'submitted'>('initial')
   const [position, setPosition] = useState<number | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     yearsInOperation: '',
     operationalChallenge: '',
@@ -22,11 +24,33 @@ export default function ConsiderationRequest() {
     company: ''
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // In production, this would submit to a real queue system
-    setPosition(currentQueueLength + 1)
-    setStage('submitted')
+    setIsSubmitting(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/.netlify/functions/consideration', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to submit consideration request')
+      }
+
+      setPosition(result.queuePosition)
+      setStage('submitted')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -197,13 +221,31 @@ export default function ConsiderationRequest() {
                 </div>
               </fieldset>
 
+              {error && (
+                <div className="bg-red-900/20 border border-red-600/30 px-4 py-3 rounded">
+                  <p className="text-red-400 text-sm font-light">{error}</p>
+                </div>
+              )}
+
               <button
                 type="submit"
+                disabled={isSubmitting}
                 className="w-full py-4 bg-[#1B263B] border border-[#415A77]
                          text-[#E0E1DD] hover:border-[#3FD3C6] transition-all duration-500
-                         font-light tracking-wider"
+                         font-light tracking-wider disabled:opacity-50 disabled:cursor-not-allowed
+                         disabled:hover:border-[#415A77]"
               >
-                Submit for Q1 2026 Consideration
+                {isSubmitting ? (
+                  <span className="flex items-center justify-center gap-3">
+                    <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Submitting Request...
+                  </span>
+                ) : (
+                  'Submit for Q1 2026 Consideration'
+                )}
               </button>
             </form>
           </>

@@ -1,6 +1,6 @@
 {
   "name": "paintbox-app",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "scripts": {
     "dev": "NODE_ENV=development ts-node -r tsconfig-paths/register --project tsconfig.server.json server/websocket-server.ts",

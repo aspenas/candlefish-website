@@ -140,10 +140,12 @@ export async function middleware(request: NextRequest) {
 
 function applySecurityHeaders(response: NextResponse, nonce: string): NextResponse {
   // Content Security Policy
+  // EMERGENCY FIX: Temporarily allow unsafe-inline for scripts and styles to restore functionality
+  // TODO: Fix proper nonce propagation from middleware to Next.js rendering
   const cspDirectives = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' https://cdn.vercel-insights.com https://accounts.google.com`,
-    `style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com https://accounts.google.com`,
+    `script-src 'self' 'unsafe-inline' https://cdn.vercel-insights.com https://accounts.google.com`,
+    `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com`,
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: https: blob: https://lh3.googleusercontent.com",
     "connect-src 'self' https://api.companycam.com https://*.salesforce.com https://paintbox-api.railway.app wss://paintbox-api.railway.app https://vitals.vercel-insights.com https://accounts.google.com https://oauth2.googleapis.com",
