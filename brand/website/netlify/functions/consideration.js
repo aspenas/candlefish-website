@@ -7,7 +7,7 @@ const rateLimitMap = new Map();
 function rateLimit(ip) {
   const now = Date.now();
   const windowMs = 60 * 1000; // 1 minute
-  const maxRequests = 2; // More restrictive for consideration requests
+  const maxRequests = 5; // Allow 5 requests per minute per IP
 
   if (!rateLimitMap.has(ip)) {
     rateLimitMap.set(ip, [now]);
@@ -175,8 +175,8 @@ IP: ${ip}
       if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== 're_placeholder_key_change_this') {
         const resend = new Resend(process.env.RESEND_API_KEY);
 
-        await resend.emails.send({
-          from: 'noreply@candlefish.ai',
+        const emailResult = await resend.emails.send({
+          from: 'Candlefish <hello@candlefish.ai>',
           to: ['hello@candlefish.ai'],
           subject: `[Consideration Request] ${company} - ${name}`,
           text: emailContent,
@@ -192,6 +192,7 @@ IP: ${ip}
           manualHours: hours,
           investmentRange,
           ip,
+          emailId: emailResult.data?.id,
           challenge: operationalChallenge.substring(0, 100) + '...' // Log preview only
         });
       } else {

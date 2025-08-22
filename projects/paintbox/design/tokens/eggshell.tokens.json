@@ -1,0 +1,851 @@
+{
+  "$schema": "https://tr.designtokens.org/format/#top-level",
+  "meta": {
+    "tokenSetOrder": ["core", "semantic", "components"]
+  },
+  "core": {
+    "color": {
+      "eggshell": {
+        "primary": {
+          "value": "#fefaee",
+          "type": "color",
+          "description": "Primary warm eggshell tone - most frequent in palette (13,914 occurrences)"
+        },
+        "50": {
+          "value": "#fffef2",
+          "type": "color",
+          "description": "Lightest eggshell tone for highlights and backgrounds"
+        },
+        "100": {
+          "value": "#fefbec",
+          "type": "color",
+          "description": "Very light eggshell for subtle surfaces"
+        },
+        "200": {
+          "value": "#fefaed",
+          "type": "color",
+          "description": "Light eggshell for cards and containers"
+        },
+        "300": {
+          "value": "#fdfaee",
+          "type": "color",
+          "description": "Medium-light eggshell for secondary surfaces"
+        },
+        "400": {
+          "value": "#fdfbf0",
+          "type": "color",
+          "description": "Medium eggshell for borders and dividers"
+        }
+      },
+      "brown": {
+        "primary": {
+          "value": "#9b8b73",
+          "type": "color",
+          "description": "Primary earthy brown accent (2,726 occurrences)"
+        },
+        "50": {
+          "value": "#f7f5f2",
+          "type": "color",
+          "description": "Lightest brown tint for backgrounds"
+        },
+        "100": {
+          "value": "#e8e1d7",
+          "type": "color",
+          "description": "Light brown for subtle accents"
+        },
+        "200": {
+          "value": "#d4c7b5",
+          "type": "color",
+          "description": "Medium-light brown for borders"
+        },
+        "300": {
+          "value": "#bfab93",
+          "type": "color",
+          "description": "Medium brown for secondary text"
+        },
+        "400": {
+          "value": "#9b8b73",
+          "type": "color",
+          "description": "Primary brown for text and accents"
+        },
+        "500": {
+          "value": "#877760",
+          "type": "color",
+          "description": "Darker brown for emphasis"
+        },
+        "600": {
+          "value": "#6d634f",
+          "type": "color",
+          "description": "Dark brown for headers and strong text"
+        },
+        "700": {
+          "value": "#544f3e",
+          "type": "color",
+          "description": "Very dark brown for primary text"
+        },
+        "800": {
+          "value": "#3a3b2d",
+          "type": "color",
+          "description": "Darkest brown for high contrast text"
+        }
+      },
+      "neutral": {
+        "white": {
+          "value": "#ffffff",
+          "type": "color",
+          "description": "Pure white for maximum contrast"
+        },
+        "black": {
+          "value": "#2d2d2d",
+          "type": "color",
+          "description": "Rich black with slight warmth"
+        },
+        "50": {
+          "value": "#fafafa",
+          "type": "color"
+        },
+        "100": {
+          "value": "#f5f5f5",
+          "type": "color"
+        },
+        "200": {
+          "value": "#e5e5e5",
+          "type": "color"
+        },
+        "300": {
+          "value": "#d4d4d4",
+          "type": "color"
+        },
+        "400": {
+          "value": "#a3a3a3",
+          "type": "color"
+        },
+        "500": {
+          "value": "#737373",
+          "type": "color"
+        },
+        "600": {
+          "value": "#525252",
+          "type": "color"
+        },
+        "700": {
+          "value": "#404040",
+          "type": "color"
+        },
+        "800": {
+          "value": "#262626",
+          "type": "color"
+        },
+        "900": {
+          "value": "#171717",
+          "type": "color"
+        }
+      },
+      "semantic": {
+        "success": {
+          "value": "#059669",
+          "type": "color",
+          "description": "Success state - earthy green"
+        },
+        "warning": {
+          "value": "#d97706",
+          "type": "color",
+          "description": "Warning state - warm amber"
+        },
+        "error": {
+          "value": "#dc2626",
+          "type": "color",
+          "description": "Error state - warm red"
+        },
+        "info": {
+          "value": "#0369a1",
+          "type": "color",
+          "description": "Info state - deep blue"
+        }
+      }
+    },
+    "spacing": {
+      "0": {
+        "value": "0px",
+        "type": "spacing"
+      },
+      "1": {
+        "value": "4px",
+        "type": "spacing"
+      },
+      "2": {
+        "value": "8px",
+        "type": "spacing"
+      },
+      "3": {
+        "value": "12px",
+        "type": "spacing"
+      },
+      "4": {
+        "value": "16px",
+        "type": "spacing"
+      },
+      "5": {
+        "value": "20px",
+        "type": "spacing"
+      },
+      "6": {
+        "value": "24px",
+        "type": "spacing"
+      },
+      "8": {
+        "value": "32px",
+        "type": "spacing"
+      },
+      "10": {
+        "value": "40px",
+        "type": "spacing"
+      },
+      "12": {
+        "value": "48px",
+        "type": "spacing"
+      },
+      "16": {
+        "value": "64px",
+        "type": "spacing"
+      },
+      "20": {
+        "value": "80px",
+        "type": "spacing"
+      },
+      "24": {
+        "value": "96px",
+        "type": "spacing"
+      }
+    },
+    "borderRadius": {
+      "none": {
+        "value": "0px",
+        "type": "borderRadius"
+      },
+      "sm": {
+        "value": "4px",
+        "type": "borderRadius"
+      },
+      "md": {
+        "value": "8px",
+        "type": "borderRadius"
+      },
+      "lg": {
+        "value": "12px",
+        "type": "borderRadius"
+      },
+      "xl": {
+        "value": "16px",
+        "type": "borderRadius"
+      },
+      "2xl": {
+        "value": "24px",
+        "type": "borderRadius"
+      },
+      "full": {
+        "value": "9999px",
+        "type": "borderRadius"
+      }
+    },
+    "borderWidth": {
+      "0": {
+        "value": "0px",
+        "type": "borderWidth"
+      },
+      "1": {
+        "value": "1px",
+        "type": "borderWidth"
+      },
+      "2": {
+        "value": "2px",
+        "type": "borderWidth"
+      },
+      "4": {
+        "value": "4px",
+        "type": "borderWidth"
+      }
+    },
+    "fontFamily": {
+      "sans": {
+        "value": [
+          "Inter",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "SF Pro Text",
+          "Segoe UI",
+          "Roboto",
+          "Helvetica",
+          "Arial",
+          "sans-serif"
+        ],
+        "type": "fontFamily",
+        "description": "Primary sans-serif font family"
+      },
+      "serif": {
+        "value": [
+          "Charter",
+          "Times New Roman",
+          "serif"
+        ],
+        "type": "fontFamily",
+        "description": "Serif font family for elegance"
+      },
+      "mono": {
+        "value": [
+          "SF Mono",
+          "Monaco",
+          "Inconsolata",
+          "Consolas",
+          "monospace"
+        ],
+        "type": "fontFamily",
+        "description": "Monospace font family"
+      }
+    },
+    "fontSize": {
+      "xs": {
+        "value": "12px",
+        "type": "fontSize"
+      },
+      "sm": {
+        "value": "14px",
+        "type": "fontSize"
+      },
+      "base": {
+        "value": "16px",
+        "type": "fontSize"
+      },
+      "lg": {
+        "value": "18px",
+        "type": "fontSize"
+      },
+      "xl": {
+        "value": "20px",
+        "type": "fontSize"
+      },
+      "2xl": {
+        "value": "24px",
+        "type": "fontSize"
+      },
+      "3xl": {
+        "value": "30px",
+        "type": "fontSize"
+      },
+      "4xl": {
+        "value": "36px",
+        "type": "fontSize"
+      },
+      "5xl": {
+        "value": "48px",
+        "type": "fontSize"
+      },
+      "6xl": {
+        "value": "60px",
+        "type": "fontSize"
+      }
+    },
+    "fontWeight": {
+      "normal": {
+        "value": "400",
+        "type": "fontWeight"
+      },
+      "medium": {
+        "value": "500",
+        "type": "fontWeight"
+      },
+      "semibold": {
+        "value": "600",
+        "type": "fontWeight"
+      },
+      "bold": {
+        "value": "700",
+        "type": "fontWeight"
+      }
+    },
+    "lineHeight": {
+      "tight": {
+        "value": "1.25",
+        "type": "lineHeight"
+      },
+      "snug": {
+        "value": "1.375",
+        "type": "lineHeight"
+      },
+      "normal": {
+        "value": "1.5",
+        "type": "lineHeight"
+      },
+      "relaxed": {
+        "value": "1.625",
+        "type": "lineHeight"
+      },
+      "loose": {
+        "value": "2",
+        "type": "lineHeight"
+      }
+    },
+    "boxShadow": {
+      "sm": {
+        "value": "0 1px 2px 0 rgba(155, 139, 115, 0.1)",
+        "type": "boxShadow",
+        "description": "Small shadow with eggshell brown tint"
+      },
+      "md": {
+        "value": "0 4px 6px -1px rgba(155, 139, 115, 0.1), 0 2px 4px -1px rgba(155, 139, 115, 0.06)",
+        "type": "boxShadow",
+        "description": "Medium shadow with eggshell brown tint"
+      },
+      "lg": {
+        "value": "0 10px 15px -3px rgba(155, 139, 115, 0.1), 0 4px 6px -2px rgba(155, 139, 115, 0.05)",
+        "type": "boxShadow",
+        "description": "Large shadow with eggshell brown tint"
+      },
+      "xl": {
+        "value": "0 20px 25px -5px rgba(155, 139, 115, 0.1), 0 10px 10px -5px rgba(155, 139, 115, 0.04)",
+        "type": "boxShadow",
+        "description": "Extra large shadow with eggshell brown tint"
+      },
+      "none": {
+        "value": "none",
+        "type": "boxShadow"
+      }
+    }
+  },
+  "semantic": {
+    "color": {
+      "background": {
+        "primary": {
+          "value": "{core.color.eggshell.primary}",
+          "type": "color",
+          "description": "Primary background color"
+        },
+        "secondary": {
+          "value": "{core.color.eggshell.100}",
+          "type": "color",
+          "description": "Secondary background for cards and containers"
+        },
+        "tertiary": {
+          "value": "{core.color.eggshell.50}",
+          "type": "color",
+          "description": "Tertiary background for subtle emphasis"
+        }
+      },
+      "surface": {
+        "primary": {
+          "value": "{core.color.neutral.white}",
+          "type": "color",
+          "description": "Primary surface color for cards"
+        },
+        "secondary": {
+          "value": "{core.color.eggshell.200}",
+          "type": "color",
+          "description": "Secondary surface with subtle warmth"
+        },
+        "elevated": {
+          "value": "{core.color.neutral.white}",
+          "type": "color",
+          "description": "Elevated surface for modals and overlays"
+        }
+      },
+      "text": {
+        "primary": {
+          "value": "{core.color.brown.700}",
+          "type": "color",
+          "description": "Primary text color - ensures WCAG AA compliance"
+        },
+        "secondary": {
+          "value": "{core.color.brown.500}",
+          "type": "color",
+          "description": "Secondary text color"
+        },
+        "tertiary": {
+          "value": "{core.color.brown.300}",
+          "type": "color",
+          "description": "Tertiary text color for subtle content"
+        },
+        "inverse": {
+          "value": "{core.color.neutral.white}",
+          "type": "color",
+          "description": "Text on dark backgrounds"
+        },
+        "link": {
+          "value": "{core.color.brown.600}",
+          "type": "color",
+          "description": "Link text color"
+        }
+      },
+      "border": {
+        "primary": {
+          "value": "{core.color.brown.200}",
+          "type": "color",
+          "description": "Primary border color"
+        },
+        "secondary": {
+          "value": "{core.color.eggshell.400}",
+          "type": "color",
+          "description": "Secondary border color"
+        },
+        "focus": {
+          "value": "{core.color.brown.400}",
+          "type": "color",
+          "description": "Focus state border color"
+        }
+      },
+      "interactive": {
+        "primary": {
+          "default": {
+            "value": "{core.color.brown.primary}",
+            "type": "color",
+            "description": "Primary interactive element color"
+          },
+          "hover": {
+            "value": "{core.color.brown.600}",
+            "type": "color",
+            "description": "Primary interactive hover state"
+          },
+          "active": {
+            "value": "{core.color.brown.700}",
+            "type": "color",
+            "description": "Primary interactive active state"
+          },
+          "disabled": {
+            "value": "{core.color.brown.200}",
+            "type": "color",
+            "description": "Primary interactive disabled state"
+          }
+        },
+        "secondary": {
+          "default": {
+            "value": "{core.color.eggshell.200}",
+            "type": "color",
+            "description": "Secondary interactive element color"
+          },
+          "hover": {
+            "value": "{core.color.eggshell.300}",
+            "type": "color",
+            "description": "Secondary interactive hover state"
+          },
+          "active": {
+            "value": "{core.color.eggshell.400}",
+            "type": "color",
+            "description": "Secondary interactive active state"
+          }
+        }
+      },
+      "feedback": {
+        "success": {
+          "value": "{core.color.semantic.success}",
+          "type": "color"
+        },
+        "warning": {
+          "value": "{core.color.semantic.warning}",
+          "type": "color"
+        },
+        "error": {
+          "value": "{core.color.semantic.error}",
+          "type": "color"
+        },
+        "info": {
+          "value": "{core.color.semantic.info}",
+          "type": "color"
+        }
+      }
+    }
+  },
+  "components": {
+    "button": {
+      "primary": {
+        "background": {
+          "default": {
+            "value": "{semantic.color.interactive.primary.default}",
+            "type": "color"
+          },
+          "hover": {
+            "value": "{semantic.color.interactive.primary.hover}",
+            "type": "color"
+          },
+          "active": {
+            "value": "{semantic.color.interactive.primary.active}",
+            "type": "color"
+          },
+          "disabled": {
+            "value": "{semantic.color.interactive.primary.disabled}",
+            "type": "color"
+          }
+        },
+        "text": {
+          "default": {
+            "value": "{core.color.neutral.white}",
+            "type": "color"
+          },
+          "disabled": {
+            "value": "{core.color.brown.100}",
+            "type": "color"
+          }
+        },
+        "border": {
+          "value": "{core.borderRadius.md}",
+          "type": "borderRadius"
+        },
+        "padding": {
+          "vertical": {
+            "value": "{core.spacing.3}",
+            "type": "spacing"
+          },
+          "horizontal": {
+            "value": "{core.spacing.6}",
+            "type": "spacing"
+          }
+        },
+        "shadow": {
+          "value": "{core.boxShadow.sm}",
+          "type": "boxShadow"
+        }
+      },
+      "secondary": {
+        "background": {
+          "default": {
+            "value": "{semantic.color.surface.primary}",
+            "type": "color"
+          },
+          "hover": {
+            "value": "{semantic.color.interactive.secondary.hover}",
+            "type": "color"
+          },
+          "active": {
+            "value": "{semantic.color.interactive.secondary.active}",
+            "type": "color"
+          }
+        },
+        "text": {
+          "default": {
+            "value": "{semantic.color.text.primary}",
+            "type": "color"
+          }
+        },
+        "border": {
+          "color": {
+            "value": "{semantic.color.border.primary}",
+            "type": "color"
+          },
+          "width": {
+            "value": "{core.borderWidth.1}",
+            "type": "borderWidth"
+          },
+          "radius": {
+            "value": "{core.borderRadius.md}",
+            "type": "borderRadius"
+          }
+        },
+        "padding": {
+          "vertical": {
+            "value": "{core.spacing.3}",
+            "type": "spacing"
+          },
+          "horizontal": {
+            "value": "{core.spacing.6}",
+            "type": "spacing"
+          }
+        }
+      }
+    },
+    "card": {
+      "background": {
+        "value": "{semantic.color.surface.primary}",
+        "type": "color"
+      },
+      "border": {
+        "color": {
+          "value": "{semantic.color.border.secondary}",
+          "type": "color"
+        },
+        "width": {
+          "value": "{core.borderWidth.1}",
+          "type": "borderWidth"
+        },
+        "radius": {
+          "value": "{core.borderRadius.lg}",
+          "type": "borderRadius"
+        }
+      },
+      "padding": {
+        "value": "{core.spacing.6}",
+        "type": "spacing"
+      },
+      "shadow": {
+        "value": "{core.boxShadow.md}",
+        "type": "boxShadow"
+      }
+    },
+    "input": {
+      "background": {
+        "default": {
+          "value": "{semantic.color.surface.primary}",
+          "type": "color"
+        },
+        "focus": {
+          "value": "{semantic.color.surface.primary}",
+          "type": "color"
+        },
+        "disabled": {
+          "value": "{semantic.color.background.tertiary}",
+          "type": "color"
+        }
+      },
+      "text": {
+        "default": {
+          "value": "{semantic.color.text.primary}",
+          "type": "color"
+        },
+        "placeholder": {
+          "value": "{semantic.color.text.tertiary}",
+          "type": "color"
+        },
+        "disabled": {
+          "value": "{semantic.color.text.tertiary}",
+          "type": "color"
+        }
+      },
+      "border": {
+        "color": {
+          "default": {
+            "value": "{semantic.color.border.primary}",
+            "type": "color"
+          },
+          "focus": {
+            "value": "{semantic.color.border.focus}",
+            "type": "color"
+          },
+          "error": {
+            "value": "{semantic.color.feedback.error}",
+            "type": "color"
+          }
+        },
+        "width": {
+          "value": "{core.borderWidth.1}",
+          "type": "borderWidth"
+        },
+        "radius": {
+          "value": "{core.borderRadius.md}",
+          "type": "borderRadius"
+        }
+      },
+      "padding": {
+        "vertical": {
+          "value": "{core.spacing.3}",
+          "type": "spacing"
+        },
+        "horizontal": {
+          "value": "{core.spacing.4}",
+          "type": "spacing"
+        }
+      }
+    },
+    "navigation": {
+      "background": {
+        "value": "{semantic.color.surface.primary}",
+        "type": "color"
+      },
+      "border": {
+        "color": {
+          "value": "{semantic.color.border.secondary}",
+          "type": "color"
+        },
+        "width": {
+          "value": "{core.borderWidth.1}",
+          "type": "borderWidth"
+        }
+      },
+      "link": {
+        "text": {
+          "default": {
+            "value": "{semantic.color.text.secondary}",
+            "type": "color"
+          },
+          "hover": {
+            "value": "{semantic.color.text.primary}",
+            "type": "color"
+          },
+          "active": {
+            "value": "{semantic.color.interactive.primary.default}",
+            "type": "color"
+          }
+        },
+        "background": {
+          "hover": {
+            "value": "{semantic.color.background.tertiary}",
+            "type": "color"
+          },
+          "active": {
+            "value": "{semantic.color.interactive.secondary.default}",
+            "type": "color"
+          }
+        }
+      },
+      "padding": {
+        "vertical": {
+          "value": "{core.spacing.4}",
+          "type": "spacing"
+        },
+        "horizontal": {
+          "value": "{core.spacing.6}",
+          "type": "spacing"
+        }
+      }
+    }
+  },
+  "accessibility": {
+    "contrast": {
+      "aa": {
+        "normal": {
+          "value": "4.5",
+          "type": "other",
+          "description": "WCAG AA minimum contrast ratio for normal text"
+        },
+        "large": {
+          "value": "3",
+          "type": "other",
+          "description": "WCAG AA minimum contrast ratio for large text"
+        }
+      },
+      "aaa": {
+        "normal": {
+          "value": "7",
+          "type": "other",
+          "description": "WCAG AAA minimum contrast ratio for normal text"
+        },
+        "large": {
+          "value": "4.5",
+          "type": "other",
+          "description": "WCAG AAA minimum contrast ratio for large text"
+        }
+      }
+    },
+    "focusRing": {
+      "color": {
+        "value": "{semantic.color.border.focus}",
+        "type": "color"
+      },
+      "width": {
+        "value": "2px",
+        "type": "borderWidth"
+      },
+      "offset": {
+        "value": "2px",
+        "type": "spacing"
+      },
+      "style": {
+        "value": "solid",
+        "type": "other"
+      }
+    },
+    "touchTarget": {
+      "minimum": {
+        "value": "44px",
+        "type": "sizing",
+        "description": "Minimum touch target size for accessibility"
+      }
+    }
+  }
+}
