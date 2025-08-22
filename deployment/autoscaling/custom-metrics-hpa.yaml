@@ -24,7 +24,7 @@ spec:
       target:
         type: Utilization
         averageUtilization: 70
-  
+
   # Memory utilization
   - type: Resource
     resource:
@@ -32,7 +32,7 @@ spec:
       target:
         type: Utilization
         averageUtilization: 80
-  
+
   # Custom metric: Active agent connections
   - type: Pods
     pods:
@@ -41,7 +41,7 @@ spec:
       target:
         type: AverageValue
         averageValue: "100"
-  
+
   # Custom metric: Request rate per pod
   - type: Pods
     pods:
@@ -50,7 +50,7 @@ spec:
       target:
         type: AverageValue
         averageValue: "50"
-  
+
   # Custom metric: Queue depth (for scaling based on work backlog)
   - type: Object
     object:
@@ -63,7 +63,7 @@ spec:
       target:
         type: Value
         value: "1000"
-  
+
   # Custom metric: Response time p99
   - type: Pods
     pods:
@@ -72,7 +72,7 @@ spec:
       target:
         type: AverageValue
         averageValue: "0.5"
-  
+
   behavior:
     scaleDown:
       stabilizationWindowSeconds: 300
@@ -118,7 +118,7 @@ spec:
       target:
         type: Utilization
         averageUtilization: 80
-  
+
   # Memory utilization
   - type: Resource
     resource:
@@ -126,7 +126,7 @@ spec:
       target:
         type: Utilization
         averageUtilization: 85
-  
+
   # Custom metric: Celery queue length
   - type: Object
     object:
@@ -139,7 +139,7 @@ spec:
       target:
         type: Value
         value: "50"
-  
+
   # Custom metric: Task processing rate
   - type: Pods
     pods:
@@ -148,7 +148,7 @@ spec:
       target:
         type: AverageValue
         averageValue: "30"
-  
+
   # Custom metric: Failed task rate
   - type: Pods
     pods:
@@ -157,7 +157,7 @@ spec:
       target:
         type: AverageValue
         averageValue: "0.05"  # 5% failure rate threshold
-  
+
   behavior:
     scaleDown:
       stabilizationWindowSeconds: 600  # Longer stabilization for workers
@@ -203,7 +203,7 @@ spec:
       target:
         type: Utilization
         averageUtilization: 60
-  
+
   # Memory utilization
   - type: Resource
     resource:
@@ -211,7 +211,7 @@ spec:
       target:
         type: Utilization
         averageUtilization: 70
-  
+
   # Custom metric: HTTP requests per second
   - type: Pods
     pods:
@@ -220,7 +220,7 @@ spec:
       target:
         type: AverageValue
         averageValue: "100"
-  
+
   # Custom metric: Active connections
   - type: Pods
     pods:
@@ -229,7 +229,7 @@ spec:
       target:
         type: AverageValue
         averageValue: "50"
-  
+
   behavior:
     scaleDown:
       stabilizationWindowSeconds: 300

@@ -13,14 +13,14 @@ spec:
   acme:
     # Production Let's Encrypt server
     server: https://acme-v02.api.letsencrypt.org/directory
-    
+
     # Email for notifications
     email: admin@candlefish.ai
-    
+
     # Private key secret name
     privateKeySecretRef:
       name: letsencrypt-prod
-    
+
     # Solvers for domain validation
     solvers:
     # HTTP-01 challenge for standard domains
@@ -31,7 +31,7 @@ spec:
             spec:
               nodeSelector:
                 "kubernetes.io/os": linux
-    
+
     # DNS-01 challenge for wildcard certificates
     - dns01:
         route53:
@@ -57,14 +57,14 @@ spec:
   acme:
     # Staging Let's Encrypt server
     server: https://acme-staging-v02.api.letsencrypt.org/directory
-    
+
     # Email for notifications
     email: admin@candlefish.ai
-    
+
     # Private key secret name
     privateKeySecretRef:
       name: letsencrypt-staging
-    
+
     # Solvers for domain validation
     solvers:
     - http01:
@@ -325,22 +325,22 @@ spec:
             - -c
             - |
               echo "Checking certificate status..."
-              
+
               # Check all certificates in rtpm-system namespace
               kubectl get certificates -n rtpm-system -o json | jq -r '
-                .items[] | 
+                .items[] |
                 select(.status.conditions[]?.type == "Ready" and .status.conditions[]?.status == "False") |
                 "Certificate \(.metadata.name) is not ready: \(.status.conditions[]?.message)"
               '
-              
+
               # Check expiration dates
               kubectl get certificates -n rtpm-system -o json | jq -r '
-                .items[] | 
+                .items[] |
                 select(.status.notAfter) |
                 select((now + 30*24*3600) > (.status.notAfter | fromdateiso8601)) |
                 "Certificate \(.metadata.name) expires soon: \(.status.notAfter)"
               '
-              
+
               echo "Certificate check completed"
           restartPolicy: OnFailure
       successfulJobsHistoryLimit: 3

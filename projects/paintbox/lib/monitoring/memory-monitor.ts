@@ -52,19 +52,19 @@ class MemoryMonitor extends EventEmitter {
   private lastGC = Date.now();
   private gcCount = 0;
   private memoryTrend: 'stable' | 'increasing' | 'decreasing' = 'stable';
-  
+
   private constructor() {
     super();
     this.setupGCTracking();
   }
-  
+
   static getInstance(): MemoryMonitor {
     if (!MemoryMonitor.instance) {
       MemoryMonitor.instance = new MemoryMonitor();
     }
     return MemoryMonitor.instance;
   }
-  
+
   private setupGCTracking() {
     if (global.gc) {
       // Track manual GC calls
@@ -77,47 +77,47 @@ class MemoryMonitor extends EventEmitter {
       };
     }
   }
-  
+
   startMonitoring(intervalMs = 10000) {
     if (this.isMonitoring) {
       console.log('[Memory Monitor] Already monitoring');
       return;
     }
-    
+
     this.isMonitoring = true;
     console.log('[Memory Monitor] Starting real-time monitoring');
-    
+
     // Initial measurement
     this.collectMetrics();
-    
+
     // Regular monitoring
     this.monitoringInterval = setInterval(() => {
       this.collectMetrics();
       this.analyzeMetrics();
       this.checkThresholds();
     }, intervalMs);
-    
+
     // Emergency check every second when memory is high
     this.startEmergencyMonitoring();
   }
-  
+
   stopMonitoring() {
     if (!this.isMonitoring) return;
-    
+
     this.isMonitoring = false;
-    
+
     if (this.monitoringInterval) {
       clearInterval(this.monitoringInterval);
       this.monitoringInterval = null;
     }
-    
+
     console.log('[Memory Monitor] Stopped monitoring');
   }
-  
+
   private collectMetrics(): MemoryMetrics {
     const memUsage = process.memoryUsage();
     const heapStats = v8.getHeapStatistics();
-    
+
     const metrics: MemoryMetrics = {
       timestamp: Date.now(),
       heapUsed: memUsage.heapUsed,
@@ -135,30 +135,30 @@ class MemoryMonitor extends EventEmitter {
         numberOfDetachedContexts: heapStats.number_of_detached_contexts,
       },
     };
-    
+
     // Keep only last 100 metrics
     this.metrics.push(metrics);
     if (this.metrics.length > 100) {
       this.metrics.shift();
     }
-    
+
     this.emit('metrics', metrics);
-    
+
     return metrics;
   }
-  
+
   private analyzeMetrics() {
     if (this.metrics.length < 5) return;
-    
+
     // Calculate trend over last 5 measurements
     const recent = this.metrics.slice(-5);
     const trend = this.calculateTrend(recent);
-    
+
     if (trend !== this.memoryTrend) {
       this.memoryTrend = trend;
       this.emit('trend', { trend, metrics: recent });
     }
-    
+
     // Detect memory leaks
     if (this.detectMemoryLeak()) {
       this.emit('leak', {
@@ -167,45 +167,45 @@ class MemoryMonitor extends EventEmitter {
       });
     }
   }
-  
+
   private calculateTrend(metrics: MemoryMetrics[]): 'stable' | 'increasing' | 'decreasing' {
     const values = metrics.map(m => m.heapUsed);
     const avgIncrease = values.reduce((acc, val, idx) => {
       if (idx === 0) return 0;
       return acc + (val - values[idx - 1]);
     }, 0) / (values.length - 1);
-    
+
     const threshold = 1024 * 1024; // 1MB
-    
+
     if (avgIncrease > threshold) return 'increasing';
     if (avgIncrease < -threshold) return 'decreasing';
     return 'stable';
   }
-  
+
   private detectMemoryLeak(): boolean {
     if (this.metrics.length < 10) return false;
-    
+
     const recent = this.metrics.slice(-10);
     const oldestHeap = recent[0].heapUsed;
     const newestHeap = recent[recent.length - 1].heapUsed;
-    
+
     // Check for consistent growth
     const growth = newestHeap - oldestHeap;
     const growthPercentage = (growth / oldestHeap) * 100;
-    
+
     // Check for detached contexts (sign of memory leak)
     const latestV8Stats = recent[recent.length - 1].v8Stats;
     const hasDetachedContexts = latestV8Stats && latestV8Stats.numberOfDetachedContexts > 5;
-    
+
     return growthPercentage > 20 || hasDetachedContexts;
   }
-  
+
   private checkThresholds() {
     const latest = this.metrics[this.metrics.length - 1];
     if (!latest) return;
-    
+
     const percentage = latest.heapPercentage;
-    
+
     if (percentage >= this.thresholds.emergency) {
       this.handleEmergency(latest);
     } else if (percentage >= this.thresholds.critical) {
@@ -214,7 +214,7 @@ class MemoryMonitor extends EventEmitter {
       this.handleWarning(latest);
     }
   }
-  
+
   private handleWarning(metrics: MemoryMetrics) {
     const alert: MemoryAlert = {
       level: 'warning',
@@ -226,11 +226,11 @@ class MemoryMonitor extends EventEmitter {
         'Preparing for cleanup if needed',
       ],
     };
-    
+
     this.emit('alert', alert);
     console.warn('[Memory Monitor]', alert.message);
   }
-  
+
   private handleCritical(metrics: MemoryMetrics) {
     const alert: MemoryAlert = {
       level: 'critical',
@@ -243,14 +243,14 @@ class MemoryMonitor extends EventEmitter {
         'Forcing garbage collection',
       ],
     };
-    
+
     this.emit('alert', alert);
     console.error('[Memory Monitor]', alert.message);
-    
+
     // Trigger automatic optimizations
     this.performCriticalOptimizations();
   }
-  
+
   private handleEmergency(metrics: MemoryMetrics) {
     const alert: MemoryAlert = {
       level: 'emergency',
@@ -264,44 +264,44 @@ class MemoryMonitor extends EventEmitter {
         'Forcing aggressive GC',
       ],
     };
-    
+
     this.emit('alert', alert);
     console.error('[Memory Monitor] EMERGENCY:', alert.message);
-    
+
     // Trigger emergency optimizations
     this.performEmergencyOptimizations();
   }
-  
+
   private performCriticalOptimizations() {
     // Emit events for other systems to respond
     this.emit('optimize', { level: 'critical' });
-    
+
     // Force garbage collection if available
     if (global.gc) {
       global.gc();
     }
   }
-  
+
   private performEmergencyOptimizations() {
     // Emit emergency optimization event
     this.emit('optimize', { level: 'emergency' });
-    
+
     // Aggressive garbage collection
     if (global.gc) {
       global.gc();
       global.gc(); // Double GC for thorough cleanup
     }
-    
+
     // Clear require cache for non-essential modules
     this.clearModuleCache();
   }
-  
+
   private clearModuleCache() {
     const keysToDelete: string[] = [];
-    
+
     for (const key in require.cache) {
       // Keep essential modules
-      if (!key.includes('node_modules') || 
+      if (!key.includes('node_modules') ||
           key.includes('@prisma') ||
           key.includes('next') ||
           key.includes('react')) {
@@ -309,12 +309,12 @@ class MemoryMonitor extends EventEmitter {
       }
       keysToDelete.push(key);
     }
-    
+
     keysToDelete.forEach(key => delete require.cache[key]);
-    
+
     console.log(`[Memory Monitor] Cleared ${keysToDelete.length} cached modules`);
   }
-  
+
   private startEmergencyMonitoring() {
     setInterval(() => {
       const latest = this.metrics[this.metrics.length - 1];
@@ -325,19 +325,19 @@ class MemoryMonitor extends EventEmitter {
       }
     }, 1000);
   }
-  
+
   getMetrics(): MemoryMetrics[] {
     return [...this.metrics];
   }
-  
+
   getCurrentMetrics(): MemoryMetrics | null {
     return this.metrics[this.metrics.length - 1] || null;
   }
-  
+
   getMemoryReport() {
     const current = this.getCurrentMetrics();
     if (!current) return null;
-    
+
     return {
       current: {
         heapUsedMB: Math.round(current.heapUsed / 1024 / 1024),
@@ -355,11 +355,11 @@ class MemoryMonitor extends EventEmitter {
       recommendations: this.getRecommendations(current),
     };
   }
-  
+
   private getRecommendations(metrics: MemoryMetrics): string[] {
     const recommendations: string[] = [];
     const percentage = metrics.heapPercentage;
-    
+
     if (percentage > 90) {
       recommendations.push('Immediate action required: Restart application or scale horizontally');
     } else if (percentage > 80) {
@@ -369,18 +369,18 @@ class MemoryMonitor extends EventEmitter {
       recommendations.push('Monitor closely and prepare for optimization');
       recommendations.push('Review recent changes for memory inefficiencies');
     }
-    
+
     if (metrics.v8Stats && metrics.v8Stats.numberOfDetachedContexts > 3) {
       recommendations.push('Memory leak suspected: Review event listeners and closures');
     }
-    
+
     if (this.memoryTrend === 'increasing') {
       recommendations.push('Memory usage trending upward - investigate cause');
     }
-    
+
     return recommendations;
   }
-  
+
   // API endpoint data
   toJSON() {
     return {

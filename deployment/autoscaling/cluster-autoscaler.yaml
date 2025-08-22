@@ -312,7 +312,7 @@ data:
           node-type: "general"
           workload: "general"
         taints: []
-        
+
       - name: workers
         minSize: 2
         maxSize: 50
@@ -322,7 +322,7 @@ data:
           node-type: "workers"
           workload: "compute"
         taints: []
-        
+
       - name: database
         minSize: 2
         maxSize: 6

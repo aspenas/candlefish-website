@@ -76,7 +76,7 @@ export const options = {
       duration: '2m',
       tags: { test_type: 'baseline' },
     },
-    
+
     // Stress test - gradually increase load
     stress_test: {
       executor: 'ramping-vus',
@@ -90,7 +90,7 @@ export const options = {
       ],
       tags: { test_type: 'stress' },
     },
-    
+
     // Spike test - sudden traffic increase
     spike_test: {
       executor: 'ramping-vus',
@@ -104,7 +104,7 @@ export const options = {
       ],
       tags: { test_type: 'spike' },
     },
-    
+
     // Soak test - extended duration
     soak_test: {
       executor: 'constant-vus',
@@ -112,7 +112,7 @@ export const options = {
       duration: '10m',
       tags: { test_type: 'soak' },
     },
-    
+
     // WebSocket load test
     websocket_load: {
       executor: 'constant-vus',
@@ -121,7 +121,7 @@ export const options = {
       tags: { test_type: 'websocket' },
     },
   },
-  
+
   thresholds: {
     http_req_duration: ['p(95)<500'], // 95% of requests under 500ms
     http_req_failed: ['rate<0.01'],   // Less than 1% errors
@@ -132,7 +132,7 @@ export const options = {
 
 export default function () {
   const testType = __ENV.K6_TEST_TYPE || 'mixed';
-  
+
   switch (testType) {
     case 'api_only':
       testAPIEndpoints();
@@ -150,7 +150,7 @@ export default function () {
 
 function testAPIEndpoints() {
   group('API Endpoint Tests', () => {
-    
+
     // Health check
     group('Health Check', () => {
       const response = http.get(`${BASE_URL}/health`);
@@ -165,7 +165,7 @@ function testAPIEndpoints() {
       errorRate.add(response.status !== 200);
       responseTime.add(response.timings.duration);
     });
-    
+
     // System status
     group('System Status', () => {
       const response = http.get(`${BASE_URL}/api/v1/status`);
@@ -176,7 +176,7 @@ function testAPIEndpoints() {
       errorRate.add(response.status !== 200);
       responseTime.add(response.timings.duration);
     });
-    
+
     // Current metrics
     group('Current Metrics', () => {
       const response = http.get(`${BASE_URL}/api/v1/metrics/current`);
@@ -191,7 +191,7 @@ function testAPIEndpoints() {
       errorRate.add(response.status !== 200);
       responseTime.add(response.timings.duration);
     });
-    
+
     // Prometheus metrics
     group('Prometheus Metrics', () => {
       const response = http.get(`${BASE_URL}/metrics`);
@@ -199,30 +199,30 @@ function testAPIEndpoints() {
         'prometheus metrics returns 200': (r) => r.status === 200,
         'prometheus metrics response time < 500ms': (r) => r.timings.duration < 500,
         'prometheus metrics contains expected metrics': (r) => {
-          return r.body.includes('rtmp_request_total') && 
+          return r.body.includes('rtmp_request_total') &&
                  r.body.includes('rtmp_request_latency_seconds');
         },
       });
       errorRate.add(response.status !== 200);
       responseTime.add(response.timings.duration);
     });
-    
+
   });
-  
+
   sleep(1);
 }
 
 function testWebSocketConnections() {
   group('WebSocket Tests', () => {
-    
+
     const url = `${WS_URL}/ws/metrics`;
     const response = ws.connect(url, {}, function (socket) {
       websocketConnections.add(1);
-      
+
       socket.on('open', () => {
         console.log('WebSocket connection opened');
       });
-      
+
       socket.on('message', (data) => {
         const message = JSON.parse(data);
         check(message, {
@@ -230,39 +230,39 @@ function testWebSocketConnections() {
           'WebSocket message has timestamp': (msg) => msg.timestamp !== undefined,
         });
       });
-      
+
       socket.on('error', (e) => {
         console.log('WebSocket error:', e);
         errorRate.add(1);
       });
-      
+
       // Keep connection open for a while
       socket.setTimeout(() => {
         socket.close();
       }, Math.random() * 10000 + 5000); // 5-15 seconds
-      
+
     });
-    
+
     check(response, {
       'WebSocket connection successful': (r) => r && r.url === url,
     });
-    
+
   });
 }
 
 function testMetricsIngestion() {
   group('Metrics Ingestion', () => {
-    
+
     // Generate multiple metrics for different agents
     const agents = Array.from({ length: 10 }, () => generateAgent());
-    
+
     agents.forEach(agent => {
       const metrics = generateMetrics(agent.id);
-      
+
       const response = http.post(`${BASE_URL}/api/v1/metrics`, JSON.stringify(metrics), {
         headers: { 'Content-Type': 'application/json' },
       });
-      
+
       check(response, {
         'metrics ingestion returns 200': (r) => r.status === 200,
         'metrics ingestion response time < 100ms': (r) => r.timings.duration < 100,
@@ -271,23 +271,23 @@ function testMetricsIngestion() {
           return body.status === 'success';
         },
       });
-      
+
       errorRate.add(response.status !== 200);
       responseTime.add(response.timings.duration);
-      
+
       if (response.status === 200) {
         metricsIngested.add(1);
       }
     });
-    
+
   });
-  
+
   sleep(0.5);
 }
 
 function testMixedWorkload() {
   const workloadType = Math.random();
-  
+
   if (workloadType < 0.4) {
     testAPIEndpoints();
   } else if (workloadType < 0.7) {
@@ -300,127 +300,127 @@ function testMixedWorkload() {
 // Agent management load tests
 export function testAgentManagement() {
   group('Agent Management Load', () => {
-    
+
     const agent = generateAgent();
-    
+
     // Create agent
     group('Create Agent', () => {
       const response = http.post(`${BASE_URL}/api/v1/agents`, JSON.stringify(agent), {
         headers: { 'Content-Type': 'application/json' },
       });
-      
+
       check(response, {
         'agent creation handled': (r) => r.status === 201 || r.status === 404, // 404 if not implemented
       });
-      
+
       errorRate.add(response.status >= 400 && response.status !== 404);
       responseTime.add(response.timings.duration);
     });
-    
+
     // Get agent
     group('Get Agent', () => {
       const response = http.get(`${BASE_URL}/api/v1/agents/${agent.id}`);
-      
+
       check(response, {
         'agent retrieval handled': (r) => r.status === 200 || r.status === 404,
       });
-      
+
       errorRate.add(response.status >= 400 && response.status !== 404);
       responseTime.add(response.timings.duration);
     });
-    
+
     // List agents
     group('List Agents', () => {
       const response = http.get(`${BASE_URL}/api/v1/agents`);
-      
+
       check(response, {
         'agent listing handled': (r) => r.status === 200 || r.status === 404,
       });
-      
+
       errorRate.add(response.status >= 400 && response.status !== 404);
       responseTime.add(response.timings.duration);
     });
-    
+
   });
 }
 
 // Alert management load tests
 export function testAlertManagement() {
   group('Alert Management Load', () => {
-    
+
     const alert = generateAlert();
-    
+
     // Create alert
     group('Create Alert', () => {
       const response = http.post(`${BASE_URL}/api/v1/alerts`, JSON.stringify(alert), {
         headers: { 'Content-Type': 'application/json' },
       });
-      
+
       check(response, {
         'alert creation handled': (r) => r.status === 201 || r.status === 404,
       });
-      
+
       errorRate.add(response.status >= 400 && response.status !== 404);
       responseTime.add(response.timings.duration);
     });
-    
+
     // List alerts
     group('List Alerts', () => {
       const response = http.get(`${BASE_URL}/api/v1/alerts`);
-      
+
       check(response, {
         'alert listing handled': (r) => r.status === 200 || r.status === 404,
       });
-      
+
       errorRate.add(response.status >= 400 && response.status !== 404);
       responseTime.add(response.timings.duration);
     });
-    
+
   });
 }
 
 // Historical metrics load test
 export function testHistoricalMetrics() {
   group('Historical Metrics Load', () => {
-    
+
     const endTime = new Date();
     const startTime = new Date(endTime.getTime() - 24 * 60 * 60 * 1000); // 24 hours ago
-    
+
     const params = {
       startTime: startTime.toISOString(),
       endTime: endTime.toISOString(),
       interval: '1h'
     };
-    
+
     const url = `${BASE_URL}/api/v1/metrics/historical?${Object.keys(params).map(key => `${key}=${encodeURIComponent(params[key])}`).join('&')}`;
-    
+
     const response = http.get(url);
-    
+
     check(response, {
       'historical metrics request handled': (r) => r.status === 200 || r.status === 404,
       'historical metrics response time acceptable': (r) => r.timings.duration < 2000, // 2 seconds for large dataset
     });
-    
+
     errorRate.add(response.status >= 400 && response.status !== 404);
     responseTime.add(response.timings.duration);
-    
+
   });
 }
 
 // Real-time metrics load test
 export function testRealtimeMetrics() {
   group('Real-time Metrics Load', () => {
-    
+
     const response = http.get(`${BASE_URL}/api/v1/metrics/realtime`);
-    
+
     check(response, {
       'realtime metrics request handled': (r) => r.status === 200 || r.status === 404,
       'realtime metrics response time fast': (r) => r.timings.duration < 500, // Should be fast
     });
-    
+
     errorRate.add(response.status >= 400 && response.status !== 404);
     responseTime.add(response.timings.duration);
-    
+
   });
 }
 
@@ -429,11 +429,11 @@ export function setup() {
   console.log('Starting RTPM API load tests...');
   console.log(`Base URL: ${BASE_URL}`);
   console.log(`WebSocket URL: ${WS_URL}`);
-  
+
   // Warm up the service
   const warmupResponse = http.get(`${BASE_URL}/health`);
   console.log(`Warmup response: ${warmupResponse.status}`);
-  
+
   return { startTime: new Date() };
 }
 

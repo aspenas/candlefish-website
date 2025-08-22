@@ -304,13 +304,13 @@ jobs:
         # Update image tags in manifests
         sed -i "s|rtpm-api:latest|${{ needs.api-test-build.outputs.api-image-tag }}|g" deployment/k8s/*.yaml
         sed -i "s|rtpm-frontend:latest|${{ needs.frontend-test-build.outputs.frontend-image-tag }}|g" deployment/k8s/*.yaml
-        
+
         # Create staging namespace if it doesn't exist
         kubectl create namespace rtpm-staging --dry-run=client -o yaml | kubectl apply -f -
-        
+
         # Apply staging configurations
         kubectl apply -f deployment/k8s/ -n rtpm-staging
-        
+
         # Wait for deployment to complete
         kubectl rollout status deployment/rtpm-api -n rtpm-staging --timeout=300s
         kubectl rollout status deployment/rtpm-frontend -n rtpm-staging --timeout=300s
@@ -320,10 +320,10 @@ jobs:
       run: |
         # Wait for services to be ready
         kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=api -n rtpm-staging --timeout=300s
-        
+
         # Get staging endpoint
         STAGING_API_URL=$(kubectl get service rtpm-api-service -n rtmp-staging -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-        
+
         # Run basic smoke tests
         curl -f http://${STAGING_API_URL}:8000/health || exit 1
         curl -f http://${STAGING_API_URL}:8000/metrics || exit 1
@@ -364,19 +364,19 @@ jobs:
       run: |
         # Create production namespace if it doesn't exist
         kubectl create namespace rtpm-system --dry-run=client -o yaml | kubectl apply -f -
-        
+
         # Update image tags in manifests
         sed -i "s|rtpm-api:latest|${{ needs.api-test-build.outputs.api-image-tag }}|g" deployment/k8s/*.yaml
         sed -i "s|rtpm-frontend:latest|${{ needs.frontend-test-build.outputs.frontend-image-tag }}|g" deployment/k8s/*.yaml
-        
+
         # Deploy new version (green)
         kubectl apply -f deployment/k8s/ -n rtpm-system
-        
+
         # Wait for green deployment to be ready
         kubectl rollout status deployment/rtpm-api -n rtpm-system --timeout=600s
         kubectl rollout status deployment/rtpm-frontend -n rtpm-system --timeout=600s
         kubectl rollout status deployment/rtpm-celery-worker -n rtpm-system --timeout=600s
-        
+
         # Health check on green deployment
         kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=api -n rtpm-system --timeout=300s
 
@@ -384,14 +384,14 @@ jobs:
       run: |
         # Wait for load balancer to be ready
         sleep 60
-        
+
         # Get production endpoint
         PROD_API_URL=$(kubectl get ingress rtpm-ingress -n rtpm-system -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-        
+
         # Run comprehensive smoke tests
         curl -f https://${PROD_API_URL}/health || exit 1
         curl -f https://${PROD_API_URL}/metrics || exit 1
-        
+
         # Test WebSocket connection
         curl -f https://${PROD_API_URL}/ws/health || exit 1
 
@@ -450,7 +450,7 @@ jobs:
         kubectl rollout undo deployment/rtpm-api -n rtpm-system
         kubectl rollout undo deployment/rtpm-frontend -n rtpm-system
         kubectl rollout undo deployment/rtpm-celery-worker -n rtpm-system
-        
+
         # Wait for rollback to complete
         kubectl rollout status deployment/rtpm-api -n rtpm-system --timeout=300s
         kubectl rollout status deployment/rtpm-frontend -n rtpm-system --timeout=300s

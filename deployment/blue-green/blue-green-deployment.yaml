@@ -16,13 +16,13 @@ spec:
       # Service names for blue/green environments
       activeService: rtpm-api-service-active
       previewService: rtpm-api-service-preview
-      
+
       # Auto-promotion after successful pre-promotion analysis
       autoPromotionEnabled: false
-      
+
       # Scale down the old ReplicaSet after promotion
       scaleDownDelaySeconds: 30
-      
+
       # Pre-promotion analysis
       prePromotionAnalysis:
         templates:
@@ -34,7 +34,7 @@ spec:
           value: rtmp-api-service-preview
         - name: namespace
           value: rtpm-system
-      
+
       # Post-promotion analysis
       postPromotionAnalysis:
         templates:
@@ -44,10 +44,10 @@ spec:
           value: rtpm-api-service-active
         - name: namespace
           value: rtpm-system
-      
+
       # Preview replica count
       previewReplicaCount: 3
-      
+
       # Anti-affinity for blue/green pods
       antiAffinity:
         requiredDuringSchedulingIgnoredDuringExecution: {}
@@ -60,13 +60,13 @@ spec:
                 operator: In
                 values: ["rtpm"]
             topologyKey: kubernetes.io/hostname
-  
+
   selector:
     matchLabels:
       app.kubernetes.io/name: rtpm
       app.kubernetes.io/component: api
       app.kubernetes.io/instance: rtpm-api
-  
+
   template:
     metadata:
       labels:
@@ -213,7 +213,7 @@ spec:
                   cat <<EOF > /tmp/test.js
                   import http from 'k6/http';
                   import { check, sleep } from 'k6';
-                  
+
                   export let options = {
                     stages: [
                       { duration: '30s', target: 20 },
@@ -225,7 +225,7 @@ spec:
                       http_req_failed: ['rate<0.05'],
                     },
                   };
-                  
+
                   export default function () {
                     let response = http.get('http://{{args.service-name}}.{{args.namespace}}.svc.cluster.local:8000/health');
                     check(response, {
@@ -267,13 +267,13 @@ spec:
                   # Test API endpoints
                   echo "Testing health endpoint..."
                   curl -f http://{{args.service-name}}.{{args.namespace}}.svc.cluster.local:8000/health || exit 1
-                  
+
                   echo "Testing metrics endpoint..."
                   curl -f http://{{args.service-name}}.{{args.namespace}}.svc.cluster.local:8000/metrics || exit 1
-                  
+
                   echo "Testing agents endpoint..."
                   curl -f -X GET http://{{args.service-name}}.{{args.namespace}}.svc.cluster.local:8000/api/v1/agents || exit 1
-                  
+
                   echo "All integration tests passed!"
               restartPolicy: Never
     successCondition: "result.status == 'Succeeded'"
@@ -301,7 +301,7 @@ spec:
     interval: 30s
     count: 10
     failureLimit: 3
-  
+
   - name: response-time
     provider:
       prometheus:
@@ -314,7 +314,7 @@ spec:
     interval: 30s
     count: 10
     failureLimit: 3
-  
+
   - name: cpu-usage
     provider:
       prometheus:
@@ -352,13 +352,13 @@ spec:
           value: rtpm-frontend-service-preview
         - name: namespace
           value: rtpm-system
-  
+
   selector:
     matchLabels:
       app.kubernetes.io/name: rtpm
       app.kubernetes.io/component: frontend
       app.kubernetes.io/instance: rtpm-frontend
-  
+
   template:
     metadata:
       labels:
@@ -483,21 +483,21 @@ spec:
                 - |
                   npm init -y
                   npm install @playwright/test
-                  
+
                   cat <<EOF > test.spec.js
                   const { test, expect } = require('@playwright/test');
-                  
+
                   test('homepage loads', async ({ page }) => {
                     await page.goto('http://{{args.service-name}}.{{args.namespace}}.svc.cluster.local');
                     await expect(page).toHaveTitle(/RTPM/);
                   });
-                  
+
                   test('dashboard loads', async ({ page }) => {
                     await page.goto('http://{{args.service-name}}.{{args.namespace}}.svc.cluster.local/dashboard');
                     await expect(page.locator('text=Dashboard')).toBeVisible();
                   });
                   EOF
-                  
+
                   npx playwright test --reporter=list
               restartPolicy: Never
     successCondition: "result.status == 'Succeeded'"

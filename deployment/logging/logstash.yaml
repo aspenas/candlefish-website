@@ -124,7 +124,7 @@ data:
         codec => json
       }
     }
-  
+
   10-filter-kubernetes.conf: |
     filter {
       if [kubernetes] {
@@ -135,7 +135,7 @@ data:
           add_field => { "k8s_container" => "%{[kubernetes][container][name]}" }
           add_field => { "k8s_node" => "%{[kubernetes][node][name]}" }
         }
-        
+
         # Add service identification
         if [k8s_container] == "api" {
           mutate { add_field => { "service" => "rtpm-api" } }
@@ -150,7 +150,7 @@ data:
         }
       }
     }
-  
+
   20-filter-rtpm-api.conf: |
     filter {
       if [service] == "rtpm-api" {
@@ -160,28 +160,28 @@ data:
             source => "message"
           }
         }
-        
+
         # Parse access logs
         if [message] =~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/ {
           grok {
-            match => { 
-              "message" => "%{COMBINEDAPACHELOG}" 
+            match => {
+              "message" => "%{COMBINEDAPACHELOG}"
             }
           }
-          
+
           # Convert response time to number
           if [response] {
             mutate {
               convert => { "response" => "integer" }
             }
           }
-          
+
           # Parse timestamp
           date {
             match => [ "timestamp", "dd/MMM/yyyy:HH:mm:ss Z" ]
           }
         }
-        
+
         # Add severity levels
         if [level] {
           if [level] == "ERROR" or [level] == "CRITICAL" {
@@ -194,57 +194,57 @@ data:
         }
       }
     }
-  
+
   21-filter-celery.conf: |
     filter {
       if [service] == "celery-worker" {
         # Parse Celery logs
         grok {
-          match => { 
-            "message" => "\[%{TIMESTAMP_ISO8601:timestamp}\] %{WORD:level}: %{GREEDYDATA:celery_message}" 
+          match => {
+            "message" => "\[%{TIMESTAMP_ISO8601:timestamp}\] %{WORD:level}: %{GREEDYDATA:celery_message}"
           }
         }
-        
+
         # Extract task information
         if [celery_message] =~ /Task/ {
           grok {
-            match => { 
-              "celery_message" => "Task %{DATA:task_name}\[%{DATA:task_id}\]" 
+            match => {
+              "celery_message" => "Task %{DATA:task_name}\[%{DATA:task_id}\]"
             }
           }
         }
-        
+
         # Parse timestamp
         date {
           match => [ "timestamp", "yyyy-MM-dd HH:mm:ss,SSS" ]
         }
       }
     }
-  
+
   22-filter-database.conf: |
     filter {
       if [service] == "timescaledb" {
         # Parse PostgreSQL logs
         grok {
-          match => { 
-            "message" => "%{TIMESTAMP_ISO8601:timestamp} \[%{NUMBER:pid}\] %{WORD:level}:  %{GREEDYDATA:pg_message}" 
+          match => {
+            "message" => "%{TIMESTAMP_ISO8601:timestamp} \[%{NUMBER:pid}\] %{WORD:level}:  %{GREEDYDATA:pg_message}"
           }
         }
-        
+
         # Extract SQL statements
         if [pg_message] =~ /statement:/ {
           grok {
-            match => { 
-              "pg_message" => "statement: %{GREEDYDATA:sql_statement}" 
+            match => {
+              "pg_message" => "statement: %{GREEDYDATA:sql_statement}"
             }
           }
         }
-        
+
         # Extract duration
         if [pg_message] =~ /duration:/ {
           grok {
-            match => { 
-              "pg_message" => "duration: %{NUMBER:duration_ms} ms" 
+            match => {
+              "pg_message" => "duration: %{NUMBER:duration_ms} ms"
             }
           }
           mutate {
@@ -253,7 +253,7 @@ data:
         }
       }
     }
-  
+
   30-filter-enrichment.conf: |
     filter {
       # Add environment tag
@@ -261,7 +261,7 @@ data:
         add_field => { "environment" => "production" }
         add_field => { "application" => "rtpm" }
       }
-      
+
       # Parse user agents for frontend logs
       if [agent] {
         useragent {
@@ -269,7 +269,7 @@ data:
           target => "user_agent"
         }
       }
-      
+
       # GeoIP for client IPs
       if [clientip] {
         geoip {
@@ -277,7 +277,7 @@ data:
           target => "geoip"
         }
       }
-      
+
       # Add timestamp if not present
       if ![timestamp] {
         mutate {
@@ -285,7 +285,7 @@ data:
         }
       }
     }
-  
+
   90-output.conf: |
     output {
       # Send to Elasticsearch
@@ -295,10 +295,10 @@ data:
         password => "${ELASTICSEARCH_PASSWORD}"
         ssl => true
         ssl_certificate_verification => false
-        
+
         # Index strategy
         index => "rtpm-logs-%{service}-%{+YYYY.MM.dd}"
-        
+
         # Template management
         template_name => "rtpm-logs"
         template_pattern => "rtpm-logs-*"
@@ -326,7 +326,7 @@ data:
           }
         }
       }
-      
+
       # Debug output (optional)
       # stdout { codec => rubydebug }
     }
@@ -343,23 +343,23 @@ data:
   logstash.yml: |
     http.host: "0.0.0.0"
     http.port: 9600
-    
+
     # Pipeline settings
     pipeline.workers: 4
     pipeline.batch.size: 1000
     pipeline.batch.delay: 100
-    
+
     # Monitoring
     monitoring.enabled: true
     monitoring.elasticsearch.hosts: ["${ELASTICSEARCH_HOSTS}"]
     monitoring.elasticsearch.username: "${ELASTICSEARCH_USERNAME}"
     monitoring.elasticsearch.password: "${ELASTICSEARCH_PASSWORD}"
     monitoring.elasticsearch.ssl.verification_mode: none
-    
+
     # Logging
     log.level: info
     path.logs: /usr/share/logstash/logs
-    
+
     # Performance
     config.reload.automatic: false
     config.reload.interval: 3s

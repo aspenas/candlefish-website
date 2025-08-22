@@ -100,7 +100,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
-    
+
     services:
       postgres:
         image: postgres:15
@@ -307,7 +307,7 @@ jobs:
     needs: [setup, api-tests, dashboard-tests]
     runs-on: ubuntu-latest
     if: contains(fromJson(needs.setup.outputs.matrix).include[*].test-type, 'e2e')
-    
+
     services:
       postgres:
         image: postgres:15
@@ -393,7 +393,7 @@ jobs:
             echo "Waiting for API server... ($i/30)"
             sleep 2
           done
-          
+
           # Wait for frontend
           for i in {1..30}; do
             if curl -s http://localhost:5173 > /dev/null; then
@@ -435,7 +435,7 @@ jobs:
     needs: [setup, api-tests]
     runs-on: ubuntu-latest
     if: github.event.inputs.run_load_tests == 'true' || github.event_name == 'schedule' || contains(fromJson(needs.setup.outputs.matrix).include[*].test-type, 'performance')
-    
+
     services:
       postgres:
         image: postgres:15
@@ -567,7 +567,7 @@ jobs:
       - name: Generate test report
         run: |
           mkdir -p test-report
-          
+
           cat > test-report/index.html << 'EOF'
           <!DOCTYPE html>
           <html>
@@ -593,7 +593,7 @@ jobs:
                   <p><strong>Branch:</strong> ${{ github.ref_name }}</p>
                   <p><strong>Timestamp:</strong> $(date)</p>
               </div>
-          
+
               <div class="section success">
                   <h2>Test Summary</h2>
                   <div class="metrics">
@@ -615,7 +615,7 @@ jobs:
                       </div>
                   </div>
               </div>
-          
+
               <div class="section">
                   <h2>Coverage Reports</h2>
                   <ul>
@@ -623,7 +623,7 @@ jobs:
                       <li><a href="dashboard-coverage/index.html">Dashboard Coverage Report</a></li>
                   </ul>
               </div>
-          
+
               <div class="section">
                   <h2>Detailed Reports</h2>
                   <ul>
@@ -646,7 +646,7 @@ jobs:
     needs: [api-tests, dashboard-tests, e2e-tests]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && success()
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -655,7 +655,7 @@ jobs:
         run: |
           echo "🚀 Deploying to staging environment..."
           # Add actual deployment steps here
-          
+
       - name: Run smoke tests
         run: |
           echo "🧪 Running smoke tests against staging..."

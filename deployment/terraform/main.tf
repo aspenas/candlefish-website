@@ -21,7 +21,7 @@ terraform {
       version = "~> 3.5"
     }
   }
-  
+
   backend "s3" {
     bucket         = "candlefish-terraform-state"
     key            = "rtpm/terraform.tfstate"
@@ -34,7 +34,7 @@ terraform {
 # Configure providers
 provider "aws" {
   region = var.aws_region
-  
+
   default_tags {
     tags = {
       Project     = "RTPM"
@@ -49,7 +49,7 @@ provider "aws" {
 provider "kubernetes" {
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
-  
+
   exec {
     api_version = "client.authentication.k8s.io/v1beta1"
     command     = "aws"
@@ -61,7 +61,7 @@ provider "helm" {
   kubernetes {
     host                   = module.eks.cluster_endpoint
     cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
-    
+
     exec {
       api_version = "client.authentication.k8s.io/v1beta1"
       command     = "aws"
@@ -80,10 +80,10 @@ data "aws_availability_zones" "available" {
 locals {
   name   = "rtpm-${var.environment}"
   region = var.aws_region
-  
+
   vpc_cidr = "10.0.0.0/16"
   azs      = slice(data.aws_availability_zones.available.names, 0, 3)
-  
+
   tags = {
     Example    = local.name
     GithubRepo = "candlefish-ai"
@@ -743,28 +743,28 @@ resource "aws_secretsmanager_secret_version" "redis_auth_token" {
 resource "aws_elasticache_replication_group" "rtpm" {
   replication_group_id         = "${local.name}-redis"
   description                  = "Redis cluster for RTPM"
-  
+
   port                         = 6379
   parameter_group_name         = aws_elasticache_parameter_group.rtpm.name
   subnet_group_name            = aws_elasticache_subnet_group.rtpm.name
   security_group_ids           = [aws_security_group.elasticache.id]
-  
+
   node_type                    = var.environment == "production" ? "cache.r6g.large" : "cache.t3.micro"
   num_cache_clusters           = var.environment == "production" ? 3 : 2
-  
+
   at_rest_encryption_enabled   = true
   transit_encryption_enabled   = true
   auth_token                   = random_password.redis_auth_token.result
-  
+
   automatic_failover_enabled   = true
   multi_az_enabled            = var.environment == "production"
-  
+
   maintenance_window          = "sun:05:00-sun:06:00"
   snapshot_retention_limit    = var.environment == "production" ? 7 : 1
   snapshot_window             = "03:00-05:00"
-  
+
   apply_immediately           = var.environment != "production"
-  
+
   log_delivery_configuration {
     destination      = aws_cloudwatch_log_group.redis_slow_log.name
     destination_type = "cloudwatch-logs"

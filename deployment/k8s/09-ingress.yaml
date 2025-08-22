@@ -17,12 +17,12 @@ metadata:
     alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
     alb.ingress.kubernetes.io/healthy-threshold-count: "2"
     alb.ingress.kubernetes.io/unhealthy-threshold-count: "2"
-    
+
     # SSL/TLS Configuration
     alb.ingress.kubernetes.io/ssl-redirect: "443"
     alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:681214184463:certificate/YOUR-CERT-ARN"
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
-    
+
     # Security Headers
     alb.ingress.kubernetes.io/actions.ssl-redirect: |
       {
@@ -33,10 +33,10 @@ metadata:
           "StatusCode": "HTTP_301"
         }
       }
-    
+
     # Rate Limiting and WAF
     alb.ingress.kubernetes.io/wafv2-acl-arn: "arn:aws:wafv2:us-east-1:681214184463:regional/webacl/rtpm-waf/YOUR-WAF-ID"
-    
+
     # Performance Optimizations
     alb.ingress.kubernetes.io/load-balancer-attributes: |
       access_logs.s3.enabled=true,
@@ -45,23 +45,23 @@ metadata:
       idle_timeout.timeout_seconds=60,
       routing.http.drop_invalid_header_fields.enabled=true,
       routing.http2.enabled=true
-    
+
     # Cert-manager for automatic SSL
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    
+
     # NGINX optimizations (if using NGINX ingress)
     nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
     nginx.ingress.kubernetes.io/proxy-buffers-number: "8"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
     nginx.ingress.kubernetes.io/client-max-body-size: "16m"
-    
+
     # Rate limiting (NGINX)
     nginx.ingress.kubernetes.io/rate-limit: "100"
     nginx.ingress.kubernetes.io/rate-limit-window: "1m"
-    
+
     # Security headers
     nginx.ingress.kubernetes.io/configuration-snippet: |
       add_header X-Frame-Options DENY always;
@@ -99,7 +99,7 @@ spec:
             name: rtpm-frontend-service
             port:
               number: 80
-  
+
   # API Backend
   - host: api.rtpm.candlefish.ai
     http:
@@ -134,7 +134,7 @@ spec:
     - namespaceSelector:
         matchLabels:
           name: ingress-nginx
-  
+
   # Allow internal communication between RTPM services
   - from:
     - namespaceSelector:
@@ -149,7 +149,7 @@ spec:
       port: 5432  # PostgreSQL
     - protocol: TCP
       port: 6379  # Redis
-  
+
   # Allow monitoring
   - from:
     - namespaceSelector:
@@ -160,7 +160,7 @@ spec:
       port: 8000  # API metrics
     - protocol: TCP
       port: 9540  # Celery metrics
-  
+
   egress:
   # Allow DNS resolution
   - to: []
@@ -169,7 +169,7 @@ spec:
       port: 53
     - protocol: TCP
       port: 53
-  
+
   # Allow HTTPS outbound (for external APIs, cert updates, etc.)
   - to: []
     ports:
@@ -177,7 +177,7 @@ spec:
       port: 443
     - protocol: TCP
       port: 80
-  
+
   # Allow internal service communication
   - to:
     - namespaceSelector:

@@ -52,23 +52,23 @@ run_test() {
     local scenario="$2"
     local description="$3"
     local additional_env="$4"
-    
+
     echo ""
     echo -e "${BLUE}🔄 Running: $test_name${NC}"
     echo -e "${YELLOW}Description: $description${NC}"
     echo "Scenario: $scenario"
-    
+
     local output_file="$RESULTS_DIR/${test_name}_${TIMESTAMP}.json"
     local summary_file="$RESULTS_DIR/${test_name}_${TIMESTAMP}_summary.txt"
-    
+
     # Set environment variables
     export BASE_URL="$BASE_URL"
     export WS_URL="$WS_URL"
-    
+
     if [ -n "$additional_env" ]; then
         eval "export $additional_env"
     fi
-    
+
     # Run the test
     if k6 run \
         --scenario "$scenario" \
@@ -174,7 +174,7 @@ EOF
 for summary_file in "$RESULTS_DIR"/*_"$TIMESTAMP"_summary.txt; do
     if [ -f "$summary_file" ]; then
         test_name=$(basename "$summary_file" "_${TIMESTAMP}_summary.txt")
-        
+
         cat >> "$REPORT_FILE" << EOF
     <div class="test-section success">
         <h3>$test_name</h3>
@@ -253,7 +253,7 @@ for json_file in "$RESULTS_DIR"/*_"$TIMESTAMP".json; do
             requests=$(jq '.metrics.http_reqs.values.count // 0' "$json_file")
             duration=$(jq '.metrics.http_req_duration.values.avg // 0' "$json_file")
             errors=$(jq '.metrics.http_req_failed.values.rate // 0' "$json_file")
-            
+
             total_requests=$((total_requests + requests))
             if (( $(echo "$duration > 0" | bc -l) )); then
                 total_duration=$(echo "$total_duration + $duration" | bc -l)
@@ -270,7 +270,7 @@ if [ $total_requests -gt 0 ]; then
     echo "  Total Requests: $total_requests"
     echo "  Average Response Time: ${total_duration}ms"
     echo "  Error Rate: ${total_errors}%"
-    
+
     if (( $(echo "$total_errors < 1" | bc -l) )); then
         echo -e "${GREEN}✅ Error rate is within acceptable limits${NC}"
     else

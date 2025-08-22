@@ -85,7 +85,7 @@ self.addEventListener('install', (event) => {
 
       // Start cache monitoring
       startCacheMonitoring();
-      
+
       // Force activation
       self.skipWaiting();
     })()
@@ -102,7 +102,7 @@ self.addEventListener('activate', (event) => {
       const cacheNames = await caches.keys();
       const cachesToDelete = cacheNames.filter(name => {
         // Keep only current cache versions
-        return !Object.values(CACHE_STRATEGIES).some(strategy => 
+        return !Object.values(CACHE_STRATEGIES).some(strategy =>
           strategy.cacheName === name
         ) && name !== CACHE_NAME;
       });
@@ -216,7 +216,7 @@ async function handleAPIRequest(request) {
     // Network first with timeout
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
-    
+
     const networkResponse = await fetch(request.clone(), {
       signal: controller.signal
     });
@@ -226,7 +226,7 @@ async function handleAPIRequest(request) {
       // Check size before caching
       const contentLength = networkResponse.headers.get('content-length');
       const size = parseInt(contentLength || '0');
-      
+
       if (size < 100 * 1024) { // Only cache API responses < 100KB
         await cacheWithSizeCheck(cache, request, networkResponse.clone(), strategy);
       }
@@ -504,22 +504,22 @@ async function cacheWithSizeCheck(cache, request, response, strategy) {
   try {
     // Check current cache size
     const cacheSize = await estimateCacheSize(strategy.cacheName);
-    
+
     if (cacheSize > strategy.maxSize) {
       // Clean up old entries
       await cleanupCache(cache, strategy.maxEntries / 2);
     }
-    
+
     // Add timestamp header
     const headers = new Headers(response.headers);
     headers.set('sw-cached-at', new Date().toISOString());
-    
+
     const responseWithHeaders = new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
       headers: headers,
     });
-    
+
     await cache.put(request, responseWithHeaders);
   } catch (error) {
     console.error('[SW] Cache storage failed:', error);
@@ -535,12 +535,12 @@ async function estimateCacheSize(cacheName) {
     }
     return 0;
   }
-  
+
   // Estimate specific cache size
   const cache = await caches.open(cacheName);
   const keys = await cache.keys();
   let totalSize = 0;
-  
+
   for (const request of keys.slice(0, 10)) { // Sample first 10
     const response = await cache.match(request);
     if (response) {
@@ -548,7 +548,7 @@ async function estimateCacheSize(cacheName) {
       totalSize += blob.size;
     }
   }
-  
+
   // Extrapolate
   return keys.length > 10 ? (totalSize / 10) * keys.length : totalSize;
 }
@@ -556,7 +556,7 @@ async function estimateCacheSize(cacheName) {
 async function cleanupCache(cache, keepCount = 10) {
   const keys = await cache.keys();
   const entries = [];
-  
+
   for (const request of keys) {
     const response = await cache.match(request);
     if (response) {
@@ -564,11 +564,11 @@ async function cleanupCache(cache, keepCount = 10) {
       entries.push({ request, age });
     }
   }
-  
+
   // Sort by age and delete oldest
   entries.sort((a, b) => b.age - a.age);
   const toDelete = entries.slice(keepCount);
-  
+
   for (const entry of toDelete) {
     await cache.delete(entry.request);
   }
@@ -584,22 +584,22 @@ function getCacheAge(response) {
 
 async function calculateCacheSize() {
   let totalSize = 0;
-  
+
   for (const strategy of Object.values(CACHE_STRATEGIES)) {
     const size = await estimateCacheSize(strategy.cacheName);
     cacheStats.caches[strategy.cacheName] = size;
     totalSize += size;
   }
-  
+
   cacheStats.totalSize = totalSize;
   cacheStats.lastCheck = Date.now();
-  
+
   // Emergency cleanup if too large
   if (totalSize > MAX_CACHE_SIZE) {
     console.warn('[SW] Cache size exceeded limit, performing cleanup');
     await emergencyCacheCleanup();
   }
-  
+
   return totalSize;
 }
 
