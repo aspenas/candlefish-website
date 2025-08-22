@@ -30,14 +30,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Add consciousness state indicator
-    health.consciousness = {
+    const consciousnessState = {
       state: 'aware',
       networkConnections: await checkNetworkConnections(),
       agentRegistryStatus: await checkAgentRegistry(),
       distributedMeshActive: true
     }
 
-    return NextResponse.json(health, {
+    const healthWithConsciousness = {
+      ...health,
+      consciousness: consciousnessState
+    }
+
+    return NextResponse.json(healthWithConsciousness, {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
@@ -96,9 +101,14 @@ async function checkAgentRegistry(): Promise<string> {
     const registryUrl = process.env.NANDA_REGISTRY_URL
     if (!registryUrl) return 'not-configured'
 
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 2000)
+    
     const response = await fetch(`${registryUrl}/health`, {
-      timeout: 2000
+      signal: controller.signal
     })
+    
+    clearTimeout(timeoutId)
 
     return response.ok ? 'available' : 'degraded'
   } catch {
