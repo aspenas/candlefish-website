@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import { useEffect } from 'react'
 import { Toaster } from './components/ui/toaster'
 import { DashboardHome } from './pages/DashboardHome'
 

@@ -1,11 +1,11 @@
-import React from 'react'
+import { ButtonHTMLAttributes, ReactNode } from 'react'
 import { motion } from 'framer-motion'
 
-interface AccessibleButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface AccessibleButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onAnimationStart' | 'onDragStart' | 'onDragEnd' | 'onDrag'> {
   variant?: 'primary' | 'secondary' | 'ghost'
   size?: 'sm' | 'md' | 'lg'
   isLoading?: boolean
-  children: React.ReactNode
+  children: ReactNode
   ariaLabel?: string
 }
 

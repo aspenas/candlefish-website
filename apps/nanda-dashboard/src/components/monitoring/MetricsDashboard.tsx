@@ -166,7 +166,7 @@ export function MetricsDashboard({ metrics }: MetricsDashboardProps) {
           value={metrics.totalAgents.toLocaleString()}
           change="+12%"
           trend="up"
-          icon={<ServerIcon className="w-6 h-6" />}
+          icon={<Server className="w-6 h-6" />}
           color="primary"
           subtitle="Registered in network"
         />
@@ -176,7 +176,7 @@ export function MetricsDashboard({ metrics }: MetricsDashboardProps) {
           value={metrics.activeAgents.toLocaleString()}
           change="+5%"
           trend="up"
-          icon={<SignalIcon className="w-6 h-6" />}
+          icon={<Signal className="w-6 h-6" />}
           color="success"
           subtitle="Currently online"
         />
@@ -186,7 +186,7 @@ export function MetricsDashboard({ metrics }: MetricsDashboardProps) {
           value={formatNumber(metrics.totalRequests)}
           change="+23%"
           trend="up"
-          icon={<ChartBarIcon className="w-6 h-6" />}
+          icon={<BarChart3 className="w-6 h-6" />}
           color="primary"
           subtitle="Last 24 hours"
         />
@@ -196,7 +196,7 @@ export function MetricsDashboard({ metrics }: MetricsDashboardProps) {
           value={formatResponseTime(metrics.avgResponseTime)}
           change="-8%"
           trend="down"
-          icon={<ClockIcon className="w-6 h-6" />}
+          icon={<Clock className="w-6 h-6" />}
           color="success"
           subtitle="Network latency"
         />
@@ -206,7 +206,7 @@ export function MetricsDashboard({ metrics }: MetricsDashboardProps) {
           value={`${metrics.successRate.toFixed(1)}%`}
           change="+2%"
           trend="up"
-          icon={<CheckCircleIcon className="w-6 h-6" />}
+          icon={<CheckCircle className="w-6 h-6" />}
           color="success"
           subtitle="Request completion"
         />
@@ -216,7 +216,7 @@ export function MetricsDashboard({ metrics }: MetricsDashboardProps) {
           value={`${metrics.errorRate.toFixed(2)}%`}
           change="-15%"
           trend="down"
-          icon={<ExclamationTriangleIcon className="w-6 h-6" />}
+          icon={<AlertTriangle className="w-6 h-6" />}
           color="warning"
           subtitle="Failed requests"
         />

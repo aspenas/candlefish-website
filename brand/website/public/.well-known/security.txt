@@ -1,0 +1,39 @@
+# Candlefish Security Policy
+# Last Updated: 2025-08-22
+
+# Contact Information
+Contact: mailto:security@candlefish.ai
+Contact: mailto:hello@candlefish.ai
+
+# Preferred Languages
+Preferred-Languages: en
+
+# Security Policy
+Policy: https://candlefish.ai/security-policy
+
+# Acknowledgments
+Acknowledgments: https://candlefish.ai/security-thanks
+
+# Disclosure Policy
+# We practice responsible disclosure and appreciate security researchers
+# who help us maintain the security of our systems.
+#
+# Please report security vulnerabilities responsibly:
+# - Allow us reasonable time to respond to your report before public disclosure
+# - Make a good faith effort to avoid privacy violations and disruption
+# - Do not access or modify user data without permission
+#
+# In return, we commit to:
+# - Acknowledge receipt of your report within 48 hours
+# - Provide regular updates on our progress
+# - Credit researchers who report valid issues (with permission)
+
+# Encryption
+# Our PGP key for encrypted communication will be available at:
+# Encryption: https://candlefish.ai/pgp-key.txt
+
+# Canonical URL
+Canonical: https://candlefish.ai/.well-known/security.txt
+
+# Expires
+Expires: 2026-08-22T00:00:00.000Z

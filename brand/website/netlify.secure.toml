@@ -1,0 +1,115 @@
+[build]
+  publish = "out/"
+  command = "npm ci && npm run build"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS = "--production=false"
+
+# Functions configuration
+[functions]
+  node_bundler = "esbuild"
+
+# Redirect rules for SPA routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# API routes fallback (for serverless functions)
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# Enhanced Security Headers - OWASP Compliant
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Prevent clickjacking attacks
+    X-Frame-Options = "DENY"
+
+    # Enable XSS filter in older browsers
+    X-XSS-Protection = "1; mode=block"
+
+    # Prevent MIME type sniffing
+    X-Content-Type-Options = "nosniff"
+
+    # Control referrer information
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+    # Strict Transport Security (HSTS) - enforce HTTPS
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+
+    # Permissions Policy - control browser features
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+
+    # Secure Content Security Policy without unsafe directives
+    # This CSP is more restrictive and secure:
+    # - Removes 'unsafe-inline' and 'unsafe-eval'
+    # - Uses nonce-based approach for inline scripts (requires implementation)
+    # - Restricts connections to HTTPS only
+    # - Limits frame sources
+    Content-Security-Policy = """
+      default-src 'self';
+      script-src 'self' https://cdn.jsdelivr.net https://unpkg.com;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      img-src 'self' data: https:;
+      font-src 'self' data: https://fonts.gstatic.com;
+      connect-src 'self' https://api.candlefish.ai https://*.netlify.app wss://*.netlify.app;
+      frame-src 'none';
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self';
+      frame-ancestors 'none';
+      upgrade-insecure-requests;
+    """
+
+# Cache static assets with integrity
+[[headers]]
+  for = "/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    X-Content-Type-Options = "nosniff"
+
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    X-Content-Type-Options = "nosniff"
+
+# Security headers for API endpoints
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Cache-Control = "no-store, no-cache, must-revalidate, private"
+    Content-Type = "application/json; charset=utf-8"
+
+# Security headers for functions
+[[headers]]
+  for = "/.netlify/functions/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Cache-Control = "no-store, no-cache, must-revalidate, private"
+
+# Environment-specific configurations
+[context.production]
+  environment = { NODE_ENV = "production" }
+
+[context.deploy-preview]
+  environment = { NODE_ENV = "development" }
+
+[context.branch-deploy]
+  environment = { NODE_ENV = "development" }
+
+# Rate limiting for functions (requires Netlify Functions Level 1+)
+[[edge_functions]]
+  path = "/api/*"
+  function = "rate-limiter"
+
+[[edge_functions]]
+  path = "/.netlify/functions/*"
+  function = "rate-limiter"

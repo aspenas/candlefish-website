@@ -33,7 +33,7 @@
     "@redis/search": "^1.1.6",
     "@redis/time-series": "^1.0.5",
     "@types/ed25519": "^0.0.0",
-    "automerge": "^5.0.0",
+    "automerge": "^0.14.2",
     "cbor-x": "^1.5.9",
     "ed25519": "^0.0.5",
     "msgpack-lite": "^0.1.26",
