@@ -173,6 +173,11 @@ IP: ${ip}
     try {
       // Only try to send email if RESEND_API_KEY is configured
       if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== 're_placeholder_key_change_this') {
+        console.log('Attempting to send email with Resend API...');
+        console.log('API Key present:', !!process.env.RESEND_API_KEY);
+        console.log('API Key length:', process.env.RESEND_API_KEY?.length);
+        console.log('API Key prefix:', process.env.RESEND_API_KEY?.substring(0, 10) + '...');
+
         const resend = new Resend(process.env.RESEND_API_KEY);
 
         const emailResult = await resend.emails.send({
@@ -181,6 +186,13 @@ IP: ${ip}
           subject: `[Consideration Request] ${company} - ${name}`,
           text: emailContent,
           replyTo: email,
+        });
+
+        console.log('Email send result:', {
+          success: !!emailResult.data?.id,
+          emailId: emailResult.data?.id,
+          error: emailResult.error,
+          fullResult: JSON.stringify(emailResult)
         });
 
         console.log('Consideration request received and email sent:', {

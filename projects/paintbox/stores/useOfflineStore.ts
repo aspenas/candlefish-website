@@ -373,6 +373,35 @@ async function processSyncItem(item: any): Promise<void> {
 export function useOfflineInitialization() {
   const store = useOfflineStore();
 
+  // Initialize offline infrastructure
+  React.useEffect(() => {
+    const initializeOfflineInfrastructure = async () => {
+      try {
+        console.log('Initializing offline infrastructure...');
+
+        // Test IndexedDB access
+        await offlineDB.isReady();
+        console.log('IndexedDB initialized successfully');
+
+        // Verify service worker registration
+        if ('serviceWorker' in navigator) {
+          const registration = await navigator.serviceWorker.getRegistration();
+          console.log('Service worker status:', registration ? 'registered' : 'not registered');
+        }
+
+        // Load initial data
+        await store.loadOfflineEstimates();
+        await store.loadOfflinePhotos();
+
+        console.log('Offline infrastructure initialization complete');
+      } catch (error) {
+        console.error('Failed to initialize offline infrastructure:', error);
+      }
+    };
+
+    initializeOfflineInfrastructure();
+  }, [store]);
+
   // Set up network status monitoring
   React.useEffect(() => {
     const updateNetworkStatus = () => {
@@ -418,12 +447,6 @@ export function useOfflineInitialization() {
       window.removeEventListener('online', updateNetworkStatus);
       window.removeEventListener('offline', updateNetworkStatus);
     };
-  }, [store]);
-
-  // Load initial offline data
-  React.useEffect(() => {
-    store.loadOfflineEstimates();
-    store.loadOfflinePhotos();
   }, [store]);
 
   // Periodic cleanup

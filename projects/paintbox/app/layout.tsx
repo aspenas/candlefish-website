@@ -5,8 +5,12 @@ import HeaderControls from "@/components/ui/HeaderControls";
 // import { PWAInstallPrompt } from "@/components/ui/PWAInstallPrompt";
 // import { Toaster } from "sonner";
 import { AuthProvider } from "@/components/providers/SessionProvider";
+import { OfflineProvider } from "@/components/providers/OfflineProvider";
 // import { AuthWrapper } from "@/components/auth/AuthWrapper";
 import { AuthWrapperSimple as AuthWrapper } from "@/components/auth/AuthWrapperSimple";
+import { PWASetup } from "@/components/ui/PWASetup";
+import { TelemetryWidget } from "@/components/telemetry/TelemetryWidget";
+import { PerformanceProvider } from "@/components/providers/PerformanceProvider";
 
 // Use system fonts to avoid network fetch at build time
 
@@ -145,9 +149,11 @@ export default function RootLayout({
 
       <body className={`antialiased bg-gradient-paintbox`}
       >
-        <AuthProvider>
-          <AuthWrapper>
-            <div className="min-h-screen">
+        <PerformanceProvider>
+          <AuthProvider>
+            <OfflineProvider>
+              <AuthWrapper>
+              <div className="min-h-screen">
               <header className="sticky top-0 z-30 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-[var(--color-paintbox-border)] shadow-sm">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 py-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -177,8 +183,9 @@ export default function RootLayout({
                   <div className="text-sm text-[var(--color-paintbox-text-muted)]">Made by <span className="font-medium">Candlefish.ai</span></div>
                 </div>
               </footer>
-            </div>
-          </AuthWrapper>
+              </div>
+            </AuthWrapper>
+          </OfflineProvider>
         </AuthProvider>
 
         {/* PWA Install Prompt */}
@@ -194,7 +201,14 @@ export default function RootLayout({
         /> */}
 
         {/* Service Worker Registration with CSP nonce */}
-        {/* <PWASetup nonce={nonce || undefined} /> */}
+        <PWASetup nonce={nonce || undefined} />
+
+        {/* Telemetry Widget - Only show in development/staging or for admins */}
+        {(process.env.NODE_ENV === 'development' ||
+          process.env.APP_ENV === 'staging' ||
+          process.env.SHOW_TELEMETRY === 'true') && (
+          <TelemetryWidget />
+        )}
 
         {/* Performance monitoring (only in production) */}
         {/* Temporarily disabled for build issues

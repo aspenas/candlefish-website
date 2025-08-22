@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "NODE_ENV=development ts-node -r tsconfig-paths/register --project tsconfig.server.json server/websocket-server.ts",
     "dev:next": "NEXT_DISABLE_TURBOPACK=1 next dev",
-    "build": "NODE_OPTIONS='--max-old-space-size=16384 --max-semi-space-size=512' next build",
+    "build": "node scripts/generate-build-info.js && NODE_OPTIONS='--max-old-space-size=16384 --max-semi-space-size=512' next build",
     "build:production": "NODE_OPTIONS='--max-old-space-size=32768 --max-semi-space-size=1024' SKIP_STATIC_OPTIMIZATION=1 DISABLE_ESLINT=1 DISABLE_TYPESCRIPT_CHECK=1 next build",
     "build:deploy": "NODE_OPTIONS='--max-old-space-size=2048 --require ./server-polyfills.js' SKIP_STATIC_OPTIMIZATION=1 DISABLE_ESLINT=1 DISABLE_TYPESCRIPT_CHECK=1 next build",
     "build:chunked": "NODE_OPTIONS='--max-old-space-size=32768 --max-semi-space-size=1024' NEXT_BUILD_SPLIT_CHUNKS=1 DISABLE_STATIC_OPTIMIZATION=1 next build",
@@ -173,6 +173,7 @@
     "tailwindcss": "^4",
     "typescript": "^5.8.3",
     "uuid": "^11.0.5",
+    "web-vitals": "^4.2.7",
     "winston": "^3.17.0",
     "winston-daily-rotate-file": "^5.0.0",
     "xlsx-populate": "^1.21.0",

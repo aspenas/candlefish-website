@@ -460,6 +460,18 @@ class PaintboxOfflineDB extends Dexie {
       this.syncQueue.clear()
     ]);
   }
+
+  // Test database availability and initialize if needed
+  async isReady(): Promise<boolean> {
+    try {
+      // Test if database is accessible by reading a setting
+      await this.settings.count();
+      return true;
+    } catch (error) {
+      console.error('Database not ready:', error);
+      return false;
+    }
+  }
 }
 
 // Create and export database instance

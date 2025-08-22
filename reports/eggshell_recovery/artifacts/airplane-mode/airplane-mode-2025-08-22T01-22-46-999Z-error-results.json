@@ -1,0 +1,32 @@
+[
+  {
+    "timestamp": "2025-08-22T01:22:48.793Z",
+    "step": "online_baseline",
+    "onlineBaseline": {
+      "online": true,
+      "localStorage": 0,
+      "sessionStorage": 0,
+      "url": "http://localhost:3000/estimate/new/details",
+      "serviceWorker": true,
+      "indexedDB": true,
+      "timestamp": "2025-08-22T01:22:48.373Z"
+    },
+    "offlineInfrastructure": {
+      "serviceWorkerRegistered": false,
+      "indexedDBAccessible": false,
+      "offlineDBAvailable": false,
+      "zustandStore": false
+    }
+  },
+  {
+    "timestamp": "2025-08-22T01:22:49.236Z",
+    "step": "airplane_mode_activation",
+    "offlineVerification": {
+      "navigatorOnline": false,
+      "connectionType": "4g",
+      "timestamp": "2025-08-22T01:22:48.796Z"
+    },
+    "networkBlocked": false,
+    "expectedOffline": true
+  }
+]
