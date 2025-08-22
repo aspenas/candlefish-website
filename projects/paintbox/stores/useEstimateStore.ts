@@ -148,14 +148,25 @@ export const useEstimateStore = create<EstimateStore>()(
                 });
                 console.log('Estimate saved to server');
               } else {
-                // Server save failed, save offline as backup
-                await offlineStore.saveEstimateOffline(estimate.id, estimate);
-                console.log('Server save failed, saved offline as backup');
+                console.warn(`Server save failed with status ${response.status}`);
+                // Server save failed, try offline backup
+                try {
+                  await offlineStore.saveEstimateOffline(estimate.id, estimate);
+                  console.log('Server save failed, saved offline as backup');
+                } catch (offlineError) {
+                  console.error('Both server and offline save failed:', offlineError);
+                }
               }
             } catch (error) {
-              // Network error, save offline
-              await offlineStore.saveEstimateOffline(estimate.id, estimate);
-              console.log('Network error, saved offline');
+              console.warn('Network error during server save:', error);
+              // Network error, try offline save
+              try {
+                await offlineStore.saveEstimateOffline(estimate.id, estimate);
+                console.log('Network error, saved offline');
+              } catch (offlineError) {
+                console.error('Offline save also failed:', offlineError);
+                // Continue execution - don't block the UI
+              }
             }
           }
 
@@ -231,7 +242,13 @@ export const useEstimateStore = create<EstimateStore>()(
         estimate: state.estimate,
         lastSavedAt: state.lastSavedAt,
         isOfflineMode: state.isOfflineMode
-      })
+      }),
+      skipHydration: typeof window === 'undefined', // Prevent SSR hydration issues
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          console.log('Estimate store rehydrated successfully');
+        }
+      }
     }
   )
 );

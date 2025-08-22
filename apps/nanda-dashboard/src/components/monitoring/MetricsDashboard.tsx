@@ -1,13 +1,12 @@
-import React from 'react'
 import { motion } from 'framer-motion'
 import {
-  ServerIcon,
-  GlobeAltIcon,
-  ChartBarIcon,
-  ClockIcon,
-  CheckCircleIcon,
-  ExclamationTriangleIcon,
-  SignalIcon
+  Server,
+  Globe,
+  BarChart3,
+  Clock,
+  CheckCircle,
+  AlertTriangle,
+  Signal
 } from 'lucide-react'
 import type { SystemMetrics } from '../../hooks/useRealtimeData'
 

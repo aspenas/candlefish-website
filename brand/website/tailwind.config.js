@@ -26,6 +26,12 @@ module.exports = {
         /* MATERIAL TONES */
         'material-concrete': 'rgb(var(--material-concrete) / <alpha-value>)',
         'material-steel': 'rgb(var(--material-steel) / <alpha-value>)',
+
+        /* WORKSHOP/ARCHIVE THEME */
+        'pearl': 'rgb(var(--color-pearl) / <alpha-value>)',
+        'copper': 'rgb(var(--color-copper) / <alpha-value>)',
+        'living-cyan': 'rgb(var(--color-living-cyan) / <alpha-value>)',
+        'graphite': 'rgb(var(--color-graphite) / <alpha-value>)',
       },
       fontFamily: {
         'display': ['Druk Wide', 'Suisse Works', 'system-ui', 'sans-serif'],

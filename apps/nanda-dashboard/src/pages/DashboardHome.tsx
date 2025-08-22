@@ -6,11 +6,12 @@ import { AgentStatusGrid } from '../components/monitoring/AgentStatusGrid'
 import { ActivityFeed } from '../components/monitoring/ActivityFeed'
 import { PerformanceChart } from '../components/charts/PerformanceChart'
 import { GlobalHeatMap } from '../components/monitoring/GlobalHeatMap'
+import { LivingAgentEcosystem } from '../components/living-agents/LivingAgentEcosystem'
 
 export function DashboardHome() {
   const { agents, systemMetrics, activity, performanceHistory, isConnected } = useRealtimeData()
   const [selectedAgent, setSelectedAgent] = useState<AgentMetrics | null>(null)
-  const [selectedTab, setSelectedTab] = useState<'overview' | 'agents' | 'performance' | 'globe'>('overview')
+  const [selectedTab, setSelectedTab] = useState<'ecosystem' | 'overview' | 'agents' | 'performance' | 'globe'>('ecosystem')
 
   const handleAgentSelect = (agent: AgentMetrics) => {
     setSelectedAgent(agent)
@@ -137,6 +138,12 @@ export function DashboardHome() {
       >
         <div className="flex gap-2 overflow-x-auto" role="tablist" aria-label="Dashboard navigation">
           <TabButton
+            tab="ecosystem"
+            label="🧬 Living Ecosystem"
+            isActive={selectedTab === 'ecosystem'}
+            onClick={() => setSelectedTab('ecosystem')}
+          />
+          <TabButton
             tab="overview"
             label="📊 Overview"
             isActive={selectedTab === 'overview'}
@@ -165,6 +172,21 @@ export function DashboardHome() {
 
       {/* Main Content */}
       <AnimatePresence mode="wait">
+        {selectedTab === 'ecosystem' && (
+          <motion.div
+            key="ecosystem"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            role="tabpanel"
+            id="ecosystem-panel"
+            aria-labelledby="ecosystem-tab"
+          >
+            <LivingAgentEcosystem />
+          </motion.div>
+        )}
+
         {selectedTab === 'overview' && (
           <motion.div
             key="overview"

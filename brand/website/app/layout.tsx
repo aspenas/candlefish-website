@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import Navigation from '../components/navigation/OperationalNav'
 import Footer from '../components/navigation/OperationalFooter'
+import SkipNavigation from '../components/accessibility/SkipNavigation'
 
 export const metadata: Metadata = {
   title: 'Candlefish — Operational Design Atelier',
@@ -36,8 +37,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <SkipNavigation />
         <Navigation />
-        <main className="relative">
+        <main id="main-content" className="relative" role="main">
           {children}
         </main>
         <Footer />

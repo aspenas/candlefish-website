@@ -13,7 +13,7 @@ const getQueueStatus = () => {
 
 const Footer: React.FC = () => {
   return (
-    <footer className="border-t border-[#1B263B] mt-32">
+    <footer id="footer" className="border-t border-[#1B263B] mt-32">
       <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
           <div>
