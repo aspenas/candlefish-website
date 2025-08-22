@@ -18,24 +18,24 @@ async function demo() {
     console.log('\n================================================');
     console.log('🚀 CANDLEFISH.AI INTERNAL NANDA AGENT DEMO');
     console.log('================================================\n');
-    
+
     // Step 1: Check all agents are online
     console.log('📡 Step 1: Checking Agent Network Status...\n');
-    
+
     try {
         const agentsResponse = await axios.get(`${ORCHESTRATOR_URL}/agents`);
         const agents = agentsResponse.data.agents;
-        
+
         console.log(`✅ Found ${agents.length} active agents:`);
         agents.forEach(agent => {
             console.log(`   • ${agent.id} at ${agent.endpoint}`);
         });
-        
+
         await delay(2000);
-        
+
         // Step 2: Add knowledge to PKB
         console.log('\n📚 Step 2: Adding Knowledge to PKB Agent...\n');
-        
+
         const knowledgeItems = [
             {
                 data: {
@@ -58,17 +58,17 @@ async function demo() {
                 source: 'project-database'
             }
         ];
-        
+
         for (const item of knowledgeItems) {
             const response = await axios.post(`${PKB_URL}/ingest`, item);
             console.log(`   ✅ Added knowledge: ${item.data.topic}`);
         }
-        
+
         await delay(2000);
-        
+
         // Step 3: Create a complex estimation task
         console.log('\n🎨 Step 3: Creating Complex Paint Estimation Task...\n');
-        
+
         const estimationTask = {
             task: {
                 type: 'estimate_generation',
@@ -110,58 +110,58 @@ async function demo() {
             },
             priority: 'high'
         };
-        
+
         console.log('   📋 Project Details:');
         console.log(`      • Client: ${estimationTask.task.project.client}`);
         console.log(`      • Address: ${estimationTask.task.project.address}`);
         console.log(`      • Rooms: ${estimationTask.task.rooms.length}`);
         console.log(`      • Quality: ${estimationTask.task.options.quality}`);
-        
+
         await delay(2000);
-        
+
         // Step 4: Orchestrate the task
         console.log('\n🎯 Step 4: Orchestrating Task Through Agent Network...\n');
-        
+
         const orchestrateResponse = await axios.post(`${ORCHESTRATOR_URL}/orchestrate`, estimationTask);
         const result = orchestrateResponse.data;
-        
+
         console.log(`   ✅ Task ID: ${result.taskId}`);
         console.log(`   ✅ Agents Used: ${result.agents_used.join(', ')}`);
         console.log(`   ✅ Execution Time: ${result.execution_time}ms`);
-        
+
         await delay(2000);
-        
+
         // Step 5: Direct estimate creation
         console.log('\n💰 Step 5: Creating Detailed Estimate...\n');
-        
+
         const directEstimate = await axios.post(`${PAINTBOX_URL}/estimate/create`, {
             project: estimationTask.task.project,
             rooms: estimationTask.task.rooms,
             options: estimationTask.task.options
         });
-        
+
         const estimate = directEstimate.data;
-        
+
         console.log('   📊 Estimate Summary:');
         console.log(`      • Estimate ID: ${estimate.estimateId}`);
         console.log(`      • Total Sq Ft: ${estimate.summary.total_sqft.toLocaleString()}`);
         console.log(`      • Base Cost: $${estimate.summary.base_cost.toLocaleString()}`);
         console.log(`      • Total Cost: $${estimate.summary.total_cost.toLocaleString()}`);
         console.log(`      • Timeline: ${estimate.summary.timeline}`);
-        
+
         await delay(2000);
-        
+
         // Step 6: Query PKB for context
         console.log('\n🔍 Step 6: Querying PKB for Historical Context...\n');
-        
+
         const contextQuery = await axios.post(`${PKB_URL}/query`, {
             query: 'premium paint summerlin',
             context: { region: 'Las Vegas' },
             requester: 'demo-client'
         });
-        
+
         const context = contextQuery.data;
-        
+
         console.log(`   📈 Found ${context.results.length} relevant knowledge items`);
         if (context.results.length > 0) {
             console.log('   📋 Most Relevant:');
@@ -169,12 +169,12 @@ async function demo() {
                 console.log(`      • ${item.topic}: ${item.content.substring(0, 60)}...`);
             });
         }
-        
+
         await delay(2000);
-        
+
         // Step 7: Simulate consortium formation
         console.log('\n🤝 Step 7: Demonstrating Consortium Formation...\n');
-        
+
         const consortiumTask = {
             task: {
                 type: 'complex_analysis',
@@ -183,47 +183,47 @@ async function demo() {
             },
             priority: 'normal'
         };
-        
+
         console.log('   🔄 Creating consortium for complex analysis...');
         console.log('   📊 Required capabilities:');
         consortiumTask.task.requires.forEach(cap => {
             console.log(`      • ${cap}`);
         });
-        
+
         // The orchestrator would form a consortium here
         console.log('\n   ✅ Consortium formed successfully!');
         console.log('   👥 Participating agents:');
         console.log('      • candlefish:pkb-agent (knowledge provider)');
         console.log('      • candlefish:paintbox-agent (cost calculator)');
         console.log('      • candlefish:orchestrator (coordinator)');
-        
+
         await delay(2000);
-        
+
         // Final summary
         console.log('\n================================================');
         console.log('✨ DEMO COMPLETE - INTERNAL NANDA NETWORK OPERATIONAL');
         console.log('================================================\n');
-        
+
         console.log('🎯 What we demonstrated:');
         console.log('   1. Agent Discovery - Automatic service discovery');
         console.log('   2. Knowledge Management - PKB agent storing/retrieving context');
         console.log('   3. Task Orchestration - Complex tasks distributed to agents');
         console.log('   4. Consortium Formation - Agents collaborating on tasks');
         console.log('   5. Real Service Integration - Paintbox estimates with AI');
-        
+
         console.log('\n💡 Business Value:');
         console.log('   • Services discover each other automatically');
         console.log('   • Knowledge shared across all services');
         console.log('   • Tasks optimally routed to available agents');
         console.log('   • Self-healing and load balancing');
         console.log('   • Ready for global NANDA network when available');
-        
+
         console.log('\n🚀 Next Steps:');
         console.log('   • Add more services as NANDA agents');
         console.log('   • Implement credit economy for resource allocation');
         console.log('   • Deploy to production infrastructure');
         console.log('   • Connect to global NANDA index when ready');
-        
+
     } catch (error) {
         console.error('\n❌ Demo Error:', error.message);
         console.log('\n💡 Make sure all agents are running:');

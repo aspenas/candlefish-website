@@ -283,7 +283,7 @@ export const ExportManager: React.FC<ExportManagerProps> = ({
 
     // Simulate export process
     const updateProgress = (progress: number) => {
-      setExportJobs(prev => prev.map(job => 
+      setExportJobs(prev => prev.map(job =>
         job.id === newJob.id ? { ...job, progress } : job
       ));
     };
@@ -300,26 +300,26 @@ export const ExportManager: React.FC<ExportManagerProps> = ({
       const blob = createExportBlob(exportData, exportConfig.format!);
       const url = URL.createObjectURL(blob);
 
-      setExportJobs(prev => prev.map(job => 
-        job.id === newJob.id 
-          ? { 
-              ...job, 
-              status: 'completed', 
+      setExportJobs(prev => prev.map(job =>
+        job.id === newJob.id
+          ? {
+              ...job,
+              status: 'completed',
               progress: 100,
               downloadUrl: url,
               size: formatFileSize(blob.size)
-            } 
+            }
           : job
       ));
 
     } catch (error) {
-      setExportJobs(prev => prev.map(job => 
-        job.id === newJob.id 
-          ? { 
-              ...job, 
-              status: 'failed', 
-              error: 'Export failed. Please try again.' 
-            } 
+      setExportJobs(prev => prev.map(job =>
+        job.id === newJob.id
+          ? {
+              ...job,
+              status: 'failed',
+              error: 'Export failed. Please try again.'
+            }
           : job
       ));
     }
@@ -327,9 +327,9 @@ export const ExportManager: React.FC<ExportManagerProps> = ({
 
   const generateExportData = () => {
     const data: any[] = [];
-    
+
     // Generate sample data based on selected agents and metrics
-    const targetAgents = selectedAgents.length > 0 
+    const targetAgents = selectedAgents.length > 0
       ? agents.filter(a => selectedAgents.includes(a.id))
       : agents.slice(0, 10); // Limit for demo
 
@@ -337,7 +337,7 @@ export const ExportManager: React.FC<ExportManagerProps> = ({
       const metrics = agentMetrics.get(agent.id);
       if (metrics && metrics.length > 0) {
         const latestMetrics = metrics[metrics.length - 1];
-        
+
         const row: any = {
           agentId: agent.id,
           agentName: agent.name,
@@ -379,20 +379,20 @@ export const ExportManager: React.FC<ExportManagerProps> = ({
 
   const generateCSV = (data: any[]) => {
     if (data.length === 0) return '';
-    
+
     const headers = Object.keys(data[0]);
     const csvContent = [
       headers.join(','),
-      ...data.map(row => 
+      ...data.map(row =>
         headers.map(header => {
           const value = row[header];
-          return typeof value === 'string' && value.includes(',') 
-            ? `"${value}"` 
+          return typeof value === 'string' && value.includes(',')
+            ? `"${value}"`
             : value;
         }).join(',')
       )
     ].join('\n');
-    
+
     return csvContent;
   };
 

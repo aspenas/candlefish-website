@@ -8,14 +8,14 @@ interface Props {
   className?: string;
 }
 
-const LoadingSpinner: React.FC<Props> = ({ 
-  message = 'Loading agents...', 
+const LoadingSpinner: React.FC<Props> = ({
+  message = 'Loading agents...',
   size = 'md',
-  className = '' 
+  className = ''
 }) => {
   const sizeClasses = {
     sm: 'w-4 h-4',
-    md: 'w-8 h-8', 
+    md: 'w-8 h-8',
     lg: 'w-12 h-12'
   };
 
@@ -29,11 +29,11 @@ const LoadingSpinner: React.FC<Props> = ({
     <div className={`flex flex-col items-center justify-center ${containerSizeClasses[size]} ${className}`}>
       {/* Animated Icon */}
       <motion.div
-        animate={{ 
+        animate={{
           rotate: 360,
           scale: [1, 1.1, 1]
         }}
-        transition={{ 
+        transition={{
           rotate: { duration: 2, repeat: Infinity, ease: "linear" },
           scale: { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
         }}
@@ -47,7 +47,7 @@ const LoadingSpinner: React.FC<Props> = ({
         {[0, 1, 2].map((index) => (
           <motion.div
             key={index}
-            animate={{ 
+            animate={{
               opacity: [0.3, 1, 0.3],
               scale: [0.8, 1.2, 0.8]
             }}
@@ -83,12 +83,12 @@ const LoadingSpinner: React.FC<Props> = ({
             { x: 8, y: 16 },
             { x: 20, y: 4 }
           ];
-          
+
           return (
             <motion.div
               key={index}
               initial={{ opacity: 0, scale: 0 }}
-              animate={{ 
+              animate={{
                 opacity: [0.3, 1, 0.3],
                 scale: [0.5, 1, 0.5],
                 x: positions[index].x,
@@ -104,7 +104,7 @@ const LoadingSpinner: React.FC<Props> = ({
             />
           );
         })}
-        
+
         {/* Connection lines */}
         <svg className="absolute inset-0 w-full h-full">
           <motion.line

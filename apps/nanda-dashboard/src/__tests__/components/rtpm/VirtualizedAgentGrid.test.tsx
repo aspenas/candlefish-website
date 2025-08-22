@@ -13,9 +13,9 @@ import type { Agent, AgentMetrics } from '../../../types/rtpm.types';
 // Mock react-window for testing
 vi.mock('react-window', () => ({
   FixedSizeList: vi.fn(({ children, itemCount, itemSize, height, ...props }) => (
-    <div 
-      data-testid="virtualized-list" 
-      data-item-count={itemCount} 
+    <div
+      data-testid="virtualized-list"
+      data-item-count={itemCount}
       data-item-size={itemSize}
       data-height={height}
       style={{ height }}
@@ -33,7 +33,7 @@ vi.mock('react-window', () => ({
 
 // Create test data
 const createTestAgents = (count: number): Agent[] => {
-  return Array.from({ length: count }, (_, i) => 
+  return Array.from({ length: count }, (_, i) =>
     createMockAgent({
       id: `agent-${String(i + 1).padStart(4, '0')}`,
       name: `Agent-${String(i + 1).padStart(4, '0')}`,
@@ -117,7 +117,7 @@ describe('VirtualizedAgentGrid', () => {
 
   it('shows selected agents with different styling', () => {
     const selectedAgentIds = ['agent-0001', 'agent-0003'];
-    
+
     render(
       <VirtualizedAgentGrid
         agents={mockAgents}
@@ -166,7 +166,7 @@ describe('VirtualizedAgentGrid', () => {
 
   it('handles agents without metrics gracefully', () => {
     const emptyMetrics = new Map<string, AgentMetrics>();
-    
+
     render(
       <VirtualizedAgentGrid
         agents={mockAgents}
@@ -209,7 +209,7 @@ describe('VirtualizedAgentGrid Performance', () => {
 
   it('handles 1000+ agents efficiently', () => {
     const startTime = performance.now();
-    
+
     render(
       <VirtualizedAgentGrid
         agents={largeAgentList}
@@ -241,7 +241,7 @@ describe('VirtualizedAgentGrid Performance', () => {
 
     // With virtualization, only visible items should be in DOM
     const agentElements = screen.getAllByText(/Agent-/);
-    
+
     // Should render only visible items (mock renders first 10)
     expect(agentElements.length).toBeLessThanOrEqual(10);
     expect(agentElements.length).toBeGreaterThan(0);
@@ -261,7 +261,7 @@ describe('VirtualizedAgentGrid Performance', () => {
 
     // Simulate scroll events
     const startTime = performance.now();
-    
+
     for (let i = 0; i < 10; i++) {
       fireEvent.scroll(grid, { target: { scrollTop: i * 100 } });
     }
@@ -350,7 +350,7 @@ describe('VirtualizedAgentGrid Filtering and Sorting', () => {
   it('displays filtered agents correctly', () => {
     // Filter to only online agents
     const filteredAgents = mockAgents.filter(agent => agent.status === 'online');
-    
+
     render(
       <VirtualizedAgentGrid
         agents={filteredAgents}
@@ -395,7 +395,7 @@ describe('VirtualizedAgentGrid Filtering and Sorting', () => {
 
   it('maintains selection after filtering', () => {
     const selectedAgents = ['agent-0001', 'agent-0005'];
-    
+
     render(
       <VirtualizedAgentGrid
         agents={mockAgents}
@@ -412,7 +412,7 @@ describe('VirtualizedAgentGrid Filtering and Sorting', () => {
   it('handles sorting changes efficiently', () => {
     // Create sorted agents list
     const sortedAgents = [...mockAgents].sort((a, b) => a.name.localeCompare(b.name));
-    
+
     render(
       <VirtualizedAgentGrid
         agents={sortedAgents}
@@ -449,10 +449,10 @@ describe('VirtualizedAgentGrid Accessibility', () => {
     );
 
     const grid = screen.getByTestId('virtualized-list');
-    
+
     // Focus the grid
     grid.focus();
-    
+
     // Should be focusable
     expect(document.activeElement).toBe(grid);
   });
@@ -468,7 +468,7 @@ describe('VirtualizedAgentGrid Accessibility', () => {
     );
 
     const grid = screen.getByTestId('virtualized-list');
-    
+
     // Should have appropriate ARIA attributes for a grid
     // This depends on the implementation
     expect(grid).toBeInTheDocument();
@@ -563,7 +563,7 @@ describe('VirtualizedAgentGrid Error Handling', () => {
 
   it('handles selection of non-existent agents', async () => {
     const agents = createTestAgents(5);
-    
+
     render(
       <VirtualizedAgentGrid
         agents={agents}

@@ -8,7 +8,7 @@ import { rest } from 'msw';
 import { createMockAgent, createMockMetrics, createMockAlert, createMockRealtimeMetrics } from '../setup';
 
 // Mock data
-const mockAgents = Array.from({ length: 50 }, (_, i) => 
+const mockAgents = Array.from({ length: 50 }, (_, i) =>
   createMockAgent({
     id: `agent-${String(i + 1).padStart(3, '0')}`,
     name: `Agent-${String(i + 1).padStart(3, '0')}`,
@@ -79,21 +79,21 @@ export const handlers = [
     const limit = parseInt(req.url.searchParams.get('limit') || '50');
     const status = req.url.searchParams.get('status');
     const region = req.url.searchParams.get('region');
-    
+
     let filteredAgents = [...mockAgents];
-    
+
     if (status) {
       filteredAgents = filteredAgents.filter(agent => agent.status === status);
     }
-    
+
     if (region) {
       filteredAgents = filteredAgents.filter(agent => agent.region === region);
     }
-    
+
     const startIndex = (page - 1) * limit;
     const endIndex = startIndex + limit;
     const paginatedAgents = filteredAgents.slice(startIndex, endIndex);
-    
+
     return res(
       ctx.status(200),
       ctx.json({
@@ -115,7 +115,7 @@ export const handlers = [
   rest.get('/api/v1/agents/:id', (req, res, ctx) => {
     const { id } = req.params;
     const agent = mockAgents.find(a => a.id === id);
-    
+
     if (!agent) {
       return res(
         ctx.status(404),
@@ -125,7 +125,7 @@ export const handlers = [
         })
       );
     }
-    
+
     return res(
       ctx.status(200),
       ctx.json({
@@ -138,7 +138,7 @@ export const handlers = [
   // Register agent
   rest.post('/api/v1/agents', async (req, res, ctx) => {
     const agentData = await req.json();
-    
+
     // Validate required fields
     if (!agentData.id || !agentData.name || !agentData.status) {
       return res(
@@ -149,10 +149,10 @@ export const handlers = [
         })
       );
     }
-    
+
     const newAgent = createMockAgent(agentData);
     mockAgents.push(newAgent);
-    
+
     return res(
       ctx.status(201),
       ctx.json({
@@ -166,7 +166,7 @@ export const handlers = [
   rest.put('/api/v1/agents/:id', async (req, res, ctx) => {
     const { id } = req.params;
     const updateData = await req.json();
-    
+
     const agentIndex = mockAgents.findIndex(a => a.id === id);
     if (agentIndex === -1) {
       return res(
@@ -177,9 +177,9 @@ export const handlers = [
         })
       );
     }
-    
+
     mockAgents[agentIndex] = { ...mockAgents[agentIndex], ...updateData };
-    
+
     return res(
       ctx.status(200),
       ctx.json({
@@ -193,7 +193,7 @@ export const handlers = [
   rest.delete('/api/v1/agents/:id', (req, res, ctx) => {
     const { id } = req.params;
     const agentIndex = mockAgents.findIndex(a => a.id === id);
-    
+
     if (agentIndex === -1) {
       return res(
         ctx.status(404),
@@ -203,9 +203,9 @@ export const handlers = [
         })
       );
     }
-    
+
     mockAgents.splice(agentIndex, 1);
-    
+
     return res(ctx.status(204));
   }),
 
@@ -215,7 +215,7 @@ export const handlers = [
     const timeRange = req.url.searchParams.get('timeRange') || '24h';
     const startTime = req.url.searchParams.get('startTime');
     const endTime = req.url.searchParams.get('endTime');
-    
+
     const agent = mockAgents.find(a => a.id === id);
     if (!agent) {
       return res(
@@ -226,18 +226,18 @@ export const handlers = [
         })
       );
     }
-    
+
     // Filter metrics by time range
     let filteredMetrics = mockMetricsHistory.filter(m => m.agentId === id);
-    
+
     if (startTime && endTime) {
       const start = new Date(startTime);
       const end = new Date(endTime);
-      filteredMetrics = filteredMetrics.filter(m => 
+      filteredMetrics = filteredMetrics.filter(m =>
         m.timestamp >= start && m.timestamp <= end
       );
     }
-    
+
     return res(
       ctx.status(200),
       ctx.json({
@@ -291,7 +291,7 @@ export const handlers = [
   rest.get('/api/v1/metrics/aggregate', (req, res, ctx) => {
     const timeRange = req.url.searchParams.get('timeRange') || '24h';
     const groupBy = req.url.searchParams.get('groupBy') || 'hour';
-    
+
     // Generate aggregated data based on parameters
     const aggregatedData = Array.from({ length: 24 }, (_, i) => ({
       timestamp: new Date(Date.now() - (24 - i) * 60 * 60 * 1000),
@@ -301,7 +301,7 @@ export const handlers = [
       requestCount: Math.floor(1000 + Math.random() * 500),
       errorCount: Math.floor(Math.random() * 50),
     }));
-    
+
     return res(
       ctx.status(200),
       ctx.json({
@@ -317,21 +317,21 @@ export const handlers = [
     const agentIds = req.url.searchParams.getAll('agentId');
     const startTime = req.url.searchParams.get('startTime');
     const endTime = req.url.searchParams.get('endTime');
-    
+
     let filteredMetrics = [...mockMetricsHistory];
-    
+
     if (agentIds.length > 0) {
       filteredMetrics = filteredMetrics.filter(m => agentIds.includes(m.agentId));
     }
-    
+
     if (startTime && endTime) {
       const start = new Date(startTime);
       const end = new Date(endTime);
-      filteredMetrics = filteredMetrics.filter(m => 
+      filteredMetrics = filteredMetrics.filter(m =>
         m.timestamp >= start && m.timestamp <= end
       );
     }
-    
+
     return res(
       ctx.status(200),
       ctx.json({
@@ -344,18 +344,18 @@ export const handlers = [
   // Ingest metrics
   rest.post('/api/v1/metrics', async (req, res, ctx) => {
     const metricsData = await req.json();
-    
+
     // Add to mock history
     mockMetricsHistory.push({
       ...metricsData,
       timestamp: new Date(metricsData.timestamp || Date.now()),
     });
-    
+
     // Keep only recent data
     if (mockMetricsHistory.length > 10000) {
       mockMetricsHistory = mockMetricsHistory.slice(-5000);
     }
-    
+
     return res(
       ctx.status(200),
       ctx.json({
@@ -370,19 +370,19 @@ export const handlers = [
   rest.get('/api/v1/alerts', (req, res, ctx) => {
     const enabled = req.url.searchParams.get('enabled');
     const severity = req.url.searchParams.get('severity');
-    
+
     let filteredAlerts = [...mockAlerts];
-    
+
     if (enabled !== null) {
-      filteredAlerts = filteredAlerts.filter(alert => 
+      filteredAlerts = filteredAlerts.filter(alert =>
         alert.enabled === (enabled === 'true')
       );
     }
-    
+
     if (severity) {
       filteredAlerts = filteredAlerts.filter(alert => alert.severity === severity);
     }
-    
+
     return res(
       ctx.status(200),
       ctx.json({
@@ -395,7 +395,7 @@ export const handlers = [
   // Create alert
   rest.post('/api/v1/alerts', async (req, res, ctx) => {
     const alertData = await req.json();
-    
+
     if (!alertData.name || !alertData.metric || !alertData.operator || alertData.threshold === undefined) {
       return res(
         ctx.status(422),
@@ -405,14 +405,14 @@ export const handlers = [
         })
       );
     }
-    
+
     const newAlert = createMockAlert({
       ...alertData,
       id: `alert-${Date.now()}`,
     });
-    
+
     mockAlerts.push(newAlert);
-    
+
     return res(
       ctx.status(201),
       ctx.json({
@@ -426,7 +426,7 @@ export const handlers = [
   rest.put('/api/v1/alerts/:id', async (req, res, ctx) => {
     const { id } = req.params;
     const updateData = await req.json();
-    
+
     const alertIndex = mockAlerts.findIndex(a => a.id === id);
     if (alertIndex === -1) {
       return res(
@@ -437,13 +437,13 @@ export const handlers = [
         })
       );
     }
-    
+
     mockAlerts[alertIndex] = {
       ...mockAlerts[alertIndex],
       ...updateData,
       updatedAt: new Date(),
     };
-    
+
     return res(
       ctx.status(200),
       ctx.json({
@@ -457,7 +457,7 @@ export const handlers = [
   rest.delete('/api/v1/alerts/:id', (req, res, ctx) => {
     const { id } = req.params;
     const alertIndex = mockAlerts.findIndex(a => a.id === id);
-    
+
     if (alertIndex === -1) {
       return res(
         ctx.status(404),
@@ -467,9 +467,9 @@ export const handlers = [
         })
       );
     }
-    
+
     mockAlerts.splice(alertIndex, 1);
-    
+
     return res(ctx.status(204));
   }),
 

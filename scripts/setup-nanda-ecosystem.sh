@@ -29,7 +29,7 @@ info() { echo -e "${BLUE}ℹ${NC} $*"; }
 
 fetch_aws_secrets() {
     info "Fetching secrets from AWS Secrets Manager..."
-    
+
     # Core secrets needed for all agents
     local secrets=(
         "candlefish/jwt-keys"
@@ -43,7 +43,7 @@ fetch_aws_secrets() {
         "candlefish/openai-api-key"
         "candlefish/anthropic-api-key"
     )
-    
+
     # Create .env file with secrets
     cat > "${ENV_FILE}" <<EOF
 # NANDA Agent Environment Configuration
@@ -64,17 +64,17 @@ JWT_ISSUER=https://api.candlefish.ai
 JWKS_URL=https://api.candlefish.ai/.well-known/jwks.json
 
 EOF
-    
+
     # Fetch each secret and add to .env
     for secret_id in "${secrets[@]}"; do
         info "  Fetching: $secret_id"
-        
+
         # Try to fetch the secret
         secret_json=$(aws secretsmanager get-secret-value \
             --secret-id "$secret_id" \
             --query 'SecretString' \
             --output text 2>/dev/null || echo "{}")
-        
+
         if [ "$secret_json" != "{}" ]; then
             # Parse JSON and add each key-value pair to .env
             echo "$secret_json" | jq -r 'to_entries[] | "# From '"$secret_id"'\n\(.key)=\"\(.value)\""' >> "${ENV_FILE}"
@@ -83,7 +83,7 @@ EOF
             warn "  Could not fetch $secret_id (may not exist yet)"
         fi
     done
-    
+
     # Add computed values
     cat >> "${ENV_FILE}" <<EOF
 # Computed Values
@@ -95,7 +95,7 @@ NANDA_REGISTRY_URL=https://api.candlefish.ai/registry
 NANDA_INDEX_URL=https://index.nanda.ai
 
 EOF
-    
+
     say "Secrets loaded into ${ENV_FILE}"
 }
 
@@ -107,10 +107,10 @@ create_paintbox_agent() {
     local agent_name="paintbox-agent"
     local agent_dir="${AGENTS_DIR}/${agent_name}"
     local port=8088
-    
+
     info "Creating Paintbox Agent (Work Orders & Estimates)..."
     mkdir -p "${agent_dir}/src" "${agent_dir}/infra" "${agent_dir}/agentfacts"
-    
+
     cat > "${agent_dir}/src/server.py" <<'PYTHON'
 import os, json, time, asyncio, uuid
 from datetime import datetime
@@ -149,12 +149,12 @@ async def tool_workorders_update(payload: dict) -> dict:
     order_id = payload.get("workorder_id")
     if order_id not in work_orders:
         raise HTTPException(404, f"Work order {order_id} not found")
-    
+
     if "status" in payload:
         work_orders[order_id]["status"] = payload["status"]
     if "notes" in payload:
         work_orders[order_id]["notes"] = payload["notes"]
-    
+
     work_orders[order_id]["updated_at"] = datetime.utcnow().isoformat()
     return {"status": "ok", "workorder": work_orders[order_id]}
 
@@ -163,14 +163,14 @@ async def tool_workorders_search(payload: dict) -> dict:
     results = []
     status_filter = payload.get("status")
     customer_filter = payload.get("customer", "").lower()
-    
+
     for wo in work_orders.values():
         if status_filter and wo["status"] != status_filter:
             continue
         if customer_filter and customer_filter not in wo.get("customer", "").lower():
             continue
         results.append(wo)
-    
+
     return {"status": "ok", "results": results, "count": len(results)}
 
 async def tool_estimates_calculate(payload: dict) -> dict:
@@ -178,19 +178,19 @@ async def tool_estimates_calculate(payload: dict) -> dict:
     sqft = payload.get("square_feet", 0)
     rooms = payload.get("rooms", 0)
     paint_quality = payload.get("paint_quality", "standard")
-    
+
     # Pricing logic
     base_rate = {"economy": 2.5, "standard": 3.5, "premium": 5.0}[paint_quality]
     labor_cost = sqft * base_rate
     material_cost = sqft * 1.2
-    
+
     if rooms > 0:
         room_prep_cost = rooms * 150
     else:
         room_prep_cost = sqft * 0.3
-    
+
     total = labor_cost + material_cost + room_prep_cost
-    
+
     estimate_id = f"est_{uuid.uuid4().hex[:8]}"
     estimates[estimate_id] = {
         "id": estimate_id,
@@ -203,7 +203,7 @@ async def tool_estimates_calculate(payload: dict) -> dict:
         "total": round(total, 2),
         "created_at": datetime.utcnow().isoformat()
     }
-    
+
     return {"status": "ok", "estimate": estimates[estimate_id]}
 
 async def tool_salesforce_sync(payload: dict) -> dict:
@@ -233,7 +233,7 @@ async def mcp_sse(request: Request, authorization: str = Header(None)):
                 break
             await asyncio.sleep(30)
             yield f"event: heartbeat\ndata: {json.dumps({'timestamp': time.time()})}\n\n"
-    
+
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 @app.post("/agents/paintbox/rest/call")
@@ -242,14 +242,14 @@ async def rest_call(req: Request):
     body = await req.json()
     urn = body.get("tool")
     payload = body.get("input", {})
-    
+
     fn = TOOLS.get(urn)
     if not fn:
         return JSONResponse(
-            {"error": "unknown_tool", "available": list(TOOLS.keys())}, 
+            {"error": "unknown_tool", "available": list(TOOLS.keys())},
             status_code=400
         )
-    
+
     try:
         result = await fn(payload)
         return JSONResponse(result)
@@ -283,7 +283,7 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8080)
 PYTHON
-    
+
     # Create requirements and Dockerfile
     cat > "${agent_dir}/src/requirements.txt" <<EOF
 fastapi==0.104.1
@@ -291,7 +291,7 @@ uvicorn[standard]==0.24.0
 pydantic==2.5.0
 httpx==0.25.2
 EOF
-    
+
     cat > "${agent_dir}/infra/Dockerfile" <<EOF
 FROM python:3.11-slim
 WORKDIR /app
@@ -302,7 +302,7 @@ ENV PORT=8080
 EXPOSE 8080
 CMD ["uvicorn", "src.server:app", "--host", "0.0.0.0", "--port", "8080"]
 EOF
-    
+
     say "Paintbox Agent created"
 }
 
@@ -310,10 +310,10 @@ create_crown_trophy_agent() {
     local agent_name="crown-trophy-agent"
     local agent_dir="${AGENTS_DIR}/${agent_name}"
     local port=8089
-    
+
     info "Creating Crown Trophy Agent (Inventory & Engraving)..."
     mkdir -p "${agent_dir}/src" "${agent_dir}/infra" "${agent_dir}/agentfacts"
-    
+
     cat > "${agent_dir}/src/server.py" <<'PYTHON'
 import os, json, time, asyncio, uuid
 from datetime import datetime
@@ -336,7 +336,7 @@ async def tool_inventory_check(payload: dict) -> dict:
     """Check inventory levels"""
     sku = payload.get("sku")
     category = payload.get("category")
-    
+
     results = []
     for item in inventory.values():
         if sku and item["sku"] != sku:
@@ -344,14 +344,14 @@ async def tool_inventory_check(payload: dict) -> dict:
         if category and item["category"] != category:
             continue
         results.append(item)
-    
+
     return {"status": "ok", "items": results, "count": len(results)}
 
 async def tool_inventory_update(payload: dict) -> dict:
     """Update inventory levels"""
     sku = payload.get("sku")
     quantity_change = payload.get("quantity_change", 0)
-    
+
     if sku not in inventory:
         inventory[sku] = {
             "sku": sku,
@@ -360,10 +360,10 @@ async def tool_inventory_update(payload: dict) -> dict:
             "quantity": 0,
             "price": payload.get("price", 0)
         }
-    
+
     inventory[sku]["quantity"] += quantity_change
     inventory[sku]["updated_at"] = datetime.utcnow().isoformat()
-    
+
     return {"status": "ok", "item": inventory[sku]}
 
 async def tool_engraving_create(payload: dict) -> dict:
@@ -379,7 +379,7 @@ async def tool_engraving_create(payload: dict) -> dict:
         "status": "pending",
         "created_at": datetime.utcnow().isoformat()
     }
-    
+
     logger.info(f"Created engraving: {engraving_id}")
     return {"status": "ok", "engraving": engravings[engraving_id]}
 
@@ -395,7 +395,7 @@ async def tool_order_create(payload: dict) -> dict:
         "status": "pending",
         "created_at": datetime.utcnow().isoformat()
     }
-    
+
     return {"status": "ok", "order": orders[order_id]}
 
 async def tool_pricing_calculate(payload: dict) -> dict:
@@ -404,16 +404,16 @@ async def tool_pricing_calculate(payload: dict) -> dict:
     engraving_lines = payload.get("engraving_lines", 0)
     quantity = payload.get("quantity", 1)
     rush_order = payload.get("rush_order", False)
-    
+
     engraving_cost = engraving_lines * 5  # $5 per line
     subtotal = (base_price + engraving_cost) * quantity
-    
+
     if rush_order:
         rush_fee = subtotal * 0.25  # 25% rush fee
         total = subtotal + rush_fee
     else:
         total = subtotal
-    
+
     return {
         "status": "ok",
         "pricing": {
@@ -444,7 +444,7 @@ async def mcp_sse(request: Request, authorization: str = Header(None)):
                 break
             await asyncio.sleep(30)
             yield f"event: heartbeat\ndata: {json.dumps({'timestamp': time.time()})}\n\n"
-    
+
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 @app.post("/agents/crown-trophy/rest/call")
@@ -453,14 +453,14 @@ async def rest_call(req: Request):
     body = await req.json()
     urn = body.get("tool")
     payload = body.get("input", {})
-    
+
     fn = TOOLS.get(urn)
     if not fn:
         return JSONResponse(
-            {"error": "unknown_tool", "available": list(TOOLS.keys())}, 
+            {"error": "unknown_tool", "available": list(TOOLS.keys())},
             status_code=400
         )
-    
+
     try:
         result = await fn(payload)
         return JSONResponse(result)
@@ -492,14 +492,14 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8080)
 PYTHON
-    
+
     # Create requirements and Dockerfile
     cat > "${agent_dir}/src/requirements.txt" <<EOF
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 pydantic==2.5.0
 EOF
-    
+
     cat > "${agent_dir}/infra/Dockerfile" <<EOF
 FROM python:3.11-slim
 WORKDIR /app
@@ -510,7 +510,7 @@ ENV PORT=8080
 EXPOSE 8080
 CMD ["uvicorn", "src.server:app", "--host", "0.0.0.0", "--port", "8080"]
 EOF
-    
+
     say "Crown Trophy Agent created"
 }
 
@@ -518,10 +518,10 @@ create_temporal_agent() {
     local agent_name="temporal-agent"
     local agent_dir="${AGENTS_DIR}/${agent_name}"
     local port=8090
-    
+
     info "Creating Temporal Workflow Agent..."
     mkdir -p "${agent_dir}/src" "${agent_dir}/infra" "${agent_dir}/agentfacts"
-    
+
     cat > "${agent_dir}/src/server.py" <<'PYTHON'
 import os, json, time, asyncio, uuid
 from datetime import datetime
@@ -548,7 +548,7 @@ async def tool_workflow_start(payload: dict) -> dict:
         "status": "running",
         "started_at": datetime.utcnow().isoformat()
     }
-    
+
     logger.info(f"Started workflow: {workflow_id}")
     return {"status": "ok", "workflow_id": workflow_id}
 
@@ -563,19 +563,19 @@ async def tool_workflow_signal(payload: dict) -> dict:
     """Send signal to workflow"""
     workflow_id = payload.get("workflow_id")
     signal = payload.get("signal")
-    
+
     if workflow_id in workflows:
         workflows[workflow_id]["last_signal"] = signal
         workflows[workflow_id]["signaled_at"] = datetime.utcnow().isoformat()
         return {"status": "ok", "message": f"Signal sent to {workflow_id}"}
-    
+
     return {"status": "error", "message": "Workflow not found"}
 
 async def tool_activity_execute(payload: dict) -> dict:
     """Execute workflow activity"""
     activity_name = payload.get("activity_name")
     params = payload.get("params", {})
-    
+
     # Simulate activity execution
     result = {
         "activity": activity_name,
@@ -583,7 +583,7 @@ async def tool_activity_execute(payload: dict) -> dict:
         "output": params,
         "executed_at": datetime.utcnow().isoformat()
     }
-    
+
     return {"status": "ok", "result": result}
 
 TOOLS = {
@@ -603,7 +603,7 @@ async def mcp_sse(request: Request):
                 break
             await asyncio.sleep(30)
             yield f"event: heartbeat\ndata: {json.dumps({'timestamp': time.time()})}\n\n"
-    
+
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 @app.post("/agents/temporal/rest/call")
@@ -612,11 +612,11 @@ async def rest_call(req: Request):
     body = await req.json()
     urn = body.get("tool")
     payload = body.get("input", {})
-    
+
     fn = TOOLS.get(urn)
     if not fn:
         return JSONResponse({"error": "unknown_tool"}, status_code=400)
-    
+
     try:
         result = await fn(payload)
         return JSONResponse(result)
@@ -647,13 +647,13 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8080)
 PYTHON
-    
+
     cat > "${agent_dir}/src/requirements.txt" <<EOF
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 pydantic==2.5.0
 EOF
-    
+
     cat > "${agent_dir}/infra/Dockerfile" <<EOF
 FROM python:3.11-slim
 WORKDIR /app
@@ -664,7 +664,7 @@ ENV PORT=8080
 EXPOSE 8080
 CMD ["uvicorn", "src.server:app", "--host", "0.0.0.0", "--port", "8080"]
 EOF
-    
+
     say "Temporal Agent created"
 }
 
@@ -672,10 +672,10 @@ create_clark_county_agent() {
     local agent_name="clark-county-agent"
     local agent_dir="${AGENTS_DIR}/${agent_name}"
     local port=8091
-    
+
     info "Creating Clark County Permit Agent..."
     mkdir -p "${agent_dir}/src" "${agent_dir}/infra" "${agent_dir}/agentfacts"
-    
+
     cat > "${agent_dir}/src/server.py" <<'PYTHON'
 import os, json, time, asyncio, uuid
 from datetime import datetime, timedelta
@@ -697,7 +697,7 @@ async def tool_permit_search(payload: dict) -> dict:
     permit_number = payload.get("permit_number")
     address = payload.get("address", "").lower()
     status = payload.get("status")
-    
+
     results = []
     for permit in permits.values():
         if permit_number and permit["number"] != permit_number:
@@ -707,16 +707,16 @@ async def tool_permit_search(payload: dict) -> dict:
         if status and permit["status"] != status:
             continue
         results.append(permit)
-    
+
     return {"status": "ok", "permits": results, "count": len(results)}
 
 async def tool_permit_details(payload: dict) -> dict:
     """Get detailed permit information"""
     permit_number = payload.get("permit_number")
-    
+
     if permit_number in permits:
         return {"status": "ok", "permit": permits[permit_number]}
-    
+
     # Simulate fetching from Clark County
     permit = {
         "number": permit_number,
@@ -729,7 +729,7 @@ async def tool_permit_details(payload: dict) -> dict:
         "value": random.randint(10000, 500000),
         "description": "General construction permit"
     }
-    
+
     permits[permit_number] = permit
     return {"status": "ok", "permit": permit}
 
@@ -737,7 +737,7 @@ async def tool_inspection_schedule(payload: dict) -> dict:
     """Schedule or check inspections"""
     permit_number = payload.get("permit_number")
     inspection_type = payload.get("inspection_type")
-    
+
     inspection = {
         "id": f"insp_{uuid.uuid4().hex[:8]}",
         "permit_number": permit_number,
@@ -746,14 +746,14 @@ async def tool_inspection_schedule(payload: dict) -> dict:
         "inspector": f"Inspector {random.randint(100, 999)}",
         "status": "Scheduled"
     }
-    
+
     return {"status": "ok", "inspection": inspection}
 
 async def tool_contractor_lookup(payload: dict) -> dict:
     """Look up contractor information"""
     license_number = payload.get("license_number")
     name = payload.get("name")
-    
+
     contractor = {
         "license": license_number or f"LIC{random.randint(100000, 999999)}",
         "name": name or f"Construction Company {random.randint(100, 999)}",
@@ -762,7 +762,7 @@ async def tool_contractor_lookup(payload: dict) -> dict:
         "specialties": ["General Building", "Electrical", "Plumbing"],
         "rating": round(random.uniform(3.5, 5.0), 1)
     }
-    
+
     return {"status": "ok", "contractor": contractor}
 
 TOOLS = {
@@ -782,7 +782,7 @@ async def mcp_sse(request: Request):
                 break
             await asyncio.sleep(30)
             yield f"event: heartbeat\ndata: {json.dumps({'timestamp': time.time()})}\n\n"
-    
+
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 @app.post("/agents/clark-county/rest/call")
@@ -791,11 +791,11 @@ async def rest_call(req: Request):
     body = await req.json()
     urn = body.get("tool")
     payload = body.get("input", {})
-    
+
     fn = TOOLS.get(urn)
     if not fn:
         return JSONResponse({"error": "unknown_tool"}, status_code=400)
-    
+
     try:
         result = await fn(payload)
         return JSONResponse(result)
@@ -826,14 +826,14 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8080)
 PYTHON
-    
+
     cat > "${agent_dir}/src/requirements.txt" <<EOF
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 pydantic==2.5.0
 httpx==0.25.2
 EOF
-    
+
     cat > "${agent_dir}/infra/Dockerfile" <<EOF
 FROM python:3.11-slim
 WORKDIR /app
@@ -844,7 +844,7 @@ ENV PORT=8080
 EXPOSE 8080
 CMD ["uvicorn", "src.server:app", "--host", "0.0.0.0", "--port", "8080"]
 EOF
-    
+
     say "Clark County Agent created"
 }
 
@@ -854,7 +854,7 @@ EOF
 
 create_compose_file() {
     info "Creating Docker Compose configuration..."
-    
+
     cat > "${COMPOSE_FILE}" <<'YAML'
 version: '3.8'
 
@@ -980,17 +980,17 @@ networks:
     name: nanda-network
     driver: bridge
 YAML
-    
+
     say "Docker Compose configuration created"
 }
 
 create_agent_registry() {
     local agent_name="agent-registry"
     local agent_dir="${AGENTS_DIR}/${agent_name}"
-    
+
     info "Creating Agent Registry..."
     mkdir -p "${agent_dir}/src" "${agent_dir}/infra"
-    
+
     cat > "${agent_dir}/src/server.py" <<'PYTHON'
 import os, json, time
 from datetime import datetime
@@ -1065,14 +1065,14 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8080)
 PYTHON
-    
+
     cat > "${agent_dir}/src/requirements.txt" <<EOF
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 pydantic==2.5.0
 httpx==0.25.2
 EOF
-    
+
     cat > "${agent_dir}/infra/Dockerfile" <<EOF
 FROM python:3.11-slim
 WORKDIR /app
@@ -1083,7 +1083,7 @@ ENV PORT=8080
 EXPOSE 8080
 CMD ["uvicorn", "src.server:app", "--host", "0.0.0.0", "--port", "8080"]
 EOF
-    
+
     say "Agent Registry created"
 }
 
@@ -1094,7 +1094,7 @@ EOF
 create_observability_config() {
     info "Setting up observability..."
     mkdir -p "${DEPLOY_DIR}/obs"
-    
+
     # Prometheus configuration
     cat > "${DEPLOY_DIR}/obs/prometheus.yml" <<'YAML'
 global:
@@ -1105,24 +1105,24 @@ scrape_configs:
   - job_name: 'agent-registry'
     static_configs:
       - targets: ['agent-registry:8080']
-  
+
   - job_name: 'paintbox-agent'
     static_configs:
       - targets: ['paintbox-agent:8080']
-  
+
   - job_name: 'crown-trophy-agent'
     static_configs:
       - targets: ['crown-trophy-agent:8080']
-  
+
   - job_name: 'temporal-agent'
     static_configs:
       - targets: ['temporal-agent:8080']
-  
+
   - job_name: 'clark-county-agent'
     static_configs:
       - targets: ['clark-county-agent:8080']
 YAML
-    
+
     # Grafana datasource
     cat > "${DEPLOY_DIR}/obs/grafana-datasources.yml" <<'YAML'
 apiVersion: 1
@@ -1135,7 +1135,7 @@ datasources:
     isDefault: true
     editable: true
 YAML
-    
+
     say "Observability configuration created"
 }
 
@@ -1149,36 +1149,36 @@ main() {
     echo "   NANDA Ecosystem Setup - Candlefish AI Agent Fleet"
     echo "════════════════════════════════════════════════════════════════"
     echo ""
-    
+
     # Create directory structure
     mkdir -p "${DEPLOY_DIR}" "${AGENTS_DIR}"
-    
+
     # Fetch AWS secrets
     fetch_aws_secrets
-    
+
     # Create all agents
     create_agent_registry
     create_paintbox_agent
     create_crown_trophy_agent
     create_temporal_agent
     create_clark_county_agent
-    
+
     # Create infrastructure
     create_compose_file
     create_observability_config
-    
+
     # Build and deploy
     info "Building all agent containers..."
     cd "${DEPLOY_DIR}"
     docker compose build
-    
+
     info "Starting NANDA ecosystem..."
     docker compose up -d
-    
+
     # Wait for services to be healthy
     info "Waiting for services to be healthy..."
     sleep 10
-    
+
     # Display status
     echo ""
     echo "════════════════════════════════════════════════════════════════"

@@ -138,7 +138,7 @@ export function DashboardHome() {
               <button className="btn-primary">
                 Discover Agents
               </button>
-              <button 
+              <button
                 onClick={() => setShowReports(true)}
                 className="px-6 py-3 text-sm font-medium border border-border rounded-lg hover:bg-muted/50 transition-colors"
               >

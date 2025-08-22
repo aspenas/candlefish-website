@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { 
-  FileText, 
-  Download, 
-  Calendar, 
-  TrendingUp, 
+import {
+  FileText,
+  Download,
+  Calendar,
+  TrendingUp,
   Activity,
   Users,
   Server,
@@ -85,7 +85,7 @@ export function ReportsPage() {
 
   const generateReport = async () => {
     setIsGenerating(true)
-    
+
     // Simulate report generation
     setTimeout(() => {
       const newReport: ReportData = {
@@ -104,10 +104,10 @@ export function ReportsPage() {
           uptime: 99 + Math.random()
         }
       }
-      
+
       setReports([newReport, ...reports])
       setIsGenerating(false)
-      
+
       // Trigger download
       downloadReport(newReport)
     }, 3000)

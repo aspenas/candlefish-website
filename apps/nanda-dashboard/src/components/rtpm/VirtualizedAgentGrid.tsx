@@ -76,9 +76,9 @@ const StatusIcon: React.FC<{ status: Agent['status']; className?: string }> = ({
   }
 };
 
-const MetricBadge: React.FC<{ 
-  value: number; 
-  unit: string; 
+const MetricBadge: React.FC<{
+  value: number;
+  unit: string;
   threshold?: { warning: number; critical: number };
   icon: React.ReactNode;
 }> = ({ value, unit, threshold, icon }) => {
@@ -140,7 +140,7 @@ const AgentCard: React.FC<AgentCardProps> = ({
               </span>
             )}
           </div>
-          
+
           {metrics && (
             <div className="flex items-center gap-2 flex-shrink-0">
               <MetricBadge
@@ -334,12 +334,12 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   onFiltersChange,
   agents
 }) => {
-  const uniqueRegions = useMemo(() => 
+  const uniqueRegions = useMemo(() =>
     [...new Set(agents.map(a => a.region).filter(Boolean))],
     [agents]
   );
 
-  const uniquePlatforms = useMemo(() => 
+  const uniquePlatforms = useMemo(() =>
     [...new Set(agents.map(a => a.platform).filter(Boolean))],
     [agents]
   );
@@ -505,7 +505,7 @@ export const VirtualizedAgentGrid: React.FC<VirtualizedAgentGridProps> = ({
   const filteredAndSortedAgents = useMemo(() => {
     let filtered = agents.filter(agent => {
       // Search filter
-      const searchMatch = !filters.search || 
+      const searchMatch = !filters.search ||
         agent.name.toLowerCase().includes(filters.search.toLowerCase()) ||
         agent.id.toLowerCase().includes(filters.search.toLowerCase());
 
@@ -513,11 +513,11 @@ export const VirtualizedAgentGrid: React.FC<VirtualizedAgentGridProps> = ({
       const statusMatch = filters.status.length === 0 || filters.status.includes(agent.status);
 
       // Region filter
-      const regionMatch = filters.regions.length === 0 || 
+      const regionMatch = filters.regions.length === 0 ||
         (agent.region && filters.regions.includes(agent.region));
 
       // Platform filter
-      const platformMatch = filters.platforms.length === 0 || 
+      const platformMatch = filters.platforms.length === 0 ||
         (agent.platform && filters.platforms.includes(agent.platform));
 
       return searchMatch && statusMatch && regionMatch && platformMatch;
@@ -621,7 +621,7 @@ export const VirtualizedAgentGrid: React.FC<VirtualizedAgentGridProps> = ({
                 <option value="metrics.memory">Memory Usage</option>
                 <option value="metrics.responseTime">Response Time</option>
               </select>
-              
+
               <button
                 onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                 className="p-2 bg-gray-700/50 border border-gray-600 rounded-lg text-gray-300 hover:text-white hover:bg-gray-600/50"
@@ -676,7 +676,7 @@ export const VirtualizedAgentGrid: React.FC<VirtualizedAgentGridProps> = ({
           <div className="text-sm text-gray-400">
             Showing {filteredAndSortedAgents.length} of {agents.length} agents
           </div>
-          
+
           {selectedAgents.length > 0 && (
             <div className="text-sm text-blue-400">
               {selectedAgents.length} selected

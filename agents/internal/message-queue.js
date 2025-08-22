@@ -14,14 +14,14 @@ class MessageQueue extends EventEmitter {
     this.retryAttempts = new Map();
     this.maxRetries = 3;
   }
-  
+
   createQueue(queueName) {
     if (!this.queues.has(queueName)) {
       this.queues.set(queueName, []);
       console.log(`[MQ] Created queue: ${queueName}`);
     }
   }
-  
+
   async publish(queueName, message) {
     const envelope = {
       id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -30,21 +30,21 @@ class MessageQueue extends EventEmitter {
       timestamp: new Date().toISOString(),
       attempts: 0
     };
-    
+
     if (!this.queues.has(queueName)) {
       this.createQueue(queueName);
     }
-    
+
     this.queues.get(queueName).push(envelope);
     this.emit('message', { queue: queueName, envelope });
-    
+
     return envelope.id;
   }
-  
+
   async consume(queueName, handler) {
     this.on('message', async ({ queue, envelope }) => {
       if (queue !== queueName) return;
-      
+
       try {
         await handler(envelope.message);
         this.acknowledge(envelope.id);
@@ -54,7 +54,7 @@ class MessageQueue extends EventEmitter {
       }
     });
   }
-  
+
   acknowledge(messageId) {
     // Remove from all queues
     for (const [queueName, messages] of this.queues) {
@@ -66,25 +66,25 @@ class MessageQueue extends EventEmitter {
       }
     }
   }
-  
+
   retry(envelope) {
     envelope.attempts++;
-    
+
     if (envelope.attempts > this.maxRetries) {
       this.deadLetterQueue.push(envelope);
       console.error(`[MQ] Message moved to DLQ: ${envelope.id}`);
       return;
     }
-    
+
     // Exponential backoff
     const delay = Math.pow(2, envelope.attempts) * 1000;
     setTimeout(() => {
       this.emit('message', { queue: envelope.queue, envelope });
     }, delay);
-    
+
     console.log(`[MQ] Retrying message ${envelope.id} (attempt ${envelope.attempts})`);
   }
-  
+
   getQueueStats() {
     const stats = {};
     for (const [name, messages] of this.queues) {

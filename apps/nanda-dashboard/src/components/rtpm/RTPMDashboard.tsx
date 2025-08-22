@@ -75,8 +75,8 @@ const NavigationButton: React.FC<{
     onClick={onClick}
     className={`
       w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 relative
-      ${active 
-        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25' 
+      ${active
+        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25'
         : 'text-gray-300 hover:bg-gray-700/50 hover:text-white'
       }
     `}
@@ -230,7 +230,7 @@ const TopBar: React.FC<{
             <Menu className="w-5 h-5" />
           </button>
         )}
-        
+
         <div>
           <h2 className="text-white font-semibold">Agent Performance Monitor</h2>
           <p className="text-gray-400 text-sm">
@@ -248,7 +248,7 @@ const TopBar: React.FC<{
         >
           <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
         </button>
-        
+
         <button
           onClick={onExport}
           className="p-2 rounded-lg hover:bg-gray-700/50 text-gray-400 hover:text-white"
@@ -273,7 +273,7 @@ const OverviewView: React.FC<{
     const onlineAgents = agents.filter(a => a.status === 'online').length;
     const totalAgents = agents.length;
     const latestMetrics = realtimeMetrics[realtimeMetrics.length - 1];
-    const recentAlerts = alertHistory.filter(a => 
+    const recentAlerts = alertHistory.filter(a =>
       Date.now() - a.triggeredAt.getTime() < 24 * 60 * 60 * 1000
     ).length;
 
@@ -444,7 +444,7 @@ const RTMPDashboardContent: React.FC<RTMPDashboardProps> = ({ className = '' }) 
           const newAgentMetrics = new Map(prev.agentMetrics);
           const existingMetrics = newAgentMetrics.get(agentId) || [];
           newAgentMetrics.set(agentId, [...existingMetrics.slice(-99), metrics]);
-          
+
           return {
             ...prev,
             agentMetrics: newAgentMetrics,
@@ -512,10 +512,10 @@ const RTMPDashboardContent: React.FC<RTMPDashboardProps> = ({ className = '' }) 
     setDashboardState(prev => ({ ...prev, isLoading: true }));
     // Simulate refresh
     setTimeout(() => {
-      setDashboardState(prev => ({ 
-        ...prev, 
-        isLoading: false, 
-        lastUpdated: new Date() 
+      setDashboardState(prev => ({
+        ...prev,
+        isLoading: false,
+        lastUpdated: new Date()
       }));
     }, 1000);
   };
@@ -524,7 +524,7 @@ const RTMPDashboardContent: React.FC<RTMPDashboardProps> = ({ className = '' }) 
     console.log('Selected agent:', agent);
   };
 
-  const alertCount = dashboardState.alertHistory.filter(a => 
+  const alertCount = dashboardState.alertHistory.filter(a =>
     !a.acknowledged && Date.now() - a.triggeredAt.getTime() < 24 * 60 * 60 * 1000
   ).length;
 
@@ -539,7 +539,7 @@ const RTMPDashboardContent: React.FC<RTMPDashboardProps> = ({ className = '' }) 
             alertHistory={dashboardState.alertHistory}
           />
         );
-      
+
       case 'realtime':
         return (
           <RealtimeCharts
@@ -548,7 +548,7 @@ const RTMPDashboardContent: React.FC<RTMPDashboardProps> = ({ className = '' }) 
             timeRange={timeRange}
           />
         );
-      
+
       case 'historical':
         return (
           <HistoricalCharts
@@ -559,7 +559,7 @@ const RTMPDashboardContent: React.FC<RTMPDashboardProps> = ({ className = '' }) 
             isLoading={dashboardState.isLoading}
           />
         );
-      
+
       case 'agents':
         return (
           <VirtualizedAgentGrid
@@ -569,7 +569,7 @@ const RTMPDashboardContent: React.FC<RTMPDashboardProps> = ({ className = '' }) 
             selectedAgents={dashboardState.selectedAgents}
           />
         );
-      
+
       case 'alerts':
         return (
           <AlertConfiguration
@@ -581,7 +581,7 @@ const RTMPDashboardContent: React.FC<RTMPDashboardProps> = ({ className = '' }) 
             onTestAlert={(alert) => console.log('Test alert:', alert)}
           />
         );
-      
+
       default:
         return null;
     }
