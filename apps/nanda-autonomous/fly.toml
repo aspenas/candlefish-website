@@ -1,0 +1,58 @@
+app = "nanda-autonomous"
+primary_region = "iad"
+kill_signal = "SIGTERM"
+kill_timeout = "5s"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  NODE_ENV = "production"
+  COMMIT_INTERVAL = "300"
+  AWS_REGION = "us-east-1"
+  DYNAMO_TABLE = "nanda-index-agents"
+  GITHUB_REPO = "candlefish-ai/candlefish-ai"
+
+[experimental]
+  auto_rollback = true
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8080
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+  [[services.http_checks]]
+    interval = "30s"
+    grace_period = "10s"
+    method = "get"
+    path = "/health"
+    protocol = "http"
+    timeout = "5s"
+    tls_skip_verify = false
+
+[checks]
+  [checks.health]
+    grace_period = "10s"
+    interval = "30s"
+    method = "get"
+    path = "/health"
+    port = 8080
+    timeout = "5s"
+    type = "http"
