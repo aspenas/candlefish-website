@@ -187,6 +187,7 @@ export default function RootLayout({
             </AuthWrapper>
           </OfflineProvider>
         </AuthProvider>
+        </PerformanceProvider>
 
         {/* PWA Install Prompt */}
         {/* <PWAInstallPrompt /> */}

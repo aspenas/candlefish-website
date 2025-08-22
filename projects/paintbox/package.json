@@ -173,7 +173,7 @@
     "tailwindcss": "^4",
     "typescript": "^5.8.3",
     "uuid": "^11.0.5",
-    "web-vitals": "^4.2.7",
+    "web-vitals": "^4.2.3",
     "winston": "^3.17.0",
     "winston-daily-rotate-file": "^5.0.0",
     "xlsx-populate": "^1.21.0",

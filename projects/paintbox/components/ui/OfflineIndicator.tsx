@@ -11,7 +11,6 @@ import {
   CheckCircle,
   Clock,
   Database,
-  Sync,
   X
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';

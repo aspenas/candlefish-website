@@ -1,0 +1,469 @@
+# CloudWatch Dashboards
+resource "aws_cloudwatch_dashboard" "nanda_main_dashboard" {
+  dashboard_name = "${var.project_name}-main-dashboard"
+  
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 12
+        height = 6
+        
+        properties = {
+          metrics = [
+            ["AWS/ECS", "CPUUtilization", "ServiceName", aws_ecs_service.nanda_api.name, "ClusterName", aws_ecs_cluster.nanda_cluster.name],
+            [".", "MemoryUtilization", ".", ".", ".", "."],
+            ["AWS/ECS", "CPUUtilization", "ServiceName", aws_ecs_service.nanda_dashboard.name, "ClusterName", aws_ecs_cluster.nanda_cluster.name],
+            [".", "MemoryUtilization", ".", ".", ".", "."]
+          ]
+          view    = "timeSeries"
+          stacked = false
+          region  = var.aws_region
+          period  = 300
+          title   = "ECS Resource Utilization"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 0
+        y      = 6
+        width  = 12
+        height = 6
+        
+        properties = {
+          metrics = [
+            ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", aws_lb.nanda_alb.arn_suffix],
+            [".", "ResponseTime", ".", "."],
+            [".", "HTTPCode_ELB_4XX_Count", ".", "."],
+            [".", "HTTPCode_ELB_5XX_Count", ".", "."]
+          ]
+          view    = "timeSeries"
+          stacked = false
+          region  = var.aws_region
+          period  = 300
+          title   = "Load Balancer Metrics"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 0
+        y      = 12
+        width  = 12
+        height = 6
+        
+        properties = {
+          metrics = [
+            ["AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", aws_dynamodb_table.agents.name],
+            [".", "ConsumedWriteCapacityUnits", ".", "."],
+            ["AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", aws_dynamodb_table.agent_facts.name],
+            [".", "ConsumedWriteCapacityUnits", ".", "."]
+          ]
+          view    = "timeSeries"
+          stacked = false
+          region  = var.aws_region
+          period  = 300
+          title   = "DynamoDB Capacity Utilization"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 0
+        y      = 18
+        width  = 12
+        height = 6
+        
+        properties = {
+          metrics = [
+            ["AWS/ElastiCache", "CPUUtilization", "CacheClusterId", "${aws_elasticache_replication_group.redis.replication_group_id}-001"],
+            [".", "NetworkBytesIn", ".", "."],
+            [".", "NetworkBytesOut", ".", "."],
+            [".", "CurrConnections", ".", "."]
+          ]
+          view    = "timeSeries"
+          stacked = false
+          region  = var.aws_region
+          period  = 300
+          title   = "Redis Cluster Metrics"
+        }
+      }
+    ]
+  })
+}
+
+# CloudWatch Alarms
+resource "aws_cloudwatch_metric_alarm" "api_response_time" {
+  alarm_name          = "${var.project_name}-api-response-time-high"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "TargetResponseTime"
+  namespace           = "AWS/ApplicationELB"
+  period              = "300"
+  statistic           = "Average"
+  threshold           = "2"
+  alarm_description   = "API response time is too high"
+  alarm_actions       = [aws_sns_topic.nanda_alerts.arn]
+  
+  dimensions = {
+    LoadBalancer = aws_lb.nanda_alb.arn_suffix
+    TargetGroup  = aws_lb_target_group.nanda_api_tg.arn_suffix
+  }
+  
+  tags = {
+    Name = "${var.project_name}-api-response-time-alarm"
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "api_error_rate" {
+  alarm_name          = "${var.project_name}-api-error-rate-high"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "HTTPCode_Target_5XX_Count"
+  namespace           = "AWS/ApplicationELB"
+  period              = "300"
+  statistic           = "Sum"
+  threshold           = "10"
+  alarm_description   = "API error rate is too high"
+  alarm_actions       = [aws_sns_topic.nanda_alerts.arn]
+  
+  dimensions = {
+    LoadBalancer = aws_lb.nanda_alb.arn_suffix
+    TargetGroup  = aws_lb_target_group.nanda_api_tg.arn_suffix
+  }
+  
+  tags = {
+    Name = "${var.project_name}-api-error-rate-alarm"
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "dynamodb_throttles" {
+  alarm_name          = "${var.project_name}-dynamodb-throttles"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "ThrottledRequests"
+  namespace           = "AWS/DynamoDB"
+  period              = "300"
+  statistic           = "Sum"
+  threshold           = "0"
+  alarm_description   = "DynamoDB requests are being throttled"
+  alarm_actions       = [aws_sns_topic.nanda_alerts.arn]
+  
+  dimensions = {
+    TableName = aws_dynamodb_table.agents.name
+  }
+  
+  tags = {
+    Name = "${var.project_name}-dynamodb-throttles-alarm"
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "redis_cpu_high" {
+  alarm_name          = "${var.project_name}-redis-cpu-high"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/ElastiCache"
+  period              = "300"
+  statistic           = "Average"
+  threshold           = "80"
+  alarm_description   = "Redis CPU utilization is high"
+  alarm_actions       = [aws_sns_topic.nanda_alerts.arn]
+  
+  dimensions = {
+    CacheClusterId = "${aws_elasticache_replication_group.redis.replication_group_id}-001"
+  }
+  
+  tags = {
+    Name = "${var.project_name}-redis-cpu-alarm"
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "redis_memory_high" {
+  alarm_name          = "${var.project_name}-redis-memory-high"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "DatabaseMemoryUsagePercentage"
+  namespace           = "AWS/ElastiCache"
+  period              = "300"
+  statistic           = "Average"
+  threshold           = "80"
+  alarm_description   = "Redis memory utilization is high"
+  alarm_actions       = [aws_sns_topic.nanda_alerts.arn]
+  
+  dimensions = {
+    CacheClusterId = "${aws_elasticache_replication_group.redis.replication_group_id}-001"
+  }
+  
+  tags = {
+    Name = "${var.project_name}-redis-memory-alarm"
+  }
+}
+
+# SNS Topic for Alerts
+resource "aws_sns_topic" "nanda_alerts" {
+  name = "${var.project_name}-alerts"
+  
+  tags = {
+    Name = "${var.project_name}-alerts-topic"
+  }
+}
+
+resource "aws_sns_topic_subscription" "nanda_alerts_email" {
+  topic_arn = aws_sns_topic.nanda_alerts.arn
+  protocol  = "email"
+  endpoint  = "alerts@candlefish.ai"
+}
+
+# Custom Metrics for NANDA Platform
+resource "aws_cloudwatch_log_metric_filter" "api_requests" {
+  name           = "${var.project_name}-api-requests"
+  log_group_name = aws_cloudwatch_log_group.nanda_api_logs.name
+  pattern        = "[timestamp, request_id, method, path, status_code, response_time]"
+  
+  metric_transformation {
+    name      = "APIRequests"
+    namespace = "NANDA/API"
+    value     = "1"
+    
+    default_value = "0"
+  }
+}
+
+resource "aws_cloudwatch_log_metric_filter" "agent_registrations" {
+  name           = "${var.project_name}-agent-registrations"
+  log_group_name = aws_cloudwatch_log_group.nanda_api_logs.name
+  pattern        = "[timestamp, request_id, event=\"agent_registered\", agent_id, platform]"
+  
+  metric_transformation {
+    name      = "AgentRegistrations"
+    namespace = "NANDA/Agents"
+    value     = "1"
+    
+    default_value = "0"
+  }
+}
+
+resource "aws_cloudwatch_log_metric_filter" "agent_discoveries" {
+  name           = "${var.project_name}-agent-discoveries"
+  log_group_name = aws_cloudwatch_log_group.nanda_api_logs.name
+  pattern        = "[timestamp, request_id, event=\"agent_discovered\", agent_id, platform]"
+  
+  metric_transformation {
+    name      = "AgentDiscoveries"
+    namespace = "NANDA/Agents"
+    value     = "1"
+    
+    default_value = "0"
+  }
+}
+
+resource "aws_cloudwatch_log_metric_filter" "privacy_layer_requests" {
+  name           = "${var.project_name}-privacy-layer-requests"
+  log_group_name = aws_cloudwatch_log_group.nanda_api_logs.name
+  pattern        = "[timestamp, request_id, event=\"privacy_layer_request\", mix_hops]"
+  
+  metric_transformation {
+    name      = "PrivacyLayerRequests"
+    namespace = "NANDA/Privacy"
+    value     = "1"
+    
+    default_value = "0"
+  }
+}
+
+# X-Ray Tracing
+resource "aws_xray_sampling_rule" "nanda_sampling" {
+  rule_name      = "${var.project_name}-sampling"
+  priority       = 9000
+  version        = 1
+  reservoir_size = 10
+  fixed_rate     = 0.1
+  url_path       = "*"
+  host           = "*"
+  http_method    = "*"
+  service_type   = "*"
+  service_name   = "*"
+  resource_arn   = "*"
+  
+  tags = {
+    Name = "${var.project_name}-xray-sampling"
+  }
+}
+
+# WAF for Additional Security
+resource "aws_wafv2_web_acl" "nanda_waf" {
+  count = var.enable_waf ? 1 : 0
+  
+  name  = "${var.project_name}-waf"
+  scope = "REGIONAL"
+  
+  default_action {
+    allow {}
+  }
+  
+  # Rate limiting rule
+  rule {
+    name     = "RateLimitRule"
+    priority = 1
+    
+    override_action {
+      none {}
+    }
+    
+    statement {
+      rate_based_statement {
+        limit              = 2000
+        aggregate_key_type = "IP"
+      }
+    }
+    
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${var.project_name}RateLimitRule"
+      sampled_requests_enabled   = true
+    }
+    
+    action {
+      block {}
+    }
+  }
+  
+  # SQL injection protection
+  rule {
+    name     = "AWSManagedRulesCommonRuleSet"
+    priority = 2
+    
+    override_action {
+      none {}
+    }
+    
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesCommonRuleSet"
+        vendor_name = "AWS"
+      }
+    }
+    
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${var.project_name}CommonRuleSetMetric"
+      sampled_requests_enabled   = true
+    }
+  }
+  
+  # Known bad inputs
+  rule {
+    name     = "AWSManagedRulesKnownBadInputsRuleSet"
+    priority = 3
+    
+    override_action {
+      none {}
+    }
+    
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesKnownBadInputsRuleSet"
+        vendor_name = "AWS"
+      }
+    }
+    
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${var.project_name}KnownBadInputsRuleSetMetric"
+      sampled_requests_enabled   = true
+    }
+  }
+  
+  visibility_config {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "${var.project_name}WAFMetric"
+    sampled_requests_enabled   = true
+  }
+  
+  tags = {
+    Name = "${var.project_name}-waf"
+  }
+}
+
+# Associate WAF with ALB
+resource "aws_wafv2_web_acl_association" "nanda_waf_association" {
+  count = var.enable_waf ? 1 : 0
+  
+  resource_arn = aws_lb.nanda_alb.arn
+  web_acl_arn  = aws_wafv2_web_acl.nanda_waf[0].arn
+}
+
+# CloudTrail for API Auditing
+resource "aws_cloudtrail" "nanda_api_trail" {
+  name           = "${var.project_name}-api-trail"
+  s3_bucket_name = aws_s3_bucket.nanda_cloudtrail.bucket
+  
+  event_selector {
+    read_write_type                 = "All"
+    include_management_events       = true
+    exclude_management_event_sources = ["kms.amazonaws.com", "rdsdata.amazonaws.com"]
+    
+    data_resource {
+      type   = "AWS::DynamoDB::Table"
+      values = ["${aws_dynamodb_table.agents.arn}/*"]
+    }
+    
+    data_resource {
+      type   = "AWS::S3::Object"
+      values = ["${aws_s3_bucket.nanda_artifacts.arn}/*"]
+    }
+  }
+  
+  tags = {
+    Name = "${var.project_name}-cloudtrail"
+  }
+}
+
+resource "aws_s3_bucket" "nanda_cloudtrail" {
+  bucket        = "${var.project_name}-cloudtrail-${random_id.bucket_suffix.hex}"
+  force_destroy = true
+  
+  tags = {
+    Name = "${var.project_name}-cloudtrail-bucket"
+  }
+}
+
+resource "aws_s3_bucket_policy" "nanda_cloudtrail_policy" {
+  bucket = aws_s3_bucket.nanda_cloudtrail.id
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AWSCloudTrailAclCheck"
+        Effect = "Allow"
+        Principal = {
+          Service = "cloudtrail.amazonaws.com"
+        }
+        Action   = "s3:GetBucketAcl"
+        Resource = aws_s3_bucket.nanda_cloudtrail.arn
+        Condition = {
+          StringEquals = {
+            "AWS:SourceArn" = "arn:aws:cloudtrail:${var.aws_region}:${data.aws_caller_identity.current.account_id}:trail/${var.project_name}-api-trail"
+          }
+        }
+      },
+      {
+        Sid    = "AWSCloudTrailWrite"
+        Effect = "Allow"
+        Principal = {
+          Service = "cloudtrail.amazonaws.com"
+        }
+        Action   = "s3:PutObject"
+        Resource = "${aws_s3_bucket.nanda_cloudtrail.arn}/*"
+        Condition = {
+          StringEquals = {
+            "s3:x-amz-acl" = "bucket-owner-full-control"
+            "AWS:SourceArn" = "arn:aws:cloudtrail:${var.aws_region}:${data.aws_caller_identity.current.account_id}:trail/${var.project_name}-api-trail"
+          }
+        }
+      }
+    ]
+  })
+}
