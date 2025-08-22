@@ -315,6 +315,35 @@ npm run test:load
 npm run test:coverage
 ```
 
+## 📊 Monitoring
+
+### Comprehensive Monitoring Dashboard
+- [NANDA Monitoring Documentation](../../docs/monitoring/nanda-monitoring.md) - Real-time operational metrics
+- Health endpoints for production monitoring
+- Performance metrics and SLO tracking
+
+### Health Endpoints
+```
+GET /api/health          # Basic health check
+GET /api/health/detailed # Detailed system status with dependencies
+GET /api/metrics         # Prometheus-formatted metrics
+```
+
+### Service Level Objectives (SLOs)
+- **Availability**: 99.9% uptime target (43.2 minutes downtime/month)
+- **Latency**: p95 < 200ms for agent resolution
+- **Error Rate**: < 0.1% of all requests
+- **TTFB**: < 100ms for cached responses
+
+### Key Metrics Tracked
+- Request latency percentiles (p50, p95, p99)
+- Throughput and error rates by endpoint
+- Database connection pool utilization
+- Redis cache hit ratios
+- WebSocket connection counts
+- CRDT propagation latency
+- Privacy layer processing time
+
 ## 📚 API Documentation
 
 ### REST API
