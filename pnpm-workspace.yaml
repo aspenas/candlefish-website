@@ -1,4 +1,4 @@
 packages:
-  - 'apps/*'
-  - 'packages/*'
-  - 'projects/*'
+  - "apps/*"
+  - "services/*"
+  - "libs/ts/*"

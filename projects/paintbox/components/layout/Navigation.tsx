@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Calculator, Menu, X } from 'lucide-react';
 import { useState } from 'react';
-import PaintboxLogo from '@/components/ui/PaintboxLogo';
+import EggshellLogo from '@/components/ui/EggshellLogo';
 
 interface NavigationProps {
   className?: string;
@@ -29,7 +29,7 @@ const Navigation = ({ className = '', showCTA = true }: NavigationProps) => {
           {/* Logo */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center">
-              <PaintboxLogo
+              <EggshellLogo
                 size="desktop"
                 showText
                 priority

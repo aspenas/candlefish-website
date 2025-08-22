@@ -29,7 +29,6 @@
     "test:all": "npm run test:run && npm run test:e2e && npm run test:accessibility"
   },
   "dependencies": {
-    "@candlefish-ai/ui-components": "^1.0.0",
     "@react-spring/web": "^10.0.1",
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",

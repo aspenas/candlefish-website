@@ -243,7 +243,7 @@ export const useEstimateStore = create<EstimateStore>()(
       }
     }),
     {
-      name: 'paintbox-estimate-store',
+      name: 'eggshell-estimate-store',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         estimate: state.estimate,

@@ -1,14 +1,14 @@
 #!/bin/bash
 # Initialize SQLite database for production
-# Part of Eggshell Recovery - fixing in-memory database issue
+# Part of Eggshell - fixing in-memory database issue
 
 set -e
 
-DB_PATH="/data/paintbox.db"
+DB_PATH="/data/eggshell.db"
 DB_DIR="/data"
 LOCAL_DB_PATH="./dev.db"
 
-echo "🗄️  Initializing Paintbox/Eggshell database..."
+echo "🗄️  Initializing Eggshell database..."
 echo "Environment: ${NODE_ENV:-development}"
 
 # Determine database path based on environment

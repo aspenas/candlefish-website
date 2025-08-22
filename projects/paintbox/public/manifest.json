@@ -1,7 +1,7 @@
 {
-  "name": "Paintbox - Professional Painting Estimator",
-  "short_name": "Paintbox",
-  "description": "Professional painting estimation app with offline capabilities, optimized for iPad field use - Made by Candlefish.ai",
+  "name": "Eggshell - Professional Estimation Suite",
+  "short_name": "Eggshell",
+  "description": "Professional estimation suite with offline capabilities, optimized for iPad field use - Made by Candlefish.ai",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8f9fa",

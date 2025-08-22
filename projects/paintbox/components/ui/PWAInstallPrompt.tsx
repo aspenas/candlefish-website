@@ -127,7 +127,7 @@ export function PWAInstallPrompt() {
 
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-medium text-gray-900">
-                Install Paintbox App
+                Install Eggshell App
               </h3>
               <p className="text-sm text-gray-500 mt-1">
                 Get faster access and work offline. Perfect for field use on your tablet.
@@ -169,7 +169,7 @@ export function PWAInstallPrompt() {
           <div className="bg-white rounded-t-lg w-full max-w-md mx-auto p-6 space-y-4 animate-slide-up">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">
-                Install Paintbox
+                Install Eggshell
               </h3>
               <button
                 onClick={handleDismiss}
@@ -181,7 +181,7 @@ export function PWAInstallPrompt() {
 
             <div className="space-y-4">
               <p className="text-sm text-gray-600">
-                Install Paintbox on your iPad for the best experience:
+                Install Eggshell on your iPad for the best experience:
               </p>
 
               <div className="space-y-3">

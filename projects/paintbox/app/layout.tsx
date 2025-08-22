@@ -15,13 +15,13 @@ import { PerformanceProvider } from "@/components/providers/PerformanceProvider"
 // Use system fonts to avoid network fetch at build time
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NODE_ENV === 'production' ? 'https://paintbox.candlefish.ai' : 'http://localhost:3004'),
+  metadataBase: new URL(process.env.NODE_ENV === 'production' ? 'https://eggshell.candlefish.ai' : 'http://localhost:3004'),
   title: {
-    default: "Paintbox - Professional Painting Estimator",
-    template: "%s | Paintbox"
+    default: "Eggshell - Professional Estimation Suite",
+    template: "%s | Eggshell"
   },
-  description: "Professional painting estimation app with offline capabilities, optimized for iPad field use. Create accurate estimates, manage projects, and sync with Salesforce.",
-  applicationName: "Paintbox",
+  description: "Professional estimation suite with offline capabilities, optimized for iPad field use. Create accurate estimates, manage projects, and sync with Salesforce.",
+  applicationName: "Eggshell",
   authors: [{ name: "Candlefish.ai" }],
   generator: "Next.js",
   keywords: ["painting", "estimates", "contractor", "iPad", "offline", "PWA", "field service"],
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Paintbox",
+    title: "Eggshell",
     startupImage: [
       {
         url: "/icons/icon-512x512.png",
@@ -66,23 +66,23 @@ export const metadata: Metadata = {
   // Social media metadata
   openGraph: {
     type: "website",
-    siteName: "Paintbox",
-    title: "Paintbox - Professional Painting Estimator",
-    description: "Professional painting estimation app with offline capabilities, optimized for iPad field use.",
+    siteName: "Eggshell",
+    title: "Eggshell - Professional Estimation Suite",
+    description: "Professional estimation suite with offline capabilities, optimized for iPad field use.",
     images: [
       {
         url: "/icons/icon-512x512.png",
         width: 512,
         height: 512,
-        alt: "Paintbox Logo"
+        alt: "Eggshell Logo"
       }
     ]
   },
 
   twitter: {
     card: "summary",
-    title: "Paintbox - Professional Painting Estimator",
-    description: "Professional painting estimation app with offline capabilities, optimized for iPad field use.",
+    title: "Eggshell - Professional Estimation Suite",
+    description: "Professional estimation suite with offline capabilities, optimized for iPad field use.",
     images: ["/icons/icon-512x512.png"]
   },
 
@@ -91,7 +91,7 @@ export const metadata: Metadata = {
     "mobile-web-app-capable": "yes",
     "apple-mobile-web-app-capable": "yes",
     "apple-mobile-web-app-status-bar-style": "default",
-    "apple-mobile-web-app-title": "Paintbox",
+    "apple-mobile-web-app-title": "Eggshell",
     "msapplication-TileColor": "#2563eb",
     "msapplication-config": "/browserconfig.xml"
   }
@@ -137,7 +137,7 @@ export default function RootLayout({
         {/* iPad-specific meta tags */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Paintbox" />
+        <meta name="apple-mobile-web-app-title" content="Eggshell" />
 
         {/* Microsoft Edge/Windows tiles */}
         <meta name="msapplication-TileColor" content="#2563eb" />
@@ -157,15 +157,15 @@ export default function RootLayout({
               <header className="sticky top-0 z-30 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-[var(--color-paintbox-border)] shadow-sm">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 py-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <img src="/images/brand-paintbox.png" alt="Paintbox" className="h-8 w-8 sm:h-7 sm:w-7 rounded" />
-                    <span className="font-semibold tracking-tight text-base sm:text-sm">Paintbox</span>
+                    <img src="/images/brand-eggshell.png" alt="Eggshell" className="h-8 w-8 sm:h-7 sm:w-7 rounded" />
+                    <span className="font-semibold tracking-tight text-base sm:text-sm">Eggshell</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="hidden lg:block text-xs text-[var(--color-paintbox-text-muted)]">
                       Estimator — Kind Home Paint Company
                     </div>
                     <div className="hidden sm:block text-xs text-[var(--color-paintbox-text-muted)] text-right">
-                      Professional Estimator
+                      Professional Estimation Suite
                     </div>
                     <HeaderControls />
                   </div>
@@ -179,7 +179,7 @@ export default function RootLayout({
 
               <footer className="mt-12 border-t border-[var(--color-paintbox-border)]/70">
                 <div className="mx-auto max-w-7xl px-6 py-6 flex items-center justify-between">
-                  <div className="text-sm text-[var(--color-paintbox-text-muted)]">© 2025 Paintbox</div>
+                  <div className="text-sm text-[var(--color-paintbox-text-muted)]">© 2025 Eggshell</div>
                   <div className="text-sm text-[var(--color-paintbox-text-muted)]">Made by <span className="font-medium">Candlefish.ai</span></div>
                 </div>
               </footer>

@@ -1,8 +1,8 @@
 # fly.toml app configuration file
-# Production-optimized configuration for Next.js Paintbox application
+# Production-optimized configuration for Next.js Eggshell application
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 
-app = "paintbox"
+app = "eggshell"
 primary_region = "sjc"
 
 [build]
@@ -12,7 +12,7 @@ primary_region = "sjc"
   NODE_ENV = "production"
   PORT = "8080"
   # Optimized database configuration
-  DATABASE_URL = "file:/data/paintbox.db?mode=wal&cache=shared&_journal_mode=WAL"
+  DATABASE_URL = "file:/data/eggshell.db?mode=wal&cache=shared&_journal_mode=WAL"
   # Aggressive memory optimization
   NODE_OPTIONS = "--max-old-space-size=1024 --optimize-for-size --gc-interval=100 --expose-gc"
   NEXT_TELEMETRY_DISABLED = "1"
@@ -80,7 +80,7 @@ primary_region = "sjc"
 
 # Persistent volume for database, logs and cache
 [mounts]
-  source = "paintbox_data"
+  source = "eggshell_data"
   destination = "/data"
 
 # Auto-scaling configuration with memory-based scaling

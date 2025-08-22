@@ -1,14 +1,14 @@
 #!/bin/bash
 
 ##############################################################################
-# Production Deployment Script for Paintbox with AWS Secrets Manager
+# Production Deployment Script for Eggshell with AWS Secrets Manager
 # Implements zero-downtime deployment with comprehensive validation
 ##############################################################################
 
 set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
 # Configuration
-APP_NAME="paintbox"
+APP_NAME="eggshell"
 DEPLOY_TIMEOUT="600"  # 10 minutes
 HEALTH_CHECK_RETRIES=20
 HEALTH_CHECK_DELAY=15

@@ -1,0 +1,49 @@
+{
+  "name": "@candlefish/promoteros-api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "vitest",
+    "lint": "eslint src --ext ts",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "@trpc/server": "^10.45.0",
+    "express": "^4.21.2",
+    "cors": "^2.8.5",
+    "helmet": "^8.0.0",
+    "dotenv": "^16.4.7",
+    "zod": "^3.24.1",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "@aws-sdk/client-secrets-manager": "^3.728.0",
+    "winston": "^3.17.0",
+    "express-rate-limit": "^7.5.0",
+    "@sentry/node": "^8.48.0",
+    "@opentelemetry/api": "^1.10.0",
+    "@opentelemetry/sdk-node": "^0.57.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/express": "^5.0.0",
+    "@types/cors": "^2.8.17",
+    "@types/bcryptjs": "^2.4.6",
+    "prisma": "^5.22.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8",
+    "eslint": "^8.57.0",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0"
+  }
+}

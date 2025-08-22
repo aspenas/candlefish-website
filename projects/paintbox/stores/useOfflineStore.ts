@@ -291,7 +291,7 @@ export const useOfflineStore = create<OfflineStore>()(
       }
     }),
     {
-      name: 'paintbox-offline-store',
+      name: 'eggshell-offline-store',
       storage: indexedDBStorage,
       partialize: (state) => ({
         networkStatus: state.networkStatus,

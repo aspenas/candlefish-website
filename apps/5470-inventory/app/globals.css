@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #020617;
+  --foreground: #f1f5f9;
+  --card: #0f172a;
+  --card-foreground: #f1f5f9;
+  --primary: #3b82f6;
+  --primary-foreground: #f1f5f9;
+  --secondary: #1e293b;
+  --secondary-foreground: #f1f5f9;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #3b82f6;
+  --accent-foreground: #f1f5f9;
+  --destructive: #ef4444;
+  --destructive-foreground: #f1f5f9;
+  --border: #1e293b;
+  --input: #1e293b;
+  --ring: #3b82f6;
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-slate-900/50 backdrop-blur-xl border border-slate-800/50 rounded-lg;
+  }
+
+  .glass-button {
+    @apply bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 hover:bg-slate-700/50 transition-all duration-200;
+  }
+
+  .gradient-border {
+    @apply relative before:absolute before:inset-0 before:p-[1px] before:rounded-lg before:bg-gradient-to-br before:from-blue-500 before:to-purple-600 before:-z-10;
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent;
+  }
+}

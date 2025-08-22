@@ -1,8 +1,8 @@
-# Paintbox Production Deployment Guide
+# Eggshell Production Deployment Guide
 
 ## 🚀 Enterprise-Grade Infrastructure Implementation
 
-This guide provides comprehensive instructions for deploying Paintbox with enterprise-grade security, reliability, and scalability on Fly.io with AWS integrations.
+This guide provides comprehensive instructions for deploying Eggshell with enterprise-grade security, reliability, and scalability on Fly.io with AWS integrations.
 
 ## 📋 Table of Contents
 
@@ -108,7 +108,7 @@ SLACK_WEBHOOK_URL=https://hooks.slack.com/...
 
 # Verify secrets were created
 aws secretsmanager describe-secret \
-    --secret-id "paintbox/production/secrets" \
+    --secret-id "eggshell/production/secrets" \
     --region us-east-1
 ```
 
@@ -118,20 +118,20 @@ aws secretsmanager describe-secret \
 # Set AWS integration secrets
 flyctl secrets set \
     AWS_REGION=us-east-1 \
-    AWS_SECRETS_MANAGER_SECRET_NAME=paintbox/production/secrets \
+    AWS_SECRETS_MANAGER_SECRET_NAME=eggshell/production/secrets \
     SKIP_AWS_SECRETS=false \
-    --app paintbox-app
+    --app eggshell-app
 ```
 
 ### 3. Database Security
 
 ```bash
 # Update database passwords (after setup-aws-secrets.sh)
-flyctl postgres connect --app paintbox-prod-db
+flyctl postgres connect --app eggshell-prod-db
 # In psql: ALTER USER postgres PASSWORD 'new_secure_password';
 
 # Update Redis password
-flyctl redis connect --app paintbox-redis  
+flyctl redis connect --app eggshell-redis  
 # In redis: CONFIG SET requirepass new_secure_password
 ```
 
@@ -149,7 +149,7 @@ terraform init
 # Plan infrastructure changes
 terraform plan \
     -var="environment=production" \
-    -var="project_name=paintbox" \
+    -var="project_name=eggshell" \
     -out=tfplan
 
 # Apply infrastructure
@@ -160,26 +160,26 @@ terraform apply tfplan
 
 ```bash
 # Create main application
-flyctl apps create paintbox-app --org your-org
+flyctl apps create eggshell-app --org your-org
 
 # Create PostgreSQL database
-flyctl postgres create --name paintbox-prod-db \
+flyctl postgres create --name eggshell-prod-db \
     --region sjc \
     --vm-size shared-cpu-2x \
     --volume-size 10GB \
     --org your-org
 
 # Create Redis instance
-flyctl redis create --name paintbox-redis \
+flyctl redis create --name eggshell-redis \
     --region sjc \
     --eviction \
     --org your-org
 
 # Create volumes for persistent data
-flyctl volumes create paintbox_data \
+flyctl volumes create eggshell_data \
     --region sjc \
     --size 1GB \
-    --app paintbox-app
+    --app eggshell-app
 ```
 
 ---
@@ -205,13 +205,13 @@ If you need to deploy manually:
 cp fly.secure.toml fly.toml
 
 # 2. Deploy application
-flyctl deploy --app paintbox-app --config fly.secure.toml
+flyctl deploy --app eggshell-app --config fly.secure.toml
 
 # 3. Scale to multiple regions
-flyctl scale count 2 --app paintbox-app --region ord
+flyctl scale count 2 --app eggshell-app --region ord
 
 # 4. Verify deployment
-flyctl status --app paintbox-app
+flyctl status --app eggshell-app
 ```
 
 ### 3. Health Check Validation
@@ -221,8 +221,8 @@ flyctl status --app paintbox-app
 ./scripts/deploy-flyio-comprehensive.sh health
 
 # Or manual checks
-curl -f https://paintbox-app.fly.dev/api/health
-curl -f https://paintbox-app.fly.dev/api/status
+curl -f https://eggshell-app.fly.dev/api/health
+curl -f https://eggshell-app.fly.dev/api/status
 ```
 
 ---
@@ -284,8 +284,8 @@ Alerts are automatically configured for:
 
 ```bash
 # Verify backup integrity
-./scripts/backup-manager.sh verify postgres paintbox-postgres-20241201_120000.sql.gz
-./scripts/backup-manager.sh verify redis paintbox-redis-20241201_120000.rdb.gz
+./scripts/backup-manager.sh verify postgres eggshell-postgres-20241201_120000.sql.gz
+./scripts/backup-manager.sh verify redis eggshell-redis-20241201_120000.rdb.gz
 ```
 
 ### 3. Disaster Recovery
@@ -323,23 +323,23 @@ FORCE_RESTORE=true ./scripts/backup-manager.sh restore-postgres backup-name.sql.
 
 ```bash
 # Scale application instances
-flyctl scale count 4 --app paintbox-app
+flyctl scale count 4 --app eggshell-app
 
 # Scale database resources
-flyctl postgres update --vm-size dedicated-cpu-2x --app paintbox-prod-db
+flyctl postgres update --vm-size dedicated-cpu-2x --app eggshell-prod-db
 
 # Scale Redis cache
-flyctl redis update --vm-size shared-cpu-2x --app paintbox-redis
+flyctl redis update --vm-size shared-cpu-2x --app eggshell-redis
 ```
 
 ### 3. Log Management
 
 ```bash
 # View application logs
-flyctl logs --app paintbox-app
+flyctl logs --app eggshell-app
 
 # View database logs
-flyctl logs --app paintbox-prod-db
+flyctl logs --app eggshell-prod-db
 
 # Export logs to CloudWatch
 # (Configured automatically via monitoring setup)
@@ -355,13 +355,13 @@ flyctl logs --app paintbox-prod-db
 
 ```bash
 # Check application logs
-flyctl logs --app paintbox-app
+flyctl logs --app eggshell-app
 
 # Verify secrets configuration
-flyctl secrets list --app paintbox-app
+flyctl secrets list --app eggshell-app
 
 # Test database connectivity
-flyctl ssh console --app paintbox-app
+flyctl ssh console --app eggshell-app
 # Inside container: pg_isready -d $DATABASE_URL
 ```
 
@@ -369,11 +369,11 @@ flyctl ssh console --app paintbox-app
 
 ```bash
 # Check database status
-flyctl status --app paintbox-prod-db
+flyctl status --app eggshell-prod-db
 
 # Verify connection string
 aws secretsmanager get-secret-value \
-    --secret-id "paintbox/production/secrets" \
+    --secret-id "eggshell/production/secrets" \
     --region us-east-1 \
     --query SecretString \
     --output text | jq .database
@@ -383,27 +383,27 @@ aws secretsmanager get-secret-value \
 
 ```bash
 # Check deployment history
-flyctl releases list --app paintbox-app
+flyctl releases list --app eggshell-app
 
 # Rollback to previous version
 ./scripts/deploy-flyio-comprehensive.sh rollback
 
 # Or specific release
-flyctl releases rollback v123 --app paintbox-app
+flyctl releases rollback v123 --app eggshell-app
 ```
 
 #### 4. Performance Issues
 
 ```bash
 # Check resource usage
-flyctl metrics --app paintbox-app
+flyctl metrics --app eggshell-app
 
 # Scale resources temporarily
-flyctl scale memory 1024MB --app paintbox-app
-flyctl scale count 3 --app paintbox-app
+flyctl scale memory 1024MB --app eggshell-app
+flyctl scale count 3 --app eggshell-app
 
 # Review slow queries
-flyctl ssh console --app paintbox-prod-db
+flyctl ssh console --app eggshell-prod-db
 # In container: psql and review pg_stat_statements
 ```
 
@@ -413,22 +413,22 @@ flyctl ssh console --app paintbox-prod-db
 
 ```bash
 # 1. Check all services
-flyctl status --app paintbox-app
-flyctl status --app paintbox-prod-db
-flyctl status --app paintbox-redis
+flyctl status --app eggshell-app
+flyctl status --app eggshell-prod-db
+flyctl status --app eggshell-redis
 
 # 2. Restore from backups
 ./scripts/backup-manager.sh restore-postgres latest-backup.sql.gz
 
 # 3. Restart services
-flyctl restart --app paintbox-app
+flyctl restart --app eggshell-app
 ```
 
 #### 2. Data Corruption
 
 ```bash
 # 1. Immediately stop application
-flyctl scale count 0 --app paintbox-app
+flyctl scale count 0 --app eggshell-app
 
 # 2. Create emergency backup
 ./scripts/backup-manager.sh backup-all
@@ -437,7 +437,7 @@ flyctl scale count 0 --app paintbox-app
 ./scripts/backup-manager.sh restore-postgres good-backup.sql.gz
 
 # 4. Restart application
-flyctl scale count 2 --app paintbox-app
+flyctl scale count 2 --app eggshell-app
 ```
 
 ---
