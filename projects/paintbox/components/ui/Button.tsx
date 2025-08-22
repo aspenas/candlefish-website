@@ -37,15 +37,15 @@ export const Button: React.FC<ButtonProps> = ({
 
   const variants: Record<ButtonVariant, string> = {
     primary:
-      'text-white bg-[var(--color-paintbox-accent)] hover:brightness-95 active:brightness-90 shadow-sm focus:ring-[var(--color-paintbox-accent)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100',
+      'text-white bg-interactive-primary hover:bg-interactive-primary-hover active:bg-interactive-primary-active shadow-eggshell-sm hover:shadow-eggshell-md focus:ring-brown-400 focus:ring-opacity-50 disabled:bg-interactive-primary-disabled disabled:cursor-not-allowed disabled:hover:bg-interactive-primary-disabled disabled:text-text-tertiary transform hover:scale-105 active:scale-98',
     secondary:
-      'text-[var(--color-paintbox-text)] bg-[var(--color-paintbox-surface)] border border-[var(--color-paintbox-border)] hover:bg-white/90 shadow-sm focus:ring-[var(--color-paintbox-brand)] disabled:opacity-50 disabled:cursor-not-allowed',
+      'text-text-primary bg-surface-primary border border-border-primary hover:bg-interactive-secondary-hover hover:border-border-focus hover:text-interactive-primary shadow-eggshell-sm hover:shadow-eggshell-md focus:ring-brown-400 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 active:scale-98',
     outline:
-      'text-[var(--color-paintbox-text)] border border-[var(--color-paintbox-border)] bg-transparent hover:bg-[color-mix(in_oklab,_var(--color-paintbox-accent)_8%,_transparent)] focus:ring-[var(--color-paintbox-brand)] disabled:opacity-50 disabled:cursor-not-allowed',
+      'text-text-primary border border-border-primary bg-transparent hover:bg-interactive-secondary-hover hover:border-border-focus focus:ring-brown-400 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 active:scale-98',
     ghost:
-      'text-[var(--color-paintbox-text)] hover:bg-[color-mix(in_oklab,_var(--color-paintbox-accent-2)_8%,_transparent)] focus:ring-[var(--color-paintbox-brand)] disabled:opacity-50 disabled:cursor-not-allowed',
+      'text-text-secondary hover:text-text-primary hover:bg-interactive-secondary-hover focus:ring-brown-400 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 active:scale-98',
     aurora:
-      'text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 transition-all duration-200 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-lg'
+      'text-white bg-gradient-to-r from-brown-600 to-brown-400 hover:from-brown-700 hover:to-brown-500 shadow-eggshell-lg hover:shadow-eggshell-xl transform hover:scale-105 active:scale-95 transition-all duration-200 focus:ring-brown-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-eggshell-lg'
   };
 
   const isDisabled = disabled || isLoading;

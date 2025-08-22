@@ -56,7 +56,7 @@
         "testMatch": [
           "**/*.@(spec|test).?(c|m)[jt]s?(x)"
         ],
-        "timeout": 10000
+        "timeout": 120000
       },
       {
         "outputDir": "/Users/patricksmith/candlefish-ai/projects/paintbox/test-results",
@@ -74,7 +74,7 @@
         "testMatch": [
           "**/*.@(spec|test).?(c|m)[jt]s?(x)"
         ],
-        "timeout": 10000
+        "timeout": 120000
       },
       {
         "outputDir": "/Users/patricksmith/candlefish-ai/projects/paintbox/test-results",
@@ -92,7 +92,7 @@
         "testMatch": [
           "**/*.@(spec|test).?(c|m)[jt]s?(x)"
         ],
-        "timeout": 10000
+        "timeout": 120000
       },
       {
         "outputDir": "/Users/patricksmith/candlefish-ai/projects/paintbox/test-results",
@@ -110,7 +110,7 @@
         "testMatch": [
           "**/*.@(spec|test).?(c|m)[jt]s?(x)"
         ],
-        "timeout": 10000
+        "timeout": 120000
       },
       {
         "outputDir": "/Users/patricksmith/candlefish-ai/projects/paintbox/test-results",
@@ -128,7 +128,7 @@
         "testMatch": [
           "**/*.@(spec|test).?(c|m)[jt]s?(x)"
         ],
-        "timeout": 10000
+        "timeout": 120000
       }
     ],
     "shard": null,
@@ -140,25 +140,25 @@
   },
   "suites": [
     {
-      "title": "complete-workflow-simple.spec.ts",
-      "file": "complete-workflow-simple.spec.ts",
+      "title": "golden-paths/gp1-create-estimate-client-save.spec.ts",
+      "file": "golden-paths/gp1-create-estimate-client-save.spec.ts",
       "column": 0,
       "line": 0,
       "specs": [],
       "suites": [
         {
-          "title": "Complete Estimate Workflow - Simplified",
-          "file": "complete-workflow-simple.spec.ts",
-          "line": 3,
+          "title": "GP1: Create Estimate → Add/Select Client → Save Draft",
+          "file": "golden-paths/gp1-create-estimate-client-save.spec.ts",
+          "line": 10,
           "column": 6,
           "specs": [
             {
-              "title": "should complete full estimate workflow from start to finish",
+              "title": "GP1: Complete estimate creation workflow",
               "ok": false,
               "tags": [],
               "tests": [
                 {
-                  "timeout": 10000,
+                  "timeout": 120000,
                   "annotations": [],
                   "expectedStatus": "passed",
                   "projectId": "chromium",
@@ -167,68 +167,88 @@
                     {
                       "workerIndex": 0,
                       "parallelIndex": 0,
-                      "status": "timedOut",
-                      "duration": 10233,
+                      "status": "failed",
+                      "duration": 36754,
                       "error": {
-                        "message": "\u001b[31mTest timeout of 10000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 10000ms exceeded.\u001b[39m"
+                        "message": "TimeoutError: page.waitForURL: Timeout 30000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"/estimate/new/details\" until \"load\"\n============================================================",
+                        "stack": "TimeoutError: page.waitForURL: Timeout 30000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"/estimate/new/details\" until \"load\"\n============================================================\n    at /Users/patricksmith/candlefish-ai/projects/paintbox/__tests__/e2e/golden-paths/gp1-create-estimate-client-save.spec.ts:45:20\n    at /Users/patricksmith/candlefish-ai/projects/paintbox/__tests__/e2e/golden-paths/gp1-create-estimate-client-save.spec.ts:33:7",
+                        "location": {
+                          "file": "/Users/patricksmith/candlefish-ai/projects/paintbox/__tests__/e2e/golden-paths/gp1-create-estimate-client-save.spec.ts",
+                          "column": 20,
+                          "line": 45
+                        },
+                        "snippet": "  43 |\n  44 |         // Wait for loading and redirect to details page\n> 45 |         await page.waitForURL('/estimate/new/details', { timeout: 30000 });\n     |                    ^\n  46 |         \n  47 |         await page.screenshot({ \n  48 |           path: join(artifactsDir, `${testId}-02-details-page.png`),"
                       },
                       "errors": [
                         {
-                          "message": "\u001b[31mTest timeout of 10000ms exceeded.\u001b[39m"
-                        },
-                        {
                           "location": {
-                            "file": "/Users/patricksmith/candlefish-ai/projects/paintbox/__tests__/e2e/complete-workflow-simple.spec.ts",
-                            "column": 16,
-                            "line": 16
+                            "file": "/Users/patricksmith/candlefish-ai/projects/paintbox/__tests__/e2e/golden-paths/gp1-create-estimate-client-save.spec.ts",
+                            "column": 20,
+                            "line": 45
                           },
-                          "message": "Error: page.waitForSelector: Test timeout of 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"firstName\"], input[id*=\"first\"], input[placeholder*=\"First\"]') to be visible\u001b[22m\n\n\n  14 |     \n  15 |     // Wait for the form to be visible\n> 16 |     await page.waitForSelector('input[name=\"firstName\"], input[id*=\"first\"], input[placeholder*=\"First\"]', { timeout: 10000 });\n     |                ^\n  17 |     \n  18 |     // Fill client information - try multiple selector strategies\n  19 |     const firstNameSelectors = [\n    at /Users/patricksmith/candlefish-ai/projects/paintbox/__tests__/e2e/complete-workflow-simple.spec.ts:16:16"
+                          "message": "TimeoutError: page.waitForURL: Timeout 30000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"/estimate/new/details\" until \"load\"\n============================================================\n\n  43 |\n  44 |         // Wait for loading and redirect to details page\n> 45 |         await page.waitForURL('/estimate/new/details', { timeout: 30000 });\n     |                    ^\n  46 |         \n  47 |         await page.screenshot({ \n  48 |           path: join(artifactsDir, `${testId}-02-details-page.png`),\n    at /Users/patricksmith/candlefish-ai/projects/paintbox/__tests__/e2e/golden-paths/gp1-create-estimate-client-save.spec.ts:45:20\n    at /Users/patricksmith/candlefish-ai/projects/paintbox/__tests__/e2e/golden-paths/gp1-create-estimate-client-save.spec.ts:33:7"
                         }
                       ],
-                      "stdout": [
-                        {
-                          "text": "Filling client details...\n"
-                        }
-                      ],
+                      "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-08-16T23:16:07.273Z",
+                      "steps": [
+                        {
+                          "title": "Navigate to New Estimate",
+                          "duration": 34334,
+                          "error": {
+                            "message": "TimeoutError: page.waitForURL: Timeout 30000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"/estimate/new/details\" until \"load\"\n============================================================",
+                            "stack": "TimeoutError: page.waitForURL: Timeout 30000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"/estimate/new/details\" until \"load\"\n============================================================\n    at /Users/patricksmith/candlefish-ai/projects/paintbox/__tests__/e2e/golden-paths/gp1-create-estimate-client-save.spec.ts:45:20\n    at /Users/patricksmith/candlefish-ai/projects/paintbox/__tests__/e2e/golden-paths/gp1-create-estimate-client-save.spec.ts:33:7",
+                            "location": {
+                              "file": "/Users/patricksmith/candlefish-ai/projects/paintbox/__tests__/e2e/golden-paths/gp1-create-estimate-client-save.spec.ts",
+                              "column": 20,
+                              "line": 45
+                            },
+                            "snippet": "  43 |\n  44 |         // Wait for loading and redirect to details page\n> 45 |         await page.waitForURL('/estimate/new/details', { timeout: 30000 });\n     |                    ^\n  46 |         \n  47 |         await page.screenshot({ \n  48 |           path: join(artifactsDir, `${testId}-02-details-page.png`),"
+                          }
+                        }
+                      ],
+                      "startTime": "2025-08-22T00:35:20.315Z",
                       "annotations": [],
                       "attachments": [
                         {
                           "name": "screenshot",
                           "contentType": "image/png",
-                          "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/test-results/complete-workflow-simple-C-1b5d9-rkflow-from-start-to-finish-chromium/test-failed-1.png"
+                          "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/test-results/golden-paths-gp1-create-es-97437--estimate-creation-workflow-chromium/test-failed-1.png"
                         },
                         {
                           "name": "video",
                           "contentType": "video/webm",
-                          "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/test-results/complete-workflow-simple-C-1b5d9-rkflow-from-start-to-finish-chromium/video.webm"
+                          "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/test-results/golden-paths-gp1-create-es-97437--estimate-creation-workflow-chromium/video.webm"
                         },
                         {
                           "name": "error-context",
                           "contentType": "text/markdown",
-                          "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/test-results/complete-workflow-simple-C-1b5d9-rkflow-from-start-to-finish-chromium/error-context.md"
+                          "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/test-results/golden-paths-gp1-create-es-97437--estimate-creation-workflow-chromium/error-context.md"
                         }
-                      ]
+                      ],
+                      "errorLocation": {
+                        "file": "/Users/patricksmith/candlefish-ai/projects/paintbox/__tests__/e2e/golden-paths/gp1-create-estimate-client-save.spec.ts",
+                        "column": 20,
+                        "line": 45
+                      }
                     }
                   ],
                   "status": "unexpected"
                 }
               ],
-              "id": "3da0757eef507f11d690-440bc4b0731df588320e",
-              "file": "complete-workflow-simple.spec.ts",
-              "line": 4,
+              "id": "3e333af0d73071d73d6e-92f9c69d7cbe76b4be8a",
+              "file": "golden-paths/gp1-create-estimate-client-save.spec.ts",
+              "line": 27,
               "column": 7
             },
             {
-              "title": "should handle workflow with minimum required data",
+              "title": "GP1: Client selection from existing clients",
               "ok": false,
               "tags": [],
               "tests": [
                 {
-                  "timeout": 10000,
+                  "timeout": 120000,
                   "annotations": [],
                   "expectedStatus": "passed",
                   "projectId": "chromium",
@@ -238,44 +258,60 @@
                       "workerIndex": 1,
                       "parallelIndex": 1,
                       "status": "timedOut",
-                      "duration": 10233,
+                      "duration": 121655,
                       "error": {
-                        "message": "\u001b[31mTest timeout of 10000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 10000ms exceeded.\u001b[39m"
+                        "message": "\u001b[31mTest timeout of 120000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 120000ms exceeded.\u001b[39m"
                       },
                       "errors": [
                         {
-                          "message": "\u001b[31mTest timeout of 10000ms exceeded.\u001b[39m"
+                          "message": "\u001b[31mTest timeout of 120000ms exceeded.\u001b[39m"
                         },
                         {
                           "location": {
-                            "file": "/Users/patricksmith/candlefish-ai/projects/paintbox/__tests__/e2e/complete-workflow-simple.spec.ts",
-                            "column": 16,
-                            "line": 457
+                            "file": "/Users/patricksmith/candlefish-ai/projects/paintbox/__tests__/e2e/golden-paths/gp1-create-estimate-client-save.spec.ts",
+                            "column": 18,
+                            "line": 314
                           },
-                          "message": "Error: page.fill: Test timeout of 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[type=\"text\"]:first-of-type')\u001b[22m\n\n\n  455 |     \n  456 |     // Fill minimum required fields\n> 457 |     await page.fill('input[type=\"text\"]:first-of-type', 'Test');\n      |                ^\n  458 |     await page.fill('input[type=\"text\"]:nth-of-type(2)', 'User');\n  459 |     await page.fill('input[type=\"email\"]', 'test@example.com');\n  460 |     \n    at /Users/patricksmith/candlefish-ai/projects/paintbox/__tests__/e2e/complete-workflow-simple.spec.ts:457:16"
+                          "message": "Error: page.screenshot: Target page, context or browser has been closed\n\n  312 |\n  313 |     } catch (error) {\n> 314 |       await page.screenshot({ \n      |                  ^\n  315 |         path: join(artifactsDir, `${testId}-error.png`),\n  316 |         fullPage: true \n  317 |       });\n    at /Users/patricksmith/candlefish-ai/projects/paintbox/__tests__/e2e/golden-paths/gp1-create-estimate-client-save.spec.ts:314:18"
                         }
                       ],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-08-16T23:16:07.274Z",
+                      "steps": [
+                        {
+                          "title": "Search for existing client",
+                          "duration": 112582,
+                          "error": {
+                            "message": "Error: page.screenshot: Target page, context or browser has been closed",
+                            "stack": "Error: page.screenshot: Target page, context or browser has been closed\n    at /Users/patricksmith/candlefish-ai/projects/paintbox/__tests__/e2e/golden-paths/gp1-create-estimate-client-save.spec.ts:287:20\n    at /Users/patricksmith/candlefish-ai/projects/paintbox/__tests__/e2e/golden-paths/gp1-create-estimate-client-save.spec.ts:263:7",
+                            "location": {
+                              "file": "/Users/patricksmith/candlefish-ai/projects/paintbox/__tests__/e2e/golden-paths/gp1-create-estimate-client-save.spec.ts",
+                              "column": 20,
+                              "line": 287
+                            },
+                            "snippet": "  285 |         }\n  286 |\n> 287 |         await page.screenshot({ \n      |                    ^\n  288 |           path: join(artifactsDir, `${testId}-client-search.png`),\n  289 |           fullPage: true \n  290 |         });"
+                          }
+                        }
+                      ],
+                      "startTime": "2025-08-22T00:35:20.314Z",
                       "annotations": [],
                       "attachments": [
                         {
                           "name": "screenshot",
                           "contentType": "image/png",
-                          "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/test-results/complete-workflow-simple-C-27a93--with-minimum-required-data-chromium/test-failed-1.png"
+                          "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/test-results/golden-paths-gp1-create-es-e55be-ction-from-existing-clients-chromium/test-failed-1.png"
                         },
                         {
                           "name": "video",
                           "contentType": "video/webm",
-                          "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/test-results/complete-workflow-simple-C-27a93--with-minimum-required-data-chromium/video.webm"
+                          "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/test-results/golden-paths-gp1-create-es-e55be-ction-from-existing-clients-chromium/video.webm"
                         },
                         {
                           "name": "error-context",
                           "contentType": "text/markdown",
-                          "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/test-results/complete-workflow-simple-C-27a93--with-minimum-required-data-chromium/error-context.md"
+                          "path": "/Users/patricksmith/candlefish-ai/projects/paintbox/test-results/golden-paths-gp1-create-es-e55be-ction-from-existing-clients-chromium/error-context.md"
                         }
                       ]
                     }
@@ -283,9 +319,9 @@
                   "status": "unexpected"
                 }
               ],
-              "id": "3da0757eef507f11d690-28ad2e58af83f23acb09",
-              "file": "complete-workflow-simple.spec.ts",
-              "line": 450,
+              "id": "3e333af0d73071d73d6e-3a8ee3b1c190fca69c48",
+              "file": "golden-paths/gp1-create-estimate-client-save.spec.ts",
+              "line": 254,
               "column": 7
             }
           ]
@@ -295,8 +331,8 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2025-08-16T23:16:06.971Z",
-    "duration": 10823.161,
+    "startTime": "2025-08-22T00:35:19.930Z",
+    "duration": 123505.211,
     "expected": 0,
     "skipped": 0,
     "unexpected": 2,
