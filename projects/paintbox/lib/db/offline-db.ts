@@ -464,11 +464,29 @@ class PaintboxOfflineDB extends Dexie {
   // Test database availability and initialize if needed
   async isReady(): Promise<boolean> {
     try {
+      // Test if IndexedDB is available in this environment
+      if (typeof window === 'undefined' || !window.indexedDB) {
+        console.warn('IndexedDB not available in this environment');
+        return false;
+      }
+
       // Test if database is accessible by reading a setting
       await this.settings.count();
       return true;
     } catch (error) {
       console.error('Database not ready:', error);
+
+      // Try to handle common IndexedDB errors
+      if (error instanceof Error) {
+        if (error.name === 'QuotaExceededError') {
+          console.error('Storage quota exceeded');
+        } else if (error.name === 'InvalidStateError') {
+          console.error('Database is in invalid state');
+        } else if (error.name === 'NotSupportedError') {
+          console.error('IndexedDB not supported');
+        }
+      }
+
       return false;
     }
   }

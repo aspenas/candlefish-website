@@ -379,27 +379,48 @@ export function useOfflineInitialization() {
       try {
         console.log('Initializing offline infrastructure...');
 
-        // Test IndexedDB access
-        await offlineDB.isReady();
-        console.log('IndexedDB initialized successfully');
-
-        // Verify service worker registration
-        if ('serviceWorker' in navigator) {
-          const registration = await navigator.serviceWorker.getRegistration();
-          console.log('Service worker status:', registration ? 'registered' : 'not registered');
+        // Test IndexedDB access with fallback
+        try {
+          await offlineDB.isReady();
+          console.log('IndexedDB initialized successfully');
+        } catch (dbError) {
+          console.warn('IndexedDB initialization failed, continuing without offline storage:', dbError);
+          // Continue execution - the app should still work without offline storage
         }
 
-        // Load initial data
-        await store.loadOfflineEstimates();
-        await store.loadOfflinePhotos();
+        // Verify service worker registration (non-blocking)
+        try {
+          if ('serviceWorker' in navigator) {
+            const registration = await navigator.serviceWorker.getRegistration();
+            console.log('Service worker status:', registration ? 'registered' : 'not registered');
+          }
+        } catch (swError) {
+          console.warn('Service worker check failed:', swError);
+        }
 
-        console.log('Offline infrastructure initialization complete');
+        // Load initial data (non-blocking)
+        try {
+          await Promise.allSettled([
+            store.loadOfflineEstimates(),
+            store.loadOfflinePhotos()
+          ]);
+        } catch (dataError) {
+          console.warn('Initial data loading failed:', dataError);
+        }
+
+        console.log('Offline infrastructure initialization complete (with potential fallbacks)');
       } catch (error) {
         console.error('Failed to initialize offline infrastructure:', error);
+        // Don't block the app - let it continue without offline features
       }
     };
 
-    initializeOfflineInfrastructure();
+    // Use setTimeout to prevent blocking the initial render
+    const timeoutId = setTimeout(() => {
+      initializeOfflineInfrastructure();
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
   }, [store]);
 
   // Set up network status monitoring

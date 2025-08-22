@@ -21,6 +21,12 @@
     --operation-complete: 138 201 38;      /* #8AC926 - Complete green */
     --operation-alert: 255 166 0;          /* #FFA600 - Alert amber */
 
+    /* ARCHIVE/WORKSHOP THEME: Pearl, copper, living-cyan color scheme */
+    --color-pearl: 248 248 242;            /* #F8F8F2 - Pure pearl white */
+    --color-copper: 218 165 32;            /* #DAA520 - Warm copper accent */
+    --color-living-cyan: 63 211 198;       /* #3FD3C6 - Living cyan (matches active) */
+    --color-graphite: 52 58 64;            /* #343A40 - Deep graphite */
+
     /* INTERFACE LAYERS */
     --interface-border: 65 90 119;         /* #415A77 - Border graphite */
     --interface-hover: 79 227 214;         /* #4FE3D6 - Hover cyan */
@@ -116,6 +122,41 @@
     outline: 2px solid rgb(var(--operation-active));
     outline-offset: 2px;
     border-radius: 0;
+  }
+
+  /* SCREEN READER ONLY */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* SHOW WHEN FOCUSED (for skip links) */
+  .sr-only:focus,
+  .sr-only:active {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: inherit;
+    margin: inherit;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+
+  /* HIGH CONTRAST SUPPORT */
+  @media (prefers-contrast: high) {
+    :root {
+      --operation-active: 0 255 255;     /* High contrast cyan */
+      --light-primary: 255 255 255;      /* Pure white */
+      --depth-void: 0 0 0;               /* Pure black */
+    }
   }
 
   /* SCROLLBAR */
@@ -232,6 +273,23 @@
   .card-operational:hover {
     border-color: rgb(var(--operation-active) / 0.5);
     background: rgb(var(--depth-ocean) / 0.7);
+  }
+
+  /* WORKSHOP THEME SPECIFIC */
+  .backdrop-blur-workshop {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .focus-within\:not-sr-only:focus-within {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: inherit;
+    margin: inherit;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
   }
 
   /* OPERATIONAL GRID */

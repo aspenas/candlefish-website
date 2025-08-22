@@ -1,15 +1,15 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { format } from 'date-fns'
 import {
-  CheckCircleIcon,
-  ExclamationCircleIcon,
-  XCircleIcon,
-  InformationCircleIcon,
-  WrenchScrewdriverIcon,
-  MagnifyingGlassIcon,
-  BoltIcon,
-  CloudIcon
+  CheckCircle,
+  AlertCircle,
+  XCircle,
+  Info,
+  Wrench,
+  Search,
+  Zap,
+  Cloud
 } from 'lucide-react'
 import type { ActivityItem } from '../../hooks/useRealtimeData'
 
@@ -28,19 +28,19 @@ const ActivityIcon = ({ type, severity }: { type: ActivityItem['type'], severity
   const getIcon = () => {
     switch (type) {
       case 'agent_registered':
-        return <CheckCircleIcon {...iconProps} />
+        return <CheckCircle {...iconProps} />
       case 'agent_online':
-        return <BoltIcon {...iconProps} />
+        return <Zap {...iconProps} />
       case 'agent_offline':
-        return <CloudIcon {...iconProps} />
+        return <Cloud {...iconProps} />
       case 'error':
-        return <XCircleIcon {...iconProps} />
+        return <XCircle {...iconProps} />
       case 'maintenance':
-        return <WrenchScrewdriverIcon {...iconProps} />
+        return <Wrench {...iconProps} />
       case 'discovery':
-        return <MagnifyingGlassIcon {...iconProps} />
+        return <Search {...iconProps} />
       default:
-        return <InformationCircleIcon {...iconProps} />
+        return <Info {...iconProps} />
     }
   }
 
