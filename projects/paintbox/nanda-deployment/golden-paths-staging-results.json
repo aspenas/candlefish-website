@@ -10,7 +10,7 @@
       "name": "GP1: Client Details",
       "endpoint": "/estimate/new/details",
       "status": "failed",
-      "response": "502"
+      "response": "503"
     },
     {
       "name": "GP1: Success Page",
@@ -22,7 +22,7 @@
       "name": "GP2: Exterior Config",
       "endpoint": "/estimate/new/exterior",
       "status": "failed",
-      "response": "503"
+      "response": "502"
     },
     {
       "name": "GP3: Interior Config",

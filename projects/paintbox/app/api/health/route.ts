@@ -44,7 +44,7 @@ async function performHealthChecks(): Promise<HealthStatus['checks']> {
     const jwksStart = Date.now();
 
     // Check if JWKS secrets are available instead of making HTTP request
-    const hasJwksSecret = process.env.PAINTBOX_JWKS_PRIVATE_KEY || process.env.AWS_REGION;
+    const hasJwksSecret = process.env.EGGSHELL_JWKS_PRIVATE_KEY || process.env.AWS_REGION;
     const jwksTime = Date.now() - jwksStart;
 
     checks.jwks = {
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
     const healthData: HealthStatus = {
       status: overallStatus,
       timestamp: new Date().toISOString(),
-      service: 'paintbox',
+      service: 'eggshell',
       version: process.env.npm_package_version || '0.1.0',
       environment: process.env.NODE_ENV || 'production',
       uptime: Math.round(process.uptime()),
@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
     const errorResponse: Partial<HealthStatus> = {
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
-      service: 'paintbox',
+      service: 'eggshell',
       environment: process.env.NODE_ENV || 'production',
       checks: {
         system: {

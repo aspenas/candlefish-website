@@ -1,14 +1,14 @@
-# Paintbox Project - Claude Code Configuration
+# Eggshell Project - Claude Code Configuration
 
 ## Project Overview
 
-Paintbox is a sophisticated Excel-to-web application that replicates 14,000+ formulas from a complex Excel workbook (bart3.20.xlsx) into a modern Next.js web application. The project features real-time calculations, Salesforce CRM integration, Company Cam photo management, and offline-first architecture.
+Eggshell is a sophisticated Excel-to-web application that replicates 14,000+ formulas from a complex Excel workbook (bart3.20.xlsx) into a modern Next.js web application. The project features real-time calculations, Salesforce CRM integration, Company Cam photo management, and offline-first architecture.
 
 ## Technology Stack
 
 - **Framework**: Next.js 15.4.5 with App Router
 - **Language**: TypeScript 5 with strict mode
-- **Styling**: Tailwind CSS v4 with custom Paintbox design system
+- **Styling**: Tailwind CSS v4 with custom Eggshell design system
 - **State**: Zustand 5.0.7 with persistence
 - **Calculations**: decimal.js, mathjs, formula-parser
 - **Integrations**: jsforce (Salesforce), Company Cam API

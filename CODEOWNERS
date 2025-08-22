@@ -23,8 +23,12 @@
 /apps/nurture-dashboard/ @aspenas
 
 # Projects requiring review
-/projects/paintbox/ @aspenas
-/projects/promoterOS/ @aspenas
+/apps/paintbox/                 @tyler-robinson
+/apps/promoteros/               @tyler-robinson
+/apps/crown-trophy/             @aaron-westphal
+/services/crestron-ha/          @aspenas
+/services/nanda-index/          @aspenas @tyler-robinson
+/infra/                         @aaron-westphal
 
 # Security-sensitive files
 *.pem @aspenas

@@ -21,11 +21,11 @@ import Link from 'next/link';
 
 // Sample company information
 const sampleCompanyInfo: CompanyInfo = {
-  name: "Paintbox Professional Services",
+  name: "Eggshell Professional Services",
   address: "123 Main Street, Anytown, ST 12345",
   phone: "(555) 123-4567",
-  email: "info@paintboxservices.com",
-  website: "https://paintboxservices.com",
+  email: "info@eggshellservices.com",
+  website: "https://eggshellservices.com",
   logo: "/logo-1024.png", // Using the existing logo from public folder
   license: "LIC-12345-678",
   taxId: "12-3456789",

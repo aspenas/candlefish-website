@@ -1,0 +1,27 @@
+{
+  "name": "candlefish-ai",
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "files.trimTrailingWhitespace": true,
+        "editor.formatOnSave": true
+      },
+      "extensions": [
+        "GitHub.vscode-pull-request-github",
+        "github.vscode-github-actions",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "charliermarsh.ruff",
+        "ms-python.python",
+        "ms-python.vscode-pylance"
+      ]
+    }
+  },
+  "postCreateCommand": "bash infra/devcontainer/post-create.sh",
+  "portsAttributes": {
+    "3000": { "label": "webapp" },
+    "8000": { "label": "api" }
+  }
+}

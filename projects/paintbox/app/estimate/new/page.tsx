@@ -62,17 +62,17 @@ export default function NewEstimate() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-paintbox-brand/5 via-paintbox-background to-paintbox-accent/5 flex items-center justify-center safe-area-inset">
-        <div className="paintbox-card p-12 text-center max-w-md w-full mx-4">
+      <div className="min-h-screen bg-gradient-to-br from-eggshell-brand/5 via-eggshell-background to-eggshell-accent/5 flex items-center justify-center safe-area-inset">
+        <div className="eggshell-card p-12 text-center max-w-md w-full mx-4">
           <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center shadow-lg mx-auto mb-6">
             <AlertTriangle className="w-8 h-8 text-red-600" />
           </div>
 
-          <h2 className="text-2xl font-bold text-paintbox-text mb-3">
+          <h2 className="text-2xl font-bold text-eggshell-text mb-3">
             Unable to Load Estimate
           </h2>
 
-          <p className="text-paintbox-text-muted mb-8">
+          <p className="text-eggshell-text-muted mb-8">
             {error}
           </p>
 
@@ -83,14 +83,14 @@ export default function NewEstimate() {
                 setIsLoading(true);
                 setRetryCount(0);
               }}
-              className="w-full bg-paintbox-brand text-white py-2 px-4 rounded-lg hover:bg-paintbox-brand/90 transition-colors"
+              className="w-full bg-eggshell-brand text-white py-2 px-4 rounded-lg hover:bg-eggshell-brand/90 transition-colors"
             >
               Try Again
             </button>
 
             <button
               onClick={() => router.push('/')}
-              className="w-full bg-paintbox-background text-paintbox-text py-2 px-4 rounded-lg hover:bg-paintbox-accent/10 transition-colors"
+              className="w-full bg-eggshell-background text-eggshell-text py-2 px-4 rounded-lg hover:bg-eggshell-accent/10 transition-colors"
             >
               Back to Home
             </button>
@@ -102,24 +102,24 @@ export default function NewEstimate() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-paintbox-brand/5 via-paintbox-background to-paintbox-accent/5 flex items-center justify-center safe-area-inset">
-        <div className="paintbox-card p-12 text-center max-w-md w-full mx-4">
-          <div className="w-16 h-16 bg-gradient-to-r from-paintbox-brand to-paintbox-accent rounded-2xl flex items-center justify-center shadow-lg mx-auto mb-6">
+      <div className="min-h-screen bg-gradient-to-br from-eggshell-brand/5 via-eggshell-background to-eggshell-accent/5 flex items-center justify-center safe-area-inset">
+        <div className="eggshell-card p-12 text-center max-w-md w-full mx-4">
+          <div className="w-16 h-16 bg-gradient-to-r from-eggshell-brand to-eggshell-accent rounded-2xl flex items-center justify-center shadow-lg mx-auto mb-6">
             <Calculator className="w-8 h-8 text-white" />
           </div>
 
-          <h2 className="text-2xl font-bold text-paintbox-text mb-3">
+          <h2 className="text-2xl font-bold text-eggshell-text mb-3">
             Creating New Estimate
           </h2>
 
-          <p className="text-paintbox-text-muted mb-8">
+          <p className="text-eggshell-text-muted mb-8">
             Setting up your professional estimate workspace...
             {retryCount > 0 && ` (Attempt ${retryCount + 1}/4)`}
           </p>
 
           <LoadingSpinner size="lg" variant="primary" />
 
-          <div className="mt-8 flex items-center justify-center gap-2 text-sm text-paintbox-text-muted">
+          <div className="mt-8 flex items-center justify-center gap-2 text-sm text-eggshell-text-muted">
             <div className="flex items-center gap-1">
               <FileText className="w-4 h-4" />
               <span>Client Details</span>

@@ -3,14 +3,14 @@
 import { useState } from 'react';
 
 export default function SimpleLogin() {
-  const [email, setEmail] = useState('admin@paintbox.com');
+  const [email, setEmail] = useState('admin@eggshell.com');
   const [password, setPassword] = useState('admin123');
   const [token, setToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [userData, setUserData] = useState<any>(null);
 
-  const GRAPHQL_URL = 'https://paintbox-graphql.fly.dev/graphql';
+  const GRAPHQL_URL = 'https://eggshell-graphql.fly.dev/graphql';
 
   const handleLogin = async () => {
     setLoading(true);
@@ -103,7 +103,7 @@ export default function SimpleLogin() {
 
   return (
     <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px', fontFamily: 'system-ui' }}>
-      <h1>Paintbox Simple Login</h1>
+      <h1>Eggshell Simple Login</h1>
 
       <div style={{ marginBottom: '20px' }}>
         <label style={{ display: 'block', marginBottom: '5px' }}>Email:</label>
@@ -172,7 +172,7 @@ export default function SimpleLogin() {
 
       <div style={{ marginTop: '20px', fontSize: '12px', color: '#666' }}>
         <p>GraphQL API: {GRAPHQL_URL}</p>
-        <p>Default credentials: admin@paintbox.com / admin123</p>
+        <p>Default credentials: admin@eggshell.com / admin123</p>
       </div>
     </div>
   );

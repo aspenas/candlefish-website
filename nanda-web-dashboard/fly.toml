@@ -8,12 +8,12 @@ primary_region = "ord"
   NODE_ENV = "production"
   NEXT_TELEMETRY_DISABLED = "1"
   PORT = "3000"
-  
+
   # NANDA Configuration
   NANDA_REGISTRY_URL = "https://nanda-registry.candlefish.ai:8000"
   PAINTBOX_STAGING_URL = "https://paintbox-staging.fly.dev"
   PAINTBOX_PRODUCTION_URL = "https://paintbox.fly.dev"
-  
+
   # App Configuration
   NEXT_PUBLIC_APP_URL = "https://nanda.candlefish.ai"
   NEXT_PUBLIC_WS_URL = "wss://nanda.candlefish.ai/ws"
@@ -55,28 +55,3 @@ primary_region = "ord"
     protocol = "http"
     restart_limit = 0
     timeout = "2s"
-
-# VM Configuration
-[vm]
-  cpu_kind = "shared"
-  cpus = 1
-  memory_mb = 512
-
-# Scaling Configuration
-[scaling]
-  min_machines = 1
-  max_machines = 3
-
-# Process Configuration
-[processes]
-  app = "npm start"
-
-# Deploy Configuration
-[deploy]
-  release_command = "npm run build"
-  strategy = "rolling"
-
-# Metrics and Monitoring
-[metrics]
-  port = 9091
-  path = "/metrics"

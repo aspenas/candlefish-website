@@ -14,7 +14,7 @@ test.describe('Complete Estimate Workflow', () => {
 
     // Set up authentication (if required)
     await page.goto('/login');
-    await page.fill('[data-testid="email"]', 'test@paintbox.com');
+    await page.fill('[data-testid="email"]', 'test@eggshellrecovery.com');
     await page.fill('[data-testid="password"]', 'testpassword123');
     await page.click('[data-testid="login-button"]');
 

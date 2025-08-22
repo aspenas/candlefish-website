@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { CheckCircle, ArrowRight, ArrowLeft, Calculator, Camera, FileText, Users } from 'lucide-react'
-import PaintboxLogo from '@/components/ui/PaintboxLogo'
+import EggshellLogo from '@/components/ui/EggshellLogo'
 
 interface OnboardingStep {
   id: string
@@ -34,7 +34,7 @@ export function OnboardingFlow() {
       content: (
         <div className="text-center space-y-6">
           <div className="flex justify-center">
-            <PaintboxLogo size="large" showText className="flex flex-col items-center gap-4" />
+            <EggshellLogo size="large" showText className="flex flex-col items-center gap-4" />
           </div>
           <div className="space-y-4">
             <h3 className="text-xl font-semibold text-gray-900">
@@ -77,13 +77,13 @@ export function OnboardingFlow() {
         <div className="space-y-6">
           <div className="space-y-4">
             <div>
-              <label className="paintbox-label">
+              <label className="eggshell-label">
                 What's your role?
               </label>
               <select
                 value={userPreferences.role}
                 onChange={(e) => setUserPreferences(prev => ({ ...prev, role: e.target.value }))}
-                className="paintbox-input"
+                className="eggshell-input"
                 required
               >
                 <option value="">Select your role</option>
@@ -97,14 +97,14 @@ export function OnboardingFlow() {
             </div>
 
             <div>
-              <label className="paintbox-label">
+              <label className="eggshell-label">
                 Company Name (Optional)
               </label>
               <input
                 type="text"
                 value={userPreferences.company}
                 onChange={(e) => setUserPreferences(prev => ({ ...prev, company: e.target.value }))}
-                className="paintbox-input"
+                className="eggshell-input"
                 placeholder="Your painting company name"
               />
             </div>
@@ -130,13 +130,13 @@ export function OnboardingFlow() {
         <div className="space-y-6">
           <div className="space-y-4">
             <div>
-              <label className="paintbox-label">
+              <label className="eggshell-label">
                 Default Pricing Tier
               </label>
               <select
                 value={userPreferences.defaultPricingTier}
                 onChange={(e) => setUserPreferences(prev => ({ ...prev, defaultPricingTier: e.target.value }))}
-                className="paintbox-input"
+                className="eggshell-input"
               >
                 <option value="good">Good - Basic quality</option>
                 <option value="better">Better - Premium quality</option>
@@ -283,7 +283,7 @@ export function OnboardingFlow() {
         </div>
 
         {/* Main Card */}
-        <div className="paintbox-card p-8 space-y-8">
+        <div className="eggshell-card p-8 space-y-8">
           {/* Header */}
           <div className="text-center space-y-2">
             <div className="flex justify-center mb-4">
@@ -325,7 +325,7 @@ export function OnboardingFlow() {
             <button
               onClick={handleNext}
               disabled={currentStep === 1 && !userPreferences.role}
-              className="paintbox-btn paintbox-btn-primary"
+              className="eggshell-btn paintbox-btn-primary"
             >
               {isLastStep ? (
                 <>

@@ -1,8 +1,8 @@
-# 🎨 Paintbox - Professional Paint Estimation Platform
+# 🥚 Eggshell - Professional Paint Estimation Platform
 
 **Built by Candlefish.ai**
 
-Paintbox is a production-grade web application that transforms the traditional Excel-based paint estimation process into a modern, cloud-connected solution. It features comprehensive integrations with Salesforce and Company Cam, along with a powerful calculation engine that replicates 14,000+ Excel formulas.
+Eggshell is a production-grade web application that transforms the traditional Excel-based paint estimation process into a modern, cloud-connected solution. It features comprehensive integrations with Salesforce and Company Cam, along with a powerful calculation engine that replicates 14,000+ Excel formulas.
 
 ## 🚀 Nuclear Overhaul Complete
 
@@ -72,8 +72,8 @@ This application has undergone a comprehensive "nuclear overhaul" implementing:
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/your-org/paintbox.git
-cd paintbox
+git clone https://github.com/your-org/eggshell.git
+cd eggshell
 ```
 
 2. Install dependencies:
@@ -102,7 +102,7 @@ SALESFORCE_PASSWORD=your_password
 SALESFORCE_SECURITY_TOKEN=your_token
 
 # Optional but recommended
-DATABASE_URL=postgresql://user:pass@localhost:5432/paintbox
+DATABASE_URL=postgresql://user:pass@localhost:5432/eggshell
 REDIS_URL=redis://localhost:6379
 SENTRY_DSN=your_sentry_dsn
 ```
@@ -125,7 +125,7 @@ Visit <http://localhost:3000> to see the application.
 ### Directory Structure
 
 ```
-paintbox/
+eggshell/
 ├── app/                    # Next.js 15 app directory
 │   ├── api/               # API routes
 │   │   ├── health/        # Health check endpoint
@@ -249,7 +249,7 @@ Secrets (stored in AWS Secrets Manager and synced to Fly):
 Deploy:
 
 ```bash
-flyctl apps create paintbox-staging || true
+flyctl apps create eggshell-staging || true
 flyctl deploy -c fly.toml --remote-only
 ```
 
