@@ -9,9 +9,10 @@ export default function HashRedirect() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if there's a hash in the URL
-    if (window.location.hash) {
-      const hash = window.location.hash.substring(1); // Remove the #
+    // Only process hash redirects if we're on the root path or have a hash
+    // This prevents interference with normal routing
+    if (window.location.hash && (window.location.pathname === '/' || window.location.pathname === '')) {
+      const hash = window.location.hash.substring(1).toLowerCase().trim();
 
       // Map hash routes to path routes
       const hashToPath: Record<string, string> = {
@@ -25,23 +26,32 @@ export default function HashRedirect() {
         'buyer-view': '/buyer-view',
       };
 
-      const targetPath = hashToPath[hash.toLowerCase()];
+      const targetPath = hashToPath[hash];
 
       if (targetPath) {
-        // Navigate to the corresponding path
-        navigate(targetPath, { replace: true });
+        console.log(`[HashRedirect] Redirecting from #${hash} to ${targetPath}`);
 
-        // Clear the hash from the URL
-        window.history.replaceState(null, '', window.location.pathname);
+        // Use setTimeout to ensure React Router is fully initialized
+        setTimeout(() => {
+          navigate(targetPath, { replace: true });
+
+          // Clear the hash from the URL after navigation
+          setTimeout(() => {
+            if (window.location.hash) {
+              window.history.replaceState(null, '', targetPath);
+            }
+          }, 100);
+        }, 0);
       }
     }
   }, [navigate]);
 
-  // Also listen for hash changes during the session
+  // Handle hash changes during the session (less aggressive)
   useEffect(() => {
     const handleHashChange = () => {
-      if (window.location.hash) {
-        const hash = window.location.hash.substring(1);
+      // Only handle hash changes if we're on root path
+      if (window.location.hash && (window.location.pathname === '/' || window.location.pathname === '')) {
+        const hash = window.location.hash.substring(1).toLowerCase().trim();
 
         const hashToPath: Record<string, string> = {
           'inventory': '/inventory',
@@ -54,11 +64,18 @@ export default function HashRedirect() {
           'buyer-view': '/buyer-view',
         };
 
-        const targetPath = hashToPath[hash.toLowerCase()];
+        const targetPath = hashToPath[hash];
 
         if (targetPath) {
+          console.log(`[HashRedirect] Hash changed, redirecting to ${targetPath}`);
           navigate(targetPath, { replace: true });
-          window.history.replaceState(null, '', window.location.pathname);
+
+          // Clear hash after a short delay
+          setTimeout(() => {
+            if (window.location.hash) {
+              window.history.replaceState(null, '', targetPath);
+            }
+          }, 100);
         }
       }
     };

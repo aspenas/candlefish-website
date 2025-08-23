@@ -34,20 +34,22 @@ function App() {
         <ThemeProvider>
           <AuthProvider>
             <Router>
-            <HashRedirect />
-            <Layout>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/inventory" element={<Inventory />} />
-                <Route path="/item/:id" element={<ItemDetail />} />
-                <Route path="/buyer-view" element={<BuyerView />} />
-                <Route path="/analytics" element={<Analytics />} />
-                <Route path="/insights" element={<Insights />} />
-                <Route path="/collaboration" element={<Collaboration />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/photos" element={<PhotoCapture />} />
-              </Routes>
-            </Layout>
+              <Layout>
+                <HashRedirect />
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/inventory" element={<Inventory />} />
+                  <Route path="/item/:id" element={<ItemDetail />} />
+                  <Route path="/buyer-view" element={<BuyerView />} />
+                  <Route path="/analytics" element={<Analytics />} />
+                  <Route path="/insights" element={<Insights />} />
+                  <Route path="/collaboration" element={<Collaboration />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/photos" element={<PhotoCapture />} />
+                  {/* Catch-all route - redirect unmatched paths to dashboard */}
+                  <Route path="*" element={<Dashboard />} />
+                </Routes>
+              </Layout>
             </Router>
           </AuthProvider>
           <Toaster

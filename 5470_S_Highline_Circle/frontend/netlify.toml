@@ -62,16 +62,22 @@
     Cache-Control = "public, max-age=0, must-revalidate"
 
 # Redirects - SPA routing and block netlify.app
+
+# IMPORTANT: SPA fallback MUST come first for proper routing with basic auth
+# This handles all client-side routes and works with password protection
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
+  conditions = {Role = ["*"]}
+
+# Domain redirect comes after SPA routing to avoid conflicts
 [[redirects]]
   from = "https://highline-inventory.netlify.app/*"
   to = "https://inventory.candlefish.ai/:splat"
   status = 301
   force = true
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
 
 # Environment configurations
 [context.production.environment]
