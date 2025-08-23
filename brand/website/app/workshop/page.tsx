@@ -259,7 +259,7 @@ export default function WorkshopLogs() {
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-[#d4d4d4] font-mono pt-20 relative">
       {/* Subtle brand accent overlay */}
-      <div 
+      <div
         className="absolute inset-0 opacity-[0.02] pointer-events-none"
         style={{
           background: `linear-gradient(135deg, transparent 0%, rgba(63, 211, 198, 0.1) 50%, transparent 100%)`

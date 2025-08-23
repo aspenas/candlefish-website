@@ -3,6 +3,7 @@ import './globals.css'
 import Navigation from '../components/navigation/OperationalNav'
 import Footer from '../components/navigation/OperationalFooter'
 import SkipNavigation from '../components/accessibility/SkipNavigation'
+import { ToastProvider } from '../components/ui/ToastProvider'
 
 export const metadata: Metadata = {
   title: 'Candlefish — Operational Design Atelier',
@@ -43,6 +44,7 @@ export default function RootLayout({
           {children}
         </main>
         <Footer />
+        <ToastProvider />
       </body>
     </html>
   )

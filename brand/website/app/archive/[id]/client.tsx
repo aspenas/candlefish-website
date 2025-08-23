@@ -2,10 +2,59 @@
 
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
+import { useState } from 'react'
+import toast from 'react-hot-toast'
 import { ArchiveEntry } from '../data'
+import { shareEntry, downloadEntryPDF } from '../../../lib/archive-utils'
 
 export default function ArchiveEntryClient({ entry }: { entry: ArchiveEntry | null }) {
   const router = useRouter()
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [isSharing, setIsSharing] = useState(false)
+
+  const handleShareEntry = async () => {
+    if (!entry) return
+
+    setIsSharing(true)
+    try {
+      const result = await shareEntry(entry)
+
+      if (result.success) {
+        if (result.method === 'native') {
+          toast.success('Entry shared successfully')
+        } else {
+          toast.success('Link copied to clipboard')
+        }
+      } else {
+        toast.error('Failed to share entry')
+      }
+    } catch (error) {
+      console.error('Share error:', error)
+      toast.error('Failed to share entry')
+    } finally {
+      setIsSharing(false)
+    }
+  }
+
+  const handleDownloadPDF = async () => {
+    if (!entry) return
+
+    setIsDownloading(true)
+    try {
+      const success = await downloadEntryPDF(entry, 'archive-content')
+
+      if (success) {
+        toast.success('PDF generated successfully')
+      } else {
+        toast.error('Failed to generate PDF')
+      }
+    } catch (error) {
+      console.error('PDF generation error:', error)
+      toast.error('Failed to generate PDF')
+    } finally {
+      setIsDownloading(false)
+    }
+  }
 
   if (!entry) {
     return (
@@ -46,6 +95,7 @@ export default function ArchiveEntryClient({ entry }: { entry: ArchiveEntry | nu
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0D1B2A] via-[#1B263B] to-[#1C1C1C] pt-24">
       <motion.article
+        id="archive-content"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="max-w-4xl mx-auto px-6 py-12"
@@ -143,7 +193,7 @@ export default function ArchiveEntryClient({ entry }: { entry: ArchiveEntry | nu
             <section className="mb-12 p-8 bg-[#1B263B]/50 border border-[#415A77]/30">
               <h2 className="text-2xl font-light text-[#F8F8F2] mb-4">Access Notice</h2>
               <p className="text-[#415A77]">
-                Full documentation for this entry is available to {entry.accessLevel} collaborators only. 
+                Full documentation for this entry is available to {entry.accessLevel} collaborators only.
                 Contact us to discuss partnership opportunities and gain deeper access to our operational research.
               </p>
             </section>
@@ -160,11 +210,51 @@ export default function ArchiveEntryClient({ entry }: { entry: ArchiveEntry | nu
           </button>
 
           <div className="flex gap-4">
-            <button className="text-[#415A77] hover:text-[#E0E1DD] transition-colors">
-              Download PDF
+            <button
+              onClick={handleDownloadPDF}
+              disabled={isDownloading}
+              className="text-[#415A77] hover:text-[#E0E1DD] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              title="Download PDF"
+            >
+              {isDownloading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-1 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Download PDF
+                </>
+              )}
             </button>
-            <button className="text-[#415A77] hover:text-[#E0E1DD] transition-colors">
-              Share Entry
+            <button
+              onClick={handleShareEntry}
+              disabled={isSharing}
+              className="text-[#415A77] hover:text-[#E0E1DD] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              title="Share Entry"
+            >
+              {isSharing ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-1 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Sharing...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                  </svg>
+                  Share Entry
+                </>
+              )}
             </button>
           </div>
         </nav>

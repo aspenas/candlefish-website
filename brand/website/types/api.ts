@@ -442,3 +442,36 @@ export interface SearchParams {
   page?: number;
   limit?: number;
 }
+
+// Workshop/Active Projects Types
+export interface WorkshopProjects {
+  projects: {
+    id: string;
+    title: string;
+  }[];
+}
+
+// System Activity Types
+export interface SystemActivity {
+  capacity: number;
+  activity: number[];
+}
+
+// Franchise Network Types
+export interface FranchiseNode {
+  id: string;
+  name: string;
+  streams: number;
+  latency: string;
+}
+
+export interface FranchiseLink {
+  source: string;
+  target: string;
+}
+
+export interface FranchiseGraph {
+  franchises: FranchiseNode[];
+  links: FranchiseLink[];
+  status: 'CALIBRATING' | 'ACTIVE' | 'OPERATIONAL';
+}

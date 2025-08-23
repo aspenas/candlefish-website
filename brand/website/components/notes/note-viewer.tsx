@@ -212,7 +212,7 @@ export const NoteViewer = ({ noteId, onClose }: NoteViewerProps) => {
               We publish when we discover something worth sharing.
               No content calendar. No SEO games. Just operational patterns.
             </p>
-            <a 
+            <a
               href="/contact"
               className="inline-block text-[#3FD3C6] hover:text-[#4FE3D6] transition-colors"
             >

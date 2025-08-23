@@ -60,14 +60,14 @@ describe('ArchitectureVisualization', () => {
 
   it('renders system status banner', () => {
     render(<ArchitectureVisualization />)
-    
+
     expect(screen.getByText(/SYSTEM_STATUS:/)).toBeInTheDocument()
     expect(screen.getByText(/NODES ACTIVE/)).toBeInTheDocument()
   })
 
   it('renders transformation impact section', () => {
     render(<ArchitectureVisualization />)
-    
+
     expect(screen.getByText('Transformation Impact')).toBeInTheDocument()
     expect(screen.getByText('Before')).toBeInTheDocument()
     expect(screen.getByText('After')).toBeInTheDocument()
@@ -75,7 +75,7 @@ describe('ArchitectureVisualization', () => {
 
   it('renders system telemetry section', () => {
     render(<ArchitectureVisualization />)
-    
+
     expect(screen.getByText('System Telemetry')).toBeInTheDocument()
     expect(screen.getByText('Pipeline Status')).toBeInTheDocument()
     expect(screen.getByText('Throughput')).toBeInTheDocument()
@@ -84,14 +84,14 @@ describe('ArchitectureVisualization', () => {
 
   it('renders performance summary', () => {
     render(<ArchitectureVisualization />)
-    
+
     expect(screen.getByText(/45\+ minutes/)).toBeInTheDocument()
     expect(screen.getByText(/<1 minute/)).toBeInTheDocument()
   })
 
   it('renders canvas element', () => {
     render(<ArchitectureVisualization />)
-    
+
     const canvas = document.querySelector('canvas')
     expect(canvas).toBeInTheDocument()
     expect(canvas).toHaveAttribute('width', '520')
@@ -100,9 +100,9 @@ describe('ArchitectureVisualization', () => {
 
   it('renders node activity indicators', () => {
     render(<ArchitectureVisualization />)
-    
+
     expect(screen.getByText('Node Activity')).toBeInTheDocument()
-    
+
     // Check for some of the node labels
     expect(screen.getByText('Intake')).toBeInTheDocument()
     expect(screen.getByText('Validation')).toBeInTheDocument()

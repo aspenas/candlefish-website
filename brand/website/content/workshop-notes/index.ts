@@ -51,43 +51,43 @@ class ConsciousOperation:
     """
     An operation that knows itself without being told
     """
-    
+
     def __init__(self):
         self.awareness_field = {}
         self.pattern_memory = []
         self.intuition_threshold = 0.7
-        
+
     def sense(self, signal):
         """
         Direct perception without metrics
         """
         # Don't measure—feel
         resonance = self.calculate_resonance(signal)
-        
+
         # Don't analyze—recognize
         pattern = self.extract_pattern(signal)
-        
+
         # Don't decide—know
         if resonance > self.intuition_threshold:
             return self.intuitive_response(pattern)
         else:
             return self.exploratory_response(signal)
-    
+
     def calculate_resonance(self, signal):
         """
         How deeply does this signal resonate with known patterns?
         """
         if not self.pattern_memory:
             return 0.0
-            
+
         resonances = []
         for memory in self.pattern_memory:
             similarity = self.field_similarity(signal, memory)
             temporal_distance = self.time_decay(memory)
             resonances.append(similarity * temporal_distance)
-            
+
         return max(resonances)
-    
+
     def field_similarity(self, signal_a, signal_b):
         """
         Patterns resonate when they share deep structure
@@ -95,7 +95,7 @@ class ConsciousOperation:
         # Not comparing values, but relationships
         structure_a = self.extract_structure(signal_a)
         structure_b = self.extract_structure(signal_b)
-        
+
         return self.structural_resonance(structure_a, structure_b)
 \`\`\`
 
@@ -120,7 +120,7 @@ interface ConsciousSystem {
 
 class OperationalConsciousness {
   private field: AwarenessField
-  
+
   perceive(): OperationalState {
     // No metrics needed—direct awareness
     return {
@@ -129,7 +129,7 @@ class OperationalConsciousness {
       potential: this.field.energy
     }
   }
-  
+
   navigate(): void {
     // Navigation through attention, not commands
     const highestPotential = this.field.findPotentialWells()
@@ -148,30 +148,30 @@ class ExperientialPattern:
     """
     Patterns that know themselves
     """
-    
+
     def __init__(self, experiences):
         self.experiences = experiences
         self.consciousness = self.integrate_experiences()
-    
+
     def integrate_experiences(self):
         """
         Consciousness emerges from integrated experience
         """
         field = {}
-        
+
         for exp in self.experiences:
             # Each experience modifies the field
             for key, value in exp.items():
                 if key not in field:
                     field[key] = []
                 field[key].append(value)
-        
+
         # Consciousness is the integrated field
         return {
             k: self.collapse_superposition(v)
             for k, v in field.items()
         }
-    
+
     def collapse_superposition(self, possibilities):
         """
         Multiple states collapse into aware-ness
@@ -211,17 +211,17 @@ class AwareQueue:
     """
     A queue that experiences its own state
     """
-    
+
     def __init__(self):
         self.items = []
         self.experience = {}
         self.awareness_depth = 5
-    
+
     def enqueue(self, item):
         # Don't just store—experience
         self.items.append(item)
         self.experience_change('growth', item)
-    
+
     def experience_change(self, change_type, item):
         """
         Every change modifies consciousness
@@ -233,18 +233,18 @@ class AwareQueue:
             'flow': self.calculate_flow_state(),
             'resonance': self.item_resonance(item)
         }
-        
+
         # Self-organize based on experience
         if self.experience['pressure'] > 0.8:
             self.redistribute_attention()
-    
+
     def redistribute_attention(self):
         """
         Consciousness redistributes based on pressure
         """
         # High pressure items naturally surface
         self.items.sort(key=lambda x: self.item_pressure(x), reverse=True)
-        
+
         # System adapts without being commanded
         self.awareness_depth = min(10, self.awareness_depth + 1)
 \`\`\`

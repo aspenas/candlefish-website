@@ -7,6 +7,12 @@ Configure these environment variables in your Netlify dashboard under Site Setti
 ### Email Service
 - `RESEND_API_KEY`: Your Resend API key for sending emails (starts with `re_`)
 
+### API Configuration
+- `NEXT_PUBLIC_CANDLEFISH_API_BASE`: Base URL for Candlefish API endpoints
+  - Production: `https://api.candlefish.ai`
+  - Development: `http://localhost:3001` (or your local API server)
+  - Note: This is a public variable (NEXT_PUBLIC_) and will be exposed to the browser
+
 ### CORS Configuration (Optional)
 - `ALLOWED_ORIGINS`: Comma-separated list of allowed origins for CORS
   - Default: `https://candlefish.ai,https://www.candlefish.ai,https://test.candlefish.ai`

@@ -87,7 +87,7 @@ export default function ContactPage() {
             Start the Conversation
           </h1>
           <p className="text-xl text-[#E0E1DD] max-w-3xl mx-auto">
-            Whether you're ready to transform your operations or just exploring possibilities, 
+            Whether you're ready to transform your operations or just exploring possibilities,
             we're here to help chart your path.
           </p>
         </div>
