@@ -112,9 +112,9 @@ const FilterChips = ({
           <button
             key={days}
             onClick={() => {
-              onChange({ 
-                ...filters, 
-                updatedWithin: filters.updatedWithin === days ? undefined : days 
+              onChange({
+                ...filters,
+                updatedWithin: filters.updatedWithin === days ? undefined : days
               })
             }}
             className={`px-3 py-1 text-xs rounded border transition-all ${
@@ -132,12 +132,12 @@ const FilterChips = ({
 }
 
 // Project card component
-const ProjectCard = ({ 
-  project, 
-  mode 
-}: { 
+const ProjectCard = ({
+  project,
+  mode
+}: {
   project: WorkshopIndexEntry & { client_name_masked?: string }
-  mode: ViewMode 
+  mode: ViewMode
 }) => {
   const clientName = getPublicClientName({
     client_name_masked: 'Private Client',
@@ -149,7 +149,7 @@ const ProjectCard = ({
       <article className="group border border-[#333] p-6 hover:border-[#3FD3C6]/50 transition-all cursor-pointer relative overflow-hidden">
         {/* Subtle hover effect */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#3FD3C6]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-        
+
         <div className="relative z-10">
           {/* Header */}
           <div className="flex justify-between items-start mb-4">
@@ -176,12 +176,12 @@ const ProjectCard = ({
                   <span className="text-[#3FD3C6]">Complexity:</span> {project.complexity}
                 </div>
               </div>
-              
+
               {/* Mini telemetry visualization placeholder */}
               <div className="h-[2px] bg-[#1a1a1a] relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#3FD3C6]/30 to-transparent animate-pulse" />
               </div>
-              
+
               {/* Last updated */}
               <div className="text-xs text-[#666]">
                 Updated {formatDate(project.updated_at)}
@@ -205,12 +205,12 @@ const ProjectCard = ({
                   </span>
                 )}
               </div>
-              
+
               {/* Mini architecture preview placeholder */}
               <div className="h-12 bg-[#0a0a0a] rounded flex items-center justify-center text-xs text-[#444]">
                 Architecture Preview
               </div>
-              
+
               {/* Last updated */}
               <div className="text-xs text-[#666]">
                 Updated {formatDate(project.updated_at)}
@@ -227,7 +227,7 @@ const ProjectCard = ({
 function WorkshopContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  
+
   // State management
   const [viewMode, setViewMode] = useState<ViewMode>(
     (searchParams.get('view') as ViewMode) || 'operator'
@@ -268,13 +268,13 @@ function WorkshopContent() {
   // Filter projects
   const filteredProjects = useMemo(() => {
     let projects = [...(workshopIndex as WorkshopIndexEntry[])]
-    
+
     // Apply filters
     if (filters.status.length > 0) {
       projects = projects.filter(p => filters.status.includes(p.status as ProjectStatus))
     }
     if (filters.domain.length > 0) {
-      projects = projects.filter(p => 
+      projects = projects.filter(p =>
         p.domain.some(d => filters.domain.includes(d))
       )
     }
@@ -289,16 +289,16 @@ function WorkshopContent() {
       cutoffDate.setDate(cutoffDate.getDate() - filters.updatedWithin)
       projects = projects.filter(p => new Date(p.updated_at) >= cutoffDate)
     }
-    
+
     // Apply search
     if (searchTerm) {
       const term = searchTerm.toLowerCase()
-      projects = projects.filter(p => 
+      projects = projects.filter(p =>
         p.title.toLowerCase().includes(term) ||
         p.domain.some(d => d.toLowerCase().includes(term))
       )
     }
-    
+
     return projects
   }, [filters, searchTerm])
 
@@ -311,7 +311,7 @@ function WorkshopContent() {
           background: `linear-gradient(135deg, transparent 0%, rgba(63, 211, 198, 0.1) 50%, transparent 100%)`
         }}
       />
-      
+
       <div className="relative z-10">
         {/* Header */}
         <header className="border-b border-[#333] px-6 py-4 relative">
@@ -327,7 +327,7 @@ function WorkshopContent() {
                   Public R&D board. Live operational work. No projections.
                 </p>
               </div>
-              
+
               {/* View Toggle */}
               <ViewToggle mode={viewMode} onChange={setViewMode} />
             </div>
@@ -354,10 +354,10 @@ function WorkshopContent() {
               </button>
             )}
           </div>
-          
+
           {/* Filters */}
           <FilterChips filters={filters} onChange={setFilters} />
-          
+
           {/* Results count */}
           <div className="text-xs text-[#666]">
             Showing {filteredProjects.length} of {workshopIndex.length} projects
@@ -375,7 +375,7 @@ function WorkshopContent() {
               />
             ))}
           </div>
-          
+
           {filteredProjects.length === 0 && (
             <div className="text-center py-12">
               <p className="text-[#666]">No projects match your filters</p>

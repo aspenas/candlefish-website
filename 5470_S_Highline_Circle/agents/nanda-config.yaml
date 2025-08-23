@@ -63,7 +63,7 @@ prompts:
     - Items marked for sale vs keep
     - Pricing optimization opportunities
     - Bundle deal recommendations
-    
+
     Provide actionable insights and recommendations.
 
   price_recommendation: |
@@ -72,19 +72,19 @@ prompts:
     Original Price: {{purchase_price}}
     Condition: {{condition}}
     Room: {{room}}
-    
+
     Suggest an optimal asking price considering:
     - Market value depreciation
     - Comparable items
     - Bundle potential
     - Buyer appeal
-    
+
     Provide reasoning for the suggested price.
 
   buyer_pitch: |
     Create a compelling pitch for potential buyer Jon Strom.
     Inventory: {{inventory_summary}}
-    
+
     Include:
     - Value proposition
     - Room-by-room highlights
@@ -96,11 +96,11 @@ integrations:
   - name: n8n
     type: webhook
     endpoint: http://n8n:5678/webhook/inventory
-    
+
   - name: database
     type: postgresql
     connection: ${DATABASE_URL}
-    
+
   - name: storage
     type: s3
     bucket: highline-inventory
@@ -109,14 +109,14 @@ integrations:
 automation_rules:
   - trigger: item_marked_for_sale
     action: analyze_pricing
-    
+
   - trigger: daily_schedule
     time: "09:00"
     action: generate_daily_report
-    
+
   - trigger: buyer_view_requested
     action: prepare_buyer_view
-    
+
   - trigger: price_threshold
     condition: asking_price > 10000
     action: request_approval
@@ -127,12 +127,12 @@ monitoring:
     - pricing_recommendations_made
     - buyer_views_generated
     - automation_runs
-    
+
   alerts:
     - type: error_rate
       threshold: 5%
       channel: email
-      
+
     - type: processing_time
       threshold: 30s
       channel: slack

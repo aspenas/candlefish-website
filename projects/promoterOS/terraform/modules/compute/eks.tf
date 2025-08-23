@@ -6,7 +6,7 @@ resource "aws_kms_key" "eks" {
   description             = "EKS cluster encryption key"
   deletion_window_in_days = 10
   enable_key_rotation     = true
-  
+
   tags = {
     Name        = "${var.project_name}-eks-kms"
     Environment = var.environment
@@ -21,7 +21,7 @@ resource "aws_kms_alias" "eks" {
 # IAM role for EKS cluster
 resource "aws_iam_role" "eks_cluster" {
   name = "${var.project_name}-eks-cluster-role"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -34,7 +34,7 @@ resource "aws_iam_role" "eks_cluster" {
       }
     ]
   })
-  
+
   tags = {
     Name        = "${var.project_name}-eks-cluster-role"
     Environment = var.environment
@@ -57,7 +57,7 @@ resource "aws_eks_cluster" "main" {
   name     = var.cluster_name
   role_arn = aws_iam_role.eks_cluster.arn
   version  = var.kubernetes_version
-  
+
   vpc_config {
     subnet_ids              = concat(var.private_subnet_ids, var.public_subnet_ids)
     endpoint_private_access = true
@@ -65,14 +65,14 @@ resource "aws_eks_cluster" "main" {
     public_access_cidrs    = var.public_access_cidrs
     security_group_ids     = [var.cluster_security_group_id]
   }
-  
+
   encryption_config {
     provider {
       key_arn = aws_kms_key.eks.arn
     }
     resources = ["secrets"]
   }
-  
+
   enabled_cluster_log_types = [
     "api",
     "audit",
@@ -80,13 +80,13 @@ resource "aws_eks_cluster" "main" {
     "controllerManager",
     "scheduler"
   ]
-  
+
   depends_on = [
     aws_iam_role_policy_attachment.eks_cluster_policy,
     aws_iam_role_policy_attachment.eks_vpc_resource_controller,
     aws_cloudwatch_log_group.eks_cluster
   ]
-  
+
   tags = {
     Name        = var.cluster_name
     Environment = var.environment
@@ -97,7 +97,7 @@ resource "aws_eks_cluster" "main" {
 resource "aws_cloudwatch_log_group" "eks_cluster" {
   name              = "/aws/eks/${var.cluster_name}/cluster"
   retention_in_days = 30
-  
+
   tags = {
     Name        = "${var.cluster_name}-logs"
     Environment = var.environment
@@ -113,7 +113,7 @@ resource "aws_iam_openid_connect_provider" "eks" {
   client_id_list  = ["sts.amazonaws.com"]
   thumbprint_list = [data.tls_certificate.eks.certificates[0].sha1_fingerprint]
   url             = aws_eks_cluster.main.identity[0].oidc[0].issuer
-  
+
   tags = {
     Name        = "${var.cluster_name}-oidc"
     Environment = var.environment
@@ -123,7 +123,7 @@ resource "aws_iam_openid_connect_provider" "eks" {
 # IAM role for EKS node groups
 resource "aws_iam_role" "eks_nodes" {
   name = "${var.project_name}-eks-nodes-role"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -136,7 +136,7 @@ resource "aws_iam_role" "eks_nodes" {
       }
     ]
   })
-  
+
   tags = {
     Name        = "${var.project_name}-eks-nodes-role"
     Environment = var.environment
@@ -168,7 +168,7 @@ resource "aws_iam_role_policy_attachment" "eks_ssm_managed_instance" {
 resource "aws_iam_role_policy" "eks_nodes_additional" {
   name = "${var.project_name}-eks-nodes-additional"
   role = aws_iam_role.eks_nodes.id
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [

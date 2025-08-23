@@ -59,12 +59,11 @@ func (h *Handler) GetAIInsights(c *fiber.Ctx) error {
 			"generatedAt": time.Now(),
 		})
 	}
-	
+
 	// Fetch all items for analysis
 	rows, err := h.db.Query(`
-		SELECT id, name, category, estimated_value, decision_status, condition, room_id
+		SELECT id, name, category, purchase_price, decision, condition, room_id
 		FROM items
-		WHERE deleted_at IS NULL
 	`)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch items"})
@@ -74,11 +73,12 @@ func (h *Handler) GetAIInsights(c *fiber.Ctx) error {
 	var items []map[string]interface{}
 	for rows.Next() {
 		var item map[string]interface{} = make(map[string]interface{})
-		var id, name, category, decisionStatus, condition string
-		var estimatedValue float64
+		var id, name, category, decisionStatus string
+		var purchasePrice sql.NullFloat64
+		var condition sql.NullString
 		var roomID sql.NullString
 
-		err := rows.Scan(&id, &name, &category, &estimatedValue, &decisionStatus, &condition, &roomID)
+		err := rows.Scan(&id, &name, &category, &purchasePrice, &decisionStatus, &condition, &roomID)
 		if err != nil {
 			continue
 		}
@@ -86,9 +86,17 @@ func (h *Handler) GetAIInsights(c *fiber.Ctx) error {
 		item["id"] = id
 		item["name"] = name
 		item["category"] = category
-		item["estimatedValue"] = estimatedValue
+		if purchasePrice.Valid {
+			item["estimatedValue"] = purchasePrice.Float64
+		} else {
+			item["estimatedValue"] = 0.0
+		}
 		item["decisionStatus"] = decisionStatus
-		item["condition"] = condition
+		if condition.Valid {
+			item["condition"] = condition.String
+		} else {
+			item["condition"] = "unknown"
+		}
 		if roomID.Valid {
 			item["roomId"] = roomID.String
 		}
@@ -178,7 +186,7 @@ func (h *Handler) GetRecommendations(c *fiber.Ctx) error {
 	var request struct {
 		ItemIDs []string `json:"itemIds"`
 	}
-	
+
 	if err := c.BodyParser(&request); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
 	}
@@ -220,20 +228,31 @@ func (h *Handler) GetPriceOptimization(c *fiber.Ctx) error {
 	itemID := c.Params("id")
 
 	// Fetch item details
-	var name, category, condition string
-	var currentPrice float64
+	var name, category string
+	var currentPrice sql.NullFloat64
+	var condition sql.NullString
 	err := h.db.QueryRow(`
-		SELECT name, category, estimated_value, condition
+		SELECT name, category, purchase_price, condition
 		FROM items
-		WHERE id = ? AND deleted_at IS NULL
+		WHERE id = $1
 	`, itemID).Scan(&name, &category, &currentPrice, &condition)
+
+	price := 0.0
+	if currentPrice.Valid {
+		price = currentPrice.Float64
+	}
+
+	condStr := "unknown"
+	if condition.Valid {
+		condStr = condition.String
+	}
 
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Item not found"})
 	}
 
 	// Generate price optimization (simulated AI analysis)
-	optimization := generatePriceOptimization(itemID, name, category, condition, currentPrice)
+	optimization := generatePriceOptimization(itemID, name, category, condStr, price)
 
 	return c.JSON(optimization)
 }
@@ -252,10 +271,10 @@ func (h *Handler) GetMarketAnalysis(c *fiber.Ctx) error {
 func (h *Handler) GetBundleSuggestions(c *fiber.Ctx) error {
 	// Fetch items for bundling
 	rows, err := h.db.Query(`
-		SELECT id, name, category, estimated_value, decision_status
+		SELECT id, name, category, purchase_price, decision
 		FROM items
-		WHERE decision_status = 'sell' AND deleted_at IS NULL
-		ORDER BY category, estimated_value DESC
+		WHERE decision = 'Sell'
+		ORDER BY category, purchase_price DESC
 	`)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch items"})
@@ -265,18 +284,23 @@ func (h *Handler) GetBundleSuggestions(c *fiber.Ctx) error {
 	categoryItems := make(map[string][]map[string]interface{})
 	for rows.Next() {
 		var id, name, category, decisionStatus string
-		var value float64
-		
+		var value sql.NullFloat64
+
 		err := rows.Scan(&id, &name, &category, &value, &decisionStatus)
 		if err != nil {
 			continue
+		}
+
+		price := 0.0
+		if value.Valid {
+			price = value.Float64
 		}
 
 		item := map[string]interface{}{
 			"id": id,
 			"name": name,
 			"category": category,
-			"value": value,
+			"value": price,
 		}
 
 		categoryItems[category] = append(categoryItems[category], item)
@@ -372,7 +396,7 @@ func filterQuickWins(items []map[string]interface{}) []map[string]interface{} {
 		value, _ := item["estimatedValue"].(float64)
 		condition, _ := item["condition"].(string)
 		status, _ := item["decisionStatus"].(string)
-		
+
 		if value > 10 && value < 100 && condition != "poor" && status != "keep" {
 			filtered = append(filtered, item)
 		}
@@ -414,7 +438,7 @@ func analyzeCategoryConcentration(items []map[string]interface{}) *AIInsight {
 			CreatedAt:   time.Now(),
 		}
 	}
-	
+
 	return nil
 }
 
@@ -459,7 +483,7 @@ func analyzeSeasonalOpportunities(items []map[string]interface{}) *AIInsight {
 
 func generateBundleRecommendations(items []map[string]interface{}) []AIInsight {
 	var insights []AIInsight
-	
+
 	// Group by category
 	categoryGroups := make(map[string][]map[string]interface{})
 	for _, item := range items {
@@ -496,7 +520,7 @@ func generateBundleRecommendations(items []map[string]interface{}) []AIInsight {
 func generatePriceOptimization(itemID, name, category, condition string, currentPrice float64) PriceOptimization {
 	// Simulate AI price optimization
 	rand.Seed(time.Now().UnixNano())
-	
+
 	// Base adjustment on condition
 	conditionMultiplier := map[string]float64{
 		"excellent": 1.2,

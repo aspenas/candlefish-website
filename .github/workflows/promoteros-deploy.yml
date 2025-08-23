@@ -23,7 +23,7 @@ jobs:
   test:
     name: Test and Lint
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:15
@@ -169,11 +169,11 @@ jobs:
         run: |
           echo "Waiting for services to be ready..."
           sleep 30
-          
+
           # Test API health
           curl --fail https://promoteros-api.fly.dev/healthz || exit 1
-          
+
           # Test Web app
           curl --fail https://promoteros-web.fly.dev/ || exit 1
-          
+
           echo "Deployment verified successfully!"

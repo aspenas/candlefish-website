@@ -1,9 +1,9 @@
 /**
  * PromoterOS TikTok Advanced Scraper
- * 
+ *
  * This module provides comprehensive TikTok data extraction and analysis capabilities
  * for artist discovery, viral prediction, and real-time social monitoring.
- * 
+ *
  * Features:
  * - Multi-threaded scraping with intelligent rate limiting
  * - Viral trajectory prediction using ML models
@@ -15,7 +15,7 @@
  * - Automatic proxy rotation and captcha solving
  * - Data enrichment with music recognition APIs
  * - Historical trend analysis with time-series forecasting
- * 
+ *
  * @module TikTokAdvancedScraper
  * @author PromoterOS AI Team
  * @version 3.0.0
@@ -73,7 +73,7 @@ export interface TikTokUserProfile {
   heartCount: number;
   videoCount: number;
   diggCount: number;
-  
+
   // Enriched fields
   engagementRate: number;
   growthRate: number;
@@ -83,7 +83,7 @@ export interface TikTokUserProfile {
   audienceQuality: number;
   contentConsistency: number;
   brandSafety: number;
-  
+
   // Audience demographics
   audienceDemographics: {
     ageDistribution: Record<string, number>;
@@ -93,7 +93,7 @@ export interface TikTokUserProfile {
     deviceTypes: Record<string, number>;
     activeHours: number[];
   };
-  
+
   // Performance metrics
   performanceMetrics: {
     avgViews: number;
@@ -104,7 +104,7 @@ export interface TikTokUserProfile {
     trendsParticipated: number;
     originalSounds: number;
   };
-  
+
   // Predictive analytics
   predictions: {
     next30DayFollowers: number;
@@ -113,7 +113,7 @@ export interface TikTokUserProfile {
     merchandiseAffinity: number;
     collaborationValue: number;
   };
-  
+
   metadata: {
     scrapedAt: Date;
     dataFreshness: number;
@@ -133,7 +133,7 @@ export interface TikTokVideo {
   covers: string[];
   videoUrl: string;
   shareUrl: string;
-  
+
   // Basic stats
   stats: {
     playCount: number;
@@ -142,7 +142,7 @@ export interface TikTokVideo {
     diggCount: number;
     collectCount: number;
   };
-  
+
   // Advanced metrics
   analytics: {
     completionRate: number;
@@ -154,7 +154,7 @@ export interface TikTokVideo {
     authenticEngagement: number;
     botActivityScore: number;
   };
-  
+
   // Viral indicators
   viralIndicators: {
     isViral: boolean;
@@ -165,7 +165,7 @@ export interface TikTokVideo {
     celebrityEngagement: boolean;
     mediaPickup: boolean;
   };
-  
+
   // Content analysis
   contentAnalysis: {
     hashtags: string[];
@@ -183,7 +183,7 @@ export interface TikTokVideo {
       offset: number;
     }>;
   };
-  
+
   // Audience insights
   audienceInsights: {
     viewerDemographics: Record<string, any>;
@@ -192,7 +192,7 @@ export interface TikTokVideo {
     peakViewingHours: number[];
     geoDistribution: Record<string, number>;
   };
-  
+
   // Temporal patterns
   temporalPatterns: {
     hourlyViews: number[];
@@ -217,7 +217,7 @@ export interface TikTokSoundTrend {
   original: boolean;
   duration: number;
   coverUrl: string;
-  
+
   // Usage metrics
   usage: {
     videoCount: number;
@@ -227,7 +227,7 @@ export interface TikTokSoundTrend {
     dailyGrowth: number;
     weeklyGrowth: number;
   };
-  
+
   // Trend analysis
   trendAnalysis: {
     trendingRank: number;
@@ -237,7 +237,7 @@ export interface TikTokSoundTrend {
     viralPotential: number;
     crossoverPotential: number;
   };
-  
+
   // Geographic spread
   geoSpread: {
     countries: Record<string, number>;
@@ -245,7 +245,7 @@ export interface TikTokSoundTrend {
     spreadVelocity: number;
     saturationLevel: number;
   };
-  
+
   // Creator insights
   creatorInsights: {
     topCreators: Array<{
@@ -258,7 +258,7 @@ export interface TikTokSoundTrend {
     influencerAdoption: number;
     ugcRatio: number;
   };
-  
+
   // Music analysis (if applicable)
   musicAnalysis?: {
     genre: string[];
@@ -284,7 +284,7 @@ export interface TikTokHashtagTrend {
   title: string;
   description: string;
   coverUrl: string;
-  
+
   // Volume metrics
   metrics: {
     viewCount: number;
@@ -293,7 +293,7 @@ export interface TikTokHashtagTrend {
     dailyVideos: number;
     engagementRate: number;
   };
-  
+
   // Trend status
   trendStatus: {
     isChallenge: boolean;
@@ -304,7 +304,7 @@ export interface TikTokHashtagTrend {
     lifecycleDay: number;
     predictedPeak: Date;
   };
-  
+
   // Participation analysis
   participation: {
     topVideos: string[];
@@ -314,7 +314,7 @@ export interface TikTokHashtagTrend {
     brandParticipation: string[];
     crossPlatformMentions: number;
   };
-  
+
   // Content themes
   contentThemes: {
     primaryThemes: string[];
@@ -332,7 +332,7 @@ export interface CompetitorAnalysis {
   competitorId: string;
   competitorName: string;
   trackingSince: Date;
-  
+
   // Comparative metrics
   comparison: {
     followerGrowth: {
@@ -352,7 +352,7 @@ export interface CompetitorAnalysis {
     };
     audienceOverlap: number;
   };
-  
+
   // Strategic insights
   insights: {
     contentStrategy: string[];
@@ -362,7 +362,7 @@ export interface CompetitorAnalysis {
     collaborations: string[];
     successfulFormats: string[];
   };
-  
+
   // Opportunities
   opportunities: {
     untappedHashtags: string[];
@@ -371,7 +371,7 @@ export interface CompetitorAnalysis {
     timingGaps: number[];
     audienceSegments: string[];
   };
-  
+
   // Threat assessment
   threats: {
     level: 'low' | 'medium' | 'high' | 'critical';
@@ -390,13 +390,13 @@ export interface ScraperConfig {
   apiEndpoint: string;
   apiKey: string;
   apiSecret: string;
-  
+
   // Proxy Configuration
   proxyList: string[];
   proxyRotationInterval: number;
   proxyHealthCheckInterval: number;
   proxyFailureThreshold: number;
-  
+
   // Rate Limiting
   requestsPerSecond: number;
   requestsPerMinute: number;
@@ -405,45 +405,45 @@ export interface ScraperConfig {
   retryAttempts: number;
   retryDelay: number;
   backoffMultiplier: number;
-  
+
   // Browser Configuration
   headless: boolean;
   browserCount: number;
   pagePoolSize: number;
   userAgents: string[];
   viewportSizes: Array<{ width: number; height: number }>;
-  
+
   // Caching
   cacheEnabled: boolean;
   cacheTTL: number;
   cacheMaxSize: number;
   cacheEvictionPolicy: 'lru' | 'lfu' | 'fifo';
-  
+
   // Data Enrichment
   enableAIEnrichment: boolean;
   enableMusicRecognition: boolean;
   enableImageAnalysis: boolean;
   enableSentimentAnalysis: boolean;
   enableTranslation: boolean;
-  
+
   // Storage
   databaseUrl: string;
   redisUrl: string;
   influxDbUrl: string;
   s3Bucket: string;
-  
+
   // Monitoring
   sentryDsn: string;
   datadogApiKey: string;
   prometheusPort: number;
   healthCheckPort: number;
-  
+
   // ML Models
   viralPredictionModel: string;
   audienceQualityModel: string;
   contentClassificationModel: string;
   trendForecastingModel: string;
-  
+
   // Webhooks
   webhookUrl: string;
   webhookSecret: string;
@@ -476,13 +476,13 @@ export class TikTokAdvancedScraper extends EventEmitter {
   private httpClient: AxiosInstance;
   private openai: OpenAI;
   private anthropic: Anthropic;
-  
+
   // ML Models
   private viralPredictionModel?: tf.LayersModel;
   private audienceQualityModel?: tf.LayersModel;
   private contentClassificationModel?: tf.LayersModel;
   private trendForecastingModel?: tf.LayersModel;
-  
+
   // Metrics
   private metrics = {
     requestsTotal: 0,
@@ -496,12 +496,12 @@ export class TikTokAdvancedScraper extends EventEmitter {
     dataPointsCollected: 0,
     predictionsGenerated: 0
   };
-  
+
   constructor(config: ScraperConfig) {
     super();
     this.config = config;
     this.mutex = new Mutex();
-    
+
     // Initialize logger
     this.logger = winston.createLogger({
       level: 'info',
@@ -518,16 +518,16 @@ export class TikTokAdvancedScraper extends EventEmitter {
             winston.format.simple()
           )
         }),
-        new winston.transports.File({ 
-          filename: 'logs/tiktok-scraper-error.log', 
-          level: 'error' 
+        new winston.transports.File({
+          filename: 'logs/tiktok-scraper-error.log',
+          level: 'error'
         }),
-        new winston.transports.File({ 
-          filename: 'logs/tiktok-scraper.log' 
+        new winston.transports.File({
+          filename: 'logs/tiktok-scraper.log'
         })
       ]
     });
-    
+
     // Initialize Redis
     this.redis = new Redis(config.redisUrl, {
       retryStrategy: (times) => Math.min(times * 50, 2000),
@@ -536,7 +536,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
         return targetErrors.some(e => err.message.includes(e));
       }
     });
-    
+
     // Initialize PostgreSQL
     this.db = new Pool({
       connectionString: config.databaseUrl,
@@ -544,7 +544,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,
     });
-    
+
     // Initialize InfluxDB for time-series data
     this.influx = new InfluxDB({
       url: config.influxDbUrl,
@@ -552,14 +552,14 @@ export class TikTokAdvancedScraper extends EventEmitter {
       org: process.env.INFLUX_ORG!,
       bucket: 'tiktok-metrics'
     });
-    
+
     // Initialize rate limiter
     this.rateLimiter = new RateLimiter({
       tokensPerInterval: config.requestsPerSecond,
       interval: 'second',
       fireImmediately: true
     });
-    
+
     // Initialize cache
     this.cache = new LRU({
       max: config.cacheMaxSize,
@@ -568,7 +568,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
       updateAgeOnGet: true,
       updateAgeOnHas: true
     });
-    
+
     // Initialize HTTP client with retry logic
     this.httpClient = axios.create({
       timeout: 30000,
@@ -581,28 +581,28 @@ export class TikTokAdvancedScraper extends EventEmitter {
         'Upgrade-Insecure-Requests': '1'
       }
     });
-    
+
     // Add request/response interceptors
     this.setupHttpInterceptors();
-    
+
     // Initialize AI clients
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY!
     });
-    
+
     this.anthropic = new Anthropic({
       apiKey: process.env.ANTHROPIC_API_KEY!
     });
-    
+
     // Initialize BullMQ for job processing
     const connection = {
       host: process.env.REDIS_HOST || 'localhost',
       port: parseInt(process.env.REDIS_PORT || '6379'),
     };
-    
+
     this.queue = new Queue('tiktok-scraping', { connection });
     this.scheduler = new QueueScheduler('tiktok-scraping', { connection });
-    
+
     this.worker = new Worker(
       'tiktok-scraping',
       async (job) => this.processScrapingJob(job),
@@ -615,7 +615,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
         }
       }
     );
-    
+
     // Initialize Sentry for error tracking
     if (config.sentryDsn) {
       Sentry.init({
@@ -624,60 +624,60 @@ export class TikTokAdvancedScraper extends EventEmitter {
         environment: process.env.NODE_ENV || 'development'
       });
     }
-    
+
     // Set up event handlers
     this.setupEventHandlers();
   }
-  
+
   // ============================================================================
   // INITIALIZATION METHODS
   // ============================================================================
-  
+
   /**
    * Initialize the scraper and all its components
    */
   async initialize(): Promise<void> {
     const startTime = performance.now();
     this.logger.info('Initializing TikTok Advanced Scraper...');
-    
+
     try {
       // Load ML models
       await this.loadMLModels();
-      
+
       // Initialize browser pool
       await this.initializeBrowserPool();
-      
+
       // Initialize proxy pool
       await this.initializeProxyPool();
-      
+
       // Verify database connections
       await this.verifyConnections();
-      
+
       // Warm up cache
       await this.warmUpCache();
-      
+
       // Start health check intervals
       this.startHealthChecks();
-      
+
       // Start metrics collection
       this.startMetricsCollection();
-      
+
       const duration = performance.now() - startTime;
       this.logger.info(`Scraper initialized successfully in ${duration.toFixed(2)}ms`);
       this.emit('initialized', { duration });
-      
+
     } catch (error) {
       this.logger.error('Failed to initialize scraper:', error);
       throw error;
     }
   }
-  
+
   /**
    * Load TensorFlow models for predictions
    */
   private async loadMLModels(): Promise<void> {
     this.logger.info('Loading ML models...');
-    
+
     try {
       // Load viral prediction model
       if (this.config.viralPredictionModel) {
@@ -686,7 +686,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
         );
         this.logger.info('Viral prediction model loaded');
       }
-      
+
       // Load audience quality model
       if (this.config.audienceQualityModel) {
         this.audienceQualityModel = await tf.loadLayersModel(
@@ -694,7 +694,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
         );
         this.logger.info('Audience quality model loaded');
       }
-      
+
       // Load content classification model
       if (this.config.contentClassificationModel) {
         this.contentClassificationModel = await tf.loadLayersModel(
@@ -702,7 +702,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
         );
         this.logger.info('Content classification model loaded');
       }
-      
+
       // Load trend forecasting model
       if (this.config.trendForecastingModel) {
         this.trendForecastingModel = await tf.loadLayersModel(
@@ -710,26 +710,26 @@ export class TikTokAdvancedScraper extends EventEmitter {
         );
         this.logger.info('Trend forecasting model loaded');
       }
-      
+
     } catch (error) {
       this.logger.warn('Some ML models failed to load:', error);
       // Continue without ML features if models fail to load
     }
   }
-  
+
   /**
    * Initialize Puppeteer browser pool for scraping
    */
   private async initializeBrowserPool(): Promise<void> {
     this.logger.info(`Initializing browser pool with ${this.config.browserCount} browsers...`);
-    
+
     const browserPromises = [];
     for (let i = 0; i < this.config.browserCount; i++) {
       browserPromises.push(this.createBrowser());
     }
-    
+
     this.browserPool = await Promise.all(browserPromises);
-    
+
     // Pre-create pages for faster access
     for (const browser of this.browserPool) {
       for (let i = 0; i < this.config.pagePoolSize; i++) {
@@ -738,10 +738,10 @@ export class TikTokAdvancedScraper extends EventEmitter {
         this.pagePool.push(page);
       }
     }
-    
+
     this.logger.info(`Browser pool initialized with ${this.pagePool.length} pages`);
   }
-  
+
   /**
    * Create a configured browser instance
    */
@@ -760,12 +760,12 @@ export class TikTokAdvancedScraper extends EventEmitter {
       '--disable-blink-features=AutomationControlled',
       `--window-size=${this.getRandomViewport().width},${this.getRandomViewport().height}`
     ];
-    
+
     if (this.config.proxyList.length > 0) {
       const proxy = this.getRandomProxy();
       args.push(`--proxy-server=${proxy}`);
     }
-    
+
     return await puppeteer.launch({
       headless: this.config.headless,
       args,
@@ -774,7 +774,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
       executablePath: process.env.CHROME_BIN || undefined
     });
   }
-  
+
   /**
    * Configure a page with stealth settings
    */
@@ -782,25 +782,25 @@ export class TikTokAdvancedScraper extends EventEmitter {
     // Set random viewport
     const viewport = this.getRandomViewport();
     await page.setViewport(viewport);
-    
+
     // Set random user agent
     const userAgent = this.getRandomUserAgent();
     await page.setUserAgent(userAgent);
-    
+
     // Add extra headers
     await page.setExtraHTTPHeaders({
       'Accept-Language': 'en-US,en;q=0.9',
       'Accept-Encoding': 'gzip, deflate, br',
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'
     });
-    
+
     // Inject custom scripts to evade detection
     await page.evaluateOnNewDocument(() => {
       // Override navigator properties
       Object.defineProperty(navigator, 'webdriver', {
         get: () => undefined
       });
-      
+
       // Override chrome property
       Object.defineProperty(window, 'chrome', {
         writable: true,
@@ -811,7 +811,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
           app: {}
         }
       });
-      
+
       // Override permissions
       const originalQuery = window.navigator.permissions.query;
       window.navigator.permissions.query = (parameters: any) => {
@@ -820,7 +820,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
         }
         return originalQuery.call(window.navigator.permissions, parameters);
       };
-      
+
       // Add fake plugins
       Object.defineProperty(navigator, 'plugins', {
         get: () => [
@@ -832,16 +832,16 @@ export class TikTokAdvancedScraper extends EventEmitter {
           }
         ]
       });
-      
+
       // Override language
       Object.defineProperty(navigator, 'language', {
         get: () => 'en-US'
       });
-      
+
       Object.defineProperty(navigator, 'languages', {
         get: () => ['en-US', 'en']
       });
-      
+
       // Add WebGL vendor and renderer
       const getParameter = WebGLRenderingContext.prototype.getParameter;
       WebGLRenderingContext.prototype.getParameter = function(parameter) {
@@ -854,36 +854,36 @@ export class TikTokAdvancedScraper extends EventEmitter {
         return getParameter.call(this, parameter);
       };
     });
-    
+
     // Set cookies if available
     const cookies = await this.getCookiesFromCache();
     if (cookies && cookies.length > 0) {
       await page.setCookie(...cookies);
     }
-    
+
     // Handle dialog events
     page.on('dialog', async dialog => {
       await dialog.dismiss();
     });
-    
+
     // Handle popup blocking
     page.on('popup', async popup => {
       await popup.close();
     });
   }
-  
+
   /**
    * Initialize proxy pool with health checks
    */
   private async initializeProxyPool(): Promise<void> {
     this.logger.info(`Initializing proxy pool with ${this.config.proxyList.length} proxies...`);
-    
-    const proxyChecks = this.config.proxyList.map(proxy => 
+
+    const proxyChecks = this.config.proxyList.map(proxy =>
       this.checkProxyHealth(proxy)
     );
-    
+
     const results = await Promise.allSettled(proxyChecks);
-    
+
     let healthyProxies = 0;
     results.forEach((result, index) => {
       if (result.status === 'fulfilled' && result.value) {
@@ -893,14 +893,14 @@ export class TikTokAdvancedScraper extends EventEmitter {
         healthyProxies++;
       }
     });
-    
+
     this.logger.info(`Proxy pool initialized with ${healthyProxies} healthy proxies`);
-    
+
     if (healthyProxies === 0) {
       this.logger.warn('No healthy proxies available, continuing without proxy');
     }
   }
-  
+
   /**
    * Check if a proxy is healthy
    */
@@ -912,19 +912,19 @@ export class TikTokAdvancedScraper extends EventEmitter {
         httpsAgent: agent,
         timeout: 5000
       });
-      
+
       return response.status === 200;
     } catch (error) {
       return false;
     }
   }
-  
+
   /**
    * Verify all external connections
    */
   private async verifyConnections(): Promise<void> {
     this.logger.info('Verifying external connections...');
-    
+
     // Check Redis
     try {
       await this.redis.ping();
@@ -933,7 +933,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
       this.logger.error('✗ Redis connection failed:', error);
       throw error;
     }
-    
+
     // Check PostgreSQL
     try {
       const client = await this.db.connect();
@@ -944,7 +944,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
       this.logger.error('✗ PostgreSQL connection failed:', error);
       throw error;
     }
-    
+
     // Check InfluxDB
     try {
       const writeApi = this.influx.getWriteApi(
@@ -961,39 +961,39 @@ export class TikTokAdvancedScraper extends EventEmitter {
       this.logger.warn('✗ InfluxDB connection failed (non-critical):', error);
     }
   }
-  
+
   /**
    * Warm up cache with frequently accessed data
    */
   private async warmUpCache(): Promise<void> {
     this.logger.info('Warming up cache...');
-    
+
     try {
       // Load trending hashtags
       const trendingHashtags = await this.fetchTrendingHashtags();
       for (const hashtag of trendingHashtags) {
         this.cache.set(`hashtag:${hashtag.id}`, hashtag);
       }
-      
+
       // Load trending sounds
       const trendingSounds = await this.fetchTrendingSounds();
       for (const sound of trendingSounds) {
         this.cache.set(`sound:${sound.id}`, sound);
       }
-      
+
       // Load top creators
       const topCreators = await this.fetchTopCreators();
       for (const creator of topCreators) {
         this.cache.set(`user:${creator.id}`, creator);
       }
-      
+
       this.logger.info(`Cache warmed up with ${this.cache.size} entries`);
-      
+
     } catch (error) {
       this.logger.warn('Cache warm-up failed (non-critical):', error);
     }
   }
-  
+
   /**
    * Set up HTTP client interceptors
    */
@@ -1003,21 +1003,21 @@ export class TikTokAdvancedScraper extends EventEmitter {
       async (config) => {
         // Wait for rate limit
         await this.rateLimiter.removeTokens(1);
-        
+
         // Add proxy if available
         if (this.proxyAgents.size > 0) {
           const proxy = this.getRandomProxyAgent();
           config.httpAgent = proxy;
           config.httpsAgent = proxy;
         }
-        
+
         // Add random headers
         config.headers['X-Request-ID'] = crypto.randomUUID();
         config.headers['X-Timestamp'] = Date.now().toString();
-        
+
         // Log request
         this.logger.debug(`Request: ${config.method?.toUpperCase()} ${config.url}`);
-        
+
         return config;
       },
       (error) => {
@@ -1025,22 +1025,22 @@ export class TikTokAdvancedScraper extends EventEmitter {
         return Promise.reject(error);
       }
     );
-    
+
     // Response interceptor
     this.httpClient.interceptors.response.use(
       (response) => {
         // Update metrics
         this.metrics.requestsSuccess++;
-        
+
         // Log response
         this.logger.debug(`Response: ${response.status} ${response.config.url}`);
-        
+
         return response;
       },
       async (error) => {
         // Update metrics
         this.metrics.requestsFailed++;
-        
+
         // Handle rate limiting
         if (error.response?.status === 429) {
           const retryAfter = parseInt(error.response.headers['retry-after'] || '60');
@@ -1048,20 +1048,20 @@ export class TikTokAdvancedScraper extends EventEmitter {
           await this.sleep(retryAfter * 1000);
           return this.httpClient.request(error.config);
         }
-        
+
         // Handle proxy failure
         if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
           this.logger.warn('Proxy failure, rotating proxy...');
           this.metrics.proxyRotations++;
           return this.httpClient.request(error.config);
         }
-        
+
         // Retry logic
         const config = error.config;
         if (!config || !config.retry) {
           config.retry = 0;
         }
-        
+
         if (config.retry < this.config.retryAttempts) {
           config.retry++;
           const delay = this.config.retryDelay * Math.pow(this.config.backoffMultiplier, config.retry);
@@ -1069,13 +1069,13 @@ export class TikTokAdvancedScraper extends EventEmitter {
           await this.sleep(delay);
           return this.httpClient.request(config);
         }
-        
+
         this.logger.error('Request failed:', error);
         return Promise.reject(error);
       }
     );
   }
-  
+
   /**
    * Set up event handlers
    */
@@ -1086,54 +1086,54 @@ export class TikTokAdvancedScraper extends EventEmitter {
       await this.shutdown();
       process.exit(0);
     });
-    
+
     process.on('SIGTERM', async () => {
       this.logger.info('Received SIGTERM, shutting down gracefully...');
       await this.shutdown();
       process.exit(0);
     });
-    
+
     // Handle uncaught errors
     process.on('uncaughtException', (error) => {
       this.logger.error('Uncaught exception:', error);
       Sentry.captureException(error);
     });
-    
+
     process.on('unhandledRejection', (reason, promise) => {
       this.logger.error('Unhandled rejection at:', promise, 'reason:', reason);
       Sentry.captureException(reason);
     });
-    
+
     // Redis events
     this.redis.on('error', (error) => {
       this.logger.error('Redis error:', error);
     });
-    
+
     this.redis.on('reconnecting', () => {
       this.logger.info('Redis reconnecting...');
     });
-    
+
     // Worker events
     this.worker.on('completed', (job) => {
       this.logger.debug(`Job ${job.id} completed`);
       this.emit('jobCompleted', job);
     });
-    
+
     this.worker.on('failed', (job, error) => {
       this.logger.error(`Job ${job?.id} failed:`, error);
       this.emit('jobFailed', { job, error });
     });
-    
+
     // Queue events
     this.queue.on('waiting', (jobId) => {
       this.logger.debug(`Job ${jobId} waiting`);
     });
-    
+
     this.queue.on('active', (job) => {
       this.logger.debug(`Job ${job.id} active`);
     });
   }
-  
+
   /**
    * Start health check intervals
    */
@@ -1148,7 +1148,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
         }
       }
     }, this.config.proxyHealthCheckInterval);
-    
+
     // Browser health check
     setInterval(async () => {
       for (let i = 0; i < this.browserPool.length; i++) {
@@ -1164,16 +1164,16 @@ export class TikTokAdvancedScraper extends EventEmitter {
         }
       }
     }, 60000);
-    
+
     // Memory check
     setInterval(() => {
       const usage = process.memoryUsage();
       const heapUsedMB = usage.heapUsed / 1024 / 1024;
       const heapTotalMB = usage.heapTotal / 1024 / 1024;
       const rssMB = usage.rss / 1024 / 1024;
-      
+
       this.logger.debug(`Memory usage - Heap: ${heapUsedMB.toFixed(2)}/${heapTotalMB.toFixed(2)} MB, RSS: ${rssMB.toFixed(2)} MB`);
-      
+
       // Force garbage collection if memory usage is high
       if (heapUsedMB > 1024) {
         if (global.gc) {
@@ -1183,7 +1183,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
       }
     }, 30000);
   }
-  
+
   /**
    * Start metrics collection
    */
@@ -1193,7 +1193,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
         process.env.INFLUX_ORG!,
         'tiktok-metrics'
       );
-      
+
       // Write scraper metrics
       const scraperPoint = new Point('scraper_metrics')
         .tag('service', 'tiktok-scraper')
@@ -1207,9 +1207,9 @@ export class TikTokAdvancedScraper extends EventEmitter {
         .intField('captchas_solved', this.metrics.captchasSolved)
         .intField('data_points_collected', this.metrics.dataPointsCollected)
         .intField('predictions_generated', this.metrics.predictionsGenerated);
-      
+
       writeApi.writePoint(scraperPoint);
-      
+
       // Write system metrics
       const usage = process.memoryUsage();
       const systemPoint = new Point('system_metrics')
@@ -1222,21 +1222,21 @@ export class TikTokAdvancedScraper extends EventEmitter {
         .intField('active_pages', this.pagePool.length)
         .intField('cache_size', this.cache.size)
         .intField('proxy_count', this.proxyAgents.size);
-      
+
       writeApi.writePoint(systemPoint);
-      
+
       await writeApi.close();
-      
+
       // Emit metrics event
       this.emit('metrics', this.metrics);
-      
+
     }, 60000); // Every minute
   }
-  
+
   // ============================================================================
   // CORE SCRAPING METHODS
   // ============================================================================
-  
+
   /**
    * Scrape user profile with enriched analytics
    */
@@ -1249,7 +1249,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
   }): Promise<TikTokUserProfile> {
     const startTime = performance.now();
     const cacheKey = `user:${username}`;
-    
+
     // Check cache first
     const cached = this.cache.get(cacheKey);
     if (cached && !options?.includePredictions) {
@@ -1257,40 +1257,40 @@ export class TikTokAdvancedScraper extends EventEmitter {
       return cached;
     }
     this.metrics.cacheMisses++;
-    
+
     try {
       // Use browser for dynamic content
       const page = await this.getAvailablePage();
-      
+
       try {
         const url = `https://www.tiktok.com/@${username}`;
         await page.goto(url, {
           waitUntil: 'networkidle2',
           timeout: 30000
         });
-        
+
         // Wait for profile to load
         await page.waitForSelector('[data-e2e="user-avatar"]', { timeout: 10000 });
-        
+
         // Extract basic profile data
         const profileData = await page.evaluate(() => {
           const getTextContent = (selector: string): string => {
             const el = document.querySelector(selector);
             return el?.textContent?.trim() || '';
           };
-          
+
           const getNumber = (text: string): number => {
             const match = text.match(/[\d.]+[KMB]?/);
             if (!match) return 0;
-            
+
             let num = parseFloat(match[0].replace(/[KMB]/, ''));
             if (match[0].includes('K')) num *= 1000;
             if (match[0].includes('M')) num *= 1000000;
             if (match[0].includes('B')) num *= 1000000000;
-            
+
             return Math.floor(num);
           };
-          
+
           return {
             uniqueId: window.location.pathname.replace('/@', ''),
             nickname: getTextContent('[data-e2e="user-title"]'),
@@ -1303,7 +1303,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
             videoCount: parseInt(getTextContent('[data-e2e="video-count"]')) || 0
           };
         });
-        
+
         // Get user ID from page data
         const userId = await page.evaluate(() => {
           const scripts = Array.from(document.querySelectorAll('script'));
@@ -1313,13 +1313,13 @@ export class TikTokAdvancedScraper extends EventEmitter {
           }
           return null;
         });
-        
+
         // Build profile object
         const profile: TikTokUserProfile = {
           id: userId || crypto.randomUUID(),
           ...profileData,
           diggCount: 0, // Will be calculated from videos
-          
+
           // Calculate enriched metrics
           engagementRate: 0,
           growthRate: 0,
@@ -1329,7 +1329,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
           audienceQuality: 0,
           contentConsistency: 0,
           brandSafety: 0,
-          
+
           // Initialize empty structures
           audienceDemographics: {
             ageDistribution: {},
@@ -1339,7 +1339,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
             deviceTypes: {},
             activeHours: []
           },
-          
+
           performanceMetrics: {
             avgViews: 0,
             avgLikes: 0,
@@ -1349,7 +1349,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
             trendsParticipated: 0,
             originalSounds: 0
           },
-          
+
           predictions: {
             next30DayFollowers: 0,
             viralProbability: 0,
@@ -1357,14 +1357,14 @@ export class TikTokAdvancedScraper extends EventEmitter {
             merchandiseAffinity: 0,
             collaborationValue: 0
           },
-          
+
           metadata: {
             scrapedAt: new Date(),
             dataFreshness: 1.0,
             confidenceScore: 0.95
           }
         };
-        
+
         // Fetch videos if requested
         let videos: TikTokVideo[] = [];
         if (options?.includeVideos) {
@@ -1373,7 +1373,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
             options.videoLimit || 30,
             page
           );
-          
+
           // Calculate performance metrics from videos
           if (videos.length > 0) {
             profile.performanceMetrics.avgViews = videos.reduce((sum, v) => sum + v.stats.playCount, 0) / videos.length;
@@ -1382,67 +1382,67 @@ export class TikTokAdvancedScraper extends EventEmitter {
             profile.performanceMetrics.avgShares = videos.reduce((sum, v) => sum + v.stats.shareCount, 0) / videos.length;
             profile.performanceMetrics.viralVideoCount = videos.filter(v => v.viralIndicators.isViral).length;
             profile.diggCount = videos.reduce((sum, v) => sum + v.stats.diggCount, 0);
-            
+
             // Calculate engagement rate
-            const totalEngagement = videos.reduce((sum, v) => 
+            const totalEngagement = videos.reduce((sum, v) =>
               sum + v.stats.diggCount + v.stats.commentCount + v.stats.shareCount, 0
             );
             const totalViews = videos.reduce((sum, v) => sum + v.stats.playCount, 0);
             profile.engagementRate = totalViews > 0 ? (totalEngagement / totalViews) * 100 : 0;
-            
+
             // Calculate virality score
             profile.viralityScore = this.calculateViralityScore(videos);
-            
+
             // Calculate content consistency
             profile.contentConsistency = this.calculateContentConsistency(videos);
           }
         }
-        
+
         // Fetch audience demographics if requested
         if (options?.includeDemographics) {
           profile.audienceDemographics = await this.fetchAudienceDemographics(userId!);
         }
-        
+
         // Generate predictions if requested
         if (options?.includePredictions) {
           profile.predictions = await this.generateUserPredictions(profile, videos);
         }
-        
+
         // Calculate authenticity score
         profile.authenticityScore = await this.calculateAuthenticityScore(profile);
-        
+
         // Calculate commercial value
         profile.commercialValue = this.calculateCommercialValue(profile);
-        
+
         // Calculate audience quality
         profile.audienceQuality = await this.calculateAudienceQuality(profile);
-        
+
         // Calculate brand safety
         profile.brandSafety = await this.calculateBrandSafety(profile, videos);
-        
+
         // Store in cache
         this.cache.set(cacheKey, profile);
-        
+
         // Store in database
         await this.storeUserProfile(profile);
-        
+
         // Update metrics
         this.metrics.dataPointsCollected++;
         this.metrics.requestsTotal++;
-        this.metrics.avgResponseTime = 
-          (this.metrics.avgResponseTime * (this.metrics.requestsTotal - 1) + 
+        this.metrics.avgResponseTime =
+          (this.metrics.avgResponseTime * (this.metrics.requestsTotal - 1) +
           (performance.now() - startTime)) / this.metrics.requestsTotal;
-        
+
         // Emit event
         this.emit('userScraped', profile);
-        
+
         return profile;
-        
+
       } finally {
         // Return page to pool
         this.pagePool.push(page);
       }
-      
+
     } catch (error) {
       this.logger.error(`Failed to scrape user ${username}:`, error);
       Sentry.captureException(error, {
@@ -1451,7 +1451,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
       throw error;
     }
   }
-  
+
   /**
    * Scrape user videos
    */
@@ -1461,13 +1461,13 @@ export class TikTokAdvancedScraper extends EventEmitter {
     page: Page
   ): Promise<TikTokVideo[]> {
     const videos: TikTokVideo[] = [];
-    
+
     try {
       // Scroll to load videos
       let previousHeight = 0;
       let scrollAttempts = 0;
       const maxScrollAttempts = Math.ceil(limit / 12); // Approx 12 videos per scroll
-      
+
       while (videos.length < limit && scrollAttempts < maxScrollAttempts) {
         // Extract visible videos
         const newVideos = await page.evaluate(() => {
@@ -1475,18 +1475,18 @@ export class TikTokAdvancedScraper extends EventEmitter {
           return Array.from(videoElements).map(el => {
             const link = el.querySelector('a')?.href || '';
             const stats = el.querySelector('[data-e2e="video-views"]')?.textContent || '0';
-            
+
             return {
               link,
               views: stats
             };
           });
         });
-        
+
         // Process new videos
         for (const video of newVideos) {
           if (videos.length >= limit) break;
-          
+
           const videoId = video.link.split('/').pop() || '';
           if (!videos.find(v => v.id === videoId)) {
             const videoData = await this.scrapeVideo(videoId);
@@ -1495,32 +1495,32 @@ export class TikTokAdvancedScraper extends EventEmitter {
             }
           }
         }
-        
+
         // Scroll down
         const currentHeight = await page.evaluate(() => document.body.scrollHeight);
         if (currentHeight === previousHeight) {
           break; // No more content to load
         }
         previousHeight = currentHeight;
-        
+
         await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
         await this.sleep(2000); // Wait for content to load
         scrollAttempts++;
       }
-      
+
     } catch (error) {
       this.logger.error(`Failed to scrape videos for ${username}:`, error);
     }
-    
+
     return videos;
   }
-  
+
   /**
    * Scrape individual video
    */
   async scrapeVideo(videoId: string): Promise<TikTokVideo | null> {
     const cacheKey = `video:${videoId}`;
-    
+
     // Check cache
     const cached = this.cache.get(cacheKey);
     if (cached) {
@@ -1528,7 +1528,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
       return cached;
     }
     this.metrics.cacheMisses++;
-    
+
     try {
       // Use API endpoint if available
       const response = await this.httpClient.get(
@@ -1540,10 +1540,10 @@ export class TikTokAdvancedScraper extends EventEmitter {
           }
         }
       );
-      
+
       if (response.data?.itemInfo?.itemStruct) {
         const item = response.data.itemInfo.itemStruct;
-        
+
         const video: TikTokVideo = {
           id: item.id,
           description: item.desc || '',
@@ -1553,7 +1553,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
           covers: item.video?.cover ? [item.video.cover] : [],
           videoUrl: item.video?.playAddr || '',
           shareUrl: `https://www.tiktok.com/@${item.author?.uniqueId}/video/${item.id}`,
-          
+
           stats: {
             playCount: item.stats?.playCount || 0,
             shareCount: item.stats?.shareCount || 0,
@@ -1561,7 +1561,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
             diggCount: item.stats?.diggCount || 0,
             collectCount: item.stats?.collectCount || 0
           },
-          
+
           analytics: {
             completionRate: 0, // Will be calculated
             replayRate: 0,
@@ -1572,7 +1572,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
             authenticEngagement: 0,
             botActivityScore: 0
           },
-          
+
           viralIndicators: {
             isViral: false,
             viralRank: 0,
@@ -1582,7 +1582,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
             celebrityEngagement: false,
             mediaPickup: false
           },
-          
+
           contentAnalysis: {
             hashtags: item.textExtra?.map((t: any) => t.hashtagName).filter(Boolean) || [],
             mentions: item.textExtra?.map((t: any) => t.userId).filter(Boolean) || [],
@@ -1595,7 +1595,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
             language: item.language || 'en',
             captionEntities: item.textExtra || []
           },
-          
+
           audienceInsights: {
             viewerDemographics: {},
             shareDestinations: {},
@@ -1603,7 +1603,7 @@ export class TikTokAdvancedScraper extends EventEmitter {
             peakViewingHours: [],
             geoDistribution: {}
           },
-          
+
           temporalPatterns: {
             hourlyViews: [],
             dailyEngagement: [],
@@ -1612,35 +1612,35 @@ export class TikTokAdvancedScraper extends EventEmitter {
             projectedLifetime: 0
           }
         };
-        
+
         // Calculate advanced analytics
         video.analytics = await this.calculateVideoAnalytics(video);
-        
+
         // Determine viral indicators
         video.viralIndicators = this.determineViralIndicators(video);
-        
+
         // Analyze temporal patterns
         video.temporalPatterns = await this.analyzeTemporalPatterns(video);
-        
+
         // Cache the result
         this.cache.set(cacheKey, video);
-        
+
         // Store in database
         await this.storeVideo(video);
-        
+
         // Update metrics
         this.metrics.dataPointsCollected++;
-        
+
         return video;
       }
-      
+
     } catch (error) {
       this.logger.error(`Failed to scrape video ${videoId}:`, error);
     }
-    
+
     return null;
   }
-  
+
   /**
    * Scrape trending content
    */
@@ -1656,25 +1656,25 @@ export class TikTokAdvancedScraper extends EventEmitter {
   }> {
     const region = options?.region || 'US';
     const limit = options?.limit || 50;
-    
+
     this.logger.info(`Scraping trending content for ${region}...`);
-    
+
     const [videos, hashtags, sounds, creators] = await Promise.all([
       this.scrapeTrendingVideos(region, limit),
       this.scrapeTrendingHashtags(region, limit),
       this.scrapeTrendingSounds(region, limit),
       this.scrapeTrendingCreators(region, limit)
     ]);
-    
+
     // Store trending data
     await this.storeTrendingData({ videos, hashtags, sounds, creators });
-    
+
     // Emit event
     this.emit('trendingScraped', { videos, hashtags, sounds, creators });
-    
+
     return { videos, hashtags, sounds, creators };
   }
-  
+
   // ============================================================================
   // HELPER METHODS - Continued in next message due to length...
   // ============================================================================

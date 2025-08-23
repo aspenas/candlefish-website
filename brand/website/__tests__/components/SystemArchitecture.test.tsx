@@ -62,7 +62,7 @@ jest.mock('three', () => ({
 describe('SystemArchitecture Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Mock successful API response with workshop-derived franchise data
     mockGetFranchiseGraph.mockResolvedValue({
       franchises: [
@@ -95,7 +95,7 @@ describe('SystemArchitecture Component', () => {
 
   it('renders canvas when not in reduced motion mode', async () => {
     render(<SystemArchitecture />);
-    
+
     await waitFor(() => {
       expect(mockGetFranchiseGraph).toHaveBeenCalled();
     });
@@ -106,7 +106,7 @@ describe('SystemArchitecture Component', () => {
 
   it('loads franchise data from workshop projects', async () => {
     render(<SystemArchitecture />);
-    
+
     await waitFor(() => {
       expect(mockGetFranchiseGraph).toHaveBeenCalled();
     });
@@ -126,7 +126,7 @@ describe('SystemArchitecture Component', () => {
     }));
 
     render(<SystemArchitecture />);
-    
+
     await waitFor(() => {
       expect(mockGetFranchiseGraph).toHaveBeenCalled();
     });
@@ -145,7 +145,7 @@ describe('SystemArchitecture Component', () => {
     });
 
     render(<SystemArchitecture />);
-    
+
     await waitFor(() => {
       expect(mockGetFranchiseGraph).toHaveBeenCalled();
     });
@@ -156,7 +156,7 @@ describe('SystemArchitecture Component', () => {
 
   it('displays correct system status', async () => {
     render(<SystemArchitecture />);
-    
+
     await waitFor(() => {
       expect(mockGetFranchiseGraph).toHaveBeenCalled();
     });
@@ -170,7 +170,7 @@ describe('SystemArchitecture Component', () => {
 
     // Re-render to trigger new data load
     render(<SystemArchitecture />);
-    
+
     await waitFor(() => {
       expect(screen.getByText(/System Status: OPERATIONAL/i)).toBeInTheDocument();
     });
@@ -180,7 +180,7 @@ describe('SystemArchitecture Component', () => {
     mockGetFranchiseGraph.mockRejectedValue(new Error('API Error'));
 
     render(<SystemArchitecture />);
-    
+
     await waitFor(() => {
       expect(mockGetFranchiseGraph).toHaveBeenCalled();
     });
@@ -191,9 +191,9 @@ describe('SystemArchitecture Component', () => {
 
   it('refreshes data periodically', async () => {
     jest.useFakeTimers();
-    
+
     render(<SystemArchitecture />);
-    
+
     await waitFor(() => {
       expect(mockGetFranchiseGraph).toHaveBeenCalledTimes(1);
     });
@@ -210,7 +210,7 @@ describe('SystemArchitecture Component', () => {
 
   it('generates franchise nodes from workshop projects with correct properties', async () => {
     render(<SystemArchitecture />);
-    
+
     await waitFor(() => {
       expect(mockGetFranchiseGraph).toHaveBeenCalled();
     });
@@ -238,16 +238,16 @@ describe('SystemArchitecture Component', () => {
 
   it('creates links between related projects', async () => {
     render(<SystemArchitecture />);
-    
+
     await waitFor(() => {
       expect(mockGetFranchiseGraph).toHaveBeenCalled();
     });
 
     const result = await mockGetFranchiseGraph.mock.results[0].value;
-    
+
     // Should have links between projects
     expect(result.links.length).toBeGreaterThan(0);
-    
+
     // Each link should connect valid franchise IDs
     result.links.forEach((link: any) => {
       expect(result.franchises.some((f: any) => f.id === link.source)).toBeTruthy();
@@ -267,7 +267,7 @@ describe('SystemArchitecture Component', () => {
     });
 
     render(<SystemArchitecture />);
-    
+
     await waitFor(() => {
       const result = mockGetFranchiseGraph.mock.results[0];
       expect(result.value).resolves.toHaveProperty('status', 'OPERATIONAL');
@@ -276,7 +276,7 @@ describe('SystemArchitecture Component', () => {
 
   it('has proper accessibility attributes', async () => {
     render(<SystemArchitecture />);
-    
+
     await waitFor(() => {
       expect(mockGetFranchiseGraph).toHaveBeenCalled();
     });

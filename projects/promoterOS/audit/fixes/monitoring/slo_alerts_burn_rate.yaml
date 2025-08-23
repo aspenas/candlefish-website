@@ -15,32 +15,32 @@ data:
         description: "API Gateway availability"
         target: 99.9  # Three 9s
         error_budget_percent: 0.1
-        
+
       - name: api_latency_p99
         description: "API p99 latency < 200ms"
         target: 99
         error_budget_percent: 1
-        
+
       - name: booking_success_rate
         description: "Booking creation success rate"
         target: 99.5
         error_budget_percent: 0.5
-        
+
       - name: payment_success_rate
         description: "Payment processing success rate"
         target: 99.95
         error_budget_percent: 0.05
-        
+
       - name: data_freshness
         description: "Artist metrics freshness < 5 minutes"
         target: 99
         error_budget_percent: 1
-        
+
       - name: websocket_availability
         description: "WebSocket connection availability"
         target: 99
         error_budget_percent: 1
-        
+
       - name: scraper_success_rate
         description: "Scraper success rate"
         target: 95
@@ -59,81 +59,81 @@ data:
     - name: slo_sli_metrics
       interval: 30s
       rules:
-      
+
       # API Availability SLI
       - record: sli:api_availability:success_rate_5m
         expr: |
           sum(rate(http_requests_total{service="api-gateway",status!~"5.."}[5m])) /
           sum(rate(http_requests_total{service="api-gateway"}[5m]))
-      
+
       - record: sli:api_availability:success_rate_30m
         expr: |
           sum(rate(http_requests_total{service="api-gateway",status!~"5.."}[30m])) /
           sum(rate(http_requests_total{service="api-gateway"}[30m]))
-      
+
       - record: sli:api_availability:success_rate_1h
         expr: |
           sum(rate(http_requests_total{service="api-gateway",status!~"5.."}[1h])) /
           sum(rate(http_requests_total{service="api-gateway"}[1h]))
-      
+
       - record: sli:api_availability:success_rate_6h
         expr: |
           sum(rate(http_requests_total{service="api-gateway",status!~"5.."}[6h])) /
           sum(rate(http_requests_total{service="api-gateway"}[6h]))
-      
+
       # API Latency SLI
       - record: sli:api_latency:p99_5m
         expr: |
-          histogram_quantile(0.99, 
+          histogram_quantile(0.99,
             sum(rate(http_request_duration_seconds_bucket{service="api-gateway"}[5m])) by (le)
           )
-      
+
       - record: sli:api_latency:p99_30m
         expr: |
           histogram_quantile(0.99,
             sum(rate(http_request_duration_seconds_bucket{service="api-gateway"}[30m])) by (le)
           )
-      
+
       # Booking Success Rate SLI
       - record: sli:booking:success_rate_5m
         expr: |
           sum(rate(booking_operations_total{status="success"}[5m])) /
           sum(rate(booking_operations_total[5m]))
-      
+
       - record: sli:booking:success_rate_30m
         expr: |
           sum(rate(booking_operations_total{status="success"}[30m])) /
           sum(rate(booking_operations_total[30m]))
-      
+
       # Payment Success Rate SLI
       - record: sli:payment:success_rate_5m
         expr: |
           sum(rate(payment_transactions_total{status="succeeded"}[5m])) /
           sum(rate(payment_transactions_total[5m]))
-      
+
       - record: sli:payment:success_rate_30m
         expr: |
           sum(rate(payment_transactions_total{status="succeeded"}[30m])) /
           sum(rate(payment_transactions_total[30m]))
-      
+
       # Data Freshness SLI
       - record: sli:data_freshness:fresh_percentage_5m
         expr: |
           sum(rate(artist_metrics_age_seconds_bucket{le="300"}[5m])) /
           sum(rate(artist_metrics_age_seconds_count[5m]))
-      
+
       # WebSocket Availability SLI
       - record: sli:websocket:connection_success_rate_5m
         expr: |
           sum(rate(websocket_connections_total{status="connected"}[5m])) /
           sum(rate(websocket_connections_total[5m]))
-      
+
       # Scraper Success Rate SLI
       - record: sli:scraper:success_rate_5m
         expr: |
           sum(rate(scraper_requests_total{status="success"}[5m])) /
           sum(rate(scraper_requests_total[5m]))
-      
+
       - record: sli:scraper:success_rate_30m
         expr: |
           sum(rate(scraper_requests_total{status="success"}[30m])) /
@@ -152,7 +152,7 @@ data:
     - name: slo_burn_rate_alerts
       interval: 30s
       rules:
-      
+
       # API Availability - Multi-window burn rate
       - alert: APIAvailabilityBurnRateHigh
         expr: |
@@ -180,7 +180,7 @@ data:
             Target: 99.9%
             Runbook: https://runbooks.promoteros.io/api-availability
           dashboard: "https://grafana.promoteros.io/d/api-slo"
-          
+
       - alert: APIAvailabilityBurnRateMedium
         expr: |
           (
@@ -199,7 +199,7 @@ data:
             API availability is consuming error budget faster than expected.
             Current 30m success rate: {{ $value | humanizePercentage }}
             Runbook: https://runbooks.promoteros.io/api-availability
-      
+
       # API Latency p99 - Multi-window burn rate
       - alert: APILatencyP99BurnRateHigh
         expr: |
@@ -221,7 +221,7 @@ data:
             Target: < 200ms
             Runbook: https://runbooks.promoteros.io/api-latency
           dashboard: "https://grafana.promoteros.io/d/api-performance"
-      
+
       # Payment Success Rate - Critical service
       - alert: PaymentSuccessRateCritical
         expr: |
@@ -245,7 +245,7 @@ data:
             This affects revenue directly!
             Runbook: https://runbooks.promoteros.io/payment-failures
           dashboard: "https://grafana.promoteros.io/d/payments"
-      
+
       # Booking Success Rate
       - alert: BookingSuccessRateLow
         expr: |
@@ -266,7 +266,7 @@ data:
             Current 5m rate: {{ $value | humanizePercentage }}
             Target: 99.5%
             Runbook: https://runbooks.promoteros.io/booking-failures
-      
+
       # Data Freshness
       - alert: DataFreshnessViolation
         expr: |
@@ -282,7 +282,7 @@ data:
             More than 1% of artist metrics are older than 5 minutes.
             Current fresh percentage: {{ $value | humanizePercentage }}
             Runbook: https://runbooks.promoteros.io/data-freshness
-      
+
       # Scraper Success Rate
       - alert: ScraperSuccessRateLow
         expr: |
@@ -299,7 +299,7 @@ data:
             Current 30m rate: {{ $value | humanizePercentage }}
             This may indicate API rate limiting or blocking.
             Runbook: https://runbooks.promoteros.io/scraper-failures
-      
+
       # Error Budget Exhaustion Alert
       - alert: ErrorBudgetNearlyExhausted
         expr: |
@@ -328,7 +328,7 @@ data:
     global:
       resolve_timeout: 5m
       pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
-    
+
     route:
       group_by: ['alertname', 'cluster', 'service']
       group_wait: 10s
@@ -346,7 +346,7 @@ data:
       - match:
           severity: warning
         receiver: slack-warnings
-    
+
     receivers:
     - name: 'default'
       slack_configs:
@@ -354,7 +354,7 @@ data:
         channel: '#alerts'
         title: 'PromoterOS Alert'
         text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
-    
+
     - name: 'pagerduty-critical'
       pagerduty_configs:
       - routing_key: 'YOUR_PAGERDUTY_INTEGRATION_KEY'
@@ -363,7 +363,7 @@ data:
           firing: '{{ .Alerts.Firing | len }}'
           resolved: '{{ .Alerts.Resolved | len }}'
           alerts: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
-    
+
     - name: 'slack-warnings'
       slack_configs:
       - api_url: 'YOUR_SLACK_WEBHOOK_URL'

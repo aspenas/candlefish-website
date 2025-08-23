@@ -16,7 +16,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const project = await getWorkshopProject(params.slug)
-  
+
   if (!project || !project.safe_public) {
     return {
       title: 'Project Not Found - Candlefish Workshop',
@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
 export default async function WorkshopDetail({ params }: { params: { slug: string } }) {
   const project = await getWorkshopProject(params.slug)
-  
+
   if (!project || !project.safe_public) {
     notFound()
   }
@@ -55,7 +55,7 @@ export default async function WorkshopDetail({ params }: { params: { slug: strin
           background: `linear-gradient(135deg, transparent 0%, rgba(63, 211, 198, 0.1) 50%, transparent 100%)`
         }}
       />
-      
+
       <div className="relative z-10">
         {/* Header */}
         <header className="border-b border-[#333] px-6 py-4 relative">
@@ -121,7 +121,7 @@ export default async function WorkshopDetail({ params }: { params: { slug: strin
                   </div>
                 ))}
               </div>
-              
+
               {/* Telemetry visualization */}
               <div className="mt-6">
                 <TelemetryChart metrics={sanitized.metrics} />
@@ -134,12 +134,12 @@ export default async function WorkshopDetail({ params }: { params: { slug: strin
             <section className="mb-12">
               <h2 className="text-xs uppercase text-[#888] mb-4">Architecture</h2>
               <div className="border border-[#333] p-6 bg-[#050505] rounded">
-                <ArchitectureVisualization 
+                <ArchitectureVisualization
                   nodes={sanitized.architecture.nodes}
                   links={sanitized.architecture.links}
                 />
               </div>
-              
+
               {/* Stack */}
               {sanitized.stack && sanitized.stack.length > 0 && (
                 <div className="mt-6">
@@ -195,7 +195,7 @@ export default async function WorkshopDetail({ params }: { params: { slug: strin
               <h2 className="text-xs uppercase text-[#888] mb-4">Resources</h2>
               <div className="flex gap-4">
                 {sanitized.links.repo && (
-                  <a 
+                  <a
                     href={sanitized.links.repo}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -205,7 +205,7 @@ export default async function WorkshopDetail({ params }: { params: { slug: strin
                   </a>
                 )}
                 {sanitized.links.design && (
-                  <a 
+                  <a
                     href={sanitized.links.design}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -215,7 +215,7 @@ export default async function WorkshopDetail({ params }: { params: { slug: strin
                   </a>
                 )}
                 {sanitized.links.doc && (
-                  <a 
+                  <a
                     href={sanitized.links.doc}
                     target="_blank"
                     rel="noopener noreferrer"

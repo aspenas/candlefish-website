@@ -10,11 +10,11 @@ import { CompetitorIntelligence } from '@/components/intel/competitor-intelligen
 import { FinancialProjections } from '@/components/finance/projections';
 import { SocialPulse } from '@/components/social/pulse-stream';
 import { ArtistSpotlight } from '@/components/artist/spotlight';
-import { 
-  TrendingUp, 
-  Brain, 
-  DollarSign, 
-  Users, 
+import {
+  TrendingUp,
+  Brain,
+  DollarSign,
+  Users,
   Activity,
   Zap,
   AlertCircle,
@@ -70,7 +70,7 @@ export default function MissionControl() {
                   </span>
                 </div>
               </div>
-              
+
               {/* Metrics Bar */}
               <div className="flex items-center space-x-6">
                 <MetricBadge
@@ -134,7 +134,7 @@ export default function MissionControl() {
                       <Activity className="w-4 h-4 text-green-400 animate-pulse" />
                     </div>
                   </div>
-                  <ViralTrajectoryMap 
+                  <ViralTrajectoryMap
                     data={realtimeData?.viralArtists || []}
                     onArtistSelect={setSelectedArtist}
                     height={500}
@@ -154,7 +154,7 @@ export default function MissionControl() {
                     </h2>
                     <Zap className="w-4 h-4 text-yellow-400" />
                   </div>
-                  <AIRecommendations 
+                  <AIRecommendations
                     recommendations={realtimeData?.aiRecommendations || []}
                     showReasoning={true}
                     onBook={(artist) => console.log('Book:', artist)}
@@ -173,7 +173,7 @@ export default function MissionControl() {
                       Financial Projections
                     </h2>
                   </div>
-                  <FinancialProjections 
+                  <FinancialProjections
                     projections={realtimeData?.financialProjections}
                     showScenarios={true}
                   />
@@ -188,7 +188,7 @@ export default function MissionControl() {
                   <h2 className="text-lg font-semibold text-white mb-4">
                     Competitor Intelligence
                   </h2>
-                  <CompetitorIntelligence 
+                  <CompetitorIntelligence
                     activity={realtimeData?.competitorActivity || []}
                     highlightThreats={true}
                   />
@@ -203,7 +203,7 @@ export default function MissionControl() {
                   <h2 className="text-lg font-semibold text-white mb-4">
                     Social Media Pulse
                   </h2>
-                  <SocialPulse 
+                  <SocialPulse
                     stream={realtimeData?.socialPulse || []}
                     maxItems={5}
                   />

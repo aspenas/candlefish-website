@@ -57,7 +57,7 @@ Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
 describe('HeaderText Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Mock successful API response with workshop data
     mockGetWorkshopProjects.mockResolvedValue({
       projects: [
@@ -71,7 +71,7 @@ describe('HeaderText Component', () => {
           updated_at: '2025-08-23'
         },
         {
-          id: 'promoteros-intelligence', 
+          id: 'promoteros-intelligence',
           title: 'PromoterOS Concert Intelligence',
           status: 'CALIBRATING',
           domain: ['Live Music', 'Demand Prediction', 'Social Analytics'],
@@ -85,13 +85,13 @@ describe('HeaderText Component', () => {
 
   it('renders the static text content', async () => {
     render(<HeaderText />);
-    
+
     expect(screen.getByText('Currently engineering')).toBeInTheDocument();
   });
 
   it('loads and displays workshop project data', async () => {
     render(<HeaderText />);
-    
+
     await waitFor(() => {
       expect(mockGetWorkshopProjects).toHaveBeenCalled();
     });
@@ -115,7 +115,7 @@ describe('HeaderText Component', () => {
     }));
 
     render(<HeaderText />);
-    
+
     await waitFor(() => {
       expect(mockGetWorkshopProjects).toHaveBeenCalled();
     });
@@ -129,7 +129,7 @@ describe('HeaderText Component', () => {
     mockGetWorkshopProjects.mockResolvedValue({ projects: [] });
 
     render(<HeaderText />);
-    
+
     await waitFor(() => {
       expect(mockGetWorkshopProjects).toHaveBeenCalled();
     });
@@ -142,7 +142,7 @@ describe('HeaderText Component', () => {
     mockGetWorkshopProjects.mockRejectedValue(new Error('API Error'));
 
     render(<HeaderText />);
-    
+
     await waitFor(() => {
       expect(mockGetWorkshopProjects).toHaveBeenCalled();
     });
@@ -153,7 +153,7 @@ describe('HeaderText Component', () => {
 
   it('displays projects in lowercase', async () => {
     render(<HeaderText />);
-    
+
     await waitFor(() => {
       expect(screen.getByText(/engraving automation platform/i)).toBeInTheDocument();
     });
@@ -161,9 +161,9 @@ describe('HeaderText Component', () => {
 
   it('rotates between projects when multiple are available', async () => {
     jest.useFakeTimers();
-    
+
     render(<HeaderText />);
-    
+
     await waitFor(() => {
       expect(mockGetWorkshopProjects).toHaveBeenCalled();
     });

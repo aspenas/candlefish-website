@@ -32,10 +32,10 @@ func LoggingMiddleware(logger *zap.Logger) gin.HandlerFunc {
 		start := time.Now()
 		path := c.Request.URL.Path
 		raw := c.Request.URL.RawQuery
-		
+
 		// Process request
 		c.Next()
-		
+
 		// Log request details
 		latency := time.Since(start)
 		clientIP := c.ClientIP()
@@ -43,11 +43,11 @@ func LoggingMiddleware(logger *zap.Logger) gin.HandlerFunc {
 		statusCode := c.Writer.Status()
 		errorMessage := c.Errors.ByType(gin.ErrorTypePrivate).String()
 		requestID, _ := c.Get("request_id")
-		
+
 		if raw != "" {
 			path = path + "?" + raw
 		}
-		
+
 		fields := []zap.Field{
 			zap.String("request_id", requestID.(string)),
 			zap.String("method", method),
@@ -57,11 +57,11 @@ func LoggingMiddleware(logger *zap.Logger) gin.HandlerFunc {
 			zap.Duration("latency", latency),
 			zap.String("user_agent", c.Request.UserAgent()),
 		}
-		
+
 		if errorMessage != "" {
 			fields = append(fields, zap.String("error", errorMessage))
 		}
-		
+
 		switch {
 		case statusCode >= 500:
 			logger.Error("Server error", fields...)
@@ -79,14 +79,14 @@ func PrometheusMiddleware() gin.HandlerFunc {
 		start := time.Now()
 		path := c.Request.URL.Path
 		method := c.Request.Method
-		
+
 		// Process request
 		c.Next()
-		
+
 		// Record metrics
 		status := fmt.Sprintf("%d", c.Writer.Status())
 		duration := time.Since(start).Seconds()
-		
+
 		httpRequestsTotal.WithLabelValues(method, path, status).Inc()
 		httpRequestDuration.WithLabelValues(method, path).Observe(duration)
 	}
@@ -100,7 +100,7 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 			c.Next()
 			return
 		}
-		
+
 		// Get token from header
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -108,7 +108,7 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		
+
 		// Extract token
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
@@ -116,9 +116,9 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		
+
 		tokenString := parts[1]
-		
+
 		// Parse and validate token
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			// Verify signing method
@@ -127,13 +127,13 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 			}
 			return []byte(jwtSecret), nil
 		})
-		
+
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			c.Abort()
 			return
 		}
-		
+
 		// Extract claims
 		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 			// Check expiration
@@ -144,7 +144,7 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 					return
 				}
 			}
-			
+
 			// Set user context
 			c.Set("user_id", claims["sub"])
 			c.Set("user_email", claims["email"])
@@ -154,7 +154,7 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		
+
 		c.Next()
 	}
 }
@@ -163,25 +163,25 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 func RateLimitMiddleware(rateLimit int, window time.Duration) gin.HandlerFunc {
 	// This would typically use Redis for distributed rate limiting
 	// Simplified in-memory implementation for demonstration
-	
+
 	type client struct {
 		count    int
 		lastSeen time.Time
 	}
-	
+
 	clients := make(map[string]*client)
-	
+
 	return func(c *gin.Context) {
 		clientIP := c.ClientIP()
 		userID, exists := c.Get("user_id")
-		
+
 		key := clientIP
 		if exists {
 			key = userID.(string)
 		}
-		
+
 		now := time.Now()
-		
+
 		if cl, exists := clients[key]; exists {
 			if now.Sub(cl.lastSeen) > window {
 				cl.count = 1
@@ -203,7 +203,7 @@ func RateLimitMiddleware(rateLimit int, window time.Duration) gin.HandlerFunc {
 				lastSeen: now,
 			}
 		}
-		
+
 		c.Next()
 	}
 }
@@ -212,7 +212,7 @@ func RateLimitMiddleware(rateLimit int, window time.Duration) gin.HandlerFunc {
 func CORSMiddleware(allowedOrigins []string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
-		
+
 		// Check if origin is allowed
 		allowed := false
 		for _, allowedOrigin := range allowedOrigins {
@@ -221,7 +221,7 @@ func CORSMiddleware(allowedOrigins []string) gin.HandlerFunc {
 				break
 			}
 		}
-		
+
 		if allowed {
 			c.Header("Access-Control-Allow-Origin", origin)
 			c.Header("Access-Control-Allow-Credentials", "true")
@@ -229,13 +229,13 @@ func CORSMiddleware(allowedOrigins []string) gin.HandlerFunc {
 			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			c.Header("Access-Control-Max-Age", "86400")
 		}
-		
+
 		// Handle preflight requests
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusNoContent)
 			return
 		}
-		
+
 		c.Next()
 	}
 }
@@ -245,7 +245,7 @@ func ValidationMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Add custom validation logic here
 		// For example, check content-type, payload size, etc.
-		
+
 		if c.Request.Method == "POST" || c.Request.Method == "PUT" {
 			contentType := c.GetHeader("Content-Type")
 			if !strings.Contains(contentType, "application/json") {
@@ -254,7 +254,7 @@ func ValidationMiddleware() gin.HandlerFunc {
 				return
 			}
 		}
-		
+
 		c.Next()
 	}
 }
@@ -263,15 +263,15 @@ func ValidationMiddleware() gin.HandlerFunc {
 func ErrorHandlerMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
-		
+
 		// Handle any errors that occurred during request processing
 		if len(c.Errors) > 0 {
 			err := c.Errors.Last()
-			
+
 			// Log the error
 			requestID, _ := c.Get("request_id")
 			fmt.Printf("Error processing request %s: %v\n", requestID, err)
-			
+
 			// Return appropriate error response
 			switch err.Type {
 			case gin.ErrorTypePublic:

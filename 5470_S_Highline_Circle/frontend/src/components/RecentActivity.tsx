@@ -1,6 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
+import { api } from '../services/api';
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -8,70 +9,31 @@ import {
   EyeIcon,
   ArrowRightIcon,
   QuestionMarkCircleIcon,
+  TrashIcon,
+  DocumentArrowDownIcon,
+  DocumentArrowUpIcon,
+  CubeIcon,
 } from '@heroicons/react/24/outline';
 
 interface ActivityItem {
   id: string;
-  action: 'updated' | 'created' | 'viewed' | 'decided';
-  item: string;
-  room?: string;
-  decision?: 'keep' | 'sell' | 'unsure';
-  timestamp: string;
+  action: 'updated' | 'created' | 'viewed' | 'decided' | 'deleted' | 'bulk_updated' | 'exported' | 'imported';
+  item_name?: string;
+  room_name?: string;
+  details?: string;
+  old_value?: string;
+  new_value?: string;
+  created_at: string;
   user?: string;
 }
 
-// Mock data for recent activity since we don't have this endpoint yet
-const mockActivity: ActivityItem[] = [
-  {
-    id: '1',
-    action: 'decided',
-    item: 'West Elm Sectional Sofa',
-    room: 'Living Room',
-    decision: 'keep',
-    timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 mins ago
-    user: 'You'
-  },
-  {
-    id: '2',
-    action: 'updated',
-    item: 'Moroccan Area Rug',
-    room: 'Dining Room',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
-    user: 'You'
-  },
-  {
-    id: '3',
-    action: 'decided',
-    item: 'Vintage Coffee Table',
-    room: 'Living Room',
-    decision: 'sell',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(), // 4 hours ago
-    user: 'You'
-  },
-  {
-    id: '4',
-    action: 'viewed',
-    item: 'Plant Collection',
-    room: 'Whole Property (Plants)',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1 day ago
-    user: 'You'
-  },
-  {
-    id: '5',
-    action: 'created',
-    item: 'Dining Chair Set',
-    room: 'Dining Room',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), // 2 days ago
-    user: 'System Import'
-  }
-];
 
-const getActionIcon = (action: string, decision?: string) => {
+const getActionIcon = (action: string, oldValue?: string, newValue?: string) => {
   switch (action) {
     case 'decided':
-      return decision === 'keep' ? (
+      return newValue === 'Keep' ? (
         <CheckCircleIcon className="h-5 w-5 text-green-500" />
-      ) : decision === 'sell' ? (
+      ) : newValue === 'Sell' ? (
         <XCircleIcon className="h-5 w-5 text-yellow-500" />
       ) : (
         <QuestionMarkCircleIcon className="h-5 w-5 text-gray-500" />
@@ -81,38 +43,55 @@ const getActionIcon = (action: string, decision?: string) => {
     case 'viewed':
       return <EyeIcon className="h-5 w-5 text-gray-500" />;
     case 'created':
-      return <div className="h-5 w-5 bg-green-500 rounded-full" />;
+      return <CubeIcon className="h-5 w-5 text-green-500" />;
+    case 'deleted':
+      return <TrashIcon className="h-5 w-5 text-red-500" />;
+    case 'exported':
+      return <DocumentArrowDownIcon className="h-5 w-5 text-indigo-500" />;
+    case 'imported':
+      return <DocumentArrowUpIcon className="h-5 w-5 text-purple-500" />;
+    case 'bulk_updated':
+      return <CubeIcon className="h-5 w-5 text-orange-500" />;
     default:
       return <div className="h-5 w-5 bg-gray-300 rounded-full" />;
   }
 };
 
 const getActionText = (activity: ActivityItem) => {
+  const itemName = activity.item_name || 'Unknown Item';
+  
   switch (activity.action) {
     case 'decided':
-      const decisionText = activity.decision === 'keep' ? 'kept' :
-                          activity.decision === 'sell' ? 'marked for sale' : 'marked as unsure';
-      return `${decisionText} "${activity.item}"`;
+      const decisionText = activity.new_value === 'Keep' ? 'kept' :
+                          activity.new_value === 'Sell' ? 'marked for sale' : 'marked as unsure';
+      return `${decisionText} "${itemName}"`;
     case 'updated':
-      return `updated "${activity.item}"`;
+      return `updated "${itemName}"`;
     case 'viewed':
-      return `viewed "${activity.item}"`;
+      return `viewed "${itemName}"`;
     case 'created':
-      return `added "${activity.item}"`;
+      return `added "${itemName}"`;
+    case 'deleted':
+      return `deleted "${itemName}"`;
+    case 'exported':
+      return activity.details || `exported items`;
+    case 'imported':
+      return activity.details || `imported items`;
+    case 'bulk_updated':
+      return activity.details || `performed bulk update`;
     default:
-      return `interacted with "${activity.item}"`;
+      return activity.details || `interacted with "${itemName}"`;
   }
 };
 
 export default function RecentActivity() {
-  // In a real app, this would fetch from an API endpoint
-  // const { data: activities, isLoading } = useQuery({
-  //   queryKey: ['recent-activity'],
-  //   queryFn: () => api.getRecentActivity(),
-  // });
+  const { data, isLoading } = useQuery({
+    queryKey: ['recent-activity'],
+    queryFn: () => api.getActivities(10),
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
 
-  const activities = mockActivity; // Using mock data for now
-  const isLoading = false;
+  const activities = data?.activities || [];
 
   if (isLoading) {
     return (
@@ -147,7 +126,7 @@ export default function RecentActivity() {
       {activities.map((activity) => (
         <div key={activity.id} className="flex items-start space-x-3 group hover:bg-gray-50 dark:hover:bg-gray-700 -mx-2 px-2 py-2 rounded-md transition-colors">
           <div className="flex-shrink-0 mt-1">
-            {getActionIcon(activity.action, activity.decision)}
+            {getActionIcon(activity.action, activity.old_value, activity.new_value)}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
@@ -157,12 +136,12 @@ export default function RecentActivity() {
                 {getActionText(activity)}
               </p>
               <time className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0 ml-2">
-                {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
+                {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
               </time>
             </div>
-            {activity.room && (
+            {activity.room_name && (
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                in {activity.room}
+                in {activity.room_name}
               </p>
             )}
           </div>

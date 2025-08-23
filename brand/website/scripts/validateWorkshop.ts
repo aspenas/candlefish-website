@@ -44,7 +44,7 @@ const WorkshopProjectSchema = z.object({
   safe_public: z.boolean(),
   client_name_masked: z.string().min(1),
   updated_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
-  
+
   // Data fields
   metrics: z.record(z.union([z.string(), z.number()])),
   stack: z.array(z.string()),
@@ -58,7 +58,7 @@ const WorkshopProjectSchema = z.object({
     links: z.array(ArchitectureLinkSchema)
   }),
   changelog: z.array(ChangelogEntrySchema),
-  
+
   // Optional fields
   next_milestone: MilestoneSchema.optional()
 })
@@ -73,34 +73,34 @@ interface ValidationError {
 
 function validateWorkshopContent(): { valid: boolean; errors: ValidationError[] } {
   const errors: ValidationError[] = []
-  
+
   // Check if content directory exists
   if (!fs.existsSync(WORKSHOP_CONTENT_DIR)) {
     console.log(`Creating workshop content directory at ${WORKSHOP_CONTENT_DIR}`)
     fs.mkdirSync(WORKSHOP_CONTENT_DIR, { recursive: true })
     return { valid: true, errors: [] }
   }
-  
+
   // Get all MDX files
   const files = fs.readdirSync(WORKSHOP_CONTENT_DIR)
     .filter(file => file.endsWith('.mdx'))
-  
+
   if (files.length === 0) {
     console.log('No workshop content files found')
     return { valid: true, errors: [] }
   }
-  
+
   // Validate each file
   files.forEach(file => {
     const filePath = path.join(WORKSHOP_CONTENT_DIR, file)
     const fileContent = fs.readFileSync(filePath, 'utf8')
-    
+
     try {
       const { data } = matter(fileContent)
-      
+
       // Validate frontmatter against schema
       const result = WorkshopProjectSchema.safeParse(data)
-      
+
       if (!result.success) {
         result.error.errors.forEach(error => {
           errors.push({
@@ -110,9 +110,9 @@ function validateWorkshopContent(): { valid: boolean; errors: ValidationError[] 
           })
         })
       }
-      
+
       // Additional validation rules
-      
+
       // Check slug matches filename
       const expectedSlug = file.replace('.mdx', '')
       if (data.slug !== expectedSlug) {
@@ -122,11 +122,11 @@ function validateWorkshopContent(): { valid: boolean; errors: ValidationError[] 
           message: `Slug "${data.slug}" doesn't match filename "${expectedSlug}"`
         })
       }
-      
+
       // Check architecture node references
       if (data.architecture) {
         const nodeIds = new Set(data.architecture.nodes.map((n: any) => n.id))
-        
+
         data.architecture.links.forEach((link: any) => {
           if (!nodeIds.has(link.source)) {
             errors.push({
@@ -144,7 +144,7 @@ function validateWorkshopContent(): { valid: boolean; errors: ValidationError[] 
           }
         })
       }
-      
+
       // Check dates are not in the future
       const today = new Date().toISOString().split('T')[0]
       if (data.updated_at > today) {
@@ -154,7 +154,7 @@ function validateWorkshopContent(): { valid: boolean; errors: ValidationError[] 
           message: `Updated date ${data.updated_at} is in the future`
         })
       }
-      
+
       if (data.changelog) {
         data.changelog.forEach((entry: any, index: number) => {
           if (entry.date > today) {
@@ -166,7 +166,7 @@ function validateWorkshopContent(): { valid: boolean; errors: ValidationError[] 
           }
         })
       }
-      
+
     } catch (error) {
       errors.push({
         file,
@@ -175,7 +175,7 @@ function validateWorkshopContent(): { valid: boolean; errors: ValidationError[] 
       })
     }
   })
-  
+
   return {
     valid: errors.length === 0,
     errors
@@ -192,13 +192,13 @@ if (valid) {
   process.exit(0)
 } else {
   console.error('❌ Validation errors found:\n')
-  
+
   errors.forEach(error => {
     console.error(`  ${error.file}:`)
     console.error(`    Field: ${error.field}`)
     console.error(`    Error: ${error.message}\n`)
   })
-  
+
   console.error(`Total errors: ${errors.length}\n`)
   process.exit(1)
 }

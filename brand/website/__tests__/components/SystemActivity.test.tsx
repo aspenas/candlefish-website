@@ -64,7 +64,7 @@ Object.defineProperty(HTMLCanvasElement.prototype, 'getBoundingClientRect', {
 describe('SystemActivity Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Mock successful API response with generated activity data
     mockGetSystemActivity.mockResolvedValue({
       capacity: 0.75,
@@ -79,7 +79,7 @@ describe('SystemActivity Component', () => {
 
   it('renders canvas element', async () => {
     render(<SystemActivity />);
-    
+
     const canvas = screen.getByRole('img', { hidden: true }); // canvas has aria-hidden="true"
     expect(canvas).toBeInTheDocument();
     expect(canvas.tagName).toBe('CANVAS');
@@ -87,7 +87,7 @@ describe('SystemActivity Component', () => {
 
   it('loads system activity data from workshop projects', async () => {
     render(<SystemActivity />);
-    
+
     await waitFor(() => {
       expect(mockGetSystemActivity).toHaveBeenCalled();
     });
@@ -95,7 +95,7 @@ describe('SystemActivity Component', () => {
 
   it('renders activity bars on canvas', async () => {
     render(<SystemActivity />);
-    
+
     await waitFor(() => {
       expect(mockGetSystemActivity).toHaveBeenCalled();
     });
@@ -108,7 +108,7 @@ describe('SystemActivity Component', () => {
 
   it('renders capacity indicator line', async () => {
     render(<SystemActivity />);
-    
+
     await waitFor(() => {
       expect(mockGetSystemActivity).toHaveBeenCalled();
     });
@@ -133,7 +133,7 @@ describe('SystemActivity Component', () => {
     }));
 
     render(<SystemActivity />);
-    
+
     await waitFor(() => {
       expect(mockGetSystemActivity).toHaveBeenCalled();
     });
@@ -145,9 +145,9 @@ describe('SystemActivity Component', () => {
 
   it('updates activity data periodically', async () => {
     jest.useFakeTimers();
-    
+
     render(<SystemActivity />);
-    
+
     await waitFor(() => {
       expect(mockGetSystemActivity).toHaveBeenCalledTimes(1);
     });
@@ -168,7 +168,7 @@ describe('SystemActivity Component', () => {
     mockGetSystemActivity.mockRejectedValue(new Error('API Error'));
 
     render(<SystemActivity />);
-    
+
     await waitFor(() => {
       expect(mockGetSystemActivity).toHaveBeenCalled();
     });
@@ -180,7 +180,7 @@ describe('SystemActivity Component', () => {
 
   it('positions correctly at top of viewport', () => {
     render(<SystemActivity />);
-    
+
     const container = document.querySelector('.fixed.top-0');
     expect(container).toBeInTheDocument();
     expect(container).toHaveClass('h-1'); // 1 pixel height
@@ -189,7 +189,7 @@ describe('SystemActivity Component', () => {
 
   it('respects visibility changes and pauses animation when hidden', async () => {
     const { container } = render(<SystemActivity />);
-    
+
     // Mock document.hidden
     Object.defineProperty(document, 'hidden', {
       value: true,
@@ -208,7 +208,7 @@ describe('SystemActivity Component', () => {
 
   it('generates consistent activity values from workshop data', async () => {
     render(<SystemActivity />);
-    
+
     await waitFor(() => {
       expect(mockGetSystemActivity).toHaveBeenCalled();
     });
@@ -217,7 +217,7 @@ describe('SystemActivity Component', () => {
     const lastCall = mockGetSystemActivity.mock.results[0];
     expect(lastCall.value).resolves.toHaveProperty('capacity');
     expect(lastCall.value).resolves.toHaveProperty('activity');
-    
+
     await expect(lastCall.value).resolves.toMatchObject({
       capacity: expect.any(Number),
       activity: expect.arrayContaining([expect.any(Number)])

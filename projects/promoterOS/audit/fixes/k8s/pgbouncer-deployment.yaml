@@ -11,7 +11,7 @@ data:
   pgbouncer.ini: |
     [databases]
     promoteros = host=POSTGRES_HOST port=5432 dbname=promoteros auth_user=pgbouncer pool_mode=transaction max_db_connections=100
-    
+
     [pgbouncer]
     listen_addr = 0.0.0.0
     listen_port = 5432
@@ -19,7 +19,7 @@ data:
     auth_file = /etc/pgbouncer/userlist.txt
     admin_users = pgbouncer_admin
     stats_users = pgbouncer_stats
-    
+
     # Pool configuration
     pool_mode = transaction
     max_client_conn = 1000
@@ -29,7 +29,7 @@ data:
     reserve_pool_timeout = 5
     max_db_connections = 100
     max_user_connections = 100
-    
+
     # Timeouts
     server_lifetime = 3600
     server_idle_timeout = 600
@@ -39,24 +39,24 @@ data:
     query_wait_timeout = 120
     client_idle_timeout = 0
     client_login_timeout = 60
-    
+
     # TLS/SSL
     server_tls_sslmode = require
     server_tls_ca_file = /etc/pgbouncer/ca-cert.pem
     server_tls_protocols = TLSv1.2,TLSv1.3
     server_tls_ciphers = HIGH:!aNULL:!MD5
-    
+
     # Logging
     log_connections = 1
     log_disconnections = 1
     log_pooler_errors = 1
     log_stats = 1
     stats_period = 60
-    
+
     # Security
     ignore_startup_parameters = extra_float_digits,options
     disable_pqexec = 1
-    
+
     # Performance
     pkt_buf = 4096
     listen_backlog = 128
@@ -117,7 +117,7 @@ spec:
         prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: pgbouncer-sa
-      
+
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -125,7 +125,7 @@ spec:
         fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
-      
+
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -136,7 +136,7 @@ spec:
                 values:
                 - pgbouncer
             topologyKey: kubernetes.io/hostname
-      
+
       initContainers:
       # Fetch RDS endpoint and credentials from AWS Secrets Manager
       - name: fetch-rds-config
@@ -147,16 +147,16 @@ spec:
         - |
           set -e
           echo "Fetching RDS configuration from AWS Secrets Manager..."
-          
+
           # Get RDS connection details
           SECRET=$(aws secretsmanager get-secret-value \
             --secret-id promoteros/rds/connection \
             --query SecretString --output text)
-          
+
           # Parse and create config
           echo "$SECRET" | jq -r '.host' > /shared/postgres_host
           echo "$SECRET" | jq -r '.password' > /shared/postgres_password
-          
+
           # Generate pgbouncer auth file
           echo "Generating PgBouncer auth file..."
           python3 -c "
@@ -164,40 +164,40 @@ spec:
           import hmac
           import base64
           import secrets
-          
+
           def generate_scram_sha256(password):
               salt = secrets.token_bytes(16)
               iterations = 4096
-              
+
               # Generate salted password
-              salted_password = hashlib.pbkdf2_hmac('sha256', 
+              salted_password = hashlib.pbkdf2_hmac('sha256',
                   password.encode('utf-8'), salt, iterations)
-              
+
               # Generate keys
               client_key = hmac.new(salted_password, b'Client Key', hashlib.sha256).digest()
               stored_key = hashlib.sha256(client_key).digest()
               server_key = hmac.new(salted_password, b'Server Key', hashlib.sha256).digest()
-              
+
               # Format for pgbouncer
               salt_b64 = base64.b64encode(salt).decode('ascii')
               stored_key_b64 = base64.b64encode(stored_key).decode('ascii')
               server_key_b64 = base64.b64encode(server_key).decode('ascii')
-              
+
               return f'SCRAM-SHA-256\$4096:{salt_b64}\${stored_key_b64}:{server_key_b64}'
-          
+
           import json
           with open('/shared/postgres_password', 'r') as f:
               password = f.read().strip()
-          
+
           # Generate auth entries
           pgbouncer_hash = generate_scram_sha256('$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 32)')
           app_hash = generate_scram_sha256(password)
-          
+
           with open('/shared/userlist.txt', 'w') as f:
               f.write(f'\"pgbouncer\" \"{pgbouncer_hash}\"\n')
               f.write(f'\"promoteros_app\" \"{app_hash}\"\n')
           "
-          
+
           echo "Configuration fetched successfully"
         volumeMounts:
         - name: shared
@@ -210,12 +210,12 @@ spec:
           capabilities:
             drop:
             - ALL
-      
+
       containers:
       - name: pgbouncer
         image: pgbouncer/pgbouncer:1.21.0-alpine
         imagePullPolicy: IfNotPresent
-        
+
         securityContext:
           allowPrivilegeEscalation: false
           runAsNonRoot: true
@@ -224,26 +224,26 @@ spec:
           capabilities:
             drop:
             - ALL
-        
+
         ports:
         - name: postgres
           containerPort: 5432
           protocol: TCP
-        
+
         command:
         - sh
         - -c
         - |
           # Replace POSTGRES_HOST in config
           sed -i "s/POSTGRES_HOST/$(cat /shared/postgres_host)/g" /etc/pgbouncer/pgbouncer.ini
-          
+
           # Copy userlist
           cp /shared/userlist.txt /etc/pgbouncer/userlist.txt
           chmod 600 /etc/pgbouncer/userlist.txt
-          
+
           # Start pgbouncer
           exec pgbouncer /etc/pgbouncer/pgbouncer.ini
-        
+
         volumeMounts:
         - name: pgbouncer-config
           mountPath: /etc/pgbouncer/pgbouncer.ini
@@ -256,7 +256,7 @@ spec:
           mountPath: /var/run/pgbouncer
         - name: tmp
           mountPath: /tmp
-        
+
         livenessProbe:
           tcpSocket:
             port: postgres
@@ -264,7 +264,7 @@ spec:
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
-        
+
         readinessProbe:
           exec:
             command:
@@ -275,7 +275,7 @@ spec:
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 3
-        
+
         resources:
           requests:
             memory: "128Mi"
@@ -283,12 +283,12 @@ spec:
           limits:
             memory: "256Mi"
             cpu: "200m"
-      
+
       # PgBouncer exporter for Prometheus metrics
       - name: pgbouncer-exporter
         image: prometheuscommunity/pgbouncer-exporter:v0.7.0
         imagePullPolicy: IfNotPresent
-        
+
         securityContext:
           allowPrivilegeEscalation: false
           runAsNonRoot: true
@@ -297,7 +297,7 @@ spec:
           capabilities:
             drop:
             - ALL
-        
+
         env:
         - name: PGBOUNCER_EXPORTER_HOST
           value: "127.0.0.1"
@@ -310,12 +310,12 @@ spec:
             secretKeyRef:
               name: pgbouncer-secrets
               key: stats_password
-        
+
         ports:
         - name: metrics
           containerPort: 9127
           protocol: TCP
-        
+
         resources:
           requests:
             memory: "32Mi"
@@ -323,7 +323,7 @@ spec:
           limits:
             memory: "64Mi"
             cpu: "50m"
-      
+
       volumes:
       - name: pgbouncer-config
         configMap:
