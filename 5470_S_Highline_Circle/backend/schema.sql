@@ -232,6 +232,95 @@ SELECT
 FROM items
 GROUP BY category;
 
+-- Collaboration tables for buyer-owner communication
+
+-- Interest levels enum
+CREATE TYPE interest_level AS ENUM (
+    'high',
+    'medium',
+    'low',
+    'none'
+);
+
+-- Bundle proposal status enum
+CREATE TYPE bundle_status AS ENUM (
+    'draft',
+    'proposed',
+    'accepted',
+    'rejected',
+    'withdrawn'
+);
+
+-- User roles enum
+CREATE TYPE user_role AS ENUM (
+    'owner',
+    'buyer'
+);
+
+-- Item notes/comments for collaboration
+CREATE TABLE item_notes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    item_id UUID REFERENCES items(id) ON DELETE CASCADE,
+    author user_role NOT NULL,
+    note TEXT NOT NULL,
+    is_private BOOLEAN DEFAULT FALSE, -- Owner-only notes
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Buyer interests for items
+CREATE TABLE buyer_interests (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    item_id UUID REFERENCES items(id) ON DELETE CASCADE,
+    interest_level interest_level NOT NULL DEFAULT 'none',
+    max_price DECIMAL(10,2),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(item_id)
+);
+
+-- Bundle proposals for grouped item sales
+CREATE TABLE bundle_proposals (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    proposed_by user_role NOT NULL,
+    total_price DECIMAL(10,2),
+    status bundle_status DEFAULT 'draft',
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Junction table for bundle items
+CREATE TABLE bundle_items (
+    bundle_id UUID REFERENCES bundle_proposals(id) ON DELETE CASCADE,
+    item_id UUID REFERENCES items(id) ON DELETE CASCADE,
+    PRIMARY KEY (bundle_id, item_id)
+);
+
+-- Indexes for collaboration tables
+CREATE INDEX idx_item_notes_item ON item_notes(item_id);
+CREATE INDEX idx_item_notes_author ON item_notes(author);
+CREATE INDEX idx_item_notes_created ON item_notes(created_at DESC);
+CREATE INDEX idx_buyer_interests_item ON buyer_interests(item_id);
+CREATE INDEX idx_buyer_interests_level ON buyer_interests(interest_level);
+CREATE INDEX idx_bundle_proposals_status ON bundle_proposals(status);
+CREATE INDEX idx_bundle_proposals_proposed_by ON bundle_proposals(proposed_by);
+CREATE INDEX idx_bundle_items_bundle ON bundle_items(bundle_id);
+CREATE INDEX idx_bundle_items_item ON bundle_items(item_id);
+
+-- Update triggers for collaboration tables
+CREATE TRIGGER update_item_notes_updated_at BEFORE UPDATE ON item_notes
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+CREATE TRIGGER update_buyer_interests_updated_at BEFORE UPDATE ON buyer_interests
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+CREATE TRIGGER update_bundle_proposals_updated_at BEFORE UPDATE ON bundle_proposals
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- Enhanced buyer view with collaboration data
 CREATE VIEW buyer_view AS
 SELECT
     r.name as room,
@@ -241,8 +330,43 @@ SELECT
     i.designer_invoice_price,
     i.placement_notes as notes,
     i.invoice_ref,
-    i.source
+    i.source,
+    bi.interest_level,
+    bi.max_price as buyer_max_price,
+    bi.notes as buyer_notes,
+    (SELECT COUNT(*) FROM item_notes WHERE item_id = i.id AND is_private = false) as public_note_count,
+    (SELECT COUNT(*) FROM bundle_items WHERE item_id = i.id) as bundle_count
 FROM items i
 JOIN rooms r ON i.room_id = r.id
+LEFT JOIN buyer_interests bi ON i.id = bi.item_id
 WHERE i.decision = 'Sell'
 ORDER BY r.name, i.category, i.name;
+
+-- Collaboration overview view
+CREATE VIEW collaboration_overview AS
+SELECT
+    i.id as item_id,
+    i.name as item_name,
+    r.name as room_name,
+    i.category,
+    i.decision,
+    i.asking_price,
+    bi.interest_level,
+    bi.max_price as buyer_max_price,
+    (SELECT COUNT(*) FROM item_notes WHERE item_id = i.id AND is_private = false) as public_notes,
+    (SELECT COUNT(*) FROM item_notes WHERE item_id = i.id AND is_private = true) as private_notes,
+    (SELECT COUNT(*) FROM bundle_items WHERE item_id = i.id) as in_bundles,
+    i.updated_at as item_updated,
+    bi.updated_at as interest_updated
+FROM items i
+JOIN rooms r ON i.room_id = r.id
+LEFT JOIN buyer_interests bi ON i.id = bi.item_id
+WHERE i.decision IN ('Sell', 'Unsure')
+ORDER BY
+    CASE
+        WHEN bi.interest_level = 'high' THEN 1
+        WHEN bi.interest_level = 'medium' THEN 2
+        WHEN bi.interest_level = 'low' THEN 3
+        ELSE 4
+    END,
+    i.asking_price DESC;

@@ -1,34 +1,94 @@
 #!/bin/bash
 # Clean Git History - Remove all traces of privileged content
 # WARNING: This will rewrite git history - ensure all team members pull fresh
+# Enhanced version with comprehensive pattern matching and safety checks
 
 set -e
 
-echo "⚠️  GIT HISTORY CLEANING SCRIPT"
-echo "================================"
+echo "⚠️  GIT HISTORY CLEANING SCRIPT v2.0"
+echo "===================================="
 echo "This will permanently remove privileged content from git history"
 echo "WARNING: This is a destructive operation that rewrites history!"
 echo ""
 
-# Check if we're in the right repository
+# Enhanced repository validation
 if [ ! -d ".git" ]; then
     echo "ERROR: Not in a git repository"
     exit 1
 fi
 
 REPO_NAME=$(basename $(pwd))
-if [ "$REPO_NAME" != "candlefish-ai" ]; then
+REPO_REMOTE=$(git remote get-url origin 2>/dev/null || echo "")
+
+if [ "$REPO_NAME" != "candlefish-ai" ] && [ "$REPO_NAME" != "candlefish-ai-clean" ]; then
     echo "ERROR: This script should only be run in candlefish-ai repository"
     echo "Current directory: $REPO_NAME"
+    echo "Remote URL: $REPO_REMOTE"
     exit 1
 fi
 
-# Confirmation
+# Check for uncommitted changes
+if [ -n "$(git status --porcelain)" ]; then
+    echo "ERROR: You have uncommitted changes. Please commit or stash them first."
+    git status --short
+    exit 1
+fi
+
+# Verify we're on main branch
+CURRENT_BRANCH=$(git branch --show-current)
+if [ "$CURRENT_BRANCH" != "main" ]; then
+    echo "ERROR: Please switch to main branch before running this script"
+    echo "Current branch: $CURRENT_BRANCH"
+    exit 1
+fi
+
+# Pre-execution analysis
+echo "🔍 ANALYZING REPOSITORY FOR SENSITIVE CONTENT"
+echo "=============================================="
+echo "Scanning git history for patterns that will be removed..."
+
+# Check current state
+SENSITIVE_FILES=$(git log --all --name-only --pretty=format: | grep -iE "(family|privileged|estate|trust)" | wc -l | tr -d ' ')
+SENSITIVE_COMMITS=$(git log --all --oneline --grep="family\|privileged\|estate\|trust" -i | wc -l | tr -d ' ')
+
+echo "📊 Analysis Results:"
+echo "  • Files with sensitive patterns: $SENSITIVE_FILES"
+echo "  • Commits with sensitive terms: $SENSITIVE_COMMITS"
+echo ""
+
+if [ "$SENSITIVE_FILES" -eq 0 ] && [ "$SENSITIVE_COMMITS" -eq 0 ]; then
+    echo "✅ No sensitive content detected in git history"
+    echo "This script may not be necessary to run."
+    echo ""
+    read -p "Continue anyway? (y/N): " continue_anyway
+    if [ "$continue_anyway" != "y" ] && [ "$continue_anyway" != "Y" ]; then
+        echo "Aborted - no sensitive content found"
+        exit 0
+    fi
+fi
+
+# Show sample of what will be removed
+if [ "$SENSITIVE_FILES" -gt 0 ]; then
+    echo "🗂️  Sample files that will be removed from history:"
+    git log --all --name-only --pretty=format: | grep -iE "(family|privileged|estate|trust)" | head -10 | sed 's/^/    • /'
+    echo ""
+fi
+
+if [ "$SENSITIVE_COMMITS" -gt 0 ]; then
+    echo "📝 Sample commit messages that will be cleaned:"
+    git log --all --oneline --grep="family\|privileged\|estate\|trust" -i | head -5 | sed 's/^/    • /'
+    echo ""
+fi
+
+# Final confirmation
 echo "This will:"
-echo "1. Download BFG Repo Cleaner"
-echo "2. Remove all 'privileged' and 'family' folders from history"
-echo "3. Clean commit messages containing sensitive terms"
-echo "4. Force push the cleaned history"
+echo "1. Download BFG Repo Cleaner if not present"
+echo "2. Remove ALL folders: privileged, family, private, confidential, estate, trust"
+echo "3. Remove ALL files matching: *family*, *privileged*, *private*, etc."
+echo "4. Clean commit messages by replacing sensitive terms with [REDACTED]"
+echo "5. Force push the cleaned history (DESTRUCTIVE OPERATION)"
+echo ""
+echo "⚠️  TEAM IMPACT: Tyler and Aaron will need to delete and re-clone their repositories"
 echo ""
 read -p "Are you SURE you want to proceed? Type 'yes-clean-history': " confirm
 if [ "$confirm" != "yes-clean-history" ]; then
@@ -70,11 +130,17 @@ echo "Step 4: Removing privileged folders from history..."
 echo "--------------------------------------------------"
 cd "$CLEAN_DIR"
 
-# Remove folders
+# Remove folders with comprehensive patterns
 java -jar ../bfg.jar --delete-folders "privileged" --no-blob-protection .
 java -jar ../bfg.jar --delete-folders "family" --no-blob-protection .
 java -jar ../bfg.jar --delete-folders "private" --no-blob-protection .
 java -jar ../bfg.jar --delete-folders "confidential" --no-blob-protection .
+java -jar ../bfg.jar --delete-folders "family-dashboard" --no-blob-protection .
+java -jar ../bfg.jar --delete-folders "family-auth" --no-blob-protection .
+java -jar ../bfg.jar --delete-folders "family-data" --no-blob-protection .
+java -jar ../bfg.jar --delete-folders "estate" --no-blob-protection .
+java -jar ../bfg.jar --delete-folders "trust" --no-blob-protection .
+java -jar ../bfg.jar --delete-folders "legal_structure" --no-blob-protection .
 
 echo "✅ Folders removed from history"
 
@@ -83,7 +149,7 @@ echo ""
 echo "Step 5: Removing sensitive files..."
 echo "-----------------------------------"
 
-# Create patterns file for BFG
+# Create comprehensive patterns file for BFG
 cat > ../sensitive-files.txt << 'EOF'
 *family*
 *privileged*
@@ -92,6 +158,19 @@ cat > ../sensitive-files.txt << 'EOF'
 *estate*
 *trust*
 *legal_structure*
+family-dashboard*
+*family-dashboard*
+family-auth*
+*family-auth*
+family-data*
+*family-data*
+family-logout*
+*family-logout*
+*family-letter*
+family-plan*
+*family-plan*
+validate-family-auth*
+*family-business*
 EOF
 
 java -jar ../bfg.jar --delete-files-found-in ../sensitive-files.txt --no-blob-protection .
@@ -103,8 +182,22 @@ echo ""
 echo "Step 6: Cleaning commit messages..."
 echo "----------------------------------"
 
-# Create replacement file
+# Create comprehensive replacement file for commit messages
 cat > ../replacements.txt << 'EOF'
+***REMOVED***
+***REMOVED***
+***REMOVED***
+***REMOVED***
+***REMOVED***
+***REMOVED***
+***REMOVED***
+***REMOVED***
+***REMOVED***
+***REMOVED***
+***REMOVED***
+***REMOVED***
+***REMOVED***
+***REMOVED***
 ***REMOVED***
 ***REMOVED***
 ***REMOVED***
@@ -130,19 +223,61 @@ echo ""
 echo "Step 8: Verifying cleaning..."
 echo "----------------------------"
 
-# Check for remaining sensitive content
-echo "Checking for 'privileged' in history..."
-if git log --all --full-history -- "*privileged*" | grep -q .; then
-    echo "⚠️  WARNING: Some 'privileged' references may remain"
+# Comprehensive verification of cleaning
+echo "Performing comprehensive verification..."
+VERIFICATION_FAILED=false
+
+# Check for remaining sensitive content in file paths
+echo "Checking for 'privileged' in file paths..."
+if git log --all --name-only --pretty=format: | grep -i privileged | head -1 | grep -q .; then
+    echo "⚠️  WARNING: 'privileged' references remain in file paths"
+    git log --all --name-only --pretty=format: | grep -i privileged | head -5
+    VERIFICATION_FAILED=true
 else
-    echo "✅ No 'privileged' found"
+    echo "✅ No 'privileged' found in file paths"
 fi
 
-echo "Checking for 'family' in history..."
-if git log --all --full-history -- "*family*" | grep -q .; then
-    echo "⚠️  WARNING: Some 'family' references may remain"
+echo "Checking for 'family' in file paths..."
+if git log --all --name-only --pretty=format: | grep -i family | head -1 | grep -q .; then
+    echo "⚠️  WARNING: 'family' references remain in file paths"
+    git log --all --name-only --pretty=format: | grep -i family | head -5
+    VERIFICATION_FAILED=true
 else
-    echo "✅ No 'family' found"
+    echo "✅ No 'family' found in file paths"
+fi
+
+# Check commit messages for sensitive terms
+echo "Checking for sensitive terms in commit messages..."
+if git log --all --oneline --grep="family\|privileged\|estate\|trust" -i | head -1 | grep -q .; then
+    echo "⚠️  WARNING: Sensitive terms remain in commit messages"
+    git log --all --oneline --grep="family\|privileged\|estate\|trust" -i | head -5
+    VERIFICATION_FAILED=true
+else
+    echo "✅ No sensitive terms found in commit messages"
+fi
+
+# Check for specific sensitive files
+echo "Checking for specific sensitive file patterns..."
+SENSITIVE_PATTERNS="family-dashboard family-auth family-data family-logout family-letter family-plan"
+for pattern in $SENSITIVE_PATTERNS; do
+    if git log --all --name-only --pretty=format: | grep "$pattern" | head -1 | grep -q .; then
+        echo "⚠️  WARNING: '$pattern' files remain"
+        VERIFICATION_FAILED=true
+    fi
+done
+
+if [ "$VERIFICATION_FAILED" = true ]; then
+    echo ""
+    echo "🚨 VERIFICATION FAILED: Some sensitive content may still exist"
+    echo "Review the warnings above before proceeding"
+    echo ""
+    read -p "Continue anyway? (type 'force-continue'): " force
+    if [ "$force" != "force-continue" ]; then
+        echo "Aborted. Cleaned repository available at: $CLEAN_DIR"
+        exit 1
+    fi
+else
+    echo "✅ All verification checks passed"
 fi
 
 # Step 9: Apply changes to original repository

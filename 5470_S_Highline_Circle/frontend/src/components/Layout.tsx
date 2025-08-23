@@ -7,6 +7,8 @@ import {
   SparklesIcon,
   UserGroupIcon,
   Cog6ToothIcon,
+  CameraIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 import ThemeToggle from './ThemeToggle';
 
@@ -20,8 +22,10 @@ export default function Layout({ children }: LayoutProps) {
   const navigation = [
     { name: 'Dashboard', href: '/', icon: HomeIcon },
     { name: 'Inventory', href: '/inventory', icon: ClipboardDocumentListIcon },
+    { name: 'Photos', href: '/photos', icon: CameraIcon },
     { name: 'Analytics', href: '/analytics', icon: ChartBarIcon },
     { name: 'AI Insights', href: '/insights', icon: SparklesIcon },
+    { name: 'Collaboration', href: '/collaboration', icon: ChatBubbleLeftRightIcon },
     { name: 'Buyer View', href: '/buyer-view', icon: UserGroupIcon },
     { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
   ];

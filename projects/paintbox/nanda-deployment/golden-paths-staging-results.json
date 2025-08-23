@@ -46,7 +46,7 @@
       "name": "GP6: Offline Page",
       "endpoint": "/offline",
       "status": "failed",
-      "response": "502"
+      "response": "503"
     },
     {
       "name": "GP6: Manifest",

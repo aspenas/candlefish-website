@@ -44,8 +44,9 @@ export default function Inventory() {
   });
 
   const rooms = useMemo(() => {
-    if (!roomsData?.rooms) return [];
-    return roomsData.rooms.map((room: any) => ({
+    if (!roomsData?.rooms && !Array.isArray(roomsData)) return [];
+    const roomsList = roomsData?.rooms || roomsData || [];
+    return roomsList.map((room: any) => ({
       id: room.id,
       name: room.name,
       floor: room.floor || 'Unknown',
@@ -294,7 +295,7 @@ export default function Inventory() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Inventory Management</h1>
             <p className="mt-1 text-gray-600">
-              {data?.total || 0} items total • {selectedItems.length} selected
+              {data?.total || (data?.items || data || []).length || 0} items total • {selectedItems.length} selected
             </p>
           </div>
           <div className="flex space-x-3">
@@ -331,7 +332,7 @@ export default function Inventory() {
         onSearch={setSearchQuery}
         placeholder="Search items by name, category, room, or description..."
         initialValue={searchQuery}
-        items={data?.items || []}
+        items={data?.items || data || []}
         showAdvanced={true}
       />
 
@@ -480,7 +481,7 @@ export default function Inventory() {
             onFilterChange={setFilters}
             rooms={rooms}
             categories={categories}
-            items={data?.items || []}
+            items={data?.items || data || []}
             showAdvanced={true}
           />
         </div>
@@ -497,19 +498,19 @@ export default function Inventory() {
                 });
               }}
               onClearSelection={() => setSelectedItems([])}
-              totalItems={data?.total || 0}
+              totalItems={data?.total || (data?.items || data || []).length || 0}
             />
           )}
 
           {/* Items Table */}
           {isLoading ? (
             <LoadingSkeleton />
-          ) : !data?.items || data.items.length === 0 ? (
+          ) : !data?.items && !Array.isArray(data) || (data?.items || data || []).length === 0 ? (
             <EmptyState />
           ) : (
             <div className="bg-white shadow rounded-lg overflow-hidden">
               <ItemTable
-                items={data.items}
+                items={data?.items || data || []}
                 selectedItems={selectedItems}
                 onSelectItem={(id) => {
                   setSelectedItems((prev) =>
@@ -535,7 +536,7 @@ export default function Inventory() {
                     {hasActiveFilters && (
                       <span>Filtered results • </span>
                     )}
-                    Showing {data.items.length} of {data.total || data.items.length} items
+                    Showing {(data?.items || data || []).length} of {data?.total || (data?.items || data || []).length} items
                     {activeFilterCount > 0 && (
                       <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
                         {activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''} active

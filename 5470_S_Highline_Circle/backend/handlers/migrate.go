@@ -4,13 +4,13 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// RunMigration creates the activities table if it doesn't exist
+// RunMigration creates the activities table and collaboration tables if they don't exist
 func (h *Handler) RunMigration(c *fiber.Ctx) error {
 	if h.db == nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Database connection not available"})
 	}
 
-	// Create the activities table if it doesn't exist
+	// Create the activities and collaboration tables if they don't exist
 	migration := `
 	DO $$
 	BEGIN
@@ -25,6 +25,33 @@ func (h *Handler) RunMigration(c *fiber.Ctx) error {
 				'bulk_updated',
 				'exported',
 				'imported'
+			);
+		END IF;
+
+		-- Create collaboration enums if they don't exist
+		IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'interest_level') THEN
+			CREATE TYPE interest_level AS ENUM (
+				'high',
+				'medium',
+				'low',
+				'none'
+			);
+		END IF;
+
+		IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'bundle_status') THEN
+			CREATE TYPE bundle_status AS ENUM (
+				'draft',
+				'proposed',
+				'accepted',
+				'rejected',
+				'withdrawn'
+			);
+		END IF;
+
+		IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+			CREATE TYPE user_role AS ENUM (
+				'owner',
+				'buyer'
 			);
 		END IF;
 
@@ -47,6 +74,97 @@ func (h *Handler) RunMigration(c *fiber.Ctx) error {
 			CREATE INDEX idx_activities_item ON activities(item_id);
 			CREATE INDEX idx_activities_created ON activities(created_at DESC);
 			CREATE INDEX idx_activities_action ON activities(action);
+		END IF;
+
+		-- Create collaboration tables if they don't exist
+		IF NOT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'item_notes') THEN
+			CREATE TABLE item_notes (
+				id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+				item_id UUID REFERENCES items(id) ON DELETE CASCADE,
+				author user_role NOT NULL,
+				note TEXT NOT NULL,
+				is_private BOOLEAN DEFAULT FALSE,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			);
+
+			-- Create indexes
+			CREATE INDEX idx_item_notes_item ON item_notes(item_id);
+			CREATE INDEX idx_item_notes_author ON item_notes(author);
+			CREATE INDEX idx_item_notes_created ON item_notes(created_at DESC);
+		END IF;
+
+		IF NOT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'buyer_interests') THEN
+			CREATE TABLE buyer_interests (
+				id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+				item_id UUID REFERENCES items(id) ON DELETE CASCADE,
+				interest_level interest_level NOT NULL DEFAULT 'none',
+				max_price DECIMAL(10,2),
+				notes TEXT,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				UNIQUE(item_id)
+			);
+
+			-- Create indexes
+			CREATE INDEX idx_buyer_interests_item ON buyer_interests(item_id);
+			CREATE INDEX idx_buyer_interests_level ON buyer_interests(interest_level);
+		END IF;
+
+		IF NOT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'bundle_proposals') THEN
+			CREATE TABLE bundle_proposals (
+				id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+				name VARCHAR(255) NOT NULL,
+				proposed_by user_role NOT NULL,
+				total_price DECIMAL(10,2),
+				status bundle_status DEFAULT 'draft',
+				notes TEXT,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			);
+
+			-- Create indexes
+			CREATE INDEX idx_bundle_proposals_status ON bundle_proposals(status);
+			CREATE INDEX idx_bundle_proposals_proposed_by ON bundle_proposals(proposed_by);
+		END IF;
+
+		IF NOT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'bundle_items') THEN
+			CREATE TABLE bundle_items (
+				bundle_id UUID REFERENCES bundle_proposals(id) ON DELETE CASCADE,
+				item_id UUID REFERENCES items(id) ON DELETE CASCADE,
+				PRIMARY KEY (bundle_id, item_id)
+			);
+
+			-- Create indexes
+			CREATE INDEX idx_bundle_items_bundle ON bundle_items(bundle_id);
+			CREATE INDEX idx_bundle_items_item ON bundle_items(item_id);
+		END IF;
+
+		-- Create update trigger function if it doesn't exist
+		IF NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'update_updated_at') THEN
+			CREATE OR REPLACE FUNCTION update_updated_at()
+			RETURNS TRIGGER AS $$
+			BEGIN
+				NEW.updated_at = CURRENT_TIMESTAMP;
+				RETURN NEW;
+			END;
+			$$ LANGUAGE plpgsql;
+		END IF;
+
+		-- Create triggers for updated_at columns
+		IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_item_notes_updated_at') THEN
+			CREATE TRIGGER update_item_notes_updated_at BEFORE UPDATE ON item_notes
+				FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+		END IF;
+
+		IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_buyer_interests_updated_at') THEN
+			CREATE TRIGGER update_buyer_interests_updated_at BEFORE UPDATE ON buyer_interests
+				FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+		END IF;
+
+		IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_bundle_proposals_updated_at') THEN
+			CREATE TRIGGER update_bundle_proposals_updated_at BEFORE UPDATE ON bundle_proposals
+				FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 		END IF;
 	END $$;
 	`

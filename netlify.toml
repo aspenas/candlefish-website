@@ -2,11 +2,13 @@
 # Netlify TOML Configuration - Candlefish AI Website
 # ************************************************
 
-[build]
-  base = "apps/website"
-  publish = "dist"
-  command = "npm run build"
-  functions = "netlify/functions"
+# DISABLED: This configuration conflicts with brand/website deployment
+# Use brand/website/netlify.toml instead for main website
+# [build]
+#   base = "apps/website"
+#   publish = "dist"
+#   command = "npm run build"
+#   functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "18"

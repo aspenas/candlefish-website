@@ -236,3 +236,147 @@ func (f FloorLevel) Value() (driver.Value, error) {
 func (a ActivityAction) Value() (driver.Value, error) {
 	return string(a), nil
 }
+
+// Collaboration types
+
+// InterestLevel enum
+type InterestLevel string
+
+const (
+	InterestHigh   InterestLevel = "high"
+	InterestMedium InterestLevel = "medium"
+	InterestLow    InterestLevel = "low"
+	InterestNone   InterestLevel = "none"
+)
+
+// BundleStatus enum
+type BundleStatus string
+
+const (
+	BundleDraft     BundleStatus = "draft"
+	BundleProposed  BundleStatus = "proposed"
+	BundleAccepted  BundleStatus = "accepted"
+	BundleRejected  BundleStatus = "rejected"
+	BundleWithdrawn BundleStatus = "withdrawn"
+)
+
+// UserRole enum
+type UserRole string
+
+const (
+	RoleOwner UserRole = "owner"
+	RoleBuyer UserRole = "buyer"
+)
+
+// ItemNote model for collaboration
+type ItemNote struct {
+	ID        uuid.UUID `json:"id" db:"id"`
+	ItemID    uuid.UUID `json:"item_id" db:"item_id"`
+	Author    UserRole  `json:"author" db:"author"`
+	Note      string    `json:"note" db:"note"`
+	IsPrivate bool      `json:"is_private" db:"is_private"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
+
+	// Relations
+	Item *Item `json:"item,omitempty"`
+}
+
+// BuyerInterest model for tracking buyer interest in items
+type BuyerInterest struct {
+	ID            uuid.UUID     `json:"id" db:"id"`
+	ItemID        uuid.UUID     `json:"item_id" db:"item_id"`
+	InterestLevel InterestLevel `json:"interest_level" db:"interest_level"`
+	MaxPrice      *float64      `json:"max_price,omitempty" db:"max_price"`
+	Notes         *string       `json:"notes,omitempty" db:"notes"`
+	CreatedAt     time.Time     `json:"created_at" db:"created_at"`
+	UpdatedAt     time.Time     `json:"updated_at" db:"updated_at"`
+
+	// Relations
+	Item *Item `json:"item,omitempty"`
+}
+
+// BundleProposal model for grouped item proposals
+type BundleProposal struct {
+	ID         uuid.UUID    `json:"id" db:"id"`
+	Name       string       `json:"name" db:"name"`
+	ProposedBy UserRole     `json:"proposed_by" db:"proposed_by"`
+	TotalPrice *float64     `json:"total_price,omitempty" db:"total_price"`
+	Status     BundleStatus `json:"status" db:"status"`
+	Notes      *string      `json:"notes,omitempty" db:"notes"`
+	CreatedAt  time.Time    `json:"created_at" db:"created_at"`
+	UpdatedAt  time.Time    `json:"updated_at" db:"updated_at"`
+
+	// Relations
+	Items []Item `json:"items,omitempty"`
+}
+
+// BundleItem junction model
+type BundleItem struct {
+	BundleID uuid.UUID `json:"bundle_id" db:"bundle_id"`
+	ItemID   uuid.UUID `json:"item_id" db:"item_id"`
+
+	// Relations
+	Bundle *BundleProposal `json:"bundle,omitempty"`
+	Item   *Item           `json:"item,omitempty"`
+}
+
+// CollaborationOverview model for dashboard view
+type CollaborationOverview struct {
+	ItemID           uuid.UUID      `json:"item_id" db:"item_id"`
+	ItemName         string         `json:"item_name" db:"item_name"`
+	RoomName         string         `json:"room_name" db:"room_name"`
+	Category         Category       `json:"category" db:"category"`
+	Decision         DecisionStatus `json:"decision" db:"decision"`
+	AskingPrice      *float64       `json:"asking_price,omitempty" db:"asking_price"`
+	InterestLevel    *InterestLevel `json:"interest_level,omitempty" db:"interest_level"`
+	BuyerMaxPrice    *float64       `json:"buyer_max_price,omitempty" db:"buyer_max_price"`
+	PublicNotes      int            `json:"public_notes" db:"public_notes"`
+	PrivateNotes     int            `json:"private_notes" db:"private_notes"`
+	InBundles        int            `json:"in_bundles" db:"in_bundles"`
+	ItemUpdated      time.Time      `json:"item_updated" db:"item_updated"`
+	InterestUpdated  *time.Time     `json:"interest_updated,omitempty" db:"interest_updated"`
+}
+
+// Request/Response models for collaboration
+
+// NoteRequest for creating/updating notes
+type NoteRequest struct {
+	Note      string `json:"note" binding:"required"`
+	IsPrivate bool   `json:"is_private"`
+}
+
+// InterestRequest for setting buyer interest
+type InterestRequest struct {
+	InterestLevel InterestLevel `json:"interest_level" binding:"required"`
+	MaxPrice      *float64      `json:"max_price,omitempty"`
+	Notes         *string       `json:"notes,omitempty"`
+}
+
+// BundleRequest for creating bundles
+type BundleRequest struct {
+	Name       string      `json:"name" binding:"required"`
+	ItemIDs    []uuid.UUID `json:"item_ids" binding:"required"`
+	TotalPrice *float64    `json:"total_price,omitempty"`
+	Notes      *string     `json:"notes,omitempty"`
+}
+
+// BundleUpdateRequest for updating bundle status
+type BundleUpdateRequest struct {
+	Status     *BundleStatus `json:"status,omitempty"`
+	TotalPrice *float64      `json:"total_price,omitempty"`
+	Notes      *string       `json:"notes,omitempty"`
+}
+
+// Implement driver.Valuer for new custom types
+func (i InterestLevel) Value() (driver.Value, error) {
+	return string(i), nil
+}
+
+func (b BundleStatus) Value() (driver.Value, error) {
+	return string(b), nil
+}
+
+func (u UserRole) Value() (driver.Value, error) {
+	return string(u), nil
+}
