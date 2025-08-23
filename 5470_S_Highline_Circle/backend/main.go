@@ -120,7 +120,7 @@ func main() {
 
 	// Setup route for initializing database with real data
 	api.Post("/admin/setup-database", h.SetupDatabase)
-	
+
 	// Migration route for creating activities table
 	api.Post("/admin/migrate", h.RunMigration)
 

@@ -224,7 +224,7 @@ def main():
 
     print(f"Reading {excel_file}...")
     inventory_df = pd.read_excel(excel_file, sheet_name="Inventory (All Items)")
-    bloom_df = pd.read_excel(excel_file, sheet_name="Bloom & Flourish")
+    # Bloom & Flourish sheet not imported - using empty DataFrame
 
     # Connect to database
     conn = connect_db()

@@ -2,7 +2,7 @@
 -- This migration ensures the activities table is created in production
 
 -- Check if activities table exists, if not create it
-DO $$ 
+DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'activities') THEN
         -- Create activity_action enum if it doesn't exist

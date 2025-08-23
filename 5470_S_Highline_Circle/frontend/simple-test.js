@@ -2,7 +2,7 @@ const axios = require('axios');
 
 async function quickTest() {
   console.log('🧪 Quick E2E Test Results\n');
-  
+
   // Test API connectivity
   console.log('📡 API Connectivity:');
   try {
@@ -58,12 +58,12 @@ async function quickTest() {
   console.log('1. ❌ Production frontend at inventory.candlefish.ai returns 404');
   console.log('2. ✅ Backend at 5470-inventory.fly.dev is fully functional');
   console.log('3. ✅ Local frontend works when API URL is set correctly');
-  
+
   console.log('\n💡 Root Cause Analysis:');
   console.log('• Frontend deployment is likely missing or misconfigured');
   console.log('• Backend API is working and serving correct data');
   console.log('• Analytics/AI Insights pages would work locally with correct API URL');
-  
+
   console.log('\n🚀 Recommended Actions:');
   console.log('1. Deploy frontend with VITE_API_URL=https://5470-inventory.fly.dev/api/v1');
   console.log('2. Test pages locally: http://localhost:3008/analytics and /insights');

@@ -28,7 +28,7 @@
       "name": "GP3: Interior Config",
       "endpoint": "/estimate/new/interior",
       "status": "failed",
-      "response": "502"
+      "response": "503"
     },
     {
       "name": "GP3: Review Page",

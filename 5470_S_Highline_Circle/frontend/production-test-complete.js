@@ -3,11 +3,11 @@ const axios = require('axios');
 async function comprehensiveProductionTest() {
   console.log('🚀 COMPREHENSIVE PRODUCTION WEBSITE TEST');
   console.log('=========================================\n');
-  
+
   const API_BASE = 'https://5470-inventory.fly.dev/api/v1';
   const EXPECTED_ITEMS = 239;
   const EXPECTED_VALUE = 374242.59;
-  
+
   let results = {
     backend: { score: 0, total: 0 },
     data: { score: 0, total: 0 },
@@ -18,22 +18,22 @@ async function comprehensiveProductionTest() {
   // Test 1: Backend API Health
   console.log('📡 1. BACKEND API CONNECTIVITY');
   console.log('==============================');
-  
+
   try {
     const response = await axios.get(`${API_BASE}/analytics/summary`, { timeout: 10000 });
     const { totalItems, totalValue, keepCount, sellCount, unsureCount } = response.data;
-    
+
     console.log(`✅ API Connection: Working`);
     console.log(`   • Total Items: ${totalItems} (Expected: ${EXPECTED_ITEMS})`);
     console.log(`   • Total Value: $${totalValue} (Expected: $${EXPECTED_VALUE})`);
     console.log(`   • Keep Count: ${keepCount}`);
     console.log(`   • Sell Count: ${sellCount}`);
     console.log(`   • Unsure Count: ${unsureCount}`);
-    
+
     results.backend.score += totalItems === EXPECTED_ITEMS ? 1 : 0;
     results.backend.score += Math.abs(totalValue - EXPECTED_VALUE) < 1 ? 1 : 0;
     results.backend.total += 2;
-    
+
   } catch (error) {
     console.log(`❌ API Connection: Failed - ${error.message}`);
     results.issues.push('Backend API connectivity failed');
@@ -42,7 +42,7 @@ async function comprehensiveProductionTest() {
   // Test 2: Core API Endpoints
   console.log('\n📋 2. CORE API ENDPOINTS');
   console.log('========================');
-  
+
   const endpoints = [
     { path: '/items', name: 'Items List', expectArray: true },
     { path: '/analytics/by-room', name: 'Room Analytics', expectArray: true },
@@ -54,7 +54,7 @@ async function comprehensiveProductionTest() {
     try {
       const response = await axios.get(`${API_BASE}${endpoint.path}`, { timeout: 5000 });
       let dataCount = 'N/A';
-      
+
       if (endpoint.expectArray && Array.isArray(response.data)) {
         dataCount = response.data.length;
       } else if (endpoint.expectArray && response.data.items) {
@@ -64,7 +64,7 @@ async function comprehensiveProductionTest() {
       } else if (endpoint.expectObject && response.data.insights) {
         dataCount = response.data.insights.length;
       }
-      
+
       console.log(`✅ ${endpoint.name}: Working (${dataCount} records)`);
       results.functionality.score += 1;
     } catch (error) {
@@ -77,27 +77,27 @@ async function comprehensiveProductionTest() {
   // Test 3: Data Validation
   console.log('\n📊 3. DATA VALIDATION');
   console.log('=====================');
-  
+
   try {
     // Test items data structure
     const itemsResponse = await axios.get(`${API_BASE}/items`);
     const items = itemsResponse.data.items;
-    
+
     if (items && items.length > 0) {
       const sampleItem = items[0];
       const requiredFields = ['id', 'name', 'category', 'room', 'floor'];
       const hasRequiredFields = requiredFields.every(field => sampleItem[field] !== undefined);
-      
+
       console.log(`✅ Items Structure: Valid (${hasRequiredFields ? 'all required fields present' : 'missing fields'})`);
       console.log(`   • Sample Item: ${sampleItem.name}`);
       console.log(`   • Category: ${sampleItem.category}`);
       console.log(`   • Room: ${sampleItem.room}`);
       console.log(`   • Price: ${sampleItem.price ? '$' + sampleItem.price : 'No price'}`);
-      
+
       results.data.score += hasRequiredFields ? 1 : 0;
     }
     results.data.total += 1;
-    
+
   } catch (error) {
     console.log(`❌ Data Structure: Invalid - ${error.message}`);
     results.issues.push('Items data structure validation failed');
@@ -107,16 +107,16 @@ async function comprehensiveProductionTest() {
     // Test analytics data
     const roomResponse = await axios.get(`${API_BASE}/analytics/by-room`);
     const roomAnalytics = roomResponse.data.analytics;
-    
+
     if (roomAnalytics && roomAnalytics.length > 0) {
       const topRoom = roomAnalytics[0];
       console.log(`✅ Room Analytics: Valid`);
       console.log(`   • Top Room: ${topRoom.room} (${topRoom.item_count} items, $${topRoom.total_value})`);
-      
+
       results.data.score += 1;
     }
     results.data.total += 1;
-    
+
   } catch (error) {
     console.log(`❌ Room Analytics: Invalid - ${error.message}`);
     results.issues.push('Room analytics data validation failed');
@@ -125,7 +125,7 @@ async function comprehensiveProductionTest() {
   // Test 4: Frontend Configuration
   console.log('\n🌐 4. FRONTEND CONFIGURATION');
   console.log('============================');
-  
+
   try {
     // Check if local frontend is running (this would represent the production frontend functionality)
     const localResponse = await axios.get('http://localhost:3008', { timeout: 3000 });
@@ -140,7 +140,7 @@ async function comprehensiveProductionTest() {
   // Test 5: Authentication Status
   console.log('\n🔐 5. PRODUCTION AUTHENTICATION');
   console.log('===============================');
-  
+
   try {
     await axios.get('https://inventory.candlefish.ai', { timeout: 5000 });
     console.log('✅ Production Site: Accessible without auth');
@@ -160,7 +160,7 @@ async function comprehensiveProductionTest() {
   // Final Results Summary
   console.log('\n📈 FINAL TEST RESULTS');
   console.log('=====================');
-  
+
   const backendScore = results.backend.total > 0 ? (results.backend.score / results.backend.total * 100) : 0;
   const dataScore = results.data.total > 0 ? (results.data.score / results.data.total * 100) : 0;
   const functionalityScore = results.functionality.total > 0 ? (results.functionality.score / results.functionality.total * 100) : 0;
