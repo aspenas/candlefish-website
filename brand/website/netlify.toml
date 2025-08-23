@@ -1,6 +1,6 @@
 [build]
   publish = "out/"
-  command = "npm ci && npm run build"
+  command = "npm ci && npm run export"
 
 [build.environment]
   NODE_VERSION = "20"
