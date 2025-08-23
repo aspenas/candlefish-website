@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Routing Test - inventory.candlefish.ai</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .test-section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .test-links a {
+      display: inline-block;
+      margin: 10px 15px 10px 0;
+      padding: 10px 20px;
+      background: #4f46e5;
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+      transition: background 0.2s;
+    }
+    .test-links a:hover {
+      background: #3730a3;
+    }
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+    }
+    .status.success { background: #d1fae5; border-left: 4px solid #10b981; }
+    .status.error { background: #fee2e2; border-left: 4px solid #ef4444; }
+    .status.info { background: #dbeafe; border-left: 4px solid #3b82f6; }
+    #console {
+      background: #1f2937;
+      color: #e5e7eb;
+      padding: 15px;
+      border-radius: 5px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 React Router Debugging - inventory.candlefish.ai</h1>
+
+  <div class="test-section">
+    <h2>Current URL Info</h2>
+    <div id="url-info"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>Test Routes</h2>
+    <p>Click these links to test if React Router handles them correctly:</p>
+    <div class="test-links">
+      <a href="/">Home (Dashboard)</a>
+      <a href="/inventory">Inventory</a>
+      <a href="/photos">Photo Capture</a>
+      <a href="/analytics">Analytics</a>
+      <a href="/insights">Insights</a>
+      <a href="/settings">Settings</a>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>Hash-based Route Tests</h2>
+    <p>These should redirect to the corresponding path routes:</p>
+    <div class="test-links">
+      <a href="/#inventory">Hash: #inventory</a>
+      <a href="/#photos">Hash: #photos</a>
+      <a href="/#analytics">Hash: #analytics</a>
+      <a href="/#insights">Hash: #insights</a>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>Browser Environment Check</h2>
+    <div id="browser-info"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>Route Status</h2>
+    <div id="route-status"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>Console Output</h2>
+    <div id="console"></div>
+  </div>
+
+  <script>
+    // Console capture
+    const consoleDiv = document.getElementById('console');
+    const originalLog = console.log;
+    const originalError = console.error;
+
+    function addToConsole(type, ...args) {
+      const timestamp = new Date().toLocaleTimeString();
+      const message = args.join(' ');
+      consoleDiv.innerHTML += `<div style="color: ${type === 'error' ? '#ff6b6b' : '#4ade80'}">[${timestamp}] ${type.toUpperCase()}: ${message}</div>`;
+      consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    }
+
+    console.log = function(...args) {
+      originalLog.apply(console, args);
+      addToConsole('log', ...args);
+    };
+
+    console.error = function(...args) {
+      originalError.apply(console, args);
+      addToConsole('error', ...args);
+    };
+
+    // URL Info
+    function updateUrlInfo() {
+      document.getElementById('url-info').innerHTML = `
+        <strong>Full URL:</strong> ${window.location.href}<br>
+        <strong>Pathname:</strong> ${window.location.pathname}<br>
+        <strong>Hash:</strong> ${window.location.hash || 'none'}<br>
+        <strong>Search:</strong> ${window.location.search || 'none'}<br>
+        <strong>Host:</strong> ${window.location.host}
+      `;
+    }
+
+    // Browser info
+    function updateBrowserInfo() {
+      document.getElementById('browser-info').innerHTML = `
+        <strong>User Agent:</strong> ${navigator.userAgent}<br>
+        <strong>Online:</strong> ${navigator.onLine ? '✅ Yes' : '❌ No'}<br>
+        <strong>Service Workers:</strong> ${'serviceWorker' in navigator ? '✅ Supported' : '❌ Not supported'}<br>
+        <strong>Local Storage:</strong> ${typeof(Storage) !== "undefined" ? '✅ Available' : '❌ Not available'}
+      `;
+    }
+
+    // Route status check
+    async function checkRoutes() {
+      const routes = ['/', '/inventory', '/photos', '/analytics', '/insights'];
+      const statusDiv = document.getElementById('route-status');
+      statusDiv.innerHTML = '<p>Checking routes...</p>';
+
+      let results = '';
+      for (const route of routes) {
+        try {
+          const response = await fetch(`https://inventory.candlefish.ai${route}`, {
+            method: 'HEAD',
+            mode: 'no-cors' // Avoid CORS issues for this test
+          });
+
+          // Since we use no-cors, we can't check the actual status
+          // but we can see if the request completes
+          results += `<div class="status info">📍 ${route} - Request completed (CORS-limited)</div>`;
+        } catch (error) {
+          results += `<div class="status error">❌ ${route} - Error: ${error.message}</div>`;
+        }
+      }
+
+      statusDiv.innerHTML = results;
+    }
+
+    // Hash change detection
+    window.addEventListener('hashchange', function() {
+      console.log('Hash changed to:', window.location.hash);
+      updateUrlInfo();
+    });
+
+    // History change detection
+    let lastPath = window.location.pathname;
+    setInterval(() => {
+      if (window.location.pathname !== lastPath) {
+        console.log('Path changed from', lastPath, 'to', window.location.pathname);
+        lastPath = window.location.pathname;
+        updateUrlInfo();
+      }
+    }, 500);
+
+    // Initialize
+    updateUrlInfo();
+    updateBrowserInfo();
+    checkRoutes();
+
+    console.log('🚀 Routing test page loaded');
+    console.log('Current environment:', window.location.href);
+
+    // Test React Router detection
+    setTimeout(() => {
+      if (window.React) {
+        console.log('✅ React detected, version:', window.React.version || 'unknown');
+      } else {
+        console.log('❌ React not detected on window object');
+      }
+    }, 2000);
+  </script>
+</body>
+</html>

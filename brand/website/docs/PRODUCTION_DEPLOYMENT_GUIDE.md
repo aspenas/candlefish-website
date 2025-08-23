@@ -199,14 +199,6 @@ Pre-configured dashboards for:
 - **Business Metrics**: User engagement and conversions
 - **Alert Management**: Active alerts and incident tracking
 
-### Sentry Error Tracking
-
-Integrated error tracking with:
-
-- **Error Monitoring**: Real-time error capture and alerting
-- **Performance Monitoring**: Transaction tracing and profiling
-- **Release Tracking**: Error correlation with deployments
-- **User Context**: Error attribution to user sessions
 
 ## Auto-scaling Configuration
 
@@ -392,7 +384,6 @@ All configuration files and scripts are organized as follows:
 ├── monitoring/
 │   ├── prometheus/                     # Metrics collection
 │   ├── grafana/                        # Dashboard configuration
-│   └── sentry/                         # Error tracking
 └── docs/
     ├── runbooks/                       # Operational procedures
     └── dashboards/                     # Monitoring dashboards

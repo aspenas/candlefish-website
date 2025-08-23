@@ -86,7 +86,7 @@ resource "aws_wafv2_web_acl" "cloudfront_waf" {
   # Bot Control (optional - requires subscription)
   dynamic "rule" {
     for_each = var.enable_bot_control ? [1] : []
-    
+
     content {
       name     = "AWSManagedRulesBotControlRuleSet"
       priority = 4
@@ -310,7 +310,7 @@ resource "aws_cloudfront_response_headers_policy" "security_headers" {
 
     items {
       header   = "Content-Security-Policy"
-      value    = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.sentry-cdn.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      value    = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
       override = true
     }
 
