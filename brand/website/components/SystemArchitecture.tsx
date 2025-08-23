@@ -41,44 +41,44 @@ function ParticleFlow({
 }) {
   const particlesRef = useRef<THREE.Points>(null);
   const progressRef = useRef<Float32Array>(new Float32Array(count));
-  
+
   const geometry = useMemo(() => {
     const geo = new THREE.BufferGeometry();
     const positions = new Float32Array(count * 3);
-    
+
     // Initialize random progress for each particle
     for (let i = 0; i < count; i++) {
       progressRef.current[i] = Math.random();
     }
-    
+
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     return geo;
   }, [count]);
 
   useFrame((state, delta) => {
     if (!particlesRef.current) return;
-    
+
     const positions = particlesRef.current.geometry.attributes.position.array as Float32Array;
     const actualSpeed = status === 'OPERATIONAL' ? speed * 1.5 : speed;
-    
+
     for (let i = 0; i < count; i++) {
       // Update progress
       progressRef.current[i] += delta * actualSpeed;
       if (progressRef.current[i] > 1) {
         progressRef.current[i] = 0;
       }
-      
+
       // Interpolate position along path
       const t = progressRef.current[i];
       const x = start.x + (end.x - start.x) * t;
       const y = start.y + (end.y - start.y) * t;
       const z = start.z + (end.z - start.z) * t;
-      
+
       positions[i * 3] = x;
       positions[i * 3 + 1] = y;
       positions[i * 3 + 2] = z;
     }
-    
+
     particlesRef.current.geometry.attributes.position.needsUpdate = true;
   });
 
@@ -108,7 +108,7 @@ function FranchiseNode({
 }) {
   const meshRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
-  
+
   // Node size based on stream count
   const size = useMemo(() => {
     return 0.08 + Math.log10(node.streams + 1) * 0.04;
@@ -116,9 +116,9 @@ function FranchiseNode({
 
   useFrame((state) => {
     if (!meshRef.current) return;
-    
+
     const time = state.clock.getElapsedTime();
-    
+
     // Pulsing behavior based on status
     if (node.status === 'ACTIVE') {
       const pulse = 1 + Math.sin(time * 2) * 0.1;
@@ -181,13 +181,13 @@ function NetworkLink({
   strength?: number;
 }) {
   const lineRef = useRef<THREE.Line>(null);
-  
+
   useFrame((state) => {
     if (!lineRef.current) return;
-    
+
     const time = state.clock.getElapsedTime();
     const material = lineRef.current.material as THREE.LineBasicMaterial;
-    
+
     // Shift connections gently during CALIBRATING
     if (status === 'CALIBRATING') {
       material.opacity = 0.3 + Math.sin(time * 2) * 0.1;
@@ -242,7 +242,7 @@ function NetworkGraph() {
       { id: 'crown-5', name: 'Crown Trophy SEA', streams: 89, latency: '18ms', status: 'CALIBRATING' },
       { id: 'crown-6', name: 'Crown Trophy BOS', streams: 134, latency: '9ms', status: 'ACTIVE' },
     ];
-    
+
     // Generate network links
     const networkLinks: NetworkLink[] = [
       { source: 'crown-1', target: 'crown-2', strength: 0.9 },
@@ -252,10 +252,10 @@ function NetworkGraph() {
       { source: 'crown-3', target: 'crown-6', strength: 0.8 },
       { source: 'crown-4', target: 'crown-6', strength: 0.6 },
     ];
-    
+
     setNodes(franchiseNodes);
     setLinks(networkLinks);
-    
+
     // Cycle through statuses for demo
     const statusInterval = setInterval(() => {
       setSystemStatus((prev) => {
@@ -264,7 +264,7 @@ function NetworkGraph() {
         return 'CALIBRATING';
       });
     }, 10000);
-    
+
     return () => clearInterval(statusInterval);
   }, []);
 
@@ -272,7 +272,7 @@ function NetworkGraph() {
   const nodePositions = useMemo(() => {
     const positions = new Map<string, THREE.Vector3>();
     const nodeCount = nodes.length;
-    
+
     // Circular layout with some variation
     nodes.forEach((node, i) => {
       const angle = (i / nodeCount) * Math.PI * 2;
@@ -286,7 +286,7 @@ function NetworkGraph() {
         )
       );
     });
-    
+
     return positions;
   }, [nodes]);
 
@@ -296,7 +296,7 @@ function NetworkGraph() {
       <ambientLight intensity={0.4} />
       <pointLight position={[5, 5, 5]} intensity={0.6} color={0x3FD3C6} />
       <pointLight position={[-5, -5, 5]} intensity={0.4} color={0x8E7CC3} />
-      
+
       {/* Render nodes */}
       {nodes.map((node) => {
         const updatedNode = { ...node, status: systemStatus };
@@ -309,14 +309,14 @@ function NetworkGraph() {
           />
         );
       })}
-      
+
       {/* Render links */}
       {links.map((link, i) => {
         const start = nodePositions.get(link.source);
         const end = nodePositions.get(link.target);
-        
+
         if (!start || !end) return null;
-        
+
         return (
           <NetworkLink
             key={`${link.source}-${link.target}-${i}`}
@@ -327,7 +327,7 @@ function NetworkGraph() {
           />
         );
       })}
-      
+
       {/* Hover tooltip */}
       {hoveredNode && (
         <Html
@@ -405,7 +405,7 @@ export default function SystemArchitecture() {
         }}
       >
         <NetworkGraph />
-        
+
         {/* Auto-rotation for visual interest */}
         <group rotation={[0, 0, 0]}>
           <mesh

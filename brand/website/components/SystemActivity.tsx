@@ -8,7 +8,7 @@ export default function SystemActivity() {
   const [activity, setActivity] = useState<number[]>([]);
   const [capacity, setCapacity] = useState(0.9);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-  
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number>();
@@ -80,7 +80,7 @@ export default function SystemActivity() {
       // Add smooth noise to base value
       const noiseValue = smoothNoise(i * 0.3, timestamp * 0.0008);
       const value = Math.max(0.1, Math.min(1, baseValue + noiseValue));
-      
+
       // Calculate bar position and height
       const height = value * maxHeight;
       const x = i * barWidth + (barWidth - actualBarWidth) / 2;
