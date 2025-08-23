@@ -1,12 +1,17 @@
 # ************************************************
-# Netlify TOML Configuration - API Test Dashboard
+# Netlify TOML Configuration - Candlefish AI Website
 # ************************************************
 
 [build]
   base = "apps/website"
-  publish = "dist"
+  publish = "apps/website/dist"
   command = "npm run build"
-  functions = "netlify/functions"
+  functions = "apps/website/netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "18"
+  VITE_ENVIRONMENT = "production"
+  VITE_BUILD_MODE = "production"
 
 # Serve React app with SPA routing
 [[redirects]]
