@@ -12,11 +12,6 @@ const OperationalCraft = lazy(() =>
     default: () => <div className="text-[#415A77] text-xs">Visualization unavailable</div>
   }))
 )
-const SystemArchitectureFlow = lazy(() =>
-  import('../components/visuals/SystemArchitectureFlow').catch(() => ({
-    default: () => <div className="text-[#415A77] text-xs">Visualization unavailable</div>
-  }))
-)
 
 export default function OperationalHomepage() {
   const [isClient, setIsClient] = useState(false)

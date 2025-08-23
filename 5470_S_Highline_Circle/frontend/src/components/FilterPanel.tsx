@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   FunnelIcon,
   XMarkIcon,
@@ -106,14 +106,29 @@ export default function FilterPanel({
   });
 
   const [priceRange, setPriceRange] = useState({
-    min: filters.minValue || '',
-    max: filters.maxValue || ''
+    min: filters.minValue?.toString() || '',
+    max: filters.maxValue?.toString() || ''
   });
 
   const [dateRange, setDateRange] = useState({
     min: filters.minDate || '',
     max: filters.maxDate || ''
   });
+
+  // Sync local state with filter props
+  useEffect(() => {
+    setPriceRange({
+      min: filters.minValue?.toString() || '',
+      max: filters.maxValue?.toString() || ''
+    });
+  }, [filters.minValue, filters.maxValue]);
+
+  useEffect(() => {
+    setDateRange({
+      min: filters.minDate || '',
+      max: filters.maxDate || ''
+    });
+  }, [filters.minDate, filters.maxDate]);
 
   const filterPresets = useMemo(() => getFilterPresets(items), [items]);
 
@@ -184,28 +199,61 @@ export default function FilterPanel({
     handleFilterChange(key, newValues.length ? newValues : undefined);
   };
 
-  const handlePriceRangeChange = (field: 'min' | 'max', value: string) => {
-    const newPriceRange = { ...priceRange, [field]: value };
-    setPriceRange(newPriceRange);
-
-    // Update filters with debounce
+  // Debounced price range change
+  const debouncedPriceChange = useCallback((field: 'min' | 'max', value: string) => {
     const numValue = value ? Number(value) : undefined;
     if (field === 'min') {
       handleFilterChange('minValue', numValue);
     } else {
       handleFilterChange('maxValue', numValue);
     }
-  };
+  }, [handleFilterChange]);
 
-  const handleDateRangeChange = (field: 'min' | 'max', value: string) => {
-    const newDateRange = { ...dateRange, [field]: value };
-    setDateRange(newDateRange);
+  // Debounce timer for price changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (priceRange.min !== (filters.minValue?.toString() || '')) {
+        debouncedPriceChange('min', priceRange.min);
+      }
+      if (priceRange.max !== (filters.maxValue?.toString() || '')) {
+        debouncedPriceChange('max', priceRange.max);
+      }
+    }, 500);
 
+    return () => clearTimeout(timer);
+  }, [priceRange.min, priceRange.max, debouncedPriceChange, filters.minValue, filters.maxValue]);
+
+  // Debounced date range change
+  const debouncedDateChange = useCallback((field: 'min' | 'max', value: string) => {
     if (field === 'min') {
       handleFilterChange('minDate', value || undefined);
     } else {
       handleFilterChange('maxDate', value || undefined);
     }
+  }, [handleFilterChange]);
+
+  // Debounce timer for date changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (dateRange.min !== (filters.minDate || '')) {
+        debouncedDateChange('min', dateRange.min);
+      }
+      if (dateRange.max !== (filters.maxDate || '')) {
+        debouncedDateChange('max', dateRange.max);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [dateRange.min, dateRange.max, debouncedDateChange, filters.minDate, filters.maxDate]);
+
+  const handlePriceRangeChange = (field: 'min' | 'max', value: string) => {
+    const newPriceRange = { ...priceRange, [field]: value };
+    setPriceRange(newPriceRange);
+  };
+
+  const handleDateRangeChange = (field: 'min' | 'max', value: string) => {
+    const newDateRange = { ...dateRange, [field]: value };
+    setDateRange(newDateRange);
   };
 
   const applyFilterPreset = (preset: FilterPreset) => {

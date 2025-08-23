@@ -147,18 +147,99 @@ func (h *Handler) GetItems(c *fiber.Ctx) error {
 			"total": 2,
 		})
 	}
-	query := `
+
+	// Build base query with enhanced fields and filtering support
+	baseQuery := `
 		SELECT
 			i.id, i.name, i.category, i.decision,
 			i.purchase_price, i.is_fixture, i.source,
 			i.invoice_ref, i.designer_invoice_price,
-			r.name as room_name, r.floor
+			i.purchase_date, i.created_at,
+			r.name as room_name, r.floor,
+			(SELECT COUNT(*) FROM item_images WHERE item_id = i.id) as image_count
 		FROM items i
 		JOIN rooms r ON i.room_id = r.id
-		ORDER BY r.name, i.name
+		WHERE 1=1
 	`
 
-	rows, err := h.db.Query(query)
+	args := []interface{}{}
+	argIndex := 0
+
+	// Apply filters
+	// Date range filters
+	if dateFrom := c.Query("date_from"); dateFrom != "" {
+		argIndex++
+		baseQuery += fmt.Sprintf(" AND i.purchase_date >= $%d", argIndex)
+		args = append(args, dateFrom)
+	}
+
+	if dateTo := c.Query("date_to"); dateTo != "" {
+		argIndex++
+		baseQuery += fmt.Sprintf(" AND i.purchase_date <= $%d", argIndex)
+		args = append(args, dateTo)
+	}
+
+	// Images filter
+	if hasImages := c.Query("has_images"); hasImages != "" {
+		if hasImages == "true" {
+			baseQuery += " AND (SELECT COUNT(*) FROM item_images WHERE item_id = i.id) > 0"
+		} else if hasImages == "false" {
+			baseQuery += " AND (SELECT COUNT(*) FROM item_images WHERE item_id = i.id) = 0"
+		}
+	}
+
+	// Sources filter
+	if sources := c.Query("sources"); sources != "" {
+		sourceList := strings.Split(sources, ",")
+		if len(sourceList) > 0 {
+			placeholders := []string{}
+			for _, source := range sourceList {
+				if source != "" {
+					argIndex++
+					placeholders = append(placeholders, fmt.Sprintf("$%d", argIndex))
+					args = append(args, strings.TrimSpace(source))
+				}
+			}
+			if len(placeholders) > 0 {
+				baseQuery += fmt.Sprintf(" AND i.source IN (%s)", strings.Join(placeholders, ","))
+			}
+		}
+	}
+
+	// Parse and validate sorting parameters
+	sortBy := c.Query("sort_by", "name")
+	sortOrder := c.Query("sort_order", "asc")
+
+	// Validate sort column
+	allowedSortColumns := map[string]string{
+		"name":          "i.name",
+		"category":      "i.category",
+		"room":          "r.name",
+		"price":         "i.purchase_price",
+		"purchase_date": "i.purchase_date",
+		"decision":      "i.decision",
+		"created_at":    "i.created_at",
+	}
+
+	sortColumn, validSort := allowedSortColumns[sortBy]
+	if !validSort {
+		sortColumn = "i.name" // Default fallback
+	}
+
+	// Validate sort order
+	if sortOrder != "asc" && sortOrder != "desc" {
+		sortOrder = "asc" // Default fallback
+	}
+
+	// Add ORDER BY clause
+	baseQuery += fmt.Sprintf(" ORDER BY %s %s", sortColumn, strings.ToUpper(sortOrder))
+
+	// Add secondary sort for consistency
+	if sortBy != "name" {
+		baseQuery += ", i.name ASC"
+	}
+
+	rows, err := h.db.Query(baseQuery, args...)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -167,28 +248,32 @@ func (h *Handler) GetItems(c *fiber.Ctx) error {
 	items := []fiber.Map{}
 	for rows.Next() {
 		var item struct {
-			ID                   string  `db:"id"`
-			Name                 string  `db:"name"`
-			Category             string  `db:"category"`
-			Decision             string  `db:"decision"`
-			PurchasePrice        *float64 `db:"purchase_price"`
-			IsFixture            bool    `db:"is_fixture"`
-			Source               *string `db:"source"`
-			InvoiceRef           *string `db:"invoice_ref"`
-			DesignerInvoicePrice *float64 `db:"designer_invoice_price"`
-			RoomName             string  `db:"room_name"`
-			Floor                string  `db:"floor"`
+			ID                   string     `db:"id"`
+			Name                 string     `db:"name"`
+			Category             string     `db:"category"`
+			Decision             string     `db:"decision"`
+			PurchasePrice        *float64   `db:"purchase_price"`
+			IsFixture            bool       `db:"is_fixture"`
+			Source               *string    `db:"source"`
+			InvoiceRef           *string    `db:"invoice_ref"`
+			DesignerInvoicePrice *float64   `db:"designer_invoice_price"`
+			PurchaseDate         *time.Time `db:"purchase_date"`
+			CreatedAt            time.Time  `db:"created_at"`
+			RoomName             string     `db:"room_name"`
+			Floor                string     `db:"floor"`
+			ImageCount           int        `db:"image_count"`
 		}
 
 		err := rows.Scan(&item.ID, &item.Name, &item.Category, &item.Decision,
 			&item.PurchasePrice, &item.IsFixture, &item.Source,
 			&item.InvoiceRef, &item.DesignerInvoicePrice,
-			&item.RoomName, &item.Floor)
+			&item.PurchaseDate, &item.CreatedAt,
+			&item.RoomName, &item.Floor, &item.ImageCount)
 		if err != nil {
 			continue
 		}
 
-		items = append(items, fiber.Map{
+		itemMap := fiber.Map{
 			"id":           item.ID,
 			"name":         item.Name,
 			"category":     item.Category,
@@ -199,7 +284,19 @@ func (h *Handler) GetItems(c *fiber.Ctx) error {
 			"invoice_ref":  item.InvoiceRef,
 			"room":         item.RoomName,
 			"floor":        item.Floor,
-		})
+			"has_images":   item.ImageCount > 0,
+			"image_count":  item.ImageCount,
+		}
+
+		// Add purchase_date if present
+		if item.PurchaseDate != nil {
+			itemMap["purchase_date"] = item.PurchaseDate.Format("2006-01-02")
+		}
+
+		// Add created_at
+		itemMap["created_at"] = item.CreatedAt.Format("2006-01-02T15:04:05Z07:00")
+
+		items = append(items, itemMap)
 	}
 
 	return c.JSON(fiber.Map{
@@ -460,13 +557,15 @@ func (h *Handler) FilterItems(c *fiber.Ctx) error {
 		})
 	}
 
-	// Build dynamic filter query
+	// Build dynamic filter query with enhanced fields
 	baseQuery := `
 		SELECT
 			i.id, i.name, i.category, i.decision,
 			i.purchase_price, i.is_fixture, i.source,
 			i.invoice_ref, i.designer_invoice_price,
-			r.name as room_name, r.floor
+			i.purchase_date, i.created_at,
+			r.name as room_name, r.floor,
+			(SELECT COUNT(*) FROM item_images WHERE item_id = i.id) as image_count
 		FROM items i
 		JOIN rooms r ON i.room_id = r.id
 		WHERE 1=1
@@ -484,7 +583,7 @@ func (h *Handler) FilterItems(c *fiber.Ctx) error {
 				if cat != "" {
 					argIndex++
 					placeholders = append(placeholders, fmt.Sprintf("$%d", argIndex))
-					args = append(args, cat)
+					args = append(args, strings.TrimSpace(cat))
 				}
 			}
 			if len(placeholders) > 0 {
@@ -502,7 +601,7 @@ func (h *Handler) FilterItems(c *fiber.Ctx) error {
 				if dec != "" {
 					argIndex++
 					placeholders = append(placeholders, fmt.Sprintf("$%d", argIndex))
-					args = append(args, dec)
+					args = append(args, strings.TrimSpace(dec))
 				}
 			}
 			if len(placeholders) > 0 {
@@ -520,7 +619,7 @@ func (h *Handler) FilterItems(c *fiber.Ctx) error {
 				if room != "" {
 					argIndex++
 					placeholders = append(placeholders, fmt.Sprintf("$%d", argIndex))
-					args = append(args, room)
+					args = append(args, strings.TrimSpace(room))
 				}
 			}
 			if len(placeholders) > 0 {
@@ -555,7 +654,78 @@ func (h *Handler) FilterItems(c *fiber.Ctx) error {
 		}
 	}
 
-	baseQuery += " ORDER BY r.name, i.name"
+	// Date range filters
+	if dateFrom := c.Query("date_from"); dateFrom != "" {
+		argIndex++
+		baseQuery += fmt.Sprintf(" AND i.purchase_date >= $%d", argIndex)
+		args = append(args, dateFrom)
+	}
+
+	if dateTo := c.Query("date_to"); dateTo != "" {
+		argIndex++
+		baseQuery += fmt.Sprintf(" AND i.purchase_date <= $%d", argIndex)
+		args = append(args, dateTo)
+	}
+
+	// Images filter
+	if hasImages := c.Query("has_images"); hasImages != "" {
+		if hasImages == "true" {
+			baseQuery += " AND (SELECT COUNT(*) FROM item_images WHERE item_id = i.id) > 0"
+		} else if hasImages == "false" {
+			baseQuery += " AND (SELECT COUNT(*) FROM item_images WHERE item_id = i.id) = 0"
+		}
+	}
+
+	// Sources filter
+	if sources := c.Query("sources"); sources != "" {
+		sourceList := strings.Split(sources, ",")
+		if len(sourceList) > 0 {
+			placeholders := []string{}
+			for _, source := range sourceList {
+				if source != "" {
+					argIndex++
+					placeholders = append(placeholders, fmt.Sprintf("$%d", argIndex))
+					args = append(args, strings.TrimSpace(source))
+				}
+			}
+			if len(placeholders) > 0 {
+				baseQuery += fmt.Sprintf(" AND i.source IN (%s)", strings.Join(placeholders, ","))
+			}
+		}
+	}
+
+	// Parse and validate sorting parameters
+	sortBy := c.Query("sort_by", "name")
+	sortOrder := c.Query("sort_order", "asc")
+
+	// Validate sort column
+	allowedSortColumns := map[string]string{
+		"name":          "i.name",
+		"category":      "i.category",
+		"room":          "r.name",
+		"price":         "i.purchase_price",
+		"purchase_date": "i.purchase_date",
+		"decision":      "i.decision",
+		"created_at":    "i.created_at",
+	}
+
+	sortColumn, validSort := allowedSortColumns[sortBy]
+	if !validSort {
+		sortColumn = "i.name" // Default fallback
+	}
+
+	// Validate sort order
+	if sortOrder != "asc" && sortOrder != "desc" {
+		sortOrder = "asc" // Default fallback
+	}
+
+	// Add ORDER BY clause
+	baseQuery += fmt.Sprintf(" ORDER BY %s %s", sortColumn, strings.ToUpper(sortOrder))
+
+	// Add secondary sort for consistency
+	if sortBy != "name" {
+		baseQuery += ", i.name ASC"
+	}
 
 	rows, err := h.db.Query(baseQuery, args...)
 	if err != nil {
@@ -566,28 +736,32 @@ func (h *Handler) FilterItems(c *fiber.Ctx) error {
 	items := []fiber.Map{}
 	for rows.Next() {
 		var item struct {
-			ID                   string  `db:"id"`
-			Name                 string  `db:"name"`
-			Category             string  `db:"category"`
-			Decision             string  `db:"decision"`
-			PurchasePrice        *float64 `db:"purchase_price"`
-			IsFixture            bool    `db:"is_fixture"`
-			Source               *string `db:"source"`
-			InvoiceRef           *string `db:"invoice_ref"`
-			DesignerInvoicePrice *float64 `db:"designer_invoice_price"`
-			RoomName             string  `db:"room_name"`
-			Floor                string  `db:"floor"`
+			ID                   string     `db:"id"`
+			Name                 string     `db:"name"`
+			Category             string     `db:"category"`
+			Decision             string     `db:"decision"`
+			PurchasePrice        *float64   `db:"purchase_price"`
+			IsFixture            bool       `db:"is_fixture"`
+			Source               *string    `db:"source"`
+			InvoiceRef           *string    `db:"invoice_ref"`
+			DesignerInvoicePrice *float64   `db:"designer_invoice_price"`
+			PurchaseDate         *time.Time `db:"purchase_date"`
+			CreatedAt            time.Time  `db:"created_at"`
+			RoomName             string     `db:"room_name"`
+			Floor                string     `db:"floor"`
+			ImageCount           int        `db:"image_count"`
 		}
 
 		err := rows.Scan(&item.ID, &item.Name, &item.Category, &item.Decision,
 			&item.PurchasePrice, &item.IsFixture, &item.Source,
 			&item.InvoiceRef, &item.DesignerInvoicePrice,
-			&item.RoomName, &item.Floor)
+			&item.PurchaseDate, &item.CreatedAt,
+			&item.RoomName, &item.Floor, &item.ImageCount)
 		if err != nil {
 			continue
 		}
 
-		items = append(items, fiber.Map{
+		itemMap := fiber.Map{
 			"id":           item.ID,
 			"name":         item.Name,
 			"category":     item.Category,
@@ -598,7 +772,19 @@ func (h *Handler) FilterItems(c *fiber.Ctx) error {
 			"invoice_ref":  item.InvoiceRef,
 			"room":         item.RoomName,
 			"floor":        item.Floor,
-		})
+			"has_images":   item.ImageCount > 0,
+			"image_count":  item.ImageCount,
+		}
+
+		// Add purchase_date if present
+		if item.PurchaseDate != nil {
+			itemMap["purchase_date"] = item.PurchaseDate.Format("2006-01-02")
+		}
+
+		// Add created_at
+		itemMap["created_at"] = item.CreatedAt.Format("2006-01-02T15:04:05Z07:00")
+
+		items = append(items, itemMap)
 	}
 
 	return c.JSON(fiber.Map{
