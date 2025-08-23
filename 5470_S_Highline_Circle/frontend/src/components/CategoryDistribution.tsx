@@ -80,8 +80,8 @@ export default function CategoryDistribution({ data }: CategoryDistributionProps
               ))}
             </Pie>
             <Tooltip content={<CustomTooltip />} />
-            <Legend 
-              verticalAlign="bottom" 
+            <Legend
+              verticalAlign="bottom"
               height={36}
               iconType="circle"
               wrapperStyle={{

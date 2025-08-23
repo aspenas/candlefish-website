@@ -310,8 +310,8 @@ func (h *Handler) GetActivities(c *fiber.Ctx) error {
 
 	// Get recent activities
 	query := `
-		SELECT 
-			a.id, a.action, a.item_name, a.room_name, 
+		SELECT
+			a.id, a.action, a.item_name, a.room_name,
 			a.details, a.old_value, a.new_value, a.created_at
 		FROM activities a
 		ORDER BY a.created_at DESC
@@ -337,8 +337,8 @@ func (h *Handler) GetActivities(c *fiber.Ctx) error {
 			CreatedAt time.Time `db:"created_at"`
 		}
 
-		err := rows.Scan(&activity.ID, &activity.Action, &activity.ItemName, 
-			&activity.RoomName, &activity.Details, &activity.OldValue, 
+		err := rows.Scan(&activity.ID, &activity.Action, &activity.ItemName,
+			&activity.RoomName, &activity.Details, &activity.OldValue,
 			&activity.NewValue, &activity.CreatedAt)
 		if err != nil {
 			continue

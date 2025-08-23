@@ -6,7 +6,7 @@ const API_BASE_URL = 'https://5470-inventory.fly.dev/api/v1';
 
 async function testApplication() {
   console.log('🚀 Starting comprehensive E2E test of Inventory Management System');
-  
+
   const results = {
     pages: {},
     api: {},
@@ -17,12 +17,12 @@ async function testApplication() {
 
   // First, test API endpoints directly
   console.log('\n📡 Testing API Endpoints...');
-  
+
   try {
     // Test summary endpoint
     const summaryResponse = await axios.get(`${API_BASE_URL}/analytics/summary`);
-    results.api.summary = { 
-      status: 'success', 
+    results.api.summary = {
+      status: 'success',
       data: summaryResponse.data,
       totalItems: summaryResponse.data.totalItems,
       totalValue: summaryResponse.data.totalValue
@@ -65,17 +65,17 @@ async function testApplication() {
 
   // Launch browser for frontend testing
   console.log('\n🌐 Launching Browser for Frontend Testing...');
-  
-  const browser = await puppeteer.launch({ 
+
+  const browser = await puppeteer.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
-  
+
   const page = await browser.newPage();
-  
+
   // Set viewport
   await page.setViewport({ width: 1920, height: 1080 });
-  
+
   // Enable console logging
   const consoleMessages = [];
   page.on('console', message => {
@@ -98,33 +98,33 @@ async function testApplication() {
 
   for (const pageInfo of pages) {
     console.log(`\n📄 Testing ${pageInfo.name} page...`);
-    
+
     try {
-      const response = await page.goto(`${BASE_URL}${pageInfo.path}`, { 
+      const response = await page.goto(`${BASE_URL}${pageInfo.path}`, {
         waitUntil: 'networkidle2',
         timeout: 30000
       });
-      
+
       // Check if page loaded
       const statusCode = response.status();
-      
+
       if (statusCode === 200) {
         // Wait for content to load
         await page.waitForTimeout(2000);
-        
+
         // Check for loading spinners or error messages
         const hasLoading = await page.$('.loading, .spinner') !== null;
         const hasError = await page.$('.error, .error-message') !== null;
-        
+
         // Check for main content
         const hasContent = await page.$('#root > *') !== null;
-        
+
         // Get page title
         const title = await page.title();
-        
+
         // Check for JavaScript errors in console
         const jsErrors = consoleMessages.filter(msg => msg.type === 'error');
-        
+
         results.pages[pageInfo.name] = {
           status: hasError ? 'error' : (hasContent ? 'success' : 'loading'),
           statusCode,
@@ -135,7 +135,7 @@ async function testApplication() {
           jsErrors: jsErrors.length,
           consoleErrors: jsErrors
         };
-        
+
         if (hasError) {
           console.log(`❌ ${pageInfo.name} has errors`);
         } else if (hasContent) {
@@ -143,12 +143,12 @@ async function testApplication() {
         } else {
           console.log(`⚠️  ${pageInfo.name} is still loading or empty`);
         }
-        
+
         if (jsErrors.length > 0) {
           console.log(`⚠️  ${pageInfo.name} has ${jsErrors.length} JavaScript errors`);
           jsErrors.forEach(error => console.log(`   - ${error.text}`));
         }
-        
+
       } else {
         results.pages[pageInfo.name] = {
           status: 'error',
@@ -157,7 +157,7 @@ async function testApplication() {
         };
         console.log(`❌ ${pageInfo.name} failed with HTTP ${statusCode}`);
       }
-      
+
     } catch (error) {
       results.pages[pageInfo.name] = {
         status: 'error',
@@ -165,18 +165,18 @@ async function testApplication() {
       };
       console.log(`❌ ${pageInfo.name} failed:`, error.message);
     }
-    
+
     // Clear console messages for next page
     consoleMessages.length = 0;
   }
 
   // Test interactive features on inventory page
   console.log('\n🔧 Testing Interactive Features...');
-  
+
   try {
     await page.goto(`${BASE_URL}/inventory`, { waitUntil: 'networkidle2' });
     await page.waitForTimeout(3000);
-    
+
     // Test search functionality
     const searchInput = await page.$('input[placeholder*="Search"], input[type="search"]');
     if (searchInput) {
@@ -188,7 +188,7 @@ async function testApplication() {
       results.interactive.search = { status: 'not_found', tested: false };
       console.log('⚠️  Search input not found');
     }
-    
+
     // Test dark mode toggle
     const themeToggle = await page.$('button[aria-label*="theme"], .theme-toggle, [data-testid="theme-toggle"]');
     if (themeToggle) {
@@ -200,7 +200,7 @@ async function testApplication() {
       results.interactive.darkMode = { status: 'not_found', tested: false };
       console.log('⚠️  Theme toggle not found');
     }
-    
+
   } catch (error) {
     results.interactive.error = error.message;
     console.log('❌ Interactive feature testing failed:', error.message);
@@ -211,12 +211,12 @@ async function testApplication() {
   // Generate final report
   console.log('\n📊 FINAL TEST REPORT');
   console.log('='.repeat(50));
-  
+
   console.log('\n🌐 DEPLOYMENT STATUS:');
   console.log('Frontend (inventory.candlefish.ai): ❌ NOT WORKING - Returns 404');
   console.log('Backend (5470-inventory.fly.dev): ✅ WORKING');
   console.log('Local Frontend (localhost:3008): ✅ WORKING');
-  
+
   console.log('\n📄 PAGE LOAD RESULTS:');
   Object.entries(results.pages).forEach(([pageName, result]) => {
     const statusIcon = result.status === 'success' ? '✅' : result.status === 'error' ? '❌' : '⚠️';
@@ -225,13 +225,13 @@ async function testApplication() {
       console.log(`   └── ${result.jsErrors} JavaScript errors detected`);
     }
   });
-  
+
   console.log('\n📡 API ENDPOINT RESULTS:');
   Object.entries(results.api).forEach(([endpoint, result]) => {
     const statusIcon = result.status === 'success' ? '✅' : '❌';
     console.log(`${statusIcon} ${endpoint}: ${result.status.toUpperCase()}`);
   });
-  
+
   console.log('\n📈 DATA VERIFICATION:');
   if (results.api.summary && results.api.summary.status === 'success') {
     const data = results.api.summary.data;
@@ -243,7 +243,7 @@ async function testApplication() {
   } else {
     console.log('❌ Could not verify data - API summary failed');
   }
-  
+
   console.log('\n🔧 INTERACTIVE FEATURES:');
   Object.entries(results.interactive).forEach(([feature, result]) => {
     if (result.tested !== undefined) {
@@ -251,18 +251,18 @@ async function testApplication() {
       console.log(`${statusIcon} ${feature}: ${result.status}`);
     }
   });
-  
+
   console.log('\n🚨 KEY ISSUES IDENTIFIED:');
   console.log('1. ❌ Frontend deployment at inventory.candlefish.ai is NOT working (404 error)');
   console.log('2. ✅ Backend API is fully functional and returning correct data');
   console.log('3. ✅ Local frontend works when pointed to correct API URL');
   console.log('4. ⚠️  Frontend deployment likely missing environment variable: VITE_API_URL');
-  
+
   console.log('\n💡 RECOMMENDED FIXES:');
   console.log('1. Redeploy frontend with VITE_API_URL=https://5470-inventory.fly.dev/api/v1');
   console.log('2. Ensure frontend deployment is serving static files correctly');
   console.log('3. Check that analytics and AI insights pages load data from API correctly');
-  
+
   return results;
 }
 

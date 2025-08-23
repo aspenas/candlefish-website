@@ -8,7 +8,7 @@ echo "Applying migration to create activities table..."
 # Connect to Fly.io database and run migration
 fly postgres connect -a highline-inventory-db <<EOF
 -- Migration: Add activities table if it doesn't exist
-DO \$\$ 
+DO \$\$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'activities') THEN
         -- Create activity_action enum if it doesn't exist
@@ -47,7 +47,7 @@ BEGIN
         -- Insert initial activity
         INSERT INTO activities (action, details, created_at)
         VALUES ('created', 'Activities table created and tracking enabled', CURRENT_TIMESTAMP);
-        
+
         RAISE NOTICE 'Activities table created successfully';
     ELSE
         RAISE NOTICE 'Activities table already exists';

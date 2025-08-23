@@ -161,3 +161,35 @@ nanda-evolution.log
 *.zip
 *.tar.gz
 *.tgz
+
+# Binary files - NEVER COMMIT
+# Go binaries
+main
+*/main
+**/main
+
+# Compiled binaries
+*.exe
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+
+# Binary assets over 10MB (use Git LFS instead)
+*.bin
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Large data files that should use Git LFS
+*.xlsx
+*.csv
+*.json
+# Exception: small config files are OK
+!*config*.json
+!package.json
+!package-lock.json
+!tsconfig.json

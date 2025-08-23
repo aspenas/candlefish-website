@@ -59,7 +59,7 @@ const getActionIcon = (action: string, oldValue?: string, newValue?: string) => 
 
 const getActionText = (activity: ActivityItem) => {
   const itemName = activity.item_name || 'Unknown Item';
-  
+
   switch (activity.action) {
     case 'decided':
       const decisionText = activity.new_value === 'Keep' ? 'kept' :

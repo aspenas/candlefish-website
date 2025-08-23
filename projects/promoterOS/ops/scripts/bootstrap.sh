@@ -5,6 +5,21 @@
 
 set -euo pipefail
 
+# Cleanup function
+cleanup() {
+    local exit_code=$?
+    if [[ $exit_code -ne 0 ]]; then
+        log_error "Bootstrap failed with exit code: ${exit_code}"
+    fi
+    # Clean up temporary files
+    rm -f tfplan 2>/dev/null || true
+    rm -f get_helm.sh 2>/dev/null || true
+    rm -f terraform_*.zip 2>/dev/null || true
+}
+
+# Set up trap for cleanup
+trap cleanup EXIT
+
 # Configuration
 export AWS_REGION="${AWS_REGION:-us-east-1}"
 export AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-681214184463}"
@@ -67,6 +82,19 @@ check_prerequisites() {
         install_helm
     fi
 
+    # Check jq (required for JSON parsing)
+    if ! command -v jq &> /dev/null; then
+        log_error "jq not found. Please install jq first."
+        exit 1
+    fi
+
+    # Check migrate tool (required for database migrations)
+    if ! command -v migrate &> /dev/null; then
+        log_error "migrate tool not found. Please install golang-migrate first."
+        log_error "Installation: https://github.com/golang-migrate/migrate/tree/master/cmd/migrate#installation"
+        exit 1
+    fi
+
     log_info "All prerequisites satisfied!"
 }
 
@@ -108,10 +136,15 @@ create_state_bucket() {
     if aws s3api head-bucket --bucket "${bucket_name}" 2>/dev/null; then
         log_warn "Bucket ${bucket_name} already exists"
     else
-        aws s3api create-bucket \
-            --bucket "${bucket_name}" \
-            --region "${AWS_REGION}" \
-            --create-bucket-configuration LocationConstraint="${AWS_REGION}"
+        # Handle us-east-1 special case (no LocationConstraint needed)
+        if [[ "${AWS_REGION}" == "us-east-1" ]]; then
+            aws s3api create-bucket --bucket "${bucket_name}" --region "${AWS_REGION}"
+        else
+            aws s3api create-bucket \
+                --bucket "${bucket_name}" \
+                --region "${AWS_REGION}" \
+                --create-bucket-configuration LocationConstraint="${AWS_REGION}"
+        fi
 
         # Enable versioning
         aws s3api put-bucket-versioning \
@@ -139,7 +172,7 @@ create_lock_table() {
 
     log_info "Creating DynamoDB table for Terraform locks: ${table_name}..."
 
-    if aws dynamodb describe-table --table-name "${table_name}" &>/dev/null; then
+    if aws dynamodb describe-table --table-name "${table_name}" --region "${AWS_REGION}" &>/dev/null; then
         log_warn "Table ${table_name} already exists"
     else
         aws dynamodb create-table \
@@ -157,7 +190,7 @@ create_lock_table() {
 init_terraform() {
     log_info "Initializing Terraform..."
 
-    cd terraform/environments/${ENVIRONMENT}
+    cd "terraform/environments/${ENVIRONMENT}"
 
     # Create backend config
     cat > backend.tf <<EOF
@@ -172,7 +205,11 @@ terraform {
 }
 EOF
 
-    terraform init
+    if ! terraform init; then
+        log_error "Terraform initialization failed"
+        return 1
+    fi
+
     log_info "Terraform initialized successfully!"
 }
 
@@ -180,20 +217,26 @@ EOF
 apply_terraform() {
     log_info "Applying Terraform configuration for ${ENVIRONMENT}..."
 
-    cd terraform/environments/${ENVIRONMENT}
+    cd "terraform/environments/${ENVIRONMENT}"
 
     # Plan first
-    terraform plan -out=tfplan
+    if ! terraform plan -out=tfplan; then
+        log_error "Terraform plan failed"
+        return 1
+    fi
 
     # Ask for confirmation
-    read -p "Do you want to apply this plan? (yes/no): " confirm
+    read -r -p "Do you want to apply this plan? (yes/no): " confirm
     if [[ "$confirm" != "yes" ]]; then
         log_warn "Terraform apply cancelled"
         return
     fi
 
     # Apply
-    terraform apply tfplan
+    if ! terraform apply tfplan; then
+        log_error "Terraform apply failed"
+        return 1
+    fi
 
     # Save outputs
     terraform output -json > outputs.json
@@ -212,7 +255,10 @@ update_kubeconfig() {
         --name "${cluster_name}"
 
     # Verify connection
-    kubectl cluster-info
+    if ! kubectl cluster-info; then
+        log_error "Failed to connect to EKS cluster"
+        return 1
+    fi
 
     log_info "kubeconfig updated successfully!"
 }
@@ -221,21 +267,22 @@ update_kubeconfig() {
 install_istio() {
     log_info "Installing Istio service mesh..."
 
-    # Download Istio
-    curl -L https://istio.io/downloadIstio | sh -
-    cd istio-*
-    export PATH=$PWD/bin:$PATH
+    # Download Istio if not already available
+    if ! command -v istioctl &> /dev/null; then
+        curl -L https://istio.io/downloadIstio | sh -
+        cd istio-*
+        export PATH=$PWD/bin:$PATH
+        cd ..
+    fi
 
     # Install Istio
     istioctl install --set profile=production -y
 
-    # Enable injection for namespaces
-    kubectl label namespace promoteros-api istio-injection=enabled
-    kubectl label namespace promoteros-scrapers istio-injection=enabled
-    kubectl label namespace promoteros-ml istio-injection=enabled
-    kubectl label namespace promoteros-realtime istio-injection=enabled
-
-    cd ..
+    # Enable injection for namespaces (ignore if already labeled)
+    kubectl label namespace promoteros-api istio-injection=enabled --overwrite
+    kubectl label namespace promoteros-scrapers istio-injection=enabled --overwrite
+    kubectl label namespace promoteros-ml istio-injection=enabled --overwrite
+    kubectl label namespace promoteros-realtime istio-injection=enabled --overwrite
     log_info "Istio installed successfully!"
 }
 
@@ -268,9 +315,9 @@ deploy_promoteros() {
 
     # Install PromoterOS
     helm upgrade --install promoteros ./helm/charts/promoteros \
-        --namespace promoteros-${ENVIRONMENT} \
+        --namespace "promoteros-${ENVIRONMENT}" \
         --create-namespace \
-        --values helm/values/${ENVIRONMENT}.yaml \
+        --values "helm/values/${ENVIRONMENT}.yaml" \
         --wait \
         --timeout 15m
 
@@ -282,12 +329,21 @@ run_migrations() {
     log_info "Running database migrations..."
 
     # Get database credentials from Terraform output
-    local db_host=$(terraform output -raw -state=terraform/environments/${ENVIRONMENT}/terraform.tfstate rds_endpoint)
-    local db_password=$(aws secretsmanager get-secret-value --secret-id promoteros/rds/master-password --query SecretString --output text | jq -r .password)
+    local db_host
+    db_host=$(terraform output -raw -state="terraform/environments/${ENVIRONMENT}/terraform.tfstate" rds_endpoint)
+    local db_password
+    db_password=$(aws secretsmanager get-secret-value \
+        --secret-id promoteros/rds/master-password \
+        --region "${AWS_REGION}" \
+        --query SecretString \
+        --output text | jq -r '.password')
 
     # Run migrations
-    DATABASE_URL="postgresql://promoteros_app:${db_password}@${db_host}/promoteros" \
-        migrate -path db/migrations -database "$DATABASE_URL" up
+    local database_url="postgresql://promoteros_app:${db_password}@${db_host}/promoteros"
+    if ! migrate -path db/migrations -database "$database_url" up; then
+        log_error "Database migrations failed"
+        return 1
+    fi
 
     log_info "Database migrations completed!"
 }
@@ -310,9 +366,13 @@ setup_monitoring() {
         --wait
 
     # Get Grafana admin password
-    local grafana_password=$(kubectl get secret --namespace promoteros-monitoring grafana -o jsonpath="{.data.admin-password}" | base64 --decode)
-
-    log_info "Grafana admin password: ${grafana_password}"
+    local grafana_password
+    if kubectl get secret --namespace promoteros-monitoring grafana &>/dev/null; then
+        grafana_password=$(kubectl get secret --namespace promoteros-monitoring grafana -o jsonpath="{.data.admin-password}" | base64 --decode)
+        log_info "Grafana admin password: ${grafana_password}"
+    else
+        log_warn "Could not retrieve Grafana admin password"
+    fi
     log_info "Monitoring stack deployed successfully!"
 }
 
@@ -321,7 +381,13 @@ run_smoke_tests() {
     log_info "Running smoke tests..."
 
     # Get ALB endpoint
-    local alb_endpoint=$(kubectl get ingress -n promoteros-${ENVIRONMENT} api-gateway -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+    local alb_endpoint
+    alb_endpoint=$(kubectl get ingress -n "promoteros-${ENVIRONMENT}" api-gateway -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+
+    if [[ -z "$alb_endpoint" ]]; then
+        log_warn "ALB endpoint not found, skipping smoke tests"
+        return 0
+    fi
 
     # Health check
     if curl -f "http://${alb_endpoint}/health/live"; then
@@ -353,10 +419,12 @@ print_summary() {
     log_info ""
     log_info "Access URLs:"
 
-    local alb_endpoint=$(kubectl get ingress -n promoteros-${ENVIRONMENT} api-gateway -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+    local alb_endpoint
+    alb_endpoint=$(kubectl get ingress -n "promoteros-${ENVIRONMENT}" api-gateway -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "Not available")
     log_info "API Gateway: https://${alb_endpoint}"
 
-    local grafana_endpoint=$(kubectl get ingress -n promoteros-monitoring grafana -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+    local grafana_endpoint
+    grafana_endpoint=$(kubectl get ingress -n promoteros-monitoring grafana -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "Not available")
     log_info "Grafana: https://${grafana_endpoint}"
 
     log_info ""

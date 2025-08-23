@@ -12,7 +12,7 @@ func (h *Handler) RunMigration(c *fiber.Ctx) error {
 
 	// Create the activities table if it doesn't exist
 	migration := `
-	DO $$ 
+	DO $$
 	BEGIN
 		-- Create activity_action enum if it doesn't exist
 		IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'activity_action') THEN
