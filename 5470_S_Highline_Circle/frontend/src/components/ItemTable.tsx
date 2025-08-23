@@ -19,7 +19,7 @@ interface ItemTableProps {
   onUpdateItem: (item: any) => void;
   onSort: (field: string) => void;
   sortBy: string;
-  sortOrder: 'asc' | 'desc';
+  sortOrder: 'asc' | 'desc' | null;
 }
 
 export default function ItemTable({
@@ -37,12 +37,18 @@ export default function ItemTable({
 
   const SortIcon = ({ field }: { field: string }) => {
     if (sortBy !== field) {
-      return <div className="w-4 h-4" />;
+      return <div className="w-4 h-4 opacity-30 hover:opacity-60">
+        <ChevronUpIcon className="w-4 h-4 text-gray-400" />
+      </div>;
     }
     return sortOrder === 'asc' ? (
-      <ChevronUpIcon className="w-4 h-4" />
+      <ChevronUpIcon className="w-4 h-4 text-indigo-600" />
+    ) : sortOrder === 'desc' ? (
+      <ChevronDownIcon className="w-4 h-4 text-indigo-600" />
     ) : (
-      <ChevronDownIcon className="w-4 h-4" />
+      <div className="w-4 h-4 opacity-30 hover:opacity-60">
+        <ChevronUpIcon className="w-4 h-4 text-gray-400" />
+      </div>
     );
   };
 

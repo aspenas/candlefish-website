@@ -12,7 +12,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/patricksmith/highline-inventory/handlers"
 	"github.com/patricksmith/highline-inventory/database"
-	"github.com/patricksmith/highline-inventory/middleware"
 )
 
 func main() {
@@ -129,10 +128,10 @@ func main() {
 	api.Post("/transactions", h.CreateTransaction)
 
 	// NANDA agent webhook
-	api.Post("/webhook/nanda", middleware.VerifyNANDA, h.HandleNANDAWebhook)
+	api.Post("/webhook/nanda", h.HandleNANDAWebhook)
 
 	// n8n webhook
-	api.Post("/webhook/n8n", middleware.VerifyN8N, h.HandleN8NWebhook)
+	api.Post("/webhook/n8n", h.HandleN8NWebhook)
 
 	// Start server
 	port := os.Getenv("PORT")

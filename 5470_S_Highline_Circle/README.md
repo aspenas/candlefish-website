@@ -2,6 +2,15 @@
 
 A modern, full-stack inventory management system for tracking and managing home furnishings.
 
+## Access Information
+
+**Production URL**: https://inventory.candlefish.ai
+
+**Authentication**: Password Protection (Netlify)
+- Password: `highline!`
+- Configured via: Netlify Dashboard → Project Settings → Visitor Access
+- Protection Level: Basic protection on all deploys
+
 ## Features
 
 - 📊 **Comprehensive Inventory Management**: Track items by room, category, and price
@@ -38,6 +47,7 @@ A modern, full-stack inventory management system for tracking and managing home 
 
 ## Quick Start
 
+### Local Development
 ```bash
 # Start all services
 docker-compose up -d
@@ -51,6 +61,12 @@ open http://localhost:5678
 # Access API documentation
 open http://localhost:8080/swagger
 ```
+
+### Production Access
+Visit https://inventory.candlefish.ai and enter password:
+- Password: `highline!`
+
+Note: Password protection is managed through Netlify's dashboard settings (Project Settings → Visitor Access)
 
 ## Current Status
 

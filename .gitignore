@@ -193,3 +193,37 @@ main
 !package.json
 !package-lock.json
 !tsconfig.json
+
+# CRITICAL SECURITY: Block all privileged family content
+**/privileged/
+**/family/
+**/*family*
+**/*privileged*
+**/private/
+**/confidential/
+**/sensitive/
+public/docs/privileged/
+apps/website/public/docs/privileged/
+apps/website/dist/docs/privileged/
+.netlify/static/docs/privileged/
+# Backup files that might contain sensitive data
+*.backup
+*.bak
+family-vault/
+
+# CRITICAL SECURITY: Block all privileged family content
+**/privileged/
+**/family/
+**/*family*
+**/*privileged*
+**/private/
+**/confidential/
+**/sensitive/
+public/docs/privileged/
+apps/website/public/docs/privileged/
+apps/website/dist/docs/privileged/
+.netlify/static/docs/privileged/
+# Backup files that might contain sensitive data
+*.backup
+*.bak
+family-vault/

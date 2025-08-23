@@ -1,13 +1,18 @@
 import { render, screen, waitFor, act } from '@testing-library/react';
 import HeaderText from '../../components/HeaderText';
-import { getWorkshopProjects } from '../../lib/api';
 
-// Mock the API
-jest.mock('../../lib/api', () => ({
-  getWorkshopProjects: jest.fn()
+// Mock canvas getBoundingClientRect for mist effect calculations
+HTMLElement.prototype.getBoundingClientRect = jest.fn(() => ({
+  width: 800,
+  height: 100,
+  top: 0,
+  left: 0,
+  bottom: 100,
+  right: 800,
+  x: 0,
+  y: 0,
+  toJSON: jest.fn()
 }));
-
-const mockGetWorkshopProjects = getWorkshopProjects as jest.MockedFunction<typeof getWorkshopProjects>;
 
 // Mock matchMedia for prefers-reduced-motion
 Object.defineProperty(window, 'matchMedia', {
@@ -24,159 +29,254 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
-// Mock Canvas and WebGL for Three.js
+// Mock Canvas 2D context for mist effect
+const mockCanvasContext = {
+  fillRect: jest.fn(),
+  clearRect: jest.fn(),
+  getImageData: jest.fn(),
+  putImageData: jest.fn(),
+  createImageData: jest.fn(),
+  setTransform: jest.fn(),
+  drawImage: jest.fn(),
+  save: jest.fn(),
+  fillText: jest.fn(),
+  restore: jest.fn(),
+  beginPath: jest.fn(),
+  moveTo: jest.fn(),
+  lineTo: jest.fn(),
+  closePath: jest.fn(),
+  stroke: jest.fn(),
+  translate: jest.fn(),
+  scale: jest.fn(),
+  rotate: jest.fn(),
+  arc: jest.fn(),
+  fill: jest.fn(),
+  fillStyle: '',
+};
+
 const mockCanvas = {
-  getContext: jest.fn(() => ({
-    fillRect: jest.fn(),
-    clearRect: jest.fn(),
-    getImageData: jest.fn(),
-    putImageData: jest.fn(),
-    createImageData: jest.fn(),
-    setTransform: jest.fn(),
-    drawImage: jest.fn(),
-    save: jest.fn(),
-    fillText: jest.fn(),
-    restore: jest.fn(),
-    beginPath: jest.fn(),
-    moveTo: jest.fn(),
-    lineTo: jest.fn(),
-    closePath: jest.fn(),
-    stroke: jest.fn(),
-    translate: jest.fn(),
-    scale: jest.fn(),
-    rotate: jest.fn(),
-    arc: jest.fn(),
-    fill: jest.fn(),
-  })),
+  getContext: jest.fn(() => mockCanvasContext),
+  width: 800,
+  height: 100,
+  style: {}
 };
 
 Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
   value: mockCanvas.getContext,
 });
 
+// Mock requestAnimationFrame and cancelAnimationFrame
+global.requestAnimationFrame = jest.fn(cb => setTimeout(cb, 16));
+global.cancelAnimationFrame = jest.fn(clearTimeout);
+
 describe('HeaderText Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.clearAllTimers();
 
-    // Mock successful API response with workshop data
-    mockGetWorkshopProjects.mockResolvedValue({
-      projects: [
-        {
-          id: 'engraving-automation',
-          title: 'Engraving Automation Platform',
-          status: 'ACTIVE',
-          domain: ['Excel Automation', 'Engraving', 'Manufacturing'],
-          complexity: 'H',
-          impact: 'High',
-          updated_at: '2025-08-23'
-        },
-        {
-          id: 'promoteros-intelligence',
-          title: 'PromoterOS Concert Intelligence',
-          status: 'CALIBRATING',
-          domain: ['Live Music', 'Demand Prediction', 'Social Analytics'],
-          complexity: 'H',
-          impact: 'High',
-          updated_at: '2025-08-23'
-        }
-      ]
-    });
+    // Reset canvas mocks
+    mockCanvasContext.clearRect.mockClear();
+    mockCanvasContext.beginPath.mockClear();
+    mockCanvasContext.arc.mockClear();
+    mockCanvasContext.fill.mockClear();
   });
 
-  it('renders the static text content', async () => {
+  it('renders the static text content', () => {
     render(<HeaderText />);
-
     expect(screen.getByText('Currently engineering')).toBeInTheDocument();
   });
 
-  it('loads and displays workshop project data', async () => {
+  it('renders fallback text during SSR', () => {
     render(<HeaderText />);
 
-    await waitFor(() => {
-      expect(mockGetWorkshopProjects).toHaveBeenCalled();
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText(/engraving automation platform/i)).toBeInTheDocument();
-    });
-  });
-
-  it('handles prefers-reduced-motion', async () => {
-    // Mock reduced motion preference
-    window.matchMedia = jest.fn().mockImplementation(query => ({
-      matches: query === '(prefers-reduced-motion: reduce)' ? true : false,
-      media: query,
-      onchange: null,
-      addListener: jest.fn(),
-      removeListener: jest.fn(),
-      addEventListener: jest.fn(),
-      removeEventListener: jest.fn(),
-      dispatchEvent: jest.fn(),
-    }));
-
-    render(<HeaderText />);
-
-    await waitFor(() => {
-      expect(mockGetWorkshopProjects).toHaveBeenCalled();
-    });
-
-    // Should render fallback version
-    const heading = screen.getByRole('heading');
-    expect(heading).toBeInTheDocument();
-  });
-
-  it('handles empty project data gracefully', async () => {
-    mockGetWorkshopProjects.mockResolvedValue({ projects: [] });
-
-    render(<HeaderText />);
-
-    await waitFor(() => {
-      expect(mockGetWorkshopProjects).toHaveBeenCalled();
-    });
-
-    // Should render fallback text
+    // Should show fallback text initially (before client hydration)
     expect(screen.getByText(/operational excellence systems/i)).toBeInTheDocument();
   });
 
-  it('handles API errors gracefully', async () => {
-    mockGetWorkshopProjects.mockRejectedValue(new Error('API Error'));
-
+  it('loads static project data after client hydration', async () => {
     render(<HeaderText />);
 
+    // Wait for client-side initialization
     await waitFor(() => {
-      expect(mockGetWorkshopProjects).toHaveBeenCalled();
-    });
-
-    // Component should still render without crashing
-    expect(screen.getByText('Currently engineering')).toBeInTheDocument();
-  });
-
-  it('displays projects in lowercase', async () => {
-    render(<HeaderText />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/engraving automation platform/i)).toBeInTheDocument();
+      expect(screen.getByText(/engraving automation for a trophy franchise network/i)).toBeInTheDocument();
     });
   });
 
-  it('rotates between projects when multiple are available', async () => {
+  it('displays all project titles in rotation', async () => {
+    render(<HeaderText />);
+
+    // Wait for client-side initialization
+    await waitFor(() => {
+      // Should show first project initially
+      expect(screen.getByText(/engraving automation for a trophy franchise network/i)).toBeInTheDocument();
+    });
+  });
+
+  it('rotates between projects at 5-second intervals', async () => {
     jest.useFakeTimers();
 
     render(<HeaderText />);
 
+    // Wait for client-side initialization
     await waitFor(() => {
-      expect(mockGetWorkshopProjects).toHaveBeenCalled();
+      expect(screen.getByText(/engraving automation for a trophy franchise network/i)).toBeInTheDocument();
     });
 
-    // Wait for initial load
-    await waitFor(() => {
-      expect(screen.getByText(/engraving automation platform/i)).toBeInTheDocument();
-    });
-
-    // Fast-forward through transition
+    // Fast-forward through rotation interval
     act(() => {
-      jest.advanceTimersByTime(6000); // 5s interval + 1s transition
+      jest.advanceTimersByTime(5000); // 5 second rotation interval
     });
+
+    // Should transition to second project after delay
+    act(() => {
+      jest.advanceTimersByTime(800); // Complete transition animation
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/concert intelligence platform for live music venues/i)).toBeInTheDocument();
+    });
+
+    jest.useRealTimers();
+  });
+
+  it('triggers mist effect during transitions', async () => {
+    jest.useFakeTimers();
+
+    render(<HeaderText />);
+
+    // Wait for projects to load
+    await waitFor(() => {
+      expect(screen.getByText(/engraving automation for a trophy franchise network/i)).toBeInTheDocument();
+    });
+
+    // Trigger transition
+    act(() => {
+      jest.advanceTimersByTime(5000);
+    });
+
+    // Canvas should be accessed for mist effect
+    expect(mockCanvas.getContext).toHaveBeenCalledWith('2d');
+
+    // Canvas drawing methods should be called for particles
+    act(() => {
+      jest.advanceTimersByTime(100); // Let animation frame run
+    });
+
+    expect(mockCanvasContext.clearRect).toHaveBeenCalled();
+    expect(mockCanvasContext.beginPath).toHaveBeenCalled();
+    expect(mockCanvasContext.arc).toHaveBeenCalled();
+    expect(mockCanvasContext.fill).toHaveBeenCalled();
+
+    jest.useRealTimers();
+  });
+
+  it('applies transition styles during mist effect', async () => {
+    jest.useFakeTimers();
+
+    render(<HeaderText />);
+
+    // Wait for projects to load
+    await waitFor(() => {
+      expect(screen.getByText(/engraving automation for a trophy franchise network/i)).toBeInTheDocument();
+    });
+
+    const canvas = document.querySelector('canvas');
+    const textSpan = document.querySelector('span[style]');
+
+    expect(canvas).toBeInTheDocument();
+    expect(canvas).toHaveClass('opacity-0'); // Not transitioning initially
+
+    // Trigger transition
+    act(() => {
+      jest.advanceTimersByTime(5000);
+    });
+
+    // Should apply transition styles
+    await waitFor(() => {
+      const updatedCanvas = document.querySelector('canvas');
+      expect(updatedCanvas).toHaveClass('opacity-100'); // Transitioning
+    });
+
+    jest.useRealTimers();
+  });
+
+  it('handles canvas context unavailability gracefully', async () => {
+    // Mock getContext to return null
+    mockCanvas.getContext.mockReturnValueOnce(null);
+
+    jest.useFakeTimers();
+
+    render(<HeaderText />);
+
+    // Wait for projects to load
+    await waitFor(() => {
+      expect(screen.getByText(/engraving automation for a trophy franchise network/i)).toBeInTheDocument();
+    });
+
+    // Trigger transition - should not crash
+    act(() => {
+      jest.advanceTimersByTime(5000);
+    });
+
+    // Component should still function
+    expect(screen.getByText('Currently engineering')).toBeInTheDocument();
+
+    jest.useRealTimers();
+  });
+
+  it('cleans up intervals and animation frames on unmount', async () => {
+    jest.useFakeTimers();
+
+    const { unmount } = render(<HeaderText />);
+
+    // Wait for client-side initialization
+    await waitFor(() => {
+      expect(screen.getByText(/engraving automation for a trophy franchise network/i)).toBeInTheDocument();
+    });
+
+    // Trigger some transitions to start timers
+    act(() => {
+      jest.advanceTimersByTime(5000);
+    });
+
+    const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+    const cancelAnimationFrameSpy = jest.spyOn(global, 'cancelAnimationFrame');
+
+    // Unmount component
+    unmount();
+
+    // Should clean up timers
+    expect(clearIntervalSpy).toHaveBeenCalled();
+
+    clearIntervalSpy.mockRestore();
+    cancelAnimationFrameSpy.mockRestore();
+    jest.useRealTimers();
+  });
+
+  it('creates correct number of mist particles', async () => {
+    jest.useFakeTimers();
+
+    render(<HeaderText />);
+
+    // Wait for projects to load
+    await waitFor(() => {
+      expect(screen.getByText(/engraving automation for a trophy franchise network/i)).toBeInTheDocument();
+    });
+
+    // Trigger transition
+    act(() => {
+      jest.advanceTimersByTime(5000);
+    });
+
+    // Let animation run for a bit
+    act(() => {
+      jest.advanceTimersByTime(100);
+    });
+
+    // Should create 50 particles (one arc call per particle per frame)
+    // The exact number depends on animation timing, but should be substantial
+    expect(mockCanvasContext.arc).toHaveBeenCalled();
+    expect(mockCanvasContext.arc.mock.calls.length).toBeGreaterThan(40);
 
     jest.useRealTimers();
   });

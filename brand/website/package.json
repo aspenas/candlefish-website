@@ -22,10 +22,14 @@
     "test:accessibility": "playwright test --grep @accessibility",
     "test:performance": "k6 run tests/performance/load-test.js",
     "test:visual": "playwright test --grep @visual",
-    "test:all": "npm run test:ci && npm run test:e2e && npm run test:accessibility"
+    "test:related": "jest --findRelatedTests --passWithNoTests",
+    "test:animation": "jest --testPathPattern=__tests__/performance/animation-performance.test.ts",
+    "test:integration": "jest --testPathPattern=__tests__/integration/",
+    "test:unit": "jest --testPathPattern=__tests__/components/",
+    "test:all": "npm run test:ci && npm run test:e2e && npm run test:accessibility && npm run test:visual",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@headlessui/react": "1.7.18",
     "@heroicons/react": "2.1.1",
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
@@ -52,7 +56,6 @@
     "remark-gfm": "^4.0.1",
     "remark-html": "16.0.1",
     "resend": "^4.0.0",
-    "socket.io-client": "^4.8.1",
     "tailwindcss": "3.4.1",
     "three": "^0.179.1",
     "zod": "^3.22.4"
@@ -82,6 +85,23 @@
     "playwright": "^1.54.2",
     "raw-loader": "^4.0.2",
     "ts-node": "^10.9.2",
-    "typescript": "5.3.3"
+    "typescript": "5.3.3",
+    "lint-staged": "^15.2.0"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write",
+      "npm run test:related --"
+    ],
+    "*.{json,css,md,yml,yaml}": [
+      "prettier --write"
+    ],
+    "*.{ts,tsx}": [
+      "bash -c 'npx tsc --noEmit'"
+    ],
+    "**/__tests__/**/*.{js,jsx,ts,tsx}": [
+      "npm run test:coverage --"
+    ]
   }
 }

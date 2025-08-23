@@ -12,7 +12,7 @@ fi
 echo "🚀 Deploying to candlefish.ai..."
 
 # Deploy to production site
-netlify deploy --prod --site candlefish-grotto --dir .next
+netlify deploy --prod --site candlefish-grotto --dir out
 
 echo "✅ Production deployment complete!"
 echo "🔗 View at: https://candlefish.ai"
