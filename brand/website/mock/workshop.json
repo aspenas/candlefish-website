@@ -1,16 +1,1 @@
-{
-  "projects": [
-    {
-      "id": "engraving",
-      "title": "Engraving Automation Platform"
-    },
-    {
-      "id": "paintcrm",
-      "title": "PaintCRM Excel-to-Next.js Migration"
-    },
-    {
-      "id": "promoteros",
-      "title": "PromoterOS Live-Music Booking"
-    }
-  ]
-}
+null

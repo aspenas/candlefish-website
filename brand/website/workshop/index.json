@@ -1,0 +1,58 @@
+[
+  {
+    "slug": "engraving-automation",
+    "title": "Engraving Automation Platform",
+    "status": "ACTIVE",
+    "domain": [
+      "Excel Automation",
+      "Engraving",
+      "Manufacturing"
+    ],
+    "complexity": "H",
+    "impact": "High",
+    "updated_at": "2025-08-23",
+    "safe_public": true
+  },
+  {
+    "slug": "promoteros-intelligence",
+    "title": "PromoterOS Concert Intelligence",
+    "status": "CALIBRATING",
+    "domain": [
+      "Live Music",
+      "Demand Prediction",
+      "Social Analytics"
+    ],
+    "complexity": "H",
+    "impact": "High",
+    "updated_at": "2025-08-23",
+    "safe_public": true
+  },
+  {
+    "slug": "inventory-automation",
+    "title": "Highline Inventory Management System",
+    "status": "OPERATIONAL",
+    "domain": [
+      "Inventory Management",
+      "Real Estate",
+      "Database"
+    ],
+    "complexity": "M",
+    "impact": "Medium",
+    "updated_at": "2025-08-22",
+    "safe_public": true
+  },
+  {
+    "slug": "paintbox-estimation",
+    "title": "Paintbox Excel-to-Web Platform",
+    "status": "OPERATIONAL",
+    "domain": [
+      "Excel Migration",
+      "Offline-First",
+      "Formula Compilation"
+    ],
+    "complexity": "H",
+    "impact": "High",
+    "updated_at": "2025-08-22",
+    "safe_public": true
+  }
+]
