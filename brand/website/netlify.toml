@@ -1,6 +1,6 @@
 [build]
   publish = "out/"
-  command = "npm ci && npm run export"
+  command = "npm ci --include=dev && npm run export"
 
 [build.environment]
   NODE_VERSION = "20"
@@ -46,9 +46,12 @@
 # Environment-specific configurations
 [context.production]
   environment = { NODE_ENV = "production" }
+  command = "npm ci --include=dev && npm run export"
 
 [context.deploy-preview]
   environment = { NODE_ENV = "development" }
+  command = "npm ci --include=dev && npm run export"
 
 [context.branch-deploy]
   environment = { NODE_ENV = "development" }
+  command = "npm ci --include=dev && npm run export"

@@ -1,0 +1,179 @@
+name: PromoterOS Deployment
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'services/promoteros-api/**'
+      - 'apps/promoteros-web/**'
+      - 'libs/ts/promoteros-types/**'
+      - '.github/workflows/promoteros-deploy.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'services/promoteros-api/**'
+      - 'apps/promoteros-web/**'
+      - 'libs/ts/promoteros-types/**'
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '8'
+
+jobs:
+  test:
+    name: Test and Lint
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: promoteros_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared types
+        run: pnpm --filter @candlefish/promoteros-types build
+
+      - name: Lint API
+        run: pnpm --filter @candlefish/promoteros-api lint
+
+      - name: Type check API
+        run: pnpm --filter @candlefish/promoteros-api typecheck
+
+      - name: Test API
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/promoteros_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-secret
+        run: |
+          pnpm --filter @candlefish/promoteros-api db:push
+          pnpm --filter @candlefish/promoteros-api test
+
+      - name: Lint Web
+        run: pnpm --filter @candlefish/promoteros-web lint
+
+      - name: Type check Web
+        run: pnpm --filter @candlefish/promoteros-web typecheck
+
+      - name: Build Web (test build)
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3002
+          SKIP_ENV_VALIDATION: 1
+        run: pnpm --filter @candlefish/promoteros-web build
+
+  deploy-api:
+    name: Deploy API to Fly.io
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Fly.io CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy API
+        working-directory: ./services/promoteros-api
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  deploy-web:
+    name: Deploy Web to Fly.io
+    needs: [test, deploy-api]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Fly.io CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy Web
+        working-directory: ./apps/promoteros-web
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  post-deploy:
+    name: Post-deployment tasks
+    needs: [deploy-api, deploy-web]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Fly.io CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Run database migrations
+        working-directory: ./services/promoteros-api
+        run: flyctl ssh console -C "npm run db:migrate:deploy"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Verify deployment
+        run: |
+          echo "Waiting for services to be ready..."
+          sleep 30
+          
+          # Test API health
+          curl --fail https://promoteros-api.fly.dev/healthz || exit 1
+          
+          # Test Web app
+          curl --fail https://promoteros-web.fly.dev/ || exit 1
+          
+          echo "Deployment verified successfully!"

@@ -1,0 +1,34 @@
+apiVersion: v2
+name: promoteros
+description: AI-Powered Concert Booking Platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - concert-booking
+  - ai
+  - ml
+  - tiktok
+home: https://promoteros.candlefish.ai
+sources:
+  - https://github.com/candlefish-ai/promoteros
+maintainers:
+  - name: Patrick Smith
+    email: patrick@candlefish.ai
+dependencies:
+  - name: postgresql
+    version: "12.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: redis
+    version: "18.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+  - name: prometheus
+    version: "25.x.x"
+    repository: https://prometheus-community.github.io/helm-charts
+    condition: prometheus.enabled
+  - name: grafana
+    version: "7.x.x"
+    repository: https://grafana.github.io/helm-charts
+    condition: grafana.enabled

@@ -7,9 +7,10 @@ import type { Instrument } from '../../data/instruments/types'
 
 // Memoized sub-components for better performance
 const InstrumentsHeader = memo(() => (
-  <header className="border-b border-[#333] px-6 py-4">
+  <header className="border-b border-[#333] px-6 py-4 relative">
+    <div className="absolute left-0 bottom-0 w-full h-px bg-gradient-to-r from-transparent via-[#3FD3C6]/20 to-transparent"></div>
     <div className="max-w-6xl mx-auto">
-      <Link href="/" className="text-xs text-[#888] hover:text-[#fff]">
+      <Link href="/" className="text-xs text-[#888] hover:text-[#3FD3C6] transition-colors">
         ← Back to Codex
       </Link>
       <h1 className="text-lg text-[#fff] mt-2">Technical Instruments</h1>
@@ -181,23 +182,32 @@ export default function InstrumentsPage() {
   }, [])
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a] text-[#d4d4d4] font-mono">
-      <InstrumentsHeader />
-
-      <CategoryFilter
-        categories={categories}
-        selectedCategory={selectedCategory}
-        onCategoryChange={handleCategoryChange}
+    <main className="min-h-screen bg-[#0a0a0a] text-[#d4d4d4] font-mono pt-20 relative">
+      {/* Subtle brand accent overlay */}
+      <div 
+        className="absolute inset-0 opacity-[0.02] pointer-events-none"
+        style={{
+          background: `linear-gradient(135deg, transparent 0%, rgba(63, 211, 198, 0.1) 50%, transparent 100%)`
+        }}
       />
+      <div className="relative z-10">
+        <InstrumentsHeader />
 
-      {/* Instruments Grid */}
-      <section className="max-w-6xl mx-auto px-6 pb-12">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredInstruments.map(instrument => (
-            <InstrumentCard key={instrument.id} instrument={instrument} />
-          ))}
-        </div>
-      </section>
+        <CategoryFilter
+          categories={categories}
+          selectedCategory={selectedCategory}
+          onCategoryChange={handleCategoryChange}
+        />
+
+        {/* Instruments Grid */}
+        <section className="max-w-6xl mx-auto px-6 pb-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {filteredInstruments.map(instrument => (
+              <InstrumentCard key={instrument.id} instrument={instrument} />
+            ))}
+          </div>
+        </section>
+      </div>
     </main>
   )
 }

@@ -1,0 +1,184 @@
+{
+  "name": "Highline Inventory Management",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "inventory-webhook",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook_trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "resource": "inventory",
+        "additionalFields": {}
+      },
+      "id": "get_inventory",
+      "name": "Get Inventory Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"action\"]}}",
+              "operation": "equals",
+              "value2": "analyze_pricing"
+            }
+          ]
+        }
+      },
+      "id": "route_action",
+      "name": "Route Action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "operation": "analyze",
+        "model": "gpt-4",
+        "prompt": "Analyze the inventory items and suggest optimal pricing based on:\n- Original purchase price\n- Current market value\n- Item condition\n- Category trends\n\nItems: {{$json[\"items\"]}}\n\nProvide pricing recommendations in JSON format."
+      },
+      "id": "ai_analysis",
+      "name": "AI Price Analysis",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "resource": "inventory",
+        "updateKey": "id",
+        "additionalFields": {
+          "asking_price": "={{$json[\"suggested_price\"]}}"
+        }
+      },
+      "id": "update_prices",
+      "name": "Update Prices",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "to": "admin@5470highline.com",
+        "subject": "Inventory Pricing Updated",
+        "text": "The inventory pricing has been analyzed and updated.\n\nSummary:\n{{$json[\"summary\"]}}"
+      },
+      "id": "send_notification",
+      "name": "Send Notification",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "completed"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{$now}}"
+            }
+          ]
+        }
+      },
+      "id": "response",
+      "name": "Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [1450, 300]
+    }
+  ],
+  "connections": {
+    "webhook_trigger": {
+      "main": [
+        [
+          {
+            "node": "get_inventory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_inventory": {
+      "main": [
+        [
+          {
+            "node": "route_action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "route_action": {
+      "main": [
+        [
+          {
+            "node": "ai_analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ai_analysis": {
+      "main": [
+        [
+          {
+            "node": "update_prices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update_prices": {
+      "main": [
+        [
+          {
+            "node": "send_notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send_notification": {
+      "main": [
+        [
+          {
+            "node": "response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "highline-inventory"
+  },
+  "tags": []
+}

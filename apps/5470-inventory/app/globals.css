@@ -36,18 +36,41 @@
 
 @layer components {
   .glass-card {
-    @apply bg-slate-900/50 backdrop-blur-xl border border-slate-800/50 rounded-lg;
+    background-color: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(30, 41, 59, 0.5);
+    border-radius: 0.5rem;
   }
 
   .glass-button {
-    @apply bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 hover:bg-slate-700/50 transition-all duration-200;
+    background-color: rgba(30, 41, 59, 0.5);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(51, 65, 85, 0.5);
+    transition: all 200ms;
+  }
+  
+  .glass-button:hover {
+    background-color: rgba(51, 65, 85, 0.5);
   }
 
   .gradient-border {
-    @apply relative before:absolute before:inset-0 before:p-[1px] before:rounded-lg before:bg-gradient-to-br before:from-blue-500 before:to-purple-600 before:-z-10;
+    position: relative;
+  }
+  
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: 0.5rem;
+    background: linear-gradient(to bottom right, #3b82f6, #9333ea);
+    z-index: -1;
   }
 
   .text-gradient {
-    @apply bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent;
+    background: linear-gradient(to right, #60a5fa, #c084fc);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
 }

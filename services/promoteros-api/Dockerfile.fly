@@ -1,0 +1,67 @@
+# PromoterOS API - Fly.io Optimized Dockerfile
+FROM node:20-alpine AS base
+
+# Install dependencies only when needed
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+# Copy workspace configuration
+COPY pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml* ./
+COPY libs/ts/promoteros-types/package.json ./libs/ts/promoteros-types/
+COPY services/promoteros-api/package.json ./services/promoteros-api/
+
+# Install dependencies
+RUN corepack enable pnpm && pnpm install --frozen-lockfile
+
+# Build shared types
+FROM deps AS types-builder
+COPY libs/ts/promoteros-types/ ./libs/ts/promoteros-types/
+RUN pnpm --filter @candlefish/promoteros-types build
+
+# Rebuild the source code only when needed
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=types-builder /app/libs ./libs
+COPY services/promoteros-api/ ./services/promoteros-api/
+COPY pnpm-workspace.yaml ./
+
+WORKDIR /app/services/promoteros-api
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Build the application
+RUN npm run build
+
+# Production image, copy all the files and run
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+# Disable telemetry during runtime
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 expressjs
+
+# Copy the built application
+COPY --from=builder --chown=expressjs:nodejs /app/services/promoteros-api/dist ./dist
+COPY --from=builder --chown=expressjs:nodejs /app/services/promoteros-api/package.json ./package.json
+COPY --from=builder --chown=expressjs:nodejs /app/services/promoteros-api/prisma ./prisma
+COPY --from=builder --chown=expressjs:nodejs /app/node_modules ./node_modules
+
+USER expressjs
+
+EXPOSE 3002
+
+ENV PORT=3002
+ENV HOSTNAME="0.0.0.0"
+
+# Health check
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3002/healthz || exit 1
+
+CMD ["node", "dist/server.js"]

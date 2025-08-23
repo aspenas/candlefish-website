@@ -1,9 +1,0 @@
-{
-  "name": "@candlefish/tailwind-preset",
-  "version": "0.1.0",
-  "private": true,
-  "main": "index.cjs",
-  "peerDependencies": {
-    "tailwindcss": "^3.4.0"
-  }
-}

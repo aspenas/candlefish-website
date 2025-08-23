@@ -1,0 +1,407 @@
+# Default values for PromoterOS
+global:
+  environment: dev
+  domain: promoteros.candlefish.ai
+  imageRegistry: 681214184463.dkr.ecr.us-east-1.amazonaws.com
+  imagePullSecrets: []
+  storageClass: gp3
+  monitoring:
+    enabled: true
+  security:
+    enabled: true
+    networkPolicies: true
+    podSecurityPolicies: false
+
+# API Gateway Configuration
+apiGateway:
+  enabled: true
+  replicaCount: 3
+  image:
+    repository: promoteros/api-gateway
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 8080
+    annotations: {}
+  
+  ingress:
+    enabled: true
+    className: alb
+    annotations:
+      kubernetes.io/ingress.class: alb
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/certificate-arn: ""
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/ssl-redirect: "443"
+    hosts:
+      - host: api.promoteros.candlefish.ai
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+  
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  
+  nodeSelector:
+    workload: api
+  
+  tolerations:
+    - key: workload
+      operator: Equal
+      value: api
+      effect: NoSchedule
+  
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                    - api-gateway
+            topologyKey: kubernetes.io/hostname
+
+# Scraper Suite Configuration
+scraperSuite:
+  enabled: true
+  replicaCount: 5
+  image:
+    repository: promoteros/scraper-suite
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 5
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 60
+  
+  nodeSelector:
+    workload: scrapers
+  
+  tolerations:
+    - key: workload
+      operator: Equal
+      value: scrapers
+      effect: NoSchedule
+  
+  config:
+    concurrency: 10
+    retryAttempts: 3
+    proxyRotation: true
+    antiDetection: true
+
+# ML Inference Service
+mlInference:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: promoteros/ml-inference
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 8501
+    targetPort: 8501
+  
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "1000m"
+      nvidia.com/gpu: "1"
+    limits:
+      memory: "4Gi"
+      cpu: "2000m"
+      nvidia.com/gpu: "1"
+  
+  nodeSelector:
+    workload: ml
+    gpu: "true"
+  
+  tolerations:
+    - key: workload
+      operator: Equal
+      value: ml
+      effect: NoSchedule
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+  
+  modelConfig:
+    modelType: xgboost
+    modelVersion: v1.0.0
+    batchSize: 100
+    cacheEnabled: true
+    cacheTTL: 3600
+
+# Real-time WebSocket Service
+realtimeWS:
+  enabled: true
+  replicaCount: 3
+  image:
+    repository: promoteros/realtime-ws
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 3000
+    targetPort: 3000
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+  
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/affinity: cookie
+      nginx.ingress.kubernetes.io/affinity-mode: persistent
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    hosts:
+      - host: ws.promoteros.candlefish.ai
+        paths:
+          - path: /
+            pathType: Prefix
+  
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 60
+
+# Worker Queue Service
+workerQueue:
+  enabled: true
+  replicaCount: 5
+  image:
+    repository: promoteros/worker-queue
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 5
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+  
+  config:
+    concurrency: 10
+    maxRetries: 3
+    deadLetterQueue: true
+
+# n8n Workflow Automation
+n8n:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: n8nio/n8n
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  persistence:
+    enabled: true
+    storageClass: gp3
+    size: 10Gi
+  
+  ingress:
+    enabled: true
+    className: alb
+    hosts:
+      - host: n8n.promoteros.candlefish.ai
+        paths:
+          - path: /
+            pathType: Prefix
+  
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+# PostgreSQL Configuration
+postgresql:
+  enabled: false  # Use RDS in production
+  auth:
+    postgresPassword: "changeme"
+    database: promoteros
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
+
+# Redis Configuration
+redis:
+  enabled: false  # Use ElastiCache in production
+  auth:
+    enabled: true
+    password: "changeme"
+  master:
+    persistence:
+      enabled: true
+      size: 10Gi
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+
+# Prometheus Monitoring
+prometheus:
+  enabled: true
+  alertmanager:
+    enabled: true
+    persistentVolume:
+      enabled: true
+      size: 10Gi
+  server:
+    persistentVolume:
+      enabled: true
+      size: 50Gi
+    retention: "30d"
+  nodeExporter:
+    enabled: true
+  kubeStateMetrics:
+    enabled: true
+
+# Grafana Dashboards
+grafana:
+  enabled: true
+  adminPassword: "changeme"
+  persistence:
+    enabled: true
+    size: 10Gi
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://promoteros-prometheus-server
+          access: proxy
+          isDefault: true
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: 'default'
+          orgId: 1
+          folder: ''
+          type: file
+          disableDeletion: false
+          updateIntervalSeconds: 10
+          allowUiUpdates: false
+          options:
+            path: /var/lib/grafana/dashboards/default
+
+# External Secrets Configuration
+externalSecrets:
+  enabled: true
+  backend: aws-secrets-manager
+  region: us-east-1
+  roleArn: ""
+  secrets:
+    - name: database-credentials
+      key: promoteros/production/database
+    - name: redis-credentials
+      key: promoteros/production/redis
+    - name: jwt-secret
+      key: promoteros/production/jwt
+    - name: api-keys
+      key: promoteros/production/api-keys
+
+# Service Mesh Configuration
+serviceMesh:
+  enabled: true
+  provider: istio
+  mtls:
+    enabled: true
+    mode: STRICT
+  tracing:
+    enabled: true
+    sampling: 0.1
+  circuitBreaker:
+    enabled: true
+    consecutiveErrors: 5
+    interval: 30s
+    baseEjectionTime: 30s
+
+# Backup Configuration
+backup:
+  enabled: true
+  schedule: "0 2 * * *"
+  retention: 30
+  storageLocation: s3://promoteros-backups
+  includeNamespaces:
+    - promoteros-prod
+    - promoteros-api
+    - promoteros-scrapers
+
+# Security Policies
+securityPolicies:
+  networkPolicies:
+    enabled: true
+    denyAll: false
+    allowDNS: true
+    allowMetrics: true
+  podSecurityPolicies:
+    enabled: false
+  rbac:
+    enabled: true
+    create: true

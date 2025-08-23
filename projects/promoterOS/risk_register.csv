@@ -1,0 +1,36 @@
+ID,Area,Severity,Description,Impact,Owner,ETA,Status,Mitigation
+CR-001,Security,CRITICAL,Unrestricted egress in all security groups,Data exfiltration and C2 communication possible,DevOps,1d,Open,Implement restricted egress rules per service
+CR-002,Security,CRITICAL,RDS logging sensitive data,Passwords and PII exposed in logs,DevOps,2h,Open,Change log_statement to 'ddl' only
+CR-003,Security,CRITICAL,No Kubernetes network policies,Lateral movement possible after compromise,DevOps,1d,Open,Deploy zero-trust network policies
+CR-004,Security,CRITICAL,JWT secret in plaintext,Authentication can be compromised,DevOps,4h,Open,Use AWS Secrets Manager with IRSA
+CR-005,Security,CRITICAL,Containers running as root,Container escape possible,DevOps,2h,Open,Implement Pod Security Standards
+CR-006,Security,CRITICAL,No WAF protection,Vulnerable to OWASP Top 10,DevOps,4h,Open,Deploy AWS WAF with managed rules
+CR-007,Reliability,CRITICAL,No PodDisruptionBudgets,Complete outage during upgrades,DevOps,2h,Open,Create PDBs for all services
+CR-008,Performance,CRITICAL,No database connection pooling,DB overwhelmed at scale,Backend,6h,Open,Deploy PgBouncer
+CR-009,Reliability,CRITICAL,No circuit breakers,Cascading failures from external APIs,Backend,1d,Open,Implement circuit breaker pattern
+CR-010,Security,CRITICAL,No rate limiting,DDoS and abuse possible,Backend,4h,Open,Add rate limiting middleware
+HR-001,Operations,HIGH,Untested backups,Recovery may fail,DevOps,4h,Open,Automate backup testing
+HR-002,Scalability,HIGH,No autoscaling,Cannot handle traffic spikes,DevOps,3h,Open,Configure HPA for all services
+HR-003,Monitoring,HIGH,No alerting,Silent failures,DevOps,4h,Open,Setup Prometheus alerts
+HR-004,Reliability,HIGH,No graceful shutdown,Request failures during deploy,Backend,2h,Open,Implement graceful shutdown
+HR-005,Security,HIGH,No secret rotation,Long-lived credentials,DevOps,6h,Open,Implement automated rotation
+HR-006,Performance,HIGH,Missing database indexes,Slow queries at scale,Backend,2h,Open,Add indexes for hot queries
+HR-007,Security,HIGH,No image scanning,Vulnerable containers,DevOps,3h,Open,Add Trivy to CI/CD
+HR-008,Compliance,HIGH,No audit logging,Cannot track changes,DevOps,4h,Open,Enable CloudTrail and K8s audit
+HR-009,Cost,HIGH,No resource limits,Runaway costs possible,DevOps,2h,Open,Set resource limits everywhere
+HR-010,Security,HIGH,Weak IAM policies,Over-privileged access,DevOps,4h,Open,Implement least privilege
+MR-001,Performance,MEDIUM,No request tracing,Hard to debug issues,Backend,4h,Open,Add OpenTelemetry
+MR-002,Operations,MEDIUM,No runbooks,Slow incident response,DevOps,1d,Open,Create operational runbooks
+MR-003,Performance,MEDIUM,No caching strategy,Unnecessary load,Backend,4h,Open,Implement Redis caching
+MR-004,Reliability,MEDIUM,No health check tuning,False positives,DevOps,2h,Open,Tune health check parameters
+MR-005,Security,MEDIUM,No CORS validation,Cross-origin attacks,Backend,2h,Open,Strict CORS configuration
+MR-006,Operations,MEDIUM,No capacity planning,Resource exhaustion,DevOps,4h,Open,Create capacity model
+MR-007,Performance,MEDIUM,No query optimization,Slow API responses,Backend,6h,Open,Optimize N+1 queries
+MR-008,Security,MEDIUM,Verbose error messages,Information disclosure,Backend,2h,Open,Sanitize error responses
+MR-009,Reliability,MEDIUM,No retry logic,Transient failures,Backend,4h,Open,Add exponential backoff
+MR-010,Monitoring,MEDIUM,No SLO definition,Unclear targets,DevOps,3h,Open,Define and monitor SLOs
+LR-001,Documentation,LOW,Incomplete API docs,Developer confusion,Backend,1d,Low,Complete OpenAPI spec
+LR-002,Quality,LOW,Low test coverage,Regression risk,Backend,2d,Low,Increase to 80% coverage
+LR-003,Operations,LOW,No chatops,Slow operations,DevOps,1d,Low,Integrate Slack commands
+LR-004,Performance,LOW,Unoptimized images,Slow cold starts,DevOps,4h,Low,Use distroless images
+LR-005,Security,LOW,No security headers,Minor vulnerabilities,Backend,2h,Low,Add security headers

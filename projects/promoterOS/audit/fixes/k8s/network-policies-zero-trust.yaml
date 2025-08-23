@@ -1,0 +1,408 @@
+# Network Policies - Zero Trust Configuration - REMEDIATION CR-003
+# Default deny all traffic, then explicitly allow required communications
+
+---
+# Default deny all ingress and egress in promoteros-api namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: promoteros-api
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+
+---
+# Allow DNS for all pods (required for service discovery)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-access
+  namespace: promoteros-api
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    - podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+---
+# API Gateway Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-gateway-network-policy
+  namespace: promoteros-api
+spec:
+  podSelector:
+    matchLabels:
+      app: api-gateway
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow traffic from ingress controller
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  # Allow to booking service
+  - to:
+    - podSelector:
+        matchLabels:
+          app: booking-service
+    ports:
+    - protocol: TCP
+      port: 8081
+  # Allow to artist analyzer
+  - to:
+    - podSelector:
+        matchLabels:
+          app: artist-analyzer
+    ports:
+    - protocol: TCP
+      port: 8082
+  # Allow to payment service
+  - to:
+    - podSelector:
+        matchLabels:
+          app: payment-service
+    ports:
+    - protocol: TCP
+      port: 8083
+  # Allow to PostgreSQL (via service)
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: promoteros-data
+    ports:
+    - protocol: TCP
+      port: 5432
+  # Allow to Redis
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: promoteros-cache
+    ports:
+    - protocol: TCP
+      port: 6379
+  # Allow HTTPS to external APIs (TikTok, Stripe)
+  - to:
+    - ipBlock:
+        cidr: 34.96.0.0/16  # TikTok API
+    - ipBlock:
+        cidr: 34.102.0.0/16  # TikTok API secondary
+    - ipBlock:
+        cidr: 34.19.0.0/16   # Stripe API
+    - ipBlock:
+        cidr: 35.235.0.0/16  # Stripe webhooks
+    ports:
+    - protocol: TCP
+      port: 443
+
+---
+# Booking Service Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: booking-service-network-policy
+  namespace: promoteros-api
+spec:
+  podSelector:
+    matchLabels:
+      app: booking-service
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow from API gateway
+  - from:
+    - podSelector:
+        matchLabels:
+          app: api-gateway
+    ports:
+    - protocol: TCP
+      port: 8081
+  # Allow from background workers
+  - from:
+    - podSelector:
+        matchLabels:
+          app: booking-worker
+    ports:
+    - protocol: TCP
+      port: 8081
+  egress:
+  # Allow to PostgreSQL
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: promoteros-data
+    ports:
+    - protocol: TCP
+      port: 5432
+  # Allow to Redis
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: promoteros-cache
+    ports:
+    - protocol: TCP
+      port: 6379
+  # Allow to notification service
+  - to:
+    - podSelector:
+        matchLabels:
+          app: notification-service
+    ports:
+    - protocol: TCP
+      port: 8084
+
+---
+# Artist Analyzer Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: artist-analyzer-network-policy
+  namespace: promoteros-api
+spec:
+  podSelector:
+    matchLabels:
+      app: artist-analyzer
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow from API gateway
+  - from:
+    - podSelector:
+        matchLabels:
+          app: api-gateway
+    ports:
+    - protocol: TCP
+      port: 8082
+  # Allow from scraper workers
+  - from:
+    - podSelector:
+        matchLabels:
+          app: scraper-worker
+    ports:
+    - protocol: TCP
+      port: 8082
+  egress:
+  # Allow to PostgreSQL
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: promoteros-data
+    ports:
+    - protocol: TCP
+      port: 5432
+  # Allow to Redis
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: promoteros-cache
+    ports:
+    - protocol: TCP
+      port: 6379
+  # Allow HTTPS to TikTok API
+  - to:
+    - ipBlock:
+        cidr: 34.96.0.0/16
+    - ipBlock:
+        cidr: 34.102.0.0/16
+    ports:
+    - protocol: TCP
+      port: 443
+
+---
+# Payment Service Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: payment-service-network-policy
+  namespace: promoteros-api
+spec:
+  podSelector:
+    matchLabels:
+      app: payment-service
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow from API gateway
+  - from:
+    - podSelector:
+        matchLabels:
+          app: api-gateway
+    ports:
+    - protocol: TCP
+      port: 8083
+  # Allow Stripe webhooks (from ingress)
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 8083
+  egress:
+  # Allow to PostgreSQL
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: promoteros-data
+    ports:
+    - protocol: TCP
+      port: 5432
+  # Allow to Redis
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: promoteros-cache
+    ports:
+    - protocol: TCP
+      port: 6379
+  # Allow HTTPS to Stripe API
+  - to:
+    - ipBlock:
+        cidr: 34.19.0.0/16
+    - ipBlock:
+        cidr: 35.235.0.0/16
+    ports:
+    - protocol: TCP
+      port: 443
+
+---
+# PgBouncer Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: pgbouncer-network-policy
+  namespace: promoteros-data
+spec:
+  podSelector:
+    matchLabels:
+      app: pgbouncer
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow from all services in promoteros-api namespace
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: promoteros-api
+    ports:
+    - protocol: TCP
+      port: 5432
+  egress:
+  # Allow to RDS PostgreSQL (specific IPs will be added dynamically)
+  - to:
+    - ipBlock:
+        cidr: 10.0.0.0/16  # VPC CIDR
+    ports:
+    - protocol: TCP
+      port: 5432
+
+---
+# Redis Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-network-policy
+  namespace: promoteros-cache
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+  - Ingress
+  ingress:
+  # Allow from promoteros-api namespace
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: promoteros-api
+    ports:
+    - protocol: TCP
+      port: 6379
+
+---
+# Prometheus Monitoring Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: prometheus-network-policy
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app: prometheus
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow Grafana access
+  - from:
+    - podSelector:
+        matchLabels:
+          app: grafana
+    ports:
+    - protocol: TCP
+      port: 9090
+  egress:
+  # Allow scraping all namespaces
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 8080  # Metrics port
+    - protocol: TCP
+      port: 9090  # Prometheus port
+
+---
+# Default deny all in data namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: promoteros-data
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+
+---
+# Default deny all in cache namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: promoteros-cache
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress

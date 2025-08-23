@@ -1,0 +1,17 @@
+[build]
+  publish = "dist"
+  command = "npx vite build"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[context.production.environment]
+  VITE_API_URL = "https://5470-inventory.fly.dev/api/v1"
+
+[context.deploy-preview.environment]
+  VITE_API_URL = "https://5470-inventory.fly.dev/api/v1"
+
+[context.branch-deploy.environment]
+  VITE_API_URL = "https://5470-inventory.fly.dev/api/v1"
