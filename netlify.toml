@@ -13,36 +13,168 @@
   VITE_ENVIRONMENT = "production"
   VITE_BUILD_MODE = "production"
 
-# Serve React app with SPA routing
+[build.processing]
+  skip_processing = false
+
+[build.processing.css]
+  bundle = true
+  minify = true
+
+[build.processing.js]
+  bundle = true
+  minify = true
+
+[build.processing.html]
+  pretty_urls = true
+
+# Build optimization
+[build.environment.production]
+  VITE_SOURCEMAP = "false"
+  VITE_MINIFY = "true"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Security Headers
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+
+    # Content Security Policy
+    Content-Security-Policy = '''
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      font-src 'self' https://fonts.gstatic.com data:;
+      img-src 'self' data: https: blob:;
+      connect-src 'self' https://api.figma.com https://www.google-analytics.com https://vitals.vercel-insights.com;
+      frame-src 'self';
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self';
+      upgrade-insecure-requests;
+    '''
+
+# Static assets with long-term caching
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    X-Content-Type-Options = "nosniff"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    X-Content-Type-Options = "nosniff"
+
+[[headers]]
+  for = "/*.woff2"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    X-Content-Type-Options = "nosniff"
+
+[[headers]]
+  for = "/*.woff"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    X-Content-Type-Options = "nosniff"
+
+[[headers]]
+  for = "/*.ttf"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    X-Content-Type-Options = "nosniff"
+
+# Images with medium-term caching
+[[headers]]
+  for = "/*.png"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000"
+    X-Content-Type-Options = "nosniff"
+
+[[headers]]
+  for = "/*.jpg"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000"
+    X-Content-Type-Options = "nosniff"
+
+[[headers]]
+  for = "/*.jpeg"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000"
+    X-Content-Type-Options = "nosniff"
+
+[[headers]]
+  for = "/*.webp"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000"
+    X-Content-Type-Options = "nosniff"
+
+[[headers]]
+  for = "/*.svg"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000"
+    X-Content-Type-Options = "nosniff"
+
+# HTML files with short-term caching
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Manifest and service worker
+[[headers]]
+  for = "/manifest.json"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+    X-Content-Type-Options = "nosniff"
+
+[[headers]]
+  for = "/service-worker.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    X-Content-Type-Options = "nosniff"
+
+[[redirects]]
+  from = "/onboarding"
+  to = "/onboarding.html"
+  status = 200
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
+[functions]
+  directory = "netlify/functions"
 
-# Guard privileged family documents behind auth entry and Edge validation
-[[redirects]]
-  from = "/docs/privileged/family/*"
-  to = "/docs/privileged/family/index.html"
-  status = 200
-  force = true
+[[plugins]]
+  package = "@netlify/plugin-lighthouse"
 
-# Context-specific configurations
-[context.production]
-  environment = { NODE_ENV = "production", CORS_ORIGINS = "https://candlefish.ai,https://www.candlefish.ai,https://dashboard.candlefish.ai" }
+  [plugins.inputs]
+    # Performance budget
+    performance = 0.9
+    accessibility = 0.9
+    best-practices = 0.9
+    seo = 0.9
 
-[context.deploy-preview]
-  environment = { NODE_ENV = "development", CORS_ORIGINS = "*" }
+    # Audit URLs
+    audits = [
+      { url = "/", name = "Homepage" },
+      { url = "/v2", name = "Homepage V2" }
+    ]
 
-[context.branch-deploy]
-  environment = { NODE_ENV = "development", CORS_ORIGINS = "*" }
-
-[[headers]]
-  for = "/docs/privileged/family/*"
-  [headers.values]
-    X-Robots-Tag = "noindex, noarchive, nosnippet, noimageindex"
-    Cache-Control = "private, max-age=60"
-
-[[edge_functions]]
-  path = "/docs/privileged/family/*"
-  function = "validate-family-auth"
+    # Thresholds that will fail the build
+    [plugins.inputs.thresholds]
+      performance = 0.8
+      accessibility = 0.8
+      best-practices = 0.8
+      seo = 0.8
