@@ -1,0 +1,100 @@
+# Pod Disruption Budgets for PromoterOS
+# Ensures high availability during cluster maintenance and upgrades
+
+---
+# API Gateway PDB - Critical service, always keep 2 pods running
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api-gateway-pdb
+  namespace: promoteros-api
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: api-gateway
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+
+---
+# PgBouncer PDB - Critical for database connections
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pgbouncer-pdb
+  namespace: promoteros-api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: pgbouncer
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+
+---
+# Scraper Suite PDB - Can tolerate more disruption
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: scraper-suite-pdb
+  namespace: promoteros-scrapers
+spec:
+  minAvailable: 3
+  selector:
+    matchLabels:
+      app: scraper-suite
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+
+---
+# ML Inference PDB - Keep at least 1 for predictions
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ml-inference-pdb
+  namespace: promoteros-ml
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: ml-inference
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+
+---
+# WebSocket Service PDB - Maintain connections
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: realtime-ws-pdb
+  namespace: promoteros-realtime
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: realtime-ws
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+
+---
+# Worker Queue PDB - Background jobs can tolerate disruption
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: worker-queue-pdb
+  namespace: promoteros-api
+spec:
+  maxUnavailable: 2
+  selector:
+    matchLabels:
+      app: worker-queue
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+
+---
+# n8n Workflow PDB - Keep at least 1 for automations
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: n8n-pdb
+  namespace: promoteros-api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: n8n
+  unhealthyPodEvictionPolicy: IfHealthyBudget

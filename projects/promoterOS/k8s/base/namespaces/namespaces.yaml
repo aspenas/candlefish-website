@@ -1,0 +1,52 @@
+# Namespaces for PromoterOS
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: promoteros-api
+  labels:
+    name: promoteros-api
+    environment: base
+    istio-injection: enabled
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: promoteros-scrapers
+  labels:
+    name: promoteros-scrapers
+    environment: base
+    istio-injection: enabled
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: promoteros-ml
+  labels:
+    name: promoteros-ml
+    environment: base
+    istio-injection: enabled
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: promoteros-realtime
+  labels:
+    name: promoteros-realtime
+    environment: base
+    istio-injection: enabled
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: promoteros-monitoring
+  labels:
+    name: promoteros-monitoring
+    environment: base
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: promoteros-n8n
+  labels:
+    name: promoteros-n8n
+    environment: base

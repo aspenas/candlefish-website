@@ -34,6 +34,8 @@
     "next": "^14.2.32",
     "p5": "^1.11.9",
     "postcss": "8.4.33",
+    "postcss-import": "^16.1.1",
+    "postcss-nesting": "^13.0.2",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-markdown": "^10.1.0",
@@ -66,8 +68,6 @@
     "k6": "^0.0.0",
     "msw": "^2.10.5",
     "playwright": "^1.54.2",
-    "postcss-import": "^16.1.1",
-    "postcss-nesting": "^13.0.2",
     "typescript": "5.3.3"
   }
 }

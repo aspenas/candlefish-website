@@ -205,6 +205,20 @@ export const NoteViewer = ({ noteId, onClose }: NoteViewerProps) => {
               Share Note →
             </button>
           </nav>
+
+          {/* Subscribe Footer */}
+          <footer className="mt-16 p-8 bg-[#1C1C1C] text-center -mx-6">
+            <p className="text-sm text-[#415A77] mb-4">
+              We publish when we discover something worth sharing.
+              No content calendar. No SEO games. Just operational patterns.
+            </p>
+            <a 
+              href="/contact"
+              className="inline-block text-[#3FD3C6] hover:text-[#4FE3D6] transition-colors"
+            >
+              Subscribe for Notifications →
+            </a>
+          </footer>
         </div>
       </motion.article>
     </AnimatePresence>

@@ -8,7 +8,7 @@ WORKDIR /app
 
 # Copy package files
 COPY package.json pnpm-lock.yaml* ./
-RUN corepack enable pnpm && pnpm i --frozen-lockfile
+RUN corepack enable pnpm && pnpm i --no-frozen-lockfile
 
 # Build the application
 FROM base AS builder
@@ -24,7 +24,7 @@ ENV NODE_ENV=production
 RUN npx prisma generate
 
 # Build Next.js application
-RUN npm run build
+RUN corepack enable pnpm && pnpm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner

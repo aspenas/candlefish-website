@@ -1,0 +1,489 @@
+# Network Policies for PromoterOS - Zero Trust Security Model
+# Default deny all ingress and egress, then explicitly allow required traffic
+
+---
+# Default deny all traffic in promoteros-api namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: promoteros-api
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+
+---
+# Allow API Gateway ingress from ALB ingress controller
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-api-gateway-ingress
+  namespace: promoteros-api
+spec:
+  podSelector:
+    matchLabels:
+      app: api-gateway
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: aws-load-balancer-controller
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 8081  # Health check port
+
+---
+# Allow API Gateway egress to required services
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-api-gateway-egress
+  namespace: promoteros-api
+spec:
+  podSelector:
+    matchLabels:
+      app: api-gateway
+  policyTypes:
+  - Egress
+  egress:
+  # DNS resolution
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # PostgreSQL via PgBouncer
+  - to:
+    - podSelector:
+        matchLabels:
+          app: pgbouncer
+    ports:
+    - protocol: TCP
+      port: 6432
+  # Redis cache
+  - to:
+    ports:
+    - protocol: TCP
+      port: 6379
+    - protocol: TCP
+      port: 6380  # Redis cluster
+  # External APIs (TikTok, Instagram, etc.)
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+        except:
+        - 10.0.0.0/8      # Private network
+        - 172.16.0.0/12   # Private network
+        - 192.168.0.0/16  # Private network
+        - 169.254.0.0/16  # Link-local
+    ports:
+    - protocol: TCP
+      port: 443
+
+---
+# Default deny all traffic in promoteros-scrapers namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: promoteros-scrapers
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+
+---
+# Allow scraper pods egress to external APIs and database
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-scraper-egress
+  namespace: promoteros-scrapers
+spec:
+  podSelector:
+    matchLabels:
+      app: scraper-suite
+  policyTypes:
+  - Egress
+  egress:
+  # DNS resolution
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # PostgreSQL via PgBouncer in api namespace
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: promoteros-api
+      podSelector:
+        matchLabels:
+          app: pgbouncer
+    ports:
+    - protocol: TCP
+      port: 6432
+  # Redis for caching
+  - to:
+    ports:
+    - protocol: TCP
+      port: 6379
+  # External scraping targets
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+        except:
+        - 10.0.0.0/8
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+        - 169.254.0.0/16
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80
+
+---
+# Default deny all traffic in promoteros-ml namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: promoteros-ml
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+
+---
+# Allow ML inference service ingress from API
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ml-inference-ingress
+  namespace: promoteros-ml
+spec:
+  podSelector:
+    matchLabels:
+      app: ml-inference
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: promoteros-api
+      podSelector:
+        matchLabels:
+          app: api-gateway
+    ports:
+    - protocol: TCP
+      port: 8501
+
+---
+# Allow ML inference service egress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ml-inference-egress
+  namespace: promoteros-ml
+spec:
+  podSelector:
+    matchLabels:
+      app: ml-inference
+  policyTypes:
+  - Egress
+  egress:
+  # DNS resolution
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # PostgreSQL for feature store
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: promoteros-api
+      podSelector:
+        matchLabels:
+          app: pgbouncer
+    ports:
+    - protocol: TCP
+      port: 6432
+  # S3 for model artifacts (via VPC endpoint)
+  - to:
+    ports:
+    - protocol: TCP
+      port: 443
+
+---
+# Default deny all traffic in promoteros-realtime namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: promoteros-realtime
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+
+---
+# Allow WebSocket service ingress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-websocket-ingress
+  namespace: promoteros-realtime
+spec:
+  podSelector:
+    matchLabels:
+      app: realtime-ws
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 3000
+
+---
+# Allow WebSocket service egress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-websocket-egress
+  namespace: promoteros-realtime
+spec:
+  podSelector:
+    matchLabels:
+      app: realtime-ws
+  policyTypes:
+  - Egress
+  egress:
+  # DNS resolution
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Redis pub/sub
+  - to:
+    ports:
+    - protocol: TCP
+      port: 6379
+  # API Gateway for auth verification
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: promoteros-api
+      podSelector:
+        matchLabels:
+          app: api-gateway
+    ports:
+    - protocol: TCP
+      port: 8080
+
+---
+# Allow PgBouncer in API namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-pgbouncer
+  namespace: promoteros-api
+spec:
+  podSelector:
+    matchLabels:
+      app: pgbouncer
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # From API Gateway
+  - from:
+    - podSelector:
+        matchLabels:
+          app: api-gateway
+    ports:
+    - protocol: TCP
+      port: 6432
+  # From scrapers namespace
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: promoteros-scrapers
+      podSelector:
+        matchLabels:
+          app: scraper-suite
+    ports:
+    - protocol: TCP
+      port: 6432
+  # From ML namespace
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: promoteros-ml
+      podSelector:
+        matchLabels:
+          app: ml-inference
+    ports:
+    - protocol: TCP
+      port: 6432
+  egress:
+  # DNS resolution
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # PostgreSQL RDS (via VPC)
+  - to:
+    ports:
+    - protocol: TCP
+      port: 5432
+
+---
+# Allow Prometheus scraping in all namespaces
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scraping
+  namespace: promoteros-api
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: promoteros-monitoring
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: prometheus
+    ports:
+    - protocol: TCP
+      port: 8080  # Metrics port
+
+---
+# Allow Prometheus scraping in scrapers namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scraping
+  namespace: promoteros-scrapers
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: promoteros-monitoring
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: prometheus
+    ports:
+    - protocol: TCP
+      port: 8080
+
+---
+# Allow Prometheus scraping in ML namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scraping
+  namespace: promoteros-ml
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: promoteros-monitoring
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: prometheus
+    ports:
+    - protocol: TCP
+      port: 8080
+
+---
+# Allow Prometheus scraping in realtime namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scraping
+  namespace: promoteros-realtime
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: promoteros-monitoring
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: prometheus
+    ports:
+    - protocol: TCP
+      port: 8080

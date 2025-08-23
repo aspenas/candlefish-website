@@ -1,0 +1,6 @@
+# API routes to Netlify Functions
+/api/consideration    /.netlify/functions/consideration    200
+/api/contact         /.netlify/functions/contact          200
+
+# SPA routing fallback
+/*    /index.html   200

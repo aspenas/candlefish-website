@@ -1,0 +1,36 @@
+ID,Area,Severity,Description,Impact,Owner,ETA,Status,Mitigation
+CR-001,Security,CRITICAL,Unrestricted egress in all security groups,Data exfiltration and C2 communication possible,DevOps,1d,FIXED,Implemented restricted egress rules per service
+CR-002,Security,CRITICAL,RDS logging sensitive data,Passwords and PII exposed in logs,DevOps,2h,FIXED,Changed log_statement to 'ddl' only and disabled parameter logging
+CR-003,Security,CRITICAL,No Kubernetes network policies,Lateral movement possible after compromise,DevOps,1d,FIXED,Deployed zero-trust network policies with default deny
+CR-004,Security,CRITICAL,JWT secret in plaintext,Authentication can be compromised,DevOps,4h,FIXED,Using AWS Secrets Manager with IRSA and CSI driver
+CR-005,Security,CRITICAL,Containers running as root,Container escape possible,DevOps,2h,FIXED,Implemented Pod Security Standards with restricted profile
+CR-006,Security,CRITICAL,No WAF protection,Vulnerable to OWASP Top 10,DevOps,4h,FIXED,Deployed AWS WAF with OWASP managed rules and Bot Control
+CR-007,Reliability,CRITICAL,No PodDisruptionBudgets,Complete outage during upgrades,DevOps,2h,FIXED,Created PDBs for all critical services
+CR-008,Performance,CRITICAL,No database connection pooling,DB overwhelmed at scale,Backend,6h,FIXED,Deployed PgBouncer with transaction pooling
+CR-009,Reliability,CRITICAL,No circuit breakers,Cascading failures from external APIs,Backend,1d,FIXED,Implemented circuit breaker pattern with gobreaker
+CR-010,Security,CRITICAL,No rate limiting,DDoS and abuse possible,Backend,4h,FIXED,Added comprehensive rate limiting middleware
+HR-001,Operations,HIGH,Untested backups,Recovery may fail,DevOps,4h,IN_PROGRESS,Creating automated backup testing script
+HR-002,Scalability,HIGH,No autoscaling,Cannot handle traffic spikes,DevOps,3h,FIXED,Configured HPA with stabilization for all services
+HR-003,Monitoring,HIGH,No alerting,Silent failures,DevOps,4h,PENDING,Need to setup Prometheus alerts with burn rate
+HR-004,Reliability,HIGH,No graceful shutdown,Request failures during deploy,Backend,2h,PENDING,Need to implement graceful shutdown handlers
+HR-005,Security,HIGH,No secret rotation,Long-lived credentials,DevOps,6h,PENDING,Need automated rotation with AWS Secrets Manager
+HR-006,Performance,HIGH,Missing database indexes,Slow queries at scale,Backend,2h,PENDING,Need to add indexes for hot queries
+HR-007,Security,HIGH,No image scanning,Vulnerable containers,DevOps,3h,PENDING,Need to add Trivy to CI/CD pipeline
+HR-008,Compliance,HIGH,No audit logging,Cannot track changes,DevOps,4h,PENDING,Need CloudTrail and K8s audit logging
+HR-009,Cost,HIGH,No resource limits,Runaway costs possible,DevOps,2h,FIXED,Set resource limits in all deployments
+HR-010,Security,HIGH,Weak IAM policies,Over-privileged access,DevOps,4h,IN_PROGRESS,Implementing least privilege with IRSA
+MR-001,Performance,MEDIUM,No request tracing,Hard to debug issues,Backend,4h,PENDING,Need OpenTelemetry integration
+MR-002,Operations,MEDIUM,No runbooks,Slow incident response,DevOps,1d,PENDING,Creating operational runbooks
+MR-003,Performance,MEDIUM,No caching strategy,Unnecessary load,Backend,4h,PENDING,Need Redis caching implementation
+MR-004,Reliability,MEDIUM,No health check tuning,False positives,DevOps,2h,FIXED,Tuned health check parameters in deployments
+MR-005,Security,MEDIUM,No CORS validation,Cross-origin attacks,Backend,2h,PENDING,Need strict CORS configuration
+MR-006,Operations,MEDIUM,No capacity planning,Resource exhaustion,DevOps,4h,PENDING,Need capacity model creation
+MR-007,Performance,MEDIUM,No query optimization,Slow API responses,Backend,6h,PENDING,Need N+1 query optimization
+MR-008,Security,MEDIUM,Verbose error messages,Information disclosure,Backend,2h,PENDING,Need error response sanitization
+MR-009,Reliability,MEDIUM,No retry logic,Transient failures,Backend,4h,PENDING,Need exponential backoff implementation
+MR-010,Monitoring,MEDIUM,No SLO definition,Unclear targets,DevOps,3h,PENDING,Need SLO definition and monitoring
+LR-001,Documentation,LOW,Incomplete API docs,Developer confusion,Backend,1d,LOW,Need OpenAPI spec completion
+LR-002,Quality,LOW,Low test coverage,Regression risk,Backend,2d,LOW,Need 80% coverage target
+LR-003,Operations,LOW,No chatops,Slow operations,DevOps,1d,LOW,Need Slack integration
+LR-004,Performance,LOW,Unoptimized images,Slow cold starts,DevOps,4h,LOW,Need distroless images
+LR-005,Security,LOW,No security headers,Minor vulnerabilities,Backend,2h,LOW,Need security headers addition

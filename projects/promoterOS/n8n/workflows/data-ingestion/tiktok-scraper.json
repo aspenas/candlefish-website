@@ -1,0 +1,363 @@
+{
+  "name": "TikTok Data Ingestion Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT a.id, a.name, a.platform_ids->>'tiktok' as tiktok_username\nFROM artists a\nWHERE a.platform_ids->>'tiktok' IS NOT NULL\nAND NOT EXISTS (\n  SELECT 1 FROM metrics m \n  WHERE m.artist_id = a.id \n  AND m.platform = 'tiktok'\n  AND m.collected_at > NOW() - INTERVAL '1 hour'\n)\nLIMIT 10",
+        "options": {}
+      },
+      "id": "get-artist-queue",
+      "name": "Get Artist Queue",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [450, 300],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "PromoterOS Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SCRAPER_API_URL }}/api/v1/scrape/tiktok",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"username\": \"{{ $json.tiktok_username }}\",\n  \"artist_id\": \"{{ $json.id }}\",\n  \"metrics_requested\": [\n    \"followers\",\n    \"likes\",\n    \"videos\",\n    \"engagement_rate\"\n  ]\n}",
+        "options": {
+          "timeout": 30000,
+          "retry": {
+            "maxTries": 3,
+            "waitBetweenTries": 5000
+          }
+        }
+      },
+      "id": "scrape-tiktok",
+      "name": "Scrape TikTok",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "2",
+          "name": "Scraper API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Validate scraped data\nconst validatedItems = [];\n\nfor (const item of $input.all()) {\n  const data = item.json;\n  \n  // Check required fields\n  if (!data.metrics || !data.artist_id || !data.platform) {\n    console.error('Missing required fields:', data);\n    continue;\n  }\n  \n  // Validate metrics\n  const metrics = data.metrics;\n  if (typeof metrics.followers !== 'number' || metrics.followers < 0) {\n    console.error('Invalid followers count:', metrics.followers);\n    continue;\n  }\n  \n  // Calculate engagement rate if not provided\n  if (!metrics.engagement_rate && metrics.likes && metrics.followers) {\n    metrics.engagement_rate = (metrics.likes / metrics.followers) * 100;\n  }\n  \n  // Add metadata\n  data.validated_at = new Date().toISOString();\n  data.quality_score = calculateQualityScore(metrics);\n  \n  validatedItems.push({ json: data });\n}\n\nfunction calculateQualityScore(metrics) {\n  let score = 100;\n  \n  // Penalize missing data\n  if (!metrics.videos) score -= 20;\n  if (!metrics.engagement_rate) score -= 20;\n  if (!metrics.recent_growth) score -= 10;\n  \n  return Math.max(0, score);\n}\n\nreturn validatedItems;"
+      },
+      "id": "validate-data",
+      "name": "Validate Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": "public",
+        "table": "metrics",
+        "columns": "artist_id,platform,metric_type,value,metadata,collected_at",
+        "returnFields": "*",
+        "options": {}
+      },
+      "id": "store-metrics",
+      "name": "Store Metrics",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1050, 300],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "PromoterOS Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.REDIS_CACHE_URL }}/api/v1/cache/invalidate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"keys\": [\n    \"artist:{{ $json.artist_id }}:metrics:tiktok\",\n    \"artist:{{ $json.artist_id }}:summary\"\n  ]\n}",
+        "options": {}
+      },
+      "id": "invalidate-cache",
+      "name": "Invalidate Cache",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "channel": "#data-ingestion",
+        "text": "=✅ TikTok scraping completed\n\n📊 *Summary:*\n• Artists processed: {{ $items().length }}\n• Success rate: {{ $json.success_rate }}%\n• Average quality score: {{ $json.avg_quality_score }}\n• Next run: in 15 minutes",
+        "otherOptions": {}
+      },
+      "id": "notify-success",
+      "name": "Notify Success",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [1450, 200],
+      "credentials": {
+        "slackApi": {
+          "id": "3",
+          "name": "Slack Workspace"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [650, 500]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": "public",
+        "table": "scraper_jobs",
+        "columns": "job_type,platform,status,error_message,failed_at",
+        "returnFields": "*",
+        "options": {}
+      },
+      "id": "log-error",
+      "name": "Log Error",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [850, 500],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "PromoterOS Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "#alerts",
+        "text": "=🚨 *TikTok Scraping Error*\n\n❌ Error: {{ $json.error.message }}\n📍 Node: {{ $json.error.node }}\n🕐 Time: {{ $now.toISO() }}\n\n*Stack Trace:*\n```\n{{ $json.error.stack }}\n```",
+        "otherOptions": {
+          "attachments": {
+            "values": "=[{\n  \"color\": \"danger\",\n  \"fields\": [\n    {\n      \"title\": \"Workflow\",\n      \"value\": \"TikTok Data Ingestion\",\n      \"short\": true\n    },\n    {\n      \"title\": \"Environment\",\n      \"value\": \"{{ $env.ENVIRONMENT }}\",\n      \"short\": true\n    }\n  ]\n}]"
+          }
+        }
+      },
+      "id": "alert-error",
+      "name": "Alert Error",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [1050, 500],
+      "credentials": {
+        "slackApi": {
+          "id": "3",
+          "name": "Slack Workspace"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.retry_count }}",
+              "operation": "smaller",
+              "value2": 3
+            }
+          ]
+        }
+      },
+      "id": "check-retry",
+      "name": "Check Retry Count",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1250, 500]
+    },
+    {
+      "parameters": {
+        "amount": 60000,
+        "unit": "ms"
+      },
+      "id": "wait-retry",
+      "name": "Wait Before Retry",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1450, 400]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Artist Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Artist Queue": {
+      "main": [
+        [
+          {
+            "node": "Scrape TikTok",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape TikTok": {
+      "main": [
+        [
+          {
+            "node": "Validate Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Data": {
+      "main": [
+        [
+          {
+            "node": "Store Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Metrics": {
+      "main": [
+        [
+          {
+            "node": "Invalidate Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invalidate Cache": {
+      "main": [
+        [
+          {
+            "node": "Notify Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Log Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Error": {
+      "main": [
+        [
+          {
+            "node": "Alert Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert Error": {
+      "main": [
+        [
+          {
+            "node": "Check Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Retry": {
+      "main": [
+        [
+          {
+            "node": "Wait Before Retry",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Wait Before Retry": {
+      "main": [
+        [
+          {
+            "node": "Scrape TikTok",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "all",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "error-handler-workflow"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "1",
+      "name": "data-ingestion"
+    },
+    {
+      "id": "2",
+      "name": "tiktok"
+    },
+    {
+      "id": "3",
+      "name": "production"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-01-22T12:00:00.000Z",
+  "versionId": "v1.0.0"
+}

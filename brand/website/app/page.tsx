@@ -2,235 +2,240 @@
 
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
+import ArchitectureVisualization from '../components/system-architecture/ArchitectureVisualization'
 
-// System version tracking
-const CODEX_VERSION = 'v0.3.2'
-const LAST_UPDATED = '2025.08.22'
-
-// Active research logs
-const activeResearch = [
-  {
-    id: 'crown-trophy-automation',
-    title: 'Engraving Automation System',
-    version: 'v0.2.1',
-    status: 'active-research',
-    problemStatement: 'Manual engraving order processing taking 45+ minutes per batch',
-    currentApproach: 'AI document parsing → Corel Draw pipeline',
-    lastUpdate: '2025.08.20',
-    failures: 3,
-    breakthroughs: 1,
-    changelogUrl: '/workshop/crown-trophy#changelog'
-  },
-  {
-    id: 'paintbox-estimation',
-    title: 'Paint Estimation Engine',
-    version: 'v1.3.0',
-    status: 'field-testing',
-    problemStatement: '14,000+ Excel formulas requiring manual maintenance',
-    currentApproach: 'Formula transpilation with offline-first architecture',
-    lastUpdate: '2025.08.19',
-    failures: 7,
-    breakthroughs: 4,
-    changelogUrl: '/workshop/paintbox#changelog'
-  },
-  {
-    id: 'promoteros-intelligence',
-    title: 'Concert Demand Prediction',
-    version: 'v0.8.0',
-    status: 'calibrating',
-    problemStatement: 'Venue booking based on intuition rather than data',
-    currentApproach: 'Multi-signal demand mapping with social velocity tracking',
-    lastUpdate: '2025.08.15',
-    failures: 2,
-    breakthroughs: 2,
-    changelogUrl: '/workshop/promoteros#changelog'
+export default function OperationalHomepage() {
+  // Initialize with default data for immediate display
+  const generateActivityData = () => {
+    const data = []
+    const time = Date.now() / 1000
+    for (let i = 0; i < 20; i++) {
+      const value = 50 + 35 * Math.sin((i * 0.3) + time) * Math.cos((i * 0.2) + time * 0.5) * (1 - i / 25)
+      data.push(Math.max(5, Math.min(95, value)))
+    }
+    return data
   }
-]
-
-export default function CodexLedger() {
-  const [mounted, setMounted] = useState(false)
-  const [currentTime, setCurrentTime] = useState(new Date())
-
+  
+  const [activityData, setActivityData] = useState<number[]>(generateActivityData())
+  
   useEffect(() => {
-    setMounted(true)
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000)
-    return () => clearInterval(timer)
+    // Animate the bars continuously
+    const interval = setInterval(() => {
+      setActivityData(generateActivityData())
+    }, 100) // Update every 100ms for smooth animation
+    
+    return () => clearInterval(interval)
   }, [])
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a] text-[#d4d4d4] font-mono">
-      {/* Header: Codex identification */}
-      <header className="border-b border-[#333] px-6 py-4">
-        <div className="max-w-6xl mx-auto flex justify-between items-baseline">
-          <div>
-            <h1 className="text-sm uppercase tracking-wider text-[#888]">
-              Candlefish.ai Research Codex
-            </h1>
-            <div className="text-xs text-[#666] mt-1">
-              Version {CODEX_VERSION} · Updated {LAST_UPDATED}
+    <main className="relative">
+      {/* Hero Section */}
+      <section className="min-h-screen relative overflow-hidden">
+        {/* Background Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0D1B2A] via-[#1B263B] to-[#1C1C1C]">
+          <div 
+            className="absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='noise'%3E%3CfeTurbulence baseFrequency='0.9' /%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='0.5'/%3E%3C/svg%3E")`
+            }}
+          />
+        </div>
+
+        {/* Main Content */}
+        <div className="relative z-10 max-w-7xl mx-auto px-6 pt-32">
+          {/* Badge */}
+          <div className="mb-20">
+            <span className="text-[#3FD3C6] text-sm tracking-[0.3em] uppercase font-light">
+              Operational Design Atelier
+            </span>
+          </div>
+
+          {/* Main Headline */}
+          <h1 className="text-6xl md:text-7xl lg:text-8xl font-light text-[#F8F8F2] leading-[0.9] tracking-tight max-w-6xl">
+            Currently engineering<br />
+            <span className="text-[#415A77]">
+              engraving automation for a trophy franchise network
+            </span>
+          </h1>
+
+          {/* Subtext */}
+          <p className="mt-8 text-2xl text-[#415A77] max-w-2xl font-light leading-relaxed">
+            We architect operational systems for businesses that refuse to accept inefficiency. Active in retail, manufacturing.
+          </p>
+
+          {/* Next Opening */}
+          <div className="mt-16">
+            <div className="text-[#415A77]">
+              <span className="block text-sm uppercase tracking-wider mb-2">Next Opening</span>
+              <span className="text-2xl text-[#E0E1DD] font-light">December 2025</span>
             </div>
           </div>
-          <nav className="text-xs space-x-6">
-            <Link href="/workshop" className="hover:text-[#fff] transition-colors">
-              Workshop Logs
-            </Link>
-            <Link href="/instruments" className="hover:text-[#fff] transition-colors">
-              Instruments
-            </Link>
-            <Link href="/assessment" className="hover:text-[#fff] transition-colors">
-              Assessment v{CODEX_VERSION}
-            </Link>
-            <Link href="/notes" className="hover:text-[#fff] transition-colors">
-              Field Notes
-            </Link>
-            <Link href="/annotations" className="hover:text-[#fff] transition-colors">
-              Annotations
-            </Link>
-            <Link href="/rss" className="text-[#ff9500] hover:text-[#ffb143] transition-colors">
-              RSS
-            </Link>
-          </nav>
         </div>
-      </header>
 
-      {/* NOW BUILDING: Active research index */}
-      <section className="px-6 py-12">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-xs uppercase tracking-wider text-[#888] mb-8">
-            NOW BUILDING · {mounted && currentTime.toISOString().split('T')[0]}
+        {/* System Activity Widget */}
+        <div className="absolute bottom-8 right-8 w-96 hidden lg:block">
+          <div className="bg-[#1B263B]/50 backdrop-blur-sm border border-[#415A77]/30 p-6">
+            <div className="text-[#3FD3C6] text-xs uppercase tracking-wider mb-4">
+              System Activity
+            </div>
+            <div className="h-20 flex items-end gap-1">
+              {activityData.map((height, i) => (
+                <div
+                  key={i}
+                  className="flex-1 transition-all duration-300 ease-out"
+                  style={{ 
+                    height: `${height}%`,
+                    background: `linear-gradient(to top, #3FD3C6, #3FD3C6${Math.floor(height).toString(16).padStart(2, '0')})`,
+                    opacity: 0.3 + (height / 100) * 0.5
+                  }}
+                />
+              ))}
+            </div>
+            <div className="mt-4 flex justify-between text-xs">
+              <span className="text-[#415A77]">Operational</span>
+              <span className="text-[#3FD3C6]">94% Capacity</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Operational Reality Section */}
+      <section className="py-28 relative">
+        <div className="max-w-7xl mx-auto px-6">
+          <h2 className="text-4xl font-light text-[#F8F8F2] mb-16">Operational Reality</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="card-operational">
+              <div className="text-[#3FD3C6] text-xs uppercase tracking-wider mb-4">
+                Active Systems
+              </div>
+              <div className="text-5xl font-light text-[#F8F8F2] mb-2">3</div>
+              <div className="text-[#415A77] text-sm">
+                Crown Trophy · Paintbox · PromoterOS
+              </div>
+            </div>
+            <div className="card-operational">
+              <div className="text-[#3FD3C6] text-xs uppercase tracking-wider mb-4">
+                Queue Length
+              </div>
+              <div className="text-5xl font-light text-[#F8F8F2] mb-2">7</div>
+              <div className="text-[#415A77] text-sm">
+                Organizations awaiting consideration
+              </div>
+            </div>
+            <div className="card-operational">
+              <div className="text-[#3FD3C6] text-xs uppercase tracking-wider mb-4">
+                Next Window
+              </div>
+              <div className="text-5xl font-light text-[#F8F8F2] mb-2">Q4</div>
+              <div className="text-[#415A77] text-sm">
+                2025 · December consideration
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Philosophy Section */}
+      <section className="py-28 bg-[#1B263B]/30">
+        <div className="max-w-4xl mx-auto px-6">
+          <h2 className="text-4xl md:text-5xl font-light text-[#F8F8F2] mb-12">
+            The workshop operates on principles,<br />not compromises.
           </h2>
+          <div className="space-y-6">
+            <p className="text-2xl text-[#E0E1DD] leading-relaxed font-light">
+              Excellence emerges from constraint. We maintain strict operational limits not as a limitation, 
+              but as a design principle. Each system we craft receives total focus, undivided attention, 
+              and relentless refinement.
+            </p>
+            <p className="text-2xl text-[#E0E1DD] leading-relaxed font-light">
+              Our queue exists not to create artificial scarcity, but to ensure each engagement receives 
+              the depth of thought and precision of execution it demands. We measure success not in volume, 
+              but in the transformative impact of each operational system we deliver.
+            </p>
+          </div>
+          <blockquote className="mt-16 pl-6 border-l-2 border-[#3FD3C6]">
+            <p className="text-3xl font-light text-[#F8F8F2] leading-tight">
+              "Excellence is never an accident. It is always the result of high intention, 
+              sincere effort, and intelligent execution."
+            </p>
+          </blockquote>
+        </div>
+      </section>
 
+      {/* System Architecture Section */}
+      <section className="py-28">
+        <div className="max-w-7xl mx-auto px-6">
+          <h2 className="text-4xl font-light text-[#F8F8F2] mb-16">System Architecture</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+            <div>
+              <h3 className="text-2xl font-light text-[#F8F8F2] mb-6">
+                Current Build: Engraving Automation Platform
+              </h3>
+              <p className="text-xl text-[#E0E1DD] mb-8 leading-relaxed font-light">
+                276 items taking 45+ minutes manually. AI-powered extraction from customer files. 
+                Building a system that could serve all 150 Crown Trophy franchises nationwide.
+              </p>
+              <dl className="space-y-4">
+                <div className="flex justify-between py-2 border-b border-[#415A77]/30">
+                  <dt className="text-[#415A77] text-sm uppercase tracking-wider">Duration</dt>
+                  <dd className="text-[#E0E1DD]">12-16 weeks</dd>
+                </div>
+                <div className="flex justify-between py-2 border-b border-[#415A77]/30">
+                  <dt className="text-[#415A77] text-sm uppercase tracking-wider">Components</dt>
+                  <dd className="text-[#E0E1DD]">AI document parsing</dd>
+                </div>
+                <div className="flex justify-between py-2 border-b border-[#415A77]/30">
+                  <dt className="text-[#415A77] text-sm uppercase tracking-wider">Time Recovery</dt>
+                  <dd className="text-[#E0E1DD]">45 min → under 1 min</dd>
+                </div>
+              </dl>
+            </div>
+            
+            {/* Architecture Visualization */}
+            <div className="relative">
+              <ArchitectureVisualization />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Engagement Protocol Section */}
+      <section className="py-28 bg-[#1B263B]/30">
+        <div className="max-w-4xl mx-auto px-6">
+          <h2 className="text-4xl font-light text-[#F8F8F2] mb-12">Engagement Protocol</h2>
           <div className="space-y-8">
-            {activeResearch.map((project) => (
-              <article key={project.id} className="border border-[#333] p-6 hover:border-[#666] transition-colors">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg text-[#fff] mb-1">
-                      {project.title}
-                    </h3>
-                    <span className="inline-block px-2 py-1 text-xs bg-[#1a1a1a] border border-[#333]">
-                      {project.version}
-                    </span>
-                    <span className={`inline-block ml-2 px-2 py-1 text-xs border ${
-                      project.status === 'active-research'
-                        ? 'border-[#00ff00] text-[#00ff00]'
-                        : project.status === 'field-testing'
-                        ? 'border-[#ffff00] text-[#ffff00]'
-                        : 'border-[#ff9500] text-[#ff9500]'
-                    }`}>
-                      {project.status}
-                    </span>
-                  </div>
-                  <div className="text-xs text-[#666]">
-                    Last: {project.lastUpdate}
-                  </div>
-                </div>
-
-                <div className="space-y-3 text-sm">
-                  <div>
-                    <span className="text-[#888]">Problem:</span>
-                    <p className="text-[#d4d4d4] mt-1">{project.problemStatement}</p>
-                  </div>
-
-                  <div>
-                    <span className="text-[#888]">Current Approach:</span>
-                    <p className="text-[#d4d4d4] mt-1">{project.currentApproach}</p>
-                  </div>
-
-                  <div className="flex gap-6 pt-2">
-                    <span className="text-[#ff4444]">
-                      Failures: {project.failures}
-                    </span>
-                    <span className="text-[#44ff44]">
-                      Breakthroughs: {project.breakthroughs}
-                    </span>
-                    <Link
-                      href={project.changelogUrl}
-                      className="text-[#6666ff] hover:text-[#8888ff] transition-colors"
-                    >
-                      View Changelog →
-                    </Link>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* System Stats */}
-      <section className="px-6 py-12 border-t border-[#333]">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-xs uppercase tracking-wider text-[#888] mb-6">
-            Codex Statistics
-          </h2>
-
-          <div className="grid grid-cols-4 gap-6 text-sm">
             <div>
-              <div className="text-[#666]">Total Instruments</div>
-              <div className="text-2xl text-[#fff]">23</div>
+              <h3 className="text-[#3FD3C6] text-sm uppercase tracking-wider mb-3">Selection Criteria</h3>
+              <p className="text-xl text-[#E0E1DD] font-light leading-relaxed">
+                We accept three collaborations per quarter. Selection is based on problem complexity, 
+                operational readiness, and mutual interest in craft excellence. We're particularly 
+                interested in expanding our work with non-profit organizations alongside our for-profit engagements.
+              </p>
             </div>
             <div>
-              <div className="text-[#666]">Workshop Logs</div>
-              <div className="text-2xl text-[#fff]">147</div>
+              <h3 className="text-[#3FD3C6] text-sm uppercase tracking-wider mb-3">Process Timeline</h3>
+              <p className="text-xl text-[#E0E1DD] font-light leading-relaxed">
+                Initial diagnostic (2 weeks) → System design (4 weeks) → Implementation (6-8 weeks) → Evolution support (ongoing).
+              </p>
             </div>
             <div>
-              <div className="text-[#666]">Field Notes</div>
-              <div className="text-2xl text-[#fff]">89</div>
-            </div>
-            <div>
-              <div className="text-[#666]">Open Problems</div>
-              <div className="text-2xl text-[#fff]">12</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Recent Activity Feed */}
-      <section className="px-6 py-12 border-t border-[#333]">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-xs uppercase tracking-wider text-[#888] mb-6">
-            Recent Activity
-          </h2>
-
-          <div className="space-y-2 text-xs">
-            <div className="flex gap-4">
-              <span className="text-[#666]">2025.08.22 14:32</span>
-              <span className="text-[#44ff44]">UPDATE</span>
-              <span>Crown Trophy: Document parser achieving 94% accuracy</span>
-            </div>
-            <div className="flex gap-4">
-              <span className="text-[#666]">2025.08.22 09:15</span>
-              <span className="text-[#ff4444]">FAILURE</span>
-              <span>PromoterOS: Social velocity calculation overflow on Taylor Swift dataset</span>
-            </div>
-            <div className="flex gap-4">
-              <span className="text-[#666]">2025.08.21 16:44</span>
-              <span className="text-[#ffff00]">NOTE</span>
-              <span>Published: "Excel as Truth Source" field observation</span>
-            </div>
-            <div className="flex gap-4">
-              <span className="text-[#666]">2025.08.21 11:28</span>
-              <span className="text-[#44ff44]">BREAKTHROUGH</span>
-              <span>Paintbox: Offline sync maintaining 100% formula accuracy</span>
+              <h3 className="text-[#3FD3C6] text-sm uppercase tracking-wider mb-3">Investment Range</h3>
+              <p className="text-xl text-[#E0E1DD] font-light leading-relaxed">
+                $125,000 to $400,000 per system, depending on scope and complexity. 
+                Payment structured as monthly craft fees, not hourly rates.
+              </p>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="px-6 py-6 border-t border-[#333] text-xs text-[#666]">
-        <div className="max-w-6xl mx-auto flex justify-between">
-          <div>
-            Public research archive. No client data. Tool patterns only.
-          </div>
-          <div>
-            <Link href="/annotations/philosophy" className="hover:text-[#888] transition-colors">
-              Why we build in public →
+          <div className="mt-16">
+            <Link
+              href="/consideration"
+              className="inline-flex items-center px-8 py-4 bg-[#3FD3C6] text-[#0D1B2A] font-light hover:bg-[#3FD3C6]/90 transition-colors"
+            >
+              Request Consideration for Q1 2026
             </Link>
           </div>
         </div>
-      </footer>
+      </section>
     </main>
   )
 }

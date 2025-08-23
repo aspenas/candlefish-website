@@ -1,0 +1,198 @@
+# Pod Disruption Budgets - REMEDIATION CR-007
+# Prevent complete service outages during cluster maintenance and upgrades
+
+---
+# API Gateway PDB - Always keep at least 2 instances running
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api-gateway-pdb
+  namespace: promoteros-api
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: api-gateway
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+
+---
+# Booking Service PDB - Critical service, keep 50% available
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: booking-service-pdb
+  namespace: promoteros-api
+spec:
+  minAvailable: 50%
+  selector:
+    matchLabels:
+      app: booking-service
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+
+---
+# Artist Analyzer PDB
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: artist-analyzer-pdb
+  namespace: promoteros-api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: artist-analyzer
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+
+---
+# Payment Service PDB - Critical for transactions
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: payment-service-pdb
+  namespace: promoteros-api
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: payment-service
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+
+---
+# Notification Service PDB
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: notification-service-pdb
+  namespace: promoteros-api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+
+---
+# Scraper Worker PDB - Can tolerate more disruption
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: scraper-worker-pdb
+  namespace: promoteros-api
+spec:
+  maxUnavailable: 50%
+  selector:
+    matchLabels:
+      app: scraper-worker
+  unhealthyPodEvictionPolicy: AlwaysAllow
+
+---
+# Booking Worker PDB
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: booking-worker-pdb
+  namespace: promoteros-api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: booking-worker
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+
+---
+# PgBouncer PDB - Database connection pooler
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pgbouncer-pdb
+  namespace: promoteros-data
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: pgbouncer
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+
+---
+# Redis PDB - Cache layer
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: redis-pdb
+  namespace: promoteros-cache
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: redis
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+
+---
+# WebSocket Service PDB - For real-time features
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: websocket-service-pdb
+  namespace: promoteros-api
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: websocket-service
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+
+---
+# Ingress Controller PDB
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: nginx-ingress-pdb
+  namespace: ingress-nginx
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ingress-nginx
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+
+---
+# Prometheus PDB - Monitoring must stay up
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: prometheus-pdb
+  namespace: monitoring
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+
+---
+# Grafana PDB
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: grafana-pdb
+  namespace: monitoring
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: grafana
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+
+---
+# AlertManager PDB
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: alertmanager-pdb
+  namespace: monitoring
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: alertmanager
+  unhealthyPodEvictionPolicy: IfHealthyBudget

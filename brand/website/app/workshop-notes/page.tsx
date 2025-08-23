@@ -156,9 +156,12 @@ export default function WorkshopNotes() {
               We publish when we discover something worth sharing.
               No content calendar. No SEO games. Just operational patterns.
             </p>
-            <button className="text-[#3FD3C6] hover:text-[#4FE3D6] transition-colors">
+            <a 
+              href="/contact"
+              className="inline-block text-[#3FD3C6] hover:text-[#4FE3D6] transition-colors"
+            >
               Subscribe for Notifications →
-            </button>
+            </a>
           </footer>
         </section>
       ) : (

@@ -7,9 +7,10 @@ import type { WorkshopLog, WorkshopFailure, WorkshopComponent, WorkshopChangelog
 
 // Memoized sub-components for better performance
 const WorkshopHeader = memo(() => (
-  <header className="border-b border-[#333] px-6 py-4">
+  <header className="border-b border-[#333] px-6 py-4 relative">
+    <div className="absolute left-0 bottom-0 w-full h-px bg-gradient-to-r from-transparent via-[#3FD3C6]/20 to-transparent"></div>
     <div className="max-w-6xl mx-auto">
-      <Link href="/" className="text-xs text-[#888] hover:text-[#fff]">
+      <Link href="/" className="text-xs text-[#888] hover:text-[#3FD3C6] transition-colors">
         ← Back to Codex
       </Link>
       <h1 className="text-lg text-[#fff] mt-2">Workshop Logs</h1>
@@ -256,14 +257,23 @@ export default function WorkshopLogs() {
   const memoizedLogs = useMemo(() => workshopLogs, [])
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a] text-[#d4d4d4] font-mono">
-      <WorkshopHeader />
+    <main className="min-h-screen bg-[#0a0a0a] text-[#d4d4d4] font-mono pt-20 relative">
+      {/* Subtle brand accent overlay */}
+      <div 
+        className="absolute inset-0 opacity-[0.02] pointer-events-none"
+        style={{
+          background: `linear-gradient(135deg, transparent 0%, rgba(63, 211, 198, 0.1) 50%, transparent 100%)`
+        }}
+      />
+      <div className="relative z-10">
+        <WorkshopHeader />
 
-      <section className="max-w-6xl mx-auto px-6 py-8">
-        {memoizedLogs.map((log) => (
-          <WorkshopLogItem key={log.id} log={log} />
-        ))}
-      </section>
+        <section className="max-w-6xl mx-auto px-6 py-8">
+          {memoizedLogs.map((log) => (
+            <WorkshopLogItem key={log.id} log={log} />
+          ))}
+        </section>
+      </div>
     </main>
   )
 }

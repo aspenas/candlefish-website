@@ -1,0 +1,144 @@
+name: Highline Inventory NANDA Agent
+version: 1.0.0
+description: Intelligent agent for managing 5470 S Highline Circle furnishings inventory
+
+capabilities:
+  - inventory_analysis
+  - price_optimization
+  - decision_recommendations
+  - buyer_negotiation_prep
+  - market_valuation
+
+webhooks:
+  endpoint: https://api.5470highline.com/webhook/nanda
+  secret: ${NANDA_WEBHOOK_SECRET}
+
+models:
+  primary: claude-opus-4-1-20250805
+  fallback: gpt-4-turbo
+
+workflows:
+  analyze_inventory:
+    description: Analyze complete inventory and provide recommendations
+    steps:
+      - fetch_all_items
+      - categorize_by_value
+      - identify_high_value_items
+      - suggest_bundle_deals
+      - generate_report
+
+  optimize_pricing:
+    description: Optimize pricing based on market data
+    steps:
+      - fetch_items_for_sale
+      - research_market_prices
+      - calculate_depreciation
+      - apply_pricing_strategy
+      - update_asking_prices
+
+  prepare_buyer_view:
+    description: Prepare customized buyer presentation
+    steps:
+      - filter_sale_items
+      - group_by_room
+      - calculate_discounts
+      - generate_presentation
+      - export_formats
+
+  negotiation_assistant:
+    description: Assist with buyer negotiations
+    steps:
+      - analyze_buyer_interest
+      - identify_negotiation_points
+      - suggest_counter_offers
+      - track_negotiation_history
+      - update_status
+
+prompts:
+  inventory_analysis: |
+    Analyze the furnishings inventory for 5470 S Highline Circle.
+    Consider:
+    - Total value by room
+    - Category distribution
+    - Items marked for sale vs keep
+    - Pricing optimization opportunities
+    - Bundle deal recommendations
+    
+    Provide actionable insights and recommendations.
+
+  price_recommendation: |
+    For the item: {{item_name}}
+    Category: {{category}}
+    Original Price: {{purchase_price}}
+    Condition: {{condition}}
+    Room: {{room}}
+    
+    Suggest an optimal asking price considering:
+    - Market value depreciation
+    - Comparable items
+    - Bundle potential
+    - Buyer appeal
+    
+    Provide reasoning for the suggested price.
+
+  buyer_pitch: |
+    Create a compelling pitch for potential buyer Jon Strom.
+    Inventory: {{inventory_summary}}
+    
+    Include:
+    - Value proposition
+    - Room-by-room highlights
+    - Bundle opportunities
+    - Negotiation flexibility
+    - Quality and provenance emphasis
+
+integrations:
+  - name: n8n
+    type: webhook
+    endpoint: http://n8n:5678/webhook/inventory
+    
+  - name: database
+    type: postgresql
+    connection: ${DATABASE_URL}
+    
+  - name: storage
+    type: s3
+    bucket: highline-inventory
+    region: us-east-1
+
+automation_rules:
+  - trigger: item_marked_for_sale
+    action: analyze_pricing
+    
+  - trigger: daily_schedule
+    time: "09:00"
+    action: generate_daily_report
+    
+  - trigger: buyer_view_requested
+    action: prepare_buyer_view
+    
+  - trigger: price_threshold
+    condition: asking_price > 10000
+    action: request_approval
+
+monitoring:
+  metrics:
+    - total_items_processed
+    - pricing_recommendations_made
+    - buyer_views_generated
+    - automation_runs
+    
+  alerts:
+    - type: error_rate
+      threshold: 5%
+      channel: email
+      
+    - type: processing_time
+      threshold: 30s
+      channel: slack
+
+security:
+  authentication: jwt
+  encryption: aes-256
+  audit_logging: enabled
+  data_retention: 90_days
