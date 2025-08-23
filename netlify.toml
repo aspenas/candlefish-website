@@ -4,9 +4,9 @@
 
 [build]
   base = "apps/website"
-  publish = "apps/website/dist"
+  publish = "dist"
   command = "npm run build"
-  functions = "apps/website/netlify/functions"
+  functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "18"
