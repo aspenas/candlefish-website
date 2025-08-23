@@ -376,7 +376,7 @@ export default function Analytics() {
                 {summary?.sellCount || 0} items
               </p>
             </div>
-            <TrendingUpIcon className="h-12 w-12 text-purple-200" />
+            <ArrowTrendingUpIcon className="h-12 w-12 text-purple-200" />
           </div>
         </div>
       </div>

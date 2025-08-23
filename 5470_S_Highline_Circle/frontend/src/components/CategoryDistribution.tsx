@@ -58,43 +58,41 @@ export default function CategoryDistribution({ data }: CategoryDistributionProps
   }));
 
   return (
-    <div className="h-64">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={chartData}
-            cx="50%"
-            cy="50%"
-            innerRadius={40}
-            outerRadius={80}
-            paddingAngle={2}
-            dataKey="value"
-          >
-            {chartData.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={COLORS[index % COLORS.length]}
-                className="hover:opacity-80 transition-opacity cursor-pointer"
-              />
-            ))}
-          </Pie>
-          <Tooltip content={<CustomTooltip />} />
-        </PieChart>
-      </ResponsiveContainer>
-
-      {/* Legend */}
-      <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-        {chartData.slice(0, 6).map((entry, index) => (
-          <div key={entry.name} className="flex items-center">
-            <div
-              className="w-3 h-3 rounded-full mr-2 flex-shrink-0"
-              style={{ backgroundColor: COLORS[index % COLORS.length] }}
+    <div className="flex flex-col h-full">
+      <div className="flex-1 min-h-0">
+        <ResponsiveContainer width="100%" height={200}>
+          <PieChart>
+            <Pie
+              data={chartData}
+              cx="50%"
+              cy="50%"
+              innerRadius={30}
+              outerRadius={60}
+              paddingAngle={2}
+              dataKey="value"
+            >
+              {chartData.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={COLORS[index % COLORS.length]}
+                  className="hover:opacity-80 transition-opacity cursor-pointer"
+                />
+              ))}
+            </Pie>
+            <Tooltip content={<CustomTooltip />} />
+            <Legend 
+              verticalAlign="bottom" 
+              height={36}
+              iconType="circle"
+              wrapperStyle={{
+                paddingTop: '10px',
+                fontSize: '11px',
+                overflow: 'hidden'
+              }}
+              formatter={(value, entry) => `${value} (${entry.payload.value})`}
             />
-            <span className="truncate text-gray-700 dark:text-gray-300" title={entry.name}>
-              {entry.name} ({entry.value})
-            </span>
-          </div>
-        ))}
+          </PieChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );

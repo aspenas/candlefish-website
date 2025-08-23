@@ -32,12 +32,12 @@ const StatusIndicator = ({ status }: { status: InstrumentStatus }) => {
 }
 
 // Performance metric display
-const PerformanceMetric = ({ 
-  label, 
-  value, 
-  unit, 
-  trend 
-}: { 
+const PerformanceMetric = ({
+  label,
+  value,
+  unit,
+  trend
+}: {
   label: string
   value: number
   unit: string
@@ -60,8 +60,8 @@ const PerformanceMetric = ({
         <span className="text-[#444]">{unit}</span>
         {trend && (
           <span className={`
-            ${trend === 'up' ? 'text-green-400' : 
-              trend === 'down' ? 'text-red-400' : 
+            ${trend === 'up' ? 'text-green-400' :
+              trend === 'down' ? 'text-red-400' :
               'text-gray-400'}
           `}>
             {getTrendIcon()}
@@ -112,21 +112,21 @@ const InstrumentCard = ({ instrument }: { instrument: Instrument }) => {
 
         {/* Live Performance Metrics */}
         <div className="grid grid-cols-3 gap-4 mb-4">
-          <PerformanceMetric 
-            label="Throughput" 
-            value={Math.round(liveData.performance.throughput)} 
+          <PerformanceMetric
+            label="Throughput"
+            value={Math.round(liveData.performance.throughput)}
             unit="ops/s"
             trend="up"
           />
-          <PerformanceMetric 
-            label="Latency" 
-            value={liveData.performance.latency} 
+          <PerformanceMetric
+            label="Latency"
+            value={liveData.performance.latency}
             unit="ms"
             trend="stable"
           />
-          <PerformanceMetric 
-            label="Accuracy" 
-            value={liveData.performance.accuracy} 
+          <PerformanceMetric
+            label="Accuracy"
+            value={liveData.performance.accuracy}
             unit="%"
             trend="stable"
           />
@@ -135,7 +135,7 @@ const InstrumentCard = ({ instrument }: { instrument: Instrument }) => {
         {/* Live Telemetry */}
         {instrument.telemetry && (
           <div className="mb-4">
-            <InstrumentTelemetry 
+            <InstrumentTelemetry
               telemetry={instrument.telemetry}
               height={80}
               showLabels={false}
@@ -149,7 +149,7 @@ const InstrumentCard = ({ instrument }: { instrument: Instrument }) => {
             <div className="text-xs text-[#666] mb-1">CPU Usage</div>
             <div className="flex items-center gap-2">
               <div className="flex-1 h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
-                <div 
+                <div
                   className="h-full bg-gradient-to-r from-[#3FD3C6] to-[#3FD3C6]/50 transition-all duration-300"
                   style={{ width: `${liveData.performance.cpu}%` }}
                 />
@@ -161,7 +161,7 @@ const InstrumentCard = ({ instrument }: { instrument: Instrument }) => {
             <div className="text-xs text-[#666] mb-1">Memory</div>
             <div className="flex items-center gap-2">
               <div className="flex-1 h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
-                <div 
+                <div
                   className="h-full bg-gradient-to-r from-[#6666ff] to-[#6666ff]/50 transition-all duration-300"
                   style={{ width: `${(liveData.performance.memory / 8000) * 100}%` }}
                 />
@@ -251,12 +251,12 @@ const InstrumentCard = ({ instrument }: { instrument: Instrument }) => {
 }
 
 // Category filter
-const CategoryFilter = ({ 
-  selected, 
-  onChange 
-}: { 
+const CategoryFilter = ({
+  selected,
+  onChange
+}: {
   selected: string
-  onChange: (category: string) => void 
+  onChange: (category: string) => void
 }) => {
   const categories = [
     { id: 'all', label: 'All Instruments', count: instruments.length },
@@ -293,8 +293,8 @@ export default function InstrumentsPage() {
   const [sortBy, setSortBy] = useState<'status' | 'performance' | 'name'>('status')
 
   const filteredInstruments = useMemo(() => {
-    let filtered = selectedCategory === 'all' 
-      ? instruments 
+    let filtered = selectedCategory === 'all'
+      ? instruments
       : instruments.filter(i => i.category === selectedCategory)
 
     // Sort instruments
@@ -378,7 +378,7 @@ export default function InstrumentsPage() {
         <section className="max-w-7xl mx-auto px-6 py-6 space-y-4">
           <div className="flex justify-between items-center">
             <CategoryFilter selected={selectedCategory} onChange={setSelectedCategory} />
-            
+
             <div className="flex items-center gap-2">
               <span className="text-xs text-[#666]">Sort by:</span>
               <select

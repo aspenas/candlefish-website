@@ -98,7 +98,7 @@ func (m *CircuitBreakerManager) GetBreaker(name string, config BreakerConfig) *S
 		Timeout:     config.Timeout,
 		ReadyToTrip: func(counts gobreaker.Counts) bool {
 			failureRatio := float64(counts.TotalFailures) / float64(counts.Requests)
-			return counts.Requests >= uint32(config.MinRequests) && 
+			return counts.Requests >= uint32(config.MinRequests) &&
 				   failureRatio >= config.FailureThreshold
 		},
 		OnStateChange: func(name string, from gobreaker.State, to gobreaker.State) {
@@ -132,7 +132,7 @@ func (m *CircuitBreakerManager) GetBreaker(name string, config BreakerConfig) *S
 	}
 
 	cb := gobreaker.NewCircuitBreaker(settings)
-	
+
 	// Create rate limiter
 	rl := &RateLimiter{
 		tokens:     config.RateLimitTokens,
@@ -198,7 +198,7 @@ func (rl *RateLimiter) Allow() bool {
 	now := time.Now()
 	elapsed := now.Sub(rl.lastRefill)
 	tokensToAdd := int(elapsed / rl.refillRate)
-	
+
 	if tokensToAdd > 0 {
 		rl.tokens = min(rl.tokens+tokensToAdd, rl.maxTokens)
 		rl.lastRefill = now
@@ -314,7 +314,7 @@ func NewTikTokAPIClient(manager *CircuitBreakerManager, apiKey string) *TikTokAP
 func (c *TikTokAPIClient) GetArtistMetrics(ctx context.Context, artistID string) (*ArtistMetrics, error) {
 	result, err := c.breaker.Execute(ctx, func() (interface{}, error) {
 		url := fmt.Sprintf("%s/artists/%s/metrics", c.baseURL, artistID)
-		
+
 		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 		if err != nil {
 			return nil, err

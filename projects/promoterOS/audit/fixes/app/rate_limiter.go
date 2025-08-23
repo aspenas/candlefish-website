@@ -158,7 +158,7 @@ func NewRateLimiterManager(config RateLimiterConfig, logger *zap.Logger) (*RateL
 func (m *RateLimiterManager) RateLimitMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		
+
 		// Start tracing span
 		ctx, span := otel.Tracer("rate-limiter").Start(ctx, "rate_limit_check")
 		defer span.End()

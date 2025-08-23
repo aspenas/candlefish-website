@@ -51,11 +51,11 @@ export function setup() {
   check(res, {
     'API is ready': (r) => r.status === 200,
   });
-  
+
   if (res.status !== 200) {
     throw new Error('API is not ready');
   }
-  
+
   return { startTime: Date.now() };
 }
 
@@ -64,7 +64,7 @@ export default function() {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${AUTH_TOKEN}`,
   };
-  
+
   // Scenario 1: Health checks (10% of traffic)
   if (Math.random() < 0.1) {
     group('Health Checks', () => {
@@ -76,47 +76,47 @@ export default function() {
       errorRate.add(res.status !== 200);
     });
   }
-  
+
   // Scenario 2: Artist lookup (40% of traffic)
   if (Math.random() < 0.4) {
     group('Artist Lookup', () => {
       const artistId = randomItem(ARTIST_IDS);
       let res = http.get(`${BASE_URL}/api/v1/artists/${artistId}`, { headers });
-      
+
       check(res, {
         'artist lookup status 200': (r) => r.status === 200,
         'artist lookup has data': (r) => r.json('artist') !== null,
         'artist lookup fast': (r) => r.timings.duration < 200,
       });
-      
+
       apiLatency.add(res.timings.duration);
       errorRate.add(res.status !== 200);
     });
   }
-  
+
   // Scenario 3: Search artists (30% of traffic)
   if (Math.random() < 0.3) {
     group('Search Artists', () => {
       const genres = ['rock', 'pop', 'electronic', 'hip-hop'];
       const genre = randomItem(genres);
-      
-      let res = http.get(`${BASE_URL}/api/v1/artists/search?genre=${genre}&limit=20`, { 
+
+      let res = http.get(`${BASE_URL}/api/v1/artists/search?genre=${genre}&limit=20`, {
         headers,
         tags: { name: 'SearchArtists' },
       });
-      
+
       check(res, {
         'search status 200': (r) => r.status === 200,
         'search returns results': (r) => r.json('artists.length') > 0,
         'search pagination': (r) => r.json('pagination') !== null,
         'search fast': (r) => r.timings.duration < 300,
       });
-      
+
       apiLatency.add(res.timings.duration);
       errorRate.add(res.status !== 200);
     });
   }
-  
+
   // Scenario 4: Get recommendations (15% of traffic)
   if (Math.random() < 0.15) {
     group('Get Recommendations', () => {
@@ -129,24 +129,24 @@ export default function() {
         budget_min: 5000,
         budget_max: 25000,
       });
-      
-      let res = http.post(`${BASE_URL}/api/v1/recommendations`, payload, { 
+
+      let res = http.post(`${BASE_URL}/api/v1/recommendations`, payload, {
         headers,
         tags: { name: 'GetRecommendations' },
       });
-      
+
       check(res, {
         'recommendations status 200': (r) => r.status === 200,
         'recommendations has results': (r) => r.json('recommendations.length') > 0,
         'recommendations has scores': (r) => r.json('recommendations.0.score') > 0,
         'recommendations fast': (r) => r.timings.duration < 500,
       });
-      
+
       bookingLatency.add(res.timings.duration);
       errorRate.add(res.status !== 200);
     });
   }
-  
+
   // Scenario 5: Create booking (5% of traffic)
   if (Math.random() < 0.05) {
     group('Create Booking', () => {
@@ -162,28 +162,28 @@ export default function() {
           merch_split: 85,
         },
       });
-      
-      let res = http.post(`${BASE_URL}/api/v1/bookings`, payload, { 
+
+      let res = http.post(`${BASE_URL}/api/v1/bookings`, payload, {
         headers,
         tags: { name: 'CreateBooking' },
         timeout: '10s',
       });
-      
+
       check(res, {
         'booking status 201': (r) => r.status === 201,
         'booking has number': (r) => r.json('booking_number') !== null,
         'booking has id': (r) => r.json('id') !== null,
         'booking idempotent': (r) => r.headers['X-Idempotency-Key'] !== null,
       });
-      
+
       bookingLatency.add(res.timings.duration);
       errorRate.add(res.status >= 400);
-      
+
       // If booking created, verify it's retrievable
       if (res.status === 201) {
         const bookingId = res.json('id');
         sleep(1);
-        
+
         let getRes = http.get(`${BASE_URL}/api/v1/bookings/${bookingId}`, { headers });
         check(getRes, {
           'booking retrievable': (r) => r.status === 200,
@@ -192,7 +192,7 @@ export default function() {
       }
     });
   }
-  
+
   // Think time between requests
   sleep(Math.random() * 2 + 1);
 }
@@ -201,7 +201,7 @@ export function teardown(data) {
   // Calculate test duration
   const duration = (Date.now() - data.startTime) / 1000;
   console.log(`Test completed in ${duration} seconds`);
-  
+
   // Final health check
   let res = http.get(`${BASE_URL}/health/ready`);
   check(res, {

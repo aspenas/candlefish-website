@@ -14,6 +14,9 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/xuri/excelize/v2"
 	"github.com/jung-kurt/gofpdf"
+	"github.com/google/uuid"
+
+	"github.com/patricksmith/highline-inventory/models"
 )
 
 type Handler struct {
@@ -22,6 +25,47 @@ type Handler struct {
 
 func New(db *sqlx.DB) *Handler {
 	return &Handler{db: db}
+}
+
+// Activity logging helper functions
+func (h *Handler) logActivity(action models.ActivityAction, itemID *uuid.UUID, itemName, roomName, details, oldValue, newValue, userID *string) error {
+	if h.db == nil {
+		return nil // Skip logging if no database connection
+	}
+
+	query := `
+		INSERT INTO activities (action, item_id, item_name, room_name, details, old_value, new_value, user_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	`
+
+	_, err := h.db.Exec(query, action, itemID, itemName, roomName, details, oldValue, newValue, userID)
+	return err
+}
+
+func (h *Handler) logItemActivity(action models.ActivityAction, itemID uuid.UUID, details, oldValue, newValue *string) error {
+	if h.db == nil {
+		return nil
+	}
+
+	// Get item and room info
+	var item struct {
+		Name     string `db:"name"`
+		RoomName string `db:"room_name"`
+	}
+
+	err := h.db.Get(&item, `
+		SELECT i.name, r.name as room_name
+		FROM items i
+		JOIN rooms r ON i.room_id = r.id
+		WHERE i.id = $1
+	`, itemID)
+
+	if err != nil {
+		// If we can't get item details, still log with minimal info
+		return h.logActivity(action, &itemID, nil, nil, details, oldValue, newValue, nil)
+	}
+
+	return h.logActivity(action, &itemID, &item.Name, &item.RoomName, details, oldValue, newValue, nil)
 }
 
 // Room handlers
@@ -33,48 +77,46 @@ func (h *Handler) GetRooms(c *fiber.Ctx) error {
 		})
 	}
 	query := `
-		SELECT r.id, r.name, r.floor, r.room_type, 
+		SELECT r.id, r.name, r.floor,
 		       COUNT(i.id) as item_count,
 		       COALESCE(SUM(i.purchase_price), 0) as total_value
 		FROM rooms r
 		LEFT JOIN items i ON r.id = i.room_id
-		GROUP BY r.id, r.name, r.floor, r.room_type
+		GROUP BY r.id, r.name, r.floor
 		ORDER BY r.floor, r.name
 	`
-	
+
 	rows, err := h.db.Query(query)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	defer rows.Close()
-	
+
 	rooms := []fiber.Map{}
 	for rows.Next() {
 		var room struct {
 			ID         string  `db:"id"`
 			Name       string  `db:"name"`
 			Floor      string  `db:"floor"`
-			RoomType   *string `db:"room_type"`
 			ItemCount  int     `db:"item_count"`
 			TotalValue float64 `db:"total_value"`
 		}
-		
-		err := rows.Scan(&room.ID, &room.Name, &room.Floor, &room.RoomType,
+
+		err := rows.Scan(&room.ID, &room.Name, &room.Floor,
 			&room.ItemCount, &room.TotalValue)
 		if err != nil {
 			continue
 		}
-		
+
 		rooms = append(rooms, fiber.Map{
 			"id":          room.ID,
 			"name":        room.Name,
 			"floor":       room.Floor,
-			"room_type":   room.RoomType,
 			"item_count":  room.ItemCount,
 			"total_value": room.TotalValue,
 		})
 	}
-	
+
 	return c.JSON(fiber.Map{"rooms": rooms})
 }
 
@@ -106,7 +148,7 @@ func (h *Handler) GetItems(c *fiber.Ctx) error {
 		})
 	}
 	query := `
-		SELECT 
+		SELECT
 			i.id, i.name, i.category, i.decision,
 			i.purchase_price, i.is_fixture, i.source,
 			i.invoice_ref, i.designer_invoice_price,
@@ -115,13 +157,13 @@ func (h *Handler) GetItems(c *fiber.Ctx) error {
 		JOIN rooms r ON i.room_id = r.id
 		ORDER BY r.name, i.name
 	`
-	
+
 	rows, err := h.db.Query(query)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	defer rows.Close()
-	
+
 	items := []fiber.Map{}
 	for rows.Next() {
 		var item struct {
@@ -137,7 +179,7 @@ func (h *Handler) GetItems(c *fiber.Ctx) error {
 			RoomName             string  `db:"room_name"`
 			Floor                string  `db:"floor"`
 		}
-		
+
 		err := rows.Scan(&item.ID, &item.Name, &item.Category, &item.Decision,
 			&item.PurchasePrice, &item.IsFixture, &item.Source,
 			&item.InvoiceRef, &item.DesignerInvoicePrice,
@@ -145,7 +187,7 @@ func (h *Handler) GetItems(c *fiber.Ctx) error {
 		if err != nil {
 			continue
 		}
-		
+
 		items = append(items, fiber.Map{
 			"id":           item.ID,
 			"name":         item.Name,
@@ -159,7 +201,7 @@ func (h *Handler) GetItems(c *fiber.Ctx) error {
 			"floor":        item.Floor,
 		})
 	}
-	
+
 	return c.JSON(fiber.Map{
 		"items": items,
 		"total": len(items),
@@ -167,23 +209,157 @@ func (h *Handler) GetItems(c *fiber.Ctx) error {
 }
 
 func (h *Handler) GetItem(c *fiber.Ctx) error {
+	itemID := c.Params("id")
+	if itemID != "" {
+		// Parse UUID and log view activity
+		if id, err := uuid.Parse(itemID); err == nil {
+			details := "Item viewed"
+			h.logItemActivity(models.ActivityViewed, id, &details, nil, nil)
+		}
+	}
 	return c.JSON(fiber.Map{"item": nil})
 }
 
 func (h *Handler) CreateItem(c *fiber.Ctx) error {
+	// TODO: Implement item creation and log activity
+	// After creating item:
+	// details := "Item created"
+	// h.logItemActivity(models.ActivityCreated, newItemID, &details, nil, nil)
 	return c.JSON(fiber.Map{"success": true})
 }
 
 func (h *Handler) UpdateItem(c *fiber.Ctx) error {
+	itemID := c.Params("id")
+	if itemID != "" {
+		// Parse UUID and log update activity
+		if id, err := uuid.Parse(itemID); err == nil {
+			details := "Item updated"
+			h.logItemActivity(models.ActivityUpdated, id, &details, nil, nil)
+		}
+	}
 	return c.JSON(fiber.Map{"success": true})
 }
 
 func (h *Handler) DeleteItem(c *fiber.Ctx) error {
+	itemID := c.Params("id")
+	if itemID != "" {
+		// Parse UUID and log delete activity
+		if id, err := uuid.Parse(itemID); err == nil {
+			details := "Item deleted"
+			h.logItemActivity(models.ActivityDeleted, id, &details, nil, nil)
+		}
+	}
 	return c.JSON(fiber.Map{"success": true})
 }
 
 func (h *Handler) BulkUpdateItems(c *fiber.Ctx) error {
+	// TODO: Implement bulk update with activity logging
+	// After bulk update:
+	// details := "Bulk operation: X items updated"
+	// h.logActivity(models.ActivityBulkUpdate, nil, nil, nil, &details, nil, nil, nil)
 	return c.JSON(fiber.Map{"success": true})
+}
+
+// Activities endpoint
+func (h *Handler) GetActivities(c *fiber.Ctx) error {
+	if h.db == nil {
+		// Return mock data when no database connection
+		mockActivities := []fiber.Map{
+			{
+				"id":         "1",
+				"action":     "decided",
+				"item_name":  "West Elm Sectional Sofa",
+				"room_name":  "Living Room",
+				"details":    "Decision changed to keep",
+				"old_value":  "Unsure",
+				"new_value":  "Keep",
+				"created_at": time.Now().Add(-30 * time.Minute),
+			},
+			{
+				"id":         "2",
+				"action":     "updated",
+				"item_name":  "Moroccan Area Rug",
+				"room_name":  "Dining Room",
+				"details":    "Item details updated",
+				"created_at": time.Now().Add(-2 * time.Hour),
+			},
+			{
+				"id":         "3",
+				"action":     "decided",
+				"item_name":  "Vintage Coffee Table",
+				"room_name":  "Living Room",
+				"details":    "Decision changed to sell",
+				"old_value":  "Unsure",
+				"new_value":  "Sell",
+				"created_at": time.Now().Add(-4 * time.Hour),
+			},
+		}
+		return c.JSON(fiber.Map{
+			"activities": mockActivities,
+			"total":      len(mockActivities),
+		})
+	}
+
+	// Parse query parameters
+	limit := 20 // default limit
+	if l := c.Query("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 100 {
+			limit = parsed
+		}
+	}
+
+	// Get recent activities
+	query := `
+		SELECT 
+			a.id, a.action, a.item_name, a.room_name, 
+			a.details, a.old_value, a.new_value, a.created_at
+		FROM activities a
+		ORDER BY a.created_at DESC
+		LIMIT $1
+	`
+
+	rows, err := h.db.Query(query, limit)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	defer rows.Close()
+
+	activities := []fiber.Map{}
+	for rows.Next() {
+		var activity struct {
+			ID        string    `db:"id"`
+			Action    string    `db:"action"`
+			ItemName  *string   `db:"item_name"`
+			RoomName  *string   `db:"room_name"`
+			Details   *string   `db:"details"`
+			OldValue  *string   `db:"old_value"`
+			NewValue  *string   `db:"new_value"`
+			CreatedAt time.Time `db:"created_at"`
+		}
+
+		err := rows.Scan(&activity.ID, &activity.Action, &activity.ItemName, 
+			&activity.RoomName, &activity.Details, &activity.OldValue, 
+			&activity.NewValue, &activity.CreatedAt)
+		if err != nil {
+			continue
+		}
+
+		activities = append(activities, fiber.Map{
+			"id":         activity.ID,
+			"action":     activity.Action,
+			"item_name":  activity.ItemName,
+			"room_name":  activity.RoomName,
+			"details":    activity.Details,
+			"old_value":  activity.OldValue,
+			"new_value":  activity.NewValue,
+			"created_at": activity.CreatedAt,
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"activities": activities,
+		"total":      len(activities),
+	})
 }
 
 // Search and filter
@@ -205,7 +381,7 @@ func (h *Handler) SearchItems(c *fiber.Ctx) error {
 
 	// Basic search across multiple fields
 	searchQuery := `
-		SELECT 
+		SELECT
 			i.id, i.name, i.category, i.decision,
 			i.purchase_price, i.is_fixture, i.source,
 			i.invoice_ref, i.designer_invoice_price,
@@ -213,9 +389,9 @@ func (h *Handler) SearchItems(c *fiber.Ctx) error {
 			i.description, i.placement_notes
 		FROM items i
 		JOIN rooms r ON i.room_id = r.id
-		WHERE 
+		WHERE
 			LOWER(i.name) LIKE LOWER($1) OR
-			LOWER(i.category) LIKE LOWER($1) OR
+			LOWER(i.category::text) LIKE LOWER($1) OR
 			LOWER(i.description) LIKE LOWER($1) OR
 			LOWER(r.name) LIKE LOWER($1) OR
 			LOWER(i.source) LIKE LOWER($1)
@@ -286,7 +462,7 @@ func (h *Handler) FilterItems(c *fiber.Ctx) error {
 
 	// Build dynamic filter query
 	baseQuery := `
-		SELECT 
+		SELECT
 			i.id, i.name, i.category, i.decision,
 			i.purchase_price, i.is_fixture, i.source,
 			i.invoice_ref, i.designer_invoice_price,
@@ -458,9 +634,9 @@ func (h *Handler) GetSummary(c *fiber.Ctx) error {
 		KeepCount   int     `db:"keep_count"`
 		UnsureCount int     `db:"unsure_count"`
 	}
-	
+
 	err := h.db.Get(&stats, `
-		SELECT 
+		SELECT
 			COUNT(*) as total_items,
 			COALESCE(SUM(purchase_price), 0) as total_value,
 			COUNT(*) FILTER (WHERE decision = 'Sell') as sell_count,
@@ -471,7 +647,7 @@ func (h *Handler) GetSummary(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	
+
 	// Get room values
 	roomValues := []fiber.Map{}
 	rows, err := h.db.Query(`
@@ -498,7 +674,7 @@ func (h *Handler) GetSummary(c *fiber.Ctx) error {
 			}
 		}
 	}
-	
+
 	// Get category distribution
 	categoryDist := []fiber.Map{}
 	rows2, err := h.db.Query(`
@@ -522,7 +698,7 @@ func (h *Handler) GetSummary(c *fiber.Ctx) error {
 			}
 		}
 	}
-	
+
 	return c.JSON(fiber.Map{
 		"totalItems":            stats.TotalItems,
 		"totalValue":            stats.TotalValue,
@@ -535,11 +711,128 @@ func (h *Handler) GetSummary(c *fiber.Ctx) error {
 }
 
 func (h *Handler) GetRoomAnalytics(c *fiber.Ctx) error {
-	return c.JSON(fiber.Map{"analytics": []interface{}{}})
+	if h.db == nil {
+		return c.JSON(fiber.Map{"analytics": []interface{}{}})
+	}
+
+	query := `
+		SELECT
+			r.name as room_name,
+			r.floor,
+			COUNT(i.id) as item_count,
+			COALESCE(SUM(i.purchase_price), 0) as total_value,
+			COALESCE(AVG(i.purchase_price), 0) as avg_value,
+			SUM(CASE WHEN i.decision = 'Keep' THEN 1 ELSE 0 END) as keep_count,
+			SUM(CASE WHEN i.decision = 'Sell' THEN 1 ELSE 0 END) as sell_count,
+			SUM(CASE WHEN i.decision = 'Unsure' THEN 1 ELSE 0 END) as unsure_count
+		FROM rooms r
+		LEFT JOIN items i ON r.id = i.room_id
+		GROUP BY r.name, r.floor
+		ORDER BY total_value DESC
+	`
+
+	rows, err := h.db.Query(query)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	defer rows.Close()
+
+	analytics := []fiber.Map{}
+	for rows.Next() {
+		var room struct {
+			Name        string  `db:"room_name"`
+			Floor       string  `db:"floor"`
+			ItemCount   int     `db:"item_count"`
+			TotalValue  float64 `db:"total_value"`
+			AvgValue    float64 `db:"avg_value"`
+			KeepCount   int     `db:"keep_count"`
+			SellCount   int     `db:"sell_count"`
+			UnsureCount int     `db:"unsure_count"`
+		}
+
+		err := rows.Scan(&room.Name, &room.Floor, &room.ItemCount, &room.TotalValue,
+			&room.AvgValue, &room.KeepCount, &room.SellCount, &room.UnsureCount)
+		if err != nil {
+			continue
+		}
+
+		analytics = append(analytics, fiber.Map{
+			"room":         room.Name,
+			"floor":        room.Floor,
+			"item_count":   room.ItemCount,
+			"total_value":  room.TotalValue,
+			"avg_value":    room.AvgValue,
+			"keep_count":   room.KeepCount,
+			"sell_count":   room.SellCount,
+			"unsure_count": room.UnsureCount,
+		})
+	}
+
+	return c.JSON(fiber.Map{"analytics": analytics})
 }
 
 func (h *Handler) GetCategoryAnalytics(c *fiber.Ctx) error {
-	return c.JSON(fiber.Map{"analytics": []interface{}{}})
+	if h.db == nil {
+		return c.JSON(fiber.Map{"analytics": []interface{}{}})
+	}
+
+	query := `
+		SELECT
+			i.category::text as category,
+			COUNT(i.id) as item_count,
+			COALESCE(SUM(i.purchase_price), 0) as total_value,
+			COALESCE(AVG(i.purchase_price), 0) as avg_value,
+			COALESCE(MIN(i.purchase_price), 0) as min_value,
+			COALESCE(MAX(i.purchase_price), 0) as max_value,
+			SUM(CASE WHEN i.decision = 'Keep' THEN 1 ELSE 0 END) as keep_count,
+			SUM(CASE WHEN i.decision = 'Sell' THEN 1 ELSE 0 END) as sell_count,
+			SUM(CASE WHEN i.decision = 'Unsure' THEN 1 ELSE 0 END) as unsure_count
+		FROM items i
+		GROUP BY i.category
+		ORDER BY total_value DESC
+	`
+
+	rows, err := h.db.Query(query)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	defer rows.Close()
+
+	analytics := []fiber.Map{}
+	for rows.Next() {
+		var cat struct {
+			Category    string  `db:"category"`
+			ItemCount   int     `db:"item_count"`
+			TotalValue  float64 `db:"total_value"`
+			AvgValue    float64 `db:"avg_value"`
+			MinValue    float64 `db:"min_value"`
+			MaxValue    float64 `db:"max_value"`
+			KeepCount   int     `db:"keep_count"`
+			SellCount   int     `db:"sell_count"`
+			UnsureCount int     `db:"unsure_count"`
+		}
+
+		err := rows.Scan(&cat.Category, &cat.ItemCount, &cat.TotalValue,
+			&cat.AvgValue, &cat.MinValue, &cat.MaxValue,
+			&cat.KeepCount, &cat.SellCount, &cat.UnsureCount)
+		if err != nil {
+			continue
+		}
+
+		analytics = append(analytics, fiber.Map{
+			"category":     cat.Category,
+			"item_count":   cat.ItemCount,
+			"total_value":  cat.TotalValue,
+			"avg_value":    cat.AvgValue,
+			"min_value":    cat.MinValue,
+			"max_value":    cat.MaxValue,
+			"keep_count":   cat.KeepCount,
+			"sell_count":   cat.SellCount,
+			"unsure_count": cat.UnsureCount,
+		})
+	}
+
+	return c.JSON(fiber.Map{"analytics": analytics})
 }
 
 // Export functions
@@ -567,7 +860,7 @@ func (h *Handler) getExportItems(c *fiber.Ctx) ([]map[string]interface{}, error)
 			return []map[string]interface{}{}, nil
 		}
 		query = fmt.Sprintf(`
-			SELECT 
+			SELECT
 				i.id, i.name, i.category, i.decision,
 				i.purchase_price, i.asking_price, i.sold_price,
 				i.is_fixture, i.source, i.quantity,
@@ -583,7 +876,7 @@ func (h *Handler) getExportItems(c *fiber.Ctx) ([]map[string]interface{}, error)
 	} else {
 		// Export all items
 		query = `
-			SELECT 
+			SELECT
 				i.id, i.name, i.category, i.decision,
 				i.purchase_price, i.asking_price, i.sold_price,
 				i.is_fixture, i.source, i.quantity,
@@ -696,7 +989,7 @@ func (h *Handler) ExportExcel(c *fiber.Ctx) error {
 	// Set data
 	for i, item := range items {
 		row := i + 2 // Start from row 2 (after headers)
-		
+
 		f.SetCellValue("Sheet1", fmt.Sprintf("A%d", row), item["id"])
 		f.SetCellValue("Sheet1", fmt.Sprintf("B%d", row), item["name"])
 		f.SetCellValue("Sheet1", fmt.Sprintf("C%d", row), item["category"])
@@ -714,11 +1007,11 @@ func (h *Handler) ExportExcel(c *fiber.Ctx) error {
 		f.SetCellValue("Sheet1", fmt.Sprintf("O%d", row), item["description"])
 		f.SetCellValue("Sheet1", fmt.Sprintf("P%d", row), item["condition"])
 		f.SetCellValue("Sheet1", fmt.Sprintf("Q%d", row), item["placement_notes"])
-		
+
 		if purchaseDate, ok := item["purchase_date"].(*time.Time); ok && purchaseDate != nil {
 			f.SetCellValue("Sheet1", fmt.Sprintf("R%d", row), purchaseDate.Format("2006-01-02"))
 		}
-		
+
 		if createdAt, ok := item["created_at"].(time.Time); ok {
 			f.SetCellValue("Sheet1", fmt.Sprintf("S%d", row), createdAt.Format("2006-01-02"))
 		}
@@ -745,6 +1038,10 @@ func (h *Handler) ExportExcel(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
+
+	// Log export activity
+	details := fmt.Sprintf("Exported %d items to Excel", len(items))
+	h.logActivity(models.ActivityExported, nil, nil, nil, &details, nil, nil, nil)
 
 	// Set headers for download
 	c.Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
@@ -794,20 +1091,20 @@ func (h *Handler) ExportCSV(c *fiber.Ctx) error {
 			fmt.Sprintf("%v", item["condition"]),
 			fmt.Sprintf("%v", item["placement_notes"]),
 		}
-		
+
 		// Format dates
 		if purchaseDate, ok := item["purchase_date"].(*time.Time); ok && purchaseDate != nil {
 			record = append(record, purchaseDate.Format("2006-01-02"))
 		} else {
 			record = append(record, "")
 		}
-		
+
 		if createdAt, ok := item["created_at"].(time.Time); ok {
 			record = append(record, createdAt.Format("2006-01-02"))
 		} else {
 			record = append(record, "")
 		}
-		
+
 		writer.Write(record)
 	}
 
@@ -868,7 +1165,7 @@ func (h *Handler) ExportPDF(c *fiber.Ctx) error {
 		if len(name) > 25 {
 			name = name[:22] + "..."
 		}
-		
+
 		description := fmt.Sprintf("%v", item["description"])
 		if description == "<nil>" {
 			description = ""
@@ -881,7 +1178,7 @@ func (h *Handler) ExportPDF(c *fiber.Ctx) error {
 		if item["purchase_price"] != nil {
 			price = fmt.Sprintf("$%.0f", item["purchase_price"])
 		}
-		
+
 		askingPrice := ""
 		if item["asking_price"] != nil {
 			askingPrice = fmt.Sprintf("$%.0f", item["asking_price"])
@@ -969,7 +1266,7 @@ func (h *Handler) ExportBuyerView(c *fiber.Ctx) error {
 
 		// Details
 		pdf.SetFont("Arial", "", 10)
-		
+
 		// Category and Room
 		pdf.Cell(95, 6, fmt.Sprintf("Category: %v", item["category"]))
 		pdf.Cell(95, 6, fmt.Sprintf("Room: %v", item["room_name"]))
@@ -983,7 +1280,7 @@ func (h *Handler) ExportBuyerView(c *fiber.Ctx) error {
 			pdf.SetFont("Arial", "", 10)
 			pdf.Cell(95, 6, fmt.Sprintf("Original Price: $%.2f", item["purchase_price"]))
 		}
-		
+
 		if item["decision"] == "Sold" {
 			pdf.SetFont("Arial", "I", 10)
 			pdf.Cell(95, 6, "Status: SOLD")
@@ -1039,13 +1336,13 @@ func (h *Handler) ImportExcel(c *fiber.Ctx) error {
 
 func (h *Handler) SetupDatabase(c *fiber.Ctx) error {
 	// Simple database setup endpoint - calls the Python setup script
-	
+
 	// Execute the setup script
 	cmd := exec.Command("python3", "/app/scripts/setup-production-db.py")
 	cmd.Env = append(os.Environ(), "DATABASE_URL=" + os.Getenv("DATABASE_URL"))
-	
+
 	output, err := cmd.CombinedOutput()
-	
+
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"success": false,
@@ -1053,16 +1350,16 @@ func (h *Handler) SetupDatabase(c *fiber.Ctx) error {
 			"output": string(output),
 		})
 	}
-	
+
 	// Parse output to get statistics
 	outputStr := string(output)
 	lines := strings.Split(outputStr, "\n")
-	
+
 	stats := fiber.Map{
 		"success": true,
 		"output": outputStr,
 	}
-	
+
 	// Extract key metrics from output
 	for _, line := range lines {
 		if strings.Contains(line, "Items:") {
@@ -1072,7 +1369,7 @@ func (h *Handler) SetupDatabase(c *fiber.Ctx) error {
 			stats["total_value"] = strings.TrimSpace(strings.Split(line, ":")[1])
 		}
 	}
-	
+
 	return c.JSON(stats)
 }
 

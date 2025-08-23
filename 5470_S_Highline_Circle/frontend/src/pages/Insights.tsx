@@ -8,7 +8,6 @@ import {
   ChartBarIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
-  ArrowTrendingUpIcon,
   FireIcon,
   GiftIcon,
   ClockIcon,
@@ -329,7 +328,7 @@ export default function Insights() {
       case 'recommendation': return <LightBulbIcon className="h-5 w-5" />;
       case 'warning': return <ExclamationTriangleIcon className="h-5 w-5" />;
       case 'opportunity': return <SparklesIcon className="h-5 w-5" />;
-      case 'trend': return <TrendingUpIcon className="h-5 w-5" />;
+      case 'trend': return <ArrowTrendingUpIcon className="h-5 w-5" />;
       default: return <ChartBarIcon className="h-5 w-5" />;
     }
   };

@@ -8,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm"; -- For fuzzy text search
 -- Categories enum
 CREATE TYPE item_category AS ENUM (
     'Furniture',
-    'Art / Decor', 
+    'Art / Decor',
     'Electronics',
     'Lighting',
     'Rug / Carpet',
@@ -19,7 +19,7 @@ CREATE TYPE item_category AS ENUM (
     'Other'
 );
 
--- Decision status enum  
+-- Decision status enum
 CREATE TYPE decision_status AS ENUM (
     'Keep',
     'Sell',
@@ -31,7 +31,7 @@ CREATE TYPE decision_status AS ENUM (
 -- Floors enum
 CREATE TYPE floor_level AS ENUM (
     'Lower Level',
-    'Main Floor', 
+    'Main Floor',
     'Upper Floor',
     'Outdoor',
     'Garage'
@@ -56,14 +56,14 @@ CREATE TABLE items (
     description TEXT,
     category item_category NOT NULL,
     decision decision_status DEFAULT 'Unsure',
-    
+
     -- Pricing fields
     purchase_price DECIMAL(10,2),
     invoice_ref VARCHAR(100),
     designer_invoice_price DECIMAL(10,2),
     asking_price DECIMAL(10,2),
     sold_price DECIMAL(10,2),
-    
+
     -- Additional attributes
     quantity INTEGER DEFAULT 1,
     is_fixture BOOLEAN DEFAULT FALSE,
@@ -71,11 +71,11 @@ CREATE TABLE items (
     placement_notes TEXT,
     condition VARCHAR(50),
     purchase_date DATE,
-    
+
     -- Metadata
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+
     -- Full text search
     search_vector tsvector GENERATED ALWAYS AS (
         setweight(to_tsvector('english', coalesce(name, '')), 'A') ||
@@ -178,7 +178,7 @@ CREATE TRIGGER audit_items AFTER INSERT OR UPDATE OR DELETE ON items
 
 -- Views for reporting
 CREATE VIEW room_summary AS
-SELECT 
+SELECT
     r.id,
     r.name,
     r.floor,
@@ -193,7 +193,7 @@ LEFT JOIN items i ON r.id = i.room_id
 GROUP BY r.id, r.name, r.floor;
 
 CREATE VIEW category_summary AS
-SELECT 
+SELECT
     category,
     COUNT(*) as item_count,
     SUM(purchase_price) as total_purchase_value,
@@ -204,7 +204,7 @@ FROM items
 GROUP BY category;
 
 CREATE VIEW buyer_view AS
-SELECT 
+SELECT
     r.name as room,
     i.name as item,
     i.category,

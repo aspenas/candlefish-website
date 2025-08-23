@@ -9,28 +9,10 @@ const apiClient = axios.create({
   },
 });
 
-// Request interceptor
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-// Response interceptor
+// Response interceptor - simplified without auth
 apiClient.interceptors.response.use(
   (response) => response.data,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 export const api = {
@@ -38,7 +20,7 @@ export const api = {
   getSummary: () => apiClient.get('/analytics/summary'),
 
   // Items
-  getItems: (params?: any) => apiClient.get('/items', { params }),
+  getItems: (params?: any) => apiClient.get('/items', { params }).then((response: any) => response.items || []),
   getItem: (id: string) => apiClient.get(`/items/${id}`),
   createItem: (data: any) => apiClient.post('/items', data),
   updateItem: (id: string, data: any) => apiClient.put(`/items/${id}`, data),
@@ -54,8 +36,8 @@ export const api = {
   getRoom: (id: string) => apiClient.get(`/rooms/${id}`),
 
   // Analytics
-  getRoomAnalytics: () => apiClient.get('/analytics/by-room'),
-  getCategoryAnalytics: () => apiClient.get('/analytics/by-category'),
+  getRoomAnalytics: () => apiClient.get('/analytics/by-room').then((response: any) => ({ rooms: response.analytics || [] })),
+  getCategoryAnalytics: () => apiClient.get('/analytics/by-category').then((response: any) => ({ categories: response.analytics || [] })),
 
   // Export
   exportExcel: (itemIds?: string[]) => {
@@ -81,6 +63,9 @@ export const api = {
   // Transactions
   getTransactions: () => apiClient.get('/transactions'),
   createTransaction: (data: any) => apiClient.post('/transactions', data),
+
+  // Activities
+  getActivities: (limit?: number) => apiClient.get('/activities', { params: { limit } }),
 
   // AI Insights
   getAIInsights: () => apiClient.get('/ai/insights'),

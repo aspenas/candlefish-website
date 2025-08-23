@@ -3,7 +3,7 @@
 
 terraform {
   required_version = ">= 1.5.0"
-  
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -27,7 +27,7 @@ terraform {
 # Default AWS Provider
 provider "aws" {
   region = var.aws_region
-  
+
   default_tags {
     tags = {
       Project     = "PromoterOS"
@@ -43,7 +43,7 @@ provider "aws" {
 provider "aws" {
   alias  = "us_east_1"
   region = "us-east-1"
-  
+
   default_tags {
     tags = {
       Project     = "PromoterOS"

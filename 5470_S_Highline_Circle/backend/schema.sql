@@ -8,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm"; -- For fuzzy text search
 -- Categories enum
 CREATE TYPE item_category AS ENUM (
     'Furniture',
-    'Art / Decor', 
+    'Art / Decor',
     'Electronics',
     'Lighting',
     'Rug / Carpet',
@@ -19,7 +19,7 @@ CREATE TYPE item_category AS ENUM (
     'Other'
 );
 
--- Decision status enum  
+-- Decision status enum
 CREATE TYPE decision_status AS ENUM (
     'Keep',
     'Sell',
@@ -31,7 +31,7 @@ CREATE TYPE decision_status AS ENUM (
 -- Floors enum
 CREATE TYPE floor_level AS ENUM (
     'Lower Level',
-    'Main Floor', 
+    'Main Floor',
     'Upper Floor',
     'Outdoor',
     'Garage'
@@ -56,14 +56,14 @@ CREATE TABLE items (
     description TEXT,
     category item_category NOT NULL,
     decision decision_status DEFAULT 'Unsure',
-    
+
     -- Pricing fields
     purchase_price DECIMAL(10,2),
     invoice_ref VARCHAR(100),
     designer_invoice_price DECIMAL(10,2),
     asking_price DECIMAL(10,2),
     sold_price DECIMAL(10,2),
-    
+
     -- Additional attributes
     quantity INTEGER DEFAULT 1,
     is_fixture BOOLEAN DEFAULT FALSE,
@@ -71,11 +71,11 @@ CREATE TABLE items (
     placement_notes TEXT,
     condition VARCHAR(50),
     purchase_date DATE,
-    
+
     -- Metadata
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+
     -- Full text search
     search_vector tsvector GENERATED ALWAYS AS (
         setweight(to_tsvector('english', coalesce(name, '')), 'A') ||
@@ -131,6 +131,32 @@ CREATE TABLE audit_log (
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Activities enum for user-friendly activity tracking
+CREATE TYPE activity_action AS ENUM (
+    'viewed',
+    'updated',
+    'created',
+    'deleted',
+    'decided',
+    'bulk_updated',
+    'exported',
+    'imported'
+);
+
+-- Activities table for user-friendly activity feed
+CREATE TABLE activities (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    action activity_action NOT NULL,
+    item_id UUID REFERENCES items(id) ON DELETE SET NULL,
+    item_name VARCHAR(255),
+    room_name VARCHAR(100),
+    details TEXT,
+    old_value VARCHAR(255),
+    new_value VARCHAR(255),
+    user_id VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Create indexes for performance
 CREATE INDEX idx_items_room ON items(room_id);
 CREATE INDEX idx_items_category ON items(category);
@@ -139,6 +165,9 @@ CREATE INDEX idx_items_search ON items USING GIN(search_vector);
 CREATE INDEX idx_items_price_range ON items(asking_price);
 CREATE INDEX idx_transactions_item ON transactions(item_id);
 CREATE INDEX idx_audit_log_record ON audit_log(record_id);
+CREATE INDEX idx_activities_item ON activities(item_id);
+CREATE INDEX idx_activities_created ON activities(created_at DESC);
+CREATE INDEX idx_activities_action ON activities(action);
 
 -- Create update trigger for updated_at
 CREATE OR REPLACE FUNCTION update_updated_at()
@@ -178,7 +207,7 @@ CREATE TRIGGER audit_items AFTER INSERT OR UPDATE OR DELETE ON items
 
 -- Views for reporting
 CREATE VIEW room_summary AS
-SELECT 
+SELECT
     r.id,
     r.name,
     r.floor,
@@ -193,7 +222,7 @@ LEFT JOIN items i ON r.id = i.room_id
 GROUP BY r.id, r.name, r.floor;
 
 CREATE VIEW category_summary AS
-SELECT 
+SELECT
     category,
     COUNT(*) as item_count,
     SUM(purchase_price) as total_purchase_value,
@@ -204,7 +233,7 @@ FROM items
 GROUP BY category;
 
 CREATE VIEW buyer_view AS
-SELECT 
+SELECT
     r.name as room,
     i.name as item,
     i.category,

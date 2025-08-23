@@ -54,7 +54,7 @@ type Room struct {
 	Description   *string    `json:"description,omitempty" db:"description"`
 	CreatedAt     time.Time  `json:"created_at" db:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at" db:"updated_at"`
-	
+
 	// Computed fields
 	ItemCount   int     `json:"item_count,omitempty" db:"item_count"`
 	TotalValue  float64 `json:"total_value,omitempty" db:"total_value"`
@@ -81,7 +81,7 @@ type Item struct {
 	PurchaseDate         *time.Time     `json:"purchase_date,omitempty" db:"purchase_date"`
 	CreatedAt            time.Time      `json:"created_at" db:"created_at"`
 	UpdatedAt            time.Time      `json:"updated_at" db:"updated_at"`
-	
+
 	// Relations
 	Room   *Room    `json:"room,omitempty"`
 	Images []Image  `json:"images,omitempty"`
@@ -109,7 +109,7 @@ type Transaction struct {
 	PartyName       *string   `json:"party_name,omitempty" db:"party_name"`
 	Notes           *string   `json:"notes,omitempty" db:"notes"`
 	CreatedAt       time.Time `json:"created_at" db:"created_at"`
-	
+
 	// Relations
 	Item *Item `json:"item,omitempty"`
 }
@@ -159,6 +159,37 @@ type BuyerView struct {
 	Source               *string  `json:"source,omitempty" db:"source"`
 }
 
+// Activity types
+type ActivityAction string
+
+const (
+	ActivityViewed      ActivityAction = "viewed"
+	ActivityUpdated     ActivityAction = "updated"
+	ActivityCreated     ActivityAction = "created"
+	ActivityDeleted     ActivityAction = "deleted"
+	ActivityDecided     ActivityAction = "decided"
+	ActivityBulkUpdate  ActivityAction = "bulk_updated"
+	ActivityExported    ActivityAction = "exported"
+	ActivityImported    ActivityAction = "imported"
+)
+
+// Activity model for user-friendly activity tracking
+type Activity struct {
+	ID          uuid.UUID      `json:"id" db:"id"`
+	Action      ActivityAction `json:"action" db:"action"`
+	ItemID      *uuid.UUID     `json:"item_id,omitempty" db:"item_id"`
+	ItemName    *string        `json:"item_name,omitempty" db:"item_name"`
+	RoomName    *string        `json:"room_name,omitempty" db:"room_name"`
+	Details     *string        `json:"details,omitempty" db:"details"`
+	OldValue    *string        `json:"old_value,omitempty" db:"old_value"`
+	NewValue    *string        `json:"new_value,omitempty" db:"new_value"`
+	UserID      *string        `json:"user_id,omitempty" db:"user_id"`
+	CreatedAt   time.Time      `json:"created_at" db:"created_at"`
+
+	// Relations
+	Item *Item `json:"item,omitempty"`
+}
+
 // Filter request model
 type FilterRequest struct {
 	Rooms      []string         `json:"rooms"`
@@ -200,4 +231,8 @@ func (d DecisionStatus) Value() (driver.Value, error) {
 
 func (f FloorLevel) Value() (driver.Value, error) {
 	return string(f), nil
+}
+
+func (a ActivityAction) Value() (driver.Value, error) {
+	return string(a), nil
 }

@@ -26,7 +26,7 @@ var (
 		},
 		[]string{"method", "endpoint", "status"},
 	)
-	
+
 	httpRequestDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name: "http_request_duration_seconds",
@@ -64,16 +64,16 @@ func NewServer(config *Config, logger *zap.Logger) *Server {
 	if config.Environment == "development" {
 		gin.SetMode(gin.DebugMode)
 	}
-	
+
 	router := gin.New()
-	
+
 	// Middleware
 	router.Use(gin.Recovery())
 	router.Use(RequestIDMiddleware())
 	router.Use(LoggingMiddleware(logger))
 	router.Use(PrometheusMiddleware())
 	router.Use(otelgin.Middleware("api-gateway"))
-	
+
 	// CORS
 	corsConfig := cors.Config{
 		AllowOrigins:     config.AllowedOrigins,
@@ -84,7 +84,7 @@ func NewServer(config *Config, logger *zap.Logger) *Server {
 		MaxAge:          12 * time.Hour,
 	}
 	router.Use(cors.New(corsConfig))
-	
+
 	return &Server{
 		router: router,
 		logger: logger,
@@ -99,7 +99,7 @@ func (s *Server) SetupRoutes() {
 		health.GET("/live", s.handleLiveness)
 		health.GET("/ready", s.handleReadiness)
 	}
-	
+
 	// API v1 routes
 	v1 := s.router.Group("/api/v1")
 	v1.Use(AuthMiddleware(s.config.JWTSecret))
@@ -109,21 +109,21 @@ func (s *Server) SetupRoutes() {
 		v1.GET("/artists/:id", s.handleGetArtist)
 		v1.POST("/artists", s.handleCreateArtist)
 		v1.PUT("/artists/:id", s.handleUpdateArtist)
-		
+
 		// Metrics
 		v1.GET("/metrics/artists/:id", s.handleGetArtistMetrics)
 		v1.POST("/metrics/ingest", s.handleIngestMetrics)
-		
+
 		// Predictions
 		v1.POST("/predictions", s.handleCreatePrediction)
 		v1.GET("/predictions/:id", s.handleGetPrediction)
-		
+
 		// Bookings
 		v1.POST("/bookings", s.handleCreateBooking)
 		v1.GET("/bookings/:id", s.handleGetBooking)
 		v1.PUT("/bookings/:id", s.handleUpdateBooking)
 	}
-	
+
 	// Metrics endpoint
 	s.router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 }
@@ -139,7 +139,7 @@ func (s *Server) handleReadiness(c *gin.Context) {
 	// Check database connection
 	// Check Redis connection
 	// Check external dependencies
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"status": "ready",
 		"time":   time.Now().Unix(),
@@ -156,7 +156,7 @@ func (s *Server) handleGetArtists(c *gin.Context) {
 
 func (s *Server) handleGetArtist(c *gin.Context) {
 	artistID := c.Param("id")
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"id":   artistID,
 		"name": "Sample Artist",
@@ -169,12 +169,12 @@ func (s *Server) handleCreateArtist(c *gin.Context) {
 		PlatformIDs map[string]string `json:"platform_ids"`
 		Genres      []string `json:"genres"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	c.JSON(http.StatusCreated, gin.H{
 		"id":   "new-artist-id",
 		"name": input.Name,
@@ -183,7 +183,7 @@ func (s *Server) handleCreateArtist(c *gin.Context) {
 
 func (s *Server) handleUpdateArtist(c *gin.Context) {
 	artistID := c.Param("id")
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"id":      artistID,
 		"updated": true,
@@ -192,7 +192,7 @@ func (s *Server) handleUpdateArtist(c *gin.Context) {
 
 func (s *Server) handleGetArtistMetrics(c *gin.Context) {
 	artistID := c.Param("id")
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"artist_id": artistID,
 		"metrics":   []interface{}{},
@@ -212,12 +212,12 @@ func (s *Server) handleCreatePrediction(c *gin.Context) {
 		VenueID  string `json:"venue_id" binding:"required"`
 		Date     string `json:"date" binding:"required"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	c.JSON(http.StatusCreated, gin.H{
 		"prediction_id": "pred-123",
 		"demand":        1500,
@@ -227,7 +227,7 @@ func (s *Server) handleCreatePrediction(c *gin.Context) {
 
 func (s *Server) handleGetPrediction(c *gin.Context) {
 	predictionID := c.Param("id")
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"id":         predictionID,
 		"demand":     1500,
@@ -244,7 +244,7 @@ func (s *Server) handleCreateBooking(c *gin.Context) {
 
 func (s *Server) handleGetBooking(c *gin.Context) {
 	bookingID := c.Param("id")
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"id":     bookingID,
 		"status": "confirmed",
@@ -253,7 +253,7 @@ func (s *Server) handleGetBooking(c *gin.Context) {
 
 func (s *Server) handleUpdateBooking(c *gin.Context) {
 	bookingID := c.Param("id")
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"id":      bookingID,
 		"updated": true,
@@ -268,31 +268,31 @@ func (s *Server) Start() error {
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
-	
+
 	// Graceful shutdown
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			s.logger.Fatal("Failed to start server", zap.Error(err))
 		}
 	}()
-	
+
 	s.logger.Info("Server started", zap.String("port", s.config.Port))
-	
+
 	// Wait for interrupt signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	
+
 	s.logger.Info("Shutting down server...")
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	
+
 	if err := srv.Shutdown(ctx); err != nil {
 		s.logger.Error("Server forced to shutdown", zap.Error(err))
 		return err
 	}
-	
+
 	s.logger.Info("Server exited")
 	return nil
 }
@@ -304,7 +304,7 @@ func main() {
 		log.Fatal("Failed to initialize logger:", err)
 	}
 	defer logger.Sync()
-	
+
 	// Load configuration
 	config := &Config{
 		Port:           getEnv("PORT", "8080"),
@@ -319,11 +319,11 @@ func main() {
 			"http://localhost:3000",
 		},
 	}
-	
+
 	// Create and start server
 	server := NewServer(config, logger)
 	server.SetupRoutes()
-	
+
 	if err := server.Start(); err != nil {
 		logger.Fatal("Server failed", zap.Error(err))
 	}

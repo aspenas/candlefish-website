@@ -135,25 +135,25 @@ spec:
     - target: admission.k8s.gatekeeper.sh
       rego: |
         package k8srequiredsecuritycontext
-        
+
         violation[{"msg": msg}] {
           container := input.review.object.spec.containers[_]
           not container.securityContext.runAsNonRoot
           msg := sprintf("Container %v must run as non-root", [container.name])
         }
-        
+
         violation[{"msg": msg}] {
           container := input.review.object.spec.containers[_]
           not container.securityContext.allowPrivilegeEscalation == false
           msg := sprintf("Container %v must not allow privilege escalation", [container.name])
         }
-        
+
         violation[{"msg": msg}] {
           container := input.review.object.spec.containers[_]
           not container.securityContext.readOnlyRootFilesystem
           msg := sprintf("Container %v must have read-only root filesystem", [container.name])
         }
-        
+
         violation[{"msg": msg}] {
           container := input.review.object.spec.containers[_]
           not container.securityContext.capabilities.drop[_] == "ALL"

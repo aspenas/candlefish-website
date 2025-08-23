@@ -93,6 +93,9 @@ func main() {
 	api.Get("/search", h.SearchItems)
 	api.Get("/filter", h.FilterItems)
 
+	// Activities
+	api.Get("/activities", h.GetActivities)
+
 	// Analytics
 	api.Get("/analytics/summary", h.GetSummary)
 	api.Get("/analytics/by-room", h.GetRoomAnalytics)
@@ -117,6 +120,9 @@ func main() {
 
 	// Setup route for initializing database with real data
 	api.Post("/admin/setup-database", h.SetupDatabase)
+	
+	// Migration route for creating activities table
+	api.Post("/admin/migrate", h.RunMigration)
 
 	// Transaction routes
 	api.Get("/transactions", h.GetTransactions)
