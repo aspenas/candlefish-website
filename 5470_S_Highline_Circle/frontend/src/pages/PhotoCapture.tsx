@@ -14,7 +14,7 @@ import { Item, Room, PhotoSession, CapturedPhoto } from '../types';
 import PhotoCaptureWorkflow from '../components/PhotoCaptureWorkflow';
 import QRLabelSystem from '../components/QRLabelSystem';
 import BulkUploadZone from '../components/BulkUploadZone';
-import { photoStorage, photoSyncManager } from '../utils/photoUtils';
+import { photoStorage, photoSyncManager, createCapturedPhoto } from '../utils/photoUtils';
 
 interface PhotoMatch {
   file: {
@@ -35,15 +35,18 @@ const PhotoCapture: React.FC = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   // Fetch data
-  const { data: items = [], isLoading: itemsLoading } = useQuery({
+  const { data: itemsData, isLoading: itemsLoading } = useQuery({
     queryKey: ['items'],
     queryFn: api.getItems,
   });
 
-  const { data: rooms = [], isLoading: roomsLoading } = useQuery({
+  const { data: roomsData, isLoading: roomsLoading } = useQuery({
     queryKey: ['rooms'],
     queryFn: api.getRooms,
   });
+
+  const items = itemsData?.items || itemsData || [];
+  const rooms = roomsData?.rooms || roomsData || [];
 
   // Photo upload mutation
   const uploadPhotoMutation = useMutation({
@@ -126,7 +129,6 @@ const PhotoCapture: React.FC = () => {
   // Handle QR scanned photos
   const handleQRScanned = useCallback(async (itemId: string, photoFile: File) => {
     try {
-      const { createCapturedPhoto } = await import('../utils/photoUtils');
       const photo = await createCapturedPhoto(photoFile, itemId, 'main');
 
       await handlePhotosUpdated(itemId, [photo]);
@@ -139,7 +141,6 @@ const PhotoCapture: React.FC = () => {
   const handlePhotosUploaded = useCallback(async (matches: PhotoMatch[]) => {
     for (const match of matches) {
       try {
-        const { createCapturedPhoto } = await import('../utils/photoUtils');
         const photo = await createCapturedPhoto(match.file.file, match.itemId, match.angle);
 
         await handlePhotosUpdated(match.itemId, [photo]);
