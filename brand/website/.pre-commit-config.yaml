@@ -1,0 +1,109 @@
+# Pre-commit hooks for Candlefish website
+# Install with: npx husky install && npx husky add .husky/pre-commit "npx --no-install lint-staged"
+
+repos:
+  # ESLint and Prettier
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: 'v8.57.0'
+    hooks:
+      - id: eslint
+        files: \.(js|jsx|ts|tsx)$
+        types: [file]
+        additional_dependencies:
+          - eslint@8.57.0
+          - '@typescript-eslint/eslint-plugin@6.21.0'
+          - 'eslint-config-next@14.2.32'
+
+  # TypeScript type checking
+  - repo: https://github.com/pre-commit/mirrors-typescript
+    rev: 'v5.3.3'
+    hooks:
+      - id: tsc
+        name: TypeScript type check
+        entry: npx tsc --noEmit
+        language: system
+        files: \.(ts|tsx)$
+        pass_filenames: false
+
+  # Prettier formatting
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: 'v3.1.0'
+    hooks:
+      - id: prettier
+        files: \.(js|jsx|ts|tsx|json|css|md|yml|yaml)$
+        args: ['--write']
+
+  # General hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      # Security
+      - id: check-added-large-files
+        args: ['--maxkb=1000'] # 1MB max file size
+      - id: detect-private-key
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-json
+
+      # Code quality
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+
+  # Custom hooks for testing
+  - repo: local
+    hooks:
+      - id: run-tests
+        name: Run unit tests
+        entry: npm run test:ci
+        language: system
+        pass_filenames: false
+        stages: [commit]
+
+      - id: check-coverage
+        name: Check test coverage
+        entry: bash -c 'npm run test:coverage && node scripts/check-coverage.js'
+        language: system
+        pass_filenames: false
+        stages: [commit]
+
+      - id: lint-staged
+        name: Lint staged files
+        entry: npx lint-staged
+        language: system
+        pass_filenames: false
+        stages: [commit]
+
+      - id: accessibility-check
+        name: Quick accessibility check
+        entry: bash -c 'npm run build && npx playwright test --grep "@accessibility" --reporter=list'
+        language: system
+        pass_filenames: false
+        stages: [push]
+
+      - id: security-audit
+        name: Security audit
+        entry: npm audit --audit-level=moderate
+        language: system
+        pass_filenames: false
+        stages: [push]
+
+# Configuration for specific stages
+default_stages: [commit]
+
+# Exclude files
+exclude: |
+  (?x)^(
+    \.git/|
+    \.next/|
+    node_modules/|
+    out/|
+    coverage/|
+    \.lighthouseci/|
+    cypress/videos/|
+    cypress/screenshots/|
+    playwright-report/|
+    test-results/
+  )$
