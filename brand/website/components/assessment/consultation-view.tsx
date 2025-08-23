@@ -20,13 +20,15 @@ export const ConsultationView = ({ score, sessionId }: ConsultationViewProps) =>
 
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
+    setError('')
 
     try {
-      const response = await fetch('/api/assessment/consultation', {
+      const response = await fetch('/.netlify/functions/consultation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -35,16 +37,21 @@ export const ConsultationView = ({ score, sessionId }: ConsultationViewProps) =>
           score: {
             level: score.level,
             percentage: score.percentage,
-            percentile: score.percentile
+            percentile: score.percentile,
+            candlefishFit: score.candlefishFit
           }
         })
       })
 
       if (response.ok) {
         setSubmitted(true)
+      } else {
+        const errorData = await response.json()
+        setError(errorData.error || 'Failed to submit consultation request')
       }
     } catch (error) {
       console.error('Submission failed:', error)
+      setError('Network error. Please check your connection and try again.')
     } finally {
       setSubmitting(false)
     }
@@ -221,6 +228,12 @@ export const ConsultationView = ({ score, sessionId }: ConsultationViewProps) =>
             placeholder="What operational challenges are you facing? What would success look like?"
           />
         </div>
+
+        {error && (
+          <div className="p-4 bg-red-500/10 border border-red-500/30 text-red-400">
+            {error}
+          </div>
+        )}
 
         <div className="flex justify-between items-center">
           <p className="text-xs text-[#415A77]">
