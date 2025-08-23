@@ -8,22 +8,32 @@ export default function HeaderText() {
   const [projects, setProjects] = useState<Array<{ id: string; title: string }>>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  
+  const [isClient, setIsClient] = useState(false);
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
   const animationFrameRef = useRef<number>();
   const intervalRef = useRef<NodeJS.Timeout>();
 
+  // Client-side initialization
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   // Load projects from static data (works with static export)
   useEffect(() => {
+    if (!isClient) return; // Only run on client side
+
     // Use static project data since API routes don't work with static export
-    setProjects([
+    const projectData = [
       { id: 'engraving', title: 'engraving automation for a trophy franchise network' },
       { id: 'promoteros', title: 'concert intelligence platform for live music venues' },
       { id: 'inventory', title: 'inventory management system for real estate operations' },
       { id: 'paintbox', title: 'excel-to-web platform for construction estimating' }
-    ]);
-  }, []);
+    ];
+
+    setProjects(projectData);
+  }, [isClient]);
 
   // Rotation logic - every 5 seconds
   useEffect(() => {
@@ -31,11 +41,11 @@ export default function HeaderText() {
 
     intervalRef.current = setInterval(() => {
       setIsTransitioning(true);
-      
+
       // Start the mist transition
       setTimeout(() => {
         setCurrentIndex((prev) => (prev + 1) % projects.length);
-        
+
         // End transition after animation
         setTimeout(() => {
           setIsTransitioning(false);
@@ -44,7 +54,9 @@ export default function HeaderText() {
     }, 5000);
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
     };
   }, [projects]);
 
@@ -144,7 +156,8 @@ export default function HeaderText() {
 
   const currentProject = projects[currentIndex];
 
-  if (!currentProject) {
+  // Show fallback during server-side render or if no client-side projects are loaded
+  if (!isClient || projects.length === 0) {
     return (
       <h1 className="text-6xl md:text-7xl lg:text-8xl font-light text-[#F8F8F2] leading-[0.9] tracking-tight max-w-6xl">
         Currently engineering<br />
@@ -154,6 +167,9 @@ export default function HeaderText() {
       </h1>
     );
   }
+
+  // If projects exist but currentProject is undefined, use the first project
+  const displayProject = currentProject || projects[0];
 
   return (
     <h1 className="text-6xl md:text-7xl lg:text-8xl font-light text-[#F8F8F2] leading-[0.9] tracking-tight max-w-6xl">
@@ -167,7 +183,7 @@ export default function HeaderText() {
           } transition-opacity duration-300`}
           aria-hidden="true"
         />
-        
+
         {/* Text with transition */}
         <span
           ref={textRef}
@@ -180,7 +196,7 @@ export default function HeaderText() {
             color: isTransitioning ? '#526781' : '#415A77'
           }}
         >
-          {currentProject.title}
+          {displayProject.title}
         </span>
       </span>
     </h1>
