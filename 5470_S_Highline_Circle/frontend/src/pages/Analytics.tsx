@@ -60,39 +60,48 @@ export default function Analytics() {
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const { data: summary, isLoading: summaryLoading } = useQuery({
+  const { data: summary, isLoading: summaryLoading, error: summaryError } = useQuery({
     queryKey: ['summary'],
     queryFn: api.getSummary,
+    retry: 2,
+    retryDelay: 1000,
   });
 
-  const { data: roomAnalytics, isLoading: roomLoading } = useQuery({
+  const { data: roomAnalytics, isLoading: roomLoading, error: roomError } = useQuery({
     queryKey: ['room-analytics'],
     queryFn: api.getRoomAnalytics,
+    retry: 2,
+    retryDelay: 1000,
   });
 
-  const { data: categoryAnalytics, isLoading: categoryLoading } = useQuery({
+  const { data: categoryAnalytics, isLoading: categoryLoading, error: categoryError } = useQuery({
     queryKey: ['category-analytics'],
     queryFn: api.getCategoryAnalytics,
+    retry: 2,
+    retryDelay: 1000,
   });
 
-  const { data: items } = useQuery({
+  const { data: items = [], error: itemsError } = useQuery({
     queryKey: ['items'],
     queryFn: () => api.getItems(),
+    retry: 2,
+    retryDelay: 1000,
   });
 
   const isLoading = summaryLoading || roomLoading || categoryLoading;
+  const hasError = summaryError || roomError || categoryError || itemsError;
 
   // Calculate trends and metrics
   const metrics = useMemo(() => {
     if (!summary || !items) return null;
 
     const avgValue = summary.totalItems ? summary.totalValue / summary.totalItems : 0;
-    const sellValue = items
+    const sellValue = (items || [])
       .filter((item: any) => item.decisionStatus === 'sell')
-      .reduce((sum: number, item: any) => sum + item.estimatedValue, 0);
-    const keepValue = items
+      .reduce((sum: number, item: any) => sum + (item.estimatedValue || 0), 0);
+    const keepValue = (items || [])
       .filter((item: any) => item.decisionStatus === 'keep')
-      .reduce((sum: number, item: any) => sum + item.estimatedValue, 0);
+      .reduce((sum: number, item: any) => sum + (item.estimatedValue || 0), 0);
 
     return {
       avgValue,
@@ -101,8 +110,8 @@ export default function Analytics() {
       completionRate: summary.totalItems
         ? ((summary.totalItems - (summary.unsureCount || 0)) / summary.totalItems) * 100
         : 0,
-      highValueItems: items.filter((item: any) => item.estimatedValue > 5000).length,
-      lowValueItems: items.filter((item: any) => item.estimatedValue < 100).length,
+      highValueItems: (items || []).filter((item: any) => item.estimatedValue > 5000).length,
+      lowValueItems: (items || []).filter((item: any) => item.estimatedValue < 100).length,
     };
   }, [summary, items]);
 
@@ -163,7 +172,7 @@ export default function Analytics() {
       { name: '<$100', min: 0, max: 100, count: 0, value: 0 },
     ];
 
-    items.forEach((item: any) => {
+    (items || []).forEach((item: any) => {
       const range = ranges.find(r =>
         item.estimatedValue >= r.min && item.estimatedValue < r.max
       );
@@ -187,7 +196,7 @@ export default function Analytics() {
 
     const conditions = ['excellent', 'good', 'fair', 'poor'];
     const data = conditions.map(condition => {
-      const conditionItems = items.filter((item: any) => item.condition === condition);
+      const conditionItems = (items || []).filter((item: any) => item.condition === condition);
       return {
         condition: condition.charAt(0).toUpperCase() + condition.slice(1),
         count: conditionItems.length,
@@ -260,6 +269,28 @@ export default function Analytics() {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (hasError) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <ExclamationTriangleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            Unable to load analytics data
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            Please check your connection and try again.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
