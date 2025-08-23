@@ -1,2 +1,3 @@
-# Submodules temporarily disabled during restructuring
-# Re-enable specific submodules as needed for the 5-project structure
+# Submodules configuration cleaned
+# All broken submodule references have been removed
+# Repository now uses standard directories instead of submodules
