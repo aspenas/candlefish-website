@@ -47,7 +47,7 @@ export const NewsletterForm: React.FC<NewsletterFormProps> = ({
     setIsSubmitting(true)
 
     try {
-      const response = await fetch('/api/newsletter', {
+      const response = await fetch('/.netlify/functions/newsletter', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
