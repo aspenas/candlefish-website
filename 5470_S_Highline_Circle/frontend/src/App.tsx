@@ -7,6 +7,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/Layout';
 import PerformanceMonitor from './components/PerformanceMonitor';
+import HashRedirect from './components/HashRedirect';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
 import ItemDetail from './pages/ItemDetail';
@@ -33,6 +34,7 @@ function App() {
         <ThemeProvider>
           <AuthProvider>
             <Router>
+            <HashRedirect />
             <Layout>
               <Routes>
                 <Route path="/" element={<Dashboard />} />

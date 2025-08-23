@@ -12,8 +12,39 @@ const apiClient = axios.create({
 
 // Response interceptor - simplified without auth
 apiClient.interceptors.response.use(
-  (response) => response.data,
-  (error) => Promise.reject(error)
+  (response) => {
+    // Ensure response data is properly formatted
+    const data = response.data;
+
+    // Handle empty or malformed responses
+    if (data === null || data === undefined) {
+      console.warn('Received null/undefined response from API');
+      return [];
+    }
+
+    // If expecting an array but got something else, return empty array
+    if (response.config.url?.includes('/items') && !Array.isArray(data) && !data.id) {
+      console.warn('Expected array of items but received:', typeof data);
+      return [];
+    }
+
+    return data;
+  },
+  (error) => {
+    console.error('API Error:', error.response?.status, error.response?.data || error.message);
+
+    // Return sensible defaults for specific endpoints
+    if (error.response?.status === 404 || error.response?.status === 500) {
+      const url = error.config?.url || '';
+
+      if (url.includes('/items')) return [];
+      if (url.includes('/analytics')) return {};
+      if (url.includes('/rooms')) return { rooms: [] };
+      if (url.includes('/categories')) return { categories: [] };
+    }
+
+    return Promise.reject(error);
+  }
 );
 
 export const api = {

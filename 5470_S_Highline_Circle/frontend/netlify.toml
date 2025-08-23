@@ -1,12 +1,79 @@
+# Netlify Build Configuration - Highline Inventory
+# Optimized for Performance and Security
+
 [build]
   publish = "dist"
-  command = "npx vite build"
+  command = "npm ci && npm run build"
+
+[build.environment]
+  NODE_VERSION = "18"
+  NPM_FLAGS = "--silent"
+  NODE_OPTIONS = "--max-old-space-size=4096"
+  CI = "true"
+  SKIP_PREFLIGHT_CHECK = "true"
+  GENERATE_SOURCEMAP = "false"
+
+[build.processing]
+  skip_processing = false
+
+[build.processing.css]
+  bundle = true
+  minify = true
+
+[build.processing.js]
+  bundle = true
+  minify = true
+
+[build.processing.html]
+  pretty_urls = true
+
+[build.processing.images]
+  compress = true
+
+# Security Headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+
+[[headers]]
+  for = "*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "*.png"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000"
+
+[[headers]]
+  for = "*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Redirects - SPA routing and block netlify.app
+[[redirects]]
+  from = "https://highline-inventory.netlify.app/*"
+  to = "https://inventory.candlefish.ai/:splat"
+  status = 301
+  force = true
 
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
+# Environment configurations
 [context.production.environment]
   VITE_API_URL = "https://5470-inventory.fly.dev/api/v1"
 
@@ -15,3 +82,14 @@
 
 [context.branch-deploy.environment]
   VITE_API_URL = "https://5470-inventory.fly.dev/api/v1"
+
+# Performance optimizations
+[dev]
+  framework = "vite"
+  port = 5173
+  targetPort = 5173
+  autoLaunch = false
+
+# Build cache optimization
+[template.environment]
+  NETLIFY_USE_CACHE = "true"

@@ -1,16 +1,40 @@
+# Netlify Build Configuration - Paintbox (Password Protected)
+# Optimized for Performance and Security
+
 [build]
-  base = "projects/paintbox"
-  command = "npm run build"
-  publish = "out"
+  command = "npm ci && npm run build"
+  publish = "dist"
 
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "18"
+  NPM_FLAGS = "--silent"
+  NODE_OPTIONS = "--max-old-space-size=4096"
+  CI = "true"
+  SKIP_PREFLIGHT_CHECK = "true"
+  GENERATE_SOURCEMAP = "false"
   NEXT_TELEMETRY_DISABLED = "1"
+
+[build.processing]
+  skip_processing = false
+
+[build.processing.css]
+  bundle = true
+  minify = true
+
+[build.processing.js]
+  bundle = true
+  minify = true
+
+[build.processing.html]
+  pretty_urls = true
+
+[build.processing.images]
+  compress = true
 
 # Password protection using Netlify's visitor access control
 # Note: Requires configuring visitor access password in Netlify UI
 
-# Headers for security and performance
+# Security Headers
 [[headers]]
   for = "/*"
   [headers.values]
@@ -19,30 +43,45 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
 
-# Cache static assets
 [[headers]]
-  for = "/_next/static/*"
+  for = "*.js"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
 [[headers]]
-  for = "/images/*"
+  for = "*.css"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
-# SPA routing support
+[[headers]]
+  for = "*.png"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000"
+
+[[headers]]
+  for = "*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Redirects - Block netlify.app access first, then SPA routing
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+  from = "https://paintbox-protected.netlify.app/*"
+  to = "https://paintbox.candlefish.ai/:splat"
+  status = 301
+  force = true
 
-# API proxy to backend (when deployed)
 [[redirects]]
   from = "/api/*"
   to = "https://paintbox-api.railway.app/api/:splat"
   status = 200
   force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
 
 # Environment variable configuration
 [context.production.environment]

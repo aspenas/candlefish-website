@@ -68,25 +68,37 @@ export default function Insights() {
   const [timeRange, setTimeRange] = useState('30d');
 
   // Fetch data
-  const { data: items } = useQuery({
+  const { data: items = [], isLoading: itemsLoading, error: itemsError } = useQuery({
     queryKey: ['items'],
     queryFn: () => api.getItems(),
+    retry: 2,
+    retryDelay: 1000,
   });
 
-  const { data: summary } = useQuery({
+  const { data: summary = {}, isLoading: summaryLoading, error: summaryError } = useQuery({
     queryKey: ['summary'],
     queryFn: api.getSummary,
+    retry: 2,
+    retryDelay: 1000,
   });
 
-  const { data: roomAnalytics } = useQuery({
+  const { data: roomAnalytics = {}, isLoading: roomLoading, error: roomError } = useQuery({
     queryKey: ['room-analytics'],
     queryFn: api.getRoomAnalytics,
+    retry: 2,
+    retryDelay: 1000,
   });
 
-  const { data: categoryAnalytics } = useQuery({
+  const { data: categoryAnalytics = {}, isLoading: categoryLoading, error: categoryError } = useQuery({
     queryKey: ['category-analytics'],
     queryFn: api.getCategoryAnalytics,
+    retry: 2,
+    retryDelay: 1000,
   });
+
+  // Loading and error states
+  const isLoading = itemsLoading || summaryLoading || roomLoading || categoryLoading;
+  const hasError = itemsError || summaryError || roomError || categoryError;
 
   // Generate AI insights based on data
   const insights = useMemo<InsightCard[]>(() => {
@@ -95,7 +107,7 @@ export default function Insights() {
     const insights: InsightCard[] = [];
 
     // High-value items needing attention
-    const highValueUnsure = items.filter((item: any) =>
+    const highValueUnsure = (items || []).filter((item: any) =>
       item.estimatedValue > 5000 && item.decisionStatus === 'unsure'
     );
 
@@ -116,7 +128,7 @@ export default function Insights() {
     }
 
     // Quick wins - low value items to sell
-    const quickWins = items.filter((item: any) =>
+    const quickWins = (items || []).filter((item: any) =>
       item.estimatedValue < 100 &&
       item.estimatedValue > 10 &&
       item.condition !== 'poor' &&
@@ -140,7 +152,7 @@ export default function Insights() {
     }
 
     // Hidden gems - potentially undervalued
-    const potentialGems = items.filter((item: any) => {
+    const potentialGems = (items || []).filter((item: any) => {
       const isArt = item.category === 'Art' || item.category === 'Antiques';
       const hasLowValue = item.estimatedValue < 500;
       const goodCondition = item.condition === 'excellent' || item.condition === 'good';
@@ -161,7 +173,7 @@ export default function Insights() {
     }
 
     // Bundling recommendations
-    const electronics = items.filter((item: any) =>
+    const electronics = (items || []).filter((item: any) =>
       item.category === 'Electronics' && item.decisionStatus === 'sell'
     );
 
@@ -182,8 +194,8 @@ export default function Insights() {
     }
 
     // Room optimization
-    if (roomAnalytics?.rooms) {
-      const avgValuePerRoom = summary.totalValue / roomAnalytics.rooms.length;
+    if (roomAnalytics?.rooms && roomAnalytics.rooms.length > 0) {
+      const avgValuePerRoom = (summary?.totalValue || 0) / roomAnalytics.rooms.length;
       const lowValueRooms = roomAnalytics.rooms.filter((room: any) =>
         room.totalValue < avgValuePerRoom * 0.5
       );
@@ -202,7 +214,7 @@ export default function Insights() {
     }
 
     // Seasonal recommendations
-    const furniture = items.filter((item: any) => item.category === 'Furniture');
+    const furniture = (items || []).filter((item: any) => item.category === 'Furniture');
     const outdoorItems = furniture.filter((item: any) =>
       item.name.toLowerCase().includes('outdoor') ||
       item.name.toLowerCase().includes('patio')
@@ -244,7 +256,7 @@ export default function Insights() {
       { range: '$10k+', min: 10000, max: Infinity, count: 0, value: 0 },
     ];
 
-    items.forEach((item: any) => {
+    (items || []).forEach((item: any) => {
       const range = ranges.find(r =>
         item.estimatedValue >= r.min && item.estimatedValue < r.max
       );
@@ -271,7 +283,7 @@ export default function Insights() {
   const decisionTreemap = useMemo(() => {
     if (!items) return [];
 
-    const grouped = items.reduce((acc: any, item: any) => {
+    const grouped = (items || []).reduce((acc: any, item: any) => {
       const key = `${item.decisionStatus}-${item.category}`;
       if (!acc[key]) {
         acc[key] = {
@@ -292,7 +304,7 @@ export default function Insights() {
     if (!items) return [];
 
     const conditions = ['poor', 'fair', 'good', 'excellent'];
-    return items.map((item: any) => ({
+    return (items || []).map((item: any) => ({
       x: conditions.indexOf(item.condition),
       y: item.estimatedValue,
       z: 1,
@@ -351,6 +363,38 @@ export default function Insights() {
     }
     return null;
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (hasError) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <ExclamationTriangleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            Unable to load insights data
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            Please check your connection and try again.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
