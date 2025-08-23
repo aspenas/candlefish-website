@@ -1,10 +1,31 @@
 [build]
-  command = "pnpm --filter promoteros build"
-  publish = ".next"
+  command = "pnpm install --frozen-lockfile && pnpm build"
+  publish = "dist"
 
 [build.environment]
   NODE_VERSION = "22"
-  NPM_FLAGS = "--version"
+  PNPM_VERSION = "9.7.0"
+  NODE_OPTIONS = "--max-old-space-size=2048"
+  CI = "true"
+  NEXT_TELEMETRY_DISABLED = "1"
+  GENERATE_SOURCEMAP = "false"
+
+[build.processing]
+  skip_processing = false
+
+[build.processing.css]
+  bundle = true
+  minify = true
+
+[build.processing.js]
+  bundle = true
+  minify = true
+
+[build.processing.html]
+  pretty_urls = true
+
+[build.processing.images]
+  compress = true
 
 [dev]
   framework = "next"
@@ -19,6 +40,7 @@
   status = 200
   force = true
 
+# Performance and Cache Headers
 [[headers]]
   for = "/*"
   [headers.values]
@@ -26,3 +48,81 @@
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+
+[[headers]]
+  for = "/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "*.png"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000"
+
+[[headers]]
+  for = "*.webp"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000"
+
+[[headers]]
+  for = "*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Redirect netlify.app to custom domain
+[[redirects]]
+  from = "https://promoteros.netlify.app/*"
+  to = "https://promoteros.candlefish.ai/:splat"
+  status = 301
+  force = true
+
+# SPA routing (if needed)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Environment-specific configuration
+[context.production.environment]
+  NEXT_PUBLIC_API_URL = "https://api.candlefish.ai"
+  NEXT_PUBLIC_ENVIRONMENT = "production"
+
+[context.deploy-preview.environment]
+  NEXT_PUBLIC_API_URL = "https://api-staging.candlefish.ai"
+  NEXT_PUBLIC_ENVIRONMENT = "preview"
+
+[context.branch-deploy.environment]
+  NEXT_PUBLIC_API_URL = "https://api-dev.candlefish.ai"
+  NEXT_PUBLIC_ENVIRONMENT = "development"
+
+# Functions directory (if needed)
+[functions]
+  directory = "netlify/functions"
+
+# Performance monitoring plugin
+[[plugins]]
+  package = "@netlify/plugin-lighthouse"
+
+  [plugins.inputs]
+    audits = [
+      { url = "/", name = "Homepage" },
+      { url = "/dashboard", name = "Dashboard" }
+    ]
+
+    [plugins.inputs.thresholds]
+      performance = 85
+      accessibility = 95
+      "best-practices" = 85
+      seo = 85

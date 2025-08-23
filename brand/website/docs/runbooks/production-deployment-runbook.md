@@ -204,7 +204,6 @@ For planned rollbacks:
 - **Application Dashboard**: https://grafana.candlefish.ai/d/candlefish-overview
 - **Infrastructure Dashboard**: https://grafana.candlefish.ai/d/kubernetes-cluster
 - **AWS CloudWatch**: https://console.aws.amazon.com/cloudwatch
-- **Sentry Errors**: https://sentry.io/organizations/candlefish/
 
 ### Alert Thresholds
 
@@ -411,7 +410,6 @@ kubectl port-forward svc/candlefish-website-service 8080:80 -n production
 - **Cache**: ElastiCache Redis
 - **Storage**: S3 buckets
 - **Monitoring**: Prometheus + Grafana
-- **Error Tracking**: Sentry
 - **CI/CD**: GitHub Actions
 
 ---
