@@ -12,6 +12,8 @@
   NODE_VERSION = "18"
   VITE_ENVIRONMENT = "production"
   VITE_BUILD_MODE = "production"
+  VITE_SOURCEMAP = "false"
+  VITE_MINIFY = "true"
 
 [build.processing]
   skip_processing = false
@@ -26,11 +28,6 @@
 
 [build.processing.html]
   pretty_urls = true
-
-# Build optimization
-[build.environment.production]
-  VITE_SOURCEMAP = "false"
-  VITE_MINIFY = "true"
 
 [[headers]]
   for = "/*"
