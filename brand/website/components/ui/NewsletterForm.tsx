@@ -25,10 +25,14 @@ export const NewsletterForm: React.FC<NewsletterFormProps> = ({
     setError('')
 
     try {
-      const response = await fetch('/api/newsletter', {
+      const response = await fetch('/.netlify/functions/newsletter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, source })
+        body: JSON.stringify({
+          email: email.toLowerCase().trim(),
+          source,
+          interests: ['automation', 'operations']
+        })
       })
 
       const data = await response.json()
@@ -112,7 +116,7 @@ export const NewsletterForm: React.FC<NewsletterFormProps> = ({
             className={`w-full px-4 py-3 border rounded-lg focus:outline-none transition-colors ${classes.input}`}
           />
         </div>
-        
+
         {error && (
           <p className={`text-sm ${classes.error}`}>{error}</p>
         )}
