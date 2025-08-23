@@ -168,3 +168,89 @@ export interface PhotoCaptureSettings {
   saveToLocal: boolean;
   autoUpload: boolean;
 }
+
+// Collaboration Types
+export type InterestLevel = 'high' | 'medium' | 'low' | 'none';
+export type BundleStatus = 'draft' | 'proposed' | 'accepted' | 'rejected' | 'withdrawn';
+export type UserRole = 'owner' | 'buyer';
+
+export interface ItemNote {
+  id: string;
+  item_id: string;
+  author: UserRole;
+  note: string;
+  is_private: boolean;
+  created_at: string;
+  updated_at: string;
+  item?: Item;
+}
+
+export interface BuyerInterest {
+  id: string;
+  item_id: string;
+  interest_level: InterestLevel;
+  max_price?: number;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  item?: Item;
+}
+
+export interface BundleProposal {
+  id: string;
+  name: string;
+  proposed_by: UserRole;
+  total_price?: number;
+  status: BundleStatus;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  items?: Item[];
+  item_count?: number;
+}
+
+export interface CollaborationOverview {
+  summary: {
+    total_items_for_sale: number;
+    items_with_interest: number;
+    high_interest: number;
+    medium_interest: number;
+    low_interest: number;
+    active_bundles: number;
+    total_notes: number;
+  };
+  recent_activity: CollaborationActivity[];
+}
+
+export interface CollaborationActivity {
+  type: 'interest' | 'note' | 'bundle';
+  item_name: string;
+  level?: InterestLevel;
+  author?: UserRole;
+  created_at: string;
+}
+
+// Request types for collaboration
+export interface NoteRequest {
+  note: string;
+  is_private: boolean;
+}
+
+export interface InterestRequest {
+  interest_level: InterestLevel;
+  max_price?: number;
+  notes?: string;
+}
+
+export interface BundleRequest {
+  name: string;
+  item_ids: string[];
+  total_price?: number;
+  notes?: string;
+}
+
+export interface BundleUpdateRequest {
+  status?: BundleStatus;
+  total_price?: number;
+  notes?: string;
+}

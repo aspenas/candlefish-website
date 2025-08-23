@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API_URL } from '../config';
 
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3080/api/v1';
+const API_BASE_URL = API_URL;
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -20,7 +21,7 @@ export const api = {
   getSummary: () => apiClient.get('/analytics/summary'),
 
   // Items
-  getItems: (params?: any) => apiClient.get('/items', { params }).then((response: any) => response.items || []),
+  getItems: (params?: any) => apiClient.get('/items', { params }),
   getItem: (id: string) => apiClient.get(`/items/${id}`),
   createItem: (data: any) => apiClient.post('/items', data),
   updateItem: (id: string, data: any) => apiClient.put(`/items/${id}`, data),
@@ -36,8 +37,8 @@ export const api = {
   getRoom: (id: string) => apiClient.get(`/rooms/${id}`),
 
   // Analytics
-  getRoomAnalytics: () => apiClient.get('/analytics/by-room').then((response: any) => ({ rooms: response.analytics || [] })),
-  getCategoryAnalytics: () => apiClient.get('/analytics/by-category').then((response: any) => ({ categories: response.analytics || [] })),
+  getRoomAnalytics: () => apiClient.get('/analytics/by-room'),
+  getCategoryAnalytics: () => apiClient.get('/analytics/by-category'),
 
   // Export
   exportExcel: (itemIds?: string[]) => {
@@ -78,4 +79,31 @@ export const api = {
   getBundleSuggestions: () => apiClient.get('/ai/bundle-suggestions'),
   getPredictiveTrends: (timeRange: string) =>
     apiClient.get(`/ai/predictive-trends?range=${timeRange}`),
+
+  // Collaboration - Notes
+  getItemNotes: (itemId: string, role: string = 'buyer') =>
+    apiClient.get(`/items/${itemId}/notes?role=${role}`),
+  addItemNote: (itemId: string, note: any, role: string = 'buyer') =>
+    apiClient.post(`/items/${itemId}/notes?role=${role}`, note),
+  updateNote: (noteId: string, note: any, role: string = 'buyer') =>
+    apiClient.put(`/notes/${noteId}?role=${role}`, note),
+  deleteNote: (noteId: string, role: string = 'buyer') =>
+    apiClient.delete(`/notes/${noteId}?role=${role}`),
+
+  // Collaboration - Buyer Interest
+  getItemInterest: (itemId: string) => apiClient.get(`/items/${itemId}/interest`),
+  setItemInterest: (itemId: string, interest: any) =>
+    apiClient.put(`/items/${itemId}/interest`, interest),
+  getBuyerInterests: () => apiClient.get('/buyer/interests'),
+
+  // Collaboration - Bundles
+  getBundles: () => apiClient.get('/bundles'),
+  createBundle: (bundle: any, role: string = 'buyer') =>
+    apiClient.post(`/bundles?role=${role}`, bundle),
+  updateBundle: (bundleId: string, bundle: any) =>
+    apiClient.put(`/bundles/${bundleId}`, bundle),
+  deleteBundle: (bundleId: string) => apiClient.delete(`/bundles/${bundleId}`),
+
+  // Collaboration - Overview
+  getCollaborationOverview: () => apiClient.get('/collaboration/overview'),
 };

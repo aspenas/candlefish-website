@@ -1,0 +1,75 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-staging:
+    name: Deploy to Staging Environment
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'brand/website/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: brand/website
+        run: npm ci
+
+      - name: Run tests
+        working-directory: brand/website
+        run: npm run test:ci
+
+      - name: Build website
+        working-directory: brand/website
+        env:
+          NODE_ENV: staging
+          NEXT_PUBLIC_ENV: staging
+        run: npm run build
+
+      - name: Deploy to Netlify
+        uses: nwtgck/actions-netlify@v3.0
+        with:
+          publish-dir: './brand/website/out'
+          production-branch: staging
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Staging deploy from GitHub Actions"
+          enable-pull-request-comment: false
+          enable-commit-comment: true
+          overwrites-pull-request-comment: false
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_STAGING_SITE_ID }}
+
+      - name: Wait for deployment
+        uses: jakepartusch/wait-for-netlify-action@v1
+        id: waitForDeployment
+        with:
+          site_name: "staging-candlefish"
+          max_timeout: 600
+
+      - name: Test staging deployment
+        run: |
+          echo "Testing staging site..."
+          curl -f -s -I https://staging.candlefish.ai || echo "Site not yet ready"
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "✅ Staging deployment successful!"
+          echo "🔗 Staging URL: https://staging.candlefish.ai"
+          echo "📝 Deploy URL: ${{ steps.waitForDeployment.outputs.url }}"

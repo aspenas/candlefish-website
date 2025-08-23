@@ -133,6 +133,27 @@ func main() {
 	// n8n webhook
 	api.Post("/webhook/n8n", h.HandleN8NWebhook)
 
+	// Collaboration routes
+	// Notes endpoints
+	api.Get("/items/:id/notes", h.GetItemNotes)
+	api.Post("/items/:id/notes", h.AddItemNote)
+	api.Put("/notes/:id", h.UpdateNote)
+	api.Delete("/notes/:id", h.DeleteNote)
+
+	// Buyer interest endpoints
+	api.Get("/items/:id/interest", h.GetItemInterest)
+	api.Put("/items/:id/interest", h.SetItemInterest)
+	api.Get("/buyer/interests", h.GetBuyerInterests)
+
+	// Bundle endpoints
+	api.Get("/bundles", h.GetBundles)
+	api.Post("/bundles", h.CreateBundle)
+	api.Put("/bundles/:id", h.UpdateBundle)
+	api.Delete("/bundles/:id", h.DeleteBundle)
+
+	// Collaboration overview
+	api.Get("/collaboration/overview", h.GetCollaborationOverview)
+
 	// Start server
 	port := os.Getenv("PORT")
 	if port == "" {

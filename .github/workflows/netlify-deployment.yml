@@ -1,0 +1,431 @@
+name: Deploy to Netlify Sites
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+  pull_request:
+    branches:
+      - main
+      - staging
+
+env:
+  NODE_VERSION: '22'
+  NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+
+jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      brand-website: ${{ steps.changes.outputs.brand-website }}
+      highline-frontend: ${{ steps.changes.outputs.highline-frontend }}
+      paintbox: ${{ steps.changes.outputs.paintbox }}
+      promoteros: ${{ steps.changes.outputs.promoteros }}
+      ibm-portfolio: ${{ steps.changes.outputs.ibm-portfolio }}
+      claude-docs: ${{ steps.changes.outputs.claude-docs }}
+      dashboard: ${{ steps.changes.outputs.dashboard }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            brand-website:
+              - 'brand/website/**'
+            highline-frontend:
+              - '5470_S_Highline_Circle/frontend/**'
+            paintbox:
+              - 'projects/paintbox/**'
+            promoteros:
+              - 'services/promoteros-social/**'
+            ibm-portfolio:
+              - 'portfolio/ibm/**'
+            claude-docs:
+              - 'docs/claude/**'
+            dashboard:
+              - 'dashboard/**'
+
+  deploy-candlefish-main:
+    name: Deploy Candlefish Main Site
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.brand-website == 'true' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: brand/website/package-lock.json
+
+      - name: Install dependencies
+        working-directory: brand/website
+        run: npm ci --include=dev
+
+      - name: Build website
+        working-directory: brand/website
+        run: |
+          npm run build
+          npm run export
+
+      - name: Deploy to Netlify
+        uses: nwtgck/actions-netlify@v2.1
+        with:
+          publish-dir: brand/website/out
+          production-branch: main
+          production-deploy: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Deploy from GitHub Actions"
+          enable-pull-request-comment: false
+          enable-commit-comment: true
+          overwrites-pull-request-comment: true
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ed200909-886f-47ca-950c-58727dca0b9c
+
+  deploy-candlefish-staging:
+    name: Deploy Candlefish Staging Site
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.brand-website == 'true' && github.ref == 'refs/heads/staging'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: brand/website/package-lock.json
+
+      - name: Install dependencies
+        working-directory: brand/website
+        run: npm ci --include=dev
+
+      - name: Build website
+        working-directory: brand/website
+        run: |
+          npm run build
+          npm run export
+
+      - name: Deploy to Netlify
+        uses: nwtgck/actions-netlify@v2.1
+        with:
+          publish-dir: brand/website/out
+          production-branch: staging
+          production-deploy: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Staging deploy from GitHub Actions"
+          enable-pull-request-comment: false
+          enable-commit-comment: true
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: 14864558-864b-4a47-992f-a2156ecf7457
+
+  deploy-highline-inventory:
+    name: Deploy Highline Inventory
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.highline-frontend == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 5470_S_Highline_Circle/frontend/package.json
+
+      - name: Install dependencies
+        working-directory: 5470_S_Highline_Circle/frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: 5470_S_Highline_Circle/frontend
+        run: npm run build
+
+      - name: Deploy to Netlify
+        uses: nwtgck/actions-netlify@v2.1
+        with:
+          publish-dir: 5470_S_Highline_Circle/frontend/dist
+          production-branch: main
+          production-deploy: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Deploy Highline Inventory from GitHub Actions"
+          enable-pull-request-comment: false
+          enable-commit-comment: true
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: 9ebc8d1d-e31b-4c29-afe4-1905a7503d4a
+
+  deploy-paintbox:
+    name: Deploy Paintbox
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.paintbox == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: projects/paintbox/package.json
+
+      - name: Install dependencies
+        working-directory: projects/paintbox
+        run: npm ci
+
+      - name: Build Paintbox
+        working-directory: projects/paintbox
+        run: npm run build
+
+      - name: Deploy to Netlify
+        uses: nwtgck/actions-netlify@v2.1
+        with:
+          publish-dir: projects/paintbox/dist
+          production-branch: main
+          production-deploy: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Deploy Paintbox from GitHub Actions"
+          enable-pull-request-comment: false
+          enable-commit-comment: true
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: f8b0ff17-b074-4f8d-8333-59aa3921c5da
+
+  deploy-promoteros:
+    name: Deploy Promoteros
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.promoteros == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: services/promoteros-social/package.json
+
+      - name: Install dependencies
+        working-directory: services/promoteros-social
+        run: npm ci
+
+      - name: Build Promoteros
+        working-directory: services/promoteros-social
+        run: npm run build
+
+      - name: Deploy to Netlify
+        uses: nwtgck/actions-netlify@v2.1
+        with:
+          publish-dir: services/promoteros-social/dist
+          production-branch: main
+          production-deploy: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Deploy Promoteros from GitHub Actions"
+          enable-pull-request-comment: false
+          enable-commit-comment: true
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ef0d6f05-62ba-46dd-82ad-39afbaa267ae
+
+  deploy-ibm-portfolio:
+    name: Deploy IBM Portfolio
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.ibm-portfolio == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: portfolio/ibm/package.json
+
+      - name: Install dependencies
+        working-directory: portfolio/ibm
+        run: npm ci
+
+      - name: Build IBM Portfolio
+        working-directory: portfolio/ibm
+        run: npm run build
+
+      - name: Deploy to Netlify
+        uses: nwtgck/actions-netlify@v2.1
+        with:
+          publish-dir: portfolio/ibm/dist
+          production-branch: main
+          production-deploy: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Deploy IBM Portfolio from GitHub Actions"
+          enable-pull-request-comment: false
+          enable-commit-comment: true
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: a9b72134-1ab5-4b35-9395-93be5d6f46c8
+
+  deploy-claude-docs:
+    name: Deploy Claude Documentation
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.claude-docs == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: docs/claude/package.json
+
+      - name: Install dependencies
+        working-directory: docs/claude
+        run: npm ci
+
+      - name: Build Claude Documentation
+        working-directory: docs/claude
+        run: npm run build
+
+      - name: Deploy to Netlify
+        uses: nwtgck/actions-netlify@v2.1
+        with:
+          publish-dir: docs/claude/dist
+          production-branch: main
+          production-deploy: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Deploy Claude Documentation from GitHub Actions"
+          enable-pull-request-comment: false
+          enable-commit-comment: true
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: 9650bb87-e619-4fdf-9b9b-7ff2eae31ba6
+
+  deploy-dashboard:
+    name: Deploy Dashboard
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.dashboard == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: dashboard/package.json
+
+      - name: Install dependencies
+        working-directory: dashboard
+        run: npm ci
+
+      - name: Build Dashboard
+        working-directory: dashboard
+        run: npm run build
+
+      - name: Deploy to Netlify
+        uses: nwtgck/actions-netlify@v2.1
+        with:
+          publish-dir: dashboard/dist
+          production-branch: main
+          production-deploy: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Deploy Dashboard from GitHub Actions"
+          enable-pull-request-comment: false
+          enable-commit-comment: true
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: c3f08900-230a-4a82-a58b-a5f7174e5582
+
+  deployment-summary:
+    name: Deployment Summary
+    runs-on: ubuntu-latest
+    needs: [
+      detect-changes,
+      deploy-candlefish-main,
+      deploy-candlefish-staging,
+      deploy-highline-inventory,
+      deploy-paintbox,
+      deploy-promoteros,
+      deploy-ibm-portfolio,
+      deploy-claude-docs,
+      deploy-dashboard
+    ]
+    if: always()
+    steps:
+      - name: Deployment Summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Sites Deployed:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ needs.deploy-candlefish-main.result }}" == "success" ]]; then
+            echo "✅ **Candlefish Main** (candlefish.ai) - Successfully deployed" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.deploy-candlefish-main.result }}" == "failure" ]]; then
+            echo "❌ **Candlefish Main** (candlefish.ai) - Deployment failed" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.detect-changes.outputs.brand-website }}" == "true" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "⏭️ **Candlefish Main** (candlefish.ai) - Skipped" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [[ "${{ needs.deploy-candlefish-staging.result }}" == "success" ]]; then
+            echo "✅ **Candlefish Staging** (staging.candlefish.ai) - Successfully deployed" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.deploy-candlefish-staging.result }}" == "failure" ]]; then
+            echo "❌ **Candlefish Staging** (staging.candlefish.ai) - Deployment failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [[ "${{ needs.deploy-highline-inventory.result }}" == "success" ]]; then
+            echo "✅ **Highline Inventory** (inventory.candlefish.ai) - Successfully deployed" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.deploy-highline-inventory.result }}" == "failure" ]]; then
+            echo "❌ **Highline Inventory** (inventory.candlefish.ai) - Deployment failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [[ "${{ needs.deploy-paintbox.result }}" == "success" ]]; then
+            echo "✅ **Paintbox** (paintbox.candlefish.ai) - Successfully deployed" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.deploy-paintbox.result }}" == "failure" ]]; then
+            echo "❌ **Paintbox** (paintbox.candlefish.ai) - Deployment failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [[ "${{ needs.deploy-promoteros.result }}" == "success" ]]; then
+            echo "✅ **Promoteros** (promoteros.candlefish.ai) - Successfully deployed" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.deploy-promoteros.result }}" == "failure" ]]; then
+            echo "❌ **Promoteros** (promoteros.candlefish.ai) - Deployment failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [[ "${{ needs.deploy-ibm-portfolio.result }}" == "success" ]]; then
+            echo "✅ **IBM Portfolio** (ibm.candlefish.ai) - Successfully deployed" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.deploy-ibm-portfolio.result }}" == "failure" ]]; then
+            echo "❌ **IBM Portfolio** (ibm.candlefish.ai) - Deployment failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [[ "${{ needs.deploy-claude-docs.result }}" == "success" ]]; then
+            echo "✅ **Claude Documentation** (claude.candlefish.ai) - Successfully deployed" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.deploy-claude-docs.result }}" == "failure" ]]; then
+            echo "❌ **Claude Documentation** (claude.candlefish.ai) - Deployment failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [[ "${{ needs.deploy-dashboard.result }}" == "success" ]]; then
+            echo "✅ **Dashboard** (dashboard.candlefish.ai) - Successfully deployed" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.deploy-dashboard.result }}" == "failure" ]]; then
+            echo "❌ **Dashboard** (dashboard.candlefish.ai) - Deployment failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Configuration:" >> $GITHUB_STEP_SUMMARY
+          echo "- **Node Version:** ${{ env.NODE_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Strategy:** Monorepo with path-based change detection" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deploy Strategy:** Automatic on push, preview on PR" >> $GITHUB_STEP_SUMMARY
