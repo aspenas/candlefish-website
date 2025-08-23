@@ -1,0 +1,114 @@
+---
+title: "Highline Inventory Management System"
+slug: "inventory-automation"
+status: "OPERATIONAL"
+domain: ["Inventory Management", "Real Estate", "Database"]
+complexity: "M"
+impact: "Medium"
+owner: "Candlefish"
+safe_public: true
+client_name_masked: "Luxury Property Management"
+updated_at: "2025-08-22"
+metrics:
+  items_tracked: 8547
+  sync_accuracy_pct: 99.7
+  search_time_ms: 23
+  categories: 47
+stack: ["Go", "PostgreSQL", "React", "Docker", "Fly.io"]
+links:
+  repo: ""
+  design: ""
+  doc: ""
+architecture:
+  nodes:
+    - { id: "excel", kind: "source", label: "Excel Import" }
+    - { id: "api", kind: "service", label: "Go API" }
+    - { id: "postgres", kind: "database", label: "PostgreSQL" }
+    - { id: "frontend", kind: "ui", label: "React UI" }
+    - { id: "search", kind: "service", label: "Search Engine" }
+  links:
+    - { source: "excel", target: "api", label: "Bulk import" }
+    - { source: "api", target: "postgres", label: "CRUD ops" }
+    - { source: "frontend", target: "api", label: "REST API" }
+    - { source: "api", target: "search", label: "Index updates" }
+changelog:
+  - date: "2025-08-22"
+    entry: "Deployed to production on Fly.io with automated backups"
+  - date: "2025-08-20"
+    entry: "Added full-text search with 23ms response time"
+  - date: "2025-08-18"
+    entry: "Implemented Excel import with validation"
+  - date: "2025-08-15"
+    entry: "Initial database schema with 47 categories"
+next_milestone:
+  name: "Mobile app for field updates"
+  eta: "2025-09-15"
+---
+
+# Highline Inventory Management System
+
+## Problem
+
+8,500+ furniture items tracked in disconnected Excel sheets with no search capability, version conflicts, and manual reconciliation taking days. Field teams unable to check availability in real-time.
+
+## Current Solution
+
+Full-stack inventory system with real-time search:
+
+### Backend Architecture
+- Go API with clean architecture
+- PostgreSQL with optimized indexes
+- Full-text search implementation
+- JWT authentication
+
+### Data Import
+- Excel bulk import with validation
+- Automatic deduplication
+- Category inference
+- Image URL processing
+
+### Frontend Features
+- React with TypeScript
+- Real-time search across all fields
+- Category filtering
+- Grid and list views
+- Export capabilities
+
+## Results
+
+- **8,547 items** indexed and searchable
+- **23ms average** search response time
+- **99.7% sync accuracy** with source data
+- **47 categories** automatically organized
+- **100% uptime** since deployment
+
+## Technical Details
+
+The system uses a three-tier architecture optimized for read-heavy workloads:
+
+1. **API Layer**: Go with gorilla/mux for routing
+2. **Data Layer**: PostgreSQL with GIN indexes for full-text search
+3. **UI Layer**: React with Redux for state management
+
+### Search Implementation
+```sql
+-- Trigram similarity for fuzzy matching
+CREATE EXTENSION pg_trgm;
+CREATE INDEX idx_items_name_trgm ON items USING gin (name gin_trgm_ops);
+CREATE INDEX idx_items_description_trgm ON items USING gin (description gin_trgm_ops);
+```
+
+## Deployment
+
+Deployed on Fly.io with:
+- Automatic SSL certificates
+- Daily automated backups
+- Health checks and auto-restart
+- Geographic distribution
+
+## Next Steps
+
+- Build mobile app for field updates
+- Add barcode scanning
+- Implement location tracking
+- Create analytics dashboard

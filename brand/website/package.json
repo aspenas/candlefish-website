@@ -4,8 +4,11 @@
   "private": true,
   "scripts": {
     "refresh-mocks": "node scripts/refreshMocks.js",
-    "dev": "npm run refresh-mocks && next dev",
-    "build": "npm run refresh-mocks && next build",
+    "build-workshop-index": "ts-node scripts/buildWorkshopIndex.ts",
+    "validate-workshop": "ts-node scripts/validateWorkshop.ts",
+    "prebuild": "npm run build-workshop-index && npm run validate-workshop",
+    "dev": "npm run refresh-mocks && npm run build-workshop-index && next dev",
+    "build": "npm run refresh-mocks && npm run prebuild && next build",
     "export": "NODE_ENV=production next build",
     "start": "next start",
     "lint": "next lint",
@@ -33,6 +36,7 @@
     "framer-motion": "^10.18.0",
     "gray-matter": "4.0.3",
     "html2canvas": "^1.4.1",
+    "next-mdx-remote": "^4.4.1",
     "jspdf": "^3.0.1",
     "next": "^14.2.32",
     "p5": "^1.11.9",
@@ -50,7 +54,8 @@
     "resend": "^4.0.0",
     "socket.io-client": "^4.8.1",
     "tailwindcss": "3.4.1",
-    "three": "^0.179.1"
+    "three": "^0.179.1",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.2",

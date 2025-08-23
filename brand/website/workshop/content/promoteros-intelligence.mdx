@@ -1,0 +1,130 @@
+---
+title: "PromoterOS Concert Intelligence"
+slug: "promoteros-intelligence"
+status: "CALIBRATING"
+domain: ["Live Music", "Demand Prediction", "Social Analytics"]
+complexity: "H"
+impact: "High"
+owner: "Candlefish"
+safe_public: true
+client_name_masked: "Music Venue Network"
+updated_at: "2025-08-23"
+metrics:
+  prediction_accuracy_pct: 78
+  data_sources_integrated: 5
+  processing_time_reduction_pct: 92
+  venues_analyzed: 47
+stack: ["Python", "FastAPI", "PostgreSQL", "Redis", "TensorFlow", "Kubernetes"]
+links:
+  repo: ""
+  design: ""
+  doc: ""
+architecture:
+  nodes:
+    - { id: "spotify", kind: "source", label: "Spotify API" }
+    - { id: "instagram", kind: "source", label: "Instagram" }
+    - { id: "tiktok", kind: "source", label: "TikTok" }
+    - { id: "aggregator", kind: "service", label: "Signal Aggregator" }
+    - { id: "predictor", kind: "service", label: "ML Predictor" }
+    - { id: "dashboard", kind: "ui", label: "Mission Control" }
+    - { id: "alerts", kind: "service", label: "Alert System" }
+  links:
+    - { source: "spotify", target: "aggregator", label: "Streaming data" }
+    - { source: "instagram", target: "aggregator", label: "Social signals" }
+    - { source: "tiktok", target: "aggregator", label: "Viral metrics" }
+    - { source: "aggregator", target: "predictor", label: "Unified signals" }
+    - { source: "predictor", target: "dashboard", label: "Predictions" }
+    - { source: "predictor", target: "alerts", label: "Opportunities" }
+changelog:
+  - date: "2025-08-20"
+    entry: "Integrated N8N workflow automation for data collection"
+  - date: "2025-08-15"
+    entry: "Added TikTok viral coefficient to improve prediction accuracy to 78%"
+  - date: "2025-08-02"
+    entry: "Segmented pre/post pandemic data for accurate modeling"
+  - date: "2025-07-20"
+    entry: "Initial Spotify-only prediction achieving 60% accuracy"
+next_milestone:
+  name: "Production deployment with real-time WebSocket updates"
+  eta: "2025-09-10"
+---
+
+# PromoterOS Concert Intelligence
+
+## Problem
+
+Venue booking decisions based on gut feeling rather than data, resulting in 40% booking accuracy. Manual research taking 2-3 hours per artist. Limited visibility into regional demand variations and emerging artist trajectories.
+
+## Current Solution
+
+Multi-signal demand fusion with velocity tracking:
+
+### Signal Aggregation
+- Spotify streaming momentum
+- Instagram engagement rates
+- TikTok viral coefficients
+- Historical venue performance
+- Regional demand patterns
+
+### Prediction Engine
+- Artist trajectory modeling
+- Venue capacity optimization
+- Regional demand forecasting
+- Viral potential scoring
+- Multi-platform signal fusion
+
+### Real-Time Dashboard
+- WebSocket live updates
+- Predictive booking suggestions
+- Risk assessment metrics
+- ROI projections
+
+## Results
+
+- **78% prediction accuracy** for venue fill rates
+- **92% reduction** in research time (3 hours → 15 minutes)
+- **5 data sources** integrated automatically
+- **47 venues** analyzed across regions
+- **3x improvement** in booking ROI
+
+## Technical Implementation
+
+### Data Collection Pipeline
+```python
+# N8N workflow orchestration
+- Spotify API: 15-minute intervals
+- Instagram scraping: Hourly
+- TikTok metrics: Real-time stream
+- Venue historicals: Daily batch
+```
+
+### ML Architecture
+- Ensemble model combining:
+  - Time series forecasting for streaming data
+  - NLP for social sentiment
+  - Graph networks for artist relationships
+  - Regional clustering for demand patterns
+
+### Infrastructure
+- Kubernetes deployment on AWS EKS
+- Redis for real-time caching
+- PostgreSQL with PostGIS for venue data
+- InfluxDB for time series metrics
+
+## Challenges Overcome
+
+1. **Regional Bias**: Spotify-only approach missed local preferences. Added multi-platform fusion.
+
+2. **COVID Skew**: Historical data corrupted by pandemic. Segmented pre/post 2020 data.
+
+3. **API Rate Limits**: Instagram blocking scrapers. Implemented distributed collection.
+
+4. **Small Artist Problem**: Low data volume for emerging artists. Built similarity clustering.
+
+## Next Steps
+
+- Add demographic clustering
+- Implement genre-specific models
+- Build confidence intervals
+- Create venue capacity optimizer
+- Deploy production WebSocket infrastructure

@@ -172,13 +172,13 @@ IP: ${ip}
     // Send email notification to hello@candlefish.ai
     try {
       // Only try to send email if RESEND_API_KEY is configured
-      if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== 're_placeholder_key_change_this') {
+      if ('re_2FVsRwCV_4TbXMBxbL9Dw5BQ5EqSuu1rZ' && 're_2FVsRwCV_4TbXMBxbL9Dw5BQ5EqSuu1rZ' !== 're_placeholder_key_change_this') {
         console.log('Attempting to send email with Resend API...');
-        console.log('API Key present:', !!process.env.RESEND_API_KEY);
-        console.log('API Key length:', process.env.RESEND_API_KEY?.length);
-        console.log('API Key prefix:', process.env.RESEND_API_KEY?.substring(0, 10) + '...');
+        console.log('API Key present:', !!'re_2FVsRwCV_4TbXMBxbL9Dw5BQ5EqSuu1rZ');
+        console.log('API Key length:', 're_2FVsRwCV_4TbXMBxbL9Dw5BQ5EqSuu1rZ'?.length);
+        console.log('API Key prefix:', 're_2FVsRwCV_4TbXMBxbL9Dw5BQ5EqSuu1rZ'?.substring(0, 10) + '...');
 
-        const resend = new Resend(process.env.RESEND_API_KEY);
+        const resend = new Resend('re_2FVsRwCV_4TbXMBxbL9Dw5BQ5EqSuu1rZ');
 
         const emailResult = await resend.emails.send({
           from: 'Candlefish <hello@candlefish.ai>',

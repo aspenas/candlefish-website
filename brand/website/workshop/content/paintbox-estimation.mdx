@@ -1,0 +1,116 @@
+---
+title: "Paintbox Excel-to-Web Platform"
+slug: "paintbox-estimation"
+status: "OPERATIONAL"
+domain: ["Excel Migration", "Offline-First", "Formula Compilation"]
+complexity: "H"
+impact: "High"
+owner: "Candlefish"
+safe_public: true
+client_name_masked: "Regional Painting Contractor"
+updated_at: "2025-08-22"
+metrics:
+  formula_count: 14382
+  calculation_accuracy_pct: 100
+  sync_reliability_pct: 99.9
+  offline_days_supported: 30
+  calculation_time_ms: 47
+stack: ["TypeScript", "Next.js", "SQLite", "IndexedDB", "CRDT", "WebAssembly"]
+links:
+  repo: ""
+  design: ""
+  doc: ""
+architecture:
+  nodes:
+    - { id: "excel", kind: "source", label: "Excel Formulas" }
+    - { id: "compiler", kind: "service", label: "Formula Compiler" }
+    - { id: "engine", kind: "service", label: "Calc Engine" }
+    - { id: "sync", kind: "service", label: "Sync Engine" }
+    - { id: "storage", kind: "database", label: "Local Storage" }
+    - { id: "salesforce", kind: "integration", label: "Salesforce" }
+    - { id: "companycam", kind: "integration", label: "CompanyCam" }
+  links:
+    - { source: "excel", target: "compiler", label: "14,382 formulas" }
+    - { source: "compiler", target: "engine", label: "Compiled JS" }
+    - { source: "engine", target: "storage", label: "Results" }
+    - { source: "storage", target: "sync", label: "Changes" }
+    - { source: "sync", target: "salesforce", label: "Opportunities" }
+    - { source: "sync", target: "companycam", label: "Photos" }
+changelog:
+  - date: "2025-08-10"
+    entry: "Added automatic formula versioning with diff tracking"
+  - date: "2025-08-01"
+    entry: "Achieved 100% formula accuracy with all Excel functions"
+  - date: "2025-07-25"
+    entry: "Production release with complete offline support"
+  - date: "2025-07-18"
+    entry: "Compiled formulas to native code, 10x performance improvement"
+  - date: "2025-07-12"
+    entry: "Initial Excel-to-JS transpilation with circular reference issues"
+next_milestone:
+  name: "Incremental sync optimization"
+  eta: "2025-09-01"
+---
+
+# Paintbox Excel-to-Web Platform
+
+## Problem
+
+14,000+ Excel formulas requiring manual maintenance across 150 franchise locations. Daily sync failures, version conflicts, and 12-15 second calculation times making field estimation painful. No offline capability at job sites without connectivity.
+
+## Current Solution
+
+Compiled formula engine with offline-first architecture:
+
+### Formula Compilation
+- Parses all 14,382 Excel formulas into AST
+- Optimizes and compiles to JavaScript functions
+- Handles VLOOKUP, SUMIFS, INDEX/MATCH, array formulas
+- 100% compatibility with Excel calculation logic
+
+### Offline-First Sync
+- CRDT-based conflict-free merging
+- 30-day offline capability
+- Background sync when connected
+- Automatic conflict resolution
+
+### Performance Optimization
+- WebAssembly for complex calculations
+- IndexedDB for local persistence
+- Service Worker for offline support
+- 47ms average calculation time
+
+## Results
+
+- **100% formula accuracy** matching Excel exactly
+- **99.9% sync reliability** with automatic recovery
+- **300x faster** calculations (15s → 47ms)
+- **500MB initial download** for complete offline capability
+- **Zero version conflicts** with CRDT merging
+
+## Technical Challenges Overcome
+
+1. **Circular References**: Initial transpilation broke on circular formulas. Built dependency graph resolver.
+
+2. **Offline Requirements**: Cloud-only approach failed at job sites. Implemented complete offline-first architecture.
+
+3. **Performance**: SQLite storage was 10x slower than Excel. Compiled formulas to native code.
+
+4. **iOS Limitations**: Service worker restrictions on Safari. Built native app wrapper.
+
+5. **Formula Complexity**: Array formulas and dynamic ranges. Custom implementation matching Excel behavior.
+
+## Architecture Details
+
+The system operates in three layers:
+
+1. **Compilation Layer**: One-time conversion of Excel to optimized JavaScript
+2. **Execution Layer**: WebAssembly-accelerated calculation engine
+3. **Sync Layer**: CRDT-based eventual consistency across devices
+
+## Next Steps
+
+- Optimize array formula performance
+- Add formula debugging tools
+- Implement incremental sync
+- Build formula migration system for updates

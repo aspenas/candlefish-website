@@ -48,6 +48,7 @@
     --ease-swift: cubic-bezier(0.4, 0, 0.2, 1);
     --ease-gentle: cubic-bezier(0.4, 0, 0.6, 1);
     --ease-dramatic: cubic-bezier(0.85, 0, 0.15, 1);
+    --ease-mist: cubic-bezier(0.25, 0.46, 0.45, 0.94);
 
     --duration-instant: 100ms;
     --duration-swift: 200ms;
@@ -437,6 +438,122 @@
         transform: scaleY(0.6) translateZ(0);
         opacity: 0.5;
       }
+    }
+  }
+
+  /* MIST PARTICLE ANIMATION - Subtle fog dissolve effect */
+  @keyframes mist-drift {
+    0% {
+      transform: translate3d(0, 0, 0);
+      opacity: 0;
+    }
+    20% {
+      opacity: 0.3;
+    }
+    80% {
+      opacity: 0.3;
+    }
+    100% {
+      transform: translate3d(10px, -5px, 0);
+      opacity: 0;
+    }
+  }
+
+  /* NETWORK NODE PULSE - For franchise nodes */
+  @keyframes node-pulse {
+    0%, 100% {
+      transform: scale(1);
+      filter: brightness(1);
+    }
+    50% {
+      transform: scale(1.1);
+      filter: brightness(1.2);
+    }
+  }
+
+  /* PARTICLE FLOW - Data stream animation */
+  @keyframes particle-flow {
+    0% {
+      transform: translateX(0);
+      opacity: 0;
+    }
+    10% {
+      opacity: 0.7;
+    }
+    90% {
+      opacity: 0.7;
+    }
+    100% {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+
+  /* CALIBRATING DRIFT - Gentle drift for calibrating state */
+  @keyframes calibrating-drift {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-2px);
+    }
+  }
+
+  /* OPERATIONAL ACCELERATE - Fast pulse for operational state */
+  @keyframes operational-pulse {
+    0%, 100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgba(63, 211, 198, 0.4);
+    }
+    50% {
+      transform: scale(1.05);
+      box-shadow: 0 0 10px 5px rgba(63, 211, 198, 0.2);
+    }
+  }
+
+  /* TEXT MORPH TRANSITION - Mist dissolve between text */
+  .text-morph-transition {
+    transition: opacity 800ms var(--ease-mist),
+                filter 800ms var(--ease-mist),
+                transform 800ms var(--ease-mist);
+  }
+
+  /* MINIMAL BAR ANIMATION - System activity bars */
+  .activity-bar {
+    transform-origin: bottom center;
+    animation: pulse-bar 3s ease-in-out infinite;
+    animation-delay: calc(var(--bar-index) * 0.1s);
+  }
+
+  /* NETWORK VISUALIZATION HELPERS */
+  .network-node {
+    animation: node-pulse 2s ease-in-out infinite;
+  }
+
+  .network-node.calibrating {
+    animation: calibrating-drift 3s ease-in-out infinite;
+  }
+
+  .network-node.operational {
+    animation: operational-pulse 1s ease-in-out infinite;
+  }
+
+  /* PERFORMANCE OPTIMIZATIONS */
+  .use-gpu {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
+
+  /* MOBILE FALLBACKS */
+  @media (max-width: 768px) and (hover: none) {
+    .text-morph-transition {
+      transition: opacity 300ms ease-out;
+    }
+
+    .network-node,
+    .activity-bar {
+      animation: none;
     }
   }
 }
