@@ -1,266 +1,401 @@
-# Candlefish.ai - Coherent Vertical Automation Platform
+# Candlefish AI Documentation Platform - GraphQL Architecture
 
-[![CI/CD](https://github.com/candlefish-ai/candlefish-ai/actions/workflows/monorepo-ci.yml/badge.svg)](https://github.com/candlefish-ai/candlefish-ai/actions/workflows/monorepo-ci.yml)
-[![Security](https://github.com/candlefish-ai/candlefish-ai/actions/workflows/auto-security.yml/badge.svg)](https://github.com/candlefish-ai/candlefish-ai/actions/workflows/auto-security.yml)
-[![Dependencies](https://github.com/candlefish-ai/candlefish-ai/actions/workflows/auto-dependencies.yml/badge.svg)](https://github.com/candlefish-ai/candlefish-ai/actions/workflows/auto-dependencies.yml)
-[![Performance](https://github.com/candlefish-ai/candlefish-ai/actions/workflows/auto-performance.yml/badge.svg)](https://github.com/candlefish-ai/candlefish-ai/actions/workflows/auto-performance.yml)
-[![License](https://img.shields.io/badge/license-Proprietary-blue.svg)](LICENSE)
+> **Philosophy**: "Operational craft" - systems that outlive creators through clear design and maintainable code.
 
-> Converting messy, Excel-bound operations into durable, AI-native systems for real-world industries
+This GraphQL implementation serves as the unified API layer for Candlefish AI's documentation ecosystem, embodying the philosophy of building systems that endure through operational excellence.
 
-## Vision
+## Architecture Overview
 
-Candlefish is building the AI control plane for blue-collar and craft industries, transforming spreadsheet chaos into intelligent automation through our "single spine, many faces" architecture.
+### Core Services
+- **Documentation Platform**: Public-facing documentation with version control
+- **Partner Platform**: Partner network management and operator directory  
+- **API Reference**: Interactive API documentation with examples
+- **Search Service**: Elasticsearch-powered content discovery
+- **Analytics Service**: Usage tracking and insights
 
-## Core Products
+### GraphQL Schema Design
 
-### Vertical Applications
-- **Paintbox** - Professional paint estimation and job management
-- **Crown** - Trophy and awards inventory and production
-- **PromoterOS** - Venue booking and settlement management  
-- **Brewkit** - Brewery production planning and inventory
+The schema follows a **schema-first approach** with clear type definitions that reflect the domain model:
 
-### Platform Capabilities
-- **Excel Migration Engine** - 5-minute spreadsheet to application transformation
-- **Coherent Core** - Shared infrastructure across all verticals
-- **Operator Network** - Certified partners for implementation and support
-- **AI Alignment** - Systems that evolve with their users
+```graphql
+# Core interfaces ensure consistency
+interface Node {
+  id: ID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
 
-## Quick Start
-
-### Development Setup
-
-1. **Clone and setup**
-   ```bash
-   git clone https://github.com/candlefish-ai/candlefish-ai.git
-   cd candlefish-ai
-   pnpm install
-   ```
-
-2. **Configure environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-3. **Start with Docker (Recommended)**
-   ```bash
-   # Development environment
-   docker-compose up -d
-   
-   # Or production environment
-   docker-compose -f docker-compose.prod.yml up -d
-   ```
-
-4. **Alternative: Local development**
-   ```bash
-   # Start individual services
-   pnpm dev
-   ```
-
-5. **Access applications**
-   - RTPM API: http://localhost:8080
-   - NANDA API: http://localhost:3000
-   - NANDA Dashboard: http://localhost:3001
-   - Website: http://localhost:3002
-   - Temporal Server: http://localhost:8088
-   - Monitoring (dev profile): http://localhost:3003
-
-## Architecture
-
-```
-┌─────────────────────────────────────────┐
-│      VERTICAL APPLICATIONS              │
-│  Paintbox | Crown | PromoterOS | Brewkit│
-└─────────────────────────────────────────┘
-                    ▼
-┌─────────────────────────────────────────┐
-│         CANDLEFISH CORE                 │
-│  Identity | Data | Workflow | Agents    │
-└─────────────────────────────────────────┘
-                    ▼
-┌─────────────────────────────────────────┐
-│       EXCEL MIGRATION ENGINE            │
-│  Parse | Analyze | Transform | Generate │
-└─────────────────────────────────────────┘
+interface Content {
+  id: ID!
+  title: String!
+  slug: String!
+  content: String!
+  status: ContentStatus!
+  version: String!
+  # ...
+}
 ```
 
-## Project Structure
+### Key Features
 
-```
-candlefish-ai/                     # Monorepo root
-├── apps/                         # Application services
-│   ├── website/                 # Main marketing site
-│   ├── rtpm-api/               # Real-time Project Management API
-│   ├── nanda-api/              # NANDA agent system API
-│   ├── nanda-dashboard/        # NANDA monitoring dashboard
-│   ├── mobile-dashboard/       # Mobile applications
-│   └── brand-portal/           # Brand assets
-├── projects/                    # Vertical implementations  
-│   ├── paintbox/              # Painting contractor platform
-│   ├── crowntrophy/           # Trophy/awards management
-│   └── promoteros/            # Venue booking system
-├── services/                   # Shared services
-│   ├── auth-service/          # Authentication service
-│   └── promoteros-api/        # PromoterOS backend
-├── packages/                   # Shared packages
-│   ├── ui-components/         # Design system components
-│   └── tyler-setup/           # Employee onboarding
-├── candlefish-temporal-platform/ # Temporal workflows
-├── clark_county_permits_emergency/ # Web scraping system
-├── ibm-watsonx-portfolio/     # AI portfolio site
-├── nanda-adapter/             # NANDA system adapter
-├── deployment/                # Infrastructure configs
-│   ├── terraform/             # Infrastructure as Code
-│   ├── k8s/                  # Kubernetes manifests
-│   └── docker/               # Docker configurations
-└── docs/                      # Documentation
-    └── operator-network/      # Partner resources
+#### 🔍 **DataLoader Pattern Implementation**
+Solves N+1 query problems with efficient batch loading:
+
+```typescript
+// User loader with caching
+userById: new DataLoader(async (ids: readonly string[]) => {
+  const users = await db.users.findByIds([...ids]);
+  return ids.map(id => users.find(user => user.id === id) || null);
+})
 ```
 
-## Key Documents
+#### 🚀 **Federation-Ready Architecture**  
+Supports both monolithic and federated deployments:
 
-- [Strategic Plan 2025-2027](./STRATEGY_2025.md)
-- [Operator Network Playbook](./OPERATOR_NETWORK_PLAYBOOK.md)
-- [Excel Migration Architecture](./EXCEL_MIGRATION_ARCHITECTURE.md)
-- [Alignment Manifesto](./ALIGNMENT_MANIFESTO.md)
+```typescript
+// Federated entities with @key directives
+type Documentation @key(fields: "id") @key(fields: "slug") {
+  id: ID!
+  slug: String!
+  author: User @provides(fields: "id email")
+}
+```
 
-## Technology Stack
+#### 🔐 **Field-Level Authorization**
+Granular permission control with decorators:
 
-- **Frontend**: Next.js 14, React, TypeScript, TailwindCSS, Vite
-- **Backend**: Node.js, Python 3.12, FastAPI, GraphQL Federation, Prisma
-- **Database**: PostgreSQL (TimescaleDB), Redis, S3
-- **AI/ML**: Anthropic Claude, OpenAI, Custom models
-- **Workflows**: Temporal, Python asyncio
-- **Infrastructure**: Docker, AWS ECS/EKS, Terraform, GitHub Actions
-- **Monitoring**: Prometheus, Grafana, OpenTelemetry
-- **Package Management**: pnpm (Node.js), Poetry (Python)
+```typescript
+@authorized(['ADMIN', 'EDITOR'], ['edit:documentation'])
+async updateDocumentation(parent, args, context) {
+  // Resolver implementation
+}
+```
+
+#### ⚡ **Real-Time Subscriptions**
+WebSocket-based updates for live collaboration:
+
+```graphql
+subscription DocumentationUpdated($categoryId: ID) {
+  documentationUpdated(categoryId: $categoryId) {
+    id
+    title
+    updatedAt
+  }
+}
+```
+
+## File Structure
+
+```
+graphql/
+├── schema.graphql          # Complete GraphQL schema
+├── server.ts              # Apollo Server configuration  
+├── context.ts             # Request context & DataLoaders
+├── federation.ts          # Federation strategy & migration
+├── queries.ts             # Client-side query examples
+└── resolvers/
+    ├── index.ts           # Root resolver composition
+    ├── documentation.ts   # Documentation resolvers
+    ├── partner.ts         # Partner network resolvers
+    ├── operator.ts        # Operator management resolvers
+    ├── apiReference.ts    # API documentation resolvers
+    ├── user.ts           # User management resolvers
+    ├── search.ts         # Search & discovery resolvers
+    ├── analytics.ts      # Analytics & metrics resolvers
+    ├── content.ts        # Content blocks & assets
+    └── asset.ts          # File upload & management
+```
+
+## Schema Highlights
+
+### Documentation Management
+```graphql
+type Documentation implements Node & Content {
+  # Core content fields
+  title: String!
+  slug: String!
+  content: String!
+  
+  # Metadata
+  category: DocumentationCategory!
+  readingTime: Int
+  difficulty: DifficultyLevel
+  
+  # Structure
+  blocks: [ContentBlock!]!
+  tableOfContents: [TOCItem!]!
+  
+  # Engagement
+  reactions: [Reaction!]!
+  feedback: [Feedback!]!
+  views: Int!
+}
+```
+
+### Partner Network
+```graphql
+type Partner implements Node {
+  # Business details
+  name: String!
+  tier: PartnerTier!
+  industry: [Industry!]!
+  
+  # Network
+  operators: [Operator!]!
+  implementations: [Implementation!]!
+  
+  # Content
+  resources: [PartnerResource!]!
+  caseStudies: [CaseStudy!]!
+}
+```
+
+### API Documentation
+```graphql
+type APIReference implements Node & Content {
+  # Endpoint details
+  endpoint: String!
+  method: HTTPMethod!
+  parameters: [APIParameter!]!
+  
+  # Examples
+  examples: [APIExample!]!
+  responses: [APIResponse!]!
+  
+  # Access control
+  requiresAuth: Boolean!
+  scopes: [String!]!
+  rateLimit: RateLimit
+}
+```
+
+## Deployment Strategies
+
+### Monolithic Deployment
+Single server handling all GraphQL operations:
+```bash
+npm start
+# Server ready at http://localhost:4000/graphql
+```
+
+### Federated Deployment
+Multiple services with Apollo Gateway:
+```bash
+# Start individual services
+npm run start:documentation-service  # Port 4001
+npm run start:partner-service        # Port 4002  
+npm run start:api-reference-service  # Port 4003
+npm run start:gateway               # Port 4000
+```
+
+## Query Examples
+
+### Fetch Documentation with Related Content
+```graphql
+query GetDocumentation($slug: String!) {
+  documentation(slug: $slug) {
+    title
+    content
+    author {
+      fullName
+    }
+    relatedDocuments {
+      title
+      slug
+    }
+    reactions {
+      type
+    }
+  }
+}
+```
+
+### Search Across All Content Types
+```graphql
+query SearchContent($query: String!) {
+  search(query: $query) {
+    total
+    results {
+      type
+      title
+      excerpt
+      url
+      score
+      highlights
+    }
+    suggestions
+  }
+}
+```
+
+### Partner Directory with Operators
+```graphql
+query GetPartners($tier: PartnerTier) {
+  allPartners(tier: $tier, first: 20) {
+    edges {
+      node {
+        name
+        specializations
+        operators {
+          fullName
+          availability
+          skills {
+            name
+            level
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## Performance Features
+
+### Caching Strategy
+- **DataLoader**: Request-scoped caching for entity resolution
+- **Redis**: Persistent caching for expensive queries
+- **CDN**: Static asset delivery optimization
+
+### Query Complexity Analysis
+```typescript
+const COMPLEXITY_RULES = {
+  Documentation: 2,
+  'Documentation.relatedDocuments': 5,
+  'Partner.operators': 4,
+  maxComplexity: 100,
+};
+```
+
+### Rate Limiting
+- Per-user query limits
+- Complexity-based throttling
+- Partner tier-based API access
+
+## Subscription Patterns
+
+### Real-Time Documentation Updates
+```typescript
+// Subscribe to category changes
+const subscription = client.subscribe({
+  query: DOCUMENTATION_UPDATED_SUBSCRIPTION,
+  variables: { categoryId: 'getting-started' }
+});
+```
+
+### Partner Activity Monitoring
+```typescript
+// Monitor partner status changes
+const partnerUpdates = client.subscribe({
+  query: PARTNER_STATUS_CHANGED_SUBSCRIPTION,
+  variables: { partnerId: 'acme-corp' }
+});
+```
+
+## Authentication & Authorization
+
+### JWT-Based Authentication
+```typescript
+// Context includes authenticated user
+type Context = {
+  user?: User;
+  loaders: DataLoaders;
+  // ... services
+};
+```
+
+### Role-Based Access Control
+```typescript
+enum UserRole {
+  ADMIN     // Full system access
+  EDITOR    // Content management
+  PARTNER   // Partner portal access  
+  OPERATOR  // Operator network access
+  VIEWER    // Read-only access
+}
+```
+
+### Field-Level Permissions
+```typescript
+// Partner-specific data visibility
+apiAccess: async (parent, _, { user }) => {
+  if (user?.role !== 'PARTNER' && user?.role !== 'ADMIN') {
+    return null;
+  }
+  return await db.apiAccess.findByPartnerId(parent.id);
+}
+```
+
+## Error Handling
+
+### Standardized Error Types
+```typescript
+class AuthorizationError extends Error {
+  constructor(message = 'Not authorized') {
+    super(message);
+    this.name = 'AuthorizationError';
+  }
+}
+```
+
+### Production Error Filtering
+```typescript
+formatError: (error) => {
+  if (process.env.NODE_ENV === 'production') {
+    // Hide sensitive internal errors
+    if (error.message.includes('Database error')) {
+      return new Error('An error occurred while processing your request');
+    }
+  }
+  return error;
+}
+```
+
+## Monitoring & Analytics
+
+### Health Checks
+```bash
+curl http://localhost:4000/health
+# Returns service status and database connectivity
+```
+
+### Performance Metrics
+```bash
+curl http://localhost:4000/metrics  
+# Returns query performance and usage analytics
+```
+
+### Query Logging
+- Operation complexity tracking
+- Slow query identification  
+- Error rate monitoring
 
 ## Development Workflow
 
-### Service Dependencies
-```mermaid
-graph TD
-    A[postgres] --> B[rtpm-api]
-    A --> C[temporal-server]
-    D[redis] --> B
-    D --> E[nanda-dashboard]
-    F[nanda-api] --> E
-    B --> G[website]
-    C --> G
+### Schema-First Development
+1. Update `schema.graphql` with new types
+2. Generate TypeScript types
+3. Implement resolvers with DataLoader optimization
+4. Add client queries with proper fragments
+5. Test with complexity analysis
+
+### Federation Migration
+```typescript
+// Validate federation readiness
+await FederationMigration.validateFederationReadiness(schema, resolvers);
+
+// Migrate to federated architecture  
+const federatedSchema = await FederationMigration.migrateToFederation(schema, resolvers);
 ```
 
-### Docker Commands
+## Key Files
 
-```bash
-# Development environment
-docker-compose up -d                    # Start all services
-docker-compose down                      # Stop all services
-docker-compose logs -f [service]         # View logs
-docker-compose restart [service]         # Restart service
+- **`/Users/patricksmith/candlefish-ai/graphql/schema.graphql`** - Complete GraphQL schema
+- **`/Users/patricksmith/candlefish-ai/graphql/server.ts`** - Apollo Server with subscriptions
+- **`/Users/patricksmith/candlefish-ai/graphql/context.ts`** - DataLoader implementation
+- **`/Users/patricksmith/candlefish-ai/graphql/federation.ts`** - Federation strategy
+- **`/Users/patricksmith/candlefish-ai/graphql/queries.ts`** - Client query examples
+- **`/Users/patricksmith/candlefish-ai/graphql/resolvers/documentation.ts`** - Documentation resolvers
+- **`/Users/patricksmith/candlefish-ai/graphql/resolvers/partner.ts`** - Partner network resolvers
 
-# Production environment
-docker-compose -f docker-compose.prod.yml up -d
-docker-compose -f docker-compose.prod.yml down
-
-# Monitoring (development only)
-docker-compose --profile monitoring up -d  # Include Grafana
-```
-
-### Running Tests
-```bash
-# Unit tests
-pnpm test
-
-# Integration tests
-pnpm test:integration
-
-# E2E tests with Docker
-docker-compose -f docker-compose.test.yml up --abort-on-container-exit
-```
-
-### Code Quality
-```bash
-# Linting (Python)
-ruff check
-ruff format
-
-# Linting (TypeScript/JavaScript) 
-pnpm lint
-pnpm format
-
-# Type checking
-pnpm typecheck
-```
-
-### Deployment
-```bash
-# Build production images
-docker-compose -f docker-compose.prod.yml build
-
-# Deploy to staging/production (via CI/CD)
-git push origin main  # Triggers automated deployment
-```
-
-## Contributing
-
-We follow a structured development process:
-
-1. **Branch Naming**: `feat/description-YYYYMMDD`
-2. **Commit Style**: Present tense, concise messages
-3. **Code Review**: All PRs require approval
-4. **Testing**: Maintain 80% coverage minimum
-
-## Security
-
-- SOC 2 Type I target: Q1 2026
-- Per-tenant encryption with KMS
-- Row-level security on all data
-- Complete audit trail
-- GDPR/CCPA compliant
-
-## Support
-
-- **Documentation**: [docs.candlefish.ai](https://docs.candlefish.ai)
-- **Partner Portal**: [partners.candlefish.ai](https://partners.candlefish.ai)
-- **API Reference**: [api.candlefish.ai](https://api.candlefish.ai)
-
-## License
-
-Proprietary - Candlefish.ai © 2025
-
----
-
-**Building the future of work through aligned intelligence.**
-## Docker Services
-
-### Development Environment (`docker-compose.yml`)
-- **postgres**: TimescaleDB with development data
-- **redis**: Redis cache for session storage
-- **rtpm-api**: Real-time Project Management API (port 8080)
-- **nanda-api**: NANDA agent system API (port 3000)
-- **nanda-dashboard**: NANDA monitoring dashboard (port 3001) 
-- **temporal-server**: Temporal workflow server (ports 7233, 8088)
-- **website**: Main website (port 3002)
-- **monitoring**: Grafana dashboard (port 3003, profile: monitoring)
-
-### Production Environment (`docker-compose.prod.yml`)
-- Same services with production optimizations:
-  - Multi-stage builds for smaller images
-  - Health checks and restart policies
-  - Bind to localhost only for security
-  - Structured logging
-  - nginx reverse proxy
-  - clark-county-scraper for data collection
-
-### Environment Variables
-Copy `.env.example` to `.env` and configure:
-- Database credentials
-- Redis password
-- JWT secrets
-- AWS configuration
-- Logging levels
-
----
-
-**Monorepo setup complete! Building the future of work through aligned intelligence.**
+This GraphQL architecture embodies Candlefish's "operational craft" philosophy - building systems that are clear, maintainable, and designed to outlive their creators through thoughtful engineering and comprehensive documentation.

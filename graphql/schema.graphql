@@ -1,0 +1,1107 @@
+# Candlefish AI Documentation Platform - Unified GraphQL Schema
+# Philosophy: "Operational craft" - systems that outlive creators
+# Architecture: Schema-first design for long-term maintainability
+
+scalar DateTime
+scalar JSON
+scalar Upload
+
+# ============================================================================
+# CORE TYPES - The foundation that outlives implementation details
+# ============================================================================
+
+interface Node {
+  id: ID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+interface Content {
+  id: ID!
+  title: String!
+  slug: String!
+  content: String!
+  status: ContentStatus!
+  version: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  author: User
+  tags: [String!]!
+  metadata: JSON
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  DEPRECATED
+}
+
+enum UserRole {
+  ADMIN
+  EDITOR
+  PARTNER
+  OPERATOR
+  VIEWER
+}
+
+# ============================================================================
+# USER MANAGEMENT - Authentication and authorization
+# ============================================================================
+
+type User implements Node {
+  id: ID!
+  email: String!
+  username: String!
+  fullName: String
+  role: UserRole!
+  avatar: String
+  bio: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  lastLogin: DateTime
+  isActive: Boolean!
+  permissions: [String!]!
+  
+  # Relationships
+  createdDocuments: [Documentation!]!
+  partnerProfile: Partner
+}
+
+type AuthPayload {
+  token: String!
+  refreshToken: String!
+  user: User!
+  expiresAt: DateTime!
+}
+
+# ============================================================================
+# DOCUMENTATION PLATFORM - Public-facing documentation
+# ============================================================================
+
+type Documentation implements Node & Content {
+  id: ID!
+  title: String!
+  slug: String!
+  content: String!
+  excerpt: String
+  status: ContentStatus!
+  version: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  publishedAt: DateTime
+  author: User
+  tags: [String!]!
+  metadata: JSON
+  
+  # Documentation-specific fields
+  category: DocumentationCategory!
+  section: String
+  order: Int
+  tableOfContents: [TOCItem!]!
+  relatedDocuments: [Documentation!]!
+  searchKeywords: [String!]!
+  readingTime: Int # minutes
+  difficulty: DifficultyLevel
+  
+  # Content structure
+  blocks: [ContentBlock!]!
+  assets: [Asset!]!
+  
+  # Analytics
+  views: Int!
+  reactions: [Reaction!]!
+  feedback: [Feedback!]!
+}
+
+type DocumentationCategory implements Node {
+  id: ID!
+  name: String!
+  slug: String!
+  description: String
+  icon: String
+  color: String
+  order: Int
+  parentCategory: DocumentationCategory
+  subcategories: [DocumentationCategory!]!
+  documents: [Documentation!]!
+  isVisible: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum DifficultyLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+type TOCItem {
+  id: String!
+  title: String!
+  level: Int!
+  anchor: String!
+  children: [TOCItem!]!
+}
+
+# ============================================================================
+# PARTNER PLATFORM - Partner network management
+# ============================================================================
+
+type Partner implements Node {
+  id: ID!
+  name: String!
+  slug: String!
+  description: String!
+  website: String
+  logo: String
+  banner: String
+  tier: PartnerTier!
+  status: PartnerStatus!
+  joinedAt: DateTime!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  
+  # Contact information
+  contactEmail: String!
+  contactPhone: String
+  primaryContact: User
+  
+  # Business details
+  industry: [Industry!]!
+  size: CompanySize
+  location: Location
+  
+  # Partnership details
+  specializations: [String!]!
+  certifications: [Certification!]!
+  implementations: [Implementation!]!
+  testimonials: [Testimonial!]!
+  
+  # Content
+  resources: [PartnerResource!]!
+  caseStudies: [CaseStudy!]!
+  
+  # Network access
+  operators: [Operator!]!
+  apiAccess: APIAccess
+  
+  # Analytics
+  profileViews: Int!
+  leads: [Lead!]!
+  
+  # Verification
+  isVerified: Boolean!
+  verifiedAt: DateTime
+}
+
+enum PartnerTier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  ENTERPRISE
+}
+
+enum PartnerStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  TERMINATED
+}
+
+enum CompanySize {
+  STARTUP
+  SMALL
+  MEDIUM
+  LARGE
+  ENTERPRISE
+}
+
+type Industry {
+  id: ID!
+  name: String!
+  slug: String!
+  description: String
+}
+
+type Location {
+  country: String!
+  state: String
+  city: String
+  timezone: String
+}
+
+type Certification {
+  id: ID!
+  name: String!
+  issuer: String!
+  issuedAt: DateTime!
+  expiresAt: DateTime
+  credentialUrl: String
+  isActive: Boolean!
+}
+
+type Implementation {
+  id: ID!
+  title: String!
+  description: String!
+  client: String
+  industry: Industry
+  duration: String
+  teamSize: Int
+  technologies: [String!]!
+  outcomes: [String!]!
+  isPublic: Boolean!
+  createdAt: DateTime!
+}
+
+type Testimonial {
+  id: ID!
+  content: String!
+  author: String!
+  authorTitle: String
+  authorCompany: String
+  rating: Float
+  isPublic: Boolean!
+  createdAt: DateTime!
+}
+
+type PartnerResource implements Node & Content {
+  id: ID!
+  title: String!
+  slug: String!
+  content: String!
+  status: ContentStatus!
+  version: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  author: User
+  tags: [String!]!
+  metadata: JSON
+  
+  # Resource-specific fields
+  partner: Partner!
+  resourceType: ResourceType!
+  downloadUrl: String
+  externalUrl: String
+  accessLevel: AccessLevel!
+  downloads: Int!
+}
+
+enum ResourceType {
+  GUIDE
+  TEMPLATE
+  WHITEPAPER
+  CASE_STUDY
+  VIDEO
+  WEBINAR
+  TOOL
+}
+
+enum AccessLevel {
+  PUBLIC
+  PARTNER_ONLY
+  OPERATOR_ONLY
+  PREMIUM
+}
+
+# ============================================================================
+# OPERATOR NETWORK - Individual operators within partner organizations
+# ============================================================================
+
+type Operator implements Node {
+  id: ID!
+  email: String!
+  fullName: String!
+  title: String
+  bio: String
+  avatar: String
+  partner: Partner!
+  user: User
+  
+  # Professional details
+  specializations: [String!]!
+  skills: [Skill!]!
+  certifications: [Certification!]!
+  experience: ExperienceLevel!
+  availability: Availability!
+  
+  # Contact preferences
+  isPublicProfile: Boolean!
+  allowDirectContact: Boolean!
+  preferredContactMethod: ContactMethod
+  
+  # Performance
+  projectsCompleted: Int!
+  clientRating: Float
+  responseTime: String
+  
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Skill {
+  id: ID!
+  name: String!
+  category: String!
+  level: SkillLevel!
+}
+
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum ExperienceLevel {
+  JUNIOR
+  MID_LEVEL
+  SENIOR
+  LEAD
+  PRINCIPAL
+}
+
+enum Availability {
+  AVAILABLE
+  BUSY
+  UNAVAILABLE
+}
+
+enum ContactMethod {
+  EMAIL
+  PHONE
+  SLACK
+  TEAMS
+}
+
+# ============================================================================
+# API REFERENCE - Documentation for API endpoints
+# ============================================================================
+
+type APIReference implements Node & Content {
+  id: ID!
+  title: String!
+  slug: String!
+  content: String!
+  status: ContentStatus!
+  version: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  author: User
+  tags: [String!]!
+  metadata: JSON
+  
+  # API-specific fields
+  service: APIService!
+  endpoint: String!
+  method: HTTPMethod!
+  description: String!
+  
+  # Request/Response
+  parameters: [APIParameter!]!
+  requestBody: APISchema
+  responses: [APIResponse!]!
+  
+  # Examples
+  examples: [APIExample!]!
+  
+  # Versioning
+  apiVersion: String!
+  deprecatedAt: DateTime
+  
+  # Usage
+  isPublic: Boolean!
+  requiresAuth: Boolean!
+  scopes: [String!]!
+  rateLimit: RateLimit
+}
+
+type APIService {
+  id: ID!
+  name: String!
+  slug: String!
+  description: String!
+  baseUrl: String!
+  version: String!
+  endpoints: [APIReference!]!
+  authentication: [AuthMethod!]!
+  isActive: Boolean!
+}
+
+enum HTTPMethod {
+  GET
+  POST
+  PUT
+  DELETE
+  PATCH
+  OPTIONS
+  HEAD
+}
+
+type APIParameter {
+  name: String!
+  type: String!
+  required: Boolean!
+  description: String
+  example: String
+  enum: [String!]
+  format: String
+  pattern: String
+}
+
+type APISchema {
+  type: String!
+  properties: JSON
+  example: JSON
+  schema: String # JSON Schema
+}
+
+type APIResponse {
+  statusCode: Int!
+  description: String!
+  schema: APISchema
+  headers: [APIHeader!]!
+  examples: [JSON!]!
+}
+
+type APIHeader {
+  name: String!
+  value: String!
+  description: String
+}
+
+type APIExample {
+  id: ID!
+  title: String!
+  description: String
+  request: ExampleRequest!
+  response: ExampleResponse!
+  language: String
+}
+
+type ExampleRequest {
+  method: HTTPMethod!
+  url: String!
+  headers: JSON
+  body: JSON
+}
+
+type ExampleResponse {
+  statusCode: Int!
+  headers: JSON
+  body: JSON
+}
+
+enum AuthMethod {
+  API_KEY
+  JWT
+  OAUTH2
+  BASIC_AUTH
+}
+
+type RateLimit {
+  requests: Int!
+  window: String!
+  burst: Int
+}
+
+# ============================================================================
+# CONTENT MANAGEMENT - Flexible content blocks
+# ============================================================================
+
+interface ContentBlock {
+  id: ID!
+  type: String!
+  order: Int!
+  data: JSON!
+}
+
+type TextBlock implements ContentBlock {
+  id: ID!
+  type: String!
+  order: Int!
+  data: JSON!
+  content: String!
+  format: TextFormat!
+}
+
+type CodeBlock implements ContentBlock {
+  id: ID!
+  type: String!
+  order: Int!
+  data: JSON!
+  code: String!
+  language: String!
+  filename: String
+  showLineNumbers: Boolean!
+}
+
+type ImageBlock implements ContentBlock {
+  id: ID!
+  type: String!
+  order: Int!
+  data: JSON!
+  asset: Asset!
+  caption: String
+  alt: String!
+}
+
+type VideoBlock implements ContentBlock {
+  id: ID!
+  type: String!
+  order: Int!
+  data: JSON!
+  asset: Asset
+  url: String
+  caption: String
+  thumbnail: String
+}
+
+enum TextFormat {
+  MARKDOWN
+  HTML
+  PLAIN
+}
+
+type Asset implements Node {
+  id: ID!
+  filename: String!
+  originalName: String!
+  mimeType: String!
+  size: Int!
+  url: String!
+  cdnUrl: String
+  alt: String
+  description: String
+  uploadedBy: User!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+# ============================================================================
+# SEARCH & ANALYTICS - Discovery and insights
+# ============================================================================
+
+type SearchResult {
+  id: ID!
+  type: SearchResultType!
+  title: String!
+  excerpt: String!
+  url: String!
+  score: Float!
+  highlights: [String!]!
+  metadata: JSON
+}
+
+enum SearchResultType {
+  DOCUMENTATION
+  PARTNER
+  OPERATOR
+  API_REFERENCE
+  RESOURCE
+}
+
+type SearchResults {
+  query: String!
+  total: Int!
+  page: Int!
+  pageSize: Int!
+  results: [SearchResult!]!
+  facets: JSON
+  suggestions: [String!]!
+}
+
+type Analytics {
+  period: AnalyticsPeriod!
+  startDate: DateTime!
+  endDate: DateTime!
+  metrics: JSON!
+}
+
+enum AnalyticsPeriod {
+  HOUR
+  DAY
+  WEEK
+  MONTH
+  QUARTER
+  YEAR
+}
+
+# ============================================================================
+# FEEDBACK & ENGAGEMENT - Community interaction
+# ============================================================================
+
+type Reaction {
+  id: ID!
+  type: ReactionType!
+  user: User
+  createdAt: DateTime!
+}
+
+enum ReactionType {
+  LIKE
+  HELPFUL
+  UNCLEAR
+  OUTDATED
+}
+
+type Feedback {
+  id: ID!
+  content: String!
+  type: FeedbackType!
+  rating: Int
+  user: User
+  isPublic: Boolean!
+  response: String
+  respondedBy: User
+  respondedAt: DateTime
+  createdAt: DateTime!
+}
+
+enum FeedbackType {
+  SUGGESTION
+  BUG_REPORT
+  CONTENT_ISSUE
+  FEATURE_REQUEST
+  GENERAL
+}
+
+type Lead {
+  id: ID!
+  name: String!
+  email: String!
+  company: String
+  message: String!
+  partner: Partner!
+  operator: Operator
+  source: String
+  status: LeadStatus!
+  createdAt: DateTime!
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CONVERTED
+  CLOSED
+}
+
+# ============================================================================
+# SYSTEM MANAGEMENT - Operational excellence
+# ============================================================================
+
+type APIAccess {
+  id: ID!
+  partner: Partner!
+  apiKey: String!
+  scopes: [String!]!
+  rateLimit: RateLimit!
+  isActive: Boolean!
+  lastUsed: DateTime
+  createdAt: DateTime!
+  expiresAt: DateTime
+}
+
+type CaseStudy implements Node & Content {
+  id: ID!
+  title: String!
+  slug: String!
+  content: String!
+  status: ContentStatus!
+  version: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  author: User
+  tags: [String!]!
+  metadata: JSON
+  
+  # Case study specifics
+  partner: Partner!
+  client: String!
+  industry: Industry!
+  challenge: String!
+  solution: String!
+  results: [String!]!
+  testimonial: Testimonial
+  assets: [Asset!]!
+  isPublic: Boolean!
+  featured: Boolean!
+}
+
+# ============================================================================
+# ROOT TYPES - The operational interface
+# ============================================================================
+
+type Query {
+  # User management
+  me: User
+  user(id: ID!): User
+  users(first: Int, after: String, role: UserRole): UserConnection!
+  
+  # Documentation
+  documentation(slug: String!): Documentation
+  documentationById(id: ID!): Documentation
+  allDocumentation(
+    first: Int
+    after: String
+    category: String
+    status: ContentStatus
+    tags: [String!]
+  ): DocumentationConnection!
+  
+  documentationCategories: [DocumentationCategory!]!
+  
+  # Partners
+  partner(slug: String!): Partner
+  partnerById(id: ID!): Partner
+  allPartners(
+    first: Int
+    after: String
+    tier: PartnerTier
+    status: PartnerStatus
+    industry: String
+  ): PartnerConnection!
+  
+  # Operators
+  operator(id: ID!): Operator
+  operators(
+    first: Int
+    after: String
+    partner: ID
+    skills: [String!]
+    availability: Availability
+  ): OperatorConnection!
+  
+  # API Reference
+  apiReference(slug: String!): APIReference
+  apiReferenceById(id: ID!): APIReference
+  apiReferences(
+    first: Int
+    after: String
+    service: String
+    version: String
+  ): APIReferenceConnection!
+  
+  apiServices: [APIService!]!
+  
+  # Search
+  search(
+    query: String!
+    types: [SearchResultType!]
+    page: Int = 1
+    pageSize: Int = 20
+  ): SearchResults!
+  
+  # Analytics
+  analytics(
+    type: String!
+    period: AnalyticsPeriod!
+    startDate: DateTime
+    endDate: DateTime
+  ): Analytics!
+  
+  # Content management
+  asset(id: ID!): Asset
+  assets(first: Int, after: String): AssetConnection!
+}
+
+type Mutation {
+  # Authentication
+  login(email: String!, password: String!): AuthPayload!
+  refreshToken(refreshToken: String!): AuthPayload!
+  logout: Boolean!
+  
+  # User management
+  updateProfile(input: UpdateProfileInput!): User!
+  changePassword(currentPassword: String!, newPassword: String!): Boolean!
+  
+  # Documentation management
+  createDocumentation(input: CreateDocumentationInput!): Documentation!
+  updateDocumentation(id: ID!, input: UpdateDocumentationInput!): Documentation!
+  deleteDocumentation(id: ID!): Boolean!
+  publishDocumentation(id: ID!): Documentation!
+  
+  # Partner management
+  registerPartner(input: RegisterPartnerInput!): Partner!
+  updatePartner(id: ID!, input: UpdatePartnerInput!): Partner!
+  
+  # Operator management
+  createOperator(input: CreateOperatorInput!): Operator!
+  updateOperator(id: ID!, input: UpdateOperatorInput!): Operator!
+  
+  # API Reference management
+  createAPIReference(input: CreateAPIReferenceInput!): APIReference!
+  updateAPIReference(id: ID!, input: UpdateAPIReferenceInput!): APIReference!
+  
+  # Content interactions
+  addReaction(contentId: ID!, type: ReactionType!): Reaction!
+  removeReaction(contentId: ID!, type: ReactionType!): Boolean!
+  submitFeedback(input: SubmitFeedbackInput!): Feedback!
+  
+  # Partner interactions
+  submitLead(input: SubmitLeadInput!): Lead!
+  
+  # File management
+  uploadAsset(file: Upload!, description: String): Asset!
+  deleteAsset(id: ID!): Boolean!
+}
+
+type Subscription {
+  # Real-time documentation updates
+  documentationUpdated(categoryId: ID): Documentation!
+  documentationPublished: Documentation!
+  
+  # Partner activity
+  partnerRegistered: Partner!
+  partnerStatusChanged(partnerId: ID): Partner!
+  
+  # Operator availability
+  operatorAvailabilityChanged(partnerId: ID): Operator!
+  
+  # API changes
+  apiReferenceUpdated(serviceId: ID): APIReference!
+  
+  # System notifications
+  systemNotification(userId: ID!): SystemNotification!
+}
+
+# ============================================================================
+# CONNECTION TYPES - Pagination support
+# ============================================================================
+
+interface Connection {
+  edges: [Edge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+interface Edge {
+  node: Node!
+  cursor: String!
+}
+
+type UserConnection implements Connection {
+  edges: [UserEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type UserEdge implements Edge {
+  node: User!
+  cursor: String!
+}
+
+type DocumentationConnection implements Connection {
+  edges: [DocumentationEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type DocumentationEdge implements Edge {
+  node: Documentation!
+  cursor: String!
+}
+
+type PartnerConnection implements Connection {
+  edges: [PartnerEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PartnerEdge implements Edge {
+  node: Partner!
+  cursor: String!
+}
+
+type OperatorConnection implements Connection {
+  edges: [OperatorEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type OperatorEdge implements Edge {
+  node: Operator!
+  cursor: String!
+}
+
+type APIReferenceConnection implements Connection {
+  edges: [APIReferenceEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type APIReferenceEdge implements Edge {
+  node: APIReference!
+  cursor: String!
+}
+
+type AssetConnection implements Connection {
+  edges: [AssetEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type AssetEdge implements Edge {
+  node: Asset!
+  cursor: String!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+# ============================================================================
+# INPUT TYPES - Mutation inputs
+# ============================================================================
+
+input UpdateProfileInput {
+  fullName: String
+  bio: String
+  avatar: String
+}
+
+input CreateDocumentationInput {
+  title: String!
+  slug: String!
+  content: String!
+  excerpt: String
+  categoryId: ID!
+  section: String
+  tags: [String!]!
+  status: ContentStatus!
+  metadata: JSON
+  blocks: [ContentBlockInput!]!
+}
+
+input UpdateDocumentationInput {
+  title: String
+  slug: String
+  content: String
+  excerpt: String
+  categoryId: ID
+  section: String
+  tags: [String!]
+  status: ContentStatus
+  metadata: JSON
+  blocks: [ContentBlockInput!]
+}
+
+input ContentBlockInput {
+  type: String!
+  order: Int!
+  data: JSON!
+}
+
+input RegisterPartnerInput {
+  name: String!
+  slug: String!
+  description: String!
+  website: String
+  contactEmail: String!
+  industry: [String!]!
+  size: CompanySize
+  location: LocationInput
+}
+
+input LocationInput {
+  country: String!
+  state: String
+  city: String
+  timezone: String
+}
+
+input UpdatePartnerInput {
+  name: String
+  description: String
+  website: String
+  logo: String
+  banner: String
+  specializations: [String!]
+}
+
+input CreateOperatorInput {
+  email: String!
+  fullName: String!
+  title: String
+  partnerId: ID!
+  specializations: [String!]!
+  skills: [SkillInput!]!
+}
+
+input SkillInput {
+  name: String!
+  category: String!
+  level: SkillLevel!
+}
+
+input UpdateOperatorInput {
+  fullName: String
+  title: String
+  bio: String
+  availability: Availability
+  skills: [SkillInput!]
+}
+
+input CreateAPIReferenceInput {
+  title: String!
+  slug: String!
+  serviceId: ID!
+  endpoint: String!
+  method: HTTPMethod!
+  description: String!
+  content: String!
+  parameters: [APIParameterInput!]!
+}
+
+input APIParameterInput {
+  name: String!
+  type: String!
+  required: Boolean!
+  description: String
+  example: String
+}
+
+input UpdateAPIReferenceInput {
+  title: String
+  content: String
+  description: String
+  parameters: [APIParameterInput!]
+}
+
+input SubmitFeedbackInput {
+  contentId: ID!
+  content: String!
+  type: FeedbackType!
+  rating: Int
+}
+
+input SubmitLeadInput {
+  name: String!
+  email: String!
+  company: String
+  message: String!
+  partnerId: ID!
+  operatorId: ID
+}
+
+# ============================================================================
+# SYSTEM TYPES - Infrastructure support
+# ============================================================================
+
+type SystemNotification {
+  id: ID!
+  type: String!
+  title: String!
+  message: String!
+  data: JSON
+  userId: ID!
+  readAt: DateTime
+  createdAt: DateTime!
+}

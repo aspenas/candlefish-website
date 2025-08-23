@@ -1,5 +1,27 @@
 const { Resend } = require('resend');
 
+/**
+ * Candlefish Newsletter Subscription Netlify Function
+ *
+ * Environment Variables Required:
+ * - RESEND_API_KEY: Resend API key for sending emails
+ * - RESEND_AUDIENCE_ID (optional): Resend audience ID to add subscribers to
+ * - ALLOWED_ORIGINS (optional): Comma-separated list of allowed origins
+ *
+ * Features:
+ * - Rate limiting (2 requests per minute per IP)
+ * - Email validation and sanitization
+ * - CORS support
+ * - Welcome email to subscriber
+ * - Admin notification email
+ * - Automatic audience management (if configured)
+ *
+ * Usage:
+ * POST /.netlify/functions/newsletter
+ * Content-Type: application/json
+ * Body: { email, firstName?, source?, interests? }
+ */
+
 // Rate limiting storage (in-memory for simplicity)
 const rateLimitMap = new Map();
 
