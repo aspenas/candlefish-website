@@ -1,0 +1,58 @@
+name: Nightly Mock Refresh
+
+on:
+  schedule:
+    # 09:30 UTC ≈ 03:30 America/Denver (overnight, low traffic)
+    - cron: '30 9 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Allow committing updated JSON
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          cd brand/website
+          npm ci --include=dev
+
+      - name: Refresh mock data
+        env:
+          CANDLEFISH_API_BASE: ${{ secrets.CANDLEFISH_API_BASE || 'https://api.candlefish.ai' }}
+        run: |
+          cd brand/website
+          npm run refresh-mocks
+        continue-on-error: true # Don't fail the workflow if API is down
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          cd brand/website
+          if [[ -n $(git status --porcelain mock/) ]]; then
+            echo "changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit changes (if any)
+        if: steps.check_changes.outputs.changes == 'true'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(mocks): nightly refresh"
+          file_pattern: brand/website/mock/*.json
+          commit_user_name: github-actions[bot]
+          commit_user_email: github-actions[bot]@users.noreply.github.com
+          commit_author: GitHub Actions <github-actions[bot]@users.noreply.github.com>

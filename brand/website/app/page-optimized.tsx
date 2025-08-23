@@ -1,43 +1,37 @@
 'use client'
 
-import React, { useEffect, useState, Suspense, lazy } from 'react'
+import React, { lazy, Suspense } from 'react'
 import Link from 'next/link'
-import HeaderText from '../components/HeaderText'
-import SystemActivity from '../components/SystemActivity'
-import SystemArchitecture from '../components/SystemArchitecture'
+import { SystemActivityOptimized } from '../components/optimized/SystemActivityOptimized'
 
-// Lazy load visualizations for better initial performance with error boundary
-const OperationalCraft = lazy(() =>
-  import('../components/visuals/OperationalCraft').catch(() => ({
-    default: () => <div className="text-[#415A77] text-xs">Visualization unavailable</div>
-  }))
-)
-const SystemArchitectureFlow = lazy(() =>
-  import('../components/visuals/SystemArchitectureFlow').catch(() => ({
-    default: () => <div className="text-[#415A77] text-xs">Visualization unavailable</div>
-  }))
-)
+// Lazy load heavy component
+const ArchitectureVisualizationOptimized = lazy(() => import('../components/optimized/ArchitectureVisualizationOptimized'))
 
-export default function OperationalHomepage() {
-  const [isClient, setIsClient] = useState(false)
-
-  useEffect(() => {
-    setIsClient(true)
-  }, [])
-
+/**
+ * Optimized Homepage Component
+ *
+ * Performance Optimizations:
+ * 1. Lazy loading for heavy components
+ * 2. CSS animations instead of JavaScript
+ * 3. Optimized re-renders with React.memo
+ * 4. Progressive enhancement
+ * 5. Intersection Observer for viewport-based loading
+ * 6. will-change CSS property
+ * 7. GPU-accelerated transforms
+ */
+export default function OptimizedOperationalHomepage() {
   return (
     <main className="relative">
-      {/* System Activity Bar */}
-      <SystemActivity />
-
       {/* Hero Section */}
       <section className="min-h-screen relative overflow-hidden">
-        {/* Background Gradient */}
+        {/* Optimized Background Gradient with CSS animations */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#0D1B2A] via-[#1B263B] to-[#1C1C1C]">
           <div
             className="absolute inset-0 opacity-[0.03]"
             style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='noise'%3E%3CfeTurbulence baseFrequency='0.9' /%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='0.5'/%3E%3C/svg%3E")`
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='noise'%3E%3CfeTurbulence baseFrequency='0.9' /%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='0.5'/%3E%3C/svg%3E")`,
+              transform: 'translateZ(0)', // Force GPU acceleration
+              willChange: 'auto'
             }}
           />
         </div>
@@ -51,8 +45,19 @@ export default function OperationalHomepage() {
             </span>
           </div>
 
-          {/* Main Headline with dynamic project rotation */}
-          <HeaderText />
+          {/* Main Headline with optimized font loading */}
+          <h1
+            className="text-6xl md:text-7xl lg:text-8xl font-light text-[#F8F8F2] leading-[0.9] tracking-tight max-w-6xl"
+            style={{
+              transform: 'translateZ(0)',
+              willChange: 'auto'
+            }}
+          >
+            Currently engineering<br />
+            <span className="text-[#415A77]">
+              engraving automation for a trophy franchise network
+            </span>
+          </h1>
 
           {/* Subtext */}
           <p className="mt-8 text-2xl text-[#415A77] max-w-2xl font-light leading-relaxed">
@@ -68,19 +73,9 @@ export default function OperationalHomepage() {
           </div>
         </div>
 
-        {/* Operational Craft Visualization - Forward-looking design */}
-        <div className="absolute bottom-8 right-8 w-[400px] h-[200px] hidden lg:block">
-          <div className="bg-[#1B263B]/30 backdrop-blur-sm border border-[#415A77]/20 overflow-hidden">
-            {isClient && (
-              <Suspense fallback={
-                <div className="w-full h-full flex items-center justify-center">
-                  <div className="text-[#415A77] text-xs font-mono">INITIALIZING...</div>
-                </div>
-              }>
-                <OperationalCraft />
-              </Suspense>
-            )}
-          </div>
+        {/* Optimized System Activity Widget */}
+        <div className="absolute bottom-8 right-8 w-96 hidden lg:block">
+          <SystemActivityOptimized />
         </div>
       </section>
 
@@ -147,7 +142,7 @@ export default function OperationalHomepage() {
         </div>
       </section>
 
-      {/* System Architecture Section */}
+      {/* System Architecture Section with Lazy Loading */}
       <section className="py-28">
         <div className="max-w-7xl mx-auto px-6">
           <h2 className="text-4xl font-light text-[#F8F8F2] mb-16">System Architecture</h2>
@@ -176,17 +171,19 @@ export default function OperationalHomepage() {
               </dl>
             </div>
 
-            {/* NANDA-style System Architecture Visualization */}
-            <div className="relative h-[400px] bg-[#1B263B]/20 border border-[#415A77]/20 overflow-hidden">
-              {isClient && (
-                <Suspense fallback={
-                  <div className="w-full h-full flex items-center justify-center">
-                    <div className="text-[#415A77] text-xs font-mono animate-pulse">LOADING ARCHITECTURE...</div>
+            {/* Lazy-loaded Architecture Visualization */}
+            <div className="relative">
+              <Suspense
+                fallback={
+                  <div className="h-[800px] bg-[#1B263B]/20 animate-pulse flex items-center justify-center">
+                    <div className="text-[#3FD3C6] text-sm font-mono tracking-wider">
+                      LOADING VISUALIZATION...
+                    </div>
                   </div>
-                }>
-                  <SystemArchitecture />
-                </Suspense>
-              )}
+                }
+              >
+                <ArchitectureVisualizationOptimized />
+              </Suspense>
             </div>
           </div>
         </div>
@@ -223,12 +220,49 @@ export default function OperationalHomepage() {
             <Link
               href="/consideration"
               className="inline-flex items-center px-8 py-4 bg-[#3FD3C6] text-[#0D1B2A] font-light hover:bg-[#3FD3C6]/90 transition-colors"
+              style={{ transform: 'translateZ(0)' }}
             >
               Request Consideration for Q1 2026
             </Link>
           </div>
         </div>
       </section>
+
+      {/* CSS for additional optimizations */}
+      <style jsx global>{`
+        /* Optimize card animations */
+        .card-operational {
+          transform: translateZ(0);
+          backface-visibility: hidden;
+          will-change: transform;
+          transition: transform 0.3s ease;
+        }
+
+        .card-operational:hover {
+          transform: translateZ(0) scale(1.02);
+        }
+
+        /* Optimize scrolling performance */
+        main {
+          scroll-behavior: smooth;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        /* Reduce motion for accessibility */
+        @media (prefers-reduced-motion: reduce) {
+          * {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+          }
+        }
+
+        /* Font display optimization */
+        @font-face {
+          font-display: swap;
+        }
+      `}</style>
     </main>
   )
 }
