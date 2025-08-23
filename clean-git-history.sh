@@ -101,8 +101,11 @@ echo ""
 echo "Step 1: Creating backup of current repository..."
 echo "-----------------------------------------------"
 BACKUP_DIR="$HOME/candlefish-history-backup-$(date +%Y%m%d-%H%M%S)"
-cp -r . "$BACKUP_DIR"
-echo "✅ Backup created at: $BACKUP_DIR"
+# Use rsync to exclude node_modules and other large directories
+rsync -a --exclude='node_modules' --exclude='.git/objects' --exclude='*.log' \
+      --exclude='dist' --exclude='build' --exclude='.next' \
+      . "$BACKUP_DIR/"
+echo "✅ Backup created at: $BACKUP_DIR (excluding node_modules)"
 
 # Step 2: Download BFG if not present
 echo ""
