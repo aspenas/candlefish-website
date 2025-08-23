@@ -7,7 +7,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/Layout';
 import PerformanceMonitor from './components/PerformanceMonitor';
 import Dashboard from './pages/Dashboard';
-import Inventory from './pages/Inventory';
+import InventoryEnhanced from './pages/InventoryEnhanced';
 import ItemDetail from './pages/ItemDetail';
 import BuyerView from './pages/BuyerView';
 import Analytics from './pages/Analytics';
@@ -32,7 +32,7 @@ function App() {
             <Layout>
               <Routes>
                 <Route path="/" element={<Dashboard />} />
-                <Route path="/inventory" element={<Inventory />} />
+                <Route path="/inventory" element={<InventoryEnhanced />} />
                 <Route path="/item/:id" element={<ItemDetail />} />
                 <Route path="/buyer-view" element={<BuyerView />} />
                 <Route path="/analytics" element={<Analytics />} />

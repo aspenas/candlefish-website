@@ -110,3 +110,61 @@ export interface BulkUpdateRequest {
   decision?: DecisionStatus;
   askingPrice?: number;
 }
+
+// Photo Capture System Types
+export interface PhotoSession {
+  id: string;
+  roomId: string;
+  roomName: string;
+  itemsTotal: number;
+  itemsCaptured: number;
+  currentItemIndex: number;
+  startTime: Date;
+  lastSaveTime: Date;
+  status: 'active' | 'paused' | 'completed';
+  photos: Map<string, CapturedPhoto[]>;
+}
+
+export interface CapturedPhoto {
+  id: string;
+  itemId: string;
+  file: File;
+  blob: Blob;
+  dataUrl: string;
+  thumbnail: string;
+  angle: PhotoAngle;
+  timestamp: Date;
+  metadata: PhotoMetadata;
+  uploaded: boolean;
+  compressed: boolean;
+}
+
+export type PhotoAngle = 'main' | 'detail' | 'label' | 'damage' | 'angle2' | 'angle3';
+
+export interface PhotoMetadata {
+  width: number;
+  height: number;
+  size: number;
+  quality: number;
+  compression: number;
+  deviceType: 'mobile' | 'tablet' | 'desktop';
+}
+
+export interface QRLabel {
+  itemId: string;
+  qrCode: string;
+  itemName: string;
+  room: string;
+  category: Category;
+  coordinates: { x: number; y: number };
+}
+
+export interface PhotoCaptureSettings {
+  multipleAngles: boolean;
+  autoAdvance: boolean;
+  compressionQuality: number;
+  maxResolution: number;
+  requireConfirmation: boolean;
+  saveToLocal: boolean;
+  autoUpload: boolean;
+}

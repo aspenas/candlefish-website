@@ -38,7 +38,7 @@ interface SavedSearch {
   createdAt: string;
 }
 
-export default function SearchBar({
+const SearchBar = React.forwardRef<HTMLInputElement, SearchBarProps>(({
   onSearch,
   onAdvancedSearch,
   placeholder = "Search items...",
@@ -46,7 +46,7 @@ export default function SearchBar({
   debounceMs = 300,
   items = [],
   showAdvanced = true
-}: SearchBarProps) {
+}, ref) => {
   const [query, setQuery] = useState(initialValue);
   const [debouncedQuery, setDebouncedQuery] = useState(initialValue);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -56,6 +56,16 @@ export default function SearchBar({
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  
+  // Merge the internal ref with the forwarded ref
+  const mergedInputRef = useCallback((node: HTMLInputElement) => {
+    inputRef.current = node;
+    if (typeof ref === 'function') {
+      ref(node);
+    } else if (ref) {
+      ref.current = node;
+    }
+  }, [ref]);
 
   // Load saved data from localStorage on mount
   useEffect(() => {
@@ -306,7 +316,7 @@ export default function SearchBar({
             <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
           </div>
           <input
-            ref={inputRef}
+            ref={mergedInputRef}
             type="text"
             className="block w-full pl-10 pr-24 py-3 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             placeholder={placeholder}
@@ -492,4 +502,8 @@ export default function SearchBar({
       </form>
     </div>
   );
-}
+});
+
+SearchBar.displayName = 'SearchBar';
+
+export default SearchBar;

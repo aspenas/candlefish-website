@@ -194,6 +194,20 @@ main
 !package-lock.json
 !tsconfig.json
 
+# Exclude broken submodules and directories with secrets
+clark_county_permits_emergency/
+candlefish-temporal-platform/
+nanda-index-repo/
+nanda-adapter/
+services/promoteros-scraper/
+projects/crowntrophy/
+projects/excel/
+projects/jonathon/
+projects/paintbox/deployment-ready/
+projects/paintbox/paintbox-backend/
+ibm-watsonx-portfolio/
+money-transfer-project-template-ts/
+
 # CRITICAL SECURITY: Block all privileged family content
 **/privileged/
 **/family/
