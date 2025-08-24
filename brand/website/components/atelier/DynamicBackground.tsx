@@ -1,447 +1,279 @@
 'use client';
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useMotionValue, useSpring } from 'framer-motion';
 
-interface ParallaxLayer {
+interface SpatialLayer {
   id: string;
   depth: number;
-  pattern: 'circuit' | 'grid' | 'dots' | 'lines';
+  type: 'gradient' | 'texture' | 'ambient';
   opacity: number;
-  speed: number;
-  color: 'copper' | 'living-cyan' | 'pearl';
+  blur: number;
+  parallaxStrength: number;
 }
 
 interface DynamicBackgroundProps {
-  scrollY?: number;
-  mouseX?: number;
-  mouseY?: number;
+  intensity?: number;
+  enableParallax?: boolean;
+  readingMode?: boolean;
 }
 
+// Refined background following Jony Ive's spatial hierarchy principles
 export function DynamicBackground({
-  scrollY = 0,
-  mouseX = 0,
-  mouseY = 0
+  intensity = 0.4,
+  enableParallax = true,
+  readingMode = false
 }: DynamicBackgroundProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
-
-  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
-  const [currentScrollY, setCurrentScrollY] = useState(0);
+  const [isVisible, setIsVisible] = useState(true);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
-  const parallaxLayers: ParallaxLayer[] = [
+  // Smooth mouse tracking with spring physics
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const smoothMouseX = useSpring(mouseX, { damping: 30, stiffness: 200 });
+  const smoothMouseY = useSpring(mouseY, { damping: 30, stiffness: 200 });
+
+  // Spatial layers for depth without distraction
+  const spatialLayers: SpatialLayer[] = [
     {
-      id: 'circuit-deep',
+      id: 'depth-base',
       depth: 0.1,
-      pattern: 'circuit',
-      opacity: 0.05,
-      speed: 0.2,
-      color: 'copper'
+      type: 'gradient',
+      opacity: 0.6,
+      blur: 0,
+      parallaxStrength: 0.005,
     },
     {
-      id: 'grid-mid',
+      id: 'depth-mid',
       depth: 0.3,
-      pattern: 'grid',
-      opacity: 0.08,
-      speed: 0.5,
-      color: 'living-cyan'
+      type: 'ambient',
+      opacity: 0.3,
+      blur: 8,
+      parallaxStrength: 0.01,
     },
     {
-      id: 'dots-surface',
+      id: 'depth-far',
       depth: 0.6,
-      pattern: 'dots',
-      opacity: 0.12,
-      speed: 0.8,
-      color: 'pearl'
-    },
-    {
-      id: 'lines-overlay',
-      depth: 0.9,
-      pattern: 'lines',
-      opacity: 0.04,
-      speed: 1.2,
-      color: 'living-cyan'
+      type: 'texture',
+      opacity: 0.15,
+      blur: 16,
+      parallaxStrength: 0.02,
     },
   ];
 
-  const colors = {
-    copper: { r: 218, g: 165, b: 32 },
-    'living-cyan': { r: 0, g: 188, b: 212 },
-    pearl: { r: 240, g: 248, b: 255 },
-  };
-
-  const drawCircuitPattern = useCallback((
-    ctx: CanvasRenderingContext2D,
-    layer: ParallaxLayer,
-    time: number,
-    offset: { x: number; y: number }
-  ) => {
-    const { width, height } = viewportSize;
-    const color = colors[layer.color];
-
-    ctx.save();
-    ctx.globalAlpha = layer.opacity;
-    ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, 1)`;
-    ctx.lineWidth = 0.5;
-
-    const gridSize = 80;
-    const animatedOffset = {
-      x: offset.x + Math.sin(time * 0.001) * 10,
-      y: offset.y + Math.cos(time * 0.0015) * 15
-    };
-
-    for (let x = -gridSize; x < width + gridSize; x += gridSize) {
-      for (let y = -gridSize; y < height + gridSize; y += gridSize) {
-        const adjustedX = x + animatedOffset.x;
-        const adjustedY = y + animatedOffset.y;
-
-        // Draw circuit node
-        ctx.beginPath();
-        ctx.arc(adjustedX, adjustedY, 2, 0, Math.PI * 2);
-        ctx.stroke();
-
-        // Draw connecting lines with random patterns
-        if (Math.random() > 0.6) {
-          ctx.beginPath();
-          ctx.moveTo(adjustedX, adjustedY);
-
-          const direction = Math.floor(Math.random() * 4);
-          switch (direction) {
-            case 0: // right
-              ctx.lineTo(adjustedX + gridSize * 0.7, adjustedY);
-              break;
-            case 1: // down
-              ctx.lineTo(adjustedX, adjustedY + gridSize * 0.7);
-              break;
-            case 2: // L-shape
-              ctx.lineTo(adjustedX + gridSize * 0.3, adjustedY);
-              ctx.lineTo(adjustedX + gridSize * 0.3, adjustedY + gridSize * 0.7);
-              break;
-            case 3: // T-shape
-              ctx.lineTo(adjustedX + gridSize * 0.5, adjustedY);
-              ctx.moveTo(adjustedX + gridSize * 0.25, adjustedY);
-              ctx.lineTo(adjustedX + gridSize * 0.25, adjustedY + gridSize * 0.4);
-              break;
-          }
-          ctx.stroke();
-        }
-      }
-    }
-
-    ctx.restore();
-  }, [viewportSize, colors]);
-
-  const drawGridPattern = useCallback((
-    ctx: CanvasRenderingContext2D,
-    layer: ParallaxLayer,
-    time: number,
-    offset: { x: number; y: number }
-  ) => {
-    const { width, height } = viewportSize;
-    const color = colors[layer.color];
-
-    ctx.save();
-    ctx.globalAlpha = layer.opacity * (0.5 + Math.sin(time * 0.002) * 0.2);
-    ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, 1)`;
-    ctx.lineWidth = 0.3;
-
-    const spacing = 40;
-
-    // Vertical lines
-    for (let x = offset.x % spacing; x < width; x += spacing) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
-      ctx.stroke();
-    }
-
-    // Horizontal lines
-    for (let y = offset.y % spacing; y < height; y += spacing) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
-    }
-
-    ctx.restore();
-  }, [viewportSize, colors]);
-
-  const drawDotsPattern = useCallback((
-    ctx: CanvasRenderingContext2D,
-    layer: ParallaxLayer,
-    time: number,
-    offset: { x: number; y: number }
-  ) => {
-    const { width, height } = viewportSize;
-    const color = colors[layer.color];
-
-    ctx.save();
-    ctx.globalAlpha = layer.opacity;
-    ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, 1)`;
-
-    const spacing = 60;
-    const pulseTime = time * 0.003;
-
-    for (let x = offset.x % spacing; x < width; x += spacing) {
-      for (let y = offset.y % spacing; y < height; y += spacing) {
-        const distance = Math.sqrt(
-          Math.pow(x - mousePosition.x, 2) + Math.pow(y - mousePosition.y, 2)
-        );
-        const pulse = Math.sin(pulseTime + distance * 0.01) * 0.5 + 0.5;
-        const size = 1 + pulse * 2;
-
-        ctx.beginPath();
-        ctx.arc(x, y, size, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    ctx.restore();
-  }, [viewportSize, colors, mousePosition]);
-
-  const drawLinesPattern = useCallback((
-    ctx: CanvasRenderingContext2D,
-    layer: ParallaxLayer,
-    time: number,
-    offset: { x: number; y: number }
-  ) => {
-    const { width, height } = viewportSize;
-    const color = colors[layer.color];
-
-    ctx.save();
-    ctx.globalAlpha = layer.opacity;
-    ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, 1)`;
-    ctx.lineWidth = 1;
-
-    const waveAmplitude = 30;
-    const waveFrequency = 0.01;
-    const timeOffset = time * 0.002;
-
-    // Draw flowing lines
-    for (let i = 0; i < 5; i++) {
-      ctx.beginPath();
-
-      const lineY = (height / 6) * (i + 1) + offset.y * 0.3;
-      let isFirst = true;
-
-      for (let x = -50; x < width + 50; x += 5) {
-        const waveY = lineY + Math.sin(x * waveFrequency + timeOffset + i * 0.5) * waveAmplitude;
-
-        if (isFirst) {
-          ctx.moveTo(x, waveY);
-          isFirst = false;
-        } else {
-          ctx.lineTo(x, waveY);
-        }
-      }
-
-      ctx.stroke();
-    }
-
-    ctx.restore();
-  }, [viewportSize, colors]);
-
-  const drawLayer = useCallback((
-    ctx: CanvasRenderingContext2D,
-    layer: ParallaxLayer,
-    time: number
-  ) => {
-    const parallaxOffset = {
-      x: (mousePosition.x - viewportSize.width / 2) * layer.depth * 0.1,
-      y: (mousePosition.y - viewportSize.height / 2) * layer.depth * 0.1 + currentScrollY * layer.speed * 0.5,
-    };
-
-    switch (layer.pattern) {
-      case 'circuit':
-        drawCircuitPattern(ctx, layer, time, parallaxOffset);
-        break;
-      case 'grid':
-        drawGridPattern(ctx, layer, time, parallaxOffset);
-        break;
-      case 'dots':
-        drawDotsPattern(ctx, layer, time, parallaxOffset);
-        break;
-      case 'lines':
-        drawLinesPattern(ctx, layer, time, parallaxOffset);
-        break;
-    }
-  }, [
-    mousePosition,
-    viewportSize,
-    currentScrollY,
-    drawCircuitPattern,
-    drawGridPattern,
-    drawDotsPattern,
-    drawLinesPattern
-  ]);
-
-  const animate = useCallback((timestamp: number) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Clear canvas
-    ctx.fillStyle = 'transparent';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Draw each parallax layer
-    parallaxLayers.forEach(layer => {
-      drawLayer(ctx, layer, timestamp);
-    });
-
-    animationRef.current = requestAnimationFrame(animate);
-  }, [drawLayer, parallaxLayers]);
-
-  const handleResize = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const { innerWidth, innerHeight } = window;
-    canvas.width = innerWidth;
-    canvas.height = innerHeight;
-
-    setViewportSize({ width: innerWidth, height: innerHeight });
-  }, []);
-
+  // Handle mouse movement for parallax
   const handleMouseMove = useCallback((e: MouseEvent) => {
-    setMousePosition({ x: e.clientX, y: e.clientY });
-  }, []);
+    if (!enableParallax) return;
 
-  const handleScroll = useCallback(() => {
-    setCurrentScrollY(window.scrollY);
+    const { clientX, clientY } = e;
+    setMousePosition({ x: clientX, y: clientY });
+    mouseX.set(clientX);
+    mouseY.set(clientY);
+  }, [enableParallax, mouseX, mouseY]);
+
+  // Handle visibility changes for performance
+  const handleVisibilityChange = useCallback(() => {
+    setIsVisible(!document.hidden);
   }, []);
 
   useEffect(() => {
-    handleResize();
+    let moveTimer: NodeJS.Timeout;
 
-    window.addEventListener('resize', handleResize);
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('scroll', handleScroll);
+    const throttledMouseMove = (e: MouseEvent) => {
+      clearTimeout(moveTimer);
+      moveTimer = setTimeout(() => handleMouseMove(e), 16);
+    };
 
-    // Start animation
-    animationRef.current = requestAnimationFrame(animate);
+    document.addEventListener('mousemove', throttledMouseMove, { passive: true });
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('scroll', handleScroll);
-
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
+      clearTimeout(moveTimer);
+      document.removeEventListener('mousemove', throttledMouseMove);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [handleResize, handleMouseMove, handleScroll, animate]);
+  }, [handleMouseMove, handleVisibilityChange]);
 
-  // Update from props if provided
-  useEffect(() => {
-    setCurrentScrollY(scrollY);
-  }, [scrollY]);
-
-  useEffect(() => {
-    setMousePosition({ x: mouseX, y: mouseY });
-  }, [mouseX, mouseY]);
+  if (!isVisible) return null;
 
   return (
-    <>
-      {/* Main background canvas */}
-      <canvas
-        ref={canvasRef}
-        className="fixed inset-0 z-0 pointer-events-none"
-        style={{
-          mixBlendMode: 'multiply',
-          filter: 'brightness(0.8) contrast(1.1)'
+    <div
+      ref={containerRef}
+      className="fixed inset-0 pointer-events-none z-0 overflow-hidden"
+    >
+      {/* Base gradient layer - foundational depth */}
+      <motion.div
+        className="absolute inset-0"
+        animate={{
+          opacity: readingMode ? intensity * 0.3 : intensity,
         }}
-      />
-
-      {/* Gradient overlays for depth */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        {/* Top gradient */}
-        <motion.div
-          className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/40 to-transparent"
-          animate={{
-            opacity: [0.4, 0.6, 0.4],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            repeatType: 'reverse'
-          }}
-        />
-
-        {/* Bottom gradient */}
-        <motion.div
-          className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/30 to-transparent"
-          animate={{
-            opacity: [0.3, 0.5, 0.3],
-          }}
-          transition={{
-            duration: 6,
-            repeat: Infinity,
-            repeatType: 'reverse'
-          }}
-        />
-
-        {/* Center radial gradient for focus */}
-        <div
-          className="absolute inset-0 bg-radial-gradient opacity-10"
-          style={{
-            background: `radial-gradient(circle at ${mousePosition.x}px ${mousePosition.y}px,
-              rgba(0, 188, 212, 0.15) 0%,
-              rgba(218, 165, 32, 0.1) 40%,
-              transparent 70%)`
-          }}
-        />
-
-        {/* Subtle color shifts based on scroll */}
+        transition={{ duration: 0.8, ease: 'easeOut' }}
+      >
         <motion.div
           className="absolute inset-0"
-          style={{
-            background: `linear-gradient(180deg,
-              rgba(0, 188, 212, ${Math.min(0.05, currentScrollY * 0.0001)}) 0%,
-              transparent 50%,
-              rgba(218, 165, 32, ${Math.min(0.03, currentScrollY * 0.00008)}) 100%)`
+          animate={{
+            background: [
+              `radial-gradient(ellipse 100% 80% at 50% 30%,
+                rgba(26, 26, 28, ${intensity * 0.8}) 0%,
+                rgba(10, 10, 11, ${intensity * 0.9}) 60%,
+                rgba(10, 10, 11, ${intensity}) 100%)`,
+              `radial-gradient(ellipse 110% 90% at 50% 30%,
+                rgba(26, 26, 28, ${intensity * 0.9}) 0%,
+                rgba(10, 10, 11, ${intensity}) 60%,
+                rgba(10, 10, 11, ${intensity * 1.1}) 100%)`,
+              `radial-gradient(ellipse 100% 80% at 50% 30%,
+                rgba(26, 26, 28, ${intensity * 0.8}) 0%,
+                rgba(10, 10, 11, ${intensity * 0.9}) 60%,
+                rgba(10, 10, 11, ${intensity}) 100%)`,
+            ]
+          }}
+          transition={{
+            duration: 12,
+            repeat: Infinity,
+            ease: "easeInOut",
           }}
         />
-      </div>
+      </motion.div>
 
-      {/* Floating particles for additional depth */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        {Array.from({ length: 12 }).map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-1 h-1 bg-living-cyan/20 rounded-full"
-            initial={{
-              x: Math.random() * window.innerWidth,
-              y: Math.random() * window.innerHeight,
-            }}
-            animate={{
-              x: [
-                Math.random() * window.innerWidth,
-                Math.random() * window.innerWidth,
-                Math.random() * window.innerWidth,
-              ],
-              y: [
-                Math.random() * window.innerHeight,
-                Math.random() * window.innerHeight,
-                Math.random() * window.innerHeight,
-              ],
-              opacity: [0.2, 0.6, 0.1, 0.4, 0.2],
-            }}
-            transition={{
-              duration: 20 + Math.random() * 30,
-              repeat: Infinity,
-              ease: "linear",
-            }}
-            style={{
-              transform: `translate3d(${mousePosition.x * (i * 0.002)}, ${mousePosition.y * (i * 0.002)}, 0)`,
-            }}
-          />
-        ))}
-      </div>
-    </>
+      {/* Spatial layers with subtle parallax */}
+      {spatialLayers.map((layer, index) => (
+        <motion.div
+          key={layer.id}
+          className="absolute inset-0"
+          style={{
+            filter: `blur(${layer.blur}px)`,
+            transform: enableParallax ?
+              `translate3d(${mousePosition.x * layer.parallaxStrength}px, ${mousePosition.y * layer.parallaxStrength}px, 0)` :
+              'none',
+            willChange: 'transform',
+          }}
+          animate={{
+            opacity: readingMode ? layer.opacity * 0.4 : layer.opacity,
+          }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
+        >
+          {layer.type === 'gradient' && (
+            <motion.div
+              className="absolute inset-0"
+              animate={{
+                background: [
+                  `linear-gradient(135deg,
+                    rgba(63, 211, 198, ${layer.opacity * 0.1}) 0%,
+                    transparent 30%,
+                    rgba(26, 26, 28, ${layer.opacity * 0.2}) 70%,
+                    transparent 100%)`,
+                  `linear-gradient(135deg,
+                    rgba(63, 211, 198, ${layer.opacity * 0.15}) 0%,
+                    transparent 30%,
+                    rgba(26, 26, 28, ${layer.opacity * 0.25}) 70%,
+                    transparent 100%)`,
+                  `linear-gradient(135deg,
+                    rgba(63, 211, 198, ${layer.opacity * 0.1}) 0%,
+                    transparent 30%,
+                    rgba(26, 26, 28, ${layer.opacity * 0.2}) 70%,
+                    transparent 100%)`,
+                ]
+              }}
+              transition={{
+                duration: 8 + index * 2,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+            />
+          )}
+
+          {layer.type === 'ambient' && (
+            <motion.div
+              className="absolute inset-0"
+              animate={{
+                background: [
+                  `radial-gradient(circle at 30% 20%,
+                    rgba(63, 211, 198, ${layer.opacity * 0.08}) 0%,
+                    transparent 50%),
+                   radial-gradient(circle at 70% 80%,
+                    rgba(26, 26, 28, ${layer.opacity * 0.12}) 0%,
+                    transparent 50%)`,
+                  `radial-gradient(circle at 35% 25%,
+                    rgba(63, 211, 198, ${layer.opacity * 0.12}) 0%,
+                    transparent 50%),
+                   radial-gradient(circle at 65% 75%,
+                    rgba(26, 26, 28, ${layer.opacity * 0.16}) 0%,
+                    transparent 50%)`,
+                  `radial-gradient(circle at 30% 20%,
+                    rgba(63, 211, 198, ${layer.opacity * 0.08}) 0%,
+                    transparent 50%),
+                   radial-gradient(circle at 70% 80%,
+                    rgba(26, 26, 28, ${layer.opacity * 0.12}) 0%,
+                    transparent 50%)`,
+                ]
+              }}
+              transition={{
+                duration: 15 + index * 3,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+            />
+          )}
+
+          {layer.type === 'texture' && (
+            <div
+              className="absolute inset-0"
+              style={{
+                background: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+                backgroundSize: '180px 180px',
+                opacity: layer.opacity,
+                mixBlendMode: 'overlay',
+              }}
+            />
+          )}
+        </motion.div>
+      ))}
+
+      {/* Subtle mouse-following highlight */}
+      {enableParallax && (
+        <motion.div
+          className="absolute w-[800px] h-[800px] rounded-full pointer-events-none"
+          style={{
+            background: `radial-gradient(circle,
+              rgba(63, 211, 198, ${intensity * 0.04}) 0%,
+              rgba(63, 211, 198, ${intensity * 0.02}) 40%,
+              transparent 70%)`,
+            left: smoothMouseX,
+            top: smoothMouseY,
+            x: -400,
+            y: -400,
+            filter: 'blur(40px)',
+            willChange: 'transform',
+          }}
+          animate={{
+            scale: readingMode ? [0.8, 1, 0.8] : [0.9, 1.1, 0.9],
+            opacity: readingMode ? [0.3, 0.5, 0.3] : [0.4, 0.8, 0.4],
+          }}
+          transition={{
+            duration: readingMode ? 6 : 10,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+      )}
+
+      {/* Edge vignette for focus */}
+      <motion.div
+        className="absolute inset-0"
+        animate={{
+          background: readingMode
+            ? `radial-gradient(ellipse 60% 60% at 50% 50%,
+                transparent 20%,
+                rgba(10, 10, 11, 0.3) 60%,
+                rgba(10, 10, 11, 0.7) 100%)`
+            : `radial-gradient(ellipse 70% 70% at 50% 50%,
+                transparent 40%,
+                rgba(10, 10, 11, 0.1) 70%,
+                rgba(10, 10, 11, 0.3) 100%)`,
+        }}
+        transition={{ duration: 0.8, ease: 'easeOut' }}
+      />
+    </div>
   );
 }

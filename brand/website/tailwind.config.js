@@ -32,6 +32,11 @@ module.exports = {
         'copper': 'rgb(var(--color-copper) / <alpha-value>)',
         'living-cyan': 'rgb(var(--color-living-cyan) / <alpha-value>)',
         'graphite': 'rgb(var(--color-graphite) / <alpha-value>)',
+
+        /* JONY IVE REFINED PALETTE */
+        'nearBlack': '#0A0A0B',
+        'charcoal': '#1A1A1C',
+        'livingCyan': '#3FD3C6',
       },
       fontFamily: {
         'display': ['Druk Wide', 'Suisse Works', 'system-ui', 'sans-serif'],

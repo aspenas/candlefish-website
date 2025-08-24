@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import '../../styles/atelier-enhancements.css';
+import '../../styles/atelier-refined.css';
 import { EntryPortal } from '../../components/atelier/EntryPortal';
 import { AmbientAudio } from '../../components/atelier/AmbientAudio';
 import { AudioSystem } from '../../components/atelier/AudioSystem';
@@ -13,11 +14,16 @@ import { WorkshopCapabilities } from '../../components/atelier/WorkshopCapabilit
 import { TransformationVisualization } from '../../components/atelier/TransformationVisualization';
 import { WorkshopRequestForm } from '../../components/atelier/WorkshopRequestForm';
 import { AutomationShowcase } from '../../components/atelier/AutomationShowcase';
-import { ParticleField } from '../../components/atelier/ParticleField';
 import { SystemDiagnostics } from '../../components/atelier/SystemDiagnostics';
 import { SecurityClearance } from '../../components/atelier/SecurityClearance';
 import { EasterEggs } from '../../components/atelier/EasterEggs';
+// Refined components following Jony Ive principles
+import { AtelierDesignProvider, AmbientGlow, MomentButton, SpatialText, ReadingPlane } from '../../components/atelier/AtelierDesignSystem';
+import { FocusManager } from '../../components/atelier/FocusManager';
+import { AmbientSystem } from '../../components/atelier/AmbientSystem';
+import { ReadingMode } from '../../components/atelier/ReadingMode';
 import { DynamicBackground } from '../../components/atelier/DynamicBackground';
+import { ParticleField } from '../../components/atelier/ParticleField';
 
 type Section = 'entry' | 'capabilities' | 'transformations' | 'examples' | 'access';
 
@@ -28,6 +34,7 @@ export default function AtelierLaboratory() {
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [showSecurity, setShowSecurity] = useState(false);
   const [securityCleared, setSecurityCleared] = useState(false);
+  const [isReadingMode, setIsReadingMode] = useState(false);
   const [systemStatus, setSystemStatus] = useState({
     operational: true,
     capacity: 94.7,
@@ -133,79 +140,108 @@ export default function AtelierLaboratory() {
   }
 
   return (
-    <div className="min-h-screen relative bg-gradient-to-b from-black via-depth-ocean to-depth-steel overflow-hidden">
-      {/* Dynamic Background System */}
-      <DynamicBackground />
+    <AtelierDesignProvider>
+      <div className="min-h-screen relative bg-gradient-to-b from-nearBlack via-charcoal/80 to-charcoal overflow-hidden">
+        {/* Refined Background Systems - Jony Ive Style */}
+        <AmbientSystem
+          intensity={0.3}
+          followMouse={true}
+          breathingRate={10000}
+        />
 
-      {/* Particle Field */}
-      <ParticleField />
+        <DynamicBackground
+          intensity={0.4}
+          enableParallax={true}
+          readingMode={isReadingMode}
+        />
 
-      {/* Environmental Systems */}
-      <TemporalEvolution />
-      <EntryPortal />
-      <CursorTrail />
-      <AudioSystem />
+        {/* Moments of Delight - Interaction-based particles only */}
+        <ParticleField
+          intensity={0.3}
+          interactionOnly={true}
+        />
 
-      {/* System Diagnostics */}
-      <SystemDiagnostics
-        isVisible={showDiagnostics}
-        onToggle={handleDiagnosticsToggle}
-      />
+        {/* Focus Management System */}
+        <FocusManager>
+          {/* Reading Mode for distraction-free content */}
+          <ReadingMode threshold={1000}>
+            {/* Environmental Systems - Preserved for functionality */}
+            <TemporalEvolution />
+            <EntryPortal />
+            <CursorTrail />
+            <AudioSystem />
 
-      {/* Security Clearance */}
-      <SecurityClearance
-        isVisible={showSecurity}
-        onComplete={handleSecurityComplete}
-        onClose={() => setShowSecurity(false)}
-      />
+            {/* System Diagnostics - Now subtle HUD */}
+            <SystemDiagnostics
+              isVisible={showDiagnostics}
+              onToggle={handleDiagnosticsToggle}
+            />
 
-      {/* Easter Eggs System */}
-      <EasterEggs />
+            {/* Security Clearance - iPhone-style smoothness */}
+            <SecurityClearance
+              isVisible={showSecurity}
+              onComplete={handleSecurityComplete}
+              onClose={() => setShowSecurity(false)}
+            />
 
-      {/* Laboratory Interface */}
-      <LaboratoryInterface
-        currentSection={currentSection}
-        systemStatus={systemStatus}
-        onSectionChange={setCurrentSection}
-        hasEntered={hasEntered}
-      />
+            {/* Easter Eggs System - Discovery-based */}
+            <EasterEggs />
 
-      {/* Content Sections */}
-      <main className="relative z-10">
-        <AnimatePresence mode="wait">
-          {!hasEntered && (
-            <EntrySequence
-              onEnter={handleEnterLaboratory}
+            {/* Laboratory Interface - Refined */}
+            <LaboratoryInterface
+              currentSection={currentSection}
               systemStatus={systemStatus}
+              onSectionChange={setCurrentSection}
+              hasEntered={hasEntered}
             />
-          )}
 
-          {hasEntered && currentSection === 'capabilities' && (
-            <WorkshopCapabilities onNavigate={setCurrentSection} />
-          )}
+            {/* Content Sections - With Reading Planes */}
+            <main className="relative z-10">
+              <AnimatePresence mode="wait">
+                {!hasEntered && (
+                  <RefinedEntrySequence
+                    onEnter={handleEnterLaboratory}
+                    systemStatus={systemStatus}
+                  />
+                )}
 
-          {hasEntered && currentSection === 'transformations' && (
-            <TransformationVisualization onNavigate={setCurrentSection} />
-          )}
+                {hasEntered && currentSection === 'capabilities' && (
+                  <ReadingPlane sectionId="capabilities" priority="primary">
+                    <WorkshopCapabilities onNavigate={setCurrentSection} />
+                  </ReadingPlane>
+                )}
 
-          {hasEntered && currentSection === 'examples' && (
-            <AutomationShowcase onNavigate={setCurrentSection} />
-          )}
+                {hasEntered && currentSection === 'transformations' && (
+                  <ReadingPlane sectionId="transformations" priority="primary">
+                    <TransformationVisualization onNavigate={setCurrentSection} />
+                  </ReadingPlane>
+                )}
 
-          {hasEntered && currentSection === 'access' && (
-            <WorkshopRequestForm
-              onNavigate={setCurrentSection}
-              queuePosition={systemStatus.queuePosition}
-            />
-          )}
-        </AnimatePresence>
-      </main>
-    </div>
+                {hasEntered && currentSection === 'examples' && (
+                  <ReadingPlane sectionId="examples" priority="primary">
+                    <AutomationShowcase onNavigate={setCurrentSection} />
+                  </ReadingPlane>
+                )}
+
+                {hasEntered && currentSection === 'access' && (
+                  <ReadingPlane sectionId="access" priority="primary">
+                    <WorkshopRequestForm
+                      onNavigate={setCurrentSection}
+                      queuePosition={systemStatus.queuePosition}
+                    />
+                  </ReadingPlane>
+                )}
+              </AnimatePresence>
+            </main>
+          </ReadingMode>
+        </FocusManager>
+      </div>
+    </AtelierDesignProvider>
   );
 }
 
-// Entry sequence component
-function EntrySequence({ onEnter, systemStatus }: {
+// Refined Entry sequence following Jony Ive principles
+function RefinedEntrySequence({ onEnter, systemStatus }: {
   onEnter: () => void;
   systemStatus: { operational: boolean; capacity: number; activeProcesses: number; queuePosition: number };
 }) {
@@ -214,145 +250,146 @@ function EntrySequence({ onEnter, systemStatus }: {
       key="entry"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 1.1 }}
-      transition={{ duration: 1 }}
+      exit={{ opacity: 0, filter: 'blur(8px)' }}
+      transition={{ duration: 1.2, ease: [0.23, 1, 0.32, 1] }}
       className="min-h-screen flex items-center justify-center px-4"
     >
-      <div className="max-w-4xl mx-auto text-center space-y-12">
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 1 }}
-          className="space-y-6"
-        >
-          <h1 className="text-5xl md:text-7xl font-light text-pearl tracking-tight leading-display">
-            Operational Laboratory
-          </h1>
-          <p className="text-xl md:text-2xl text-pearl/70 font-light max-w-2xl mx-auto">
-            Where manual chaos becomes automated elegance
-          </p>
-        </motion.div>
-
-        {/* System Status Display */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1, duration: 1 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-2xl mx-auto"
-        >
-          <div className="text-center space-y-2">
-            <div className="text-3xl font-mono text-living-cyan">
-              {systemStatus.capacity.toFixed(1)}%
-            </div>
-            <div className="text-sm text-pearl/50 font-mono uppercase tracking-wider">
-              Capacity
-            </div>
-          </div>
-          <div className="text-center space-y-2">
-            <div className="text-3xl font-mono text-copper">
-              {systemStatus.activeProcesses}
-            </div>
-            <div className="text-sm text-pearl/50 font-mono uppercase tracking-wider">
-              Active
-            </div>
-          </div>
-          <div className="text-center space-y-2">
-            <div className="text-3xl font-mono text-pearl/70">
-              #{systemStatus.queuePosition}
-            </div>
-            <div className="text-sm text-pearl/50 font-mono uppercase tracking-wider">
-              Queue
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Entry Portal */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 1.5, duration: 0.8 }}
-          className="pt-8"
-        >
-          <button
-            onClick={onEnter}
-            onMouseEnter={() => {
-              if (typeof window !== 'undefined' && (window as any).__laboratoryAudio?.playEffect) {
-                (window as any).__laboratoryAudio.playEffect('hover');
-              }
-            }}
-            onMouseDown={() => {
-              if (typeof window !== 'undefined' && (window as any).__laboratoryAudio?.playEffect) {
-                (window as any).__laboratoryAudio.playEffect('click');
-              }
-            }}
-            className="
-              group relative px-12 py-6
-              bg-graphite/80 border border-copper/30
-              text-living-cyan font-mono text-lg
-              backdrop-blur-md
-              hover:border-living-cyan hover:bg-living-cyan/5
-              transition-all duration-700
-              overflow-hidden
-            "
+      <ReadingPlane sectionId="entry" priority="primary" className="max-w-4xl mx-auto">
+        <div className="text-center space-y-16 py-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
+            className="space-y-8"
           >
-            <span className="relative z-10 flex items-center gap-3">
-              Enter Laboratory
-              <svg className="w-5 h-5 transform group-hover:translate-x-1 transition-transform duration-300"
-                   fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </span>
+            <SpatialText level="hero" className="text-pearl">
+              Operational Laboratory
+            </SpatialText>
+            <SpatialText level="subtitle" className="text-pearl/80 max-w-2xl mx-auto">
+              Where manual chaos becomes automated elegance
+            </SpatialText>
+          </motion.div>
 
-            {/* Animated background */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-living-cyan/10 to-transparent
-                          translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-          </button>
+          {/* Refined System Status - More Apple-like */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.6, duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-2xl mx-auto"
+          >
+            {[
+              { value: systemStatus.capacity.toFixed(1) + '%', label: 'Capacity', accent: true },
+              { value: systemStatus.activeProcesses.toString(), label: 'Active', warning: systemStatus.activeProcesses > 5 },
+              { value: '#' + systemStatus.queuePosition.toString(), label: 'Queue', muted: true }
+            ].map((metric, i) => (
+              <motion.div
+                key={metric.label}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8 + i * 0.1, duration: 0.6 }}
+                className="text-center space-y-3 p-4 rounded-lg bg-pearl/[0.02] border border-pearl/5"
+              >
+                <div className={`text-3xl font-mono ${
+                  metric.accent ? 'text-livingCyan' :
+                  metric.warning ? 'text-copper' :
+                  'text-pearl/70'
+                }`}>
+                  {metric.value}
+                </div>
+                <SpatialText level="caption" className="text-pearl/50">
+                  {metric.label}
+                </SpatialText>
+              </motion.div>
+            ))}
+          </motion.div>
 
-          <p className="text-sm text-pearl/50 font-mono mt-4">
-            Precision operational engineering awaits
-          </p>
-        </motion.div>
-
-        {/* Atmospheric indicators */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 2, duration: 1 }}
-          className="flex justify-center space-x-8 pt-8"
-        >
-          {[
-            { label: 'Monitored', color: 'living-cyan', active: true },
-            { label: 'Calibrated', color: 'copper', active: true },
-            { label: 'Selective', color: 'pearl', active: false }
-          ].map((indicator, i) => (
-            <div key={indicator.label} className="flex items-center space-x-2">
-              <div className={`w-2 h-2 rounded-full ${
-                indicator.active
-                  ? `bg-${indicator.color} animate-pulse`
-                  : `bg-${indicator.color}/30`
-              }`} />
-              <span className="text-xs font-mono text-pearl/50 uppercase tracking-wider">
-                {indicator.label}
+          {/* Refined Entry Button - iPhone precision */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 1.2, duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
+            className="pt-4"
+          >
+            <MomentButton
+              onClick={onEnter}
+              variant="primary"
+              size="large"
+              className="group"
+            >
+              <span className="flex items-center gap-3">
+                Enter Laboratory
+                <motion.svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  whileHover={{ x: 2 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </motion.svg>
               </span>
-            </div>
-          ))}
-        </motion.div>
+            </MomentButton>
 
-        {/* Quick access hints */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 3, duration: 1 }}
-          className="text-center pt-6 space-y-2"
-        >
-          <div className="text-xs font-mono text-pearl/30">
-            Advanced Access: F11 • Diagnostics: ⌘+D • Terminal: Ctrl+`
-          </div>
-          <div className="text-xs font-mono text-copper/30">
-            Hidden features await discovery...
-          </div>
-        </motion.div>
-      </div>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.5, duration: 0.6 }}
+              className="mt-6"
+            >
+              <SpatialText level="caption" className="text-pearl/50">
+                Precision operational engineering awaits
+              </SpatialText>
+            </motion.div>
+          </motion.div>
+
+          {/* Subtle Status Indicators */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.8, duration: 0.8 }}
+            className="flex justify-center space-x-8"
+          >
+            {[
+              { label: 'Monitored', active: true },
+              { label: 'Calibrated', active: true },
+              { label: 'Selective', active: false }
+            ].map((indicator, i) => (
+              <motion.div
+                key={indicator.label}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 2 + i * 0.1, duration: 0.5 }}
+                className="flex items-center space-x-2"
+              >
+                <div className={`w-1.5 h-1.5 rounded-full ${
+                  indicator.active
+                    ? 'bg-livingCyan/80 animate-pulse'
+                    : 'bg-pearl/20'
+                }`} />
+                <SpatialText level="caption" className="text-pearl/40">
+                  {indicator.label}
+                </SpatialText>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          {/* Refined Access Hints */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 2.5, duration: 1 }}
+            className="text-center space-y-2"
+          >
+            <SpatialText level="caption" className="text-pearl/20">
+              F11: Advanced Access • ⌘+D: Diagnostics • ⌘+R: Reading Mode
+            </SpatialText>
+            <SpatialText level="caption" className="text-pearl/15">
+              Hidden features await discovery...
+            </SpatialText>
+          </motion.div>
+        </div>
+      </ReadingPlane>
     </motion.section>
   );
 }
