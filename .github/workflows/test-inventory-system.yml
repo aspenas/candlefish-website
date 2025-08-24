@@ -1,0 +1,697 @@
+name: Inventory System Test Suite
+
+on:
+  push:
+    branches: [ main, develop, 'feature/**', 'hotfix/**' ]
+    paths:
+      - '5470_S_Highline_Circle/**'
+      - 'apps/mobile-inventory/**'
+      - 'apps/api-site/**'
+      - 'apps/docs-site/**'
+      - 'graphql/**'
+      - '__tests__/**'
+      - 'package.json'
+      - 'jest.config.js'
+      - 'playwright.config.ts'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - '5470_S_Highline_Circle/**'
+      - 'apps/mobile-inventory/**'
+      - 'apps/api-site/**'
+      - 'apps/docs-site/**'
+      - 'graphql/**'
+      - '__tests__/**'
+
+env:
+  NODE_VERSION: '18.x'
+  GO_VERSION: '1.21'
+  COVERAGE_THRESHOLD: '80'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  setup:
+    name: Setup and Validation
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      cache-key: ${{ steps.cache-key.outputs.key }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Generate cache key
+        id: cache-key
+        run: |
+          echo "key=deps-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/pnpm-lock.yaml') }}" >> $GITHUB_OUTPUT
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.npm
+            ~/.pnpm-store
+            node_modules
+            */node_modules
+          key: ${{ steps.cache-key.outputs.key }}
+          restore-keys: |
+            deps-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          npm install -g pnpm
+          pnpm install --frozen-lockfile
+
+      - name: Set test matrix
+        id: set-matrix
+        run: |
+          matrix=$(cat << 'EOF'
+          {
+            "test-suite": [
+              {
+                "name": "unit-backend",
+                "command": "test:backend",
+                "coverage-name": "backend-coverage",
+                "artifact-path": "coverage/backend"
+              },
+              {
+                "name": "unit-frontend",
+                "command": "test:frontend",
+                "coverage-name": "frontend-coverage",
+                "artifact-path": "coverage/frontend"
+              },
+              {
+                "name": "unit-mobile",
+                "command": "test:mobile",
+                "coverage-name": "mobile-coverage",
+                "artifact-path": "coverage/mobile"
+              },
+              {
+                "name": "integration",
+                "command": "test:integration",
+                "coverage-name": "integration-coverage",
+                "artifact-path": "coverage/integration"
+              },
+              {
+                "name": "graphql",
+                "command": "test --testPathPattern=graphql",
+                "coverage-name": "graphql-coverage",
+                "artifact-path": "coverage/graphql"
+              }
+            ]
+          }
+          EOF
+          )
+          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+
+  # Backend Go API Tests
+  backend-tests:
+    name: Backend API Tests (Go)
+    runs-on: ubuntu-latest
+    needs: setup
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: inventory_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: go-mod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-mod-${{ runner.os }}-
+
+      - name: Install Go dependencies
+        working-directory: ./5470_S_Highline_Circle/backend
+        run: go mod download
+
+      - name: Run Go tests with coverage
+        working-directory: ./5470_S_Highline_Circle/backend
+        env:
+          DATABASE_URL: postgres://postgres:testpassword@localhost:5432/inventory_test?sslmode=disable
+          JWT_SECRET: test-jwt-secret
+          GO_ENV: test
+        run: |
+          go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+          go tool cover -html=coverage.out -o coverage.html
+          go tool cover -func=coverage.out | grep "total:" | awk '{print "Backend Coverage: " $3}'
+
+      - name: Upload Go coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./5470_S_Highline_Circle/backend/coverage.out
+          flags: backend-go
+          name: backend-go-coverage
+
+      - name: Upload backend coverage artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: backend-go-coverage
+          path: |
+            ./5470_S_Highline_Circle/backend/coverage.out
+            ./5470_S_Highline_Circle/backend/coverage.html
+
+  # Node.js Test Suites (Unit, Integration, GraphQL)
+  nodejs-tests:
+    name: ${{ matrix.test-suite.name }} Tests
+    runs-on: ubuntu-latest
+    needs: setup
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: inventory_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Restore cached dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.npm
+            ~/.pnpm-store
+            node_modules
+            */node_modules
+          key: ${{ needs.setup.outputs.cache-key }}
+
+      - name: Install dependencies
+        run: |
+          npm install -g pnpm
+          pnpm install --frozen-lockfile
+
+      - name: Setup test environment
+        run: |
+          cp .env.example .env.test
+          echo "DATABASE_URL=postgres://postgres:testpassword@localhost:5432/inventory_test" >> .env.test
+          echo "REDIS_URL=redis://localhost:6379" >> .env.test
+          echo "JWT_SECRET=test-jwt-secret" >> .env.test
+          echo "NODE_ENV=test" >> .env.test
+
+      - name: Run database migrations
+        run: |
+          npm run db:migrate:test
+        env:
+          DATABASE_URL: postgres://postgres:testpassword@localhost:5432/inventory_test
+
+      - name: Run ${{ matrix.test-suite.name }} tests
+        run: |
+          npm run ${{ matrix.test-suite.command }} -- --coverage --coverageDirectory=coverage/${{ matrix.test-suite.name }}
+        env:
+          CI: true
+          DATABASE_URL: postgres://postgres:testpassword@localhost:5432/inventory_test
+          REDIS_URL: redis://localhost:6379
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/${{ matrix.test-suite.name }}/lcov.info
+          flags: ${{ matrix.test-suite.name }}
+          name: ${{ matrix.test-suite.coverage-name }}
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.test-suite.coverage-name }}
+          path: ${{ matrix.test-suite.artifact-path }}
+
+      - name: Coverage threshold check
+        run: |
+          COVERAGE=$(npm run test:coverage:check -- --threshold=${{ env.COVERAGE_THRESHOLD }})
+          echo "Coverage: $COVERAGE"
+          if [ $COVERAGE -lt ${{ env.COVERAGE_THRESHOLD }} ]; then
+            echo "❌ Coverage $COVERAGE% is below threshold ${{ env.COVERAGE_THRESHOLD }}%"
+            exit 1
+          else
+            echo "✅ Coverage $COVERAGE% meets threshold ${{ env.COVERAGE_THRESHOLD }}%"
+          fi
+
+  # End-to-End Tests
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [setup, nodejs-tests]
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: inventory_e2e
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm install -g pnpm
+          pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Build applications
+        run: |
+          npm run build:test
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgres://postgres:testpassword@localhost:5432/inventory_e2e
+
+      - name: Start test servers
+        run: |
+          npm run start:test &
+          npm run wait-on:test
+        env:
+          DATABASE_URL: postgres://postgres:testpassword@localhost:5432/inventory_e2e
+          PORT: 3001
+
+      - name: Run E2E tests
+        run: |
+          npm run test:e2e -- --reporter=html,json
+        env:
+          BASE_URL: http://localhost:3001
+          PWTEST_HTML_REPORT_OPEN: never
+
+      - name: Upload E2E test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: e2e-test-results
+          path: |
+            test-results/
+            playwright-report/
+
+      - name: Upload E2E screenshots
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: e2e-screenshots
+          path: test-results/
+
+  # Performance Tests
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: [setup, nodejs-tests]
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: inventory_perf
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Install dependencies
+        run: |
+          npm install -g pnpm
+          pnpm install --frozen-lockfile
+
+      - name: Start test server
+        run: |
+          npm run start:perf &
+          npm run wait-on:perf
+        env:
+          DATABASE_URL: postgres://postgres:testpassword@localhost:5432/inventory_perf
+          NODE_ENV: production
+          PORT: 8080
+
+      - name: Run load tests
+        run: |
+          k6 run --out json=performance-results.json __tests__/performance/inventory/k6-load-tests.js
+        env:
+          BASE_URL: http://localhost:8080
+
+      - name: Run stress tests
+        if: github.ref == 'refs/heads/main'
+        run: |
+          k6 run --out json=stress-results.json __tests__/performance/inventory/k6-stress-tests.js
+        env:
+          BASE_URL: http://localhost:8080
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-test-results
+          path: |
+            performance-results.json
+            stress-results.json
+            inventory-performance-report.html
+            inventory-stress-test-report.html
+
+      - name: Performance regression check
+        run: |
+          node scripts/check-performance-regression.js performance-results.json
+
+  # Security Tests
+  security-tests:
+    name: Security Tests
+    runs-on: ubuntu-latest
+    needs: [setup, nodejs-tests]
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: inventory_security
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          npm install -g pnpm
+          pnpm install --frozen-lockfile
+
+      - name: Run security tests
+        run: |
+          npm run test:security -- --coverage --coverageDirectory=coverage/security
+        env:
+          DATABASE_URL: postgres://postgres:testpassword@localhost:5432/inventory_security
+          JWT_SECRET: test-jwt-secret
+
+      - name: Run dependency audit
+        run: |
+          npm audit --audit-level=high
+          pnpm audit --severity high
+
+      - name: OWASP ZAP security scan
+        uses: zaproxy/action-full-scan@v0.8.0
+        if: github.ref == 'refs/heads/main'
+        with:
+          target: 'http://localhost:3001'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a'
+
+      - name: Upload security test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-test-results
+          path: |
+            coverage/security/
+            zap-report.html
+
+  # Mobile Tests (React Native)
+  mobile-tests:
+    name: Mobile App Tests
+    runs-on: ubuntu-latest
+    needs: setup
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          npm install -g pnpm
+          pnpm install --frozen-lockfile
+
+      - name: Run mobile tests
+        working-directory: ./apps/mobile-inventory
+        run: |
+          npm run test -- --coverage --coverageDirectory=../../coverage/mobile
+
+      - name: Build Android APK (if on main)
+        if: github.ref == 'refs/heads/main'
+        working-directory: ./apps/mobile-inventory
+        run: |
+          npx eas build --platform android --non-interactive --no-wait
+
+      - name: Upload mobile coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/mobile/lcov.info
+          flags: mobile
+          name: mobile-coverage
+
+      - name: Upload mobile test artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: mobile-test-results
+          path: coverage/mobile/
+
+  # Coverage Consolidation
+  coverage-report:
+    name: Coverage Report
+    runs-on: ubuntu-latest
+    needs: [backend-tests, nodejs-tests, mobile-tests, security-tests]
+    if: always()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Download all coverage reports
+        uses: actions/download-artifact@v3
+        with:
+          path: coverage-reports/
+
+      - name: Install coverage tools
+        run: |
+          npm install -g nyc lcov-result-merger
+
+      - name: Merge coverage reports
+        run: |
+          find coverage-reports -name "lcov.info" -exec lcov-result-merger '{}' + coverage/merged-lcov.info
+
+      - name: Generate consolidated HTML report
+        run: |
+          npx nyc report --reporter=html --report-dir=coverage/html-report --temp-dir=coverage/
+          npx nyc report --reporter=text-summary --temp-dir=coverage/
+
+      - name: Coverage summary
+        run: |
+          echo "## 📊 Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Coverage |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|----------|" >> $GITHUB_STEP_SUMMARY
+
+          # Extract coverage percentages and add to summary
+          if [ -f coverage-reports/backend-coverage/coverage.out ]; then
+            BACKEND_COV=$(go tool cover -func=coverage-reports/backend-coverage/coverage.out | grep "total:" | awk '{print $3}')
+            echo "| Backend (Go) | $BACKEND_COV |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          for dir in coverage-reports/*/; do
+            if [ -f "$dir/coverage-summary.json" ]; then
+              COMPONENT=$(basename "$dir" | sed 's/-coverage$//')
+              COVERAGE=$(cat "$dir/coverage-summary.json" | jq -r '.total.lines.pct')
+              echo "| $COMPONENT | ${COVERAGE}% |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+      - name: Upload consolidated coverage
+        uses: actions/upload-artifact@v3
+        with:
+          name: consolidated-coverage-report
+          path: |
+            coverage/
+            coverage-reports/
+
+      - name: Comment coverage on PR
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          recreate: true
+          message: |
+            ## 📊 Coverage Report
+
+            Consolidated test coverage for this pull request:
+
+            - **Overall**: $(cat coverage/coverage-summary.json | jq -r '.total.lines.pct')%
+            - **Statements**: $(cat coverage/coverage-summary.json | jq -r '.total.statements.pct')%
+            - **Branches**: $(cat coverage/coverage-summary.json | jq -r '.total.branches.pct')%
+            - **Functions**: $(cat coverage/coverage-summary.json | jq -r '.total.functions.pct')%
+
+            View detailed coverage report in the artifacts section.
+
+  # Test Result Summary
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [backend-tests, nodejs-tests, e2e-tests, performance-tests, security-tests, mobile-tests]
+    if: always()
+
+    steps:
+      - name: Generate test summary
+        run: |
+          echo "# 🧪 Test Suite Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Backend tests
+          if [ "${{ needs.backend-tests.result }}" == "success" ]; then
+            echo "✅ Backend API Tests - PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Backend API Tests - FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Node.js tests
+          if [ "${{ needs.nodejs-tests.result }}" == "success" ]; then
+            echo "✅ Node.js Tests (Unit/Integration/GraphQL) - PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Node.js Tests (Unit/Integration/GraphQL) - FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # E2E tests
+          if [ "${{ needs.e2e-tests.result }}" == "success" ]; then
+            echo "✅ End-to-End Tests - PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ End-to-End Tests - FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Performance tests
+          if [ "${{ needs.performance-tests.result }}" == "success" ]; then
+            echo "✅ Performance Tests - PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Performance Tests - FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Security tests
+          if [ "${{ needs.security-tests.result }}" == "success" ]; then
+            echo "✅ Security Tests - PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Security Tests - FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Mobile tests
+          if [ "${{ needs.mobile-tests.result }}" == "success" ]; then
+            echo "✅ Mobile Tests - PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Mobile Tests - FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📋 Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ needs.backend-tests.result }}" == "success" &&
+                "${{ needs.nodejs-tests.result }}" == "success" &&
+                "${{ needs.e2e-tests.result }}" == "success" &&
+                "${{ needs.mobile-tests.result }}" == "success" ]]; then
+            echo "🎉 All tests passed! This PR is ready for review." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "🔧 Some tests failed. Please review the failed jobs and fix issues before merging." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Set job status
+        run: |
+          if [[ "${{ needs.backend-tests.result }}" != "success" ||
+                "${{ needs.nodejs-tests.result }}" != "success" ||
+                "${{ needs.mobile-tests.result }}" != "success" ]]; then
+            echo "Critical tests failed"
+            exit 1
+          fi
+
+          # Allow performance and security tests to fail without blocking PR
+          echo "All critical tests passed"

@@ -1,0 +1,100 @@
+# Linkerd Service Profiles and Traffic Policies
+apiVersion: linkerd.io/v1alpha1
+kind: ServiceProfile
+metadata:
+  name: api-gateway
+  namespace: default
+spec:
+  routes:
+  - name: graphql
+    condition:
+      method: POST
+      pathRegex: "/graphql"
+    timeout: 30s
+    retryBudget:
+      retryRatio: 0.2
+      minRetriesPerSecond: 10
+      ttl: 10s
+  - name: rest-api
+    condition:
+      pathRegex: "/api/.*"
+    timeout: 10s
+  - name: health
+    condition:
+      method: GET
+      pathRegex: "/health"
+    timeout: 3s
+  retryBudget:
+    retryRatio: 0.2
+    minRetriesPerSecond: 10
+    ttl: 10s
+
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: ServerAuthorization
+metadata:
+  name: api-gateway-authz
+  namespace: default
+spec:
+  server:
+    name: api-gateway
+  client:
+    meshTLS:
+      identities:
+      - "frontend.default.serviceaccount.identity.linkerd.cluster.local"
+      - "mobile-app.default.serviceaccount.identity.linkerd.cluster.local"
+
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: api-gateway
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: api-gateway
+  port: 4000
+  proxyProtocol: "HTTP/2"
+
+---
+# Traffic Split for Canary Deployments
+apiVersion: split.smi-spec.io/v1alpha1
+kind: TrafficSplit
+metadata:
+  name: api-gateway-canary
+  namespace: default
+spec:
+  service: api-gateway
+  backends:
+  - service: api-gateway-stable
+    weight: 90
+  - service: api-gateway-canary
+    weight: 10
+
+---
+# Rate Limiting Policy
+apiVersion: policy.linkerd.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: rate-limit
+  namespace: default
+spec:
+  parentRefs:
+    - name: api-gateway
+      kind: Server
+      group: policy.linkerd.io
+  rules:
+    - matches:
+      - path:
+          type: PathPrefix
+          value: /api
+      filters:
+      - type: RequestHeaderModifier
+        requestHeaderModifier:
+          set:
+          - name: x-rate-limit
+            value: "100"
+      timeouts:
+        request: 30s
+        backendRequest: 25s
