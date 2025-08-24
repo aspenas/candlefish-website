@@ -1,0 +1,78 @@
+# Codecov configuration for inventory management system
+coverage:
+  precision: 2
+  round: down
+  range: "70...100"
+
+  status:
+    project:
+      default:
+        target: 80%
+        threshold: 1%
+        base: auto
+        flags:
+          - inventory-backend
+          - inventory-frontend
+          - inventory-graphql
+          - inventory-mobile
+        if_ci_failed: error
+
+    patch:
+      default:
+        target: 80%
+        threshold: 1%
+        base: auto
+        if_ci_failed: error
+
+  flags:
+    inventory-backend:
+      paths:
+        - "apps/nanda-api/src/"
+        - "services/inventory/"
+      carryforward: true
+
+    inventory-frontend:
+      paths:
+        - "apps/nanda-dashboard/src/"
+        - "packages/shared/src/"
+      carryforward: true
+
+    inventory-graphql:
+      paths:
+        - "graphql/"
+      carryforward: true
+
+    inventory-mobile:
+      paths:
+        - "apps/mobile-inventory/"
+      carryforward: true
+
+  ignore:
+    - "**/*.test.{js,ts,tsx}"
+    - "**/*.spec.{js,ts,tsx}"
+    - "**/__tests__/**"
+    - "**/__mocks__/**"
+    - "**/node_modules/**"
+    - "**/dist/**"
+    - "**/build/**"
+    - "**/*.config.{js,ts}"
+    - "**/*.setup.{js,ts}"
+    - "**/scripts/**"
+    - "**/*.d.ts"
+    - "jest.*.js"
+    - "playwright.*.ts"
+    - ".github/**"
+    - "docs/**"
+    - "*.md"
+    - "coverage/**"
+    - "test-results/**"
+
+comment:
+  layout: "header, diff, flags, components, footer"
+  behavior: default
+  require_changes: false
+  require_base: no
+  require_head: yes
+
+github_checks:
+  annotations: true

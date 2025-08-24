@@ -47,7 +47,7 @@
     "graphql-ws": "^5.14.2",
     "lexical": "^0.12.4",
     "lucide-react": "^0.288.0",
-    "next": "^14.0.1",
+    "next": "^14.2.25",
     "postcss": "^8.4.31",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

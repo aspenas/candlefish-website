@@ -1,0 +1,95 @@
+#!/bin/bash
+# Fix DNS for both acupcake.shop and inventory.highline.work
+
+echo "🔧 DNS Configuration Helper"
+echo "==========================="
+echo ""
+
+echo "📌 ISSUE 1: acupcake.shop needs www CNAME"
+echo "----------------------------------------"
+echo "Netlify is requesting a www CNAME record for acupcake.shop"
+echo ""
+echo "ACTION REQUIRED in Squarespace DNS for acupcake.shop:"
+echo "1. Go to: https://account.squarespace.com/domains/managed/acupcake.shop/dns-settings"
+echo "2. Add this record:"
+echo "   Type: CNAME"
+echo "   Host: www"
+echo "   Data: personal-acupcake-shop.netlify.app"
+echo "   TTL: 3600"
+echo ""
+
+echo "📌 ISSUE 2: inventory.highline.work DNS conflict"
+echo "-----------------------------------------------"
+echo "NS1 (Netlify's DNS) has an existing zone that needs to be cleared"
+echo ""
+echo "ACTION REQUIRED:"
+echo "1. Submit a support ticket to Netlify:"
+echo "   https://www.netlify.com/support/"
+echo ""
+echo "2. Use this message:"
+echo "---"
+echo "Subject: DNS Zone Conflict - inventory.highline.work"
+echo ""
+echo "I need help removing an existing DNS zone for inventory.highline.work"
+echo "from NS1 so I can add it to my site."
+echo ""
+echo "Site ID: 9ebc8d1d-e31b-4c29-afe4-1905a7503d4a"
+echo "Site Name: highline-inventory"
+echo "Domain: inventory.highline.work"
+echo "---"
+echo ""
+
+echo "📊 Current DNS Status Check:"
+echo "----------------------------"
+echo ""
+
+echo "Checking acupcake.shop..."
+echo "A record: $(dig acupcake.shop A +short)"
+echo "www CNAME: $(dig www.acupcake.shop CNAME +short)"
+if [ -z "$(dig www.acupcake.shop CNAME +short)" ]; then
+    echo "❌ www.acupcake.shop CNAME is missing - needs to be added"
+else
+    echo "✅ www.acupcake.shop CNAME exists"
+fi
+echo ""
+
+echo "Checking inventory.highline.work..."
+echo "CNAME: $(dig inventory.highline.work CNAME +short)"
+if [ "$(dig inventory.highline.work CNAME +short)" = "highline-inventory.netlify.app." ]; then
+    echo "✅ inventory.highline.work CNAME is correct"
+    echo "⚠️  But Netlify can't add it due to NS1 zone conflict"
+else
+    echo "❌ inventory.highline.work CNAME needs to be set"
+fi
+echo ""
+
+echo "🌐 Working URLs Right Now:"
+echo "-------------------------"
+echo "✅ https://highline.work (SSL working)"
+echo "✅ https://highline-inventory.netlify.app (inventory app direct URL)"
+echo "✅ https://personal-acupcake-shop.netlify.app (acupcake direct URL)"
+echo "✅ https://highline-work-main.netlify.app (main site direct URL)"
+echo ""
+
+echo "⏳ Pending SSL Certificates:"
+echo "----------------------------"
+echo "- acupcake.shop (waiting for www CNAME)"
+echo "- inventory.highline.work (waiting for NS1 cleanup)"
+echo ""
+
+echo "📝 Quick Test Commands:"
+echo "----------------------"
+echo "# Test acupcake.shop SSL after adding www CNAME:"
+echo "curl -I https://acupcake.shop"
+echo "curl -I https://www.acupcake.shop"
+echo ""
+echo "# Test inventory after Netlify support fixes NS1:"
+echo "curl -I https://inventory.highline.work"
+echo ""
+
+echo "🚀 Next Steps:"
+echo "--------------"
+echo "1. Add www CNAME for acupcake.shop in Squarespace"
+echo "2. Submit Netlify support ticket for inventory.highline.work"
+echo "3. Wait 10-15 minutes for SSL to provision"
+echo "4. All sites will be working with SSL!"

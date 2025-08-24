@@ -1,0 +1,303 @@
+# Kong API Gateway Configuration for Candlefish
+# This configuration sets up Kong as the primary API Gateway
+
+_format_version: "3.0"
+_transform: true
+
+# Service definitions
+services:
+  # GraphQL API Service
+  - name: graphql-api
+    host: api.candlefish.ai
+    port: 4000
+    protocol: https
+    path: /graphql
+    retries: 5
+    connect_timeout: 10000
+    write_timeout: 60000
+    read_timeout: 60000
+    tags:
+      - production
+      - graphql
+
+  # REST API Service
+  - name: rest-api
+    host: api.candlefish.ai
+    port: 3000
+    protocol: https
+    retries: 5
+    connect_timeout: 10000
+    write_timeout: 60000
+    read_timeout: 60000
+    tags:
+      - production
+      - rest
+
+  # Nanda API Service
+  - name: nanda-api
+    host: nanda-api.fly.dev
+    port: 443
+    protocol: https
+    retries: 3
+    connect_timeout: 5000
+    write_timeout: 30000
+    read_timeout: 30000
+    tags:
+      - production
+      - nanda
+
+  # WebSocket Service
+  - name: websocket-api
+    host: api.candlefish.ai
+    port: 8000
+    protocol: wss
+    retries: 0
+    connect_timeout: 10000
+    write_timeout: 86400000  # 24 hours for long-lived connections
+    read_timeout: 86400000
+    tags:
+      - production
+      - websocket
+
+# Routes
+routes:
+  # GraphQL Route
+  - name: graphql-route
+    service: graphql-api
+    protocols:
+      - https
+    hosts:
+      - api.candlefish.ai
+    paths:
+      - /graphql
+    strip_path: false
+    preserve_host: true
+
+  # REST API Routes
+  - name: rest-api-route
+    service: rest-api
+    protocols:
+      - https
+    hosts:
+      - api.candlefish.ai
+    paths:
+      - /api
+    strip_path: false
+    preserve_host: true
+
+  # Nanda API Routes
+  - name: nanda-api-route
+    service: nanda-api
+    protocols:
+      - https
+    hosts:
+      - api.candlefish.ai
+    paths:
+      - /nanda
+    strip_path: true
+    preserve_host: false
+
+  # WebSocket Route
+  - name: websocket-route
+    service: websocket-api
+    protocols:
+      - wss
+      - ws
+    hosts:
+      - api.candlefish.ai
+    paths:
+      - /ws
+    strip_path: false
+    preserve_host: true
+
+# Plugins
+plugins:
+  # Rate Limiting
+  - name: rate-limiting
+    config:
+      minute: 100
+      hour: 10000
+      policy: redis
+      redis_host: redis.candlefish.ai
+      redis_port: 6379
+      redis_database: 0
+      fault_tolerant: true
+
+  # CORS
+  - name: cors
+    config:
+      origins:
+        - https://partners.candlefish.ai
+        - https://docs.candlefish.ai
+        - https://candlefish.ai
+        - https://*.candlefish.ai
+      methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+        - PATCH
+      headers:
+        - Accept
+        - Accept-Version
+        - Content-Length
+        - Content-MD5
+        - Content-Type
+        - Date
+        - X-Auth-Token
+        - Authorization
+        - X-Request-ID
+      exposed_headers:
+        - X-Auth-Token
+        - X-Request-ID
+        - X-RateLimit-Limit
+        - X-RateLimit-Remaining
+      credentials: true
+      max_age: 3600
+
+  # JWT Authentication
+  - name: jwt
+    config:
+      uri_param_names:
+        - jwt
+      cookie_names:
+        - jwt_token
+      key_claim_name: iss
+      secret_is_base64: false
+      claims_to_verify:
+        - exp
+        - nbf
+
+  # Request Size Limiting
+  - name: request-size-limiting
+    config:
+      allowed_payload_size: 10  # 10MB
+      size_unit: megabytes
+      require_content_length: false
+
+  # Request Termination (for health checks)
+  - name: request-termination
+    route: health-check
+    config:
+      status_code: 200
+      content_type: application/json
+      body: '{"status":"healthy","service":"kong-gateway"}'
+
+  # Prometheus Metrics
+  - name: prometheus
+    config:
+      status_code_metrics: true
+      latency_metrics: true
+      bandwidth_metrics: true
+      upstream_health_metrics: true
+
+  # Request Transformer
+  - name: request-transformer
+    config:
+      add:
+        headers:
+          - X-Gateway:Kong
+          - X-Gateway-Version:3.0
+      remove:
+        headers:
+          - X-Internal-Token
+
+  # Response Transformer
+  - name: response-transformer
+    config:
+      add:
+        headers:
+          - X-Gateway:Kong
+          - X-Response-Time:$(latency)ms
+      remove:
+        headers:
+          - Server
+          - X-Powered-By
+
+  # IP Restriction (optional)
+  - name: ip-restriction
+    enabled: false
+    config:
+      allow:
+        - 0.0.0.0/0  # Allow all for now
+      deny: []
+
+  # Bot Detection
+  - name: bot-detection
+    config:
+      allow:
+        - Googlebot
+        - Bingbot
+        - Slackbot
+      deny:
+        - "*"
+
+# Upstreams for load balancing
+upstreams:
+  - name: api-backend
+    algorithm: round-robin
+    healthchecks:
+      active:
+        type: https
+        http_path: /health
+        healthy:
+          interval: 10
+          successes: 2
+        unhealthy:
+          interval: 5
+          http_failures: 5
+          tcp_failures: 5
+          timeouts: 5
+      passive:
+        healthy:
+          successes: 5
+        unhealthy:
+          http_failures: 5
+          tcp_failures: 5
+          timeouts: 5
+    targets:
+      - target: api-1.candlefish.ai:443
+        weight: 100
+      - target: api-2.candlefish.ai:443
+        weight: 100
+
+# Certificates
+# NOTE: Production certificates should be stored in AWS Secrets Manager
+# and injected at deployment time. Never commit actual certificates.
+certificates:
+  - cert_secret: "candlefish/api-certificate"
+    key_secret: "candlefish/api-private-key"
+    snis:
+      - api.candlefish.ai
+
+# Consumers (API users)
+consumers:
+  - username: frontend-app
+    custom_id: frontend-001
+    tags:
+      - frontend
+      - production
+
+  - username: mobile-app
+    custom_id: mobile-001
+    tags:
+      - mobile
+      - production
+
+  - username: admin-dashboard
+    custom_id: admin-001
+    tags:
+      - admin
+      - production
+
+# ACLs
+acls:
+  - consumer: frontend-app
+    group: frontend-users
+
+  - consumer: mobile-app
+    group: mobile-users
+
+  - consumer: admin-dashboard
+    group: admin-users

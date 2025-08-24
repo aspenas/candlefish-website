@@ -1,6 +1,9 @@
+# Docker Compose for Test Environment
+# Supports both collaboration tests and inventory management tests
 version: '3.8'
 
 services:
+  # PostgreSQL test database for collaboration
   postgres-test:
     image: postgres:15-alpine
     container_name: collaboration-postgres-test
@@ -20,6 +23,33 @@ services:
     networks:
       - collaboration-test
 
+  # PostgreSQL test database for inventory
+  postgres-inventory-test:
+    image: postgres:15-alpine
+    container_name: inventory-postgres-test
+    environment:
+      POSTGRES_DB: inventory_test
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_inventory_test_data:/var/lib/postgresql/data
+      - ./scripts/init-test-db.sql:/docker-entrypoint-initdb.d/init.sql
+    command: >
+      postgres -c log_statement=all
+               -c log_duration=on
+               -c max_connections=200
+               -c shared_preload_libraries=pg_stat_statements
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d inventory_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+
   redis-test:
     image: redis:7-alpine
     container_name: collaboration-redis-test
@@ -34,6 +64,7 @@ services:
       retries: 10
     networks:
       - collaboration-test
+      - test-network
 
   # WebSocket server for real-time testing
   websocket-test:
@@ -73,10 +104,98 @@ services:
     networks:
       - collaboration-test
 
+  # Test runner container for inventory tests
+  inventory-test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: inventory-test-runner
+    depends_on:
+      postgres-inventory-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    environment:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://test_user:test_password@postgres-inventory-test:5432/inventory_test
+      REDIS_URL: redis://redis-test:6379
+      TEST_DATABASE_URL: postgresql://test_user:test_password@postgres-inventory-test:5432/inventory_test
+      TEST_REDIS_URL: redis://redis-test:6379
+      CODECOV_TOKEN: ${CODECOV_TOKEN}
+      CI: "true"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - test_coverage:/app/coverage
+      - test_reports:/app/test-results
+    working_dir: /app
+    command: >
+      sh -c "
+        echo 'Waiting for services to be ready...' &&
+        sleep 10 &&
+        echo 'Running inventory test suite...' &&
+        pnpm install --frozen-lockfile &&
+        pnpm test:ci &&
+        echo 'Generating coverage report...' &&
+        ./scripts/generate-coverage-report.sh --upload
+      "
+    networks:
+      - test-network
+
+  # E2E test environment
+  e2e-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+    container_name: inventory-e2e-runner
+    depends_on:
+      - inventory-test-runner
+    environment:
+      NODE_ENV: test
+      E2E_BASE_URL: http://localhost:3000
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - e2e_reports:/app/test-results
+      - playwright_cache:/ms-playwright
+    working_dir: /app
+    command: >
+      sh -c "
+        echo 'Installing Playwright browsers...' &&
+        npx playwright install --with-deps &&
+        echo 'Starting application servers...' &&
+        pnpm dev:frontend &
+        pnpm start:api &
+        echo 'Waiting for servers to start...' &&
+        sleep 30 &&
+        echo 'Running E2E tests...' &&
+        pnpm test:e2e --reporter=html --reporter=junit
+      "
+    networks:
+      - test-network
+    ports:
+      - "3000:3000"
+      - "8080:8080"
+
 networks:
   collaboration-test:
+    driver: bridge
+  test-network:
     driver: bridge
 
 volumes:
   postgres_test_data:
+    driver: local
+  postgres_inventory_test_data:
+    driver: local
   redis_test_data:
+    driver: local
+  test_coverage:
+    driver: local
+  test_reports:
+    driver: local
+  e2e_reports:
+    driver: local
+  playwright_cache:
+    driver: local

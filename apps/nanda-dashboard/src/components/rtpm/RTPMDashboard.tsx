@@ -428,9 +428,10 @@ const RTMPDashboardContent: React.FC<RTMPDashboardProps> = ({ className = '' }) 
   // WebSocket connection
   const { connectionState, service } = useWebSocket(
     {
-      url: process.env.NODE_ENV === 'development'
-        ? 'ws://localhost:8000/ws/metrics/stream'
-        : 'wss://api.candlefish.ai/ws/metrics/stream',
+      url: process.env.REACT_APP_WS_URL ||
+        (process.env.NODE_ENV === 'development'
+          ? 'ws://localhost:8000/ws/metrics/stream'
+          : 'wss://api.candlefish.ai/ws/metrics/stream'),
       subscriptions: ['metrics', 'alerts', 'agent_status']
     },
     {
