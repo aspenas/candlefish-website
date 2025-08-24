@@ -14,8 +14,8 @@ import { RetryLink } from '@apollo/client/link/retry'
 import { createClient } from 'graphql-ws'
 
 // Environment configuration
-const GRAPHQL_HTTP_URL = import.meta.env.VITE_GRAPHQL_URL || 'http://localhost:4000/graphql'
-const GRAPHQL_WS_URL = import.meta.env.VITE_GRAPHQL_WS_URL || 'ws://localhost:4000/graphql'
+const GRAPHQL_HTTP_URL = import.meta.env.VITE_GRAPHQL_URL || 'https://api.candlefish.ai/graphql'
+const GRAPHQL_WS_URL = import.meta.env.VITE_GRAPHQL_WS_URL || 'wss://api.candlefish.ai/graphql'
 
 // Token storage utilities
 export const getAuthToken = (): string | null => {

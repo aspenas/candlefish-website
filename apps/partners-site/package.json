@@ -27,7 +27,6 @@
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-select": "^2.0.0",
     "react-hook-form": "^7.52.1",
-    "@apollo/client-link-retry": "^2.0.1",
     "idb": "^7.1.1",
     "react-use": "^17.4.0",
     "web-push": "^3.6.7"

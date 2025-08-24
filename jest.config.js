@@ -1,18 +1,25 @@
 const { pathsToModuleNameMapper } = require('ts-jest');
-const { compilerOptions } = require('./tsconfig.json');
+
+// Safely load tsconfig.json
+let compilerOptions = {};
+try {
+  compilerOptions = require('./tsconfig.json').compilerOptions || {};
+} catch (error) {
+  console.warn('tsconfig.json not found, using default compiler options');
+}
 
 /** @type {import('jest').Config} */
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  
+
   // Test patterns
   testMatch: [
     '<rootDir>/**/__tests__/**/*.{ts,tsx,js,jsx}',
     '<rootDir>/**/*.(test|spec).{ts,tsx,js,jsx}'
   ],
-  
+
   // Coverage configuration
   collectCoverage: true,
   collectCoverageFrom: [
@@ -38,12 +45,12 @@ module.exports = {
       statements: 80
     }
   },
-  
+
   // Module resolution
   moduleNameMapper: {
-    ...pathsToModuleNameMapper(compilerOptions.paths || {}, {
+    ...(compilerOptions.paths ? pathsToModuleNameMapper(compilerOptions.paths, {
       prefix: '<rootDir>/'
-    }),
+    }) : {}),
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@components/(.*)$': '<rootDir>/components/$1',
     '^@graphql/(.*)$': '<rootDir>/graphql/$1',
@@ -53,7 +60,7 @@ module.exports = {
     '\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$':
       '<rootDir>/__tests__/__mocks__/fileMock.js'
   },
-  
+
   // Transform configuration
   transform: {
     '^.+\\.(ts|tsx)$': 'ts-jest',
@@ -62,7 +69,7 @@ module.exports = {
   transformIgnorePatterns: [
     'node_modules/(?!(.*\\.mjs$|@apollo/client|@testing-library|uuid))'
   ],
-  
+
   // Test environments for different project types
   projects: [
     {
@@ -97,12 +104,12 @@ module.exports = {
       }
     }
   ],
-  
+
   // Global settings
   testTimeout: 10000,
   maxWorkers: '50%',
   verbose: true,
-  
+
   // Watch mode settings
   watchPathIgnorePatterns: [
     '<rootDir>/node_modules/',
@@ -110,13 +117,13 @@ module.exports = {
     '<rootDir>/.next/',
     '<rootDir>/coverage/'
   ],
-  
+
   // Error handling
   bail: false,
   clearMocks: true,
   resetMocks: true,
   restoreMocks: true,
-  
+
   // Performance optimizations
   cacheDirectory: '<rootDir>/.jest-cache'
 };

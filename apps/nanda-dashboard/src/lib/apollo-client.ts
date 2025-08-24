@@ -3,7 +3,7 @@ import { setContext } from '@apollo/client/link/context'
 
 // HTTP link for GraphQL
 const httpLink = createHttpLink({
-  uri: import.meta.env.VITE_GRAPHQL_URL || 'http://localhost:3000/graphql',
+  uri: import.meta.env.VITE_GRAPHQL_URL || 'https://api.candlefish.ai/graphql',
 })
 
 // Auth link for JWT tokens

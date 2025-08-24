@@ -12,11 +12,11 @@ const nextConfig = {
     return [
       {
         source: '/api/graphql',
-        destination: process.env.GRAPHQL_ENDPOINT || 'http://localhost:4000/graphql',
+        destination: process.env.GRAPHQL_ENDPOINT || 'https://api.candlefish.ai/graphql',
       },
       {
         source: '/openapi.json',
-        destination: process.env.OPENAPI_SPEC_URL || 'http://localhost:4000/openapi.json',
+        destination: process.env.OPENAPI_SPEC_URL || 'https://api.candlefish.ai/openapi.json',
       },
     ]
   },

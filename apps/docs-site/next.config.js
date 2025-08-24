@@ -12,7 +12,7 @@ const nextConfig = {
     return [
       {
         source: '/api/graphql',
-        destination: process.env.GRAPHQL_ENDPOINT || 'http://localhost:4000/graphql',
+        destination: process.env.GRAPHQL_ENDPOINT || 'https://api.candlefish.ai/graphql',
       },
     ]
   },

@@ -1,0 +1,67 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["dom", "dom.iterable", "ES6"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@components/*": ["./components/*"],
+      "@graphql/*": ["./graphql/*"],
+      "@lib/*": ["./lib/*"],
+      "@apps/*": ["./apps/*"],
+      "@packages/*": ["./packages/*"],
+      "@services/*": ["./services/*"],
+      "@utils/*": ["./utils/*"],
+      "@types/*": ["./types/*"],
+      "@config/*": ["./config/*"],
+      "@docs-site/*": ["./apps/docs-site/src/*"],
+      "@api-site/*": ["./apps/api-site/src/*"],
+      "@partners-site/*": ["./apps/partners-site/src/*"],
+      "@paintbox/*": ["./apps/paintbox/src/*"],
+      "@nanda-dashboard/*": ["./apps/nanda-dashboard/src/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "apps/**/*.ts",
+    "apps/**/*.tsx",
+    "components/**/*.ts",
+    "components/**/*.tsx",
+    "graphql/**/*.ts",
+    "lib/**/*.ts",
+    "packages/**/*.ts",
+    "services/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "dist",
+    "build",
+    "out",
+    "coverage",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx"
+  ]
+}

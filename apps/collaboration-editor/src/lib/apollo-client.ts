@@ -8,14 +8,14 @@ import { toast } from 'react-hot-toast';
 
 // HTTP Link for queries and mutations
 const httpLink = createHttpLink({
-  uri: process.env.NEXT_PUBLIC_GRAPHQL_HTTP_URL || 'http://localhost:4000/graphql',
+  uri: process.env.NEXT_PUBLIC_GRAPHQL_HTTP_URL || 'https://api.candlefish.ai/graphql',
   credentials: 'include',
 });
 
 // WebSocket Link for subscriptions
 const wsLink = typeof window !== 'undefined' ? new GraphQLWsLink(
   createClient({
-    url: process.env.NEXT_PUBLIC_GRAPHQL_WS_URL || 'ws://localhost:4000/graphql',
+    url: process.env.NEXT_PUBLIC_GRAPHQL_WS_URL || 'wss://api.candlefish.ai/graphql',
     connectionParams: () => {
       const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
       return {

@@ -1,30 +1,30 @@
 import * as React from 'react'
 import { Slot } from '@radix-ui/react-slot'
 import { cva, type VariantProps } from 'class-variance-authority'
-import { cn } from '@/lib/utils'
+import { cn } from '../../lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14b8a6] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
         default:
-          'bg-gradient-to-r from-amber-400 to-amber-500 text-charcoal shadow hover:from-amber-300 hover:to-amber-400 hover:shadow-lg hover:-translate-y-0.5',
+          'bg-[#14b8a6] text-white shadow-sm hover:bg-[#0f9488] hover:shadow-md active:bg-[#0d7c71]',
         destructive:
-          'bg-red-500 text-white shadow-sm hover:bg-red-500/90',
+          'bg-[#ef4444] text-white shadow-sm hover:bg-[#dc2626] active:bg-[#b91c1c]',
         outline:
-          'border border-slate-300 bg-transparent shadow-sm hover:bg-slate-50 text-charcoal',
+          'border border-[#14b8a6]/20 bg-transparent text-[#14b8a6] hover:bg-[#14b8a6]/10 active:bg-[#14b8a6]/20',
         secondary:
-          'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-sm hover:from-indigo-400 hover:to-indigo-500 hover:shadow-lg hover:-translate-y-0.5',
-        ghost: 'hover:bg-slate-100 hover:text-charcoal text-slate-600',
-        link: 'text-amber-500 underline-offset-4 hover:underline',
+          'bg-[#22d3ee] text-[#0b0f13] shadow-sm hover:bg-[#06b6d4] active:bg-[#0891b2]',
+        ghost: 'text-[#e6f9f6] hover:bg-[#0f172a]/20 hover:text-[#14b8a6]',
+        link: 'text-[#14b8a6] underline-offset-4 hover:underline',
       },
       size: {
-        default: 'h-9 px-4 py-2',
+        default: 'h-10 px-4 py-2',
         sm: 'h-8 rounded-md px-3 text-xs',
-        lg: 'h-10 rounded-md px-8',
-        xl: 'h-12 rounded-lg px-10 text-base',
-        icon: 'h-9 w-9',
+        lg: 'h-12 rounded-lg px-6 text-base',
+        xl: 'h-14 rounded-lg px-8 text-lg',
+        icon: 'h-10 w-10',
       },
     },
     defaultVariants: {
