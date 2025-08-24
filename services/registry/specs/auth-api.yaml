@@ -1,0 +1,343 @@
+openapi: 3.0.0
+info:
+  title: Candlefish Auth Service API
+  version: 1.0.0
+  description: Authentication and authorization service with JWT RS256
+  contact:
+    name: Candlefish AI Team
+    email: api@candlefish.ai
+servers:
+  - url: https://api.candlefish.ai/auth
+    description: Production server
+  - url: https://staging-api.candlefish.ai/auth
+    description: Staging server
+  - url: http://localhost:3001/auth
+    description: Development server
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /login:
+    post:
+      summary: User login
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+
+  /refresh:
+    post:
+      summary: Refresh access token
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /logout:
+    post:
+      summary: User logout
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /revoke:
+    post:
+      summary: Revoke a token
+      tags:
+        - Token Management
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevokeRequest'
+      responses:
+        '200':
+          description: Token revoked successfully
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /.well-known/jwks.json:
+    get:
+      summary: Get public keys for JWT verification
+      tags:
+        - Token Management
+      responses:
+        '200':
+          description: JWKS endpoint
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JWKSResponse'
+
+  /verify:
+    post:
+      summary: Verify a JWT token
+      tags:
+        - Token Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyRequest'
+      responses:
+        '200':
+          description: Token is valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token with RS256 algorithm
+
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: healthy
+        timestamp:
+          type: string
+          format: date-time
+        version:
+          type: string
+          example: 1.0.0
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@candlefish.ai
+        password:
+          type: string
+          format: password
+          minLength: 8
+        remember:
+          type: boolean
+          default: false
+
+    LoginResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT access token (15 minutes TTL)
+        refresh_token:
+          type: string
+          description: Refresh token (7 days TTL)
+        expires_in:
+          type: integer
+          example: 900
+          description: Token expiration in seconds
+        token_type:
+          type: string
+          example: Bearer
+        user:
+          $ref: '#/components/schemas/User'
+
+    RefreshRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+          description: Valid refresh token
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        expires_in:
+          type: integer
+          example: 900
+        token_type:
+          type: string
+          example: Bearer
+
+    RevokeRequest:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          description: Token to revoke
+        token_type_hint:
+          type: string
+          enum: [access_token, refresh_token]
+          default: access_token
+
+    VerifyRequest:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          description: JWT token to verify
+
+    VerifyResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        payload:
+          type: object
+          description: Decoded JWT payload if valid
+        expires_at:
+          type: string
+          format: date-time
+
+    JWKSResponse:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            type: object
+            properties:
+              kty:
+                type: string
+                example: RSA
+              use:
+                type: string
+                example: sig
+              kid:
+                type: string
+                example: 88672a69-26ae-45db-b73c-93debf7ea87d
+              alg:
+                type: string
+                example: RS256
+              n:
+                type: string
+                description: RSA modulus
+              e:
+                type: string
+                description: RSA exponent
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+        organization_id:
+          type: string
+          format: uuid
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        code:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    UnauthorizedError:
+      description: Authentication failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    RateLimitError:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Request limit per minute
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Remaining requests
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Time when limit resets (Unix timestamp)
+
+security:
+  - bearerAuth: []

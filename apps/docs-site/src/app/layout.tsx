@@ -43,7 +43,7 @@ export default function RootLayout({
     <html lang="en" className="scroll-smooth">
       <body className={inter.className}>
         <ApolloWrapper>
-          <div className="min-h-screen bg-warm-white">
+          <div className="min-h-screen bg-[#0b0f13]">
             <Navigation
               siteTitle="Candlefish Docs"
               siteType="docs"

@@ -1,0 +1,349 @@
+openapi: 3.0.0
+info:
+  title: Candlefish GraphQL Gateway API
+  version: 1.0.0
+  description: GraphQL API gateway with security hardening and federation support
+  contact:
+    name: Candlefish AI Team
+    email: api@candlefish.ai
+
+servers:
+  - url: https://api.candlefish.ai
+    description: Production server
+  - url: https://staging-api.candlefish.ai
+    description: Staging server
+  - url: http://localhost:3001
+    description: Development server
+
+paths:
+  /graphql:
+    post:
+      summary: Execute GraphQL query or mutation
+      tags:
+        - GraphQL
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GraphQLRequest'
+      responses:
+        '200':
+          description: GraphQL response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GraphQLResponse'
+        '400':
+          description: Bad request (query validation failed)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GraphQLError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+
+  /graphql/ws:
+    get:
+      summary: WebSocket endpoint for GraphQL subscriptions
+      tags:
+        - GraphQL
+        - WebSocket
+      security:
+        - bearerAuth: []
+      responses:
+        '101':
+          description: Switching Protocols to WebSocket
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /graphql/health:
+    get:
+      summary: GraphQL service health check
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /graphql/metrics:
+    get:
+      summary: GraphQL performance metrics
+      tags:
+        - Monitoring
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Performance metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token with RS256 algorithm
+
+  schemas:
+    GraphQLRequest:
+      type: object
+      required:
+        - query
+      properties:
+        query:
+          type: string
+          description: GraphQL query or mutation
+          example: |
+            query GetUser($id: ID!) {
+              user(id: $id) {
+                id
+                name
+                email
+              }
+            }
+        operationName:
+          type: string
+          description: Operation name if query contains multiple operations
+        variables:
+          type: object
+          description: Variables for the GraphQL operation
+          additionalProperties: true
+        extensions:
+          type: object
+          description: Extensions for advanced features
+          properties:
+            persistedQuery:
+              type: object
+              properties:
+                version:
+                  type: integer
+                  example: 1
+                sha256Hash:
+                  type: string
+                  description: SHA256 hash of the query for APQ
+
+    GraphQLResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          description: Query result data
+          additionalProperties: true
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphQLFieldError'
+        extensions:
+          type: object
+          properties:
+            tracing:
+              type: object
+              description: Apollo tracing information
+            cacheControl:
+              type: object
+              description: Cache control hints
+
+    GraphQLError:
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphQLFieldError'
+
+    GraphQLFieldError:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Error message
+        path:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: integer
+          description: Path to the field that caused the error
+        locations:
+          type: array
+          items:
+            type: object
+            properties:
+              line:
+                type: integer
+              column:
+                type: integer
+        extensions:
+          type: object
+          properties:
+            code:
+              type: string
+              description: Error code
+              enum:
+                - GRAPHQL_PARSE_FAILED
+                - GRAPHQL_VALIDATION_FAILED
+                - BAD_USER_INPUT
+                - UNAUTHENTICATED
+                - FORBIDDEN
+                - PERSISTED_QUERY_NOT_FOUND
+                - PERSISTED_QUERY_NOT_SUPPORTED
+                - INTERNAL_SERVER_ERROR
+                - DEPTH_LIMIT_EXCEEDED
+                - COMPLEXITY_LIMIT_EXCEEDED
+                - RATE_LIMITED
+            exception:
+              type: object
+              properties:
+                stacktrace:
+                  type: array
+                  items:
+                    type: string
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        schema:
+          type: object
+          properties:
+            hash:
+              type: string
+              description: Current schema hash
+            lastUpdated:
+              type: string
+              format: date-time
+        uptime:
+          type: integer
+          description: Uptime in seconds
+        version:
+          type: string
+
+    MetricsResponse:
+      type: object
+      properties:
+        queries:
+          type: object
+          properties:
+            total:
+              type: integer
+            rate:
+              type: number
+              description: Queries per second
+            p50:
+              type: number
+              description: 50th percentile response time (ms)
+            p95:
+              type: number
+              description: 95th percentile response time (ms)
+            p99:
+              type: number
+              description: 99th percentile response time (ms)
+        mutations:
+          type: object
+          properties:
+            total:
+              type: integer
+            rate:
+              type: number
+            p50:
+              type: number
+            p95:
+              type: number
+            p99:
+              type: number
+        subscriptions:
+          type: object
+          properties:
+            active:
+              type: integer
+            total:
+              type: integer
+        errors:
+          type: object
+          properties:
+            total:
+              type: integer
+            rate:
+              type: number
+            byCode:
+              type: object
+              additionalProperties:
+                type: integer
+        cache:
+          type: object
+          properties:
+            hits:
+              type: integer
+            misses:
+              type: integer
+            hitRate:
+              type: number
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        code:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    UnauthorizedError:
+      description: Authentication failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    RateLimitError:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Request limit per minute
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Remaining requests
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Time when limit resets (Unix timestamp)
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: GraphQL
+    description: GraphQL query and mutation endpoints
+  - name: WebSocket
+    description: Real-time subscription support
+  - name: Health
+    description: Service health monitoring
+  - name: Monitoring
+    description: Performance metrics and observability

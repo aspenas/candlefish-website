@@ -1,0 +1,660 @@
+# Linkerd Service Mesh Configuration for Candlefish AI
+# Priority: mTLS, Circuit Breakers, Observability
+
+# Linkerd Control Plane Configuration
+apiVersion: install.linkerd.io/v1alpha1
+kind: InstallConfig
+metadata:
+  name: linkerd-control-plane
+  namespace: linkerd
+spec:
+  # Trust anchor certificate for mTLS
+  identityTrustDomain: cluster.local
+  identityTrustAnchorsPEM: |
+    -----BEGIN CERTIFICATE-----
+    # Generated during linkerd install
+    -----END CERTIFICATE-----
+
+---
+# Traffic Split for Blue-Green Deployments
+apiVersion: split.smi-spec.io/v1alpha1
+kind: TrafficSplit
+metadata:
+  name: graphql-gateway-split
+  namespace: candlefish
+spec:
+  service: graphql-gateway
+  backends:
+  - service: graphql-gateway-blue
+    weight: 100
+  - service: graphql-gateway-green
+    weight: 0
+
+---
+# Traffic Split for WebSocket Service
+apiVersion: split.smi-spec.io/v1alpha1
+kind: TrafficSplit
+metadata:
+  name: websocket-service-split
+  namespace: candlefish
+spec:
+  service: websocket-service
+  backends:
+  - service: websocket-service-blue
+    weight: 100
+  - service: websocket-service-green
+    weight: 0
+
+---
+# Server Policy for GraphQL Service
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: graphql-server
+  namespace: candlefish
+spec:
+  podSelector:
+    matchLabels:
+      app: graphql-gateway
+  port: 4000
+  proxyProtocol: HTTP/2
+
+---
+# Server Authorization for GraphQL
+apiVersion: policy.linkerd.io/v1beta1
+kind: ServerAuthorization
+metadata:
+  name: graphql-auth
+  namespace: candlefish
+spec:
+  server:
+    name: graphql-server
+  requiredRoutes:
+  - pathRegex: "/graphql"
+    methods: ["POST", "GET", "OPTIONS"]
+  - pathRegex: "/health"
+    methods: ["GET"]
+  - pathRegex: "/metrics"
+    methods: ["GET"]
+
+---
+# Server Policy for WebSocket Service
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: websocket-server
+  namespace: candlefish
+spec:
+  podSelector:
+    matchLabels:
+      app: websocket-service
+  port: 4001
+  proxyProtocol: HTTP/1.1
+
+---
+# Server Authorization for WebSocket
+apiVersion: policy.linkerd.io/v1beta1
+kind: ServerAuthorization
+metadata:
+  name: websocket-auth
+  namespace: candlefish
+spec:
+  server:
+    name: websocket-server
+  requiredRoutes:
+  - pathRegex: "/ws"
+    methods: ["GET"]
+  - pathRegex: "/websocket"
+    methods: ["GET"]
+  - pathRegex: "/health"
+    methods: ["GET"]
+
+---
+# Server Policy for Document Service
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: document-server
+  namespace: candlefish
+spec:
+  podSelector:
+    matchLabels:
+      app: document-service
+  port: 4003
+  proxyProtocol: HTTP/2
+
+---
+# Server Authorization for Document Service
+apiVersion: policy.linkerd.io/v1beta1
+kind: ServerAuthorization
+metadata:
+  name: document-auth
+  namespace: candlefish
+spec:
+  server:
+    name: document-server
+  requiredRoutes:
+  - pathRegex: "/api/v1/documents.*"
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+  - pathRegex: "/health"
+    methods: ["GET"]
+
+---
+# Server Policy for NANDA Index Service
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: nanda-server
+  namespace: candlefish
+spec:
+  podSelector:
+    matchLabels:
+      app: nanda-index
+  port: 4005
+  proxyProtocol: HTTP/2
+
+---
+# Server Authorization for NANDA Service
+apiVersion: policy.linkerd.io/v1beta1
+kind: ServerAuthorization
+metadata:
+  name: nanda-auth
+  namespace: candlefish
+spec:
+  server:
+    name: nanda-server
+  requiredRoutes:
+  - pathRegex: "/api/v1/(agents|nanda).*"
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+  - pathRegex: "/health"
+    methods: ["GET"]
+
+---
+# HTTPRoute for GraphQL Service (Traffic Management)
+apiVersion: policy.linkerd.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: graphql-route
+  namespace: candlefish
+spec:
+  parentRefs:
+  - name: graphql-server
+    kind: Server
+    group: policy.linkerd.io
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: "/graphql"
+    - method: POST
+    backendRefs:
+    - name: graphql-gateway
+      port: 4000
+      weight: 100
+    timeouts:
+      request: "30s"
+    retry:
+      numRetries: 3
+      retryOn:
+        - "5xx"
+        - "reset"
+      backoff:
+        baseInterval: "100ms"
+        maxInterval: "1s"
+  - matches:
+    - path:
+        type: PathPrefix
+        value: "/api/v1"
+    backendRefs:
+    - name: graphql-gateway
+      port: 4000
+      weight: 100
+    timeouts:
+      request: "30s"
+
+---
+# HTTPRoute for Document Service
+apiVersion: policy.linkerd.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: document-route
+  namespace: candlefish
+spec:
+  parentRefs:
+  - name: document-server
+    kind: Server
+    group: policy.linkerd.io
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: "/api/v1/documents"
+    backendRefs:
+    - name: document-service
+      port: 4003
+      weight: 100
+    timeouts:
+      request: "60s"  # Longer timeout for file operations
+    retry:
+      numRetries: 2
+      retryOn:
+        - "5xx"
+        - "reset"
+      backoff:
+        baseInterval: "500ms"
+        maxInterval: "2s"
+
+---
+# HTTPRoute for NANDA Service
+apiVersion: policy.linkerd.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: nanda-route
+  namespace: candlefish
+spec:
+  parentRefs:
+  - name: nanda-server
+    kind: Server
+    group: policy.linkerd.io
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: "/api/v1/agents"
+    backendRefs:
+    - name: nanda-index
+      port: 4005
+      weight: 100
+    timeouts:
+      request: "30s"
+    retry:
+      numRetries: 3
+      retryOn:
+        - "5xx"
+        - "reset"
+        - "deadline-exceeded"
+
+---
+# Service Profile for GraphQL Gateway (Observability)
+apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: graphql-gateway.candlefish.svc.cluster.local
+  namespace: candlefish
+spec:
+  routes:
+  - name: graphql_query
+    condition:
+      method: POST
+      pathRegex: "/graphql"
+    responseClasses:
+    - condition:
+        status:
+          min: 200
+          max: 299
+      isFailure: false
+    - condition:
+        status:
+          min: 400
+          max: 499
+      isFailure: true
+    - condition:
+        status:
+          min: 500
+          max: 599
+      isFailure: true
+    timeout: "30s"
+    retryBudget:
+      retryRatio: 0.2
+      minRetriesPerSecond: 10
+      ttl: "10s"
+  - name: rest_api
+    condition:
+      method: GET
+      pathRegex: "/api/v1/.*"
+    responseClasses:
+    - condition:
+        status:
+          min: 200
+          max: 299
+      isFailure: false
+    - condition:
+        status:
+          min: 500
+          max: 599
+      isFailure: true
+    timeout: "30s"
+
+---
+# Service Profile for WebSocket Service
+apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: websocket-service.candlefish.svc.cluster.local
+  namespace: candlefish
+spec:
+  routes:
+  - name: websocket_upgrade
+    condition:
+      method: GET
+      pathRegex: "/(ws|websocket)"
+      headers:
+      - name: "upgrade"
+        value: "websocket"
+    responseClasses:
+    - condition:
+        status:
+          min: 101
+          max: 101
+      isFailure: false
+    - condition:
+        status:
+          min: 400
+          max: 599
+      isFailure: true
+    timeout: "0s"  # No timeout for WebSocket connections
+
+---
+# Service Profile for Document Service
+apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: document-service.candlefish.svc.cluster.local
+  namespace: candlefish
+spec:
+  routes:
+  - name: document_crud
+    condition:
+      pathRegex: "/api/v1/documents/.*"
+    responseClasses:
+    - condition:
+        status:
+          min: 200
+          max: 299
+      isFailure: false
+    - condition:
+        status:
+          min: 400
+          max: 499
+      isFailure: true
+    - condition:
+        status:
+          min: 500
+          max: 599
+      isFailure: true
+    timeout: "60s"
+    retryBudget:
+      retryRatio: 0.1
+      minRetriesPerSecond: 5
+      ttl: "10s"
+  - name: file_upload
+    condition:
+      method: POST
+      pathRegex: "/api/v1/documents/upload"
+    responseClasses:
+    - condition:
+        status:
+          min: 200
+          max: 299
+      isFailure: false
+    timeout: "300s"  # 5 minute timeout for large file uploads
+
+---
+# Service Profile for NANDA Index
+apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: nanda-index.candlefish.svc.cluster.local
+  namespace: candlefish
+spec:
+  routes:
+  - name: agent_registry
+    condition:
+      pathRegex: "/api/v1/agents.*"
+    responseClasses:
+    - condition:
+        status:
+          min: 200
+          max: 299
+      isFailure: false
+    - condition:
+        status:
+          min: 500
+          max: 599
+      isFailure: true
+    timeout: "30s"
+    retryBudget:
+      retryRatio: 0.2
+      minRetriesPerSecond: 10
+      ttl: "10s"
+
+---
+# Multi-cluster configuration (for future expansion)
+apiVersion: linkerd.io/v1alpha1
+kind: Link
+metadata:
+  name: staging-to-production
+  namespace: linkerd-multicluster
+spec:
+  targetClusterName: production-cluster
+  targetClusterDomain: cluster.local
+  selector:
+    matchLabels:
+      mirror.linkerd.io/exported: "true"
+
+---
+# Traffic Policy for Circuit Breaker Pattern
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: graphql-circuit-breaker
+  namespace: candlefish
+spec:
+  host: graphql-gateway.candlefish.svc.cluster.local
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 100
+      http:
+        http1MaxPendingRequests: 10
+        http2MaxRequests: 100
+        maxRequestsPerConnection: 2
+        maxRetries: 3
+        consecutiveGatewayErrors: 3
+        interval: 30s
+        baseEjectionTime: 30s
+        maxEjectionPercent: 50
+        minHealthPercent: 30
+    outlierDetection:
+      consecutiveGatewayErrors: 3
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+      minHealthPercent: 30
+
+---
+# Network Policy for Zero-Trust Security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: candlefish-default-deny
+  namespace: candlefish
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+
+---
+# Network Policy - Allow Kong Gateway to Services
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kong-to-services
+  namespace: candlefish
+spec:
+  podSelector:
+    matchLabels:
+      tier: backend
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: kong-gateway
+    ports:
+    - protocol: TCP
+      port: 4000  # GraphQL
+    - protocol: TCP
+      port: 4001  # WebSocket
+    - protocol: TCP
+      port: 4003  # Document
+    - protocol: TCP
+      port: 4005  # NANDA
+
+---
+# Network Policy - Allow Services to Database
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: services-to-database
+  namespace: candlefish
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          tier: backend
+    ports:
+    - protocol: TCP
+      port: 5432
+
+---
+# Network Policy - Allow Services to Redis
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: services-to-redis
+  namespace: candlefish
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          tier: backend
+    ports:
+    - protocol: TCP
+      port: 6379
+
+---
+# Linkerd Viz Extension Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: linkerd-viz-config
+  namespace: linkerd-viz
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 10s
+      evaluation_interval: 10s
+
+    rule_files:
+    - /etc/prometheus/*_rules.yml
+    - /etc/prometheus/*_rules.yaml
+
+    scrape_configs:
+    - job_name: 'linkerd-controller'
+      kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names: ['linkerd', 'linkerd-viz']
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_container_name]
+        action: keep
+        regex: ^(controller|destination|identity|proxy-injector)$
+      - source_labels: [__meta_kubernetes_pod_container_port_name]
+        action: keep
+        regex: admin-http
+      - source_labels: [__meta_kubernetes_pod_ip]
+        action: replace
+        target_label: __address__
+        replacement: $1:9995
+
+    - job_name: 'linkerd-service-mirror'
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_linkerd_io_control_plane_component]
+        action: keep
+        regex: linkerd-service-mirror
+      - source_labels: [__meta_kubernetes_pod_container_port_name]
+        action: keep
+        regex: admin-http
+
+    - job_name: 'linkerd-proxy'
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_container_name]
+        action: keep
+        regex: ^linkerd-proxy$
+      - source_labels: [__meta_kubernetes_pod_container_port_name]
+        action: keep
+        regex: linkerd-admin
+      - source_labels: [__meta_kubernetes_pod_ip]
+        action: replace
+        target_label: __address__
+        replacement: $1:4191
+
+---
+# Linkerd Jaeger Extension for Distributed Tracing
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: linkerd-jaeger-config
+  namespace: linkerd-jaeger
+data:
+  collector.yaml: |
+    receivers:
+      opencensus:
+        endpoint: 0.0.0.0:55678
+      jaeger:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:14250
+          thrift_binary:
+            endpoint: 0.0.0.0:6832
+          thrift_compact:
+            endpoint: 0.0.0.0:6831
+          thrift_http:
+            endpoint: 0.0.0.0:14268
+
+    processors:
+      batch:
+        send_batch_size: 1024
+        timeout: 5s
+
+    exporters:
+      jaeger:
+        endpoint: jaeger-collector:14250
+        tls:
+          insecure: true
+
+    service:
+      pipelines:
+        traces:
+          receivers: [opencensus, jaeger]
+          processors: [batch]
+          exporters: [jaeger]
