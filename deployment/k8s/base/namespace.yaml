@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: netlify-extension
+  labels:
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/instance: production
+    app.kubernetes.io/component: infrastructure
+    app.kubernetes.io/part-of: candlefish-platform
+    app.kubernetes.io/managed-by: kustomize
+  annotations:
+    description: "Netlify Extension Management System namespace"
+    owner: "candlefish-enterprise"
+    environment: "shared"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: netlify-extension-staging
+  labels:
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/instance: staging
+    app.kubernetes.io/component: infrastructure
+    app.kubernetes.io/part-of: candlefish-platform
+    app.kubernetes.io/managed-by: kustomize
+  annotations:
+    description: "Netlify Extension Management System staging namespace"
+    owner: "candlefish-enterprise"
+    environment: "staging"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: netlify-extension-production
+  labels:
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/instance: production
+    app.kubernetes.io/component: infrastructure
+    app.kubernetes.io/part-of: candlefish-platform
+    app.kubernetes.io/managed-by: kustomize
+  annotations:
+    description: "Netlify Extension Management System production namespace"
+    owner: "candlefish-enterprise"
+    environment: "production"

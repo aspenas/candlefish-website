@@ -1,0 +1,27 @@
+{
+  "name": "netlify-plugin-webgl-optimizer",
+  "version": "1.0.0",
+  "description": "Netlify plugin to optimize WebGL performance with adaptive quality and asset compression",
+  "main": "index.js",
+  "keywords": [
+    "netlify",
+    "netlify-plugin",
+    "webgl",
+    "three.js",
+    "performance",
+    "optimization"
+  ],
+  "author": "Candlefish AI",
+  "license": "MIT",
+  "dependencies": {
+    "sharp": "^0.33.0",
+    "terser": "^5.24.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/candlefish-ai/netlify-extensions"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,129 @@
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: netlify-api-vpa
+  labels:
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/component: api
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: netlify-api
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: api
+        maxAllowed:
+          cpu: 1000m
+          memory: 1Gi
+        minAllowed:
+          cpu: 100m
+          memory: 128Mi
+        controlledResources: ["cpu", "memory"]
+        controlledValues: RequestsAndLimits
+---
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: netlify-frontend-vpa
+  labels:
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/component: frontend
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: netlify-frontend
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: frontend
+        maxAllowed:
+          cpu: 500m
+          memory: 512Mi
+        minAllowed:
+          cpu: 50m
+          memory: 64Mi
+        controlledResources: ["cpu", "memory"]
+        controlledValues: RequestsAndLimits
+---
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: netlify-ml-vpa
+  labels:
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/component: ml
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: netlify-ml
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: ml
+        maxAllowed:
+          cpu: 2000m
+          memory: 4Gi
+        minAllowed:
+          cpu: 200m
+          memory: 512Mi
+        controlledResources: ["cpu", "memory"]
+        controlledValues: RequestsAndLimits
+---
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: netlify-monitor-vpa
+  labels:
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/component: monitor
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: netlify-monitor
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: monitor
+        maxAllowed:
+          cpu: 500m
+          memory: 512Mi
+        minAllowed:
+          cpu: 50m
+          memory: 64Mi
+        controlledResources: ["cpu", "memory"]
+        controlledValues: RequestsAndLimits
+---
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: netlify-config-vpa
+  labels:
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/component: config
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: netlify-config
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: config
+        maxAllowed:
+          cpu: 500m
+          memory: 512Mi
+        minAllowed:
+          cpu: 50m
+          memory: 64Mi
+        controlledResources: ["cpu", "memory"]
+        controlledValues: RequestsAndLimits

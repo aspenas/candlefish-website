@@ -1,0 +1,133 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: netlify-extension-base
+  labels:
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/part-of: candlefish-platform
+
+# Base resources for Netlify Extension Management System
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+  - api-deployment.yaml
+  - frontend-deployment.yaml
+  - ml-deployment.yaml
+  - monitor-deployment.yaml
+  - config-deployment.yaml
+  - ingress.yaml
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/name: netlify-extension
+  app.kubernetes.io/part-of: candlefish-platform
+  app.kubernetes.io/managed-by: kustomize
+
+# Common annotations
+commonAnnotations:
+  config.kubernetes.io/local-config: "true"
+
+# Image configurations
+images:
+  - name: ghcr.io/candlefish-enterprise/netlify-extension-api
+    newTag: latest
+  - name: ghcr.io/candlefish-enterprise/netlify-extension-frontend
+    newTag: latest
+  - name: ghcr.io/candlefish-enterprise/netlify-extension-ml
+    newTag: latest
+  - name: ghcr.io/candlefish-enterprise/netlify-extension-monitor
+    newTag: latest
+  - name: ghcr.io/candlefish-enterprise/netlify-extension-config
+    newTag: latest
+
+# Namespace prefix
+namespace: netlify-extension
+
+# Resource name prefix
+namePrefix: netlify-
+
+# ConfigMap and Secret generators
+configMapGenerator:
+  - name: build-info
+    literals:
+      - build.date=2025-08-24T00:00:00Z
+      - build.version=1.0.0
+      - build.revision=main
+
+secretGenerator:
+  - name: tls-config
+    type: kubernetes.io/tls
+    files:
+      - tls.crt=certs/tls.crt
+      - tls.key=certs/tls.key
+
+# Patches for common configurations
+patches:
+  # Add resource quotas to all deployments
+  - target:
+      kind: Deployment
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/resources/requests/ephemeral-storage
+        value: "1Gi"
+      - op: add
+        path: /spec/template/spec/containers/0/resources/limits/ephemeral-storage
+        value: "2Gi"
+
+  # Add common environment variables
+  - target:
+      kind: Deployment
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: BUILD_VERSION
+          valueFrom:
+            configMapKeyRef:
+              name: build-info
+              key: build.version
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: BUILD_DATE
+          valueFrom:
+            configMapKeyRef:
+              name: build-info
+              key: build.date
+
+# Validation rules
+validators:
+  - kind: Deployment
+    schema:
+      properties:
+        spec:
+          properties:
+            replicas:
+              minimum: 1
+              maximum: 20
+            template:
+              properties:
+                spec:
+                  properties:
+                    containers:
+                      items:
+                        properties:
+                          resources:
+                            required: ["requests", "limits"]
+
+# Replace configurations
+replacements:
+  - source:
+      kind: ConfigMap
+      name: netlify-extension-config
+      fieldPath: data.LOG_LEVEL
+    targets:
+      - select:
+          kind: Deployment
+        fieldPaths:
+          - spec.template.spec.containers.[name=api].env.[name=LOG_LEVEL].value
+          - spec.template.spec.containers.[name=ml].env.[name=LOG_LEVEL].value
+          - spec.template.spec.containers.[name=monitor].env.[name=LOG_LEVEL].value
+          - spec.template.spec.containers.[name=config].env.[name=LOG_LEVEL].value

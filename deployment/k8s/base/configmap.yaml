@@ -1,0 +1,202 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: netlify-extension-config
+  labels:
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/component: configuration
+data:
+  # API Configuration
+  API_VERSION: "v1"
+  API_TIMEOUT: "30000"
+  API_RATE_LIMIT: "1000"
+  API_CORS_ORIGINS: "https://netlify-extension.candlefish.ai,https://dashboard.candlefish.ai"
+
+  # Database Configuration
+  DB_POOL_SIZE: "10"
+  DB_CONNECTION_TIMEOUT: "5000"
+  DB_QUERY_TIMEOUT: "30000"
+
+  # Cache Configuration
+  CACHE_TTL: "3600"
+  CACHE_MAX_SIZE: "1000"
+
+  # Monitoring Configuration
+  METRICS_INTERVAL: "30000"
+  LOG_LEVEL: "info"
+  HEALTH_CHECK_INTERVAL: "10000"
+
+  # ML Engine Configuration
+  ML_MODEL_VERSION: "v1.2.0"
+  ML_BATCH_SIZE: "32"
+  ML_PREDICTION_TIMEOUT: "5000"
+
+  # Performance Monitoring
+  MONITOR_INTERVAL: "15000"
+  ALERT_THRESHOLD_CPU: "80"
+  ALERT_THRESHOLD_MEMORY: "85"
+  ALERT_THRESHOLD_RESPONSE_TIME: "2000"
+
+  # Feature Flags
+  FEATURE_ML_RECOMMENDATIONS: "true"
+  FEATURE_REAL_TIME_MONITORING: "true"
+  FEATURE_AUTO_SCALING: "true"
+  FEATURE_BLUE_GREEN_DEPLOY: "true"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  labels:
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/component: frontend
+data:
+  nginx.conf: |
+    user nginx;
+    worker_processes auto;
+    error_log /var/log/nginx/error.log warn;
+    pid /var/run/nginx.pid;
+
+    events {
+        worker_connections 1024;
+        use epoll;
+        multi_accept on;
+    }
+
+    http {
+        include /etc/nginx/mime.types;
+        default_type application/octet-stream;
+
+        log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                       '$status $body_bytes_sent "$http_referer" '
+                       '"$http_user_agent" "$http_x_forwarded_for"';
+
+        access_log /var/log/nginx/access.log main;
+
+        sendfile on;
+        tcp_nopush on;
+        tcp_nodelay on;
+        keepalive_timeout 65;
+        types_hash_max_size 2048;
+
+        gzip on;
+        gzip_vary on;
+        gzip_proxied any;
+        gzip_comp_level 6;
+        gzip_types
+            text/plain
+            text/css
+            text/xml
+            text/javascript
+            application/javascript
+            application/xml+rss
+            application/json
+            image/svg+xml;
+
+        include /etc/nginx/conf.d/*.conf;
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  labels:
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/component: monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    rule_files:
+      - "alert_rules.yml"
+
+    alertmanager:
+      alertmanagers:
+        - static_configs:
+            - targets:
+              - alertmanager:9093
+
+    scrape_configs:
+      - job_name: 'netlify-api'
+        static_configs:
+          - targets: ['netlify-api-service:3001']
+        metrics_path: /metrics
+        scrape_interval: 30s
+
+      - job_name: 'netlify-frontend'
+        static_configs:
+          - targets: ['netlify-frontend-service:80']
+        metrics_path: /metrics
+        scrape_interval: 30s
+
+      - job_name: 'netlify-ml'
+        static_configs:
+          - targets: ['netlify-ml-service:8001']
+        metrics_path: /metrics
+        scrape_interval: 30s
+
+      - job_name: 'netlify-monitor'
+        static_configs:
+          - targets: ['netlify-monitor-service:8002']
+        metrics_path: /metrics
+        scrape_interval: 15s
+
+      - job_name: 'netlify-config'
+        static_configs:
+          - targets: ['netlify-config-service:8003']
+        metrics_path: /metrics
+        scrape_interval: 30s
+
+      - job_name: 'kubernetes-pods'
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+
+  alert_rules.yml: |
+    groups:
+      - name: netlify-extension-alerts
+        rules:
+          - alert: HighCPUUsage
+            expr: (100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 80
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High CPU usage detected"
+              description: "CPU usage is above 80% for more than 5 minutes"
+
+          - alert: HighMemoryUsage
+            expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 85
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High memory usage detected"
+              description: "Memory usage is above 85% for more than 5 minutes"
+
+          - alert: ServiceDown
+            expr: up == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Service is down"
+              description: "{{ $labels.instance }} has been down for more than 1 minute"
+
+          - alert: HighResponseTime
+            expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High response time detected"
+              description: "95th percentile response time is above 2 seconds"

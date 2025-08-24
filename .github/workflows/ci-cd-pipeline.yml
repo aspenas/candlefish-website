@@ -1,0 +1,602 @@
+name: CI/CD Pipeline - Candlefish AI Documentation Platform
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'feature/*'
+      - 'release/*'
+      - 'hotfix/*'
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      deploy_environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      force_rebuild:
+        description: 'Force rebuild all packages'
+        type: boolean
+        default: false
+
+env:
+  NODE_VERSION: '18'
+  PNPM_VERSION: '8.15.6'
+  DOCKER_REGISTRY: ghcr.io
+  REGISTRY_USER: ${{ github.actor }}
+  REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Code Quality and Testing
+  quality-gate:
+    name: Code Quality Gate
+    runs-on: ubuntu-latest
+    outputs:
+      affected-apps: ${{ steps.affected.outputs.apps }}
+      affected-packages: ${{ steps.affected.outputs.packages }}
+      should-deploy: ${{ steps.deployment-check.outputs.should-deploy }}
+      deployment-environment: ${{ steps.deployment-check.outputs.environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: |
+          pnpm install --frozen-lockfile --prefer-frozen-lockfile
+
+      - name: Detect affected packages
+        id: affected
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.force_rebuild }}" == "true" ]]; then
+            echo "apps=all" >> $GITHUB_OUTPUT
+            echo "packages=all" >> $GITHUB_OUTPUT
+          else
+            # Use turbo to detect what changed
+            AFFECTED_APPS=$(pnpm turbo build --dry=json --filter="[HEAD^1]" | jq -r '.tasks[].task' | grep -E '(docs-site|partners-site|api-site|collaboration-editor|mobile-dashboard|mobile-collaboration)' | sort -u | tr '\n' ',' | sed 's/,$//')
+            AFFECTED_PACKAGES=$(pnpm turbo test --dry=json --filter="[HEAD^1]" | jq -r '.packages' | tr '\n' ',' | sed 's/,$//')
+            echo "apps=${AFFECTED_APPS:-none}" >> $GITHUB_OUTPUT
+            echo "packages=${AFFECTED_PACKAGES:-none}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Determine deployment strategy
+        id: deployment-check
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+            echo "environment=production" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+            echo "environment=${{ inputs.deploy_environment }}" >> $GITHUB_OUTPUT
+          else
+            echo "should-deploy=false" >> $GITHUB_OUTPUT
+            echo "environment=none" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Lint codebase
+        run: |
+          pnpm turbo lint
+
+      - name: Type checking
+        run: |
+          pnpm turbo typecheck
+
+      - name: Brand asset sync
+        run: |
+          pnpm brand:sync
+
+      - name: Unit tests
+        run: |
+          pnpm turbo test:unit --concurrency=4
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          directory: ./coverage
+          fail_ci_if_error: false
+
+  # Security Scanning
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: [quality-gate]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Audit npm packages
+        run: |
+          pnpm audit --audit-level moderate
+
+  # Build Stage
+  build-packages:
+    name: Build Packages
+    runs-on: ubuntu-latest
+    needs: [quality-gate]
+    if: needs.quality-gate.outputs.affected-packages != 'none'
+    strategy:
+      matrix:
+        package: [shared, ui, utils]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build package
+        run: |
+          pnpm turbo build --filter=packages/${{ matrix.package }}
+
+      - name: Cache build artifacts
+        uses: actions/cache@v3
+        with:
+          path: |
+            packages/${{ matrix.package }}/dist
+            packages/${{ matrix.package }}/build
+          key: ${{ runner.os }}-build-${{ matrix.package }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ matrix.package }}-
+
+  # Build and Test Frontend Applications
+  build-frontend-apps:
+    name: Build Frontend Apps
+    runs-on: ubuntu-latest
+    needs: [quality-gate, build-packages]
+    if: always() && (needs.quality-gate.outputs.affected-apps != 'none' || contains(needs.quality-gate.outputs.affected-apps, 'all'))
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [docs-site, partners-site, api-site, collaboration-editor, mobile-dashboard]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Restore package caches
+        uses: actions/cache@v3
+        with:
+          path: |
+            packages/*/dist
+            packages/*/build
+          key: ${{ runner.os }}-build-packages-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-build-packages-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build application
+        run: |
+          if [[ "${{ matrix.app }}" == "mobile-dashboard" ]]; then
+            pnpm turbo build --filter=apps/${{ matrix.app }}
+          else
+            pnpm turbo build --filter=apps/${{ matrix.app }}
+          fi
+        env:
+          NODE_ENV: production
+          NEXT_TELEMETRY_DISABLED: 1
+
+      - name: Run integration tests
+        run: |
+          pnpm turbo test:integration --filter=apps/${{ matrix.app }}
+        continue-on-error: true
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.app }}-build
+          path: |
+            apps/${{ matrix.app }}/dist
+            apps/${{ matrix.app }}/build
+            apps/${{ matrix.app }}/.next
+            apps/${{ matrix.app }}/out
+          retention-days: 1
+
+  # E2E Testing
+  e2e-tests:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    needs: [quality-gate, build-frontend-apps]
+    if: needs.quality-gate.outputs.should-deploy == 'true'
+    strategy:
+      matrix:
+        browser: [chromium, firefox]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: ./artifacts
+
+      - name: Start test services
+        run: |
+          docker-compose -f docker-compose.test.yml up -d
+          sleep 30
+
+      - name: Run E2E tests
+        run: |
+          pnpm test:e2e --project=${{ matrix.browser }}
+        env:
+          CI: true
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: playwright-report-${{ matrix.browser }}
+          path: playwright-report/
+          retention-days: 7
+
+  # Performance Testing
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: [build-frontend-apps]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install k6
+        run: |
+          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Run performance tests
+        run: |
+          k6 run __tests__/performance/k6/load-test-api.js
+          k6 run __tests__/performance/k6/stress-test.js
+
+      - name: Run Lighthouse CI
+        run: |
+          npm install -g @lhci/cli
+          lhci autorun
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+  # Docker Build
+  build-docker-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [quality-gate, security-scan, build-frontend-apps]
+    if: needs.quality-gate.outputs.should-deploy == 'true'
+    strategy:
+      matrix:
+        service: [backend-api, graphql-api, websocket-service, document-service, collaboration-editor, website]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ env.REGISTRY_USER }}
+          password: ${{ env.REGISTRY_PASSWORD }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ matrix.service }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: deployment/docker/Dockerfile.${{ matrix.service }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_ENV=production
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+
+  # Deploy to Staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [quality-gate, e2e-tests, build-docker-images]
+    if: needs.quality-gate.outputs.deployment-environment == 'staging'
+    environment:
+      name: staging
+      url: https://staging.candlefish.ai
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region us-east-1 --name candlefish-staging-cluster
+
+      - name: Deploy backend services to Kubernetes
+        run: |
+          # Apply Kubernetes manifests with staging values
+          kubectl apply -k deployment/k8s/overlays/staging/
+          kubectl rollout status deployment/graphql-api -n candlefish-staging --timeout=600s
+          kubectl rollout status deployment/websocket-service -n candlefish-staging --timeout=600s
+          kubectl rollout status deployment/document-service -n candlefish-staging --timeout=600s
+
+      - name: Deploy frontend to Netlify
+        uses: nwtgck/actions-netlify@v2
+        with:
+          publish-dir: './apps/docs-site/out'
+          production-branch: develop
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Deploy from GitHub Actions - ${{ github.sha }}"
+          enable-pull-request-comment: true
+          enable-commit-comment: true
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_STAGING_SITE_ID }}
+
+      - name: Run health checks
+        run: |
+          # Wait for services to be ready
+          sleep 60
+
+          # Check API health
+          curl -f https://api-staging.candlefish.ai/health || exit 1
+
+          # Check WebSocket connectivity
+          curl -f https://ws-staging.candlefish.ai/health || exit 1
+
+          # Check frontend
+          curl -f https://staging.candlefish.ai || exit 1
+
+      - name: Run smoke tests
+        run: |
+          pnpm test:integration --filter=staging
+        continue-on-error: true
+
+  # Deploy to Production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [quality-gate, e2e-tests, performance-tests, build-docker-images]
+    if: needs.quality-gate.outputs.deployment-environment == 'production'
+    environment:
+      name: production
+      url: https://candlefish.ai
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region us-east-1 --name candlefish-production-cluster
+
+      - name: Create pre-deployment backup
+        run: |
+          # Backup current deployment state
+          kubectl get all -n candlefish-production -o yaml > deployment-backup-$(date +%Y%m%d-%H%M%S).yaml
+
+          # Store backup in S3
+          aws s3 cp deployment-backup-*.yaml s3://candlefish-backups/deployments/
+
+      - name: Blue-Green Deployment
+        run: |
+          # Use blue-green deployment strategy
+          ./deployment/blue-green/blue-green-deploy.sh production ${{ github.sha }}
+        env:
+          DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
+
+      - name: Validate production deployment
+        run: |
+          # Wait for new deployment
+          sleep 120
+
+          # Run comprehensive health checks
+          ./deployment/scripts/health-check.sh production
+
+          # Run production smoke tests
+          pnpm test:integration --filter=production
+
+      - name: Switch traffic to new deployment
+        run: |
+          # Switch load balancer to point to new deployment
+          ./deployment/blue-green/rollout-scripts.sh switch-traffic production
+
+      - name: Deploy frontend to Netlify
+        uses: nwtgck/actions-netlify@v2
+        with:
+          publish-dir: './apps/docs-site/out'
+          production-branch: main
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Production Deploy - ${{ github.sha }}"
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_PRODUCTION_SITE_ID }}
+
+      - name: Final production validation
+        run: |
+          # Final health checks
+          curl -f https://api.candlefish.ai/health || exit 1
+          curl -f https://candlefish.ai || exit 1
+
+          # Run critical path tests
+          pnpm test:e2e --grep="@critical"
+
+      - name: Cleanup old deployment
+        run: |
+          # Clean up old blue-green deployment after successful validation
+          ./deployment/blue-green/rollout-scripts.sh cleanup-old production
+
+  # Rollback mechanism
+  rollback:
+    name: Emergency Rollback
+    runs-on: ubuntu-latest
+    if: failure() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    needs: [deploy-production, deploy-staging]
+    environment:
+      name: ${{ needs.quality-gate.outputs.deployment-environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Execute rollback
+        run: |
+          ENV=${{ needs.quality-gate.outputs.deployment-environment }}
+          ./deployment/scripts/emergency-rollback.sh $ENV
+
+          # Notify team of rollback
+          echo "🚨 Emergency rollback executed for $ENV environment" >> $GITHUB_STEP_SUMMARY
+
+  # Notify deployment status
+  notify:
+    name: Deployment Notification
+    runs-on: ubuntu-latest
+    if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    needs: [deploy-production, deploy-staging, rollback]
+    steps:
+      - name: Notify Slack
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

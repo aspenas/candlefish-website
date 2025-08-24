@@ -1,0 +1,154 @@
+# Netlify Configuration - candlefish.ai (Main Website)
+# WebGL-optimized, high-performance marketing site
+
+# Import base configuration
+# Note: Netlify doesn't support imports directly, merge with deploy script
+
+[build]
+  command = "npm ci --include=dev && npm run build && npm run export"
+  publish = "out"
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF ."
+
+[build.environment]
+  NEXT_PUBLIC_SITE_URL = "https://candlefish.ai"
+  NEXT_PUBLIC_API_URL = "https://api.candlefish.ai"
+  NEXT_PUBLIC_WS_URL = "wss://ws.candlefish.ai"
+  ENABLE_WEBGL = "true"
+  ENABLE_PERFORMANCE_MONITORING = "true"
+
+# Site-specific plugins
+
+# 1. Next.js Plugin with Image Optimization
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+  [plugins.inputs]
+    imageOptimization = true
+    trailingSlash = false
+
+# 2. WebGL Performance Optimizer (Custom Plugin)
+[[plugins]]
+  package = "./plugins/webgl-optimizer"
+
+  [plugins.inputs]
+    enableAdaptiveQuality = true
+    targetFPS = 60
+    fallbackRenderer = "canvas"
+    memoryLimit = 512  # MB
+    textureCompression = true
+
+# 3. Image Optimization Plugin
+[[plugins]]
+  package = "netlify-plugin-image-optim"
+
+  [plugins.inputs]
+    quality = 85
+    webp = true
+    avif = true
+    lazyLoad = true
+    placeholder = "blur"
+
+# 4. Bundle Analyzer
+[[plugins]]
+  package = "netlify-plugin-bundle-analyzer"
+
+  [plugins.inputs]
+    analyzerMode = "static"
+    reportFilename = "bundle-analysis.html"
+    generateStatsFile = true
+
+# Edge Functions for WebGL Adaptive Quality
+[[edge_functions]]
+  path = "/api/webgl/config"
+  function = "webgl-config"
+
+[[edge_functions]]
+  path = "/api/performance/metrics"
+  function = "performance-metrics"
+
+# WebGL-specific headers
+[[headers]]
+  for = "/webgl/*"
+  [headers.values]
+    Cross-Origin-Embedder-Policy = "require-corp"
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cache-Control = "public, max-age=3600, stale-while-revalidate=600"
+
+[[headers]]
+  for = "/*.wasm"
+  [headers.values]
+    Content-Type = "application/wasm"
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.glb"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+    Content-Type = "model/gltf-binary"
+
+[[headers]]
+  for = "/*.gltf"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+    Content-Type = "model/gltf+json"
+
+# Performance optimizations
+[[headers]]
+  for = "/"
+  [headers.values]
+    Link = '''
+      </fonts/inter-var.woff2>; rel=preload; as=font; type=font/woff2; crossorigin,
+      </_next/static/css/*.css>; rel=preload; as=style,
+      </_next/static/js/*.js>; rel=preload; as=script
+    '''
+
+# Production-specific settings
+[context.production]
+  command = "npm ci --include=dev && npm run build:prod && npm run export"
+
+  [context.production.environment]
+    NODE_ENV = "production"
+    NEXT_PUBLIC_GA_ID = "G-XXXXXXXXXX"
+    SENTRY_DSN = "$SENTRY_DSN_PRODUCTION"
+
+# Preview deployments get reduced WebGL quality
+[context.deploy-preview]
+  [context.deploy-preview.environment]
+    WEBGL_QUALITY = "medium"
+    ENABLE_DEBUG = "true"
+
+# A/B Testing configuration
+[[plugins]]
+  package = "@netlify/plugin-split-testing"
+
+  [plugins.inputs]
+    enabled = true
+
+    [[plugins.inputs.variants]]
+      name = "original"
+      weight = 50
+
+    [[plugins.inputs.variants]]
+      name = "optimized"
+      weight = 50
+      branch = "feature/performance-optimizations"
+
+# Remove robots blocking for production
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "index, follow"
+
+# Redirect www to non-www
+[[redirects]]
+  from = "https://www.candlefish.ai/*"
+  to = "https://candlefish.ai/:splat"
+  status = 301
+  force = true
+
+# Redirect old netlify.app domain
+[[redirects]]
+  from = "https://candlefish-grotto.netlify.app/*"
+  to = "https://candlefish.ai/:splat"
+  status = 301
+  force = true

@@ -4,8 +4,8 @@ const { Resend } = require('resend');
 const rateLimitMap = new Map();
 
 // Allowed origins for CORS
-const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',')
+const ALLOWED_ORIGINS = undefined
+  ? undefined.split(',')
   : ['https://candlefish.ai', 'https://www.candlefish.ai', 'https://test.candlefish.ai'];
 
 // Rate limiting function
@@ -350,10 +350,10 @@ Generated: ${new Date().toISOString()}
     // Send results via email if requested
     if (businessData.requestResults && businessData.contactEmail && businessData.contactName) {
       try {
-        if (process.env.RESEND_API_KEY &&
-            process.env.RESEND_API_KEY !== 're_placeholder_key_change_this') {
+        if ('re_2FVsRwCV_4TbXMBxbL9Dw5BQ5EqSuu1rZ' &&
+            're_2FVsRwCV_4TbXMBxbL9Dw5BQ5EqSuu1rZ' !== 're_placeholder_key_change_this') {
 
-          const resend = new Resend(process.env.RESEND_API_KEY);
+          const resend = new Resend('re_2FVsRwCV_4TbXMBxbL9Dw5BQ5EqSuu1rZ');
 
           // Send analysis results to user
           const userEmailResult = await resend.emails.send({

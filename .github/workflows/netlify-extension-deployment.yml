@@ -1,0 +1,525 @@
+name: Netlify Extension Management System - Deployment Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'brand/website/**'
+      - 'backend/netlify-api/**'
+      - 'apps/dashboard/**'
+      - '.github/workflows/netlify-extension-deployment.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'brand/website/**'
+      - 'backend/netlify-api/**'
+      - 'apps/dashboard/**'
+
+env:
+  DOCKER_REGISTRY: ghcr.io
+  IMAGE_PREFIX: candlefish-enterprise/netlify-extension
+  NODE_VERSION: '18'
+  KUBERNETES_VERSION: 'v1.28.0'
+
+jobs:
+  # Security scanning and validation
+  security-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Trivy security scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Test suite execution
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        test-type: [unit, integration, e2e, accessibility, performance, security]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'brand/website/package-lock.json'
+
+      - name: Install dependencies
+        run: |
+          cd brand/website
+          npm ci --include=dev
+
+      - name: Run unit tests
+        if: matrix.test-type == 'unit'
+        run: |
+          cd brand/website
+          npm run test:unit -- --ci --coverage --watchAll=false
+
+      - name: Run integration tests
+        if: matrix.test-type == 'integration'
+        run: |
+          cd brand/website
+          npm run test:integration -- --ci --watchAll=false
+
+      - name: Run E2E tests
+        if: matrix.test-type == 'e2e'
+        run: |
+          cd brand/website
+          npm run test:e2e
+
+      - name: Run accessibility tests
+        if: matrix.test-type == 'accessibility'
+        run: |
+          cd brand/website
+          npm run test:accessibility
+
+      - name: Run performance tests
+        if: matrix.test-type == 'performance'
+        run: |
+          cd brand/website
+          npm run test:performance
+
+      - name: Run security tests
+        if: matrix.test-type == 'security'
+        run: |
+          cd brand/website
+          npm run test:netlify-security
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.test-type }}
+          path: |
+            brand/website/coverage/
+            brand/website/test-results/
+            brand/website/playwright-report/
+          retention-days: 30
+
+  # Build and push Docker images
+  build:
+    needs: [security-scan, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      image-api: ${{ steps.meta-api.outputs.tags }}
+      image-frontend: ${{ steps.meta-frontend.outputs.tags }}
+      image-ml: ${{ steps.meta-ml.outputs.tags }}
+      image-monitor: ${{ steps.meta-monitor.outputs.tags }}
+      image-config: ${{ steps.meta-config.outputs.tags }}
+      digest-api: ${{ steps.build-api.outputs.digest }}
+      digest-frontend: ${{ steps.build-frontend.outputs.digest }}
+      digest-ml: ${{ steps.build-ml.outputs.digest }}
+      digest-monitor: ${{ steps.build-monitor.outputs.digest }}
+      digest-config: ${{ steps.build-config.outputs.digest }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: network=host
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Backend API
+      - name: Extract metadata for API
+        id: meta-api
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_PREFIX }}-api
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push API image
+        id: build-api
+        uses: docker/build-push-action@v5
+        with:
+          context: ./deployment/docker
+          file: ./deployment/docker/Dockerfile.api
+          push: true
+          tags: ${{ steps.meta-api.outputs.tags }}
+          labels: ${{ steps.meta-api.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+
+      # Frontend Dashboard
+      - name: Extract metadata for Frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Frontend image
+        id: build-frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./deployment/docker
+          file: ./deployment/docker/Dockerfile.frontend
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+
+      # ML Recommendation Engine
+      - name: Extract metadata for ML Engine
+        id: meta-ml
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_PREFIX }}-ml
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push ML image
+        id: build-ml
+        uses: docker/build-push-action@v5
+        with:
+          context: ./deployment/docker
+          file: ./deployment/docker/Dockerfile.ml
+          push: true
+          tags: ${{ steps.meta-ml.outputs.tags }}
+          labels: ${{ steps.meta-ml.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            PYTHON_VERSION=3.11
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+
+      # Performance Monitor
+      - name: Extract metadata for Monitor
+        id: meta-monitor
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_PREFIX }}-monitor
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Monitor image
+        id: build-monitor
+        uses: docker/build-push-action@v5
+        with:
+          context: ./deployment/docker
+          file: ./deployment/docker/Dockerfile.monitor
+          push: true
+          tags: ${{ steps.meta-monitor.outputs.tags }}
+          labels: ${{ steps.meta-monitor.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+
+      # Configuration Service
+      - name: Extract metadata for Config Service
+        id: meta-config
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_PREFIX }}-config
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Config image
+        id: build-config
+        uses: docker/build-push-action@v5
+        with:
+          context: ./deployment/docker
+          file: ./deployment/docker/Dockerfile.config
+          push: true
+          tags: ${{ steps.meta-config.outputs.tags }}
+          labels: ${{ steps.meta-config.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: ./
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.spdx.json
+
+  # Deploy to staging
+  deploy-staging:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 20
+    if: github.ref == 'refs/heads/develop' || github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: ${{ env.KUBERNETES_VERSION }}
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Deploy to staging
+        run: |
+          cd deployment/k8s/overlays/staging
+
+          # Update image tags in kustomization
+          kustomize edit set image \
+            netlify-extension-api=${{ needs.build.outputs.image-api }} \
+            netlify-extension-frontend=${{ needs.build.outputs.image-frontend }} \
+            netlify-extension-ml=${{ needs.build.outputs.image-ml }} \
+            netlify-extension-monitor=${{ needs.build.outputs.image-monitor }} \
+            netlify-extension-config=${{ needs.build.outputs.image-config }}
+
+          # Apply to staging namespace
+          kubectl apply -k . --namespace=netlify-extension-staging
+
+          # Wait for deployment to be ready
+          kubectl rollout status deployment/netlify-api-staging --namespace=netlify-extension-staging --timeout=600s
+          kubectl rollout status deployment/netlify-frontend-staging --namespace=netlify-extension-staging --timeout=600s
+          kubectl rollout status deployment/netlify-ml-staging --namespace=netlify-extension-staging --timeout=600s
+          kubectl rollout status deployment/netlify-monitor-staging --namespace=netlify-extension-staging --timeout=600s
+          kubectl rollout status deployment/netlify-config-staging --namespace=netlify-extension-staging --timeout=600s
+
+      - name: Run staging health checks
+        run: |
+          ./deployment/scripts/health-check.sh staging
+
+      - name: Run staging smoke tests
+        run: |
+          cd brand/website
+          npm run test:netlify:quick -- --baseUrl=https://staging-netlify-extension.candlefish.ai
+
+  # Deploy to production with blue-green strategy
+  deploy-production:
+    needs: [build, deploy-staging]
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 30
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: ${{ env.KUBERNETES_VERSION }}
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Blue-Green Deployment
+        run: |
+          cd deployment/blue-green
+
+          # Run blue-green deployment script
+          ./blue-green-deploy.sh \
+            --api-image="${{ needs.build.outputs.image-api }}" \
+            --frontend-image="${{ needs.build.outputs.image-frontend }}" \
+            --ml-image="${{ needs.build.outputs.image-ml }}" \
+            --monitor-image="${{ needs.build.outputs.image-monitor }}" \
+            --config-image="${{ needs.build.outputs.image-config }}" \
+            --namespace="netlify-extension-production"
+
+      - name: Run production health checks
+        run: |
+          ./deployment/scripts/health-check.sh production
+
+      - name: Run production smoke tests
+        run: |
+          cd brand/website
+          npm run test:netlify:quick -- --baseUrl=https://netlify-extension.candlefish.ai
+
+      - name: Performance validation
+        run: |
+          cd brand/website
+          npm run test:performance -- --baseUrl=https://netlify-extension.candlefish.ai
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          curl -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
+            -H 'Content-type: application/json' \
+            --data '{
+              "text": "🚀 Netlify Extension Management System deployed successfully to production",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Netlify Extension Management System - Production Deployment*\n✅ Status: Success\n🏷️ Version: `${{ github.sha }}`\n🔗 URL: https://netlify-extension.candlefish.ai"
+                  }
+                }
+              ]
+            }'
+
+      - name: Notify deployment failure
+        if: failure()
+        run: |
+          curl -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
+            -H 'Content-type: application/json' \
+            --data '{
+              "text": "❌ Netlify Extension Management System deployment failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Netlify Extension Management System - Production Deployment*\n❌ Status: Failed\n🏷️ Version: `${{ github.sha }}`\n🔗 Logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                }
+              ]
+            }'
+
+  # Post-deployment validation and monitoring
+  post-deployment:
+    needs: deploy-production
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate deployment metrics
+        run: |
+          ./deployment/scripts/validate-metrics.sh production
+
+      - name: Update monitoring dashboards
+        run: |
+          ./deployment/scripts/update-dashboards.sh production
+
+      - name: Generate deployment report
+        run: |
+          ./deployment/scripts/generate-report.sh \
+            --environment=production \
+            --commit-sha="${{ github.sha }}" \
+            --images="${{ needs.build.outputs.image-api }},${{ needs.build.outputs.image-frontend }},${{ needs.build.outputs.image-ml }},${{ needs.build.outputs.image-monitor }},${{ needs.build.outputs.image-config }}"
+
+      - name: Archive deployment artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-artifacts
+          path: |
+            deployment/reports/
+            deployment/logs/
+          retention-days: 90
+
+# Workflow for emergency rollback
+  emergency-rollback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'rollback'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: ${{ env.KUBERNETES_VERSION }}
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Execute emergency rollback
+        run: |
+          ./deployment/scripts/emergency-rollback.sh production
+
+      - name: Verify rollback
+        run: |
+          ./deployment/scripts/health-check.sh production
+
+      - name: Notify rollback completion
+        run: |
+          curl -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
+            -H 'Content-type: application/json' \
+            --data '{
+              "text": "⚡ Emergency rollback completed for Netlify Extension Management System",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Emergency Rollback Completed*\n✅ Status: Success\n🔄 Action: Rollback to previous stable version\n🔗 URL: https://netlify-extension.candlefish.ai"
+                  }
+                }
+              ]
+            }'

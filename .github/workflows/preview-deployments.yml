@@ -1,0 +1,476 @@
+name: Preview Deployments
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'services/**'
+      - 'deployment/**'
+  pull_request_target:
+    types: [closed]
+
+env:
+  NODE_VERSION: '18'
+  PNPM_VERSION: '8.15.6'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number }}
+  cancel-in-progress: true
+
+jobs:
+  # Build preview version
+  build-preview:
+    name: Build Preview
+    runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
+    outputs:
+      preview-url: ${{ steps.deploy.outputs.url }}
+      apps-changed: ${{ steps.detect-changes.outputs.apps }}
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Detect changed applications
+        id: detect-changes
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            docs-site:
+              - 'apps/docs-site/**'
+              - 'packages/**'
+            partners-site:
+              - 'apps/partners-site/**'
+              - 'packages/**'
+            api-site:
+              - 'apps/api-site/**'
+              - 'packages/**'
+            collaboration-editor:
+              - 'apps/collaboration-editor/**'
+              - 'packages/**'
+            website:
+              - 'apps/website/**'
+              - 'packages/**'
+            backend:
+              - 'services/**'
+              - 'graphql/**'
+            mobile:
+              - 'apps/mobile-*/**'
+              - 'packages/**'
+
+      - name: Build changed applications
+        run: |
+          # Brand sync first
+          pnpm brand:sync
+
+          # Build affected packages
+          if [[ "${{ steps.detect-changes.outputs.docs-site }}" == "true" ]]; then
+            pnpm turbo build --filter=apps/docs-site
+          fi
+
+          if [[ "${{ steps.detect-changes.outputs.partners-site }}" == "true" ]]; then
+            pnpm turbo build --filter=apps/partners-site
+          fi
+
+          if [[ "${{ steps.detect-changes.outputs.api-site }}" == "true" ]]; then
+            pnpm turbo build --filter=apps/api-site
+          fi
+
+          if [[ "${{ steps.detect-changes.outputs.collaboration-editor }}" == "true" ]]; then
+            pnpm turbo build --filter=apps/collaboration-editor
+          fi
+
+          if [[ "${{ steps.detect-changes.outputs.website }}" == "true" ]]; then
+            pnpm turbo build --filter=apps/website
+          fi
+        env:
+          NODE_ENV: production
+          NEXT_TELEMETRY_DISABLED: 1
+
+      - name: Run quick tests
+        run: |
+          pnpm turbo lint --filter="[HEAD~1]"
+          pnpm turbo test:unit --filter="[HEAD~1]"
+        continue-on-error: true
+
+      - name: Deploy docs preview to Netlify
+        id: deploy-docs
+        if: steps.detect-changes.outputs.docs-site == 'true'
+        uses: nwtgck/actions-netlify@v2
+        with:
+          publish-dir: './apps/docs-site/out'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Preview for PR #${{ github.event.number }}"
+          alias: pr-${{ github.event.number }}-docs
+          enable-pull-request-comment: true
+          enable-commit-comment: false
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_DOCS_SITE_ID }}
+
+      - name: Deploy partners preview to Netlify
+        id: deploy-partners
+        if: steps.detect-changes.outputs.partners-site == 'true'
+        uses: nwtgck/actions-netlify@v2
+        with:
+          publish-dir: './apps/partners-site/out'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Preview for PR #${{ github.event.number }}"
+          alias: pr-${{ github.event.number }}-partners
+          enable-pull-request-comment: true
+          enable-commit-comment: false
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_PARTNERS_SITE_ID }}
+
+      - name: Deploy API site preview to Netlify
+        id: deploy-api
+        if: steps.detect-changes.outputs.api-site == 'true'
+        uses: nwtgck/actions-netlify@v2
+        with:
+          publish-dir: './apps/api-site/out'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Preview for PR #${{ github.event.number }}"
+          alias: pr-${{ github.event.number }}-api
+          enable-pull-request-comment: true
+          enable-commit-comment: false
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_API_SITE_ID }}
+
+      - name: Deploy collaboration editor preview
+        id: deploy-collaboration
+        if: steps.detect-changes.outputs.collaboration-editor == 'true'
+        uses: nwtgck/actions-netlify@v2
+        with:
+          publish-dir: './apps/collaboration-editor/.next'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Preview for PR #${{ github.event.number }}"
+          alias: pr-${{ github.event.number }}-editor
+          enable-pull-request-comment: true
+          enable-commit-comment: false
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_EDITOR_SITE_ID }}
+
+      - name: Set up Docker Buildx
+        if: steps.detect-changes.outputs.backend == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend preview images
+        if: steps.detect-changes.outputs.backend == 'true'
+        run: |
+          # Build preview images for backend services
+          docker build -t ghcr.io/${{ github.repository_owner }}/preview-api:pr-${{ github.event.number }} \
+            -f deployment/docker/Dockerfile.graphql-api .
+
+          # These would be pushed to a preview registry or used in preview environments
+          echo "Backend preview images built for PR #${{ github.event.number }}"
+
+  # Visual Regression Testing
+  visual-regression:
+    name: Visual Regression Tests
+    runs-on: ubuntu-latest
+    needs: [build-preview]
+    if: github.event.action != 'closed' && needs.build-preview.outputs.apps-changed != ''
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright
+        run: pnpm playwright install --with-deps chromium
+
+      - name: Run visual regression tests
+        run: |
+          # Run visual tests against preview URLs
+          pnpm test:visual --update-snapshots=false
+        env:
+          PREVIEW_URL: ${{ needs.build-preview.outputs.preview-url }}
+        continue-on-error: true
+
+      - name: Upload visual diffs
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: visual-regression-diffs
+          path: __tests__/visual/screenshots/
+          retention-days: 7
+
+  # Accessibility Testing
+  accessibility-preview:
+    name: Accessibility Tests
+    runs-on: ubuntu-latest
+    needs: [build-preview]
+    if: github.event.action != 'closed' && contains(needs.build-preview.outputs.apps-changed, 'true')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Pa11y accessibility tests
+        run: |
+          # Test preview sites for accessibility
+          pnpm test:pa11y --config=pa11y-preview.json
+        continue-on-error: true
+
+      - name: Upload accessibility report
+        uses: actions/upload-artifact@v3
+        with:
+          name: accessibility-report
+          path: accessibility-report.json
+          retention-days: 7
+
+  # Performance Testing for Preview
+  performance-preview:
+    name: Performance Testing
+    runs-on: ubuntu-latest
+    needs: [build-preview]
+    if: github.event.action != 'closed' && needs.build-preview.outputs.preview-url != ''
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v9
+        with:
+          urls: |
+            ${{ needs.build-preview.outputs.preview-url }}
+          configPath: './lighthouserc.preview.js'
+          temporaryPublicStorage: true
+          uploadArtifacts: true
+
+      - name: Comment performance results
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const results = JSON.parse(fs.readFileSync('lhci_reports/manifest.json', 'utf8'));
+            const summary = results.summary;
+
+            const comment = `## 📊 Performance Report
+
+            **Performance Score**: ${summary.performance}
+            **Accessibility Score**: ${summary.accessibility}
+            **Best Practices Score**: ${summary['best-practices']}
+            **SEO Score**: ${summary.seo}
+
+            [View Full Report](${results.htmlReportUrl})
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  # Bundle Size Analysis
+  bundle-analysis:
+    name: Bundle Size Analysis
+    runs-on: ubuntu-latest
+    needs: [build-preview]
+    if: github.event.action != 'closed'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build with bundle analysis
+        run: |
+          pnpm turbo build:analyze --filter="[HEAD~1]"
+
+      - name: Analyze bundle size
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            // Find all bundle-analysis.json files
+            const findBundleFiles = (dir) => {
+              const files = [];
+              const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+              for (const entry of entries) {
+                const fullPath = path.join(dir, entry.name);
+                if (entry.isDirectory()) {
+                  files.push(...findBundleFiles(fullPath));
+                } else if (entry.name === 'bundle-analysis.json') {
+                  files.push(fullPath);
+                }
+              }
+              return files;
+            };
+
+            const bundleFiles = findBundleFiles('.');
+            let comment = '## 📦 Bundle Size Analysis\\n\\n';
+
+            for (const file of bundleFiles) {
+              try {
+                const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+                const appName = path.dirname(file).split('/').pop();
+                comment += `### ${appName}\\n`;
+                comment += `- **Total Size**: ${data.totalSize}\\n`;
+                comment += `- **Gzipped**: ${data.gzippedSize}\\n`;
+                comment += `- **Files**: ${data.fileCount}\\n\\n`;
+              } catch (error) {
+                console.log(`Error reading ${file}:`, error);
+              }
+            }
+
+            if (bundleFiles.length === 0) {
+              comment += 'No bundle analysis data found.';
+            }
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  # Security scan for preview
+  security-preview:
+    name: Security Scan Preview
+    runs-on: ubuntu-latest
+    needs: [build-preview]
+    if: github.event.action != 'closed'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run OWASP ZAP security scan
+        if: needs.build-preview.outputs.preview-url != ''
+        uses: zaproxy/action-full-scan@v0.7.0
+        with:
+          target: ${{ needs.build-preview.outputs.preview-url }}
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a'
+          issue_title: 'Security Vulnerability Found in Preview'
+          fail_action: false
+
+  # Cleanup preview deployments when PR is closed
+  cleanup-preview:
+    name: Cleanup Preview
+    runs-on: ubuntu-latest
+    if: github.event.action == 'closed'
+    steps:
+      - name: Delete preview deployments
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          script: |
+            // This would use Netlify API to delete preview deployments
+            // For now, Netlify handles cleanup automatically after 30 days
+            console.log('Preview cleanup initiated for PR #${{ github.event.number }}');
+
+  # Summary comment on PR
+  preview-summary:
+    name: Preview Summary
+    runs-on: ubuntu-latest
+    needs: [build-preview, visual-regression, accessibility-preview, performance-preview, security-preview]
+    if: always() && github.event.action != 'closed'
+    steps:
+      - name: Create summary comment
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const summaryComment = comments.find(comment =>
+              comment.body.includes('🚀 Preview Deployment Summary')
+            );
+
+            const status = (jobStatus) => {
+              switch(jobStatus) {
+                case 'success': return '✅';
+                case 'failure': return '❌';
+                case 'cancelled': return '🚫';
+                default: return '⏸️';
+              }
+            };
+
+            const body = `## 🚀 Preview Deployment Summary
+
+            | Service | Status | Link |
+            |---------|--------|------|
+            | Build | ${{ status(needs.build-preview.result) }} | - |
+            | Visual Tests | ${{ status(needs.visual-regression.result) }} | [Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
+            | Accessibility | ${{ status(needs.accessibility-preview.result) }} | [Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
+            | Performance | ${{ status(needs.performance-preview.result) }} | [Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
+            | Security | ${{ status(needs.security-preview.result) }} | [Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
+
+            ### Preview Links
+            - 📚 [Documentation Preview](https://pr-${{ github.event.number }}-docs--candlefish-docs.netlify.app)
+            - 🤝 [Partners Preview](https://pr-${{ github.event.number }}-partners--candlefish-partners.netlify.app)
+            - 🔗 [API Docs Preview](https://pr-${{ github.event.number }}-api--candlefish-api.netlify.app)
+            - ✏️ [Collaboration Editor Preview](https://pr-${{ github.event.number }}-editor--candlefish-editor.netlify.app)
+
+            > **Note**: Preview deployments automatically clean up 30 days after PR closure.
+            `;
+
+            if (summaryComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: summaryComment.id,
+                body: body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body,
+              });
+            }

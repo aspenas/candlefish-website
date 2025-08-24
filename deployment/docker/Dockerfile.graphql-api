@@ -1,67 +1,89 @@
-# Multi-stage build for GraphQL API service
-FROM node:20-alpine AS base
-WORKDIR /app
-RUN apk add --no-cache libc6-compat
-RUN npm install -g pnpm
+# Optimized GraphQL API service with security hardening
+# Build argument for cache busting
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION=latest
 
-# Dependencies stage
+# Use security-hardened base image
+FROM candlefish/base:latest AS base
+
+# Dependencies stage - install and cache dependencies separately
 FROM base AS deps
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/shared/package.json ./packages/shared/
 COPY graphql/package.json ./graphql/
-RUN pnpm install --frozen-lockfile --prod=false
 
-# Build stage
-FROM base AS builder
-COPY . .
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/graphql/node_modules ./graphql/node_modules
+# Install all dependencies (including dev dependencies for build)
+RUN --mount=type=cache,target=/tmp/.npm \
+    --mount=type=cache,target=/app/.pnpm-store \
+    PNPM_STORE_DIR=/app/.pnpm-store pnpm install --frozen-lockfile
 
-# Build GraphQL schema and resolvers
-RUN pnpm build:graphql
-RUN pnpm prune --prod
+# Build stage - compile TypeScript and generate GraphQL artifacts
+FROM deps AS builder
 
-# Runtime stage
-FROM node:20-alpine AS runtime
+# Copy source code
+COPY packages/ ./packages/
+COPY graphql/ ./graphql/
+COPY tsconfig.json ./
+COPY turbo.json ./
 
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 graphql
+# Build the GraphQL service and shared packages
+RUN pnpm turbo build --filter=graphql
 
-WORKDIR /app
+# Prune to production dependencies only
+RUN --mount=type=cache,target=/tmp/.npm \
+    --mount=type=cache,target=/app/.pnpm-store \
+    PNPM_STORE_DIR=/app/.pnpm-store pnpm prune --prod --config.ignore-scripts=true
 
-# Install production dependencies
-RUN apk add --no-cache \
-    ca-certificates \
-    dumb-init \
-    && rm -rf /var/cache/apk/*
+# Production runtime stage
+FROM base AS runtime
 
-# Copy built application
-COPY --from=builder --chown=graphql:nodejs /app/graphql/dist ./dist
-COPY --from=builder --chown=graphql:nodejs /app/graphql/package.json ./
-COPY --from=builder --chown=graphql:nodejs /app/node_modules ./node_modules
+# Labels for image metadata
+LABEL org.opencontainers.image.title="Candlefish GraphQL API" \
+      org.opencontainers.image.description="GraphQL Federation API for Candlefish AI Platform" \
+      org.opencontainers.image.source="https://github.com/candlefish-ai/platform" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.vendor="Candlefish AI" \
+      org.opencontainers.image.licenses="MIT"
 
-# Copy GraphQL schema files
-COPY --from=builder --chown=graphql:nodejs /app/graphql/schema ./schema
+# Copy built application with proper ownership
+COPY --from=builder --chown=nodejs:nodejs /app/graphql/dist ./graphql/dist
+COPY --from=builder --chown=nodejs:nodejs /app/graphql/package.json ./graphql/
+COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nodejs:nodejs /app/packages/shared/dist ./packages/shared/dist
 
-# Health check script
-COPY --chown=graphql:nodejs deployment/docker/healthcheck-graphql.js ./healthcheck.js
+# Copy GraphQL schema files and configuration
+COPY --from=builder --chown=nodejs:nodejs /app/graphql/schema ./graphql/schema
+COPY --from=builder --chown=nodejs:nodejs /app/graphql/src/config ./graphql/config
 
-# Set permissions
-RUN chown -R graphql:nodejs /app
-RUN chmod +x /app/healthcheck.js
+# Copy optimized health check script
+COPY --chown=nodejs:nodejs deployment/docker/scripts/health-check-graphql.js ./health-check.js
+RUN chmod +x ./health-check.js
 
-USER graphql
+# Switch to non-root user
+USER nodejs
 
 # Environment variables
-ENV NODE_ENV=production
-ENV PORT=4000
-ENV NODE_OPTIONS="--max-old-space-size=1024"
+ENV SERVICE_NAME="graphql-api" \
+    PORT=4000 \
+    NODE_ENV=production \
+    NODE_OPTIONS="--max-old-space-size=1024 --enable-source-maps" \
+    LOG_LEVEL=info \
+    GRAPHQL_INTROSPECTION=false \
+    GRAPHQL_PLAYGROUND=false \
+    HTTP_HEALTH_CHECK=true
 
+# Expose port
 EXPOSE 4000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-    CMD node /app/healthcheck.js
+# Custom health check for GraphQL
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD node ./health-check.js
 
-# Use dumb-init to handle signals properly
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/index.js"]
+# Set working directory to GraphQL service
+WORKDIR /app/graphql
+
+# Start the application
+CMD ["node", "dist/server.js"]

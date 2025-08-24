@@ -1,0 +1,334 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: candlefish-ai-production
+  labels:
+    app.kubernetes.io/name: candlefish-ai
+    app.kubernetes.io/part-of: candlefish-platform
+    app.kubernetes.io/instance: production
+    environment: production
+
+# Base resources for production deployment
+resources:
+  - ../base/namespace.yaml
+  - ../base/configmap.yaml
+  - ../base/secrets.yaml
+  - ../base/storage.yaml
+  - ../base/database.yaml
+  - ../base/cache.yaml
+  - ../base/graphql-api.yaml
+  - ../base/websocket-service.yaml
+  - ../base/document-service.yaml
+  - ../base/collaboration-editor.yaml
+  - ../base/ingress.yaml
+  - ../base/monitoring.yaml
+  - hpa.yaml
+  - network-policies.yaml
+  - pod-security-policy.yaml
+  - service-monitor.yaml
+
+# Production-specific namespace
+namespace: candlefish-production
+
+# Production prefix for resources
+namePrefix: prod-
+
+# Common labels for production
+commonLabels:
+  app.kubernetes.io/name: candlefish-ai
+  app.kubernetes.io/part-of: candlefish-platform
+  app.kubernetes.io/instance: production
+  app.kubernetes.io/managed-by: kustomize
+  environment: production
+  tier: production
+
+# Common annotations
+commonAnnotations:
+  config.kubernetes.io/local-config: "false"
+  deployment.kubernetes.io/revision: "1"
+
+# Production image tags
+images:
+  - name: candlefish/base
+    newTag: "1.0.0"
+  - name: candlefish/graphql-api
+    newTag: "1.0.0"
+  - name: candlefish/websocket-service
+    newTag: "1.0.0"
+  - name: candlefish/document-service
+    newTag: "1.0.0"
+  - name: candlefish/collaboration-editor
+    newTag: "1.0.0"
+  - name: postgres
+    newTag: "15.4-alpine"
+  - name: redis
+    newTag: "7.2-alpine"
+
+# Production configuration generators
+configMapGenerator:
+  - name: app-config
+    literals:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+      - GRAPHQL_INTROSPECTION=false
+      - GRAPHQL_PLAYGROUND=false
+      - CORS_ORIGINS=https://app.candlefish.ai,https://api.candlefish.ai,https://docs.candlefish.ai
+      - RATE_LIMIT_WINDOW_MS=60000
+      - RATE_LIMIT_MAX_REQUESTS=1000
+      - SESSION_TIMEOUT=3600
+      - MAX_CONCURRENT_CONNECTIONS=10000
+      - METRICS_ENABLED=true
+      - TRACING_ENABLED=true
+      - BUILD_VERSION=1.0.0
+      - BUILD_DATE=2025-08-24T00:00:00Z
+      - BUILD_REVISION=${GITHUB_SHA}
+
+  - name: database-config
+    literals:
+      - DB_NAME=candlefish_production
+      - DB_HOST=prod-postgres-service
+      - DB_PORT="5432"
+      - DB_SSL_MODE=require
+      - DB_POOL_MIN=10
+      - DB_POOL_MAX=100
+      - DB_CONNECTION_TIMEOUT=30000
+      - DB_IDLE_TIMEOUT=10000
+
+  - name: cache-config
+    literals:
+      - REDIS_HOST=prod-redis-service
+      - REDIS_PORT="6379"
+      - REDIS_DB=0
+      - REDIS_KEY_PREFIX=candlefish:prod:
+      - REDIS_POOL_MIN=10
+      - REDIS_POOL_MAX=50
+      - CACHE_TTL_DEFAULT=3600
+      - CACHE_TTL_SESSIONS=86400
+
+  - name: monitoring-config
+    literals:
+      - PROMETHEUS_METRICS_PATH=/metrics
+      - PROMETHEUS_METRICS_PORT="9090"
+      - HEALTH_CHECK_INTERVAL=30
+      - METRICS_COLLECTION_INTERVAL=15
+      - LOG_FORMAT=json
+      - SENTRY_ENVIRONMENT=production
+      - SENTRY_SAMPLE_RATE=0.1
+
+# Production-specific patches
+patches:
+  # Increase replica counts for production
+  - target:
+      kind: Deployment
+      name: graphql-api
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+
+  - target:
+      kind: Deployment
+      name: websocket-service
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+
+  - target:
+      kind: Deployment
+      name: document-service
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+
+  - target:
+      kind: Deployment
+      name: collaboration-editor
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+
+  # Production resource limits
+  - target:
+      kind: Deployment
+      name: graphql-api
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+            ephemeral-storage: "1Gi"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+            ephemeral-storage: "2Gi"
+
+  - target:
+      kind: Deployment
+      name: websocket-service
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+            ephemeral-storage: "1Gi"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+            ephemeral-storage: "2Gi"
+
+  - target:
+      kind: Deployment
+      name: document-service
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            memory: "768Mi"
+            cpu: "300m"
+            ephemeral-storage: "2Gi"
+          limits:
+            memory: "1.5Gi"
+            cpu: "1500m"
+            ephemeral-storage: "4Gi"
+
+  # Production database configuration
+  - target:
+      kind: StatefulSet
+      name: postgres
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+            ephemeral-storage: "10Gi"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+            ephemeral-storage: "20Gi"
+
+  # Production Redis configuration
+  - target:
+      kind: StatefulSet
+      name: redis
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+            ephemeral-storage: "1Gi"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+            ephemeral-storage: "2Gi"
+
+  # Production security context
+  - target:
+      kind: Deployment
+    patch: |-
+      - op: add
+        path: /spec/template/spec/securityContext
+        value:
+          runAsNonRoot: true
+          runAsUser: 1001
+          runAsGroup: 1001
+          fsGroup: 1001
+          seccompProfile:
+            type: RuntimeDefault
+
+  # Production rolling update strategy
+  - target:
+      kind: Deployment
+    patch: |-
+      - op: add
+        path: /spec/strategy
+        value:
+          type: RollingUpdate
+          rollingUpdate:
+            maxSurge: 1
+            maxUnavailable: 0
+
+  # Production readiness and liveness probes
+  - target:
+      kind: Deployment
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/readinessProbe
+        value:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+      - op: add
+        path: /spec/template/spec/containers/0/livenessProbe
+        value:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+
+# Replacements for dynamic configuration
+replacements:
+  - source:
+      kind: ConfigMap
+      name: app-config
+      fieldPath: data.BUILD_VERSION
+    targets:
+      - select:
+          kind: Deployment
+        fieldPaths:
+          - spec.template.spec.containers.[name=api].env.[name=BUILD_VERSION].value
+
+  - source:
+      kind: ConfigMap
+      name: app-config
+      fieldPath: data.LOG_LEVEL
+    targets:
+      - select:
+          kind: Deployment
+        fieldPaths:
+          - spec.template.spec.containers.*.env.[name=LOG_LEVEL].value
+
+# Production validation rules
+validators:
+  - kind: Deployment
+    schema:
+      properties:
+        spec:
+          properties:
+            replicas:
+              minimum: 2
+              maximum: 10
+            template:
+              properties:
+                spec:
+                  properties:
+                    containers:
+                      items:
+                        properties:
+                          resources:
+                            required: ["requests", "limits"]
+                          readinessProbe:
+                            required: true
+                          livenessProbe:
+                            required: true

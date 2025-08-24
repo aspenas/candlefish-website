@@ -1,0 +1,75 @@
+# Netlify configuration for Candlefish AI API Documentation Site
+[build]
+  base = "apps/api-site"
+  publish = "out"
+  command = "cd ../.. && pnpm brand:sync && pnpm turbo build --filter=apps/api-site"
+
+  [build.environment]
+    NODE_VERSION = "18.17.0"
+    PNPM_VERSION = "8.15.6"
+    NODE_ENV = "production"
+    NEXT_TELEMETRY_DISABLED = "1"
+    GENERATE_SOURCEMAP = "false"
+    NODE_OPTIONS = "--max-old-space-size=4096"
+
+# Production deployment
+[context.production]
+  [context.production.environment]
+    NEXT_PUBLIC_API_URL = "https://api.candlefish.ai"
+    NEXT_PUBLIC_DOCS_URL = "https://docs.candlefish.ai"
+    NEXT_PUBLIC_PARTNERS_URL = "https://partners.candlefish.ai"
+    NEXT_PUBLIC_ENVIRONMENT = "production"
+    NEXT_PUBLIC_SENTRY_DSN = "$SENTRY_DSN"
+
+# Staging deployment
+[context.deploy-preview]
+  [context.deploy-preview.environment]
+    NEXT_PUBLIC_API_URL = "https://api-staging.candlefish.ai"
+    NEXT_PUBLIC_ENVIRONMENT = "staging"
+
+# Security headers optimized for API documentation
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+    Content-Security-Policy = '''
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.candlefish.ai;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      font-src 'self' https://fonts.gstatic.com data:;
+      img-src 'self' https://*.candlefish.ai data: https:;
+      connect-src 'self' https://*.candlefish.ai https://api.candlefish.ai;
+      frame-src 'self' https://*.candlefish.ai;
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self';
+      upgrade-insecure-requests;
+    '''
+
+# Cache optimization
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# API endpoints CORS
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "https://*.candlefish.ai"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
+
+# SPA routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Plugins
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

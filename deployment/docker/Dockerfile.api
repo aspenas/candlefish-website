@@ -1,0 +1,95 @@
+# Multi-stage Docker build for Netlify Extension Management API
+# Optimized for production deployment with security best practices
+
+# Build stage
+FROM node:18-alpine AS builder
+
+# Build arguments
+ARG NODE_VERSION=18
+ARG BUILD_DATE
+ARG VCS_REF
+
+# Add build metadata
+LABEL build.date=$BUILD_DATE \
+      build.vcs-ref=$VCS_REF \
+      build.version="1.0.0"
+
+# Security: Create non-root user
+RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files for dependency installation
+COPY backend/netlify-api/package*.json ./
+COPY backend/netlify-api/tsconfig.json ./
+
+# Install dependencies with security optimizations
+RUN npm ci --only=production --no-audit --ignore-scripts && \
+    npm cache clean --force
+
+# Copy source code
+COPY backend/netlify-api/src ./src
+COPY backend/netlify-api/prisma ./prisma
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Build TypeScript application
+RUN npm run build
+
+# Production stage
+FROM node:18-alpine AS production
+
+# Security updates and runtime dependencies
+RUN apk upgrade --no-cache && \
+    apk add --no-cache \
+    curl \
+    ca-certificates \
+    tzdata && \
+    rm -rf /var/cache/apk/*
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
+
+# Set working directory
+WORKDIR /app
+
+# Copy built application from builder stage
+COPY --from=builder --chown=nextjs:nodejs /app/dist ./dist
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+
+# Create logs directory
+RUN mkdir -p /app/logs && chown nextjs:nodejs /app/logs
+
+# Switch to non-root user
+USER nextjs
+
+# Environment variables
+ENV NODE_ENV=production \
+    PORT=3001 \
+    LOG_LEVEL=info \
+    HEALTH_CHECK_INTERVAL=30000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:3001/health || exit 1
+
+# Expose port
+EXPOSE 3001
+
+# Start application
+CMD ["node", "dist/index.js"]
+
+# Security metadata
+LABEL org.opencontainers.image.title="Netlify Extension Management API" \
+      org.opencontainers.image.description="RESTful API for Netlify site management and extension orchestration" \
+      org.opencontainers.image.version="1.0.0" \
+      org.opencontainers.image.vendor="Candlefish Enterprise" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.source="https://github.com/candlefish-enterprise/candlefish-ai" \
+      org.opencontainers.image.documentation="https://docs.candlefish.ai/netlify-extension" \
+      org.opencontainers.image.created=$BUILD_DATE \
+      org.opencontainers.image.revision=$VCS_REF

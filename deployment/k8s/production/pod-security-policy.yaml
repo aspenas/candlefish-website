@@ -1,0 +1,174 @@
+---
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: candlefish-restricted
+  annotations:
+    seccomp.security.alpha.kubernetes.io/allowedProfileNames: 'runtime/default'
+    apparmor.security.beta.kubernetes.io/allowedProfileNames: 'runtime/default'
+    seccomp.security.alpha.kubernetes.io/defaultProfileName: 'runtime/default'
+    apparmor.security.beta.kubernetes.io/defaultProfileName: 'runtime/default'
+spec:
+  privileged: false
+  allowPrivilegeEscalation: false
+  requiredDropCapabilities:
+    - ALL
+  volumes:
+    - 'configMap'
+    - 'emptyDir'
+    - 'projected'
+    - 'secret'
+    - 'downwardAPI'
+    - 'persistentVolumeClaim'
+  hostNetwork: false
+  hostIPC: false
+  hostPID: false
+  runAsUser:
+    rule: 'MustRunAsNonRoot'
+  supplementalGroups:
+    rule: 'MustRunAs'
+    ranges:
+      - min: 1
+        max: 65535
+  fsGroup:
+    rule: 'MustRunAs'
+    ranges:
+      - min: 1
+        max: 65535
+  readOnlyRootFilesystem: false
+  seLinux:
+    rule: RunAsAny
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: candlefish-psp-use
+rules:
+  - apiGroups: ['policy']
+    resources: ['podsecuritypolicies']
+    verbs: ['use']
+    resourceNames:
+      - candlefish-restricted
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: candlefish-psp-all-serviceaccounts
+roleRef:
+  kind: ClusterRole
+  name: candlefish-psp-use
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: Group
+    name: system:serviceaccounts
+    apiGroup: rbac.authorization.k8s.io
+
+---
+# Pod Security Standards for Kubernetes 1.25+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: candlefish-production
+  labels:
+    name: candlefish-production
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+
+---
+# Service account for GraphQL API
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: graphql-api-sa
+  labels:
+    app.kubernetes.io/name: graphql-api
+    app.kubernetes.io/component: api
+automountServiceAccountToken: false
+
+---
+# Service account for WebSocket service
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: websocket-service-sa
+  labels:
+    app.kubernetes.io/name: websocket-service
+    app.kubernetes.io/component: websocket
+automountServiceAccountToken: false
+
+---
+# Service account for document service
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: document-service-sa
+  labels:
+    app.kubernetes.io/name: document-service
+    app.kubernetes.io/component: document
+automountServiceAccountToken: false
+
+---
+# Service account for collaboration editor
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: collaboration-editor-sa
+  labels:
+    app.kubernetes.io/name: collaboration-editor
+    app.kubernetes.io/component: frontend
+automountServiceAccountToken: false
+
+---
+# Resource quota for production namespace
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: production-resource-quota
+spec:
+  hard:
+    requests.cpu: "20"
+    requests.memory: 40Gi
+    requests.storage: 100Gi
+    limits.cpu: "50"
+    limits.memory: 100Gi
+    persistentvolumeclaims: "20"
+    pods: "50"
+    services: "20"
+    secrets: "30"
+    configmaps: "30"
+
+---
+# Limit range for production pods
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: production-limit-range
+spec:
+  limits:
+    - default:
+        cpu: "1000m"
+        memory: "1Gi"
+        ephemeral-storage: "2Gi"
+      defaultRequest:
+        cpu: "100m"
+        memory: "128Mi"
+        ephemeral-storage: "512Mi"
+      max:
+        cpu: "4000m"
+        memory: "8Gi"
+        ephemeral-storage: "10Gi"
+      min:
+        cpu: "50m"
+        memory: "64Mi"
+        ephemeral-storage: "256Mi"
+      type: Container
+    - default:
+        storage: "10Gi"
+      max:
+        storage: "100Gi"
+      min:
+        storage: "1Gi"
+      type: PersistentVolumeClaim

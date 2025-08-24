@@ -1,0 +1,366 @@
+---
+# Default deny all ingress traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+
+---
+# Default deny all egress traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-egress
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+
+---
+# Allow GraphQL API ingress from ingress controller and internal services
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: graphql-api-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: graphql-api
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 4000
+    # Allow from WebSocket service
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: websocket-service
+      ports:
+        - protocol: TCP
+          port: 4000
+    # Allow from document service
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: document-service
+      ports:
+        - protocol: TCP
+          port: 4000
+    # Allow from collaboration editor
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: collaboration-editor
+      ports:
+        - protocol: TCP
+          port: 4000
+
+---
+# Allow GraphQL API egress to database and cache
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: graphql-api-egress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: graphql-api
+  policyTypes:
+    - Egress
+  egress:
+    # Allow to PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Allow to Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Allow DNS
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow HTTPS to external services
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+
+---
+# Allow WebSocket service ingress from ingress controller
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: websocket-service-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: websocket-service
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 4001
+
+---
+# Allow WebSocket service egress to cache and API
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: websocket-service-egress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: websocket-service
+  policyTypes:
+    - Egress
+  egress:
+    # Allow to Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Allow to GraphQL API
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: graphql-api
+      ports:
+        - protocol: TCP
+          port: 4000
+    # Allow DNS
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+
+---
+# Allow document service ingress from API and WebSocket
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: document-service-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: document-service
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow from GraphQL API
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: graphql-api
+      ports:
+        - protocol: TCP
+          port: 4003
+    # Allow from WebSocket service
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: websocket-service
+      ports:
+        - protocol: TCP
+          port: 4003
+
+---
+# Allow document service egress to database, cache, and storage
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: document-service-egress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: document-service
+  policyTypes:
+    - Egress
+  egress:
+    # Allow to PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Allow to Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Allow DNS
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow HTTPS to AWS S3
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+
+---
+# Allow collaboration editor ingress from ingress controller
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: collaboration-editor-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: collaboration-editor
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 3000
+
+---
+# Allow collaboration editor egress to API and WebSocket
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: collaboration-editor-egress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: collaboration-editor
+  policyTypes:
+    - Egress
+  egress:
+    # Allow to GraphQL API
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: graphql-api
+      ports:
+        - protocol: TCP
+          port: 4000
+    # Allow to WebSocket service
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: websocket-service
+      ports:
+        - protocol: TCP
+          port: 4001
+    # Allow DNS
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+
+---
+# Allow database ingress from application services only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: graphql-api
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: document-service
+      ports:
+        - protocol: TCP
+          port: 5432
+
+---
+# Allow cache ingress from application services only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: graphql-api
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: websocket-service
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: document-service
+      ports:
+        - protocol: TCP
+          port: 6379
+
+---
+# Allow monitoring ingress from Prometheus
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: monitoring-ingress
+spec:
+  podSelector:
+    matchLabels:
+      prometheus.io/scrape: "true"
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: 9090

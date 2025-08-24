@@ -1,5 +1,5 @@
-# Prometheus Alert Rules for Candlefish AI
-# Focused on critical issues and cost optimization
+# Comprehensive Alert Rules for Candlefish AI Platform
+# Production-ready alerts with proper thresholds and runbooks
 
 groups:
   # Infrastructure Health Alerts

@@ -1,0 +1,69 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: netlify-api-pdb
+  labels:
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/component: api
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: netlify-extension
+      app.kubernetes.io/component: api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: netlify-frontend-pdb
+  labels:
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/component: frontend
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: netlify-extension
+      app.kubernetes.io/component: frontend
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: netlify-ml-pdb
+  labels:
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/component: ml
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: netlify-extension
+      app.kubernetes.io/component: ml
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: netlify-monitor-pdb
+  labels:
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/component: monitor
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: netlify-extension
+      app.kubernetes.io/component: monitor
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: netlify-config-pdb
+  labels:
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/component: config
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: netlify-extension
+      app.kubernetes.io/component: config
