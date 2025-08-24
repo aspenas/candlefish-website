@@ -1,877 +1,832 @@
-import { ApolloServer } from '@apollo/server';
-import { buildSubgraphSchema } from '@apollo/federation';
-import gql from 'graphql-tag';
+// GraphQL resolver tests for inventory management
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
-import { createTestClient } from 'apollo-server-testing';
+import DataLoader from 'dataloader';
 
-// Mock the inventory service
-const mockInventoryService = {
-  findById: jest.fn(),
-  findAll: jest.fn(),
-  create: jest.fn(),
-  update: jest.fn(),
-  delete: jest.fn(),
-  search: jest.fn(),
-  getAnalytics: jest.fn(),
-  getLowStock: jest.fn(),
-};
-
-// Mock context
-const mockContext = {
+// Mock GraphQL context
+interface MockContext {
   dataSources: {
-    inventoryService: mockInventoryService,
+    inventoryAPI: any;
+  };
+  loaders: {
+    itemsByRoomLoader: DataLoader<string, any[]>;
+    imagesLoader: DataLoader<string, any[]>;
+    activitiesLoader: DataLoader<string, any[]>;
+  };
+  user?: {
+    id: string;
+    role: string;
+  };
+}
+
+// Sample test data matching the Go models
+const sampleRooms = [
+  {
+    id: '550e8400-e29b-41d4-a716-446655440001',
+    name: 'Living Room',
+    floor: 'Main Floor',
+    square_footage: 400,
+    description: 'Main living area with fireplace',
+    created_at: new Date('2024-01-01T10:00:00Z'),
+    updated_at: new Date('2024-01-01T10:00:00Z'),
+    item_count: 15,
+    total_value: 45000
   },
-  user: {
-    id: 'user-1',
-    email: 'test@example.com',
-    role: 'admin',
+  {
+    id: '550e8400-e29b-41d4-a716-446655440002',
+    name: 'Master Bedroom',
+    floor: 'Upper Floor',
+    square_footage: 350,
+    description: 'Primary bedroom suite',
+    created_at: new Date('2024-01-01T10:00:00Z'),
+    updated_at: new Date('2024-01-01T10:00:00Z'),
+    item_count: 12,
+    total_value: 35000
+  }
+];
+
+const sampleItems = [
+  {
+    id: '550e8400-e29b-41d4-a716-446655440003',
+    room_id: '550e8400-e29b-41d4-a716-446655440001',
+    name: 'West Elm Sectional Sofa',
+    description: 'Beautiful brown leather sectional with chaise',
+    category: 'Furniture',
+    decision: 'Keep',
+    purchase_price: 3500.00,
+    designer_invoice_price: 4200.00,
+    asking_price: 2800.00,
+    quantity: 1,
+    is_fixture: false,
+    source: 'West Elm',
+    invoice_ref: 'WE-2023-001',
+    condition: 'Excellent',
+    purchase_date: new Date('2023-01-15'),
+    created_at: new Date('2024-01-01T10:00:00Z'),
+    updated_at: new Date('2024-01-01T10:00:00Z')
   },
-};
-
-// GraphQL type definitions
-const typeDefs = gql`
-  type InventoryItem @key(fields: "id") {
-    id: ID!
-    name: String!
-    description: String
-    category: String!
-    sku: String!
-    barcode: String
-    quantity: Int!
-    minQuantity: Int!
-    maxQuantity: Int
-    unitPrice: Float!
-    totalValue: Float!
-    location: String!
-    supplier: String
-    imageUri: String
-    tags: String
-    isActive: Boolean!
-    dateAdded: String!
-    lastUpdated: String!
-    syncStatus: String!
-    version: Int!
+  {
+    id: '550e8400-e29b-41d4-a716-446655440004',
+    room_id: '550e8400-e29b-41d4-a716-446655440001',
+    name: 'Moroccan Area Rug',
+    description: '8x10 hand-knotted wool rug',
+    category: 'Rug / Carpet',
+    decision: 'Sell',
+    purchase_price: 2200.00,
+    asking_price: 1800.00,
+    quantity: 1,
+    is_fixture: false,
+    source: 'Pottery Barn',
+    condition: 'Good',
+    purchase_date: new Date('2023-03-20'),
+    created_at: new Date('2024-01-01T10:00:00Z'),
+    updated_at: new Date('2024-01-01T10:00:00Z')
   }
+];
 
-  input InventoryItemInput {
-    name: String!
-    description: String
-    category: String!
-    sku: String!
-    barcode: String
-    quantity: Int!
-    minQuantity: Int!
-    maxQuantity: Int
-    unitPrice: Float!
-    location: String!
-    supplier: String
-    imageUri: String
-    tags: String
-  }
-
-  input InventoryItemUpdateInput {
-    name: String
-    description: String
-    category: String
-    sku: String
-    barcode: String
-    quantity: Int
-    minQuantity: Int
-    maxQuantity: Int
-    unitPrice: Float
-    location: String
-    supplier: String
-    imageUri: String
-    tags: String
-  }
-
-  type InventoryAnalytics {
-    totalItems: Int!
-    totalValue: Float!
-    categories: [CategoryAnalytics!]!
-    lowStockItems: Int!
-    topValueItems: [InventoryItem!]!
-  }
-
-  type CategoryAnalytics {
-    category: String!
-    itemCount: Int!
-    totalValue: Float!
-    averageValue: Float!
-  }
-
-  type SearchResult {
-    items: [InventoryItem!]!
-    total: Int!
-    hasNextPage: Boolean!
-  }
-
-  type Mutation {
-    createInventoryItem(input: InventoryItemInput!): InventoryItem!
-    updateInventoryItem(id: ID!, input: InventoryItemUpdateInput!): InventoryItem!
-    deleteInventoryItem(id: ID!): Boolean!
-    updateInventoryQuantity(id: ID!, quantity: Int!): InventoryItem!
-    bulkUpdateInventoryItems(items: [BulkUpdateInput!]!): BulkUpdateResult!
-  }
-
-  input BulkUpdateInput {
-    id: ID!
-    quantity: Int
-    unitPrice: Float
-    location: String
-  }
-
-  type BulkUpdateResult {
-    updated: Int!
-    errors: [String!]!
-  }
-
-  type Query {
-    inventoryItem(id: ID!): InventoryItem
-    inventoryItems(
-      offset: Int = 0
-      limit: Int = 50
-      category: String
-      searchQuery: String
-    ): SearchResult!
-    inventoryAnalytics: InventoryAnalytics!
-    lowStockItems: [InventoryItem!]!
-    categories: [String!]!
-    searchInventory(query: String!, category: String, limit: Int = 20): SearchResult!
-  }
-`;
-
-// Resolvers
-const resolvers = {
-  Query: {
-    inventoryItem: async (_, { id }, { dataSources }) => {
-      return await dataSources.inventoryService.findById(id);
-    },
-
-    inventoryItems: async (_, { offset, limit, category, searchQuery }, { dataSources }) => {
-      const result = await dataSources.inventoryService.findAll({
-        offset,
-        limit,
-        category,
-        searchQuery,
-      });
-
-      return {
-        items: result.items,
-        total: result.total,
-        hasNextPage: result.total > offset + limit,
-      };
-    },
-
-    inventoryAnalytics: async (_, __, { dataSources }) => {
-      return await dataSources.inventoryService.getAnalytics();
-    },
-
-    lowStockItems: async (_, __, { dataSources }) => {
-      return await dataSources.inventoryService.getLowStock();
-    },
-
-    categories: async (_, __, { dataSources }) => {
-      return await dataSources.inventoryService.getCategories();
-    },
-
-    searchInventory: async (_, { query, category, limit }, { dataSources }) => {
-      const result = await dataSources.inventoryService.search({
-        query,
-        category,
-        limit,
-      });
-
-      return {
-        items: result.items,
-        total: result.total,
-        hasNextPage: result.items.length === limit,
-      };
-    },
+const sampleImages = [
+  {
+    id: '550e8400-e29b-41d4-a716-446655440005',
+    item_id: '550e8400-e29b-41d4-a716-446655440003',
+    url: 'https://images.example.com/sofa-1.jpg',
+    thumbnail_url: 'https://images.example.com/sofa-1-thumb.jpg',
+    caption: 'Front view of sectional',
+    is_primary: true,
+    uploaded_at: new Date('2024-01-01T10:00:00Z')
   },
+  {
+    id: '550e8400-e29b-41d4-a716-446655440006',
+    item_id: '550e8400-e29b-41d4-a716-446655440003',
+    url: 'https://images.example.com/sofa-2.jpg',
+    thumbnail_url: 'https://images.example.com/sofa-2-thumb.jpg',
+    caption: 'Side view showing chaise',
+    is_primary: false,
+    uploaded_at: new Date('2024-01-01T10:05:00Z')
+  }
+];
 
-  Mutation: {
-    createInventoryItem: async (_, { input }, { dataSources, user }) => {
-      if (!user || user.role !== 'admin') {
-        throw new Error('Unauthorized: Admin access required');
+const sampleActivities = [
+  {
+    id: '550e8400-e29b-41d4-a716-446655440007',
+    action: 'decided',
+    item_id: '550e8400-e29b-41d4-a716-446655440003',
+    item_name: 'West Elm Sectional Sofa',
+    room_name: 'Living Room',
+    details: 'Decision changed to keep',
+    old_value: 'Unsure',
+    new_value: 'Keep',
+    created_at: new Date('2024-01-01T10:30:00Z')
+  },
+  {
+    id: '550e8400-e29b-41d4-a716-446655440008',
+    action: 'updated',
+    item_id: '550e8400-e29b-41d4-a716-446655440004',
+    item_name: 'Moroccan Area Rug',
+    room_name: 'Living Room',
+    details: 'Asking price updated',
+    old_value: '$2000',
+    new_value: '$1800',
+    created_at: new Date('2024-01-01T11:00:00Z')
+  }
+];
+
+// Mock data loaders
+const createMockDataLoaders = () => ({
+  itemsByRoomLoader: new DataLoader(async (roomIds: string[]) => {
+    return roomIds.map(roomId => sampleItems.filter(item => item.room_id === roomId));
+  }),
+
+  imagesLoader: new DataLoader(async (itemIds: string[]) => {
+    return itemIds.map(itemId => sampleImages.filter(image => image.item_id === itemId));
+  }),
+
+  activitiesLoader: new DataLoader(async (itemIds: string[]) => {
+    return itemIds.map(itemId => sampleActivities.filter(activity => activity.item_id === itemId));
+  })
+});
+
+// Mock inventory API data source
+const createMockInventoryAPI = () => ({
+  getRooms: jest.fn(),
+  getRoomById: jest.fn(),
+  getItems: jest.fn(),
+  getItemById: jest.fn(),
+  createItem: jest.fn(),
+  updateItem: jest.fn(),
+  deleteItem: jest.fn(),
+  searchItems: jest.fn(),
+  filterItems: jest.fn(),
+  getActivities: jest.fn(),
+  getSummary: jest.fn(),
+  getRoomAnalytics: jest.fn(),
+  getCategoryAnalytics: jest.fn(),
+  bulkUpdateItems: jest.fn()
+});
+
+describe('GraphQL Inventory Resolvers', () => {
+  let mockContext: MockContext;
+  let mockAPI: ReturnType<typeof createMockInventoryAPI>;
+
+  beforeEach(() => {
+    mockAPI = createMockInventoryAPI();
+    mockContext = {
+      dataSources: {
+        inventoryAPI: mockAPI
+      },
+      loaders: createMockDataLoaders(),
+      user: {
+        id: 'user123',
+        role: 'owner'
       }
-      return await dataSources.inventoryService.create(input);
-    },
-
-    updateInventoryItem: async (_, { id, input }, { dataSources, user }) => {
-      if (!user || user.role !== 'admin') {
-        throw new Error('Unauthorized: Admin access required');
-      }
-      return await dataSources.inventoryService.update(id, input);
-    },
-
-    deleteInventoryItem: async (_, { id }, { dataSources, user }) => {
-      if (!user || user.role !== 'admin') {
-        throw new Error('Unauthorized: Admin access required');
-      }
-      return await dataSources.inventoryService.delete(id);
-    },
-
-    updateInventoryQuantity: async (_, { id, quantity }, { dataSources }) => {
-      return await dataSources.inventoryService.updateQuantity(id, quantity);
-    },
-
-    bulkUpdateInventoryItems: async (_, { items }, { dataSources, user }) => {
-      if (!user || user.role !== 'admin') {
-        throw new Error('Unauthorized: Admin access required');
-      }
-      return await dataSources.inventoryService.bulkUpdate(items);
-    },
-  },
-
-  InventoryItem: {
-    __resolveReference: async (reference, { dataSources }) => {
-      return await dataSources.inventoryService.findById(reference.id);
-    },
-  },
-};
-
-describe('Inventory GraphQL Resolvers', () => {
-  let server: ApolloServer;
-  let query: any;
-  let mutate: any;
-
-  beforeEach(async () => {
-    server = new ApolloServer({
-      schema: buildSubgraphSchema({ typeDefs, resolvers }),
-      context: () => mockContext,
-    });
-
-    const testClient = createTestClient(server);
-    query = testClient.query;
-    mutate = testClient.mutate;
-
+    };
     jest.clearAllMocks();
   });
 
-  afterEach(async () => {
-    if (server) {
-      await server.stop();
-    }
-  });
+  describe('Room Resolvers', () => {
+    describe('Query.rooms', () => {
+      it('should return all rooms with aggregated data', async () => {
+        mockAPI.getRooms.mockResolvedValue(sampleRooms);
 
-  describe('Queries', () => {
-    describe('inventoryItem', () => {
-      it('should fetch a single inventory item by ID', async () => {
-        const mockItem = {
-          id: 'item-1',
-          name: 'Test Item',
-          description: 'Test Description',
-          category: 'Test Category',
-          sku: 'TEST-001',
-          quantity: 10,
-          minQuantity: 5,
-          unitPrice: 99.99,
-          totalValue: 999.90,
-          location: 'Warehouse A',
-          isActive: true,
-          dateAdded: '2023-01-01T00:00:00Z',
-          lastUpdated: '2023-01-01T00:00:00Z',
-          syncStatus: 'synced',
-          version: 1,
+        const resolver = async (parent: any, args: any, context: MockContext) => {
+          return context.dataSources.inventoryAPI.getRooms();
         };
 
-        mockInventoryService.findById.mockResolvedValue(mockItem);
+        const result = await resolver(null, {}, mockContext);
 
-        const GET_INVENTORY_ITEM = gql`
-          query GetInventoryItem($id: ID!) {
-            inventoryItem(id: $id) {
-              id
-              name
-              description
-              category
-              sku
-              quantity
-              unitPrice
-              totalValue
-              location
-              isActive
-            }
-          }
-        `;
-
-        const response = await query({
-          query: GET_INVENTORY_ITEM,
-          variables: { id: 'item-1' },
+        expect(result).toHaveLength(2);
+        expect(result[0]).toMatchObject({
+          id: sampleRooms[0].id,
+          name: 'Living Room',
+          floor: 'Main Floor',
+          item_count: 15,
+          total_value: 45000
         });
-
-        expect(response.errors).toBeUndefined();
-        expect(response.data.inventoryItem).toEqual({
-          id: 'item-1',
-          name: 'Test Item',
-          description: 'Test Description',
-          category: 'Test Category',
-          sku: 'TEST-001',
-          quantity: 10,
-          unitPrice: 99.99,
-          totalValue: 999.90,
-          location: 'Warehouse A',
-          isActive: true,
-        });
-
-        expect(mockInventoryService.findById).toHaveBeenCalledWith('item-1');
       });
 
-      it('should return null for non-existent item', async () => {
-        mockInventoryService.findById.mockResolvedValue(null);
+      it('should handle empty result gracefully', async () => {
+        mockAPI.getRooms.mockResolvedValue([]);
 
-        const GET_INVENTORY_ITEM = gql`
-          query GetInventoryItem($id: ID!) {
-            inventoryItem(id: $id) {
-              id
-              name
-            }
-          }
-        `;
+        const resolver = async (parent: any, args: any, context: MockContext) => {
+          return context.dataSources.inventoryAPI.getRooms();
+        };
 
-        const response = await query({
-          query: GET_INVENTORY_ITEM,
-          variables: { id: 'non-existent' },
-        });
+        const result = await resolver(null, {}, mockContext);
 
-        expect(response.errors).toBeUndefined();
-        expect(response.data.inventoryItem).toBeNull();
+        expect(result).toEqual([]);
       });
     });
 
-    describe('inventoryItems', () => {
-      it('should fetch paginated inventory items', async () => {
-        const mockResult = {
-          items: [
-            { id: 'item-1', name: 'Item 1', category: 'Category A' },
-            { id: 'item-2', name: 'Item 2', category: 'Category B' },
-          ],
-          total: 10,
+    describe('Query.room', () => {
+      it('should return specific room by ID', async () => {
+        const roomId = sampleRooms[0].id;
+        mockAPI.getRoomById.mockResolvedValue(sampleRooms[0]);
+
+        const resolver = async (parent: any, args: { id: string }, context: MockContext) => {
+          return context.dataSources.inventoryAPI.getRoomById(args.id);
         };
 
-        mockInventoryService.findAll.mockResolvedValue(mockResult);
+        const result = await resolver(null, { id: roomId }, mockContext);
 
-        const GET_INVENTORY_ITEMS = gql`
-          query GetInventoryItems($offset: Int, $limit: Int) {
-            inventoryItems(offset: $offset, limit: $limit) {
-              items {
-                id
-                name
-                category
-              }
-              total
-              hasNextPage
-            }
-          }
-        `;
-
-        const response = await query({
-          query: GET_INVENTORY_ITEMS,
-          variables: { offset: 0, limit: 5 },
+        expect(result).toMatchObject({
+          id: roomId,
+          name: 'Living Room'
         });
-
-        expect(response.errors).toBeUndefined();
-        expect(response.data.inventoryItems).toEqual({
-          items: mockResult.items,
-          total: 10,
-          hasNextPage: true,
-        });
-
-        expect(mockInventoryService.findAll).toHaveBeenCalledWith({
-          offset: 0,
-          limit: 5,
-          category: undefined,
-          searchQuery: undefined,
-        });
+        expect(mockAPI.getRoomById).toHaveBeenCalledWith(roomId);
       });
 
-      it('should filter by category', async () => {
-        const mockResult = {
-          items: [{ id: 'item-1', name: 'Item 1', category: 'Furniture' }],
-          total: 1,
+      it('should return null for non-existent room', async () => {
+        mockAPI.getRoomById.mockResolvedValue(null);
+
+        const resolver = async (parent: any, args: { id: string }, context: MockContext) => {
+          return context.dataSources.inventoryAPI.getRoomById(args.id);
         };
 
-        mockInventoryService.findAll.mockResolvedValue(mockResult);
+        const result = await resolver(null, { id: 'non-existent' }, mockContext);
 
-        const GET_INVENTORY_ITEMS = gql`
-          query GetInventoryItems($category: String) {
-            inventoryItems(category: $category) {
-              items {
-                id
-                name
-                category
-              }
-              total
-            }
-          }
-        `;
-
-        const response = await query({
-          query: GET_INVENTORY_ITEMS,
-          variables: { category: 'Furniture' },
-        });
-
-        expect(response.errors).toBeUndefined();
-        expect(mockInventoryService.findAll).toHaveBeenCalledWith({
-          offset: 0,
-          limit: 50,
-          category: 'Furniture',
-          searchQuery: undefined,
-        });
+        expect(result).toBeNull();
       });
     });
 
-    describe('inventoryAnalytics', () => {
-      it('should fetch inventory analytics', async () => {
-        const mockAnalytics = {
-          totalItems: 100,
-          totalValue: 50000.0,
-          categories: [
-            {
-              category: 'Furniture',
-              itemCount: 50,
-              totalValue: 30000.0,
-              averageValue: 600.0,
-            },
-          ],
-          lowStockItems: 5,
-          topValueItems: [
-            { id: 'item-1', name: 'Expensive Item', totalValue: 5000.0 },
-          ],
+    describe('Room.items', () => {
+      it('should resolve room items using data loader', async () => {
+        const room = sampleRooms[0];
+
+        const resolver = async (parent: any, args: any, context: MockContext) => {
+          return context.loaders.itemsByRoomLoader.load(parent.id);
         };
 
-        mockInventoryService.getAnalytics.mockResolvedValue(mockAnalytics);
+        const result = await resolver(room, {}, mockContext);
+        const expectedItems = sampleItems.filter(item => item.room_id === room.id);
 
-        const GET_ANALYTICS = gql`
-          query GetInventoryAnalytics {
-            inventoryAnalytics {
-              totalItems
-              totalValue
-              lowStockItems
-              categories {
-                category
-                itemCount
-                totalValue
-                averageValue
-              }
-              topValueItems {
-                id
-                name
-              }
-            }
-          }
-        `;
-
-        const response = await query({
-          query: GET_ANALYTICS,
-        });
-
-        expect(response.errors).toBeUndefined();
-        expect(response.data.inventoryAnalytics).toEqual(mockAnalytics);
-        expect(mockInventoryService.getAnalytics).toHaveBeenCalled();
+        expect(result).toHaveLength(expectedItems.length);
+        expect(result[0].room_id).toBe(room.id);
       });
-    });
 
-    describe('searchInventory', () => {
-      it('should search inventory items', async () => {
-        const mockResult = {
-          items: [
-            { id: 'item-1', name: 'Sofa', category: 'Furniture' },
-          ],
-          total: 1,
+      it('should return empty array for room with no items', async () => {
+        const emptyRoom = { ...sampleRooms[0], id: 'empty-room-id' };
+
+        const resolver = async (parent: any, args: any, context: MockContext) => {
+          return context.loaders.itemsByRoomLoader.load(parent.id);
         };
 
-        mockInventoryService.search.mockResolvedValue(mockResult);
+        const result = await resolver(emptyRoom, {}, mockContext);
 
-        const SEARCH_INVENTORY = gql`
-          query SearchInventory($query: String!, $category: String) {
-            searchInventory(query: $query, category: $category) {
-              items {
-                id
-                name
-                category
-              }
-              total
-              hasNextPage
-            }
-          }
-        `;
-
-        const response = await query({
-          query: SEARCH_INVENTORY,
-          variables: { query: 'sofa', category: 'Furniture' },
-        });
-
-        expect(response.errors).toBeUndefined();
-        expect(response.data.searchInventory).toEqual({
-          items: mockResult.items,
-          total: 1,
-          hasNextPage: false,
-        });
-
-        expect(mockInventoryService.search).toHaveBeenCalledWith({
-          query: 'sofa',
-          category: 'Furniture',
-          limit: 20,
-        });
+        expect(result).toEqual([]);
       });
     });
   });
 
-  describe('Mutations', () => {
-    describe('createInventoryItem', () => {
-      it('should create a new inventory item', async () => {
-        const mockItem = {
-          id: 'item-new',
-          name: 'New Item',
-          description: 'New Description',
-          category: 'Test',
-          sku: 'NEW-001',
-          quantity: 5,
-          minQuantity: 2,
-          unitPrice: 199.99,
-          totalValue: 999.95,
-          location: 'Storage',
-          isActive: true,
-        };
-
-        mockInventoryService.create.mockResolvedValue(mockItem);
-
-        const CREATE_ITEM = gql`
-          mutation CreateInventoryItem($input: InventoryItemInput!) {
-            createInventoryItem(input: $input) {
-              id
-              name
-              description
-              category
-              sku
-              quantity
-              unitPrice
-              totalValue
-            }
-          }
-        `;
-
-        const input = {
-          name: 'New Item',
-          description: 'New Description',
-          category: 'Test',
-          sku: 'NEW-001',
-          quantity: 5,
-          minQuantity: 2,
-          unitPrice: 199.99,
-          location: 'Storage',
-        };
-
-        const response = await mutate({
-          mutation: CREATE_ITEM,
-          variables: { input },
+  describe('Item Resolvers', () => {
+    describe('Query.items', () => {
+      it('should return items with pagination', async () => {
+        mockAPI.getItems.mockResolvedValue({
+          items: sampleItems,
+          total: sampleItems.length,
+          hasMore: false
         });
 
-        expect(response.errors).toBeUndefined();
-        expect(response.data.createInventoryItem).toMatchObject({
-          id: 'item-new',
-          name: 'New Item',
-          description: 'New Description',
-          category: 'Test',
-          sku: 'NEW-001',
-          quantity: 5,
-          unitPrice: 199.99,
-          totalValue: 999.95,
-        });
+        const resolver = async (parent: any, args: any, context: MockContext) => {
+          return context.dataSources.inventoryAPI.getItems(args);
+        };
 
-        expect(mockInventoryService.create).toHaveBeenCalledWith(input);
+        const result = await resolver(null, { limit: 10, offset: 0 }, mockContext);
+
+        expect(result.items).toHaveLength(2);
+        expect(result.total).toBe(2);
+        expect(result.hasMore).toBe(false);
       });
 
-      it('should require admin role for creation', async () => {
-        const unauthorizedContext = {
-          ...mockContext,
-          user: { ...mockContext.user, role: 'user' },
+      it('should handle filtering parameters', async () => {
+        const filterArgs = {
+          categories: ['Furniture'],
+          decisions: ['Keep'],
+          rooms: ['Living Room'],
+          minPrice: 1000,
+          maxPrice: 5000
         };
 
-        server = new ApolloServer({
-          schema: buildSubgraphSchema({ typeDefs, resolvers }),
-          context: () => unauthorizedContext,
+        const filteredItems = sampleItems.filter(item =>
+          filterArgs.categories.includes(item.category) &&
+          filterArgs.decisions.includes(item.decision) &&
+          item.purchase_price >= filterArgs.minPrice &&
+          item.purchase_price <= filterArgs.maxPrice
+        );
+
+        mockAPI.getItems.mockResolvedValue({
+          items: filteredItems,
+          total: filteredItems.length,
+          hasMore: false
         });
 
-        const testClient = createTestClient(server);
-
-        const CREATE_ITEM = gql`
-          mutation CreateInventoryItem($input: InventoryItemInput!) {
-            createInventoryItem(input: $input) {
-              id
-            }
-          }
-        `;
-
-        const input = {
-          name: 'New Item',
-          category: 'Test',
-          sku: 'NEW-001',
-          quantity: 5,
-          minQuantity: 2,
-          unitPrice: 199.99,
-          location: 'Storage',
+        const resolver = async (parent: any, args: any, context: MockContext) => {
+          return context.dataSources.inventoryAPI.getItems(args);
         };
 
-        const response = await testClient.mutate({
-          mutation: CREATE_ITEM,
-          variables: { input },
+        const result = await resolver(null, filterArgs, mockContext);
+
+        expect(result.items).toHaveLength(1);
+        expect(result.items[0].category).toBe('Furniture');
+        expect(result.items[0].decision).toBe('Keep');
+      });
+
+      it('should handle sorting parameters', async () => {
+        const sortArgs = {
+          sortBy: 'purchase_price',
+          sortOrder: 'DESC'
+        };
+
+        const sortedItems = [...sampleItems].sort((a, b) => b.purchase_price - a.purchase_price);
+
+        mockAPI.getItems.mockResolvedValue({
+          items: sortedItems,
+          total: sortedItems.length,
+          hasMore: false
         });
 
-        expect(response.errors).toBeDefined();
-        expect(response.errors[0].message).toContain('Unauthorized');
+        const resolver = async (parent: any, args: any, context: MockContext) => {
+          return context.dataSources.inventoryAPI.getItems(args);
+        };
+
+        const result = await resolver(null, sortArgs, mockContext);
+
+        expect(result.items[0].purchase_price).toBeGreaterThanOrEqual(result.items[1].purchase_price);
       });
     });
 
-    describe('updateInventoryItem', () => {
-      it('should update an inventory item', async () => {
-        const mockUpdatedItem = {
-          id: 'item-1',
-          name: 'Updated Item',
-          quantity: 15,
-          unitPrice: 299.99,
+    describe('Query.item', () => {
+      it('should return specific item by ID', async () => {
+        const itemId = sampleItems[0].id;
+        mockAPI.getItemById.mockResolvedValue(sampleItems[0]);
+
+        const resolver = async (parent: any, args: { id: string }, context: MockContext) => {
+          return context.dataSources.inventoryAPI.getItemById(args.id);
         };
 
-        mockInventoryService.update.mockResolvedValue(mockUpdatedItem);
+        const result = await resolver(null, { id: itemId }, mockContext);
 
-        const UPDATE_ITEM = gql`
-          mutation UpdateInventoryItem($id: ID!, $input: InventoryItemUpdateInput!) {
-            updateInventoryItem(id: $id, input: $input) {
-              id
-              name
-              quantity
-              unitPrice
-            }
-          }
-        `;
+        expect(result.id).toBe(itemId);
+        expect(result.name).toBe('West Elm Sectional Sofa');
+      });
+    });
 
+    describe('Query.searchItems', () => {
+      it('should search items by query string', async () => {
+        const searchQuery = 'sectional';
+        const searchResults = sampleItems.filter(item =>
+          item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.description?.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+        mockAPI.searchItems.mockResolvedValue({
+          items: searchResults,
+          total: searchResults.length
+        });
+
+        const resolver = async (parent: any, args: { query: string }, context: MockContext) => {
+          return context.dataSources.inventoryAPI.searchItems(args.query);
+        };
+
+        const result = await resolver(null, { query: searchQuery }, mockContext);
+
+        expect(result.items).toHaveLength(1);
+        expect(result.items[0].name).toContain('Sectional');
+      });
+    });
+
+    describe('Item.room', () => {
+      it('should resolve item room relationship', async () => {
+        const item = sampleItems[0];
+        const expectedRoom = sampleRooms.find(room => room.id === item.room_id);
+
+        mockAPI.getRoomById.mockResolvedValue(expectedRoom);
+
+        const resolver = async (parent: any, args: any, context: MockContext) => {
+          return context.dataSources.inventoryAPI.getRoomById(parent.room_id);
+        };
+
+        const result = await resolver(item, {}, mockContext);
+
+        expect(result).toMatchObject(expectedRoom);
+      });
+    });
+
+    describe('Item.images', () => {
+      it('should resolve item images using data loader', async () => {
+        const item = sampleItems[0];
+
+        const resolver = async (parent: any, args: any, context: MockContext) => {
+          return context.loaders.imagesLoader.load(parent.id);
+        };
+
+        const result = await resolver(item, {}, mockContext);
+        const expectedImages = sampleImages.filter(image => image.item_id === item.id);
+
+        expect(result).toHaveLength(expectedImages.length);
+        expect(result[0].item_id).toBe(item.id);
+      });
+    });
+
+    describe('Item.activities', () => {
+      it('should resolve item activities using data loader', async () => {
+        const item = sampleItems[0];
+
+        const resolver = async (parent: any, args: any, context: MockContext) => {
+          return context.loaders.activitiesLoader.load(parent.id);
+        };
+
+        const result = await resolver(item, {}, mockContext);
+        const expectedActivities = sampleActivities.filter(activity => activity.item_id === item.id);
+
+        expect(result).toHaveLength(expectedActivities.length);
+        expect(result[0].item_id).toBe(item.id);
+      });
+    });
+  });
+
+  describe('Mutation Resolvers', () => {
+    describe('Mutation.createItem', () => {
+      it('should create new item with required fields', async () => {
         const input = {
-          name: 'Updated Item',
-          quantity: 15,
-          unitPrice: 299.99,
+          room_id: sampleRooms[0].id,
+          name: 'New Coffee Table',
+          category: 'Furniture',
+          decision: 'Unsure',
+          purchase_price: 899.99,
+          quantity: 1,
+          is_fixture: false
         };
 
-        const response = await mutate({
-          mutation: UPDATE_ITEM,
-          variables: { id: 'item-1', input },
-        });
+        const createdItem = {
+          id: '550e8400-e29b-41d4-a716-446655440009',
+          ...input,
+          created_at: new Date(),
+          updated_at: new Date()
+        };
 
-        expect(response.errors).toBeUndefined();
-        expect(response.data.updateInventoryItem).toEqual(mockUpdatedItem);
-        expect(mockInventoryService.update).toHaveBeenCalledWith('item-1', input);
+        mockAPI.createItem.mockResolvedValue(createdItem);
+
+        const resolver = async (parent: any, args: { input: any }, context: MockContext) => {
+          return context.dataSources.inventoryAPI.createItem(args.input);
+        };
+
+        const result = await resolver(null, { input }, mockContext);
+
+        expect(result).toMatchObject({
+          name: 'New Coffee Table',
+          category: 'Furniture',
+          purchase_price: 899.99
+        });
+        expect(mockAPI.createItem).toHaveBeenCalledWith(input);
+      });
+
+      it('should validate required fields', async () => {
+        const invalidInput = {
+          // Missing required fields
+          name: 'Incomplete Item'
+        };
+
+        const resolver = async (parent: any, args: { input: any }, context: MockContext) => {
+          // Validation logic
+          if (!args.input.room_id || !args.input.category) {
+            throw new Error('Missing required fields: room_id and category are required');
+          }
+          return context.dataSources.inventoryAPI.createItem(args.input);
+        };
+
+        await expect(resolver(null, { input: invalidInput }, mockContext))
+          .rejects.toThrow('Missing required fields');
       });
     });
 
-    describe('deleteInventoryItem', () => {
-      it('should delete an inventory item', async () => {
-        mockInventoryService.delete.mockResolvedValue(true);
+    describe('Mutation.updateItem', () => {
+      it('should update existing item', async () => {
+        const itemId = sampleItems[0].id;
+        const updateInput = {
+          decision: 'Sell',
+          asking_price: 2500.00,
+          condition: 'Very Good'
+        };
 
-        const DELETE_ITEM = gql`
-          mutation DeleteInventoryItem($id: ID!) {
-            deleteInventoryItem(id: $id)
-          }
-        `;
+        const updatedItem = {
+          ...sampleItems[0],
+          ...updateInput,
+          updated_at: new Date()
+        };
 
-        const response = await mutate({
-          mutation: DELETE_ITEM,
-          variables: { id: 'item-1' },
-        });
+        mockAPI.updateItem.mockResolvedValue(updatedItem);
 
-        expect(response.errors).toBeUndefined();
-        expect(response.data.deleteInventoryItem).toBe(true);
-        expect(mockInventoryService.delete).toHaveBeenCalledWith('item-1');
+        const resolver = async (parent: any, args: { id: string, input: any }, context: MockContext) => {
+          return context.dataSources.inventoryAPI.updateItem(args.id, args.input);
+        };
+
+        const result = await resolver(null, { id: itemId, input: updateInput }, mockContext);
+
+        expect(result.decision).toBe('Sell');
+        expect(result.asking_price).toBe(2500.00);
+        expect(mockAPI.updateItem).toHaveBeenCalledWith(itemId, updateInput);
       });
 
-      it('should return false for non-existent item', async () => {
-        mockInventoryService.delete.mockResolvedValue(false);
+      it('should handle non-existent item', async () => {
+        mockAPI.updateItem.mockResolvedValue(null);
 
-        const DELETE_ITEM = gql`
-          mutation DeleteInventoryItem($id: ID!) {
-            deleteInventoryItem(id: $id)
+        const resolver = async (parent: any, args: { id: string, input: any }, context: MockContext) => {
+          const result = await context.dataSources.inventoryAPI.updateItem(args.id, args.input);
+          if (!result) {
+            throw new Error(`Item with id ${args.id} not found`);
           }
-        `;
+          return result;
+        };
 
-        const response = await mutate({
-          mutation: DELETE_ITEM,
-          variables: { id: 'non-existent' },
-        });
-
-        expect(response.errors).toBeUndefined();
-        expect(response.data.deleteInventoryItem).toBe(false);
+        await expect(resolver(null, { id: 'non-existent', input: {} }, mockContext))
+          .rejects.toThrow('Item with id non-existent not found');
       });
     });
 
-    describe('bulkUpdateInventoryItems', () => {
-      it('should perform bulk updates', async () => {
-        const mockResult = {
-          updated: 2,
-          errors: [],
+    describe('Mutation.deleteItem', () => {
+      it('should delete existing item', async () => {
+        const itemId = sampleItems[0].id;
+        mockAPI.deleteItem.mockResolvedValue(true);
+
+        const resolver = async (parent: any, args: { id: string }, context: MockContext) => {
+          return context.dataSources.inventoryAPI.deleteItem(args.id);
         };
 
-        mockInventoryService.bulkUpdate.mockResolvedValue(mockResult);
+        const result = await resolver(null, { id: itemId }, mockContext);
 
-        const BULK_UPDATE = gql`
-          mutation BulkUpdateInventoryItems($items: [BulkUpdateInput!]!) {
-            bulkUpdateInventoryItems(items: $items) {
-              updated
-              errors
-            }
+        expect(result).toBe(true);
+        expect(mockAPI.deleteItem).toHaveBeenCalledWith(itemId);
+      });
+    });
+
+    describe('Mutation.bulkUpdateItems', () => {
+      it('should update multiple items', async () => {
+        const itemIds = [sampleItems[0].id, sampleItems[1].id];
+        const bulkUpdate = {
+          decision: 'Sell'
+        };
+
+        mockAPI.bulkUpdateItems.mockResolvedValue({
+          success: true,
+          updatedCount: 2,
+          items: itemIds.map(id => ({ ...sampleItems.find(item => item.id === id), decision: 'Sell' }))
+        });
+
+        const resolver = async (parent: any, args: { itemIds: string[], input: any }, context: MockContext) => {
+          return context.dataSources.inventoryAPI.bulkUpdateItems(args.itemIds, args.input);
+        };
+
+        const result = await resolver(null, { itemIds, input: bulkUpdate }, mockContext);
+
+        expect(result.success).toBe(true);
+        expect(result.updatedCount).toBe(2);
+        expect(result.items).toHaveLength(2);
+      });
+    });
+  });
+
+  describe('Analytics Resolvers', () => {
+    describe('Query.inventorySummary', () => {
+      it('should return inventory statistics', async () => {
+        const summary = {
+          totalItems: 239,
+          totalValue: 374242.59,
+          keepCount: 100,
+          sellCount: 80,
+          unsureCount: 59,
+          soldCount: 0,
+          donatedCount: 0,
+          roomCount: 15,
+          categoryDistribution: [
+            { category: 'Furniture', count: 120, value: 200000 },
+            { category: 'Art / Decor', count: 50, value: 100000 }
+          ]
+        };
+
+        mockAPI.getSummary.mockResolvedValue(summary);
+
+        const resolver = async (parent: any, args: any, context: MockContext) => {
+          return context.dataSources.inventoryAPI.getSummary();
+        };
+
+        const result = await resolver(null, {}, mockContext);
+
+        expect(result.totalItems).toBe(239);
+        expect(result.totalValue).toBe(374242.59);
+        expect(result.categoryDistribution).toHaveLength(2);
+      });
+    });
+
+    describe('Query.roomAnalytics', () => {
+      it('should return room-based analytics', async () => {
+        const analytics = [
+          {
+            room: 'Living Room',
+            floor: 'Main Floor',
+            item_count: 15,
+            total_value: 45000,
+            avg_value: 3000,
+            keep_count: 8,
+            sell_count: 5,
+            unsure_count: 2
           }
-        `;
-
-        const items = [
-          { id: 'item-1', quantity: 10 },
-          { id: 'item-2', unitPrice: 150.0 },
         ];
 
-        const response = await mutate({
-          mutation: BULK_UPDATE,
-          variables: { items },
-        });
+        mockAPI.getRoomAnalytics.mockResolvedValue({ analytics });
 
-        expect(response.errors).toBeUndefined();
-        expect(response.data.bulkUpdateInventoryItems).toEqual(mockResult);
-        expect(mockInventoryService.bulkUpdate).toHaveBeenCalledWith(items);
-      });
-
-      it('should handle partial failures in bulk updates', async () => {
-        const mockResult = {
-          updated: 1,
-          errors: ['Item item-2 not found'],
+        const resolver = async (parent: any, args: any, context: MockContext) => {
+          return context.dataSources.inventoryAPI.getRoomAnalytics();
         };
 
-        mockInventoryService.bulkUpdate.mockResolvedValue(mockResult);
+        const result = await resolver(null, {}, mockContext);
 
-        const BULK_UPDATE = gql`
-          mutation BulkUpdateInventoryItems($items: [BulkUpdateInput!]!) {
-            bulkUpdateInventoryItems(items: $items) {
-              updated
-              errors
-            }
+        expect(result.analytics).toHaveLength(1);
+        expect(result.analytics[0].room).toBe('Living Room');
+        expect(result.analytics[0].total_value).toBe(45000);
+      });
+    });
+
+    describe('Query.categoryAnalytics', () => {
+      it('should return category-based analytics', async () => {
+        const analytics = [
+          {
+            category: 'Furniture',
+            item_count: 120,
+            total_value: 200000,
+            avg_value: 1666.67,
+            min_value: 50,
+            max_value: 8000,
+            keep_count: 60,
+            sell_count: 40,
+            unsure_count: 20
           }
-        `;
-
-        const items = [
-          { id: 'item-1', quantity: 10 },
-          { id: 'non-existent', quantity: 5 },
         ];
 
-        const response = await mutate({
-          mutation: BULK_UPDATE,
-          variables: { items },
-        });
+        mockAPI.getCategoryAnalytics.mockResolvedValue({ analytics });
 
-        expect(response.errors).toBeUndefined();
-        expect(response.data.bulkUpdateInventoryItems).toEqual({
-          updated: 1,
-          errors: ['Item item-2 not found'],
-        });
+        const resolver = async (parent: any, args: any, context: MockContext) => {
+          return context.dataSources.inventoryAPI.getCategoryAnalytics();
+        };
+
+        const result = await resolver(null, {}, mockContext);
+
+        expect(result.analytics[0].category).toBe('Furniture');
+        expect(result.analytics[0].avg_value).toBeCloseTo(1666.67, 2);
       });
     });
   });
 
-  describe('Federation Resolver', () => {
-    it('should resolve item by reference', async () => {
-      const mockItem = {
-        id: 'item-1',
-        name: 'Test Item',
-        category: 'Test',
-      };
+  describe('Activity Resolvers', () => {
+    describe('Query.recentActivities', () => {
+      it('should return recent activities with pagination', async () => {
+        mockAPI.getActivities.mockResolvedValue({
+          activities: sampleActivities,
+          total: sampleActivities.length
+        });
 
-      mockInventoryService.findById.mockResolvedValue(mockItem);
+        const resolver = async (parent: any, args: { limit?: number }, context: MockContext) => {
+          return context.dataSources.inventoryAPI.getActivities(args.limit || 20);
+        };
 
-      const resolvedItem = await resolvers.InventoryItem.__resolveReference(
-        { id: 'item-1' },
-        mockContext
+        const result = await resolver(null, { limit: 10 }, mockContext);
+
+        expect(result.activities).toHaveLength(2);
+        expect(result.activities[0].action).toBe('decided');
+      });
+    });
+  });
+
+  describe('Data Loader Tests', () => {
+    it('should batch room items efficiently', async () => {
+      const roomIds = [sampleRooms[0].id, sampleRooms[1].id];
+
+      // Test data loader batching
+      const results = await Promise.all(
+        roomIds.map(id => mockContext.loaders.itemsByRoomLoader.load(id))
       );
 
-      expect(resolvedItem).toEqual(mockItem);
-      expect(mockInventoryService.findById).toHaveBeenCalledWith('item-1');
+      expect(results).toHaveLength(2);
+      expect(results[0]).toEqual(sampleItems.filter(item => item.room_id === roomIds[0]));
+      expect(results[1]).toEqual(sampleItems.filter(item => item.room_id === roomIds[1]));
+    });
+
+    it('should cache results for repeated requests', async () => {
+      const roomId = sampleRooms[0].id;
+
+      // Load the same room twice
+      const firstLoad = await mockContext.loaders.itemsByRoomLoader.load(roomId);
+      const secondLoad = await mockContext.loaders.itemsByRoomLoader.load(roomId);
+
+      // Results should be identical (from cache)
+      expect(firstLoad).toEqual(secondLoad);
+    });
+
+    it('should handle empty results in data loaders', async () => {
+      const nonExistentRoomId = 'non-existent-room';
+
+      const result = await mockContext.loaders.itemsByRoomLoader.load(nonExistentRoomId);
+
+      expect(result).toEqual([]);
     });
   });
 
   describe('Error Handling', () => {
-    it('should handle service errors gracefully', async () => {
-      mockInventoryService.findById.mockRejectedValue(
-        new Error('Database connection failed')
-      );
+    it('should handle API errors gracefully', async () => {
+      mockAPI.getItems.mockRejectedValue(new Error('Database connection failed'));
 
-      const GET_INVENTORY_ITEM = gql`
-        query GetInventoryItem($id: ID!) {
-          inventoryItem(id: $id) {
-            id
-            name
-          }
+      const resolver = async (parent: any, args: any, context: MockContext) => {
+        try {
+          return await context.dataSources.inventoryAPI.getItems(args);
+        } catch (error) {
+          throw new Error(`Failed to fetch items: ${error.message}`);
         }
-      `;
-
-      const response = await query({
-        query: GET_INVENTORY_ITEM,
-        variables: { id: 'item-1' },
-      });
-
-      expect(response.errors).toBeDefined();
-      expect(response.errors[0].message).toContain('Database connection failed');
-    });
-
-    it('should validate input data', async () => {
-      const CREATE_ITEM = gql`
-        mutation CreateInventoryItem($input: InventoryItemInput!) {
-          createInventoryItem(input: $input) {
-            id
-          }
-        }
-      `;
-
-      const invalidInput = {
-        // Missing required fields
-        description: 'Test Description',
       };
 
-      const response = await mutate({
-        mutation: CREATE_ITEM,
-        variables: { input: invalidInput },
-      });
+      await expect(resolver(null, {}, mockContext))
+        .rejects.toThrow('Failed to fetch items: Database connection failed');
+    });
 
-      expect(response.errors).toBeDefined();
-      expect(response.errors[0].message).toContain('Field "name" of required type "String!" was not provided');
+    it('should validate user permissions', async () => {
+      const unauthorizedContext = {
+        ...mockContext,
+        user: { id: 'user123', role: 'viewer' }
+      };
+
+      const resolver = async (parent: any, args: any, context: MockContext) => {
+        if (context.user?.role !== 'owner' && context.user?.role !== 'admin') {
+          throw new Error('Insufficient permissions for this operation');
+        }
+        return context.dataSources.inventoryAPI.deleteItem(args.id);
+      };
+
+      await expect(resolver(null, { id: 'item123' }, unauthorizedContext))
+        .rejects.toThrow('Insufficient permissions');
+    });
+
+    it('should handle malformed input data', async () => {
+      const malformedInput = {
+        name: '',
+        category: 'Invalid Category',
+        purchase_price: 'not a number'
+      };
+
+      const resolver = async (parent: any, args: { input: any }, context: MockContext) => {
+        // Input validation
+        if (!args.input.name || args.input.name.trim() === '') {
+          throw new Error('Item name cannot be empty');
+        }
+
+        const validCategories = ['Furniture', 'Art / Decor', 'Electronics', 'Lighting', 'Rug / Carpet'];
+        if (!validCategories.includes(args.input.category)) {
+          throw new Error('Invalid category provided');
+        }
+
+        if (args.input.purchase_price && isNaN(parseFloat(args.input.purchase_price))) {
+          throw new Error('Purchase price must be a valid number');
+        }
+
+        return context.dataSources.inventoryAPI.createItem(args.input);
+      };
+
+      await expect(resolver(null, { input: malformedInput }, mockContext))
+        .rejects.toThrow('Item name cannot be empty');
     });
   });
 
-  describe('DataLoader Integration', () => {
-    it('should use DataLoader for efficient data fetching', async () => {
-      // Mock multiple item requests to test batching
-      const mockItems = [
-        { id: 'item-1', name: 'Item 1' },
-        { id: 'item-2', name: 'Item 2' },
-        { id: 'item-3', name: 'Item 3' },
-      ];
+  describe('Performance Tests', () => {
+    it('should handle large datasets efficiently', async () => {
+      const largeDataset = Array.from({ length: 1000 }, (_, i) => ({
+        ...sampleItems[0],
+        id: `item-${i}`,
+        name: `Item ${i}`
+      }));
 
-      mockInventoryService.findById
-        .mockResolvedValueOnce(mockItems[0])
-        .mockResolvedValueOnce(mockItems[1])
-        .mockResolvedValueOnce(mockItems[2]);
-
-      const GET_MULTIPLE_ITEMS = gql`
-        query GetMultipleItems {
-          item1: inventoryItem(id: "item-1") { id name }
-          item2: inventoryItem(id: "item-2") { id name }
-          item3: inventoryItem(id: "item-3") { id name }
-        }
-      `;
-
-      const response = await query({
-        query: GET_MULTIPLE_ITEMS,
+      mockAPI.getItems.mockResolvedValue({
+        items: largeDataset,
+        total: largeDataset.length,
+        hasMore: false
       });
 
-      expect(response.errors).toBeUndefined();
-      expect(response.data.item1).toEqual(mockItems[0]);
-      expect(response.data.item2).toEqual(mockItems[1]);
-      expect(response.data.item3).toEqual(mockItems[2]);
+      const resolver = async (parent: any, args: any, context: MockContext) => {
+        return context.dataSources.inventoryAPI.getItems(args);
+      };
 
-      // Verify that service was called for each item
-      expect(mockInventoryService.findById).toHaveBeenCalledTimes(3);
+      const result = await resolver(null, { limit: 1000 }, mockContext);
+
+      expect(result.items).toHaveLength(1000);
+      expect(result.total).toBe(1000);
+    });
+
+    it('should optimize data loader queries', async () => {
+      const multipleRoomIds = Array.from({ length: 10 }, (_, i) => `room-${i}`);
+
+      // Load multiple rooms in parallel
+      const startTime = Date.now();
+      await Promise.all(
+        multipleRoomIds.map(id => mockContext.loaders.itemsByRoomLoader.load(id))
+      );
+      const endTime = Date.now();
+
+      // Should complete quickly due to batching
+      expect(endTime - startTime).toBeLessThan(100);
     });
   });
 });

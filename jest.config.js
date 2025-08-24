@@ -28,17 +28,36 @@ module.exports = {
     'graphql/**/*.{ts,tsx}',
     'components/**/*.{ts,tsx}',
     'lib/**/*.{ts,tsx}',
+    '5470_S_Highline_Circle/frontend/src/**/*.{ts,tsx}',
+    '5470_S_Highline_Circle/backend/**/*.go',
     '!**/*.d.ts',
     '!**/*.config.{ts,js}',
     '!**/node_modules/**',
     '!**/dist/**',
     '!**/.next/**',
-    '!**/coverage/**'
+    '!**/coverage/**',
+    '!**/*.test.{ts,tsx,js,go}',
+    '!**/*.spec.{ts,tsx,js,go}',
+    '!**/main.go',
+    '!**/main.ts'
   ],
   coverageDirectory: '<rootDir>/coverage',
   coverageReporters: ['text', 'lcov', 'html', 'json'],
   coverageThreshold: {
     global: {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
+    },
+    // Inventory-specific thresholds
+    './5470_S_Highline_Circle/frontend/src/**/*.{ts,tsx}': {
+      branches: 85,
+      functions: 85,
+      lines: 85,
+      statements: 85
+    },
+    './apps/mobile-inventory/src/**/*.{ts,tsx}': {
       branches: 80,
       functions: 80,
       lines: 80,
@@ -73,19 +92,43 @@ module.exports = {
   // Test environments for different project types
   projects: [
     {
-      displayName: 'Backend',
+      displayName: 'Inventory Backend',
+      testMatch: [
+        '<rootDir>/5470_S_Highline_Circle/backend/**/*.test.go',
+        '<rootDir>/__tests__/backend/inventory/**/*.test.{ts,js}'
+      ],
+      testEnvironment: 'node',
+      setupFilesAfterEnv: ['<rootDir>/jest.backend.setup.js'],
+      testTimeout: 15000
+    },
+    {
+      displayName: 'Inventory Frontend',
+      testMatch: [
+        '<rootDir>/5470_S_Highline_Circle/frontend/src/**/*.test.{ts,tsx}',
+        '<rootDir>/__tests__/frontend/inventory/**/*.test.{ts,tsx}'
+      ],
+      testEnvironment: 'jsdom',
+      setupFilesAfterEnv: ['<rootDir>/jest.setup.js']
+    },
+    {
+      displayName: 'GraphQL',
       testMatch: ['<rootDir>/graphql/**/*.test.{ts,js}'],
       testEnvironment: 'node',
       setupFilesAfterEnv: ['<rootDir>/jest.backend.setup.js']
     },
     {
-      displayName: 'Frontend',
+      displayName: 'Mobile Inventory',
       testMatch: [
-        '<rootDir>/apps/**/src/**/*.test.{ts,tsx}',
-        '<rootDir>/components/**/*.test.{ts,tsx}'
+        '<rootDir>/apps/mobile-inventory/**/*.test.{ts,tsx}',
+        '<rootDir>/__tests__/mobile/inventory/**/*.test.{ts,tsx}'
       ],
       testEnvironment: 'jsdom',
-      setupFilesAfterEnv: ['<rootDir>/jest.setup.js']
+      setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+      moduleNameMapper: {
+        '^react-native$': 'react-native-web',
+        '^@react-native-async-storage/async-storage$': '<rootDir>/__tests__/__mocks__/async-storage.js',
+        '^react-native-camera$': '<rootDir>/__tests__/__mocks__/camera.js'
+      }
     },
     {
       displayName: 'Integration',
@@ -93,15 +136,6 @@ module.exports = {
       testEnvironment: 'node',
       setupFilesAfterEnv: ['<rootDir>/jest.integration.setup.js'],
       testTimeout: 30000
-    },
-    {
-      displayName: 'Mobile',
-      testMatch: ['<rootDir>/apps/mobile-*/**/*.test.{ts,tsx}'],
-      testEnvironment: 'jsdom',
-      setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-      moduleNameMapper: {
-        '^react-native$': 'react-native-web'
-      }
     }
   ],
 

@@ -1,0 +1,749 @@
+name: Inventory Management Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - '5470_S_Highline_Circle/**'
+      - 'apps/mobile-inventory/**'
+      - '__tests__/**'
+      - 'graphql/**'
+      - 'jest.config.js'
+      - 'package.json'
+      - '.github/workflows/inventory-test-suite.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - '5470_S_Highline_Circle/**'
+      - 'apps/mobile-inventory/**'
+      - '__tests__/**'
+      - 'graphql/**'
+      - 'jest.config.js'
+      - 'package.json'
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of tests to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - unit
+          - integration
+          - e2e
+          - performance
+      coverage_threshold:
+        description: 'Coverage threshold percentage'
+        required: false
+        default: '80'
+        type: string
+
+env:
+  NODE_VERSION: '18.x'
+  GO_VERSION: '1.21'
+  COVERAGE_THRESHOLD: ${{ github.event.inputs.coverage_threshold || '80' }}
+
+jobs:
+  # Job 1: Setup and Install Dependencies
+  setup:
+    name: Setup Dependencies
+    runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.cache-keys.outputs.node-cache-key }}
+      go-cache-key: ${{ steps.cache-keys.outputs.go-cache-key }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Generate cache keys
+        id: cache-keys
+        run: |
+          echo "node-cache-key=node-${{ hashFiles('package*.json') }}" >> $GITHUB_OUTPUT
+          echo "go-cache-key=go-${{ hashFiles('5470_S_Highline_Circle/backend/go.sum') }}" >> $GITHUB_OUTPUT
+
+      - name: Cache Node.js dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ steps.cache-keys.outputs.node-cache-key }}
+          restore-keys: |
+            node-${{ runner.os }}-
+
+      - name: Cache Go dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ steps.cache-keys.outputs.go-cache-key }}
+          restore-keys: |
+            go-${{ runner.os }}-
+
+      - name: Install Node.js dependencies
+        run: npm ci
+
+      - name: Install Go dependencies
+        working-directory: 5470_S_Highline_Circle/backend
+        run: go mod download
+
+  # Job 2: Linting and Code Quality
+  lint:
+    name: Lint & Code Quality
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Restore Node.js cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ needs.setup.outputs.cache-key }}
+          restore-keys: |
+            node-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run TypeScript check
+        run: npm run type-check
+
+      - name: Run Prettier check
+        run: npm run format:check
+
+      - name: Go vet
+        working-directory: 5470_S_Highline_Circle/backend
+        run: go vet ./...
+
+      - name: Go fmt check
+        working-directory: 5470_S_Highline_Circle/backend
+        run: |
+          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+            echo "Go code is not formatted properly"
+            gofmt -s -l .
+            exit 1
+          fi
+
+  # Job 3: Unit Tests
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: setup
+    if: ${{ github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'unit' || github.event.inputs.test_type == '' }}
+    strategy:
+      matrix:
+        test-group: ['backend', 'frontend', 'mobile', 'graphql']
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Go
+        if: matrix.test-group == 'backend'
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Restore caches
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ needs.setup.outputs.cache-key }}
+          restore-keys: |
+            node-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Backend Unit Tests
+        if: matrix.test-group == 'backend'
+        working-directory: 5470_S_Highline_Circle/backend
+        run: |
+          go test -v -race -coverprofile=coverage.out ./...
+          go tool cover -html=coverage.out -o coverage.html
+
+      - name: Run Frontend Unit Tests
+        if: matrix.test-group == 'frontend'
+        run: npm run test:unit -- --selectProjects="Inventory Frontend" --coverage --coverageReporters=json --coverageReporters=lcov
+
+      - name: Run Mobile Unit Tests
+        if: matrix.test-group == 'mobile'
+        run: npm run test:unit -- --selectProjects="Mobile Inventory" --coverage --coverageReporters=json --coverageReporters=lcov
+
+      - name: Run GraphQL Unit Tests
+        if: matrix.test-group == 'graphql'
+        run: npm run test:unit -- --selectProjects="GraphQL" --coverage --coverageReporters=json --coverageReporters=lcov
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/lcov.info,./5470_S_Highline_Circle/backend/coverage.out
+          flags: ${{ matrix.test-group }}
+          name: ${{ matrix.test-group }}-coverage
+          fail_ci_if_error: false
+
+  # Job 4: Integration Tests
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: setup
+    if: ${{ github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'integration' || github.event.inputs.test_type == '' }}
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_USER: test
+          POSTGRES_DB: inventory_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Restore caches
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ needs.setup.outputs.cache-key }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install test container dependencies
+        run: |
+          docker --version
+          docker-compose --version
+
+      - name: Setup test database
+        env:
+          DATABASE_URL: postgres://test:test@localhost:5432/inventory_test
+        run: |
+          npm run db:migrate:test
+          npm run db:seed:test
+
+      - name: Build Go backend for testing
+        working-directory: 5470_S_Highline_Circle/backend
+        env:
+          DATABASE_URL: postgres://test:test@localhost:5432/inventory_test
+          REDIS_URL: redis://localhost:6379
+        run: |
+          go build -o main .
+          chmod +x main
+
+      - name: Start backend server in background
+        working-directory: 5470_S_Highline_Circle/backend
+        env:
+          DATABASE_URL: postgres://test:test@localhost:5432/inventory_test
+          REDIS_URL: redis://localhost:6379
+          PORT: 8080
+        run: |
+          ./main &
+          echo $! > backend.pid
+          sleep 10
+
+      - name: Wait for backend to be ready
+        run: |
+          for i in {1..30}; do
+            if curl -f http://localhost:8080/health; then
+              echo "Backend is ready"
+              break
+            fi
+            echo "Waiting for backend... ($i/30)"
+            sleep 2
+          done
+
+      - name: Run integration tests
+        env:
+          DATABASE_URL: postgres://test:test@localhost:5432/inventory_test
+          REDIS_URL: redis://localhost:6379
+          API_BASE_URL: http://localhost:8080
+        run: npm run test:integration -- --coverage --coverageReporters=json --coverageReporters=lcov
+
+      - name: Stop backend server
+        if: always()
+        working-directory: 5470_S_Highline_Circle/backend
+        run: |
+          if [ -f backend.pid ]; then
+            kill $(cat backend.pid) || true
+            rm backend.pid
+          fi
+
+      - name: Upload integration test coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/lcov.info
+          flags: integration
+          name: integration-coverage
+
+  # Job 5: End-to-End Tests
+  e2e-tests:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    needs: setup
+    if: ${{ github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'e2e' || github.event.inputs.test_type == '' }}
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit]
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_USER: test
+          POSTGRES_DB: inventory_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Restore caches
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ needs.setup.outputs.cache-key }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Setup test environment
+        env:
+          DATABASE_URL: postgres://test:test@localhost:5432/inventory_test
+        run: |
+          npm run db:migrate:test
+          npm run db:seed:test
+
+      - name: Build and start applications
+        env:
+          DATABASE_URL: postgres://test:test@localhost:5432/inventory_test
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+          E2E_BASE_URL: http://localhost:3000
+        run: |
+          # Build frontend
+          cd 5470_S_Highline_Circle/frontend
+          npm run build
+          npm run start &
+          echo $! > frontend.pid
+          cd ../..
+
+          # Build and start backend
+          cd 5470_S_Highline_Circle/backend
+          go build -o main .
+          PORT=8080 ./main &
+          echo $! > backend.pid
+          cd ../..
+
+          # Wait for services to be ready
+          sleep 30
+
+      - name: Run E2E tests
+        env:
+          E2E_BASE_URL: http://localhost:3000
+          API_BASE_URL: http://localhost:8080
+        run: npx playwright test --project=${{ matrix.browser }} --reporter=html
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: playwright-report-${{ matrix.browser }}
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Stop applications
+        if: always()
+        run: |
+          if [ -f 5470_S_Highline_Circle/frontend/frontend.pid ]; then
+            kill $(cat 5470_S_Highline_Circle/frontend/frontend.pid) || true
+            rm 5470_S_Highline_Circle/frontend/frontend.pid
+          fi
+          if [ -f 5470_S_Highline_Circle/backend/backend.pid ]; then
+            kill $(cat 5470_S_Highline_Circle/backend/backend.pid) || true
+            rm 5470_S_Highline_Circle/backend/backend.pid
+          fi
+
+  # Job 6: Performance Tests
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: setup
+    if: ${{ github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'performance' }}
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_USER: test
+          POSTGRES_DB: inventory_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Install k6
+        run: |
+          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Restore caches
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ needs.setup.outputs.cache-key }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup test database with performance data
+        env:
+          DATABASE_URL: postgres://test:test@localhost:5432/inventory_test
+        run: |
+          npm run db:migrate:test
+          npm run db:seed:performance
+
+      - name: Start backend for performance testing
+        working-directory: 5470_S_Highline_Circle/backend
+        env:
+          DATABASE_URL: postgres://test:test@localhost:5432/inventory_test
+          REDIS_URL: redis://localhost:6379
+          PORT: 8080
+          GIN_MODE: release
+        run: |
+          go build -ldflags="-s -w" -o main .
+          ./main &
+          echo $! > backend.pid
+          sleep 15
+
+      - name: Wait for backend to be ready
+        run: |
+          for i in {1..30}; do
+            if curl -f http://localhost:8080/health; then
+              echo "Backend is ready for performance testing"
+              break
+            fi
+            echo "Waiting for backend... ($i/30)"
+            sleep 2
+          done
+
+      - name: Run performance tests
+        env:
+          API_BASE_URL: http://localhost:8080
+        run: |
+          k6 run --out json=performance-results.json __tests__/performance/k6-inventory-load-tests.js
+
+      - name: Process performance results
+        run: |
+          node -e "
+          const fs = require('fs');
+          const results = fs.readFileSync('performance-results.json', 'utf8')
+            .split('\n')
+            .filter(line => line.trim())
+            .map(line => JSON.parse(line))
+            .filter(item => item.type === 'Point' && item.metric === 'http_req_duration');
+
+          const durations = results.map(r => r.data.value);
+          const p95 = durations.sort((a, b) => a - b)[Math.floor(durations.length * 0.95)];
+          const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
+
+          console.log('Performance Results:');
+          console.log('Average Response Time:', avg.toFixed(2), 'ms');
+          console.log('95th Percentile:', p95.toFixed(2), 'ms');
+          console.log('Total Requests:', durations.length);
+
+          // Fail if performance is below threshold
+          if (p95 > 1000) {
+            console.error('Performance test failed: 95th percentile > 1000ms');
+            process.exit(1);
+          }
+          "
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-results
+          path: performance-results.json
+          retention-days: 7
+
+      - name: Stop backend server
+        if: always()
+        working-directory: 5470_S_Highline_Circle/backend
+        run: |
+          if [ -f backend.pid ]; then
+            kill $(cat backend.pid) || true
+            rm backend.pid
+          fi
+
+  # Job 7: Coverage Report and Quality Gates
+  coverage-report:
+    name: Coverage Report & Quality Gates
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download all coverage reports
+        uses: actions/download-artifact@v3
+        continue-on-error: true
+
+      - name: Generate combined coverage report
+        run: |
+          # Combine coverage reports from all test jobs
+          npm run test:coverage:merge
+
+      - name: Check coverage thresholds
+        run: |
+          npm run test:coverage:check -- --threshold=${{ env.COVERAGE_THRESHOLD }}
+
+      - name: Generate coverage badge
+        uses: schneegans/dynamic-badges-action@v1.6.0
+        with:
+          auth: ${{ secrets.GITHUB_TOKEN }}
+          gistID: ${{ secrets.COVERAGE_GIST_ID }}
+          filename: inventory-coverage-badge.json
+          label: Coverage
+          message: ${{ env.COVERAGE_PERCENTAGE }}%
+          color: ${{ env.COVERAGE_COLOR }}
+
+      - name: Upload final coverage report
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/lcov.info
+          flags: combined
+          name: combined-coverage
+          fail_ci_if_error: true
+
+  # Job 8: Security and Quality Checks
+  security-checks:
+    name: Security & Quality Checks
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Restore caches
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ needs.setup.outputs.cache-key }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+
+      - name: Run Snyk security scan
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=medium
+
+      - name: Run SonarCloud scan
+        uses: SonarSource/sonarcloud-github-action@master
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Analyze Go code with gosec
+        working-directory: 5470_S_Highline_Circle/backend
+        run: |
+          go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+          gosec -fmt json -out gosec-report.json -stdout -verbose ./...
+        continue-on-error: true
+
+  # Job 9: Test Summary and Notification
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests, integration-tests, e2e-tests, performance-tests, coverage-report, security-checks]
+    if: always()
+    steps:
+      - name: Generate test summary
+        run: |
+          echo "# Test Suite Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Job Status Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Lint & Code Quality | ${{ needs.lint.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Tests | ${{ needs.unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Integration Tests | ${{ needs.integration-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| E2E Tests | ${{ needs.e2e-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Performance Tests | ${{ needs.performance-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Coverage Report | ${{ needs.coverage-report.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Checks | ${{ needs.security-checks.result }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo, number } = context.issue;
+            const results = {
+              lint: '${{ needs.lint.result }}',
+              unit: '${{ needs.unit-tests.result }}',
+              integration: '${{ needs.integration-tests.result }}',
+              e2e: '${{ needs.e2e-tests.result }}',
+              performance: '${{ needs.performance-tests.result }}',
+              coverage: '${{ needs.coverage-report.result }}',
+              security: '${{ needs.security-checks.result }}'
+            };
+
+            const summary = Object.entries(results)
+              .map(([test, result]) => `${test}: ${result}`)
+              .join('\n');
+
+            github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: number,
+              body: `## Test Suite Results\n\`\`\`\n${summary}\n\`\`\``
+            });
+
+      - name: Set final status
+        run: |
+          if [[ "${{ needs.lint.result }}" != "success" ||
+                "${{ needs.unit-tests.result }}" != "success" ||
+                "${{ needs.integration-tests.result }}" != "success" ]]; then
+            echo "Required tests failed"
+            exit 1
+          fi

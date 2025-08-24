@@ -60,6 +60,7 @@ jobs:
     strategy:
       matrix:
         site: [docs-site, api-site, partners-site]
+      fail-fast: false
 
     steps:
       - name: Checkout code

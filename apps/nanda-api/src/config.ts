@@ -14,7 +14,10 @@ const configSchema = z.object({
   }),
 
   // Redis configuration
-  redisUrl: z.string().default(process.env.NODE_ENV === 'production' ? 'redis://redis.candlefish.ai:6379' : 'redis://localhost:6379'),
+  redisUrl: z.string().default(
+    process.env.REDIS_URL ||
+    (process.env.NODE_ENV === 'production' ? 'redis://redis.candlefish.ai:6379' : 'redis://localhost:6379')
+  ),
 
   // Authentication
   auth: z.object({
@@ -24,11 +27,13 @@ const configSchema = z.object({
   }),
 
   // CORS configuration
-  corsOrigins: z.array(z.string()).default([
-    process.env.NODE_ENV === 'production'
-      ? 'https://partners.candlefish.ai'
-      : 'http://localhost:3001'
-  ].filter(Boolean)),
+  corsOrigins: z.array(z.string()).default(
+    process.env.CORS_ORIGINS
+      ? process.env.CORS_ORIGINS.split(',')
+      : process.env.NODE_ENV === 'production'
+        ? ['https://partners.candlefish.ai', 'https://docs.candlefish.ai', 'https://api.candlefish.ai']
+        : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002']
+  ),
 
   // Rate limiting
   rateLimits: z.object({
