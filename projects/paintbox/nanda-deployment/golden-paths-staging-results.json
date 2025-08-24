@@ -64,7 +64,7 @@
       "name": "GP8: Mobile Viewport",
       "endpoint": "/",
       "status": "failed",
-      "response": "503"
+      "response": "502"
     }
   ],
   "summary": {
