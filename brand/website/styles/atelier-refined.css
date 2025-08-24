@@ -1,0 +1,337 @@
+/* Jony Ive Refined Design System for Atelier Laboratory */
+
+/* Design Tokens */
+:root {
+  /* Colors - Refined Palette */
+  --nearBlack: #0A0A0B;
+  --charcoal: #1A1A1C;
+  --pearl: #F8F8F2;
+  --pearlMuted: rgba(248, 248, 242, 0.7);
+  --pearlSubtle: rgba(248, 248, 242, 0.4);
+  --livingCyan: #3FD3C6;
+  --livingCyanMuted: rgba(63, 211, 198, 0.3);
+  --livingCyanSubtle: rgba(63, 211, 198, 0.1);
+  --copper: #DA9520;
+  --copperMuted: rgba(218, 149, 32, 0.3);
+
+  /* Glass Morphism */
+  --glassBackground: rgba(26, 26, 28, 0.6);
+  --glassBackgroundHover: rgba(26, 26, 28, 0.8);
+  --glassBorder: rgba(248, 248, 242, 0.05);
+  --glassBorderHover: rgba(248, 248, 242, 0.1);
+
+  /* Shadows - Ambient Occlusion Style */
+  --shadowSubtle: 0 2px 8px rgba(0, 0, 0, 0.15);
+  --shadowReading: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --shadowFloating: 0 16px 64px rgba(0, 0, 0, 0.4);
+
+  /* Blur Values */
+  --blurSubtle: blur(4px);
+  --blurReading: blur(8px);
+  --blurAtmosphere: blur(12px);
+  --blurHidden: blur(20px);
+
+  /* Spring Animation Curves */
+  --springSmooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --springGentle: cubic-bezier(0.23, 1, 0.32, 1);
+  --springPrecise: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Base Overrides for Refined Aesthetic */
+body {
+  background: linear-gradient(135deg, var(--nearBlack) 0%, var(--charcoal) 100%);
+  color: var(--pearl);
+  font-feature-settings: "kern" 1, "liga" 1, "frac" 1;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Focus Management Styles */
+.atelier-reading-focus {
+  position: relative !important;
+  z-index: 25 !important;
+  transform: scale(1.02) translateY(-2px) !important;
+  filter: brightness(1.1) contrast(1.05) !important;
+  box-shadow: var(--shadowFloating) !important;
+  transition: all 0.6s var(--springGentle) !important;
+  backdrop-filter: blur(20px) saturate(150%) !important;
+}
+
+.atelier-reading-receded {
+  filter: var(--blurReading) brightness(0.7) contrast(0.8) !important;
+  opacity: 0.6 !important;
+  transform: scale(0.98) !important;
+  transition: all 0.6s var(--springGentle) !important;
+}
+
+/* Reading Mode Styles */
+.reading-mode-active {
+  position: relative !important;
+  z-index: 25 !important;
+  background: linear-gradient(135deg,
+    rgba(26, 26, 28, 0.95) 0%,
+    rgba(26, 26, 28, 0.98) 100%) !important;
+  backdrop-filter: blur(20px) saturate(150%) !important;
+  padding: 3rem !important;
+  border-radius: 16px !important;
+  margin: 2rem 0 !important;
+  box-shadow: var(--shadowFloating) !important;
+  border: 1px solid rgba(248, 248, 242, 0.08) !important;
+  line-height: 1.8 !important;
+  max-width: 65ch !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  transform: scale(1.02) !important;
+  transition: all 0.8s var(--springGentle) !important;
+}
+
+.reading-mode-active p,
+.reading-mode-active h1,
+.reading-mode-active h2,
+.reading-mode-active h3,
+.reading-mode-active h4,
+.reading-mode-active h5,
+.reading-mode-active h6 {
+  margin-bottom: 2rem !important;
+}
+
+.reading-mode-active h1,
+.reading-mode-active h2,
+.reading-mode-active h3 {
+  color: var(--pearl) !important;
+  font-weight: 300 !important;
+  letter-spacing: -0.025em !important;
+}
+
+.reading-mode-active p {
+  color: var(--pearlMuted) !important;
+  font-size: 1.125rem !important;
+  line-height: 1.8 !important;
+  font-weight: 300 !important;
+}
+
+/* Glass Morphism Components */
+.glass-panel {
+  background: var(--glassBackground);
+  backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid var(--glassBorder);
+  border-radius: 12px;
+  transition: all 0.3s var(--springSmooth);
+}
+
+.glass-panel:hover {
+  background: var(--glassBackgroundHover);
+  border-color: var(--glassBorderHover);
+  box-shadow: var(--shadowSubtle);
+  transform: translateY(-1px);
+}
+
+/* Spatial Typography */
+.spatial-text {
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  font-weight: 300;
+}
+
+.spatial-text-hero {
+  font-size: clamp(2.5rem, 8vw, 4.5rem);
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  font-weight: 200;
+}
+
+.spatial-text-title {
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.spatial-text-subtitle {
+  font-size: clamp(1.125rem, 2.5vw, 1.5rem);
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+
+/* Moment Buttons - iPhone Precision */
+.moment-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-weight: 400;
+  text-decoration: none;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s var(--springSmooth);
+  backdrop-filter: blur(20px);
+  will-change: transform;
+}
+
+.moment-button:hover {
+  transform: translateY(-1px) scale(1.02);
+}
+
+.moment-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.moment-button-primary {
+  background: linear-gradient(135deg,
+    rgba(63, 211, 198, 0.2) 0%,
+    rgba(63, 211, 198, 0.1) 100%);
+  border-color: rgba(63, 211, 198, 0.3);
+  color: var(--livingCyan);
+}
+
+.moment-button-primary:hover {
+  background: linear-gradient(135deg,
+    rgba(63, 211, 198, 0.3) 0%,
+    rgba(63, 211, 198, 0.2) 100%);
+  border-color: rgba(63, 211, 198, 0.5);
+  box-shadow: 0 8px 25px rgba(63, 211, 198, 0.2);
+}
+
+/* Shimmer Effect */
+.moment-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent);
+  transition: left 0.6s ease;
+}
+
+.moment-button:hover::before {
+  left: 100%;
+}
+
+/* Ambient Indicators */
+.ambient-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
+}
+
+.ambient-indicator-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--livingCyan);
+}
+
+.ambient-indicator-dot.active {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+/* Reading Plane Components */
+.reading-plane {
+  position: relative;
+  background: linear-gradient(135deg,
+    rgba(248, 248, 242, 0.08) 0%,
+    rgba(248, 248, 242, 0.02) 100%);
+  backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid rgba(248, 248, 242, 0.05);
+  border-radius: 16px;
+  transition: all 0.6s var(--springGentle);
+  will-change: transform, filter;
+}
+
+.reading-plane:hover {
+  transform: translateY(-2px) scale(1.005);
+  border-color: rgba(248, 248, 242, 0.1);
+  box-shadow: var(--shadowReading);
+}
+
+.reading-plane.priority-primary {
+  z-index: 30;
+}
+
+.reading-plane.priority-secondary {
+  z-index: 20;
+}
+
+.reading-plane.priority-tertiary {
+  z-index: 10;
+}
+
+/* System Status Cards */
+.system-metric {
+  background: rgba(248, 248, 242, 0.02);
+  border: 1px solid rgba(248, 248, 242, 0.05);
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-align: center;
+  transition: all 0.3s var(--springSmooth);
+}
+
+.system-metric:hover {
+  background: rgba(248, 248, 242, 0.04);
+  border-color: rgba(248, 248, 242, 0.1);
+  transform: translateY(-1px);
+}
+
+/* Mobile Refinements */
+@media (max-width: 768px) {
+  .reading-mode-active {
+    padding: 2rem !important;
+    margin: 1rem !important;
+    border-radius: 12px !important;
+  }
+
+  .spatial-text-hero {
+    font-size: 2.5rem;
+  }
+
+  .moment-button {
+    padding: 1rem 2rem;
+    font-size: 1rem;
+  }
+
+  /* Remove decorative elements on mobile */
+  .ambient-system,
+  .particle-field {
+    display: none;
+  }
+}
+
+/* Accessibility Improvements */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .atelier-reading-focus,
+  .atelier-reading-receded,
+  .reading-mode-active {
+    transition: none !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --pearl: #FFFFFF;
+    --charcoal: #000000;
+    --livingCyan: #00FFFF;
+    --glassBorder: rgba(255, 255, 255, 0.2);
+  }
+}
