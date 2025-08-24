@@ -56,7 +56,7 @@ export const NewsletterForm: React.FC<NewsletterFormProps> = ({
           email: email.toLowerCase().trim(),
           firstName: firstName.trim(),
           source: 'website_newsletter_form',
-          interests: ['automation', 'operations']
+          interests: ['operational-patterns', 'automation']
         }),
       })
 

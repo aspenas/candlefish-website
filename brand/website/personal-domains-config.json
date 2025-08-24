@@ -1,0 +1,14 @@
+{
+  "highline.work": {
+    "site_id": "error",
+    "netlify_url": "error",
+    "type": "personal_family"
+  },
+  "acupcake.shop": {
+    "site_id": "7c60e437-c36c-4a63-a24a-b1143eec6321",
+    "netlify_url": "personal-acupcake-shop.netlify.app",
+    "type": "personal"
+  },
+  "created_at": "2025-08-24T17:17:56Z",
+  "note": "Personal domains - DO NOT grant Candlefish team access"
+}

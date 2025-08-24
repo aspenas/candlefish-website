@@ -4,7 +4,7 @@
 [build]
   command = "npm run build"
   publish = ".next"
-  
+
 [build.environment]
   NODE_VERSION = "18"
   NEXT_TELEMETRY_DISABLED = "1"
@@ -50,12 +50,12 @@
     minifyCSS = true
     minifyJS = true
 
-# 404 Prevention
-[[plugins]]
-  package = "netlify-plugin-no-more-404"
-  [plugins.inputs]
-    on404 = "error"
-    cacheKey = "404-plugin-cache"
+# 404 Prevention - Disabled due to compatibility issues
+# [[plugins]]
+#   package = "netlify-plugin-no-more-404"
+#   [plugins.inputs]
+#     on404 = "error"
+#     cacheKey = "404-plugin-cache"
 
 # Bundle Environment Variables
 [[plugins]]
@@ -108,4 +108,3 @@
 # Performance optimizations
 [functions]
   node_bundler = "esbuild"
-  

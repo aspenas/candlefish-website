@@ -1,0 +1,3 @@
+
+; <<>> DiG 9.10.6 <<>> acupcake.shop ANY +noall +answer
+;; global options: +cmd

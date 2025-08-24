@@ -5,6 +5,7 @@ import Link from 'next/link'
 import HeaderText from '../components/HeaderText'
 import SystemActivity from '../components/SystemActivity'
 import SystemArchitecture from '../components/SystemArchitecture'
+import { NewsletterForm } from '../components/forms/NewsletterForm'
 
 // Lazy load visualizations for better initial performance with error boundary
 const OperationalCraft = lazy(() =>
@@ -221,6 +222,27 @@ export default function OperationalHomepage() {
             >
               Request Consideration for Q1 2026
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Newsletter Section */}
+      <section className="py-28">
+        <div className="max-w-4xl mx-auto px-6">
+          <div className="text-center mb-12">
+            <p className="text-xl text-[#E0E1DD] font-light leading-relaxed">
+              We publish when we discover something worth sharing. No content calendar. No SEO games. Just operational patterns.
+            </p>
+          </div>
+          <div className="max-w-xl mx-auto">
+            <NewsletterForm
+              variant="compact"
+              theme="dark"
+              title=""
+              description=""
+              placeholder="Subscribe for Notifications →"
+              className="text-center"
+            />
           </div>
         </div>
       </section>
