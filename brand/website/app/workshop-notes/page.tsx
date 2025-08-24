@@ -3,14 +3,30 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { workshopNotes } from '@/content/workshop-notes'
 import { NoteViewer } from '@/components/notes/note-viewer'
+import { ShareModal } from '@/components/workshop/ShareModal'
 
 export default function WorkshopNotes() {
   const [selectedNote, setSelectedNote] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'technical' | 'operational' | 'philosophical'>('all')
   const [searchTerm, setSearchTerm] = useState('')
+  const [tagFilter, setTagFilter] = useState<string | null>(null)
+  const [shareModalOpen, setShareModalOpen] = useState(false)
+  const [noteToShare, setNoteToShare] = useState<string | null>(null)
+
+  // Handle URL-based note selection
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      const noteId = urlParams.get('note')
+      if (noteId && workshopNotes.some(note => note.id === noteId)) {
+        setSelectedNote(noteId)
+      }
+    }
+  }, [])
 
   const filteredNotes = workshopNotes
     .filter(note => filter === 'all' || note.category === filter)
+    .filter(note => tagFilter === null || note.tags.includes(tagFilter))
     .filter(note =>
       searchTerm === '' ||
       note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -35,6 +51,22 @@ export default function WorkshopNotes() {
 
           {/* Filter Bar */}
           <div className="mb-12 flex flex-wrap gap-4 items-center">
+            {/* Active Tag Filter Display */}
+            {tagFilter && (
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-sm text-[#415A77]">Filtered by tag:</span>
+                <div className="flex items-center gap-2 px-3 py-1 bg-[#3FD3C6]/10 rounded-full">
+                  <span className="text-sm text-[#3FD3C6]">#{tagFilter}</span>
+                  <button
+                    onClick={() => setTagFilter(null)}
+                    className="text-[#3FD3C6] hover:text-[#4FE3D6] ml-1"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-2">
               {(['all', 'technical', 'operational', 'philosophical'] as const).map(category => (
                 <button
@@ -79,7 +111,15 @@ export default function WorkshopNotes() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
                 className="group cursor-pointer"
-                onClick={() => setSelectedNote(note.id)}
+                onClick={() => {
+                  setSelectedNote(note.id)
+                  // Update URL without causing a navigation
+                  if (typeof window !== 'undefined') {
+                    const url = new URL(window.location.href)
+                    url.searchParams.set('note', note.id)
+                    window.history.pushState({}, '', url.toString())
+                  }
+                }}
               >
                 <div className="border-l-2 border-[#415A77] pl-8 hover:border-[#3FD3C6] transition-all">
                   {/* Date & Category */}
@@ -114,6 +154,24 @@ export default function WorkshopNotes() {
                       {note.readTime}
                     </span>
 
+                    {/* Share Button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setNoteToShare(note.id)
+                        setShareModalOpen(true)
+                      }}
+                      className="text-[#415A77] hover:text-[#3FD3C6] transition-colors flex items-center gap-1"
+                      title="Share this note"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                        <polyline points="16,6 12,2 8,6"/>
+                        <line x1="12" y1="2" x2="12" y2="15"/>
+                      </svg>
+                      <span className="text-xs">Share</span>
+                    </button>
+
                     {note.hasCode && (
                       <span className="text-[#3FD3C6] font-mono text-xs px-2 py-1
                                      bg-[#3FD3C6]/10 rounded">
@@ -130,9 +188,16 @@ export default function WorkshopNotes() {
 
                     <div className="flex gap-2 ml-auto">
                       {note.tags.map(tag => (
-                        <span key={tag} className="text-xs text-[#415A77]">
+                        <button
+                          key={tag}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setTagFilter(tag)
+                          }}
+                          className="text-xs text-[#415A77] hover:text-[#3FD3C6] transition-colors cursor-pointer"
+                        >
                           #{tag}
-                        </span>
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -167,7 +232,39 @@ export default function WorkshopNotes() {
       ) : (
         <NoteViewer
           noteId={selectedNote}
-          onClose={() => setSelectedNote(null)}
+          onClose={() => {
+            setSelectedNote(null)
+            // Clear the note parameter from URL
+            if (typeof window !== 'undefined') {
+              const url = new URL(window.location.href)
+              url.searchParams.delete('note')
+              window.history.pushState({}, '', url.toString())
+            }
+          }}
+          onTagClick={(tag) => {
+            setTagFilter(tag)
+            setSelectedNote(null)
+            // Clear the note parameter from URL
+            if (typeof window !== 'undefined') {
+              const url = new URL(window.location.href)
+              url.searchParams.delete('note')
+              window.history.pushState({}, '', url.toString())
+            }
+          }}
+        />
+      )}
+
+      {/* Share Modal */}
+      {noteToShare && (
+        <ShareModal
+          isOpen={shareModalOpen}
+          onClose={() => {
+            setShareModalOpen(false)
+            setNoteToShare(null)
+          }}
+          noteId={noteToShare}
+          noteTitle={workshopNotes.find(n => n.id === noteToShare)?.title || ''}
+          noteExcerpt={workshopNotes.find(n => n.id === noteToShare)?.excerpt}
         />
       )}
     </main>
