@@ -38,7 +38,7 @@
 [[plugins]]
   package = "netlify-plugin-submit-sitemap"
   [plugins.inputs]
-    baseUrl = "https://inventory.candlefish.ai"
+    baseUrl = "https://promoteros.candlefish.ai"
     sitemapPath = "/sitemap.xml"
 
 # HTML Minification

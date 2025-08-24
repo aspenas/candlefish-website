@@ -1,49 +1,87 @@
-# Netlify Build Configuration - Paintbox (Password Protected)
-# Optimized for Performance and Security
+# Netlify Configuration with Extensions
+# Generated: 20250823_211146
 
 [build]
-  command = "npm ci && npm run build"
-  publish = "dist"
-
+  command = "npm run build"
+  publish = ".next"
+  
 [build.environment]
   NODE_VERSION = "18"
-  NPM_FLAGS = "--silent"
-  NODE_OPTIONS = "--max-old-space-size=4096"
-  CI = "true"
-  SKIP_PREFLIGHT_CHECK = "true"
-  GENERATE_SOURCEMAP = "false"
   NEXT_TELEMETRY_DISABLED = "1"
 
-[build.processing]
-  skip_processing = false
+# Performance Monitoring
+[[plugins]]
+  package = "@netlify/plugin-lighthouse"
+  [plugins.inputs]
+    audits = [
+      { url = "/", name = "Homepage" }
+    ]
+    [plugins.inputs.thresholds]
+      performance = 0.8
+      accessibility = 0.9
+      best-practices = 0.9
+      seo = 0.9
 
-[build.processing.css]
-  bundle = true
-  minify = true
+# Next.js Optimization
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
 
-[build.processing.js]
-  bundle = true
-  minify = true
+# Build Caching
+[[plugins]]
+  package = "netlify-plugin-cache-nextjs"
 
-[build.processing.html]
-  pretty_urls = true
+# Image Optimization
+[[plugins]]
+  package = "netlify-plugin-image-optim"
 
-[build.processing.images]
-  compress = true
+# SEO
+[[plugins]]
+  package = "netlify-plugin-submit-sitemap"
+  [plugins.inputs]
+    baseUrl = "https://paintbox.candlefish.ai"
+    sitemapPath = "/sitemap.xml"
 
-# Password protection using Netlify's visitor access control
-# Note: Requires configuring visitor access password in Netlify UI
+# HTML Minification
+[[plugins]]
+  package = "netlify-plugin-minify-html"
+  [plugins.inputs.minifierOptions]
+    removeComments = true
+    collapseWhitespace = true
+    minifyCSS = true
+    minifyJS = true
+
+# 404 Prevention
+[[plugins]]
+  package = "netlify-plugin-no-more-404"
+  [plugins.inputs]
+    on404 = "error"
+    cacheKey = "404-plugin-cache"
+
+# Bundle Environment Variables
+[[plugins]]
+  package = "netlify-plugin-bundle-env"
 
 # Security Headers
 [[headers]]
   for = "/*"
   [headers.values]
-    X-Frame-Options = "DENY"
-    X-XSS-Protection = "1; mode=block"
+    X-Frame-Options = "SAMEORIGIN"
     X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
-    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://api.candlefish.ai"
+
+# Cache Control
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, must-revalidate"
 
 [[headers]]
   for = "*.js"
@@ -55,43 +93,19 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
-[[headers]]
-  for = "*.png"
-  [headers.values]
-    Cache-Control = "public, max-age=2592000"
+# Edge Functions (if applicable)
+[[edge_functions]]
+  path = "/api/edge/*"
+  function = "api-edge"
 
-[[headers]]
-  for = "*.html"
-  [headers.values]
-    Cache-Control = "public, max-age=0, must-revalidate"
-
-# Redirects - Block netlify.app access first, then SPA routing
-[[redirects]]
-  from = "https://paintbox-protected.netlify.app/*"
-  to = "https://paintbox.candlefish.ai/:splat"
-  status = 301
-  force = true
-
+# Redirects
 [[redirects]]
   from = "/api/*"
-  to = "https://paintbox-api.railway.app/api/:splat"
+  to = "/.netlify/functions/:splat"
   status = 200
   force = true
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-
-# Environment variable configuration
-[context.production.environment]
-  NEXT_PUBLIC_API_URL = "https://paintbox-api.railway.app"
-  NEXT_PUBLIC_ENVIRONMENT = "production"
-
-[context.deploy-preview.environment]
-  NEXT_PUBLIC_API_URL = "https://paintbox-api-preview.railway.app"
-  NEXT_PUBLIC_ENVIRONMENT = "preview"
-
-[context.branch-deploy.environment]
-  NEXT_PUBLIC_API_URL = "https://paintbox-api-dev.railway.app"
-  NEXT_PUBLIC_ENVIRONMENT = "development"
+# Performance optimizations
+[functions]
+  node_bundler = "esbuild"
+  

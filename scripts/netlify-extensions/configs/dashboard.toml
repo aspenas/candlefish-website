@@ -1,0 +1,165 @@
+# Netlify Configuration - dashboard.candlefish.ai
+# Real-time operational dashboard with performance monitoring
+
+[build]
+  command = "npm ci && npm run build"
+  publish = "build"
+
+[build.environment]
+  REACT_APP_SITE_URL = "https://dashboard.candlefish.ai"
+  REACT_APP_API_URL = "https://api.candlefish.ai/dashboard"
+  REACT_APP_WS_URL = "wss://ws.candlefish.ai/dashboard"
+  REACT_APP_METRICS_ENDPOINT = "https://metrics.candlefish.ai"
+
+# Dashboard-specific plugins
+
+# 1. Real-time Performance Monitor
+[[plugins]]
+  package = "./plugins/performance-monitor"
+
+  [plugins.inputs]
+    metricsEndpoint = "https://metrics.candlefish.ai"
+    sampleRate = 1.0
+    enableRUM = true
+    enableSyntheticMonitoring = true
+    [plugins.inputs.alertThresholds]
+      ttfb = 200
+      fcp = 1500
+      lcp = 2500
+      fid = 100
+      cls = 0.1
+
+# 2. WebSocket Connection Manager
+[[plugins]]
+  package = "./plugins/websocket-manager"
+
+  [plugins.inputs]
+    endpoints = [
+      "wss://ws.candlefish.ai/metrics",
+      "wss://ws.candlefish.ai/alerts",
+      "wss://ws.candlefish.ai/logs"
+    ]
+    reconnectStrategy = "exponential"
+    maxReconnectDelay = 30000
+    enableCompression = true
+
+# 3. Data Aggregation Plugin
+[[plugins]]
+  package = "./plugins/data-aggregator"
+
+  [plugins.inputs]
+    sources = [
+      { "name": "inventory", "url": "https://api.candlefish.ai/inventory/stats" },
+      { "name": "sales", "url": "https://api.candlefish.ai/sales/stats" },
+      { "name": "users", "url": "https://api.candlefish.ai/users/stats" }
+    ]
+    refreshInterval = 30000
+    cacheStrategy = "stale-while-revalidate"
+
+# 4. Alert System Plugin
+[[plugins]]
+  package = "./plugins/alert-system"
+
+  [plugins.inputs]
+    channels = ["slack", "email", "webhook"]
+    slackWebhook = "$SLACK_ALERT_WEBHOOK"
+    emailRecipients = "$ALERT_EMAIL_RECIPIENTS"
+    webhookUrl = "$ALERT_WEBHOOK_URL"
+    severityLevels = ["critical", "warning", "info"]
+
+# Edge Functions for metrics and monitoring
+[[edge_functions]]
+  path = "/api/metrics/collect"
+  function = "metrics-collector"
+
+[[edge_functions]]
+  path = "/api/metrics/aggregate"
+  function = "metrics-aggregator"
+
+[[edge_functions]]
+  path = "/api/alerts/trigger"
+  function = "alert-handler"
+
+[[edge_functions]]
+  path = "/api/health"
+  function = "health-check"
+
+# Dashboard-specific headers
+[[headers]]
+  for = "/api/metrics/*"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    X-Content-Type-Options = "nosniff"
+    Access-Control-Allow-Origin = "https://dashboard.candlefish.ai"
+
+[[headers]]
+  for = "/api/realtime/*"
+  [headers.values]
+    Cache-Control = "no-cache"
+    Connection = "keep-alive"
+    X-Accel-Buffering = "no"
+
+# WebSocket upgrade headers
+[[headers]]
+  for = "/ws/*"
+  [headers.values]
+    Connection = "Upgrade"
+    Upgrade = "websocket"
+
+# Service Worker for offline capability
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+    Service-Worker-Allowed = "/"
+
+# Monitoring endpoints
+[[redirects]]
+  from = "/api/monitor/*"
+  to = "/.netlify/functions/monitor-:splat"
+  status = 200
+
+# Grafana proxy
+[[redirects]]
+  from = "/grafana/*"
+  to = "https://grafana.candlefish.ai/:splat"
+  status = 200
+  force = true
+  headers = {Authorization = "Bearer $GRAFANA_API_KEY"}
+
+# Prometheus metrics endpoint
+[[redirects]]
+  from = "/metrics"
+  to = "/.netlify/functions/prometheus-metrics"
+  status = 200
+
+# Functions with high memory for data processing
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+  [functions.environment]
+    AWS_LAMBDA_JS_RUNTIME = "nodejs18.x"
+    FUNCTION_MEMORY_SIZE = "1024"
+    FUNCTION_TIMEOUT = "30"
+
+# Auto-scaling configuration
+[[plugins]]
+  package = "./plugins/auto-scaler"
+
+  [plugins.inputs]
+    minInstances = 2
+    maxInstances = 10
+    targetCPU = 70
+    targetMemory = 80
+    scaleUpThreshold = 3  # consecutive measurements
+    scaleDownThreshold = 5
+
+# Production optimizations
+[context.production]
+  [context.production.environment]
+    NODE_ENV = "production"
+    ENABLE_PROFILING = "false"
+    ENABLE_MONITORING = "true"
+    DATADOG_API_KEY = "$DATADOG_API_KEY"
+    NEW_RELIC_LICENSE_KEY = "$NEW_RELIC_LICENSE_KEY"
