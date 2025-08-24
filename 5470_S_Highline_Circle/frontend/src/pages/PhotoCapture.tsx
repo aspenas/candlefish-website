@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  PhotoIcon,
   CameraIcon,
   QrCodeIcon,
   CloudArrowUpIcon,
@@ -10,10 +9,11 @@ import {
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import { api } from '../services/api';
-import { Item, Room, PhotoSession, CapturedPhoto } from '../types';
+import { PhotoSession, CapturedPhoto } from '../types';
 import PhotoCaptureWorkflow from '../components/PhotoCaptureWorkflow';
 import QRLabelSystem from '../components/QRLabelSystem';
 import BulkUploadZone from '../components/BulkUploadZone';
+import ErrorBoundary from '../components/ErrorBoundary';
 import { photoStorage, photoSyncManager, createCapturedPhoto } from '../utils/photoUtils';
 
 interface PhotoMatch {
@@ -35,18 +35,20 @@ const PhotoCapture: React.FC = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   // Fetch data
-  const { data: itemsData, isLoading: itemsLoading } = useQuery({
+  const { data: itemsData, isLoading: itemsLoading, error: itemsError } = useQuery({
     queryKey: ['items'],
     queryFn: api.getItems,
+    retry: 3,
   });
 
-  const { data: roomsData, isLoading: roomsLoading } = useQuery({
+  const { data: roomsData, isLoading: roomsLoading, error: roomsError } = useQuery({
     queryKey: ['rooms'],
     queryFn: api.getRooms,
+    retry: 3,
   });
 
-  const items = itemsData?.items || itemsData || [];
-  const rooms = roomsData?.rooms || roomsData || [];
+  const items = Array.isArray(itemsData) ? itemsData : (itemsData?.items || itemsData || []);
+  const rooms = Array.isArray(roomsData) ? roomsData : (roomsData?.rooms || roomsData || []);
 
   // Photo upload mutation
   const uploadPhotoMutation = useMutation({
@@ -193,7 +195,29 @@ const PhotoCapture: React.FC = () => {
     );
   }
 
-  const photosNeeded = items.filter(item => !item.images || item.images.length === 0);
+  if (itemsError || roomsError) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center bg-white rounded-lg shadow-lg p-8 max-w-md">
+          <div className="text-red-600 mb-4">
+            <ExclamationTriangleIcon className="h-12 w-12 mx-auto" />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Unable to Load Data</h2>
+          <p className="text-gray-600 mb-6">
+            Could not connect to the inventory system. Please check your connection and try again.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const photosNeeded = items.filter((item: any) => !item.images || item.images.length === 0);
   const progressPercent = items.length > 0 ? Math.round(((items.length - photosNeeded.length) / items.length) * 100) : 0;
 
   return (
@@ -337,28 +361,40 @@ const PhotoCapture: React.FC = () => {
 
         {/* Tab Content */}
         {activeTab === 'workflow' && (
-          <PhotoCaptureWorkflow
-            items={items}
-            rooms={rooms}
-            onPhotosUpdated={handlePhotosUpdated}
-            onSessionSaved={handleSessionSaved}
-          />
+          <div className="bg-white rounded-lg p-4">
+            <ErrorBoundary fallback={<div className="p-4 text-center text-red-600">Unable to load photo capture workflow. Please try refreshing the page.</div>}>
+              <PhotoCaptureWorkflow
+                items={items}
+                rooms={rooms}
+                onPhotosUpdated={handlePhotosUpdated}
+                onSessionSaved={handleSessionSaved}
+              />
+            </ErrorBoundary>
+          </div>
         )}
 
         {activeTab === 'qr' && (
-          <QRLabelSystem
-            items={items}
-            rooms={rooms}
-            onQRScanned={handleQRScanned}
-          />
+          <div className="bg-white rounded-lg p-4">
+            <ErrorBoundary fallback={<div className="p-4 text-center text-red-600">Unable to load QR label system. Please try refreshing the page.</div>}>
+              <QRLabelSystem
+                items={items}
+                rooms={rooms}
+                onQRScanned={handleQRScanned}
+              />
+            </ErrorBoundary>
+          </div>
         )}
 
         {activeTab === 'bulk' && (
-          <BulkUploadZone
-            items={items}
-            rooms={rooms}
-            onPhotosUploaded={handlePhotosUploaded}
-          />
+          <div className="bg-white rounded-lg p-4">
+            <ErrorBoundary fallback={<div className="p-4 text-center text-red-600">Unable to load bulk upload zone. Please try refreshing the page.</div>}>
+              <BulkUploadZone
+                items={items}
+                rooms={rooms}
+                onPhotosUploaded={handlePhotosUploaded}
+              />
+            </ErrorBoundary>
+          </div>
         )}
 
         {/* Offline Notice */}

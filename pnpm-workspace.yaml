@@ -1,4 +1,17 @@
 packages:
+  # Shared components library
+  - "packages/shared"
+  
+  # Documentation sites
+  - "apps/docs-site"
+  - "apps/partners-site" 
+  - "apps/api-site"
+  
+  # Existing apps
   - "apps/*"
+  
+  # Backend services
   - "services/*"
+  
+  # TypeScript libraries
   - "libs/ts/*"
