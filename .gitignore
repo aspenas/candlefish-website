@@ -241,3 +241,11 @@ apps/website/dist/docs/privileged/
 *.backup
 *.bak
 family-vault/
+.env.kong
+
+# Family/Personal content (migrated to separate repos)
+apps/5470-inventory/
+**/family/
+**/personal/
+**/privileged/
+migrate-to-family-vault.sh
