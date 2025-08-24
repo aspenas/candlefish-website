@@ -1,0 +1,201 @@
+/* Atelier Laboratory Enhancements */
+
+/* Custom scrollbar for terminal */
+.terminal-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.terminal-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.terminal-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 188, 212, 0.3);
+  border-radius: 2px;
+}
+
+.terminal-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 188, 212, 0.5);
+}
+
+/* Custom range slider for audio controls */
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-track {
+  background: rgba(0, 0, 0, 0.3);
+  height: 4px;
+  border-radius: 2px;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(0, 188, 212, 0.8);
+  height: 12px;
+  width: 12px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.slider::-webkit-slider-thumb:hover {
+  background: rgba(0, 188, 212, 1);
+}
+
+.slider::-moz-range-track {
+  background: rgba(0, 0, 0, 0.3);
+  height: 4px;
+  border-radius: 2px;
+  border: none;
+}
+
+.slider::-moz-range-thumb {
+  background: rgba(0, 188, 212, 0.8);
+  height: 12px;
+  width: 12px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+/* Glowing text effects for special states */
+.text-glow {
+  text-shadow: 0 0 8px currentColor;
+}
+
+/* Matrix text effect */
+.matrix-text {
+  font-family: 'Courier New', monospace;
+  color: #0f0;
+  text-shadow: 0 0 10px #0f0;
+}
+
+/* Pulse animations for various elements */
+@keyframes pulse-copper {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes pulse-cyan {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes pulse-pearl {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.6; }
+}
+
+.pulse-copper { animation: pulse-copper 2s infinite; }
+.pulse-cyan { animation: pulse-cyan 2s infinite; }
+.pulse-pearl { animation: pulse-pearl 2s infinite; }
+
+/* Particle canvas optimizations */
+canvas {
+  will-change: transform;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Security scanner effects */
+.scanner-grid {
+  background-image:
+    linear-gradient(rgba(0, 188, 212, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 188, 212, 0.1) 1px, transparent 1px);
+  background-size: 10px 10px;
+  animation: grid-scan 2s linear infinite;
+}
+
+@keyframes grid-scan {
+  0% { background-position: 0 0; }
+  100% { background-position: 10px 10px; }
+}
+
+/* Achievement notification styles */
+.achievement-notification {
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 188, 212, 0.3);
+}
+
+/* Parallax performance optimizations */
+.parallax-layer {
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+}
+
+/* Terminal cursor blink */
+@keyframes terminal-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.terminal-cursor {
+  animation: terminal-blink 1s infinite;
+}
+
+/* Diagnostic sparkline styles */
+.sparkline {
+  filter: drop-shadow(0 0 2px currentColor);
+}
+
+/* Easter egg matrix background */
+.matrix-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: black;
+  z-index: -1;
+  opacity: 0.1;
+}
+
+/* God mode styles */
+.god-mode {
+  background: linear-gradient(45deg, #da9520, #00bcd4, #f0f8ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: god-mode-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes god-mode-glow {
+  from { filter: drop-shadow(0 0 5px rgba(218, 149, 32, 0.5)); }
+  to { filter: drop-shadow(0 0 20px rgba(0, 188, 212, 0.8)); }
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 768px) {
+  .particle-field {
+    opacity: 0.3; /* Reduce particle intensity on mobile for performance */
+  }
+
+  canvas {
+    image-rendering: pixelated; /* Better mobile performance */
+  }
+
+  .terminal-scroll {
+    font-size: 12px; /* Smaller terminal text on mobile */
+  }
+}
+
+/* High performance mode for older devices */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  canvas {
+    display: none; /* Hide animations for accessibility */
+  }
+}

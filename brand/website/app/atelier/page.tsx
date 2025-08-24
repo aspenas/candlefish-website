@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import '../../styles/atelier-enhancements.css';
 import { EntryPortal } from '../../components/atelier/EntryPortal';
 import { AmbientAudio } from '../../components/atelier/AmbientAudio';
+import { AudioSystem } from '../../components/atelier/AudioSystem';
 import { CursorTrail } from '../../components/atelier/CursorTrail';
 import { TemporalEvolution } from '../../components/atelier/TemporalEvolution';
 import { LaboratoryInterface } from '../../components/atelier/LaboratoryInterface';
@@ -11,18 +13,32 @@ import { WorkshopCapabilities } from '../../components/atelier/WorkshopCapabilit
 import { TransformationVisualization } from '../../components/atelier/TransformationVisualization';
 import { WorkshopRequestForm } from '../../components/atelier/WorkshopRequestForm';
 import { AutomationShowcase } from '../../components/atelier/AutomationShowcase';
+import { ParticleField } from '../../components/atelier/ParticleField';
+import { SystemDiagnostics } from '../../components/atelier/SystemDiagnostics';
+import { SecurityClearance } from '../../components/atelier/SecurityClearance';
+import { EasterEggs } from '../../components/atelier/EasterEggs';
+import { DynamicBackground } from '../../components/atelier/DynamicBackground';
 
 type Section = 'entry' | 'capabilities' | 'transformations' | 'examples' | 'access';
 
 export default function AtelierLaboratory() {
+  const [isMounted, setIsMounted] = useState(false);
   const [currentSection, setCurrentSection] = useState<Section>('entry');
   const [hasEntered, setHasEntered] = useState(false);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [showSecurity, setShowSecurity] = useState(false);
+  const [securityCleared, setSecurityCleared] = useState(false);
   const [systemStatus, setSystemStatus] = useState({
     operational: true,
     capacity: 94.7,
     activeProcesses: 3,
     queuePosition: 7
   });
+
+  // Ensure this component only renders on the client
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     // Simulate system metrics updates
@@ -34,21 +50,117 @@ export default function AtelierLaboratory() {
       }));
     }, 5000);
 
-    return () => clearInterval(interval);
+    // Track audio time for achievements
+    let audioStartTime = Date.now();
+    const audioTimeInterval = setInterval(() => {
+      if (typeof window !== 'undefined' && (window as any).__laboratoryAudio?.isPlaying) {
+        const currentTime = parseInt(localStorage.getItem('audioTime') || '0');
+        localStorage.setItem('audioTime', (currentTime + 1000).toString());
+      }
+    }, 1000);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(audioTimeInterval);
+    };
   }, []);
 
+  // Global keyboard shortcuts
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Quick access to security clearance (for testing)
+      if (e.key === 'F11' && !hasEntered) {
+        e.preventDefault();
+        setShowSecurity(true);
+      }
+
+      // Quick diagnostics toggle
+      if ((e.metaKey || e.ctrlKey) && e.key === 'd' && hasEntered) {
+        e.preventDefault();
+        handleDiagnosticsToggle();
+      }
+    };
+
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [hasEntered, showDiagnostics]);
+
   const handleEnterLaboratory = () => {
+    if (!securityCleared) {
+      setShowSecurity(true);
+    } else {
+      setHasEntered(true);
+      setCurrentSection('capabilities');
+
+      // Play entry sound effect
+      if (typeof window !== 'undefined' && (window as any).__laboratoryAudio?.playEffect) {
+        (window as any).__laboratoryAudio.playEffect('entry');
+      }
+    }
+  };
+
+  const handleSecurityComplete = () => {
+    setShowSecurity(false);
+    setSecurityCleared(true);
     setHasEntered(true);
     setCurrentSection('capabilities');
+
+    // Play success sound
+    if (typeof window !== 'undefined' && (window as any).__laboratoryAudio?.playEffect) {
+      (window as any).__laboratoryAudio.playEffect('success');
+    }
   };
+
+  const handleDiagnosticsToggle = () => {
+    setShowDiagnostics(!showDiagnostics);
+
+    // Track diagnostics usage for achievements
+    if (typeof window !== 'undefined') {
+      const currentCount = parseInt(localStorage.getItem('diagnosticsCount') || '0');
+      localStorage.setItem('diagnosticsCount', (currentCount + 1).toString());
+    }
+  };
+
+  // Don't render anything on server-side
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-black via-depth-ocean to-depth-steel">
+        <div className="text-pearl/50 font-mono text-sm">Initializing Laboratory...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative bg-gradient-to-b from-black via-depth-ocean to-depth-steel overflow-hidden">
+      {/* Dynamic Background System */}
+      <DynamicBackground />
+
+      {/* Particle Field */}
+      <ParticleField />
+
       {/* Environmental Systems */}
       <TemporalEvolution />
       <EntryPortal />
       <CursorTrail />
-      <AmbientAudio />
+      <AudioSystem />
+
+      {/* System Diagnostics */}
+      <SystemDiagnostics
+        isVisible={showDiagnostics}
+        onToggle={handleDiagnosticsToggle}
+      />
+
+      {/* Security Clearance */}
+      <SecurityClearance
+        isVisible={showSecurity}
+        onComplete={handleSecurityComplete}
+        onClose={() => setShowSecurity(false)}
+      />
+
+      {/* Easter Eggs System */}
+      <EasterEggs />
 
       {/* Laboratory Interface */}
       <LaboratoryInterface
@@ -163,6 +275,16 @@ function EntrySequence({ onEnter, systemStatus }: {
         >
           <button
             onClick={onEnter}
+            onMouseEnter={() => {
+              if (typeof window !== 'undefined' && (window as any).__laboratoryAudio?.playEffect) {
+                (window as any).__laboratoryAudio.playEffect('hover');
+              }
+            }}
+            onMouseDown={() => {
+              if (typeof window !== 'undefined' && (window as any).__laboratoryAudio?.playEffect) {
+                (window as any).__laboratoryAudio.playEffect('click');
+              }
+            }}
             className="
               group relative px-12 py-6
               bg-graphite/80 border border-copper/30
@@ -214,6 +336,21 @@ function EntrySequence({ onEnter, systemStatus }: {
               </span>
             </div>
           ))}
+        </motion.div>
+
+        {/* Quick access hints */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 3, duration: 1 }}
+          className="text-center pt-6 space-y-2"
+        >
+          <div className="text-xs font-mono text-pearl/30">
+            Advanced Access: F11 • Diagnostics: ⌘+D • Terminal: Ctrl+`
+          </div>
+          <div className="text-xs font-mono text-copper/30">
+            Hidden features await discovery...
+          </div>
         </motion.div>
       </div>
     </motion.section>

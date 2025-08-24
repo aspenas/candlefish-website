@@ -96,7 +96,7 @@ export function WorkshopRequestForm({ onNavigate, queuePosition }: WorkshopReque
     setError(null);
 
     try {
-      const response = await fetch('/api/workshop', {
+      const response = await fetch('/.netlify/functions/workshop', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
