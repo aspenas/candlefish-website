@@ -1,0 +1,153 @@
+# Netlify Configuration - inventory.candlefish.ai
+# Real-time inventory management with Auth0 integration
+
+[build]
+  command = "npm ci && npm run build"
+  publish = "build"
+
+[build.environment]
+  REACT_APP_SITE_URL = "https://inventory.candlefish.ai"
+  REACT_APP_API_URL = "https://api.candlefish.ai/inventory"
+  REACT_APP_WS_URL = "wss://ws.candlefish.ai/inventory"
+  REACT_APP_AUTH0_DOMAIN = "$AUTH0_DOMAIN"
+  REACT_APP_AUTH0_CLIENT_ID = "$AUTH0_CLIENT_ID"
+  REACT_APP_AUTH0_AUDIENCE = "$AUTH0_AUDIENCE"
+
+# Inventory-specific plugins
+
+# 1. Auth0 Integration
+[[plugins]]
+  package = "netlify-plugin-auth0"
+
+  [plugins.inputs]
+    domain = "$AUTH0_DOMAIN"
+    clientId = "$AUTH0_CLIENT_ID"
+    redirectUri = "https://inventory.candlefish.ai/callback"
+    scope = "openid profile email read:inventory write:inventory"
+    audience = "https://api.candlefish.ai"
+
+# 2. Redis Cache Plugin for Inventory Data
+[[plugins]]
+  package = "./plugins/redis-cache"
+
+  [plugins.inputs]
+    redisUrl = "$REDIS_URL"
+    ttl = 300  # 5 minutes
+    keyPrefix = "inventory:"
+    patterns = [
+      "/api/inventory/*",
+      "/api/products/*",
+      "/api/stock/*"
+    ]
+
+# 3. Real-time Data Optimizer
+[[plugins]]
+  package = "./plugins/realtime-optimizer"
+
+  [plugins.inputs]
+    wsEndpoint = "wss://ws.candlefish.ai/inventory"
+    reconnectInterval = 5000
+    maxReconnectAttempts = 10
+    heartbeatInterval = 30000
+
+# 4. Database Connection Pool
+[[plugins]]
+  package = "./plugins/db-pool"
+
+  [plugins.inputs]
+    connectionString = "$DATABASE_URL"
+    maxConnections = 20
+    idleTimeout = 10000
+
+# Edge Functions for inventory operations
+[[edge_functions]]
+  path = "/api/inventory/search"
+  function = "inventory-search"
+
+[[edge_functions]]
+  path = "/api/inventory/update"
+  function = "inventory-update"
+
+[[edge_functions]]
+  path = "/api/inventory/sync"
+  function = "inventory-sync"
+
+# WebSocket configuration
+[[edge_functions]]
+  path = "/ws"
+  function = "websocket-handler"
+
+# Auth headers
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "https://inventory.candlefish.ai"
+    Access-Control-Allow-Credentials = "true"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Authorization, Content-Type"
+
+# Cache inventory assets
+[[headers]]
+  for = "/assets/products/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, stale-while-revalidate=43200"
+
+# Security headers for authenticated routes
+[[headers]]
+  for = "/dashboard/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    Content-Security-Policy = '''
+      default-src 'self';
+      script-src 'self' https://*.auth0.com;
+      connect-src 'self' https://*.auth0.com https://api.candlefish.ai wss://ws.candlefish.ai;
+      img-src 'self' data: https:;
+      style-src 'self' 'unsafe-inline';
+    '''
+
+# API rate limiting
+[[edge_functions]]
+  path = "/api/*"
+  function = "rate-limiter"
+
+  [edge_functions.config]
+    maxRequests = 100
+    windowMs = 60000  # 1 minute
+
+# Redirect rules for auth
+[[redirects]]
+  from = "/dashboard/*"
+  to = "/dashboard/:splat"
+  status = 200
+  force = false
+  conditions = {Role = ["authenticated"]}
+
+[[redirects]]
+  from = "/dashboard/*"
+  to = "/login?redirect=/dashboard/:splat"
+  status = 302
+  force = true
+
+# API proxy with auth
+[[redirects]]
+  from = "/api/inventory/*"
+  to = "https://api.candlefish.ai/inventory/:splat"
+  status = 200
+  force = true
+  headers = {Authorization = "Bearer :auth0_token"}
+
+# Functions configuration
+[functions]
+  directory = "netlify/functions"
+
+  [functions.environment]
+    ENABLE_CACHE = "true"
+    CACHE_TTL = "300"
+    AUTH0_SECRET = "$AUTH0_SECRET"
+
+# Production settings
+[context.production]
+  [context.production.environment]
+    NODE_ENV = "production"
+    ENABLE_ANALYTICS = "true"
+    SENTRY_DSN = "$SENTRY_DSN_INVENTORY"

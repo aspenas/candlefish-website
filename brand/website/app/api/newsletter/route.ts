@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { databaseService } from '../../../lib/email/database-service'
 
 // Email configuration
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'hello@candlefish.ai'
@@ -6,7 +7,7 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'hello@candlefish.ai'
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
-    const { email, source = 'website' } = data
+    const { email, name, source = 'website' } = data
 
     // Validate email
     if (!email) {
@@ -25,41 +26,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Normalize email
-    const normalizedEmail = email.toLowerCase().trim()
-
-    // In production, this would:
-    // 1. Add to email marketing service (Mailchimp, SendGrid, ConvertKit, etc.)
-    // 2. Store in database with preferences
-    // 3. Send welcome email
-    // 4. Track analytics
-
+    // Create subscriber in database
+    const subscriber = await databaseService.createSubscriber(email, name, source)
+    
     console.log('Newsletter subscription:', {
       timestamp: new Date().toISOString(),
-      email: normalizedEmail,
-      source
+      email: subscriber.email,
+      name: subscriber.name,
+      source,
+      subscriber_id: subscriber.id
     })
-
-    // Mock subscription (replace with actual service)
-    // await subscribeToNewsletter({
-    //   email: normalizedEmail,
-    //   tags: ['website', source],
-    //   customFields: {
-    //     signupDate: new Date().toISOString(),
-    //     source
-    //   }
-    // })
-
-    // Send notification to admin (optional)
-    // await sendEmail({
-    //   to: ADMIN_EMAIL,
-    //   subject: 'New Newsletter Subscription',
-    //   text: `New subscription from ${normalizedEmail} via ${source}`
-    // })
 
     return NextResponse.json({
       success: true,
-      message: 'Successfully subscribed to newsletter'
+      message: 'Successfully subscribed to workshop notes',
+      subscriber_id: subscriber.id
     })
   } catch (error) {
     console.error('Newsletter subscription error:', error)
@@ -70,7 +51,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Handle unsubscribe (optional)
+// Handle unsubscribe
 export async function DELETE(request: NextRequest) {
   try {
     const data = await request.json()
@@ -83,17 +64,24 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    const normalizedEmail = email.toLowerCase().trim()
+    // Unsubscribe from database
+    const success = await databaseService.unsubscribeByEmail(email)
+    
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Email address not found in subscription list' },
+        { status: 404 }
+      )
+    }
 
-    // In production, remove from email service
     console.log('Newsletter unsubscribe:', {
       timestamp: new Date().toISOString(),
-      email: normalizedEmail
+      email: email.toLowerCase().trim()
     })
 
     return NextResponse.json({
       success: true,
-      message: 'Successfully unsubscribed from newsletter'
+      message: 'Successfully unsubscribed from workshop notes'
     })
   } catch (error) {
     console.error('Newsletter unsubscribe error:', error)

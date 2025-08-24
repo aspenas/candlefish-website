@@ -1,0 +1,182 @@
+# Netlify Configuration - claude.candlefish.ai
+# Documentation site with search and accessibility optimization
+
+[build]
+  command = "npm ci && npm run build"
+  publish = "build"
+
+[build.environment]
+  REACT_APP_SITE_URL = "https://claude.candlefish.ai"
+  DOCUSAURUS_URL = "https://claude.candlefish.ai"
+  ALGOLIA_APP_ID = "$ALGOLIA_APP_ID"
+  ALGOLIA_API_KEY = "$ALGOLIA_API_KEY"
+  ALGOLIA_INDEX_NAME = "candlefish-claude-docs"
+
+# Documentation-specific plugins
+
+# 1. Algolia Search Integration
+[[plugins]]
+  package = "netlify-plugin-algolia-index"
+
+  [plugins.inputs]
+    appId = "$ALGOLIA_APP_ID"
+    apiKey = "$ALGOLIA_ADMIN_KEY"
+    indexName = "candlefish-claude-docs"
+    [plugins.inputs.config]
+      siteUrl = "https://claude.candlefish.ai"
+      pathPrefix = "/"
+      exclude = ["/search", "/404", "/offline"]
+    settings = {
+      "searchableAttributes": ["title", "description", "content", "tags"],
+      "attributesToHighlight": ["title", "content"],
+      "attributesToSnippet": ["content:20"],
+      "ranking": ["typo", "geo", "words", "filters", "proximity", "attribute", "exact", "custom"]
+    }
+
+# 2. Accessibility Checker
+[[plugins]]
+  package = "netlify-plugin-a11y"
+
+  [plugins.inputs]
+    checkPaths = [
+      "/",
+      "/docs",
+      "/api",
+      "/guides",
+      "/tutorials"
+    ]
+    wcagLevel = "AAA"
+    reportFormat = "html"
+    failBuild = true
+    ignoreRules = []
+
+# 3. Documentation Optimizer
+[[plugins]]
+  package = "./plugins/docs-optimizer"
+
+  [plugins.inputs]
+    enableVersioning = true
+    enablePDF = true
+    enableEPUB = false
+    generateSitemap = true
+    generateOpenAPI = true
+    enableCodeHighlighting = true
+    supportedLanguages = [
+      "javascript", "typescript", "python", "go",
+      "rust", "bash", "yaml", "json", "graphql"
+    ]
+
+# 4. SEO Enhancement
+[[plugins]]
+  package = "netlify-plugin-seo"
+
+  [plugins.inputs]
+    defaultTitle = "Candlefish Claude Documentation"
+    titleTemplate = "%s | Candlefish Docs"
+    defaultDescription = "Comprehensive documentation for Candlefish Claude AI integration"
+    twitterHandle = "@candlefish_ai"
+    ogImage = "https://claude.candlefish.ai/og-image.png"
+    generateRobotsTxt = true
+    generateSitemap = true
+
+# 5. Reading Time Plugin
+[[plugins]]
+  package = "./plugins/reading-time"
+
+  [plugins.inputs]
+    wordsPerMinute = 200
+    includePages = ["/docs/**", "/guides/**", "/tutorials/**"]
+    showEstimate = true
+
+# Edge Functions for documentation features
+[[edge_functions]]
+  path = "/api/search"
+  function = "docs-search"
+
+[[edge_functions]]
+  path = "/api/feedback"
+  function = "docs-feedback"
+
+[[edge_functions]]
+  path = "/api/export/pdf"
+  function = "pdf-generator"
+
+# Documentation-specific headers
+[[headers]]
+  for = "/docs/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, stale-while-revalidate=86400"
+    X-Frame-Options = "SAMEORIGIN"  # Allow embedding in same origin
+
+[[headers]]
+  for = "/*.pdf"
+  [headers.values]
+    Content-Type = "application/pdf"
+    Content-Disposition = "inline"
+    Cache-Control = "public, max-age=86400"
+
+# Code snippet headers
+[[headers]]
+  for = "/snippets/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Search configuration
+[[redirects]]
+  from = "/search"
+  to = "/.netlify/functions/algolia-search"
+  status = 200
+  query = {q = ":q", page = ":page"}
+
+# Documentation versioning
+[[redirects]]
+  from = "/docs/latest/*"
+  to = "/docs/v2/:splat"
+  status = 302
+
+[[redirects]]
+  from = "/docs/v1/*"
+  to = "/archive/docs/v1/:splat"
+  status = 301
+
+# API documentation
+[[redirects]]
+  from = "/api/openapi.json"
+  to = "/.netlify/functions/openapi-spec"
+  status = 200
+
+# Offline support
+[[headers]]
+  for = "/offline.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Service Worker for offline docs
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Service-Worker-Allowed = "/"
+
+# Functions configuration
+[functions]
+  directory = "netlify/functions"
+
+  [functions.environment]
+    ENABLE_SEARCH_ANALYTICS = "true"
+    ENABLE_FEEDBACK = "true"
+    GITHUB_TOKEN = "$GITHUB_TOKEN"
+
+# Production settings
+[context.production]
+  [context.production.environment]
+    NODE_ENV = "production"
+    ENABLE_ANALYTICS = "true"
+    GA_TRACKING_ID = "$GA_TRACKING_ID_DOCS"
+
+# Deploy preview for documentation changes
+[context.deploy-preview]
+  [context.deploy-preview.environment]
+    ROBOTS_TXT = "User-agent: *\nDisallow: /"
+    ENABLE_DRAFT_CONTENT = "true"

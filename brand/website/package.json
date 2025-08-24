@@ -41,6 +41,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.873.0",
     "@heroicons/react": "2.1.1",
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
@@ -51,9 +52,9 @@
     "framer-motion": "^10.18.0",
     "gray-matter": "4.0.3",
     "html2canvas": "^1.4.1",
-    "next-mdx-remote": "^4.4.1",
     "jspdf": "^3.0.1",
     "next": "^14.2.32",
+    "next-mdx-remote": "^4.4.1",
     "p5": "^1.11.9",
     "postcss": "8.4.33",
     "postcss-import": "^16.1.1",
@@ -91,13 +92,13 @@
     "jest": "^30.0.5",
     "jest-environment-jsdom": "^30.0.5",
     "k6": "^0.0.0",
+    "lint-staged": "^15.2.0",
     "msw": "^2.10.5",
     "node-fetch": "^2.7.0",
     "playwright": "^1.54.2",
     "raw-loader": "^4.0.2",
     "ts-node": "^10.9.2",
-    "typescript": "5.3.3",
-    "lint-staged": "^15.2.0"
+    "typescript": "5.3.3"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

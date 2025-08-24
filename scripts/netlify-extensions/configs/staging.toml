@@ -1,0 +1,154 @@
+# Netlify Configuration - staging.candlefish.ai
+# Enhanced preview and testing capabilities
+
+[build]
+  command = "npm ci --include=dev && npm run build:staging"
+  publish = "out"
+
+[build.environment]
+  NEXT_PUBLIC_SITE_URL = "https://staging.candlefish.ai"
+  NEXT_PUBLIC_API_URL = "https://staging-api.candlefish.ai"
+  ENABLE_DEBUG = "true"
+  ENABLE_SOURCE_MAPS = "true"
+
+# Staging-specific plugins
+
+# 1. Deploy Preview Comments
+[[plugins]]
+  package = "netlify-plugin-deploy-preview-comments"
+
+  [plugins.inputs]
+    provider = "github"
+    enableLighthouse = true
+    enableBundleSize = true
+    enableVisualDiff = true
+
+# 2. Visual Regression Testing
+[[plugins]]
+  package = "netlify-plugin-visual-diff"
+
+  [plugins.inputs]
+    baseUrl = "https://candlefish.ai"
+    paths = [
+      "/",
+      "/about",
+      "/services",
+      "/contact",
+      "/atelier"
+    ]
+    [[inputs.viewports]]
+      width = 375
+      height = 667
+    [[inputs.viewports]]
+      width = 768
+      height = 1024
+    [[inputs.viewports]]
+      width = 1920
+      height = 1080
+    threshold = 0.1
+    waitForTimeout = 5000
+
+# 3. Accessibility Testing
+[[plugins]]
+  package = "netlify-plugin-a11y"
+
+  [plugins.inputs]
+    checkPaths = ["/", "/about", "/services"]
+    wcagLevel = "AA"
+    ignoreRules = []
+    resultMode = "error"
+
+# 4. Percy Visual Testing Integration
+[[plugins]]
+  package = "netlify-plugin-percy"
+
+  [plugins.inputs]
+    percyToken = "$PERCY_TOKEN"
+    enable = true
+
+# 5. Chromatic for UI Testing
+[[plugins]]
+  package = "netlify-plugin-chromatic"
+
+  [plugins.inputs]
+    projectToken = "$CHROMATIC_PROJECT_TOKEN"
+    buildScriptName = "build-storybook"
+    exitZeroOnChanges = true
+    exitOnceUploaded = false
+
+# Staging protection
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+    X-Frame-Options = "SAMEORIGIN"  # Allow iframe for testing
+
+# Basic auth for staging (configured in Netlify UI)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    WWW-Authenticate = '''Basic realm="Staging Environment"'''
+
+# Enable all debug headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Build-Id = "$BUILD_ID"
+    X-Deploy-Id = "$DEPLOY_ID"
+    X-Branch = "$BRANCH"
+    X-Commit-Ref = "$COMMIT_REF"
+
+# Preview-specific redirects
+[[redirects]]
+  from = "/preview/*"
+  to = "/:splat"
+  status = 200
+  force = false
+  conditions = {Role = ["admin", "developer"]}
+
+# Feature flag testing
+[[edge_functions]]
+  path = "/api/features"
+  function = "feature-flags"
+
+# Performance monitoring endpoint
+[[edge_functions]]
+  path = "/api/monitoring"
+  function = "performance-monitor"
+
+# Test data endpoints
+[[redirects]]
+  from = "/api/test/*"
+  to = "/.netlify/functions/test-:splat"
+  status = 200
+
+# Enable extended logging
+[functions]
+  included_files = ["test-data/**", "mocks/**"]
+
+  [functions.environment]
+    LOG_LEVEL = "debug"
+    ENABLE_PROFILING = "true"
+
+# Deploy contexts
+[context.deploy-preview]
+  command = "npm ci && npm run build:preview"
+
+  [context.deploy-preview.environment]
+    CONTEXT = "deploy-preview"
+    ENABLE_PREVIEW_FEATURES = "true"
+
+[context.branch-deploy]
+  command = "npm ci && npm run build:branch"
+
+  [context.branch-deploy.environment]
+    CONTEXT = "branch-deploy"
+
+# Notification webhooks
+[[plugins]]
+  package = "netlify-plugin-webhooks"
+
+  [plugins.inputs.webhooks]
+    deployed = "$SLACK_WEBHOOK_URL"
+    building = "$SLACK_WEBHOOK_URL"
+    failed = "$SLACK_WEBHOOK_URL"
