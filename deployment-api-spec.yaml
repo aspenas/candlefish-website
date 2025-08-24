@@ -1,0 +1,1272 @@
+openapi: 3.0.3
+info:
+  title: Candlefish AI Deployment Management API
+  description: |
+    Comprehensive deployment management API for the Candlefish AI documentation platform.
+    Supports zero-downtime deployments, blue-green strategies, automatic rollbacks,
+    and branch-based preview deployments across three Next.js sites.
+  version: 1.0.0
+  contact:
+    name: Candlefish AI Platform Team
+    url: https://candlefish.ai
+    email: platform@candlefish.ai
+
+servers:
+  - url: https://deploy-api.candlefish.ai/v1
+    description: Production deployment API
+  - url: https://deploy-api-staging.candlefish.ai/v1
+    description: Staging deployment API
+
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []
+
+paths:
+  # ============================================================================
+  # DEPLOYMENT MANAGEMENT
+  # ============================================================================
+
+  /deployments:
+    post:
+      summary: Create new deployment
+      description: Initiates a new deployment for a specific site and environment
+      tags: [Deployments]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDeploymentRequest'
+            examples:
+              docs_production:
+                summary: Deploy docs site to production
+                value:
+                  site_name: docs
+                  environment: production
+                  commit_sha: a1b2c3d4e5f6
+                  branch: main
+                  deployment_strategy: blue-green
+                  changelog: "Add new API documentation and fix styling issues"
+              preview_deployment:
+                summary: Create preview deployment from PR
+                value:
+                  site_name: partners
+                  environment: preview
+                  commit_sha: f6e5d4c3b2a1
+                  branch: feature/partner-dashboard
+                  deployment_type: preview
+                  deployment_strategy: standard
+      responses:
+        '201':
+          description: Deployment created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeploymentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Conflicting deployment in progress
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: List deployments
+      description: Retrieve deployments with filtering and pagination
+      tags: [Deployments]
+      parameters:
+        - name: site_name
+          in: query
+          schema:
+            type: string
+            enum: [docs, partners, api]
+        - name: environment
+          in: query
+          schema:
+            type: string
+            enum: [production, staging, preview]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, building, deploying, success, failed, cancelled]
+        - name: branch
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: List of deployments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deployments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DeploymentResponse'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationResponse'
+
+  /deployments/{deployment_id}:
+    get:
+      summary: Get deployment details
+      description: Retrieve detailed information about a specific deployment
+      tags: [Deployments]
+      parameters:
+        - $ref: '#/components/parameters/DeploymentId'
+      responses:
+        '200':
+          description: Deployment details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeploymentDetailResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      summary: Update deployment
+      description: Update deployment status or metadata (system use primarily)
+      tags: [Deployments]
+      parameters:
+        - $ref: '#/components/parameters/DeploymentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [pending, building, deploying, success, failed, cancelled]
+                metadata:
+                  type: object
+                completed_at:
+                  type: string
+                  format: date-time
+                live_url:
+                  type: string
+                  format: uri
+      responses:
+        '200':
+          description: Deployment updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeploymentResponse'
+
+    delete:
+      summary: Cancel deployment
+      description: Cancel a pending or running deployment
+      tags: [Deployments]
+      parameters:
+        - $ref: '#/components/parameters/DeploymentId'
+      responses:
+        '200':
+          description: Deployment cancelled successfully
+        '400':
+          description: Deployment cannot be cancelled (completed or already cancelled)
+
+  /deployments/{deployment_id}/logs:
+    get:
+      summary: Get deployment logs
+      description: Retrieve logs for a specific deployment
+      tags: [Deployments]
+      parameters:
+        - $ref: '#/components/parameters/DeploymentId'
+        - name: step
+          in: query
+          description: Filter logs by deployment step
+          schema:
+            type: string
+        - name: level
+          in: query
+          description: Filter logs by level
+          schema:
+            type: string
+            enum: [debug, info, warn, error]
+        - name: tail
+          in: query
+          description: Number of recent log lines to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+      responses:
+        '200':
+          description: Deployment logs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logs:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        timestamp:
+                          type: string
+                          format: date-time
+                        level:
+                          type: string
+                        message:
+                          type: string
+                        step:
+                          type: string
+                        metadata:
+                          type: object
+
+  /deployments/{deployment_id}/promote:
+    post:
+      summary: Promote deployment
+      description: Promote a successful staging deployment to production
+      tags: [Deployments]
+      parameters:
+        - $ref: '#/components/parameters/DeploymentId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                target_environment:
+                  type: string
+                  default: production
+                release_notes:
+                  type: string
+      responses:
+        '201':
+          description: Promotion deployment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeploymentResponse'
+
+  # ============================================================================
+  # ROLLBACK MANAGEMENT
+  # ============================================================================
+
+  /rollbacks:
+    post:
+      summary: Initiate rollback
+      description: Rollback a site to a previous deployment or snapshot
+      tags: [Rollbacks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [site_name, environment, rollback_target]
+              properties:
+                site_name:
+                  type: string
+                  enum: [docs, partners, api]
+                environment:
+                  type: string
+                  enum: [production, staging, preview]
+                rollback_target:
+                  type: string
+                  description: Target deployment ID or 'previous'
+                reason:
+                  type: string
+                  description: Reason for rollback
+                force:
+                  type: boolean
+                  default: false
+                  description: Force rollback even if target is unhealthy
+      responses:
+        '201':
+          description: Rollback initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeploymentResponse'
+        '400':
+          description: Invalid rollback target or conditions not met
+
+    get:
+      summary: List rollback history
+      description: Get history of rollback operations
+      tags: [Rollbacks]
+      parameters:
+        - name: site_name
+          in: query
+          schema:
+            type: string
+            enum: [docs, partners, api]
+        - name: environment
+          in: query
+          schema:
+            type: string
+            enum: [production, staging, preview]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Rollback history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rollbacks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RollbackResponse'
+
+  /rollbacks/{rollback_id}:
+    get:
+      summary: Get rollback details
+      description: Get detailed information about a rollback operation
+      tags: [Rollbacks]
+      parameters:
+        - name: rollback_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Rollback details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RollbackDetailResponse'
+
+  # ============================================================================
+  # HEALTH MONITORING
+  # ============================================================================
+
+  /health:
+    get:
+      summary: System health check
+      description: Overall health status of the deployment API
+      tags: [Health]
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded, unhealthy]
+                  timestamp:
+                    type: string
+                    format: date-time
+                  version:
+                    type: string
+                  checks:
+                    type: object
+                    properties:
+                      database:
+                        type: string
+                        enum: [healthy, unhealthy]
+                      redis:
+                        type: string
+                        enum: [healthy, unhealthy]
+                      external_apis:
+                        type: object
+                        properties:
+                          github:
+                            type: string
+                            enum: [healthy, unhealthy]
+                          netlify:
+                            type: string
+                            enum: [healthy, unhealthy]
+
+  /health/sites:
+    get:
+      summary: Site health status
+      description: Health status of all sites across environments
+      tags: [Health]
+      parameters:
+        - name: environment
+          in: query
+          schema:
+            type: string
+            enum: [production, staging, preview]
+      responses:
+        '200':
+          description: Site health status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sites:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        site_name:
+                          type: string
+                        environment:
+                          type: string
+                        status:
+                          type: string
+                          enum: [healthy, degraded, unhealthy]
+                        last_check:
+                          type: string
+                          format: date-time
+                        response_time_ms:
+                          type: integer
+                        uptime_percentage:
+                          type: number
+                          format: float
+                        current_deployment:
+                          $ref: '#/components/schemas/DeploymentSummary'
+
+  /health/sites/{site_name}:
+    get:
+      summary: Specific site health
+      description: Detailed health information for a specific site
+      tags: [Health]
+      parameters:
+        - $ref: '#/components/parameters/SiteName'
+        - name: environment
+          in: query
+          schema:
+            type: string
+            enum: [production, staging, preview]
+      responses:
+        '200':
+          description: Site health details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SiteHealthResponse'
+
+  /health/checks:
+    post:
+      summary: Create health check
+      description: Create a new health check configuration
+      tags: [Health]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateHealthCheckRequest'
+      responses:
+        '201':
+          description: Health check created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+
+    get:
+      summary: List health checks
+      description: Get all health check configurations
+      tags: [Health]
+      parameters:
+        - name: site_name
+          in: query
+          schema:
+            type: string
+            enum: [docs, partners, api]
+        - name: environment
+          in: query
+          schema:
+            type: string
+            enum: [production, staging, preview]
+        - name: active_only
+          in: query
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: List of health checks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  health_checks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/HealthCheckResponse'
+
+  # ============================================================================
+  # ENVIRONMENT MANAGEMENT
+  # ============================================================================
+
+  /environments:
+    get:
+      summary: List environments
+      description: Get all available deployment environments
+      tags: [Environments]
+      responses:
+        '200':
+          description: List of environments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  environments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EnvironmentResponse'
+
+  /environments/{environment}/variables:
+    get:
+      summary: Get environment variables
+      description: Retrieve environment variables for a specific environment
+      tags: [Environments]
+      parameters:
+        - name: environment
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: site_name
+          in: query
+          schema:
+            type: string
+            enum: [docs, partners, api]
+      responses:
+        '200':
+          description: Environment variables
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  variables:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                        value:
+                          type: string
+                          description: Masked for secrets
+                        is_secret:
+                          type: boolean
+                        description:
+                          type: string
+
+    put:
+      summary: Update environment variables
+      description: Set or update environment variables
+      tags: [Environments]
+      parameters:
+        - name: environment
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                site_name:
+                  type: string
+                  enum: [docs, partners, api]
+                variables:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      key:
+                        type: string
+                      value:
+                        type: string
+                      is_secret:
+                        type: boolean
+                        default: false
+                      description:
+                        type: string
+      responses:
+        '200':
+          description: Variables updated successfully
+
+  # ============================================================================
+  # SECRET MANAGEMENT
+  # ============================================================================
+
+  /secrets/rotate:
+    post:
+      summary: Rotate secrets
+      description: Initiate secret rotation process
+      tags: [Secrets]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [secret_name]
+              properties:
+                secret_name:
+                  type: string
+                rotation_type:
+                  type: string
+                  enum: [manual, scheduled, emergency]
+                  default: manual
+                affected_services:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '202':
+          description: Secret rotation initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rotation_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [pending, in_progress, completed, failed]
+
+  /secrets/rotations:
+    get:
+      summary: List secret rotations
+      description: Get history of secret rotation operations
+      tags: [Secrets]
+      parameters:
+        - name: secret_name
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, in_progress, completed, failed]
+      responses:
+        '200':
+          description: Secret rotation history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rotations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SecretRotationResponse'
+
+  # ============================================================================
+  # MONITORING & METRICS
+  # ============================================================================
+
+  /metrics:
+    get:
+      summary: Get deployment metrics
+      description: Retrieve deployment and system metrics
+      tags: [Monitoring]
+      parameters:
+        - name: metric_name
+          in: query
+          schema:
+            type: string
+        - name: site_name
+          in: query
+          schema:
+            type: string
+            enum: [docs, partners, api]
+        - name: environment
+          in: query
+          schema:
+            type: string
+            enum: [production, staging, preview]
+        - name: start_time
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: granularity
+          in: query
+          schema:
+            type: string
+            enum: [1m, 5m, 15m, 1h, 1d]
+            default: 5m
+      responses:
+        '200':
+          description: Metrics data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsResponse'
+
+  /metrics/push:
+    post:
+      summary: Push custom metrics
+      description: Submit custom metrics from external systems
+      tags: [Monitoring]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                metrics:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      value:
+                        type: number
+                      labels:
+                        type: object
+                      timestamp:
+                        type: string
+                        format: date-time
+      responses:
+        '202':
+          description: Metrics accepted
+
+  /alerts:
+    get:
+      summary: List active alerts
+      description: Get currently active alerts
+      tags: [Monitoring]
+      parameters:
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [info, warning, error, critical]
+        - name: site_name
+          in: query
+          schema:
+            type: string
+            enum: [docs, partners, api]
+      responses:
+        '200':
+          description: Active alerts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  alerts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AlertResponse'
+
+  /alerts/{alert_id}/acknowledge:
+    post:
+      summary: Acknowledge alert
+      description: Mark an alert as acknowledged
+      tags: [Monitoring]
+      parameters:
+        - name: alert_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Alert acknowledged
+
+# ============================================================================
+# COMPONENTS
+# ============================================================================
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    DeploymentId:
+      name: deployment_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    SiteName:
+      name: site_name
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [docs, partners, api]
+
+  schemas:
+    # Deployment schemas
+    CreateDeploymentRequest:
+      type: object
+      required: [site_name, environment, commit_sha, branch]
+      properties:
+        site_name:
+          type: string
+          enum: [docs, partners, api]
+        environment:
+          type: string
+          enum: [production, staging, preview]
+        commit_sha:
+          type: string
+          pattern: '^[a-f0-9]{40}$'
+        branch:
+          type: string
+        deployment_type:
+          type: string
+          enum: [standard, hotfix, rollback, preview]
+          default: standard
+        deployment_strategy:
+          type: string
+          enum: [blue-green, rolling, recreate]
+          default: blue-green
+        changelog:
+          type: string
+        release_notes:
+          type: string
+        metadata:
+          type: object
+
+    DeploymentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        site_name:
+          type: string
+        environment:
+          type: string
+        commit_sha:
+          type: string
+        branch:
+          type: string
+        status:
+          type: string
+          enum: [pending, building, deploying, success, failed, cancelled]
+        deployment_type:
+          type: string
+        deployment_strategy:
+          type: string
+        triggered_by:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        duration_seconds:
+          type: integer
+        preview_url:
+          type: string
+          format: uri
+        live_url:
+          type: string
+          format: uri
+        build_url:
+          type: string
+          format: uri
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DeploymentDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/DeploymentResponse'
+        - type: object
+          properties:
+            steps:
+              type: array
+              items:
+                $ref: '#/components/schemas/DeploymentStep'
+            changelog:
+              type: string
+            release_notes:
+              type: string
+            metadata:
+              type: object
+
+    DeploymentStep:
+      type: object
+      properties:
+        step_name:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, success, failed, skipped]
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        duration_seconds:
+          type: integer
+        logs_url:
+          type: string
+          format: uri
+        error_message:
+          type: string
+
+    DeploymentSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        commit_sha:
+          type: string
+        branch:
+          type: string
+        deployed_at:
+          type: string
+          format: date-time
+        version:
+          type: string
+
+    # Rollback schemas
+    RollbackResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        site_name:
+          type: string
+        environment:
+          type: string
+        rollback_target:
+          type: string
+        reason:
+          type: string
+        status:
+          type: string
+        initiated_by:
+          type: string
+        initiated_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+
+    RollbackDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/RollbackResponse'
+        - type: object
+          properties:
+            source_deployment:
+              $ref: '#/components/schemas/DeploymentSummary'
+            target_deployment:
+              $ref: '#/components/schemas/DeploymentSummary'
+            steps:
+              type: array
+              items:
+                $ref: '#/components/schemas/DeploymentStep'
+
+    # Health schemas
+    SiteHealthResponse:
+      type: object
+      properties:
+        site_name:
+          type: string
+        environments:
+          type: array
+          items:
+            type: object
+            properties:
+              environment:
+                type: string
+              status:
+                type: string
+                enum: [healthy, degraded, unhealthy]
+              last_check:
+                type: string
+                format: date-time
+              response_time_ms:
+                type: integer
+              uptime_percentage:
+                type: number
+              current_deployment:
+                $ref: '#/components/schemas/DeploymentSummary'
+              health_checks:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HealthCheckResult'
+
+    CreateHealthCheckRequest:
+      type: object
+      required: [site_name, environment, endpoint_url]
+      properties:
+        site_name:
+          type: string
+          enum: [docs, partners, api]
+        environment:
+          type: string
+          enum: [production, staging, preview]
+        check_type:
+          type: string
+          enum: [http, tcp, graphql, custom]
+          default: http
+        endpoint_url:
+          type: string
+          format: uri
+        method:
+          type: string
+          enum: [GET, POST, HEAD]
+          default: GET
+        expected_status:
+          type: integer
+          default: 200
+        timeout_seconds:
+          type: integer
+          default: 30
+        interval_seconds:
+          type: integer
+          default: 300
+
+    HealthCheckResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        site_name:
+          type: string
+        environment:
+          type: string
+        check_type:
+          type: string
+        endpoint_url:
+          type: string
+        method:
+          type: string
+        expected_status:
+          type: integer
+        timeout_seconds:
+          type: integer
+        interval_seconds:
+          type: integer
+        is_active:
+          type: boolean
+        last_check_at:
+          type: string
+          format: date-time
+        last_success_at:
+          type: string
+          format: date-time
+        consecutive_failures:
+          type: integer
+
+    HealthCheckResult:
+      type: object
+      properties:
+        checked_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [success, failure, timeout, error]
+        response_time_ms:
+          type: integer
+        status_code:
+          type: integer
+        error_message:
+          type: string
+
+    # Environment schemas
+    EnvironmentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        priority:
+          type: integer
+        auto_deploy:
+          type: boolean
+        require_approval:
+          type: boolean
+        max_concurrent_deployments:
+          type: integer
+
+    # Secret schemas
+    SecretRotationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        secret_name:
+          type: string
+        rotation_type:
+          type: string
+        old_version:
+          type: string
+        new_version:
+          type: string
+        status:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        affected_services:
+          type: array
+          items:
+            type: string
+
+    # Monitoring schemas
+    MetricsResponse:
+      type: object
+      properties:
+        metric_name:
+          type: string
+        data_points:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              value:
+                type: number
+              labels:
+                type: object
+
+    AlertResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        rule_name:
+          type: string
+        severity:
+          type: string
+        status:
+          type: string
+        fired_at:
+          type: string
+          format: date-time
+        resolved_at:
+          type: string
+          format: date-time
+        description:
+          type: string
+        site_name:
+          type: string
+        environment:
+          type: string
+        metric_value:
+          type: number
+        threshold_value:
+          type: number
+
+    # Common schemas
+    PaginationResponse:
+      type: object
+      properties:
+        limit:
+          type: integer
+        offset:
+          type: integer
+        total:
+          type: integer
+        has_more:
+          type: boolean
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        code:
+          type: string
+        details:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

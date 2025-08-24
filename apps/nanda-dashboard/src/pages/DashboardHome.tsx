@@ -7,13 +7,15 @@ import { ActivityFeed } from '../components/monitoring/ActivityFeed'
 import { PerformanceChart } from '../components/charts/PerformanceChart'
 import { GlobalHeatMap } from '../components/monitoring/GlobalHeatMap'
 import { LivingAgentEcosystem } from '../components/living-agents/LivingAgentEcosystem'
+import { DeploymentDashboard } from './DeploymentDashboard'
 import { ReportsPage } from './ReportsPage'
 
 export function DashboardHome() {
   const { agents, systemMetrics, activity, performanceHistory, isConnected } = useRealtimeData()
   const [selectedAgent, setSelectedAgent] = useState<AgentMetrics | null>(null)
-  const [selectedTab, setSelectedTab] = useState<'ecosystem' | 'overview' | 'agents' | 'performance' | 'globe'>('ecosystem')
+  const [selectedTab, setSelectedTab] = useState<'ecosystem' | 'overview' | 'agents' | 'performance' | 'globe' | 'deployments'>('ecosystem')
   const [showReports, setShowReports] = useState(false)
+  const [showDeployments, setShowDeployments] = useState(false)
 
   const handleAgentSelect = (agent: AgentMetrics) => {
     setSelectedAgent(agent)
@@ -81,6 +83,21 @@ export function DashboardHome() {
     )
   }
 
+  // Show Deployment Dashboard if requested
+  if (showDeployments) {
+    return (
+      <>
+        <DeploymentDashboard />
+        <button
+          onClick={() => setShowDeployments(false)}
+          className="fixed bottom-8 right-8 z-50 btn-primary shadow-lg"
+        >
+          Back to Dashboard
+        </button>
+      </>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       {/* Hero Section */}
@@ -139,10 +156,16 @@ export function DashboardHome() {
                 Discover Agents
               </button>
               <button
+                onClick={() => setShowDeployments(true)}
+                className="px-6 py-3 text-sm font-medium border border-border rounded-lg hover:bg-muted/50 transition-colors"
+              >
+                Deployments
+              </button>
+              <button
                 onClick={() => setShowReports(true)}
                 className="px-6 py-3 text-sm font-medium border border-border rounded-lg hover:bg-muted/50 transition-colors"
               >
-                View Reports
+                Reports
               </button>
             </motion.div>
           </div>
@@ -186,6 +209,12 @@ export function DashboardHome() {
             label="🌍 Global Map"
             isActive={selectedTab === 'globe'}
             onClick={() => setSelectedTab('globe')}
+          />
+          <TabButton
+            tab="deployments"
+            label="🚀 Deployments"
+            isActive={selectedTab === 'deployments'}
+            onClick={() => setSelectedTab('deployments')}
           />
         </div>
       </motion.div>
@@ -279,6 +308,21 @@ export function DashboardHome() {
             aria-labelledby="globe-tab"
           >
             <GlobalHeatMap agents={agents} />
+          </motion.div>
+        )}
+
+        {selectedTab === 'deployments' && (
+          <motion.div
+            key="deployments"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            role="tabpanel"
+            id="deployments-panel"
+            aria-labelledby="deployments-tab"
+          >
+            <DeploymentDashboard />
           </motion.div>
         )}
       </AnimatePresence>

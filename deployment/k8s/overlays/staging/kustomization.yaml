@@ -1,0 +1,161 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: netlify-extension-staging
+  labels:
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/instance: staging
+    app.kubernetes.io/part-of: candlefish-platform
+
+# Base configuration
+bases:
+  - ../../base
+
+# Namespace for staging
+namespace: netlify-extension-staging
+
+# Name suffix for staging resources
+nameSuffix: -staging
+
+# Common labels for staging
+commonLabels:
+  environment: staging
+  app.kubernetes.io/instance: staging
+
+# Common annotations
+commonAnnotations:
+  deployment.environment: "staging"
+  deployment.tier: "staging"
+
+# Image overrides for staging
+images:
+  - name: ghcr.io/candlefish-enterprise/netlify-extension-api
+    newTag: staging
+  - name: ghcr.io/candlefish-enterprise/netlify-extension-frontend
+    newTag: staging
+  - name: ghcr.io/candlefish-enterprise/netlify-extension-ml
+    newTag: staging
+  - name: ghcr.io/candlefish-enterprise/netlify-extension-monitor
+    newTag: staging
+  - name: ghcr.io/candlefish-enterprise/netlify-extension-config
+    newTag: staging
+
+# Staging-specific resource patches
+patchesStrategicMerge:
+  - replica-patch.yaml
+  - resource-patch.yaml
+  - ingress-patch.yaml
+
+# ConfigMap generator for staging-specific config
+configMapGenerator:
+  - name: staging-config
+    literals:
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=debug
+      - DEBUG=true
+      - ENABLE_PROFILING=true
+      - CORS_ORIGINS=https://staging-netlify-extension.candlefish.ai,https://staging-dashboard.candlefish.ai
+
+# Patches for staging-specific configurations
+patches:
+  # Reduce resource requirements for staging
+  - target:
+      kind: Deployment
+      name: netlify-api
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "100m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "128Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "250m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "256Mi"
+
+  - target:
+      kind: Deployment
+      name: netlify-frontend
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+
+  - target:
+      kind: Deployment
+      name: netlify-ml
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "250m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "512Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "500m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "1Gi"
+
+  - target:
+      kind: Deployment
+      name: netlify-monitor
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+
+  - target:
+      kind: Deployment
+      name: netlify-config
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+
+  # Update ingress for staging domain
+  - target:
+      kind: Ingress
+      name: netlify-extension-ingress
+    patch: |-
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: staging-netlify-extension.candlefish.ai
+      - op: replace
+        path: /spec/rules/0/host
+        value: staging-netlify-extension.candlefish.ai
+
+  # Disable HPA for staging (single replicas)
+  - target:
+      kind: HorizontalPodAutoscaler
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/maxReplicas
+        value: 2
+
+# Add staging-specific environment variables
+replicas:
+  - name: netlify-api-staging
+    count: 1
+  - name: netlify-frontend-staging
+    count: 1
+  - name: netlify-ml-staging
+    count: 1
+  - name: netlify-monitor-staging
+    count: 1
+  - name: netlify-config-staging
+    count: 1

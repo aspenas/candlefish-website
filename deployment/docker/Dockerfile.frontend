@@ -1,91 +1,92 @@
-# Multi-stage build for optimal production image
-FROM node:18-alpine AS base
-
-# Install dependencies only when needed
-FROM base AS deps
-WORKDIR /app
-
-# Install pnpm
-RUN corepack enable pnpm
-
-# Copy package files
-COPY package.json pnpm-lock.yaml ./
-
-# Install dependencies with security optimizations
-RUN pnpm install --frozen-lockfile --production=false
+# Multi-stage Docker build for Netlify Extension Management Frontend Dashboard
+# Optimized for production deployment with security best practices
 
 # Build stage
-FROM base AS builder
+FROM node:18-alpine AS builder
+
+# Build arguments
+ARG NODE_VERSION=18
+ARG BUILD_DATE
+ARG VCS_REF
+
+# Add build metadata
+LABEL build.date=$BUILD_DATE \
+      build.vcs-ref=$VCS_REF \
+      build.version="1.0.0"
+
+# Security: Create non-root user
+RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
+
+# Set working directory
 WORKDIR /app
 
-# Install pnpm
-RUN corepack enable pnpm
+# Copy package files for dependency installation
+COPY brand/website/package*.json ./
+COPY brand/website/tsconfig.json ./
+COPY brand/website/next.config.js ./
+COPY brand/website/tailwind.config.js ./
+COPY brand/website/postcss.config.js ./
 
-# Copy dependencies
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+# Install dependencies with security optimizations
+RUN npm ci --include=dev --no-audit --ignore-scripts && \
+    npm cache clean --force
 
-# Build arguments for environment-specific builds
-ARG BUILD_ENV=production
-ARG API_URL
-ARG GRAPHQL_URL
-ARG WS_URL
-ARG SENTRY_DSN
-ARG APP_VERSION
+# Copy source code
+COPY brand/website/src ./src
+COPY brand/website/app ./app
+COPY brand/website/components ./components
+COPY brand/website/lib ./lib
+COPY brand/website/hooks ./hooks
+COPY brand/website/public ./public
+COPY brand/website/styles ./styles
 
-# Set build environment variables
+# Build Next.js application with static export
 ENV NODE_ENV=production
-ENV BUILD_ENV=${BUILD_ENV}
-ENV VITE_API_URL=${API_URL}
-ENV VITE_GRAPHQL_URL=${GRAPHQL_URL}
-ENV VITE_WS_URL=${WS_URL}
-ENV VITE_SENTRY_DSN=${SENTRY_DSN}
-ENV VITE_APP_VERSION=${APP_VERSION}
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV GENERATE_SOURCEMAP=false
 
-# Build the application
-RUN pnpm build
+RUN npm run build && npm run export
 
-# Production stage with nginx
+# Production stage - Nginx for serving static files
 FROM nginx:1.25-alpine AS production
 
-# Install security updates
-RUN apk update && apk upgrade && apk add --no-cache \
+# Security updates
+RUN apk upgrade --no-cache && \
+    apk add --no-cache \
+    curl \
     ca-certificates \
-    tzdata
+    tzdata && \
+    rm -rf /var/cache/apk/*
 
-# Create nginx user for security
-RUN addgroup -g 1001 -S nginx-user && \
-    adduser -S nginx-user -G nginx-user -u 1001
+# Remove default nginx config and files
+RUN rm /etc/nginx/conf.d/default.conf
+RUN rm -rf /usr/share/nginx/html/*
 
-# Copy nginx configuration
-COPY deployment/nginx/nginx.conf /etc/nginx/nginx.conf
-COPY deployment/nginx/default.conf /etc/nginx/conf.d/default.conf
+# Copy built static files
+COPY --from=builder /app/out /usr/share/nginx/html
 
-# Copy built application
-COPY --from=builder /app/dist /usr/share/nginx/html
+# Copy custom nginx configuration
+COPY deployment/docker/nginx/netlify-extension.conf /etc/nginx/conf.d/netlify-extension.conf
 
-# Copy security headers and CSP configuration
-COPY deployment/nginx/security-headers.conf /etc/nginx/conf.d/security-headers.conf
+# Create nginx user and set permissions
+RUN addgroup -g 101 -S nginx || true && \
+    adduser -S -D -H -u 101 -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx nginx || true && \
+    chown -R nginx:nginx /usr/share/nginx/html && \
+    chown -R nginx:nginx /var/cache/nginx && \
+    chown -R nginx:nginx /var/log/nginx && \
+    chown -R nginx:nginx /etc/nginx/conf.d
 
-# Create directories for nginx
-RUN mkdir -p /var/cache/nginx/client_temp && \
-    mkdir -p /var/cache/nginx/proxy_temp && \
-    mkdir -p /var/cache/nginx/fastcgi_temp && \
-    mkdir -p /var/cache/nginx/uwsgi_temp && \
-    mkdir -p /var/cache/nginx/scgi_temp && \
-    chown -R nginx-user:nginx-user /var/cache/nginx && \
-    chown -R nginx-user:nginx-user /usr/share/nginx/html && \
-    chown -R nginx-user:nginx-user /var/log/nginx
+# Switch to non-root user
+USER nginx
 
-# Set proper file permissions
-RUN chmod -R 755 /usr/share/nginx/html
+# Environment variables
+ENV NGINX_WORKER_PROCESSES=auto \
+    NGINX_WORKER_CONNECTIONS=1024 \
+    NGINX_KEEPALIVE_TIMEOUT=65
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:80/health || exit 1
-
-# Run as non-root user
-USER nginx-user
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:80/health.html || exit 1
 
 # Expose port
 EXPOSE 80
@@ -93,40 +94,13 @@ EXPOSE 80
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]
 
-# Development stage
-FROM base AS development
-WORKDIR /app
-
-# Install pnpm
-RUN corepack enable pnpm
-
-# Copy package files
-COPY package.json pnpm-lock.yaml ./
-
-# Install all dependencies including dev dependencies
-RUN pnpm install --frozen-lockfile
-
-# Copy application code
-COPY . .
-
-# Expose Vite dev server port
-EXPOSE 5173
-
-# Start development server
-CMD ["pnpm", "dev", "--host", "0.0.0.0"]
-
-# Test stage for CI/CD
-FROM development AS test
-WORKDIR /app
-
-# Run tests
-RUN pnpm test:ci
-
-# Run linting
-RUN pnpm lint
-
-# Run type checking
-RUN pnpm typecheck
-
-# Build test
-RUN pnpm build
+# Security metadata
+LABEL org.opencontainers.image.title="Netlify Extension Management Dashboard" \
+      org.opencontainers.image.description="React-based dashboard for Netlify site management and monitoring" \
+      org.opencontainers.image.version="1.0.0" \
+      org.opencontainers.image.vendor="Candlefish Enterprise" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.source="https://github.com/candlefish-enterprise/candlefish-ai" \
+      org.opencontainers.image.documentation="https://docs.candlefish.ai/netlify-extension" \
+      org.opencontainers.image.created=$BUILD_DATE \
+      org.opencontainers.image.revision=$VCS_REF

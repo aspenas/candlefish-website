@@ -1,0 +1,176 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: netlify-monitor
+  labels:
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/component: monitor
+    app.kubernetes.io/part-of: netlify-extension
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: netlify-extension
+      app.kubernetes.io/component: monitor
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: netlify-extension
+        app.kubernetes.io/component: monitor
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8002"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: netlify-extension
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      containers:
+        - name: monitor
+          image: ghcr.io/candlefish-enterprise/netlify-extension-monitor:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8002
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: "8002"
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: netlify-extension-config
+                  key: LOG_LEVEL
+            - name: METRICS_INTERVAL
+              valueFrom:
+                configMapKeyRef:
+                  name: netlify-extension-config
+                  key: METRICS_INTERVAL
+            - name: ALERT_THRESHOLD_CPU
+              valueFrom:
+                configMapKeyRef:
+                  name: netlify-extension-config
+                  key: ALERT_THRESHOLD_CPU
+            - name: ALERT_THRESHOLD_MEMORY
+              valueFrom:
+                configMapKeyRef:
+                  name: netlify-extension-config
+                  key: ALERT_THRESHOLD_MEMORY
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: netlify-extension-secrets
+                  key: SLACK_WEBHOOK_URL
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: logs
+              mountPath: /app/logs
+            - name: metrics
+              mountPath: /app/metrics
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}
+        - name: metrics
+          emptyDir: {}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/component
+                      operator: In
+                      values:
+                        - monitor
+                topologyKey: kubernetes.io/hostname
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: netlify-monitor-service
+  labels:
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/component: monitor
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8002
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/component: monitor
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: netlify-monitor-hpa
+  labels:
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/component: monitor
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: netlify-monitor
+  minReplicas: 2
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80

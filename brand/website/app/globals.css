@@ -54,6 +54,11 @@
     --duration-swift: 200ms;
     --duration-gentle: 400ms;
     --duration-dramatic: 800ms;
+
+    /* THEME SYSTEM VARIABLES */
+    --motion-intensity: 1;
+    --enable-animations: 1;
+    --color-filter: none;
   }
 
   /* GLOBAL DEFAULTS */
@@ -554,6 +559,149 @@
     .network-node,
     .activity-bar {
       animation: none;
+    }
+  }
+
+  /* AMBIENT MOTION EFFECTS */
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0) rotate(0deg);
+      opacity: 0.3;
+    }
+    25% {
+      transform: translateY(-10px) rotate(2deg);
+      opacity: 0.6;
+    }
+    50% {
+      transform: translateY(-5px) rotate(-1deg);
+      opacity: 0.8;
+    }
+    75% {
+      transform: translateY(-15px) rotate(1deg);
+      opacity: 0.4;
+    }
+  }
+
+  @keyframes ambient-drift {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+    }
+    25% {
+      transform: translate(2px, -3px) scale(1.02);
+    }
+    50% {
+      transform: translate(-1px, 1px) scale(0.98);
+    }
+    75% {
+      transform: translate(-2px, -1px) scale(1.01);
+    }
+  }
+
+  @keyframes glow-pulse {
+    0%, 100% {
+      filter: blur(20px) brightness(1);
+      opacity: 0.1;
+    }
+    50% {
+      filter: blur(30px) brightness(1.2);
+      opacity: 0.2;
+    }
+  }
+
+  /* Theme-aware motion intensity */
+  .theme-wrapper {
+    filter: var(--color-filter);
+  }
+
+  .ambient-particle {
+    animation: float calc(var(--motion-intensity, 1) * 4s) ease-in-out infinite;
+  }
+
+  .ambient-orb {
+    animation: glow-pulse calc(var(--motion-intensity, 1) * 6s) ease-in-out infinite;
+    will-change: transform, filter;
+  }
+
+  .subtle-drift {
+    animation: ambient-drift calc(var(--motion-intensity, 1) * 8s) ease-in-out infinite;
+  }
+
+  /* DARK/LIGHT THEME STYLES */
+  .dark .card-operational {
+    background: rgba(var(--depth-ocean), 0.7);
+    border-color: rgba(var(--interface-border), 0.3);
+    backdrop-filter: blur(12px);
+  }
+
+  .light .card-operational {
+    background: rgba(255, 255, 255, 0.8);
+    border-color: rgba(var(--interface-border), 0.2);
+    backdrop-filter: blur(8px);
+  }
+
+  .dark .notification-toast {
+    background: rgba(var(--depth-ocean), 0.95);
+    border-color: rgba(var(--interface-border), 0.4);
+  }
+
+  .light .notification-toast {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(var(--interface-border), 0.3);
+  }
+
+  /* Theme transition */
+  * {
+    transition:
+      background-color var(--duration-gentle) var(--ease-gentle),
+      border-color var(--duration-gentle) var(--ease-gentle),
+      color var(--duration-gentle) var(--ease-gentle);
+  }
+
+  /* Disable transitions during theme change */
+  .theme-transition * {
+    transition: none !important;
+  }
+
+  /* ACCESSIBILITY IMPROVEMENTS */
+  @media (prefers-reduced-motion: reduce) {
+    .ambient-particle,
+    .ambient-orb,
+    .subtle-drift {
+      animation: none;
+    }
+
+    .theme-wrapper {
+      filter: none;
+    }
+  }
+
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .card-operational {
+      border-width: 2px;
+      background: rgb(var(--depth-void));
+    }
+
+    .ambient-particle,
+    .ambient-orb {
+      display: none;
+    }
+  }
+
+  /* Force colors mode (Windows High Contrast) */
+  @media (forced-colors: active) {
+    .card-operational {
+      background: Canvas;
+      border-color: CanvasText;
+      color: CanvasText;
+    }
+
+    .operation-active {
+      color: LinkText;
+    }
+
+    .operation-alert {
+      color: Mark;
     }
   }
 }

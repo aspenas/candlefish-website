@@ -40,7 +40,7 @@
       "name": "GP5: PDF Export",
       "endpoint": "/estimate/test-id/pdf",
       "status": "failed",
-      "response": "503"
+      "response": "502"
     },
     {
       "name": "GP6: Offline Page",

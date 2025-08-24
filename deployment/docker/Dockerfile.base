@@ -1,0 +1,48 @@
+# Base image for all Candlefish services
+# Security-hardened Alpine Linux with Node.js
+FROM node:20.11.1-alpine3.19 AS base
+
+# Install security updates and essential tools
+RUN apk update && apk upgrade && apk add --no-cache \
+    ca-certificates \
+    dumb-init \
+    curl \
+    tini \
+    su-exec \
+    && rm -rf /var/cache/apk/*
+
+# Create non-root user with specific UID/GID for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S -u 1001 -G nodejs nodejs
+
+# Set working directory
+WORKDIR /app
+
+# Install pnpm globally with specific version for reproducibility
+RUN npm install -g pnpm@8.15.6 && npm cache clean --force
+
+# Configure security settings
+RUN echo 'nodejs:!:19800:0:99999:7:::' >> /etc/shadow
+
+# Set optimal Node.js flags for production
+ENV NODE_OPTIONS="--max-old-space-size=1024 --enable-source-maps"
+ENV NODE_ENV=production
+ENV NPM_CONFIG_CACHE=/tmp/.npm
+ENV PNPM_HOME="/usr/local/bin"
+ENV PATH="$PNPM_HOME:$PATH"
+
+# Security: Remove unnecessary packages and create required directories
+RUN rm -rf /usr/local/lib/node_modules/npm && \
+    mkdir -p /tmp/.npm /app/logs && \
+    chown -R nodejs:nodejs /tmp/.npm /app
+
+# Add health check script template
+COPY deployment/docker/scripts/health-check-base.js /usr/local/bin/health-check-base.js
+RUN chmod +x /usr/local/bin/health-check-base.js
+
+# Default healthcheck (services can override)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD node /usr/local/bin/health-check-base.js
+
+# Use tini as init system for proper signal handling
+ENTRYPOINT ["/sbin/tini", "--"]

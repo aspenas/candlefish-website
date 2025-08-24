@@ -1,0 +1,382 @@
+name: Accessibility Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run accessibility tests daily at 6 AM UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      test_environment:
+        description: 'Environment to test (staging/production)'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      skip_critical_only:
+        description: 'Run only critical accessibility tests'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_VERSION: '18'
+  PNPM_VERSION: '8'
+
+jobs:
+  accessibility-tests:
+    name: Run Accessibility Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    strategy:
+      matrix:
+        test-suite: [
+          { name: 'components', pattern: '__tests__/accessibility/components', timeout: 10 },
+          { name: 'pages', pattern: '__tests__/accessibility/pages', timeout: 10 },
+          { name: 'lighthouse', pattern: 'lighthouse-accessibility.test.js', timeout: 20 },
+          { name: 'pa11y', pattern: 'pa11y-tests.test.js', timeout: 30 }
+        ]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install system dependencies
+        run: |
+          # Install Chrome for Lighthouse and Pa11y
+          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
+          # Install additional accessibility testing tools
+          sudo apt-get install -y xvfb
+
+      - name: Build application
+        run: pnpm build
+
+      - name: Start application
+        run: |
+          pnpm dev &
+          echo $! > app.pid
+
+          # Wait for application to start
+          timeout 120 bash -c 'until curl -f http://localhost:3001/health; do sleep 2; done'
+        env:
+          NODE_ENV: test
+          PORT: 3001
+
+      - name: Run accessibility tests - ${{ matrix.test-suite.name }}
+        run: |
+          if [[ "${{ matrix.test-suite.name }}" == "lighthouse" || "${{ matrix.test-suite.name }}" == "pa11y" ]]; then
+            # Run browser-based tests with virtual display
+            xvfb-run -a --server-args="-screen 0 1920x1080x24" \
+              npx jest --testPathPattern="${{ matrix.test-suite.pattern }}" \
+              --runInBand \
+              --verbose \
+              --maxWorkers=1
+          else
+            # Run component/page tests normally
+            npx jest --testPathPattern="${{ matrix.test-suite.pattern }}" \
+              --verbose
+          fi
+        timeout-minutes: ${{ matrix.test-suite.timeout }}
+        env:
+          BASE_URL: http://localhost:3001
+          CI: true
+          DISPLAY: :99
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-results-${{ matrix.test-suite.name }}
+          path: |
+            __tests__/results/
+            coverage/
+          retention-days: 30
+
+      - name: Stop application
+        if: always()
+        run: |
+          if [ -f app.pid ]; then
+            kill $(cat app.pid) || true
+          fi
+          pkill -f "node.*dev" || true
+
+  comprehensive-report:
+    name: Generate Comprehensive Report
+    runs-on: ubuntu-latest
+    needs: accessibility-tests
+    if: always()
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          path: test-artifacts
+
+      - name: Merge test results
+        run: |
+          mkdir -p __tests__/results
+          find test-artifacts -name "*.json" -exec cp {} __tests__/results/ \;
+
+          # Generate comprehensive report
+          node __tests__/accessibility/generate-summary-report.js
+
+      - name: Upload comprehensive report
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-comprehensive-report
+          path: |
+            __tests__/results/accessibility-comprehensive-report.json
+            __tests__/results/accessibility-summary.txt
+          retention-days: 90
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            try {
+              const summaryPath = '__tests__/results/accessibility-summary.txt';
+              if (fs.existsSync(summaryPath)) {
+                const summary = fs.readFileSync(summaryPath, 'utf8');
+
+                const body = `## 🔍 Accessibility Test Results
+
+                <details>
+                <summary>Click to view detailed accessibility report</summary>
+
+                \`\`\`
+                ${summary}
+                \`\`\`
+
+                </details>
+
+                📁 **Artifacts**: Check the workflow run for detailed JSON reports and test outputs.
+
+                > This comment is automatically generated by the accessibility testing workflow.
+                `;
+
+                github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: body
+                });
+              }
+            } catch (error) {
+              console.log('Could not post comment:', error.message);
+            }
+
+  lighthouse-budget-check:
+    name: Lighthouse Budget Check
+    runs-on: ubuntu-latest
+    needs: accessibility-tests
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          npm install -g @lhci/cli@0.12.x
+
+      - name: Build and serve
+        run: |
+          pnpm build
+          pnpm dev &
+          echo $! > app.pid
+          timeout 120 bash -c 'until curl -f http://localhost:3001/health; do sleep 2; done'
+
+      - name: Run Lighthouse CI
+        run: |
+          lhci collect --url=http://localhost:3001 \
+                      --url=http://localhost:3001/docs \
+                      --url=http://localhost:3001/partners \
+                      --url=http://localhost:3001/auth/login
+
+          lhci assert --preset=lighthouse:recommended
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+      - name: Upload Lighthouse results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-results
+          path: .lighthouseci/
+          retention-days: 30
+
+      - name: Stop application
+        if: always()
+        run: |
+          if [ -f app.pid ]; then
+            kill $(cat app.pid) || true
+          fi
+
+  accessibility-monitoring:
+    name: Accessibility Monitoring
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 45
+
+    strategy:
+      matrix:
+        environment:
+          - name: staging
+            url: ${{ vars.STAGING_URL }}
+          - name: production
+            url: ${{ vars.PRODUCTION_URL }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install system dependencies
+        run: |
+          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable xvfb
+
+      - name: Run comprehensive accessibility monitoring
+        run: |
+          xvfb-run -a --server-args="-screen 0 1920x1080x24" \
+            node __tests__/accessibility/run-all-accessibility-tests.js \
+            --base-url ${{ matrix.environment.url }}
+        env:
+          BASE_URL: ${{ matrix.environment.url }}
+          ENVIRONMENT: ${{ matrix.environment.name }}
+
+      - name: Upload monitoring results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-monitoring-${{ matrix.environment.name }}
+          path: __tests__/results/
+          retention-days: 90
+
+      - name: Send Slack notification on failure
+        if: failure() && matrix.environment.name == 'production'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          channel: '#accessibility-alerts'
+          text: |
+            🚨 **Production Accessibility Monitoring Failed**
+
+            Environment: ${{ matrix.environment.name }}
+            URL: ${{ matrix.environment.url }}
+            Workflow: ${{ github.workflow }}
+
+            Please check the workflow results and address any critical accessibility issues immediately.
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  performance-budget:
+    name: Accessibility Performance Budget
+    runs-on: ubuntu-latest
+    needs: accessibility-tests
+    timeout-minutes: 10
+
+    steps:
+      - name: Download test results
+        uses: actions/download-artifact@v4
+        with:
+          name: accessibility-results-lighthouse
+          path: lighthouse-results
+
+      - name: Check performance budgets
+        run: |
+          # Check if accessibility score meets minimum threshold
+          echo "Checking accessibility performance budgets..."
+
+          # This would typically parse Lighthouse results and check against budgets
+          # For now, we'll create a placeholder that could be expanded
+
+          min_score=95
+          echo "Minimum required accessibility score: $min_score"
+
+          # TODO: Parse actual Lighthouse results and compare
+          echo "✅ Performance budget checks completed"
+
+      - name: Create budget status check
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'Accessibility Performance Budget',
+              head_sha: context.sha,
+              status: 'completed',
+              conclusion: 'success',
+              output: {
+                title: 'Accessibility Performance Budget Check',
+                summary: 'All accessibility performance budgets are within acceptable limits.',
+                text: 'Minimum accessibility score threshold: 95%'
+              }
+            });

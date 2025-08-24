@@ -1,10 +1,10 @@
 // Test Data Factory for Netlify Extension Management System
 
-import { 
-  Extension, 
-  NetlifySite, 
-  PerformanceMetrics, 
-  ExtensionRecommendation, 
+import {
+  Extension,
+  NetlifySite,
+  PerformanceMetrics,
+  ExtensionRecommendation,
   ExtensionConfig,
   DeploymentImpact,
   DashboardState
@@ -165,9 +165,9 @@ export const createMockDashboardState = (overrides: Partial<DashboardState> = {}
   ],
   recommendations: [
     createMockRecommendation(),
-    createMockRecommendation({ 
+    createMockRecommendation({
       extension: createMockExtension({ id: 'seo-ext', name: 'Advanced SEO', category: 'seo' }),
-      confidence: 0.74 
+      confidence: 0.74
     })
   ],
   performanceData: [
@@ -347,11 +347,11 @@ export const generatePerformanceTimeSeries = (
 
   for (let i = 0; i < hours * (60 / interval); i++) {
     const timestamp = new Date(startTime.getTime() + (i * interval * 60 * 1000));
-    
+
     // Add some realistic variation to metrics
     const baseMetrics = createMockPerformanceMetrics({ siteId, timestamp });
     const variation = 0.1; // 10% variation
-    
+
     data.push({
       ...baseMetrics,
       metrics: {
@@ -487,4 +487,137 @@ export const mockApiErrors = {
     fields: ['extensionId', 'config.threshold']
   }),
   serverError: createApiError('INTERNAL_ERROR', 'Internal server error')
+};
+
+// Test assertion helpers
+export const assertionHelpers = {
+  expectValidExtension: (extension: any) => {
+    expect(extension).toHaveProperty('id');
+    expect(extension).toHaveProperty('name');
+    expect(extension).toHaveProperty('category');
+    expect(extension).toHaveProperty('isEnabled');
+    expect(extension).toHaveProperty('performance');
+    expect(['performance', 'security', 'seo', 'analytics', 'forms', 'edge']).toContain(extension.category);
+    expect(['low', 'medium', 'high']).toContain(extension.performance.impact);
+  },
+
+  expectValidPerformanceMetrics: (metrics: any) => {
+    expect(metrics).toHaveProperty('siteId');
+    expect(metrics).toHaveProperty('timestamp');
+    expect(metrics).toHaveProperty('metrics');
+    expect(metrics).toHaveProperty('scores');
+    expect(metrics.metrics).toHaveProperty('lcp');
+    expect(metrics.metrics).toHaveProperty('fid');
+    expect(metrics.metrics).toHaveProperty('cls');
+    expect(metrics.scores.performance).toBeGreaterThanOrEqual(0);
+    expect(metrics.scores.performance).toBeLessThanOrEqual(100);
+  },
+
+  expectValidApiResponse: (response: any) => {
+    expect(response).toHaveProperty('success');
+    expect(response).toHaveProperty('data');
+    expect(response).toHaveProperty('timestamp');
+    if (!response.success) {
+      expect(response).toHaveProperty('error');
+    }
+  }
+};
+
+// WebSocket message factories for real-time testing
+export const createWebSocketMessage = {
+  extensionToggled: (siteId: string, extensionId: string, enabled: boolean) => ({
+    type: 'extension.toggled',
+    payload: {
+      siteId,
+      extensionId,
+      enabled,
+      timestamp: new Date().toISOString()
+    }
+  }),
+
+  performanceUpdate: (siteId: string, metrics: PerformanceMetrics) => ({
+    type: 'performance.updated',
+    payload: {
+      siteId,
+      metrics,
+      timestamp: new Date().toISOString()
+    }
+  }),
+
+  deploymentComplete: (siteId: string, status: string, buildTime: number) => ({
+    type: 'deployment.complete',
+    payload: {
+      siteId,
+      status,
+      buildTime,
+      timestamp: new Date().toISOString()
+    }
+  }),
+
+  error: (code: string, message: string) => ({
+    type: 'error',
+    payload: {
+      code,
+      message,
+      timestamp: new Date().toISOString()
+    }
+  })
+};
+
+// Bulk operations test data
+export const createBulkOperationData = () => {
+  const sites = mockCandlefishSites.slice(0, 3);
+  const extensions = Object.values(mockExtensionsByCategory).flat().slice(0, 6);
+
+  return {
+    sites,
+    extensions,
+    operations: [
+      { siteId: sites[0].id, extensionId: extensions[0].id, action: 'enable' as const },
+      { siteId: sites[0].id, extensionId: extensions[1].id, action: 'disable' as const },
+      { siteId: sites[1].id, extensionId: extensions[2].id, action: 'enable' as const },
+      { siteId: sites[1].id, extensionId: extensions[3].id, action: 'enable' as const },
+      { siteId: sites[2].id, extensionId: extensions[4].id, action: 'disable' as const }
+    ]
+  };
+};
+
+// Load testing data generators
+export const generateLoadTestData = {
+  extensions: (count: number = 100) => {
+    const categories = Object.keys(mockExtensionsByCategory) as Array<keyof typeof mockExtensionsByCategory>;
+    return Array.from({ length: count }, (_, index) =>
+      createMockExtension({
+        id: `load-test-ext-${index}`,
+        name: `Load Test Extension ${index}`,
+        category: categories[index % categories.length],
+        isEnabled: Math.random() > 0.5
+      })
+    );
+  },
+
+  sites: (count: number = 50) => {
+    const statuses = ['active', 'inactive', 'building', 'error'] as const;
+    return Array.from({ length: count }, (_, index) =>
+      createMockSite({
+        id: `load-test-site-${index}`,
+        name: `Load Test Site ${index}`,
+        url: `https://load-test-site-${index}.netlify.app`,
+        status: statuses[index % statuses.length],
+        buildTime: Math.floor(Math.random() * 120) + 20
+      })
+    );
+  },
+
+  performanceData: (siteCount: number = 10, hoursPerSite: number = 168) => {
+    const sites = generateLoadTestData.sites(siteCount);
+    const allData: PerformanceMetrics[] = [];
+
+    sites.forEach(site => {
+      const siteData = generatePerformanceTimeSeries(site.id, hoursPerSite, 60);
+      allData.push(...siteData);
+    });
+
+    return allData;
+  }
 };

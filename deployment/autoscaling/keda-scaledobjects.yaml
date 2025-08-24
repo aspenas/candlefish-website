@@ -1,47 +1,77 @@
-# KEDA ScaledObjects for Advanced Auto-scaling
+# KEDA ScaledObjects for Netlify Extension Management System
 # Event-driven autoscaling based on external metrics
 
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: rtpm-api-redis-scaler
-  namespace: rtpm-system
+  name: netlify-api-scaled
+  namespace: netlify-extension-production
   labels:
-    app.kubernetes.io/name: rtpm
-    app.kubernetes.io/component: api-keda-scaler
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/component: api
 spec:
   scaleTargetRef:
-    name: rtpm-api
-  pollingInterval: 30
+    name: netlify-api-production
+  pollingInterval: 15
   cooldownPeriod: 300
-  idleReplicaCount: 3
+  idleReplicaCount: 0
   minReplicaCount: 3
-  maxReplicaCount: 50
+  maxReplicaCount: 15
+  fallback:
+    failureThreshold: 3
+    replicas: 5
+  advanced:
+    restoreToOriginalReplicaCount: true
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 60
+          policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+          - type: Percent
+            value: 50
+            periodSeconds: 60
   triggers:
-  # Scale based on Redis queue depth
-  - type: redis
-    metadata:
-      address: rtpm-redis:6379
-      password: REDIS_PASSWORD
-      listName: celery
-      listLength: "10"
-      enableTLS: "false"
+    # CPU-based scaling
+    - type: cpu
+      metadata:
+        type: Utilization
+        value: "70"
 
-  # Scale based on Prometheus metrics
-  - type: prometheus
-    metadata:
-      serverAddress: http://prometheus:9090
-      metricName: rtpm_active_agents_total
-      threshold: "100"
-      query: sum(rtpm_active_agents_total)
+    # Memory-based scaling
+    - type: memory
+      metadata:
+        type: Utilization
+        value: "80"
 
-  # Scale based on HTTP request rate
-  - type: prometheus
-    metadata:
-      serverAddress: http://prometheus:9090
-      metricName: http_requests_per_second
-      threshold: "1000"
-      query: sum(rate(http_requests_total{job="rtpm-api"}[2m]))
+    # HTTP request-based scaling
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus-service.monitoring.svc.cluster.local:9090
+        metricName: http_requests_per_second
+        threshold: "100"
+        query: sum(rate(http_requests_total{job="netlify-api",status!~"5.."}[2m]))
+
+    # Response time-based scaling
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus-service.monitoring.svc.cluster.local:9090
+        metricName: response_time_p95
+        threshold: "1.5"
+        query: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="netlify-api"}[5m])) by (le))
+
+    # Queue depth scaling (if using message queues)
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus-service.monitoring.svc.cluster.local:9090
+        metricName: queue_depth
+        threshold: "50"
+        query: sum(queue_depth{service="netlify-api"})
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject

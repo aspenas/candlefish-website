@@ -1,0 +1,206 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: netlify-extension-production
+  labels:
+    app.kubernetes.io/name: netlify-extension
+    app.kubernetes.io/instance: production
+    app.kubernetes.io/part-of: candlefish-platform
+
+# Base configuration
+bases:
+  - ../../base
+
+# Namespace for production
+namespace: netlify-extension-production
+
+# Name suffix for production
+nameSuffix: -production
+
+# Common labels for production
+commonLabels:
+  environment: production
+  app.kubernetes.io/instance: production
+
+# Common annotations
+commonAnnotations:
+  deployment.environment: "production"
+  deployment.tier: "production"
+  backup.enabled: "true"
+  monitoring.enabled: "true"
+
+# Image overrides for production (will be updated by CI/CD)
+images:
+  - name: ghcr.io/candlefish-enterprise/netlify-extension-api
+    newTag: latest
+  - name: ghcr.io/candlefish-enterprise/netlify-extension-frontend
+    newTag: latest
+  - name: ghcr.io/candlefish-enterprise/netlify-extension-ml
+    newTag: latest
+  - name: ghcr.io/candlefish-enterprise/netlify-extension-monitor
+    newTag: latest
+  - name: ghcr.io/candlefish-enterprise/netlify-extension-config
+    newTag: latest
+
+# ConfigMap generator for production-specific config
+configMapGenerator:
+  - name: production-config
+    literals:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=info
+      - DEBUG=false
+      - ENABLE_PROFILING=false
+      - CORS_ORIGINS=https://netlify-extension.candlefish.ai,https://dashboard.candlefish.ai
+      - RATE_LIMIT_ENABLED=true
+      - SECURITY_HEADERS_ENABLED=true
+
+# Production-specific patches
+patches:
+  # Blue-green deployment configuration
+  - target:
+      kind: Deployment
+      name: netlify-api
+    patch: |-
+      - op: add
+        path: /metadata/labels/environment
+        value: blue
+      - op: replace
+        path: /spec/replicas
+        value: 3
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: ENVIRONMENT
+          value: blue
+
+  - target:
+      kind: Deployment
+      name: netlify-frontend
+    patch: |-
+      - op: add
+        path: /metadata/labels/environment
+        value: blue
+      - op: replace
+        path: /spec/replicas
+        value: 2
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: ENVIRONMENT
+          value: blue
+
+  - target:
+      kind: Deployment
+      name: netlify-ml
+    patch: |-
+      - op: add
+        path: /metadata/labels/environment
+        value: blue
+      - op: replace
+        path: /spec/replicas
+        value: 2
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: ENVIRONMENT
+          value: blue
+
+  - target:
+      kind: Deployment
+      name: netlify-monitor
+    patch: |-
+      - op: add
+        path: /metadata/labels/environment
+        value: blue
+      - op: replace
+        path: /spec/replicas
+        value: 2
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: ENVIRONMENT
+          value: blue
+
+  - target:
+      kind: Deployment
+      name: netlify-config
+    patch: |-
+      - op: add
+        path: /metadata/labels/environment
+        value: blue
+      - op: replace
+        path: /spec/replicas
+        value: 2
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: ENVIRONMENT
+          value: blue
+
+  # Update ingress for production domain with enhanced security
+  - target:
+      kind: Ingress
+      name: netlify-extension-ingress
+    patch: |-
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: netlify-extension.candlefish.ai
+      - op: replace
+        path: /spec/rules/0/host
+        value: netlify-extension.candlefish.ai
+      - op: add
+        path: /metadata/annotations/nginx.ingress.kubernetes.io~1rate-limit
+        value: "1000"
+      - op: add
+        path: /metadata/annotations/nginx.ingress.kubernetes.io~1rate-limit-window
+        value: "1m"
+
+  # Production HPA settings
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: netlify-api-hpa
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 3
+      - op: replace
+        path: /spec/maxReplicas
+        value: 15
+
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: netlify-ml-hpa
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 2
+      - op: replace
+        path: /spec/maxReplicas
+        value: 12
+
+  # Add production-specific resource limits
+  - target:
+      kind: Deployment
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: NEW_RELIC_ENABLED
+          value: "true"
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: SENTRY_ENABLED
+          value: "true"
+
+# Generate blue-green deployment variants
+resources:
+  - blue-green-services.yaml
+  - pod-disruption-budget.yaml
+  - network-policies.yaml
+
+# Additional production resources
+patchesStrategicMerge:
+  - production-secrets.yaml
+  - production-configmaps.yaml
