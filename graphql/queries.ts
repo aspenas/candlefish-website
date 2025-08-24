@@ -912,7 +912,7 @@ export const QUERY_COMPLEXITY_RULES = {
   Partner: 2,
   Operator: 1,
   APIReference: 2,
-  
+
   // Field-specific complexity multipliers
   'Documentation.relatedDocuments': 5,
   'Documentation.blocks': 3,
@@ -921,19 +921,19 @@ export const QUERY_COMPLEXITY_RULES = {
   'Partner.implementations': 3,
   'Partner.testimonials': 2,
   'User.createdDocuments': 4,
-  
+
   // Connection complexity (pagination)
   connection: 2,
-  
+
   // Search complexity
   search: 10,
-  
+
   // Analytics complexity
   analytics: 15,
-  
+
   // Maximum allowed complexity per query
   maxComplexity: 100,
-  
+
   // Complexity scoring function
   calculateComplexity: (query: any): number => {
     // This would be implemented to traverse the query AST
@@ -951,7 +951,7 @@ export default {
   PARTNER_DETAIL_FRAGMENT,
   OPERATOR_FRAGMENT,
   API_REFERENCE_FRAGMENT,
-  
+
   // Queries
   GET_DOCUMENTATION,
   GET_ALL_DOCUMENTATION,
@@ -966,7 +966,7 @@ export default {
   GET_ME,
   GET_USER_DOCUMENTS,
   GET_ANALYTICS,
-  
+
   // Mutations
   CREATE_DOCUMENTATION,
   UPDATE_DOCUMENTATION,
@@ -976,13 +976,13 @@ export default {
   ADD_REACTION,
   SUBMIT_FEEDBACK,
   LOGIN,
-  
+
   // Subscriptions
   DOCUMENTATION_UPDATED_SUBSCRIPTION,
   DOCUMENTATION_PUBLISHED_SUBSCRIPTION,
   PARTNER_STATUS_CHANGED_SUBSCRIPTION,
   OPERATOR_AVAILABILITY_CHANGED_SUBSCRIPTION,
-  
+
   // Complexity rules
   QUERY_COMPLEXITY_RULES,
 };

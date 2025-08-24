@@ -6,13 +6,13 @@
 import { IResolvers } from '@graphql-tools/utils';
 import { Context, requireAuth, requireRole, authorized } from '../context';
 import { withFilter } from 'graphql-subscriptions';
-import { 
-  Partner, 
-  RegisterPartnerInput, 
+import {
+  Partner,
+  RegisterPartnerInput,
   UpdatePartnerInput,
   PartnerStatus,
   PartnerTier,
-  SubmitLeadInput 
+  SubmitLeadInput
 } from '../../types';
 
 export const partnerResolvers: IResolvers<any, Context> = {
@@ -20,24 +20,24 @@ export const partnerResolvers: IResolvers<any, Context> = {
     // Get single partner by slug (public)
     partner: async (_, { slug }, { loaders }) => {
       const partner = await loaders.partnerBySlug.load(slug);
-      
+
       // Only show active partners to public
       if (partner && partner.status !== PartnerStatus.ACTIVE) {
         return null;
       }
-      
+
       return partner;
     },
 
     // Get single partner by ID (authenticated)
     partnerById: async (_, { id }, { loaders, user }) => {
       const partner = await loaders.partnerById.load(id);
-      
+
       // Public users can only see active partners
       if (!user && partner?.status !== PartnerStatus.ACTIVE) {
         return null;
       }
-      
+
       return partner;
     },
 
@@ -180,8 +180,8 @@ export const partnerResolvers: IResolvers<any, Context> = {
       }
 
       // Check permissions
-      const canEdit = 
-        user.role === 'ADMIN' || 
+      const canEdit =
+        user.role === 'ADMIN' ||
         (user.role === 'PARTNER' && existing.primaryContactId === user.id);
 
       if (!canEdit) {
@@ -201,8 +201,8 @@ export const partnerResolvers: IResolvers<any, Context> = {
       });
 
       // Notify subscribers of partner changes
-      pubsub.publish('PARTNER_STATUS_CHANGED', { 
-        partnerStatusChanged: updated 
+      pubsub.publish('PARTNER_STATUS_CHANGED', {
+        partnerStatusChanged: updated
       });
 
       // Clear caches
@@ -309,72 +309,72 @@ export const partnerResolvers: IResolvers<any, Context> = {
     // Resolve implementations
     implementations: async (parent, _, { db, user }) => {
       const implementations = await db.implementations.findByPartnerId(parent.id);
-      
+
       // Filter private implementations for public users
       if (!user) {
         return implementations.filter(impl => impl.isPublic);
       }
-      
+
       return implementations;
     },
 
     // Resolve testimonials
     testimonials: async (parent, _, { db, user }) => {
       const testimonials = await db.testimonials.findByPartnerId(parent.id);
-      
+
       // Filter private testimonials for public users
       if (!user) {
         return testimonials.filter(test => test.isPublic);
       }
-      
+
       return testimonials;
     },
 
     // Resolve partner resources
     resources: async (parent, _, { db, user }) => {
       const resources = await db.partnerResources.findByPartnerId(parent.id);
-      
+
       // Filter by access level
       if (!user) {
         return resources.filter(resource => resource.accessLevel === 'PUBLIC');
       }
-      
+
       // Partner users can see their own resources
       if (user.role === 'PARTNER' && parent.primaryContactId === user.id) {
         return resources;
       }
-      
+
       // Operators can see partner and operator resources
       if (user.role === 'OPERATOR') {
-        return resources.filter(resource => 
+        return resources.filter(resource =>
           ['PUBLIC', 'PARTNER_ONLY', 'OPERATOR_ONLY'].includes(resource.accessLevel)
         );
       }
-      
+
       return resources.filter(resource => resource.accessLevel === 'PUBLIC');
     },
 
     // Resolve case studies
     caseStudies: async (parent, _, { db, user }) => {
       const caseStudies = await db.caseStudies.findByPartnerId(parent.id);
-      
+
       // Filter private case studies for public users
       if (!user) {
         return caseStudies.filter(cs => cs.isPublic);
       }
-      
+
       return caseStudies;
     },
 
     // Resolve operators
     operators: async (parent, _, { loaders, user }) => {
       const operators = await loaders.operatorsByPartner.load(parent.id);
-      
+
       // Filter by public profile setting for non-authenticated users
       if (!user) {
         return operators.filter(op => op.isPublicProfile);
       }
-      
+
       return operators;
     },
 
@@ -384,12 +384,12 @@ export const partnerResolvers: IResolvers<any, Context> = {
       if (!user || (user.role !== 'ADMIN' && user.role !== 'PARTNER')) {
         return null;
       }
-      
+
       // Partner users can only see their own API access
       if (user.role === 'PARTNER' && parent.primaryContactId !== user.id) {
         return null;
       }
-      
+
       return await db.apiAccess.findByPartnerId(parent.id);
     },
 
@@ -399,12 +399,12 @@ export const partnerResolvers: IResolvers<any, Context> = {
       if (!user || (user.role !== 'ADMIN' && user.role !== 'PARTNER')) {
         return [];
       }
-      
+
       // Partner users can only see their own leads
       if (user.role === 'PARTNER' && parent.primaryContactId !== user.id) {
         return [];
       }
-      
+
       return await db.leads.findByPartnerId(parent.id);
     },
 
@@ -413,14 +413,14 @@ export const partnerResolvers: IResolvers<any, Context> = {
       // Only increment for public views (not partner's own views)
       if (!user || (user.role !== 'PARTNER' && parent.primaryContactId !== user.id)) {
         await db.partners.incrementProfileViews(parent.id);
-        
+
         // Track analytics
         await analytics.track('partner_profile_viewed', {
           partnerId: parent.id,
           userId: user?.id,
         });
       }
-      
+
       return parent.profileViews + 1;
     },
   },

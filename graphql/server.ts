@@ -264,7 +264,7 @@ async function createApolloServer(httpServer: http.Server, wsServer: WebSocketSe
     formatError: (error) => {
       // Hide internal error details in production
       if (process.env.NODE_ENV === 'production') {
-        if (error.message.includes('Database error') || 
+        if (error.message.includes('Database error') ||
             error.message.includes('Internal server error')) {
           return new Error('An error occurred while processing your request');
         }
@@ -392,16 +392,16 @@ export async function startServer() {
     // Graceful shutdown
     process.on('SIGTERM', async () => {
       console.log('SIGTERM received, shutting down gracefully...');
-      
+
       serverCleanup.dispose();
       await server.stop();
       httpServer.close();
-      
+
       // Close service connections
       await services.db.disconnect();
       await services.search.disconnect();
       await services.cache.disconnect();
-      
+
       process.exit(0);
     });
 

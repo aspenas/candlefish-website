@@ -20,7 +20,7 @@ export interface Context {
   // Request context
   req: Request;
   user?: User;
-  
+
   // Services
   db: DatabaseService;
   search: SearchService;
@@ -29,40 +29,40 @@ export interface Context {
   analytics: AnalyticsService;
   notifications: NotificationService;
   pubsub: PubSub;
-  
+
   // DataLoaders for N+1 query prevention
   loaders: {
     // User loaders
     userById: DataLoader<string, User | null>;
     usersByIds: DataLoader<string[], User[]>;
-    
+
     // Documentation loaders
     documentationById: DataLoader<string, Documentation | null>;
     documentationBySlug: DataLoader<string, Documentation | null>;
     documentationsByCategory: DataLoader<string, Documentation[]>;
     documentationsByAuthor: DataLoader<string, Documentation[]>;
     relatedDocumentation: DataLoader<string, Documentation[]>;
-    
+
     // Partner loaders
     partnerById: DataLoader<string, Partner | null>;
     partnerBySlug: DataLoader<string, Partner | null>;
     partnersByTier: DataLoader<string, Partner[]>;
     partnersByIndustry: DataLoader<string, Partner[]>;
-    
+
     // Operator loaders
     operatorById: DataLoader<string, Operator | null>;
     operatorsByPartner: DataLoader<string, Operator[]>;
     operatorsBySkill: DataLoader<string, Operator[]>;
-    
+
     // API Reference loaders
     apiReferenceById: DataLoader<string, APIReference | null>;
     apiReferenceBySlug: DataLoader<string, APIReference | null>;
     apiReferencesByService: DataLoader<string, APIReference[]>;
-    
+
     // Asset loaders
     assetById: DataLoader<string, Asset | null>;
     assetsByIds: DataLoader<string[], Asset[]>;
-    
+
     // Relationship loaders
     categoriesByDocument: DataLoader<string, any[]>;
     tagsByDocument: DataLoader<string, string[]>;
@@ -86,8 +86,8 @@ export function createDataLoaders(db: DatabaseService): Context['loaders'] {
     usersByIds: new DataLoader(async (idArrays: readonly string[][]) => {
       const allIds = [...new Set(idArrays.flat())];
       const users = await db.users.findByIds(allIds);
-      
-      return idArrays.map(ids => 
+
+      return idArrays.map(ids =>
         ids.map(id => users.find(user => user.id === id)).filter(Boolean) as User[]
       );
     }),
@@ -136,7 +136,7 @@ export function createDataLoaders(db: DatabaseService): Context['loaders'] {
 
     partnersByIndustry: new DataLoader(async (industries: readonly string[]) => {
       const results = await db.partners.findByIndustries([...industries]);
-      return industries.map(industry => 
+      return industries.map(industry =>
         results.filter(partner => partner.industries.includes(industry))
       );
     }),
@@ -154,7 +154,7 @@ export function createDataLoaders(db: DatabaseService): Context['loaders'] {
 
     operatorsBySkill: new DataLoader(async (skills: readonly string[]) => {
       const results = await db.operators.findBySkills([...skills]);
-      return skills.map(skill => 
+      return skills.map(skill =>
         results.filter(op => op.skills.some(s => s.name === skill))
       );
     }),
@@ -184,8 +184,8 @@ export function createDataLoaders(db: DatabaseService): Context['loaders'] {
     assetsByIds: new DataLoader(async (idArrays: readonly string[][]) => {
       const allIds = [...new Set(idArrays.flat())];
       const assets = await db.assets.findByIds(allIds);
-      
-      return idArrays.map(ids => 
+
+      return idArrays.map(ids =>
         ids.map(id => assets.find(asset => asset.id === id)).filter(Boolean) as Asset[]
       );
     }),
@@ -230,7 +230,7 @@ export function createContext(
   }
 ): Context {
   const loaders = createDataLoaders(services.db);
-  
+
   return {
     req,
     user: req.user as User | undefined,
@@ -278,28 +278,28 @@ export function requirePermission(context: Context, permission: string): User {
 export function authorized(roles?: string[], permissions?: string[]) {
   return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
-    
+
     descriptor.value = async function(parent: any, args: any, context: Context, info: any) {
       // Check authentication
       if (roles || permissions) {
         requireAuth(context);
       }
-      
+
       // Check roles
       if (roles && roles.length > 0) {
         requireRole(context, roles);
       }
-      
+
       // Check permissions
       if (permissions && permissions.length > 0) {
         for (const permission of permissions) {
           requirePermission(context, permission);
         }
       }
-      
+
       return originalMethod.call(this, parent, args, context, info);
     };
-    
+
     return descriptor;
   };
 }

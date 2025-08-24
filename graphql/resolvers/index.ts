@@ -74,25 +74,25 @@ export const resolvers: IResolvers<any, Context> = {
   Query: {
     // User queries
     ...userResolvers.Query,
-    
+
     // Documentation queries
     ...documentationResolvers.Query,
-    
+
     // Partner queries
     ...partnerResolvers.Query,
-    
+
     // Operator queries
     ...operatorResolvers.Query,
-    
+
     // API Reference queries
     ...apiReferenceResolvers.Query,
-    
+
     // Search queries
     ...searchResolvers.Query,
-    
+
     // Analytics queries
     ...analyticsResolvers.Query,
-    
+
     // Asset queries
     ...assetResolvers.Query,
   },
@@ -101,22 +101,22 @@ export const resolvers: IResolvers<any, Context> = {
   Mutation: {
     // User mutations
     ...userResolvers.Mutation,
-    
+
     // Documentation mutations
     ...documentationResolvers.Mutation,
-    
+
     // Partner mutations
     ...partnerResolvers.Mutation,
-    
+
     // Operator mutations
     ...operatorResolvers.Mutation,
-    
+
     // API Reference mutations
     ...apiReferenceResolvers.Mutation,
-    
+
     // Content mutations
     ...contentResolvers.Mutation,
-    
+
     // Asset mutations
     ...assetResolvers.Mutation,
   },
@@ -125,13 +125,13 @@ export const resolvers: IResolvers<any, Context> = {
   Subscription: {
     // Documentation subscriptions
     ...documentationResolvers.Subscription,
-    
+
     // Partner subscriptions
     ...partnerResolvers.Subscription,
-    
+
     // Operator subscriptions
     ...operatorResolvers.Subscription,
-    
+
     // API Reference subscriptions
     ...apiReferenceResolvers.Subscription,
   },
@@ -143,7 +143,7 @@ export const resolvers: IResolvers<any, Context> = {
   Operator: operatorResolvers.Operator,
   APIReference: apiReferenceResolvers.APIReference,
   Asset: assetResolvers.Asset,
-  
+
   // Content block resolvers
   TextBlock: contentResolvers.TextBlock,
   CodeBlock: contentResolvers.CodeBlock,

@@ -61,8 +61,8 @@ export const federatedTypeDefs = gql`
   extend type User @key(fields: "id") {
     # Documentation service extensions
     createdDocuments: [Documentation!]! @shareable
-    
-    # Partner service extensions  
+
+    # Partner service extensions
     partnerProfile: Partner
   }
 
@@ -130,34 +130,34 @@ interface GatewayConfig {
  */
 export const defaultFederationConfig: FederationConfig = {
   mode: process.env.GRAPHQL_FEDERATION_MODE === 'federated' ? 'federated' : 'monolith',
-  
+
   services: {
     documentation: {
       enabled: true,
       url: process.env.DOCUMENTATION_SERVICE_URL || 'http://localhost:4001/graphql',
     },
-    
+
     partner: {
       enabled: true,
       url: process.env.PARTNER_SERVICE_URL || 'http://localhost:4002/graphql',
     },
-    
+
     apiReference: {
       enabled: true,
       url: process.env.API_REFERENCE_SERVICE_URL || 'http://localhost:4003/graphql',
     },
-    
+
     search: {
       enabled: true,
       url: process.env.SEARCH_SERVICE_URL || 'http://localhost:4004/graphql',
     },
-    
+
     analytics: {
       enabled: true,
       url: process.env.ANALYTICS_SERVICE_URL || 'http://localhost:4005/graphql',
     },
   },
-  
+
   gateway: {
     url: process.env.GRAPHQL_GATEWAY_URL || 'http://localhost:4000/graphql',
     services: [
@@ -182,7 +182,7 @@ export function createFederatedSchema(typeDefs: DocumentNode, resolvers: any) {
       typeDefs: [federatedTypeDefs, typeDefs],
       resolvers: {
         ...resolvers,
-        
+
         // Federation entity resolvers
         User: {
           ...resolvers.User,
@@ -190,7 +190,7 @@ export function createFederatedSchema(typeDefs: DocumentNode, resolvers: any) {
             return resolvers.Query.user(null, { id: user.id });
           },
         },
-        
+
         Documentation: {
           ...resolvers.Documentation,
           __resolveReference(doc: { id?: string; slug?: string }) {
@@ -203,7 +203,7 @@ export function createFederatedSchema(typeDefs: DocumentNode, resolvers: any) {
             return null;
           },
         },
-        
+
         Partner: {
           ...resolvers.Partner,
           __resolveReference(partner: { id?: string; slug?: string }) {
@@ -216,14 +216,14 @@ export function createFederatedSchema(typeDefs: DocumentNode, resolvers: any) {
             return null;
           },
         },
-        
+
         Operator: {
           ...resolvers.Operator,
           __resolveReference(operator: { id: string }) {
             return resolvers.Query.operator(null, { id: operator.id });
           },
         },
-        
+
         APIReference: {
           ...resolvers.APIReference,
           __resolveReference(ref: { id?: string; slug?: string }) {
@@ -236,7 +236,7 @@ export function createFederatedSchema(typeDefs: DocumentNode, resolvers: any) {
             return null;
           },
         },
-        
+
         // Service metadata
         Query: {
           ...resolvers.Query,
@@ -256,16 +256,16 @@ export async function createGatewayConfig(config: FederationConfig) {
   }
 
   const { ApolloGateway, IntrospectAndCompose } = await import('@apollo/gateway');
-  
+
   const gateway = new ApolloGateway({
     supergraphSdl: new IntrospectAndCompose({
       subgraphs: config.gateway.services,
       pollIntervalInMs: config.gateway.polling?.interval,
     }),
-    
+
     // Service health check
     serviceHealthCheck: true,
-    
+
     // Error handling for subgraph failures
     buildService: ({ url }) => ({
       process: async ({ request, context }) => {
@@ -275,7 +275,7 @@ export async function createGatewayConfig(config: FederationConfig) {
           request.http.headers = request.http.headers || {};
           request.http.headers.authorization = `Bearer ${context.user.token}`;
         }
-        
+
         return { response: null }; // Default fetch will handle the request
       },
     }),
@@ -289,7 +289,7 @@ export async function createGatewayConfig(config: FederationConfig) {
  */
 export class ServiceRegistry {
   private services = new Map<string, ServiceInfo>();
-  
+
   interface ServiceInfo {
     name: string;
     url: string;
@@ -297,41 +297,41 @@ export class ServiceRegistry {
     health: 'healthy' | 'unhealthy' | 'unknown';
     lastCheck: Date;
   }
-  
+
   register(service: ServiceInfo) {
     this.services.set(service.name, service);
     console.log(`Service registered: ${service.name} at ${service.url}`);
   }
-  
+
   unregister(serviceName: string) {
     this.services.delete(serviceName);
     console.log(`Service unregistered: ${serviceName}`);
   }
-  
+
   getServices(): ServiceInfo[] {
     return Array.from(this.services.values());
   }
-  
+
   getService(name: string): ServiceInfo | undefined {
     return this.services.get(name);
   }
-  
+
   async checkHealth(): Promise<void> {
     const healthChecks = Array.from(this.services.values()).map(async (service) => {
       try {
         const response = await fetch(`${service.url}/health`, {
           timeout: 5000,
         });
-        
+
         service.health = response.ok ? 'healthy' : 'unhealthy';
       } catch (error) {
         service.health = 'unhealthy';
         console.error(`Health check failed for ${service.name}:`, error.message);
       }
-      
+
       service.lastCheck = new Date();
     });
-    
+
     await Promise.all(healthChecks);
   }
 }
@@ -342,40 +342,40 @@ export class ServiceRegistry {
 export class FederationMigration {
   static async validateFederationReadiness(schema: DocumentNode, resolvers: any) {
     const issues: string[] = [];
-    
+
     // Check for entity keys
     const entityTypes = ['User', 'Documentation', 'Partner', 'Operator', 'APIReference'];
-    
+
     entityTypes.forEach(typeName => {
       if (!resolvers[typeName]?.__resolveReference) {
         issues.push(`Missing __resolveReference for entity type: ${typeName}`);
       }
     });
-    
+
     // Check for external fields
     // This would require AST analysis of the schema
-    
+
     if (issues.length > 0) {
       throw new Error(`Federation validation failed:\n${issues.join('\n')}`);
     }
-    
+
     console.log('✅ Federation readiness validation passed');
   }
-  
+
   static async migrateToFederation(currentSchema: DocumentNode, resolvers: any) {
     console.log('🚀 Starting federation migration...');
-    
+
     // 1. Validate current schema is federation-ready
     await this.validateFederationReadiness(currentSchema, resolvers);
-    
+
     // 2. Create federated schema
     const federatedSchema = createFederatedSchema(currentSchema, resolvers);
-    
+
     // 3. Test schema composition
     // This would involve spinning up test services and validating gateway composition
-    
+
     console.log('✅ Federation migration completed successfully');
-    
+
     return federatedSchema;
   }
 }
@@ -393,7 +393,7 @@ export function createComplexityAnalysis() {
       Operator: 1,
       APIReference: 2,
     },
-    
+
     // Field complexity
     fieldComplexity: {
       // High complexity fields that require multiple service calls
@@ -401,10 +401,10 @@ export function createComplexityAnalysis() {
       'Partner.operators': 5,
       'User.createdDocuments': 5,
     },
-    
+
     // Maximum query complexity allowed
     maxComplexity: 100,
-    
+
     // Complexity calculation
     calculateComplexity(query: any): number {
       // This would analyze the AST and calculate total complexity

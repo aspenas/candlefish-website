@@ -6,12 +6,12 @@
 import { IResolvers } from '@graphql-tools/utils';
 import { Context, requireAuth, requireRole, authorized } from '../context';
 import { withFilter } from 'graphql-subscriptions';
-import { 
-  Documentation, 
-  DocumentationCategory, 
-  CreateDocumentationInput, 
+import {
+  Documentation,
+  DocumentationCategory,
+  CreateDocumentationInput,
   UpdateDocumentationInput,
-  ContentStatus 
+  ContentStatus
 } from '../../types';
 
 export const documentationResolvers: IResolvers<any, Context> = {

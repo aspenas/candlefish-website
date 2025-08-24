@@ -64,6 +64,80 @@ export const seedTestData = async () => {
   console.log('Seeding test data...');
 };
 
+// GraphQL test utilities
+export const createTestServer = async () => {
+  const { ApolloServer } = require('@apollo/server');
+  const { typeDefs } = require('../graphql/schema');
+  const { resolvers } = require('../graphql/resolvers');
+  
+  return new ApolloServer({
+    typeDefs,
+    resolvers,
+    context: ({ req }) => ({
+      user: req?.user || null,
+      db: mockDb,
+    }),
+  });
+};
+
+// Mock database interface
+export const mockDb = {
+  users: new Map(),
+  documents: new Map(),
+  organizations: new Map(),
+  
+  // User operations
+  findUserById: jest.fn(),
+  findUserByEmail: jest.fn(),
+  createUser: jest.fn(),
+  updateUser: jest.fn(),
+  deleteUser: jest.fn(),
+  
+  // Document operations
+  findDocumentById: jest.fn(),
+  createDocument: jest.fn(),
+  updateDocument: jest.fn(),
+  deleteDocument: jest.fn(),
+  
+  // Organization operations
+  findOrganizationById: jest.fn(),
+  createOrganization: jest.fn(),
+  updateOrganization: jest.fn(),
+  deleteOrganization: jest.fn(),
+};
+
+// Custom matchers for backend tests
+expect.extend({
+  toBeValidUUID(received) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const pass = uuidRegex.test(received);
+    return {
+      message: () => `expected ${received} ${pass ? 'not ' : ''}to be a valid UUID`,
+      pass,
+    };
+  },
+  
+  toBeValidJWT(received) {
+    const jwtRegex = /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_.+/=]*$/;
+    const pass = jwtRegex.test(received);
+    return {
+      message: () => `expected ${received} ${pass ? 'not ' : ''}to be a valid JWT`,
+      pass,
+    };
+  },
+  
+  toHaveGraphQLError(received, expectedMessage) {
+    const hasErrors = received.errors && received.errors.length > 0;
+    const hasExpectedMessage = hasErrors && 
+      received.errors.some(error => error.message.includes(expectedMessage));
+    
+    return {
+      message: () => `expected GraphQL response ${hasExpectedMessage ? 'not ' : ''}to have error "${expectedMessage}"`,
+      pass: hasExpectedMessage,
+    };
+  }
+});
+
 // Global test hooks
 beforeEach(async () => {
   await resetDatabase();

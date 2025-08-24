@@ -15,6 +15,7 @@ import ItemTable from '../components/ItemTable';
 import FilterPanel from '../components/FilterPanel';
 import SearchBar from '../components/SearchBar';
 import BulkActions from '../components/BulkActions';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 type SortOrder = 'asc' | 'desc' | null;
 
@@ -66,62 +67,90 @@ export default function Inventory() {
     'Other'
   ];
 
-  const { data, isLoading, refetch, isFetching } = useQuery({
+  const { data, isLoading, refetch, isFetching, error } = useQuery({
     queryKey: ['items', filters, searchQuery, sortBy, sortOrder],
-    queryFn: () => {
-      if (searchQuery) {
-        const searchParams = new URLSearchParams({ q: searchQuery });
+    queryFn: async () => {
+      try {
+        let result;
+        
+        if (searchQuery) {
+          const searchParams = new URLSearchParams({ q: searchQuery });
 
-        // Add sort params to search
-        if (sortBy && sortOrder) {
-          searchParams.set('sort_by', sortBy);
-          searchParams.set('sort_order', sortOrder);
+          // Add sort params to search
+          if (sortBy && sortOrder) {
+            searchParams.set('sort_by', sortBy);
+            searchParams.set('sort_order', sortOrder);
+          }
+
+          result = await api.searchItems(Object.fromEntries(searchParams));
+        } else {
+          // Build filter params for API
+          const params = new URLSearchParams();
+
+          if (filters.categories?.length) {
+            params.set('categories', filters.categories.join(','));
+          }
+          if (filters.decisions?.length) {
+            params.set('decisions', filters.decisions.join(','));
+          }
+          if (filters.rooms?.length) {
+            params.set('rooms', filters.rooms.join(','));
+          }
+          if (filters.minValue !== undefined) {
+            params.set('minValue', filters.minValue.toString());
+          }
+          if (filters.maxValue !== undefined) {
+            params.set('maxValue', filters.maxValue.toString());
+          }
+          if (filters.minDate !== undefined) {
+            params.set('date_from', filters.minDate);
+          }
+          if (filters.maxDate !== undefined) {
+            params.set('date_to', filters.maxDate);
+          }
+          if (filters.isFixture !== undefined) {
+            params.set('isFixture', filters.isFixture.toString());
+          }
+          if (filters.hasImages !== undefined) {
+            params.set('has_images', filters.hasImages.toString());
+          }
+          if (filters.sources?.length) {
+            params.set('sources', filters.sources.join(','));
+          }
+
+          // Add sort params to filter
+          if (sortBy && sortOrder) {
+            params.set('sort_by', sortBy);
+            params.set('sort_order', sortOrder);
+          }
+
+          result = await api.filterItems(params);
         }
 
-        return api.searchItems(Object.fromEntries(searchParams));
-      }
+        console.log('Inventory API response:', result);
 
-      // Build filter params for API
-      const params = new URLSearchParams();
+        // Normalize the data structure
+        if (Array.isArray(result)) {
+          return { items: result, total: result.length };
+        }
+        
+        if (result && typeof result === 'object') {
+          if (Array.isArray(result.items)) {
+            return result;
+          }
+          if (result.data && Array.isArray(result.data)) {
+            return { items: result.data, total: result.total || result.data.length };
+          }
+        }
 
-      if (filters.categories?.length) {
-        params.set('categories', filters.categories.join(','));
+        // Fallback for unexpected data structures
+        console.warn('Unexpected API response structure:', result);
+        return { items: [], total: 0 };
+        
+      } catch (error) {
+        console.error('Error fetching inventory data:', error);
+        throw error;
       }
-      if (filters.decisions?.length) {
-        params.set('decisions', filters.decisions.join(','));
-      }
-      if (filters.rooms?.length) {
-        params.set('rooms', filters.rooms.join(','));
-      }
-      if (filters.minValue !== undefined) {
-        params.set('minValue', filters.minValue.toString());
-      }
-      if (filters.maxValue !== undefined) {
-        params.set('maxValue', filters.maxValue.toString());
-      }
-      if (filters.minDate !== undefined) {
-        params.set('date_from', filters.minDate);
-      }
-      if (filters.maxDate !== undefined) {
-        params.set('date_to', filters.maxDate);
-      }
-      if (filters.isFixture !== undefined) {
-        params.set('isFixture', filters.isFixture.toString());
-      }
-      if (filters.hasImages !== undefined) {
-        params.set('has_images', filters.hasImages.toString());
-      }
-      if (filters.sources?.length) {
-        params.set('sources', filters.sources.join(','));
-      }
-
-      // Add sort params to filter
-      if (sortBy && sortOrder) {
-        params.set('sort_by', sortBy);
-        params.set('sort_order', sortOrder);
-      }
-
-      return api.filterItems(params);
     },
   });
 
@@ -487,72 +516,89 @@ export default function Inventory() {
         </div>
 
         <div className="flex-1">
-          {/* Bulk Actions */}
-          {selectedItems.length > 0 && (
-            <BulkActions
-              selectedItems={selectedItems}
-              onBulkUpdate={(itemIds, updates) => {
-                bulkUpdateMutation.mutate({
-                  itemIds,
-                  ...updates,
-                });
-              }}
-              onClearSelection={() => setSelectedItems([])}
-              totalItems={data?.total || (data?.items || data || []).length || 0}
-            />
-          )}
-
-          {/* Items Table */}
-          {isLoading ? (
-            <LoadingSkeleton />
-          ) : !data?.items && !Array.isArray(data) || (data?.items || data || []).length === 0 ? (
-            <EmptyState />
-          ) : (
-            <div className="bg-white shadow rounded-lg overflow-hidden">
-              <ItemTable
-                items={data?.items || data || []}
+          <ErrorBoundary fallback={<div className="bg-white rounded-lg p-8 text-center text-red-600">Unable to load inventory data. Please refresh the page or check your connection.</div>}>
+            {/* Bulk Actions */}
+            {selectedItems.length > 0 && (
+              <BulkActions
                 selectedItems={selectedItems}
-                onSelectItem={(id) => {
-                  setSelectedItems((prev) =>
-                    prev.includes(id)
-                      ? prev.filter((i) => i !== id)
-                      : [...prev, id]
-                  );
+                onBulkUpdate={(itemIds, updates) => {
+                  bulkUpdateMutation.mutate({
+                    itemIds,
+                    ...updates,
+                  });
                 }}
-                onSelectAll={(ids) => setSelectedItems(ids)}
-                onUpdateItem={updateItemMutation.mutate}
-                onSort={handleSort}
-                sortBy={sortBy || ''}
-                sortOrder={sortOrder || 'asc'}
+                onClearSelection={() => setSelectedItems([])}
+                totalItems={data?.total || (data?.items || data || []).length || 0}
               />
+            )}
 
-              {/* Results Summary */}
-              <div className="px-6 py-4 bg-gray-50 border-t">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-gray-700">
-                    {searchQuery && (
-                      <span>Search results for "{searchQuery}" • </span>
-                    )}
-                    {hasActiveFilters && (
-                      <span>Filtered results • </span>
-                    )}
-                    Showing {(data?.items || data || []).length} of {data?.total || (data?.items || data || []).length} items
-                    {activeFilterCount > 0 && (
-                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
-                        {activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''} active
-                      </span>
-                    )}
-                  </div>
-                  {isFetching && (
-                    <div className="flex items-center text-sm text-indigo-600">
-                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-indigo-600 mr-2"></div>
-                      Updating...
-                    </div>
-                  )}
+            {/* Items Table */}
+            {isLoading ? (
+              <LoadingSkeleton />
+            ) : error ? (
+              <div className="bg-white shadow rounded-lg overflow-hidden p-8 text-center">
+                <div className="text-red-600">
+                  <h3 className="text-lg font-medium mb-2">Unable to load inventory</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    There was an error connecting to the inventory system. Please check your connection and try again.
+                  </p>
+                  <button
+                    onClick={() => refetch()}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                  >
+                    Try Again
+                  </button>
                 </div>
               </div>
-            </div>
-          )}
+            ) : !data?.items && !Array.isArray(data) || (data?.items || data || []).length === 0 ? (
+              <EmptyState />
+            ) : (
+              <div className="bg-white shadow rounded-lg overflow-hidden">
+                <ItemTable
+                  items={data?.items || data || []}
+                  selectedItems={selectedItems}
+                  onSelectItem={(id) => {
+                    setSelectedItems((prev) =>
+                      prev.includes(id)
+                        ? prev.filter((i) => i !== id)
+                        : [...prev, id]
+                    );
+                  }}
+                  onSelectAll={(ids) => setSelectedItems(ids)}
+                  onUpdateItem={updateItemMutation.mutate}
+                  onSort={handleSort}
+                  sortBy={sortBy || ''}
+                  sortOrder={sortOrder || 'asc'}
+                />
+
+                {/* Results Summary */}
+                <div className="px-6 py-4 bg-gray-50 border-t">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-gray-700">
+                      {searchQuery && (
+                        <span>Search results for "{searchQuery}" • </span>
+                      )}
+                      {hasActiveFilters && (
+                        <span>Filtered results • </span>
+                      )}
+                      Showing {(data?.items || data || []).length} of {data?.total || (data?.items || data || []).length} items
+                      {activeFilterCount > 0 && (
+                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
+                          {activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''} active
+                        </span>
+                      )}
+                    </div>
+                    {isFetching && (
+                      <div className="flex items-center text-sm text-indigo-600">
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-indigo-600 mr-2"></div>
+                        Updating...
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </ErrorBoundary>
         </div>
       </div>
     </div>

@@ -1,0 +1,327 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Candlefish Brand Colors */
+    --color-charcoal: 26 26 26;
+    --color-warm-white: 250 250 248;
+    --color-amber-flame: 255 179 71;
+    --color-deep-indigo: 58 58 96;
+    --color-slate: 107 107 107;
+    --color-muted-sand: 216 211 196;
+    
+    --background: var(--color-warm-white);
+    --foreground: var(--color-charcoal);
+    --primary: 16 185 129; /* Emerald for API */
+    --primary-foreground: 255 255 255;
+    --secondary: var(--color-amber-flame);
+    --secondary-foreground: var(--color-charcoal);
+    --muted: var(--color-muted-sand);
+    --muted-foreground: var(--color-slate);
+    --accent: 16 185 129;
+    --accent-foreground: 255 255 255;
+    --border: 226 232 240;
+    --input: 226 232 240;
+    --ring: 16 185 129;
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  /* API-specific styles */
+  .api-container {
+    @apply max-w-7xl mx-auto px-6 lg:px-8;
+  }
+
+  .api-sidebar {
+    @apply hidden lg:block w-80 flex-shrink-0 bg-white/60 backdrop-blur-sm border-r border-slate-200;
+  }
+
+  .api-content {
+    @apply flex-1 min-w-0;
+  }
+
+  /* HTTP Method badges */
+  .method-badge {
+    @apply inline-flex items-center px-2 py-1 rounded-md text-xs font-medium font-mono uppercase;
+  }
+
+  .method-get {
+    @apply bg-green-100 text-green-800 border border-green-200;
+  }
+
+  .method-post {
+    @apply bg-blue-100 text-blue-800 border border-blue-200;
+  }
+
+  .method-put {
+    @apply bg-orange-100 text-orange-800 border border-orange-200;
+  }
+
+  .method-patch {
+    @apply bg-purple-100 text-purple-800 border border-purple-200;
+  }
+
+  .method-delete {
+    @apply bg-red-100 text-red-800 border border-red-200;
+  }
+
+  /* Status code badges */
+  .status-badge {
+    @apply inline-flex items-center px-2 py-1 rounded-md text-xs font-medium font-mono;
+  }
+
+  .status-success {
+    @apply bg-green-100 text-green-800 border border-green-200;
+  }
+
+  .status-error {
+    @apply bg-red-100 text-red-800 border border-red-200;
+  }
+
+  .status-warning {
+    @apply bg-yellow-100 text-yellow-800 border border-yellow-200;
+  }
+
+  /* API playground styles */
+  .playground-container {
+    @apply bg-white/80 backdrop-blur-sm border border-slate-200 rounded-lg;
+  }
+
+  .playground-header {
+    @apply flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50/50;
+  }
+
+  .playground-body {
+    @apply p-4 space-y-4;
+  }
+
+  .playground-request {
+    @apply bg-slate-900 text-slate-100 rounded-lg p-4 font-mono text-sm overflow-x-auto;
+  }
+
+  .playground-response {
+    @apply bg-slate-50 border border-slate-200 rounded-lg p-4 font-mono text-sm overflow-x-auto;
+  }
+
+  /* Parameter styles */
+  .param-required {
+    @apply text-red-600 font-medium;
+  }
+
+  .param-optional {
+    @apply text-slate-500;
+  }
+
+  .param-type {
+    @apply text-emerald-600 font-mono text-sm;
+  }
+
+  /* Schema styles */
+  .schema-object {
+    @apply border border-slate-200 rounded-lg overflow-hidden;
+  }
+
+  .schema-property {
+    @apply flex items-start justify-between p-3 border-b border-slate-100 last:border-b-0;
+  }
+
+  .schema-property-name {
+    @apply font-mono text-sm font-medium text-charcoal;
+  }
+
+  .schema-property-type {
+    @apply font-mono text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded;
+  }
+
+  .schema-property-description {
+    @apply text-sm text-slate-600 mt-1;
+  }
+
+  /* Endpoint card styles */
+  .endpoint-card {
+    @apply bg-white/80 backdrop-blur-sm border border-slate-200 rounded-lg p-6 hover:shadow-md hover:border-emerald-200 transition-all duration-300 group;
+  }
+
+  .endpoint-header {
+    @apply flex items-center justify-between mb-4;
+  }
+
+  .endpoint-path {
+    @apply font-mono text-sm text-charcoal bg-slate-100 px-3 py-1 rounded-md;
+  }
+
+  .endpoint-description {
+    @apply text-slate-600 leading-relaxed;
+  }
+
+  /* Code example styles */
+  .code-examples {
+    @apply space-y-4;
+  }
+
+  .code-example-tabs {
+    @apply flex space-x-1 p-1 bg-slate-100 rounded-lg;
+  }
+
+  .code-example-tab {
+    @apply flex-1 py-2 px-4 text-sm font-medium text-center rounded-md transition-colors;
+  }
+
+  .code-example-tab-active {
+    @apply bg-white text-charcoal shadow-sm;
+  }
+
+  .code-example-tab-inactive {
+    @apply text-slate-600 hover:text-charcoal;
+  }
+
+  /* SDK showcase */
+  .sdk-card {
+    @apply bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-6 hover:shadow-lg hover:border-emerald-200 transition-all duration-300;
+  }
+
+  .sdk-logo {
+    @apply w-12 h-12 bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-lg flex items-center justify-center;
+  }
+
+  .sdk-install-command {
+    @apply bg-slate-900 text-slate-100 rounded-lg p-4 font-mono text-sm overflow-x-auto;
+  }
+
+  /* Interactive elements */
+  .try-it-button {
+    @apply bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-2 px-4 rounded-lg transition-colors;
+  }
+
+  .copy-button {
+    @apply bg-slate-200 hover:bg-slate-300 text-slate-700 p-2 rounded-md transition-colors;
+  }
+
+  /* Rate limiting indicators */
+  .rate-limit-indicator {
+    @apply flex items-center space-x-2 text-sm;
+  }
+
+  .rate-limit-meter {
+    @apply w-32 h-2 bg-slate-200 rounded-full overflow-hidden;
+  }
+
+  .rate-limit-fill {
+    @apply h-full bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-300;
+  }
+
+  /* Authentication status */
+  .auth-status-authenticated {
+    @apply flex items-center space-x-2 text-green-700 bg-green-50 px-3 py-2 rounded-lg;
+  }
+
+  .auth-status-unauthenticated {
+    @apply flex items-center space-x-2 text-red-700 bg-red-50 px-3 py-2 rounded-lg;
+  }
+
+  /* Webhook styles */
+  .webhook-event {
+    @apply bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-2;
+  }
+
+  .webhook-event-name {
+    @apply font-mono text-sm font-medium text-charcoal;
+  }
+
+  .webhook-payload {
+    @apply bg-slate-900 text-slate-100 rounded-lg p-4 font-mono text-xs overflow-x-auto;
+  }
+
+  /* API status indicators */
+  .status-operational {
+    @apply inline-flex items-center space-x-2 text-green-700;
+  }
+
+  .status-degraded {
+    @apply inline-flex items-center space-x-2 text-yellow-700;
+  }
+
+  .status-outage {
+    @apply inline-flex items-center space-x-2 text-red-700;
+  }
+
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+
+  .status-dot-green {
+    @apply bg-green-400;
+  }
+
+  .status-dot-yellow {
+    @apply bg-yellow-400;
+  }
+
+  .status-dot-red {
+    @apply bg-red-400;
+  }
+
+  /* Custom scrollbar for API content */
+  .api-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(16 185 129 / 0.3) transparent;
+  }
+
+  .api-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .api-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .api-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgb(16 185 129 / 0.3);
+    border-radius: 3px;
+  }
+
+  .api-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(16 185 129 / 0.5);
+  }
+
+  /* Loading states */
+  .skeleton-api {
+    @apply animate-pulse bg-slate-200 rounded;
+  }
+
+  /* Focus styles for accessibility */
+  .focus-visible {
+    @apply outline-none ring-2 ring-emerald-500 ring-offset-2;
+  }
+
+  /* Swagger UI overrides */
+  .swagger-ui {
+    font-family: inherit !important;
+  }
+
+  .swagger-ui .topbar {
+    display: none !important;
+  }
+
+  .swagger-ui .info {
+    margin-bottom: 0 !important;
+  }
+
+  .swagger-ui .scheme-container {
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+}

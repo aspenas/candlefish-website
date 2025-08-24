@@ -1,0 +1,45 @@
+{
+  "name": "@candlefish-ai/partners-site",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3002",
+    "build": "next build",
+    "start": "next start --port 3002",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@candlefish-ai/shared": "workspace:*",
+    "next": "^15.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@apollo/client": "^3.11.4",
+    "graphql": "^16.8.1",
+    "framer-motion": "^10.18.0",
+    "react-intersection-observer": "^9.16.0",
+    "lucide-react": "^0.424.0",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.5.2",
+    "zod": "^3.23.8",
+    "date-fns": "^3.6.0",
+    "@radix-ui/react-tabs": "^1.0.4",
+    "@radix-ui/react-dialog": "^1.0.5",
+    "@radix-ui/react-select": "^2.0.0",
+    "react-hook-form": "^7.52.1",
+    "@apollo/client-link-retry": "^2.0.1",
+    "idb": "^7.1.1",
+    "react-use": "^17.4.0",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^15.0.0",
+    "postcss": "^8.4.39",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^5.5.3"
+  }
+}

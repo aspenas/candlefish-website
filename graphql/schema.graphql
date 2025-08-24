@@ -62,7 +62,7 @@ type User implements Node {
   lastLogin: DateTime
   isActive: Boolean!
   permissions: [String!]!
-  
+
   # Relationships
   createdDocuments: [Documentation!]!
   partnerProfile: Partner
@@ -93,7 +93,7 @@ type Documentation implements Node & Content {
   author: User
   tags: [String!]!
   metadata: JSON
-  
+
   # Documentation-specific fields
   category: DocumentationCategory!
   section: String
@@ -103,11 +103,11 @@ type Documentation implements Node & Content {
   searchKeywords: [String!]!
   readingTime: Int # minutes
   difficulty: DifficultyLevel
-  
+
   # Content structure
   blocks: [ContentBlock!]!
   assets: [Asset!]!
-  
+
   # Analytics
   views: Int!
   reactions: [Reaction!]!
@@ -162,35 +162,35 @@ type Partner implements Node {
   joinedAt: DateTime!
   createdAt: DateTime!
   updatedAt: DateTime!
-  
+
   # Contact information
   contactEmail: String!
   contactPhone: String
   primaryContact: User
-  
+
   # Business details
   industry: [Industry!]!
   size: CompanySize
   location: Location
-  
+
   # Partnership details
   specializations: [String!]!
   certifications: [Certification!]!
   implementations: [Implementation!]!
   testimonials: [Testimonial!]!
-  
+
   # Content
   resources: [PartnerResource!]!
   caseStudies: [CaseStudy!]!
-  
+
   # Network access
   operators: [Operator!]!
   apiAccess: APIAccess
-  
+
   # Analytics
   profileViews: Int!
   leads: [Lead!]!
-  
+
   # Verification
   isVerified: Boolean!
   verifiedAt: DateTime
@@ -280,7 +280,7 @@ type PartnerResource implements Node & Content {
   author: User
   tags: [String!]!
   metadata: JSON
-  
+
   # Resource-specific fields
   partner: Partner!
   resourceType: ResourceType!
@@ -320,24 +320,24 @@ type Operator implements Node {
   avatar: String
   partner: Partner!
   user: User
-  
+
   # Professional details
   specializations: [String!]!
   skills: [Skill!]!
   certifications: [Certification!]!
   experience: ExperienceLevel!
   availability: Availability!
-  
+
   # Contact preferences
   isPublicProfile: Boolean!
   allowDirectContact: Boolean!
   preferredContactMethod: ContactMethod
-  
+
   # Performance
   projectsCompleted: Int!
   clientRating: Float
   responseTime: String
-  
+
   createdAt: DateTime!
   updatedAt: DateTime!
 }
@@ -393,25 +393,25 @@ type APIReference implements Node & Content {
   author: User
   tags: [String!]!
   metadata: JSON
-  
+
   # API-specific fields
   service: APIService!
   endpoint: String!
   method: HTTPMethod!
   description: String!
-  
+
   # Request/Response
   parameters: [APIParameter!]!
   requestBody: APISchema
   responses: [APIResponse!]!
-  
+
   # Examples
   examples: [APIExample!]!
-  
+
   # Versioning
   apiVersion: String!
   deprecatedAt: DateTime
-  
+
   # Usage
   isPublic: Boolean!
   requiresAuth: Boolean!
@@ -718,7 +718,7 @@ type CaseStudy implements Node & Content {
   author: User
   tags: [String!]!
   metadata: JSON
-  
+
   # Case study specifics
   partner: Partner!
   client: String!
@@ -741,7 +741,7 @@ type Query {
   me: User
   user(id: ID!): User
   users(first: Int, after: String, role: UserRole): UserConnection!
-  
+
   # Documentation
   documentation(slug: String!): Documentation
   documentationById(id: ID!): Documentation
@@ -752,9 +752,9 @@ type Query {
     status: ContentStatus
     tags: [String!]
   ): DocumentationConnection!
-  
+
   documentationCategories: [DocumentationCategory!]!
-  
+
   # Partners
   partner(slug: String!): Partner
   partnerById(id: ID!): Partner
@@ -765,7 +765,7 @@ type Query {
     status: PartnerStatus
     industry: String
   ): PartnerConnection!
-  
+
   # Operators
   operator(id: ID!): Operator
   operators(
@@ -775,7 +775,7 @@ type Query {
     skills: [String!]
     availability: Availability
   ): OperatorConnection!
-  
+
   # API Reference
   apiReference(slug: String!): APIReference
   apiReferenceById(id: ID!): APIReference
@@ -785,9 +785,9 @@ type Query {
     service: String
     version: String
   ): APIReferenceConnection!
-  
+
   apiServices: [APIService!]!
-  
+
   # Search
   search(
     query: String!
@@ -795,7 +795,7 @@ type Query {
     page: Int = 1
     pageSize: Int = 20
   ): SearchResults!
-  
+
   # Analytics
   analytics(
     type: String!
@@ -803,7 +803,7 @@ type Query {
     startDate: DateTime
     endDate: DateTime
   ): Analytics!
-  
+
   # Content management
   asset(id: ID!): Asset
   assets(first: Int, after: String): AssetConnection!
@@ -814,37 +814,37 @@ type Mutation {
   login(email: String!, password: String!): AuthPayload!
   refreshToken(refreshToken: String!): AuthPayload!
   logout: Boolean!
-  
+
   # User management
   updateProfile(input: UpdateProfileInput!): User!
   changePassword(currentPassword: String!, newPassword: String!): Boolean!
-  
+
   # Documentation management
   createDocumentation(input: CreateDocumentationInput!): Documentation!
   updateDocumentation(id: ID!, input: UpdateDocumentationInput!): Documentation!
   deleteDocumentation(id: ID!): Boolean!
   publishDocumentation(id: ID!): Documentation!
-  
+
   # Partner management
   registerPartner(input: RegisterPartnerInput!): Partner!
   updatePartner(id: ID!, input: UpdatePartnerInput!): Partner!
-  
+
   # Operator management
   createOperator(input: CreateOperatorInput!): Operator!
   updateOperator(id: ID!, input: UpdateOperatorInput!): Operator!
-  
+
   # API Reference management
   createAPIReference(input: CreateAPIReferenceInput!): APIReference!
   updateAPIReference(id: ID!, input: UpdateAPIReferenceInput!): APIReference!
-  
+
   # Content interactions
   addReaction(contentId: ID!, type: ReactionType!): Reaction!
   removeReaction(contentId: ID!, type: ReactionType!): Boolean!
   submitFeedback(input: SubmitFeedbackInput!): Feedback!
-  
+
   # Partner interactions
   submitLead(input: SubmitLeadInput!): Lead!
-  
+
   # File management
   uploadAsset(file: Upload!, description: String): Asset!
   deleteAsset(id: ID!): Boolean!
@@ -854,17 +854,17 @@ type Subscription {
   # Real-time documentation updates
   documentationUpdated(categoryId: ID): Documentation!
   documentationPublished: Documentation!
-  
+
   # Partner activity
   partnerRegistered: Partner!
   partnerStatusChanged(partnerId: ID): Partner!
-  
+
   # Operator availability
   operatorAvailabilityChanged(partnerId: ID): Operator!
-  
+
   # API changes
   apiReferenceUpdated(serviceId: ID): APIReference!
-  
+
   # System notifications
   systemNotification(userId: ID!): SystemNotification!
 }
