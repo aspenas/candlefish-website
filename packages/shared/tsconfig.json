@@ -4,7 +4,8 @@
     "lib": [
       "dom",
       "dom.iterable",
-      "es6"
+      "ES2017",
+      "ES2016.Array.Include"
     ],
     "allowJs": true,
     "skipLibCheck": true,
@@ -21,7 +22,7 @@
     "declarationMap": true,
     "outDir": "./dist",
     "rootDir": "./src",
-    "types": [],
+    "types": ["node"],
     "plugins": [
       {
         "name": "next"

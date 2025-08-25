@@ -8,6 +8,7 @@
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
+    "types": ["node", "jest", "cypress"],
     "noEmit": true,
     "incremental": true,
     "esModuleInterop": true,
