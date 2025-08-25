@@ -1,0 +1,23 @@
+overwrite: true
+schema: 
+  - "../../graphql/schema/security-dashboard.graphql"
+documents: "src/graphql/**/*.graphql"
+generates:
+  src/types/generated.ts:
+    plugins:
+      - "typescript"
+      - "typescript-operations"
+      - "typescript-react-apollo"
+    config:
+      withHooks: true
+      withHOC: false
+      withComponent: false
+      scalars:
+        DateTime: string
+        JSON: any
+      namingConvention:
+        typeNames: pascal-case#pascalCase
+        enumValues: upper-case#upperCase
+      skipTypename: false
+      dedupeOperationSuffix: true
+      omitOperationSuffix: false

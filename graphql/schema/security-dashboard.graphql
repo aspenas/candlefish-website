@@ -1,0 +1,871 @@
+# Security Dashboard GraphQL Schema
+# Comprehensive type-safe schema for real-time security monitoring
+
+extend type Query {
+  # Security Overview
+  securityOverview(organizationId: ID!): SecurityOverview!
+  
+  # Asset Management
+  assets(filter: AssetFilter): [Asset!]!
+  asset(id: ID!): Asset
+  
+  # Security Events & Alerts
+  securityEvents(filter: SecurityEventFilter): SecurityEventConnection!
+  securityEvent(id: ID!): SecurityEvent
+  
+  alerts(filter: AlertFilter): AlertConnection!
+  alert(id: ID!): Alert
+  
+  # Vulnerability Management
+  vulnerabilities(filter: VulnerabilityFilter): VulnerabilityConnection!
+  vulnerability(id: ID!): Vulnerability
+  
+  # Compliance
+  complianceStatus(organizationId: ID!): ComplianceStatus!
+  complianceControls(frameworkId: ID!): [ComplianceControl!]!
+  
+  # Kong Gateway Monitoring (Critical for HTTP Admin API vulnerability)
+  kongServices(filter: KongServiceFilter): [KongService!]!
+  kongRoutes(serviceId: ID): [KongRoute!]!
+  kongAdminApiStatus: KongAdminApiStatus!
+  
+  # Metrics and Analytics
+  securityMetrics(query: MetricsQuery!): MetricsResult!
+  threatTrends(timeRange: TimeRange!): ThreatTrends!
+}
+
+extend type Mutation {
+  # Asset Management
+  createAsset(input: CreateAssetInput!): Asset!
+  updateAsset(id: ID!, input: UpdateAssetInput!): Asset!
+  deleteAsset(id: ID!): Boolean!
+  
+  # Alert Management
+  acknowledgeAlert(id: ID!): Alert!
+  resolveAlert(id: ID!, resolution: String!): Alert!
+  createAlertRule(input: CreateAlertRuleInput!): AlertRule!
+  updateAlertRule(id: ID!, input: UpdateAlertRuleInput!): AlertRule!
+  deleteAlertRule(id: ID!): Boolean!
+  
+  # Security Event Management
+  resolveSecurityEvent(id: ID!, resolution: String!): SecurityEvent!
+  escalateSecurityEvent(id: ID!, assignTo: ID): SecurityEvent!
+  
+  # Vulnerability Management
+  updateVulnerability(id: ID!, input: UpdateVulnerabilityInput!): Vulnerability!
+  acceptVulnerabilityRisk(id: ID!, reason: String!): Vulnerability!
+  
+  # Compliance Management
+  updateComplianceAssessment(input: UpdateComplianceAssessmentInput!): ComplianceAssessment!
+  
+  # Incident Response
+  createIncident(input: CreateIncidentInput!): SecurityIncident!
+  updateIncident(id: ID!, input: UpdateIncidentInput!): SecurityIncident!
+  
+  # Configuration Updates
+  updateMonitoringConfig(input: MonitoringConfigInput!): MonitoringConfig!
+}
+
+extend type Subscription {
+  # Real-time Security Events
+  securityEventAdded(organizationId: ID!): SecurityEvent!
+  securityEventUpdated(organizationId: ID!): SecurityEvent!
+  
+  # Real-time Alerts
+  alertTriggered(organizationId: ID!): Alert!
+  alertUpdated(organizationId: ID!): Alert!
+  
+  # System Health Updates
+  assetHealthChanged(assetId: ID): AssetHealthUpdate!
+  
+  # Kong Admin API Monitoring (Critical Priority)
+  kongAdminApiStatusChanged: KongAdminApiStatus!
+  
+  # Vulnerability Updates
+  vulnerabilityDiscovered(organizationId: ID!): Vulnerability!
+  
+  # Compliance Status Changes
+  complianceStatusChanged(organizationId: ID!): ComplianceStatusUpdate!
+  
+  # Live Metrics
+  liveMetrics(organizationId: ID!, metricTypes: [String!]!): LiveMetricsUpdate!
+}
+
+# Core Types
+
+type SecurityOverview {
+  organizationId: ID!
+  totalAssets: Int!
+  criticalVulnerabilities: Int!
+  activeAlerts: Int!
+  complianceScore: Float!
+  threatLevel: ThreatLevel!
+  lastUpdated: DateTime!
+  
+  # Kong Admin API specific status (high priority)
+  kongAdminApiVulnerability: KongAdminApiVulnerabilityStatus!
+  
+  # Summary stats by severity
+  vulnerabilitiesBySeverity: [SeverityCount!]!
+  alertsBySeverity: [SeverityCount!]!
+  
+  # Recent activity
+  recentEvents: [SecurityEvent!]!
+}
+
+type Asset @key(fields: "id") {
+  id: ID!
+  organizationId: ID!
+  name: String!
+  description: String
+  assetType: AssetType!
+  environment: Environment!
+  platform: Platform!
+  endpointUrl: String
+  tags: [String!]!
+  
+  # Security properties
+  securityLevel: SecurityLevel!
+  lastSecurityScan: DateTime
+  
+  # Relationships (use DataLoader pattern)
+  vulnerabilities: [Vulnerability!]!
+  securityEvents(limit: Int = 10): [SecurityEvent!]!
+  alerts(status: AlertStatus): [Alert!]!
+  complianceAssessments: [ComplianceAssessment!]!
+  
+  # Health and status
+  healthStatus: HealthStatus!
+  lastHealthCheck: DateTime
+  
+  # Metadata and configuration
+  metadata: JSON
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type SecurityEvent @key(fields: "id") {
+  id: ID!
+  organizationId: ID!
+  asset: Asset
+  
+  eventType: String!
+  severity: Severity!
+  title: String!
+  description: String
+  source: String!
+  
+  # Event data and context
+  rawData: JSON
+  affectedComponents: [String!]!
+  
+  # Resolution tracking
+  resolved: Boolean!
+  resolvedBy: User
+  resolvedAt: DateTime
+  resolution: String
+  
+  # Escalation
+  escalated: Boolean!
+  escalatedBy: User
+  escalatedAt: DateTime
+  
+  createdAt: DateTime!
+}
+
+type Alert @key(fields: "id") {
+  id: ID!
+  organizationId: ID!
+  rule: AlertRule!
+  asset: Asset
+  
+  severity: Severity!
+  title: String!
+  message: String!
+  
+  # Status tracking
+  status: AlertStatus!
+  acknowledgedBy: User
+  acknowledgedAt: DateTime
+  resolvedBy: User
+  resolvedAt: DateTime
+  resolution: String
+  
+  # Alert metadata
+  triggerCount: Int!
+  firstTriggered: DateTime!
+  lastTriggered: DateTime!
+  
+  createdAt: DateTime!
+}
+
+type AlertRule @key(fields: "id") {
+  id: ID!
+  organizationId: ID!
+  name: String!
+  description: String
+  
+  # Rule configuration
+  condition: JSON!
+  severity: Severity!
+  enabled: Boolean!
+  
+  # Notification settings
+  notificationChannels: [String!]!
+  cooldownMinutes: Int!
+  
+  # Statistics
+  triggeredCount: Int!
+  lastTriggered: DateTime
+  
+  createdBy: User!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Vulnerability @key(fields: "id") {
+  id: ID!
+  organizationId: ID!
+  asset: Asset!
+  
+  # Vulnerability identification
+  cveId: String
+  cvssScore: Float
+  severity: Severity!
+  title: String!
+  description: String!
+  
+  # Affected components
+  affectedComponent: String!
+  affectedVersion: String
+  
+  # Fix information
+  fixAvailable: Boolean!
+  fixVersion: String
+  fixComplexity: FixComplexity
+  
+  # Status and lifecycle
+  status: VulnerabilityStatus!
+  riskAccepted: Boolean!
+  riskReason: String
+  
+  # Discovery and timeline
+  firstDetected: DateTime!
+  lastSeen: DateTime!
+  
+  # References and links
+  references: [String!]!
+  exploitAvailable: Boolean!
+  
+  createdAt: DateTime!
+}
+
+type ComplianceStatus @key(fields: "organizationId") {
+  organizationId: ID!
+  overallScore: Float!
+  frameworks: [ComplianceFrameworkStatus!]!
+  lastAssessment: DateTime!
+  
+  # Critical compliance issues
+  criticalGaps: [ComplianceGap!]!
+  upcomingDeadlines: [ComplianceDeadline!]!
+}
+
+type ComplianceFrameworkStatus {
+  framework: ComplianceFramework!
+  score: Float!
+  totalControls: Int!
+  compliantControls: Int!
+  nonCompliantControls: Int!
+  notApplicableControls: Int!
+  inProgressControls: Int!
+  
+  # Recent assessments
+  recentAssessments: [ComplianceAssessment!]!
+}
+
+# Kong Gateway Monitoring Types (Critical Priority)
+type KongAdminApiStatus {
+  isSecure: Boolean!
+  protocol: String!
+  adminApiUrl: String!
+  
+  # Vulnerability status
+  isVulnerable: Boolean!
+  vulnerabilityDescription: String
+  riskLevel: ThreatLevel!
+  
+  # Remediation
+  recommendedActions: [String!]!
+  fixEstimatedTime: String
+  
+  # Monitoring
+  lastChecked: DateTime!
+  checkFrequency: String!
+  
+  # Historical data
+  statusHistory: [KongAdminApiStatusHistory!]!
+}
+
+type KongAdminApiVulnerabilityStatus {
+  isVulnerable: Boolean!
+  description: String!
+  riskLevel: ThreatLevel!
+  affectedServices: [KongService!]!
+  recommendedActions: [String!]!
+  lastChecked: DateTime!
+}
+
+type KongService @key(fields: "id") {
+  id: ID!
+  kongServiceId: String!
+  name: String!
+  protocol: String!
+  host: String!
+  port: Int!
+  path: String
+  
+  # Security configuration
+  httpsRedirectStatusCode: Int
+  tlsVerify: Boolean!
+  
+  # Associated routes
+  routes: [KongRoute!]!
+  
+  # Health and monitoring
+  healthStatus: HealthStatus!
+  lastHealthCheck: DateTime
+  
+  # Security assessment
+  securityRisk: SecurityRisk!
+  vulnerabilities: [Vulnerability!]!
+  
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type KongRoute @key(fields: "id") {
+  id: ID!
+  kongRouteId: String!
+  service: KongService!
+  
+  protocols: [String!]!
+  methods: [String!]
+  hosts: [String!]
+  paths: [String!]
+  
+  # Security settings
+  httpsRedirectStatusCode: Int
+  preserveHost: Boolean!
+  
+  # Security assessment
+  securityRisk: SecurityRisk!
+  isPublic: Boolean!
+  
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+# Connection Types for Pagination
+type SecurityEventConnection {
+  edges: [SecurityEventEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type SecurityEventEdge {
+  node: SecurityEvent!
+  cursor: String!
+}
+
+type AlertConnection {
+  edges: [AlertEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type AlertEdge {
+  node: Alert!
+  cursor: String!
+}
+
+type VulnerabilityConnection {
+  edges: [VulnerabilityEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type VulnerabilityEdge {
+  node: Vulnerability!
+  cursor: String!
+}
+
+# Input Types
+
+input AssetFilter {
+  organizationId: ID
+  assetType: AssetType
+  environment: Environment
+  platform: Platform
+  securityLevel: SecurityLevel
+  healthStatus: HealthStatus
+  tags: [String!]
+  search: String
+}
+
+input SecurityEventFilter {
+  organizationId: ID
+  assetIds: [ID!]
+  eventTypes: [String!]
+  severities: [Severity!]
+  resolved: Boolean
+  dateRange: DateRangeInput
+  search: String
+}
+
+input AlertFilter {
+  organizationId: ID
+  ruleIds: [ID!]
+  assetIds: [ID!]
+  severities: [Severity!]
+  status: AlertStatus
+  dateRange: DateRangeInput
+  search: String
+}
+
+input VulnerabilityFilter {
+  organizationId: ID
+  assetIds: [ID!]
+  severities: [Severity!]
+  status: VulnerabilityStatus
+  fixAvailable: Boolean
+  riskAccepted: Boolean
+  cveIds: [String!]
+  search: String
+}
+
+input KongServiceFilter {
+  organizationId: ID
+  protocols: [String!]
+  healthStatus: HealthStatus
+  securityRisk: SecurityRisk
+}
+
+input CreateAssetInput {
+  organizationId: ID!
+  name: String!
+  description: String
+  assetTypeId: ID!
+  environment: Environment!
+  platform: Platform!
+  endpointUrl: String
+  tags: [String!]
+  metadata: JSON
+}
+
+input UpdateAssetInput {
+  name: String
+  description: String
+  assetTypeId: ID
+  environment: Environment
+  platform: Platform
+  endpointUrl: String
+  tags: [String!]
+  metadata: JSON
+}
+
+input CreateAlertRuleInput {
+  organizationId: ID!
+  name: String!
+  description: String
+  condition: JSON!
+  severity: Severity!
+  enabled: Boolean = true
+  notificationChannels: [String!]!
+  cooldownMinutes: Int = 15
+}
+
+input UpdateAlertRuleInput {
+  name: String
+  description: String
+  condition: JSON
+  severity: Severity
+  enabled: Boolean
+  notificationChannels: [String!]
+  cooldownMinutes: Int
+}
+
+input UpdateVulnerabilityInput {
+  status: VulnerabilityStatus
+  riskAccepted: Boolean
+  riskReason: String
+}
+
+input UpdateComplianceAssessmentInput {
+  id: ID!
+  status: ComplianceStatus!
+  evidence: String
+  nextAssessment: DateTime
+}
+
+input CreateIncidentInput {
+  organizationId: ID!
+  title: String!
+  description: String!
+  severity: Severity!
+  assetIds: [ID!]
+  assignedTo: ID
+}
+
+input UpdateIncidentInput {
+  title: String
+  description: String
+  severity: Severity
+  status: IncidentStatus
+  assignedTo: ID
+  resolution: String
+}
+
+input MonitoringConfigInput {
+  organizationId: ID!
+  kongMonitoring: KongMonitoringConfigInput
+  alertThresholds: AlertThresholdsInput
+  scanFrequencies: ScanFrequenciesInput
+}
+
+input KongMonitoringConfigInput {
+  adminApiUrl: String!
+  checkInterval: Int!
+  enableRealTimeMonitoring: Boolean!
+  alertOnHttpAdminApi: Boolean!
+}
+
+input AlertThresholdsInput {
+  criticalVulnerabilityThreshold: Int
+  highSeverityEventThreshold: Int
+  complianceScoreThreshold: Float
+}
+
+input ScanFrequenciesInput {
+  vulnerabilityScanHours: Int
+  complianceAssessmentDays: Int
+  healthCheckMinutes: Int
+}
+
+input MetricsQuery {
+  organizationId: ID!
+  metricNames: [String!]!
+  timeRange: TimeRange!
+  aggregation: AggregationType!
+  groupBy: [String!]
+  filters: [MetricFilterInput!]
+}
+
+input MetricFilterInput {
+  field: String!
+  operator: FilterOperator!
+  value: String!
+}
+
+input TimeRange {
+  start: DateTime!
+  end: DateTime!
+}
+
+input DateRangeInput {
+  start: DateTime
+  end: DateTime
+}
+
+# Enums
+
+enum Severity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFO
+}
+
+enum ThreatLevel {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  MINIMAL
+}
+
+enum Environment {
+  PRODUCTION
+  STAGING
+  DEVELOPMENT
+  TEST
+}
+
+enum Platform {
+  KONG
+  NETLIFY
+  VERCEL
+  FLY
+  KUBERNETES
+  AWS
+  GITHUB
+  OTHER
+}
+
+enum AssetType {
+  API_GATEWAY
+  WEB_APPLICATION
+  DATABASE
+  KUBERNETES_CLUSTER
+  CI_CD_PIPELINE
+  CDN
+  SERVICE
+  REPOSITORY
+}
+
+enum SecurityLevel {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum HealthStatus {
+  HEALTHY
+  WARNING
+  CRITICAL
+  UNKNOWN
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+  SUPPRESSED
+}
+
+enum VulnerabilityStatus {
+  OPEN
+  IN_PROGRESS
+  FIXED
+  ACCEPTED_RISK
+  FALSE_POSITIVE
+}
+
+enum FixComplexity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum SecurityRisk {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  MINIMAL
+}
+
+enum ComplianceStatus {
+  COMPLIANT
+  NON_COMPLIANT
+  NOT_APPLICABLE
+  IN_PROGRESS
+}
+
+enum IncidentStatus {
+  OPEN
+  INVESTIGATING
+  RESOLVED
+  CLOSED
+}
+
+enum AggregationType {
+  COUNT
+  SUM
+  AVG
+  MIN
+  MAX
+  P95
+  P99
+}
+
+enum FilterOperator {
+  EQUALS
+  NOT_EQUALS
+  GREATER_THAN
+  LESS_THAN
+  CONTAINS
+  IN
+  NOT_IN
+}
+
+# Supporting Types
+
+type AssetType @key(fields: "id") {
+  id: ID!
+  name: String!
+  category: String!
+}
+
+type User @key(fields: "id") {
+  id: ID!
+  email: String!
+  fullName: String!
+  role: String!
+}
+
+type ComplianceFramework {
+  id: ID!
+  name: String!
+  version: String!
+  description: String!
+}
+
+type ComplianceControl {
+  id: ID!
+  controlId: String!
+  title: String!
+  description: String!
+  category: String!
+}
+
+type ComplianceAssessment {
+  id: ID!
+  control: ComplianceControl!
+  asset: Asset!
+  status: ComplianceStatus!
+  evidence: String
+  assessedBy: User!
+  assessedAt: DateTime!
+  nextAssessment: DateTime
+}
+
+type ComplianceGap {
+  control: ComplianceControl!
+  assets: [Asset!]!
+  riskLevel: ThreatLevel!
+  remediation: String!
+}
+
+type ComplianceDeadline {
+  control: ComplianceControl!
+  dueDate: DateTime!
+  daysRemaining: Int!
+}
+
+type SeverityCount {
+  severity: Severity!
+  count: Int!
+}
+
+type SecurityIncident {
+  id: ID!
+  title: String!
+  description: String!
+  severity: Severity!
+  status: IncidentStatus!
+  assets: [Asset!]!
+  assignedTo: User
+  resolution: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type MonitoringConfig {
+  id: ID!
+  organizationId: ID!
+  kongMonitoring: KongMonitoringConfig!
+  alertThresholds: AlertThresholds!
+  scanFrequencies: ScanFrequencies!
+  updatedAt: DateTime!
+}
+
+type KongMonitoringConfig {
+  adminApiUrl: String!
+  checkInterval: Int!
+  enableRealTimeMonitoring: Boolean!
+  alertOnHttpAdminApi: Boolean!
+}
+
+type AlertThresholds {
+  criticalVulnerabilityThreshold: Int!
+  highSeverityEventThreshold: Int!
+  complianceScoreThreshold: Float!
+}
+
+type ScanFrequencies {
+  vulnerabilityScanHours: Int!
+  complianceAssessmentDays: Int!
+  healthCheckMinutes: Int!
+}
+
+type KongAdminApiStatusHistory {
+  timestamp: DateTime!
+  isSecure: Boolean!
+  protocol: String!
+  riskLevel: ThreatLevel!
+}
+
+type AssetHealthUpdate {
+  assetId: ID!
+  oldStatus: HealthStatus!
+  newStatus: HealthStatus!
+  timestamp: DateTime!
+  details: String
+}
+
+type ComplianceStatusUpdate {
+  organizationId: ID!
+  frameworkId: ID!
+  oldScore: Float!
+  newScore: Float!
+  changedControls: [ComplianceControl!]!
+  timestamp: DateTime!
+}
+
+type LiveMetricsUpdate {
+  organizationId: ID!
+  metricType: String!
+  value: Float!
+  timestamp: DateTime!
+  metadata: JSON
+}
+
+type MetricsResult {
+  data: [MetricDataPoint!]!
+  aggregation: AggregationType!
+  timeRange: TimeRange!
+}
+
+type MetricDataPoint {
+  timestamp: DateTime!
+  value: Float!
+  labels: JSON
+}
+
+type ThreatTrends {
+  timeRange: TimeRange!
+  vulnerabilityTrend: [TrendDataPoint!]!
+  alertTrend: [TrendDataPoint!]!
+  complianceTrend: [TrendDataPoint!]!
+  threatLevel: ThreatLevel!
+}
+
+type TrendDataPoint {
+  timestamp: DateTime!
+  value: Float!
+  severity: Severity
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+# Custom Scalars
+scalar DateTime
+scalar JSON

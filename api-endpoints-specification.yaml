@@ -1,0 +1,795 @@
+openapi: 3.0.3
+info:
+  title: Security Dashboard API
+  description: Comprehensive security monitoring and management API
+  version: 1.0.0
+  contact:
+    name: Candlefish AI Security Team
+    email: security@candlefish.ai
+
+servers:
+  - url: https://security-api.candlefish.ai/v1
+    description: Production API
+  - url: https://security-staging.candlefish.ai/v1
+    description: Staging API
+
+security:
+  - bearerAuth: []
+
+paths:
+  # Authentication Endpoints
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: User login with MFA support
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                mfa_code:
+                  type: string
+                  description: Required if MFA is enabled
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+                  expires_in:
+                    type: integer
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Invalid credentials
+        '429':
+          description: Too many login attempts
+
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: Refresh access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+
+  # Asset Management
+  /assets:
+    get:
+      tags: [Assets]
+      summary: List all assets with filtering
+      parameters:
+        - name: platform
+          in: query
+          schema:
+            type: string
+            enum: [kong, netlify, vercel, fly, k8s, aws]
+        - name: environment
+          in: query
+          schema:
+            type: string
+            enum: [production, staging, development]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of assets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Asset'
+                  total:
+                    type: integer
+                  has_more:
+                    type: boolean
+
+    post:
+      tags: [Assets]
+      summary: Register new asset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetCreate'
+
+  /assets/{asset_id}/security-status:
+    get:
+      tags: [Assets]
+      summary: Get comprehensive security status for asset
+      parameters:
+        - name: asset_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Security status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecurityStatus'
+
+  # Kong Gateway Monitoring
+  /kong/services:
+    get:
+      tags: [Kong Monitoring]
+      summary: List Kong services with security analysis
+      responses:
+        '200':
+          description: Kong services with security status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  services:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/KongService'
+                  security_issues:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SecurityIssue'
+
+  /kong/routes:
+    get:
+      tags: [Kong Monitoring]
+      summary: List Kong routes with security analysis
+      responses:
+        '200':
+          description: Kong routes with security status
+
+  /kong/security-scan:
+    post:
+      tags: [Kong Monitoring]
+      summary: Trigger immediate security scan of Kong configuration
+      responses:
+        '202':
+          description: Scan initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scan_id:
+                    type: string
+                  status:
+                    type: string
+                    enum: [queued, running]
+
+  # Security Events
+  /events:
+    get:
+      tags: [Security Events]
+      summary: List security events with filtering
+      parameters:
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [critical, high, medium, low, info]
+        - name: event_type
+          in: query
+          schema:
+            type: string
+        - name: asset_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: resolved
+          in: query
+          schema:
+            type: boolean
+        - name: since
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Security events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SecurityEvent'
+                  total:
+                    type: integer
+
+    post:
+      tags: [Security Events]
+      summary: Create security event (internal API)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecurityEventCreate'
+
+  /events/{event_id}/resolve:
+    post:
+      tags: [Security Events]
+      summary: Mark security event as resolved
+      parameters:
+        - name: event_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resolution_notes:
+                  type: string
+
+  # Alerts Management
+  /alerts/rules:
+    get:
+      tags: [Alerts]
+      summary: List alert rules
+      responses:
+        '200':
+          description: Alert rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AlertRule'
+
+    post:
+      tags: [Alerts]
+      summary: Create alert rule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertRuleCreate'
+
+  /alerts/instances:
+    get:
+      tags: [Alerts]
+      summary: List active alert instances
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, acknowledged, resolved, suppressed]
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [critical, high, medium, low]
+      responses:
+        '200':
+          description: Alert instances
+
+  # Vulnerability Management
+  /vulnerabilities:
+    get:
+      tags: [Vulnerabilities]
+      summary: List vulnerabilities with filtering
+      parameters:
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [critical, high, medium, low]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, in_progress, fixed, accepted_risk]
+        - name: asset_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Vulnerabilities list
+
+  # Compliance Management
+  /compliance/frameworks:
+    get:
+      tags: [Compliance]
+      summary: List supported compliance frameworks
+      responses:
+        '200':
+          description: Compliance frameworks
+
+  /compliance/assessments:
+    get:
+      tags: [Compliance]
+      summary: Get compliance assessment status
+      parameters:
+        - name: framework_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: asset_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Compliance assessment results
+
+    post:
+      tags: [Compliance]
+      summary: Create compliance assessment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComplianceAssessmentCreate'
+
+  # Real-time WebSocket
+  /ws/events:
+    get:
+      tags: [WebSocket]
+      summary: WebSocket endpoint for real-time events
+      description: |
+        WebSocket endpoint for receiving real-time security events and alerts.
+        Supports subscription to specific event types and severity levels.
+        
+        Connection URL: wss://security-api.candlefish.ai/v1/ws/events?token=<JWT_TOKEN>
+        
+        Subscription message format:
+        ```json
+        {
+          "action": "subscribe",
+          "filters": {
+            "event_types": ["kong_config_change", "vulnerability_detected"],
+            "severity": ["critical", "high"],
+            "asset_ids": ["uuid1", "uuid2"]
+          }
+        }
+        ```
+
+  # Metrics and Analytics
+  /metrics/dashboard:
+    get:
+      tags: [Metrics]
+      summary: Get dashboard metrics
+      parameters:
+        - name: timeframe
+          in: query
+          schema:
+            type: string
+            enum: [1h, 24h, 7d, 30d]
+            default: 24h
+      responses:
+        '200':
+          description: Dashboard metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardMetrics'
+
+  /metrics/performance:
+    get:
+      tags: [Metrics]
+      summary: Get performance metrics for assets
+      parameters:
+        - name: asset_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: metric_name
+          in: query
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Performance metrics time series
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, security_analyst, viewer]
+        organization_id:
+          type: string
+          format: uuid
+        mfa_enabled:
+          type: boolean
+        last_login:
+          type: string
+          format: date-time
+
+    Asset:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        asset_type:
+          type: string
+        environment:
+          type: string
+          enum: [production, staging, development]
+        platform:
+          type: string
+          enum: [kong, netlify, vercel, fly, k8s, aws]
+        endpoint_url:
+          type: string
+          format: uri
+        metadata:
+          type: object
+        tags:
+          type: array
+          items:
+            type: string
+        security_score:
+          type: number
+          minimum: 0
+          maximum: 100
+        last_scanned:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    AssetCreate:
+      type: object
+      required: [name, asset_type_id, environment, platform]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        asset_type_id:
+          type: string
+          format: uuid
+        environment:
+          type: string
+          enum: [production, staging, development]
+        platform:
+          type: string
+          enum: [kong, netlify, vercel, fly, k8s, aws]
+        endpoint_url:
+          type: string
+          format: uri
+        metadata:
+          type: object
+        tags:
+          type: array
+          items:
+            type: string
+
+    SecurityEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        asset_id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+        severity:
+          type: string
+          enum: [critical, high, medium, low, info]
+        title:
+          type: string
+        description:
+          type: string
+        source:
+          type: string
+        raw_data:
+          type: object
+        resolved:
+          type: boolean
+        resolved_by:
+          type: string
+          format: uuid
+        resolved_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    SecurityEventCreate:
+      type: object
+      required: [asset_id, event_type, severity, title, source]
+      properties:
+        asset_id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+        severity:
+          type: string
+          enum: [critical, high, medium, low, info]
+        title:
+          type: string
+        description:
+          type: string
+        source:
+          type: string
+        raw_data:
+          type: object
+
+    SecurityStatus:
+      type: object
+      properties:
+        asset_id:
+          type: string
+          format: uuid
+        security_score:
+          type: number
+          minimum: 0
+          maximum: 100
+        vulnerabilities:
+          type: object
+          properties:
+            critical:
+              type: integer
+            high:
+              type: integer
+            medium:
+              type: integer
+            low:
+              type: integer
+        compliance_status:
+          type: object
+          additionalProperties:
+            type: string
+            enum: [compliant, non_compliant, partial, unknown]
+        last_scanned:
+          type: string
+          format: date-time
+        open_alerts:
+          type: integer
+        configuration_issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigurationIssue'
+
+    KongService:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        protocol:
+          type: string
+          enum: [http, https]
+        host:
+          type: string
+        port:
+          type: integer
+        path:
+          type: string
+        security_issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/SecurityIssue'
+        tls_verify:
+          type: boolean
+        https_redirect_status_code:
+          type: integer
+
+    SecurityIssue:
+      type: object
+      properties:
+        type:
+          type: string
+        severity:
+          type: string
+          enum: [critical, high, medium, low]
+        title:
+          type: string
+        description:
+          type: string
+        recommendation:
+          type: string
+
+    ConfigurationIssue:
+      type: object
+      properties:
+        type:
+          type: string
+        severity:
+          type: string
+        description:
+          type: string
+        remediation:
+          type: string
+
+    AlertRule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        condition:
+          type: object
+        severity:
+          type: string
+          enum: [critical, high, medium, low]
+        enabled:
+          type: boolean
+        notification_channels:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    AlertRuleCreate:
+      type: object
+      required: [name, condition, severity]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        condition:
+          type: object
+          description: JSON-based rule definition
+        severity:
+          type: string
+          enum: [critical, high, medium, low]
+        enabled:
+          type: boolean
+          default: true
+        notification_channels:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    ComplianceAssessmentCreate:
+      type: object
+      required: [asset_id, control_id, status]
+      properties:
+        asset_id:
+          type: string
+          format: uuid
+        control_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [compliant, non_compliant, not_applicable, in_progress]
+        evidence:
+          type: string
+        next_assessment:
+          type: string
+          format: date-time
+
+    DashboardMetrics:
+      type: object
+      properties:
+        total_assets:
+          type: integer
+        critical_alerts:
+          type: integer
+        open_vulnerabilities:
+          type: object
+          properties:
+            critical:
+              type: integer
+            high:
+              type: integer
+            medium:
+              type: integer
+            low:
+              type: integer
+        compliance_score:
+          type: number
+          minimum: 0
+          maximum: 100
+        security_events_trend:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              count:
+                type: integer
+        platform_breakdown:
+          type: object
+          additionalProperties:
+            type: integer

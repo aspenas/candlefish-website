@@ -1,0 +1,243 @@
+# Acknowledge Alert Mutation
+mutation AcknowledgeAlert($alertId: ID!, $note: String) {
+  acknowledgeAlert(alertId: $alertId, note: $note) {
+    id
+    status
+    acknowledgedAt
+    acknowledgedBy {
+      id
+      name
+    }
+    acknowledgmentNote
+  }
+}
+
+# Resolve Alert Mutation
+mutation ResolveAlert($alertId: ID!, $resolution: String!) {
+  resolveAlert(alertId: $alertId, resolution: $resolution) {
+    id
+    status
+    resolvedAt
+    resolvedBy {
+      id
+      name
+    }
+    resolution
+    resolutionTime
+  }
+}
+
+# Create Incident from Alert
+mutation CreateIncidentFromAlert($alertId: ID!, $incidentData: IncidentInput!) {
+  createIncidentFromAlert(alertId: $alertId, incidentData: $incidentData) {
+    id
+    title
+    status
+    severity
+    createdAt
+    assignedTo {
+      id
+      name
+    }
+    alerts {
+      id
+      title
+    }
+  }
+}
+
+# Update Vulnerability Status
+mutation UpdateVulnerabilityStatus(
+  $vulnerabilityId: ID!
+  $status: VulnerabilityStatus!
+  $note: String
+) {
+  updateVulnerabilityStatus(
+    vulnerabilityId: $vulnerabilityId
+    status: $status
+    note: $note
+  ) {
+    id
+    status
+    lastUpdated
+    statusHistory {
+      status
+      changedAt
+      changedBy {
+        name
+      }
+      note
+    }
+  }
+}
+
+# Bulk Update Vulnerabilities
+mutation BulkUpdateVulnerabilities(
+  $vulnerabilityIds: [ID!]!
+  $status: VulnerabilityStatus!
+  $note: String
+) {
+  bulkUpdateVulnerabilities(
+    vulnerabilityIds: $vulnerabilityIds
+    status: $status
+    note: $note
+  ) {
+    successCount
+    failureCount
+    updatedVulnerabilities {
+      id
+      status
+    }
+    errors {
+      vulnerabilityId
+      message
+    }
+  }
+}
+
+# Update Security Configuration
+mutation UpdateSecurityConfiguration($config: SecurityConfigurationInput!) {
+  updateSecurityConfiguration(config: $config) {
+    id
+    alertThresholds {
+      critical
+      high
+      medium
+      low
+    }
+    notificationSettings {
+      email
+      slack
+      webhook
+    }
+    scanSchedules {
+      vulnerabilityScans
+      complianceChecks
+      assetDiscovery
+    }
+    updatedAt
+  }
+}
+
+# Create Custom Alert Rule
+mutation CreateAlertRule($rule: AlertRuleInput!) {
+  createAlertRule(rule: $rule) {
+    id
+    name
+    description
+    conditions {
+      field
+      operator
+      value
+    }
+    actions {
+      type
+      target
+      severity
+    }
+    isEnabled
+    createdAt
+  }
+}
+
+# Schedule Compliance Assessment
+mutation ScheduleComplianceAssessment($input: ComplianceAssessmentInput!) {
+  scheduleComplianceAssessment(input: $input) {
+    id
+    framework
+    scheduledAt
+    estimatedDuration
+    assets {
+      id
+      name
+    }
+    requirements {
+      id
+      title
+    }
+  }
+}
+
+# Add Asset to Monitoring
+mutation AddAssetToMonitoring($asset: AssetInput!) {
+  addAssetToMonitoring(asset: $asset) {
+    id
+    name
+    assetType
+    platform
+    environment
+    tags
+    discoveredAt
+    healthStatus
+    monitoringEnabled
+  }
+}
+
+# Update Asset Configuration
+mutation UpdateAssetConfiguration(
+  $assetId: ID!
+  $config: AssetConfigurationInput!
+) {
+  updateAssetConfiguration(assetId: $assetId, config: $config) {
+    id
+    name
+    configuration {
+      scanningEnabled
+      alertingEnabled
+      complianceMonitoring
+      riskTolerance
+    }
+    updatedAt
+  }
+}
+
+# Kong Security Configuration Update
+mutation UpdateKongSecurityConfiguration($config: KongSecurityConfigInput!) {
+  updateKongSecurityConfiguration(config: $config) {
+    success
+    message
+    appliedConfiguration {
+      adminApiSecure
+      httpsEnforced
+      rateLimitingEnabled
+      authenticationRequired
+    }
+    validationErrors {
+      field
+      message
+    }
+  }
+}
+
+# Generate Security Report
+mutation GenerateSecurityReport($params: SecurityReportInput!) {
+  generateSecurityReport(params: $params) {
+    id
+    reportType
+    status
+    generatedAt
+    expiresAt
+    downloadUrl
+    emailRecipients
+    summary {
+      totalAssets
+      vulnerabilities
+      alerts
+      complianceScore
+    }
+  }
+}
+
+# Export Security Data
+mutation ExportSecurityData($exportConfig: SecurityDataExportInput!) {
+  exportSecurityData(exportConfig: $exportConfig) {
+    id
+    format
+    status
+    estimatedSize
+    downloadUrl
+    expiresAt
+    createdAt
+    includedDataTypes
+  }
+}

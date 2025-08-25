@@ -22,7 +22,7 @@ export const MEETING_CONFIG = {
   // Email Configuration
   EMAIL_SUBJECT: "Candlefish × Retti — Zoom details for Friday (3–4 PM MDT)",
   EMAIL_FROM_NAME: "Patrick Smith",
-  EMAIL_FROM_ADDRESS: "patrick@candlefish.ai",
+  EMAIL_FROM_ADDRESS: "noreply@candlefish.ai",  // Using domain-verified address
   
   // Zoom Settings (using Candlefish.ai Zoom account)
   ZOOM_SETTINGS: {

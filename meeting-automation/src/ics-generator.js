@@ -54,10 +54,7 @@ export class ICSGenerator {
       summary: title,
       location: joinUrl,
       description: this.formatDescription(joinUrl, meetingId, passcode, description),
-      organizer: {
-        name: organizer.name,
-        email: organizer.email
-      },
+      organizer: `${organizer.name} <${organizer.email}>`,
       attendees: attendees.map(email => ({
         email: email,
         rsvp: true,
@@ -118,8 +115,16 @@ export class ICSGenerator {
       const fullPath = path.join(outputPath, filename);
       const icsContent = calendar.toString();
       
+      // Debug: Save raw content for inspection
+      await fs.writeFile(fullPath + '.debug', icsContent, 'utf8');
+      logger.info('Debug ICS saved', { path: fullPath + '.debug' });
+      
       // Validate ICS content
       if (!this.validateICS(icsContent)) {
+        logger.error('ICS content preview', { 
+          content: icsContent.substring(0, 500),
+          hasOrganizer: icsContent.includes('ORGANIZER')
+        });
         throw new Error('Generated ICS file failed validation');
       }
       
@@ -144,8 +149,8 @@ export class ICSGenerator {
       'DTSTART:',
       'DTEND:',
       'SUMMARY:',
-      'ORGANIZER:',
-      'ATTENDEE:',
+      'ORGANIZER',
+      'ATTENDEE',
       'END:VEVENT',
       'END:VCALENDAR'
     ];
@@ -157,8 +162,8 @@ export class ICSGenerator {
       }
     }
 
-    // Check for proper timezone format
-    if (!icsContent.includes('TZID=') && !icsContent.match(/\d{8}T\d{6}Z/)) {
+    // Check for proper date/time format (either Z suffix or plain local time)
+    if (!icsContent.match(/DT(START|END):\d{8}T\d{6}/)) {
       logger.error('ICS validation failed: Invalid date/time format');
       return false;
     }

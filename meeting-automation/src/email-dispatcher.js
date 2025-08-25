@@ -12,7 +12,7 @@ const logger = winston.createLogger({
 export class EmailDispatcher {
   constructor(config) {
     this.provider = config.provider || 'ses';
-    this.fromAddress = 'patrick@candlefish.ai';
+    this.fromAddress = 'noreply@candlefish.ai';  // Using verified domain
     this.fromName = 'Patrick Smith';
     
     if (this.provider === 'ses') {
