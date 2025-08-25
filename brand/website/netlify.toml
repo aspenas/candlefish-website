@@ -9,18 +9,18 @@
   NODE_VERSION = "18"
   NEXT_TELEMETRY_DISABLED = "1"
 
-# Performance Monitoring
-[[plugins]]
-  package = "@netlify/plugin-lighthouse"
-  [plugins.inputs]
-    audits = [
-      { url = "/", name = "Homepage" }
-    ]
-    [plugins.inputs.thresholds]
-      performance = 0.8
-      accessibility = 0.9
-      best-practices = 0.9
-      seo = 0.9
+# Performance Monitoring - Temporarily disabled due to module resolution issue
+# [[plugins]]
+#   package = "@netlify/plugin-lighthouse"
+#   [plugins.inputs]
+#     audits = [
+#       { url = "/", name = "Homepage" }
+#     ]
+#     [plugins.inputs.thresholds]
+#       performance = 0.8
+#       accessibility = 0.9
+#       best-practices = 0.9
+#       seo = 0.9
 
 # Next.js Optimization
 [[plugins]]
