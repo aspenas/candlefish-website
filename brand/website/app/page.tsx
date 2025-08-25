@@ -6,7 +6,6 @@ import HeaderText from '../components/HeaderText'
 import SystemActivity from '../components/SystemActivity'
 import SystemArchitecture from '../components/SystemArchitecture'
 import { NewsletterForm } from '../components/forms/NewsletterForm'
-import { VoicesPartial } from '../components/VoicesPartial'
 
 // Lazy load visualizations for better initial performance with error boundary
 const OperationalCraft = lazy(() =>
@@ -195,8 +194,6 @@ export default function OperationalHomepage() {
         </div>
       </section>
 
-      {/* Client Voice Section */}
-      <VoicesPartial />
 
       {/* Engagement Protocol Section */}
       <section className="py-28 bg-[#1B263B]/30">
