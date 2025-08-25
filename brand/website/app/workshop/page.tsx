@@ -144,8 +144,13 @@ const ProjectCard = ({
     safe_public: project.safe_public
   })
 
+  // Special case for paintbox to link to new detailed case page
+  const projectUrl = project.slug === 'paintbox-estimation'
+    ? '/workshop/paintbox-platform'
+    : `/workshop/${project.slug}`
+
   return (
-    <Link href={`/workshop/${project.slug}`}>
+    <Link href={projectUrl}>
       <article className="group border border-[#333] p-6 hover:border-[#3FD3C6]/50 transition-all cursor-pointer relative overflow-hidden">
         {/* Subtle hover effect */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#3FD3C6]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -333,6 +338,27 @@ function WorkshopContent() {
             </div>
           </div>
         </header>
+
+        {/* Queue Status Summary - Consistent with Home */}
+        <section className="max-w-7xl mx-auto px-6 py-6 border-b border-[#333]">
+          <div className="grid grid-cols-3 gap-6">
+            <div className="text-center">
+              <div className="text-2xl text-[#3FD3C6] font-mono">3</div>
+              <div className="text-xs text-[#666] mt-1">Active Systems</div>
+              <div className="text-xs text-[#555] mt-0.5">Engagements in-build now</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl text-[#fff] font-mono">7</div>
+              <div className="text-xs text-[#666] mt-1">Queue Length</div>
+              <div className="text-xs text-[#555] mt-0.5">Qualified orgs awaiting consideration</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl text-[#fff] font-mono">Q4 2025</div>
+              <div className="text-xs text-[#666] mt-1">Next Window</div>
+              <div className="text-xs text-[#555] mt-0.5">Period when new builds can start</div>
+            </div>
+          </div>
+        </section>
 
         {/* Controls */}
         <section className="max-w-7xl mx-auto px-6 py-6 space-y-4">

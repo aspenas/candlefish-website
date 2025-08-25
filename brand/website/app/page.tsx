@@ -6,6 +6,7 @@ import HeaderText from '../components/HeaderText'
 import SystemActivity from '../components/SystemActivity'
 import SystemArchitecture from '../components/SystemArchitecture'
 import { NewsletterForm } from '../components/forms/NewsletterForm'
+import { VoicesPartial } from '../components/VoicesPartial'
 
 // Lazy load visualizations for better initial performance with error boundary
 const OperationalCraft = lazy(() =>
@@ -80,10 +81,10 @@ export default function OperationalHomepage() {
         </div>
       </section>
 
-      {/* Operational Reality Section */}
+      {/* Operational Matrix Section */}
       <section className="py-28 relative">
         <div className="max-w-7xl mx-auto px-6">
-          <h2 className="text-4xl font-light text-[#F8F8F2] mb-16">Operational Reality</h2>
+          <h2 className="text-4xl font-light text-[#F8F8F2] mb-16">Operational Matrix</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="card-operational">
               <div className="text-[#3FD3C6] text-xs uppercase tracking-wider mb-4">
@@ -91,6 +92,9 @@ export default function OperationalHomepage() {
               </div>
               <div className="text-5xl font-light text-[#F8F8F2] mb-2">3</div>
               <div className="text-[#415A77] text-sm">
+                Engagements in-build now
+              </div>
+              <div className="text-[#415A77] text-xs mt-1">
                 Crown Trophy · Paintbox · PromoterOS
               </div>
             </div>
@@ -100,7 +104,7 @@ export default function OperationalHomepage() {
               </div>
               <div className="text-5xl font-light text-[#F8F8F2] mb-2">7</div>
               <div className="text-[#415A77] text-sm">
-                Organizations awaiting consideration
+                Qualified orgs awaiting consideration
               </div>
             </div>
             <div className="card-operational">
@@ -109,7 +113,10 @@ export default function OperationalHomepage() {
               </div>
               <div className="text-5xl font-light text-[#F8F8F2] mb-2">Q4</div>
               <div className="text-[#415A77] text-sm">
-                2025 · December consideration
+                Period when new builds can start
+              </div>
+              <div className="text-[#415A77] text-xs mt-1">
+                At Capacity Until December 2025
               </div>
             </div>
           </div>
@@ -187,6 +194,9 @@ export default function OperationalHomepage() {
           </div>
         </div>
       </section>
+
+      {/* Client Voice Section */}
+      <VoicesPartial />
 
       {/* Engagement Protocol Section */}
       <section className="py-28 bg-[#1B263B]/30">

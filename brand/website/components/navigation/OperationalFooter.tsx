@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import Link from 'next/link'
 
 // Real operational status
 const getCurrentFocus = () => {
@@ -34,11 +35,24 @@ const Footer: React.FC = () => {
           </div>
         </div>
 
-        {/* Minimal copyright line */}
+        {/* Footer links and copyright */}
         <div className="mt-8 pt-8 border-t border-[#1B263B]/30">
-          <p className="text-[#415A77] text-xs text-center">
-            © 2025 Candlefish. Operational systems for impossible problems.
-          </p>
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-[#415A77] text-xs">
+              © 2025 Candlefish. Operational systems for impossible problems.
+            </p>
+            <nav className="flex items-center gap-6">
+              <Link href="/privacy" className="text-[#415A77] text-xs hover:text-[#3FD3C6] transition-colors">
+                Privacy
+              </Link>
+              <Link href="/terms" className="text-[#415A77] text-xs hover:text-[#3FD3C6] transition-colors">
+                Terms
+              </Link>
+              <Link href="/status" className="text-[#415A77] text-xs hover:text-[#3FD3C6] transition-colors">
+                Status
+              </Link>
+            </nav>
+          </div>
         </div>
       </div>
     </footer>
