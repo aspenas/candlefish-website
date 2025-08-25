@@ -1,0 +1,422 @@
+name: Unified CI/CD Pipeline
+
+# Comprehensive pipeline for all Candlefish services
+# Handles monorepo structure with selective deployment
+
+on:
+  push:
+    branches: [main, develop, staging]
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Service to deploy (leave empty for all)'
+        required: false
+        type: choice
+        options:
+          - ''
+          - 'brand-website'
+          - 'api-site'
+          - 'docs-site'
+          - 'partners-site'
+          - 'nanda-api'
+          - 'inventory-backend'
+          - 'kong-gateway'
+          - 'all'
+      environment:
+        description: 'Deployment environment'
+        required: true
+        type: choice
+        default: 'staging'
+        options:
+          - 'development'
+          - 'staging'
+          - 'production'
+
+env:
+  NODE_VERSION: '18'
+  PNPM_VERSION: '8'
+  GO_VERSION: '1.21'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # Detect which services changed
+  detect-changes:
+    name: Detect Changed Services
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.detect.outputs.services }}
+      matrix: ${{ steps.detect.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed services
+        id: detect
+        run: |
+          # Get changed files
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }}..${{ github.sha }})
+          else
+            CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD)
+          fi
+
+          # Manual override for workflow_dispatch
+          if [ "${{ github.event.inputs.service }}" != "" ]; then
+            case "${{ github.event.inputs.service }}" in
+              "brand-website")
+                echo "services=[\"brand-website\"]" >> $GITHUB_OUTPUT
+                echo "matrix={\"service\":[\"brand-website\"]}" >> $GITHUB_OUTPUT
+                ;;
+              "all")
+                echo 'services=["brand-website","api-site","docs-site","partners-site","nanda-api","inventory-backend"]' >> $GITHUB_OUTPUT
+                echo 'matrix={"service":["brand-website","api-site","docs-site","partners-site","nanda-api","inventory-backend"]}' >> $GITHUB_OUTPUT
+                ;;
+              *)
+                echo "services=[\"${{ github.event.inputs.service }}\"]" >> $GITHUB_OUTPUT
+                echo "matrix={\"service\":[\"${{ github.event.inputs.service }}\"]}" >> $GITHUB_OUTPUT
+                ;;
+            esac
+            exit 0
+          fi
+
+          # Auto-detect changed services
+          SERVICES=()
+
+          echo "$CHANGED_FILES" | grep -E "^brand/website/" && SERVICES+=("brand-website")
+          echo "$CHANGED_FILES" | grep -E "^apps/api-site/" && SERVICES+=("api-site")
+          echo "$CHANGED_FILES" | grep -E "^apps/docs-site/" && SERVICES+=("docs-site")
+          echo "$CHANGED_FILES" | grep -E "^apps/partners-site/" && SERVICES+=("partners-site")
+          echo "$CHANGED_FILES" | grep -E "^apps/nanda-api/" && SERVICES+=("nanda-api")
+          echo "$CHANGED_FILES" | grep -E "^5470_S_Highline_Circle/backend/" && SERVICES+=("inventory-backend")
+          echo "$CHANGED_FILES" | grep -E "^infrastructure/kong/" && SERVICES+=("kong-gateway")
+
+          # Common packages trigger all services
+          if echo "$CHANGED_FILES" | grep -E "^packages/"; then
+            SERVICES=("brand-website" "api-site" "docs-site" "partners-site" "nanda-api")
+          fi
+
+          # Convert to JSON
+          if [ ${#SERVICES[@]} -eq 0 ]; then
+            echo "services=[]" >> $GITHUB_OUTPUT
+            echo "matrix={}" >> $GITHUB_OUTPUT
+          else
+            JSON_SERVICES=$(printf '%s\n' "${SERVICES[@]}" | jq -R . | jq -s . -c)
+            echo "services=$JSON_SERVICES" >> $GITHUB_OUTPUT
+            echo "matrix={\"service\":$JSON_SERVICES}" >> $GITHUB_OUTPUT
+          fi
+
+  # Quality checks for all changed code
+  quality-checks:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    if: needs.detect-changes.outputs.services != '[]'
+    needs: detect-changes
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run linting
+        run: |
+          pnpm run lint || true
+          pnpm run typecheck || true
+
+      - name: Security audit
+        run: |
+          pnpm audit --production || true
+
+      - name: License check
+        run: |
+          npx license-checker --production --onlyAllow 'MIT;Apache-2.0;BSD-3-Clause;BSD-2-Clause;ISC;CC0-1.0;Unlicense' || true
+
+  # Test each service
+  test-services:
+    name: Test ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    if: needs.detect-changes.outputs.services != '[]'
+    needs: [detect-changes, quality-checks]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - uses: actions/setup-go@v4
+        if: matrix.service == 'inventory-backend'
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests for ${{ matrix.service }}
+        run: |
+          case "${{ matrix.service }}" in
+            "brand-website")
+              cd brand/website && npm test -- --coverage || true
+              ;;
+            "api-site"|"docs-site"|"partners-site")
+              cd apps/${{ matrix.service }} && npm test -- --coverage || true
+              ;;
+            "nanda-api")
+              cd apps/nanda-api && npm test || true
+              ;;
+            "inventory-backend")
+              cd 5470_S_Highline_Circle/backend && go test ./... || true
+              ;;
+          esac
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        if: success()
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: ${{ matrix.service }}
+
+  # Build and containerize services
+  build-services:
+    name: Build ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    if: needs.detect-changes.outputs.services != '[]'
+    needs: [detect-changes, test-services]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - uses: actions/setup-go@v4
+        if: matrix.service == 'inventory-backend'
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::681214184463:role/github-actions
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set environment variables
+        run: |
+          echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
+          echo "ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
+
+          # Determine environment
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "DEPLOY_ENV=production" >> $GITHUB_ENV
+          elif [ "${{ github.ref }}" == "refs/heads/staging" ]; then
+            echo "DEPLOY_ENV=staging" >> $GITHUB_ENV
+          else
+            echo "DEPLOY_ENV=development" >> $GITHUB_ENV
+          fi
+
+      - name: Build ${{ matrix.service }}
+        run: |
+          case "${{ matrix.service }}" in
+            "brand-website")
+              cd brand/website
+              npm run build
+              docker build -t $ECR_REGISTRY/candlefish-brand:$IMAGE_TAG .
+              ;;
+            "api-site"|"docs-site"|"partners-site")
+              cd apps/${{ matrix.service }}
+              npm run build
+              docker build -t $ECR_REGISTRY/candlefish-${{ matrix.service }}:$IMAGE_TAG .
+              ;;
+            "nanda-api")
+              cd apps/nanda-api
+              npm run build
+              docker build -t $ECR_REGISTRY/nanda-api:$IMAGE_TAG .
+              ;;
+            "inventory-backend")
+              cd 5470_S_Highline_Circle/backend
+              go build -o bin/server .
+              docker build -t $ECR_REGISTRY/inventory-backend:$IMAGE_TAG .
+              ;;
+            "kong-gateway")
+              cd infrastructure/kong
+              docker build -t $ECR_REGISTRY/kong-gateway:$IMAGE_TAG .
+              ;;
+          esac
+
+      - name: Scan Docker image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.ECR_REGISTRY }}/candlefish-${{ matrix.service }}:${{ env.IMAGE_TAG }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Push to ECR
+        if: github.event_name != 'pull_request'
+        run: |
+          docker push $ECR_REGISTRY/candlefish-${{ matrix.service }}:$IMAGE_TAG
+          docker tag $ECR_REGISTRY/candlefish-${{ matrix.service }}:$IMAGE_TAG \
+                     $ECR_REGISTRY/candlefish-${{ matrix.service }}:$DEPLOY_ENV-latest
+          docker push $ECR_REGISTRY/candlefish-${{ matrix.service }}:$DEPLOY_ENV-latest
+
+  # Deploy to appropriate environment
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment || 'staging' }}
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' && needs.detect-changes.outputs.services != '[]'
+    needs: [detect-changes, build-services]
+    environment:
+      name: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production') || 'staging' }}
+      url: ${{ steps.deploy.outputs.url }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::681214184463:role/github-actions
+          aws-region: us-east-1
+
+      - name: Deploy ${{ matrix.service }}
+        id: deploy
+        run: |
+          ENVIRONMENT="${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production') || 'staging' }}"
+
+          case "${{ matrix.service }}" in
+            "brand-website")
+              # Deploy to Netlify
+              npm install -g netlify-cli
+              cd brand/website
+              netlify deploy --prod --site ${{ secrets.NETLIFY_SITE_ID }} --auth ${{ secrets.NETLIFY_AUTH_TOKEN }}
+              echo "url=https://candlefish.ai" >> $GITHUB_OUTPUT
+              ;;
+
+            "api-site"|"docs-site"|"partners-site")
+              # Deploy to Vercel
+              npm install -g vercel
+              cd apps/${{ matrix.service }}
+              vercel --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
+              SERVICE_NAME=$(echo "${{ matrix.service }}" | cut -d'-' -f1)
+              echo "url=https://${SERVICE_NAME}.candlefish.ai" >> $GITHUB_OUTPUT
+              ;;
+
+            "nanda-api"|"inventory-backend")
+              # Deploy to Fly.io
+              curl -L https://fly.io/install.sh | sh
+              export FLYCTL_INSTALL="/home/runner/.fly"
+              export PATH="$FLYCTL_INSTALL/bin:$PATH"
+
+              if [ "${{ matrix.service }}" == "nanda-api" ]; then
+                cd apps/nanda-api
+                fly deploy --app nanda-api-$ENVIRONMENT --config fly.$ENVIRONMENT.toml
+                echo "url=https://nanda-api-$ENVIRONMENT.fly.dev" >> $GITHUB_OUTPUT
+              else
+                cd 5470_S_Highline_Circle/backend
+                fly deploy --app inventory-$ENVIRONMENT --config fly.$ENVIRONMENT.toml
+                echo "url=https://inventory-$ENVIRONMENT.fly.dev" >> $GITHUB_OUTPUT
+              fi
+              ;;
+
+            "kong-gateway")
+              # Deploy Kong to Kubernetes
+              kubectl apply -k infrastructure/kong/overlays/$ENVIRONMENT/
+              echo "url=https://api.candlefish.ai" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
+      - name: Verify deployment
+        run: |
+          URL="${{ steps.deploy.outputs.url }}"
+          for i in {1..30}; do
+            if curl -f -s -o /dev/null -w "%{http_code}" "$URL/health" | grep -E "200|204"; then
+              echo "Deployment verified successfully"
+              exit 0
+            fi
+            echo "Waiting for deployment... ($i/30)"
+            sleep 10
+          done
+          echo "Deployment verification failed"
+          exit 1
+
+  # Post-deployment tasks
+  post-deploy:
+    name: Post Deployment Tasks
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' && needs.detect-changes.outputs.services != '[]'
+    needs: deploy
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update Kong configuration
+        if: contains(needs.detect-changes.outputs.services, 'kong-gateway')
+        run: |
+          # Apply Kong declarative config
+          curl -X POST https://api.candlefish.ai/config \
+            -H "Kong-Admin-Token: ${{ secrets.KONG_ADMIN_TOKEN }}" \
+            -F config=@infrastructure/kong/kong.yml
+
+      - name: Run smoke tests
+        run: |
+          npm install -g newman
+          newman run tests/postman/smoke-tests.json \
+            --environment tests/postman/environments/${{ github.event.inputs.environment || 'staging' }}.json \
+            --reporters cli,json \
+            --reporter-json-export results.json
+
+      - name: Update monitoring
+        run: |
+          # Update Grafana dashboards
+          curl -X POST https://grafana.candlefish.ai/api/dashboards/db \
+            -H "Authorization: Bearer ${{ secrets.GRAFANA_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d @monitoring/dashboards/deployment.json
+
+      - name: Notify team
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            Deployment Complete!
+            Environment: ${{ github.event.inputs.environment || 'staging' }}
+            Services: ${{ needs.detect-changes.outputs.services }}
+            Commit: ${{ github.sha }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        if: always()

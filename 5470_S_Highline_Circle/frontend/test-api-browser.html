@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>Testing API Connection</h1>
+    <button onclick="testAPI()">Test API</button>
+    <div id="results"></div>
+    
+    <script>
+    async function testAPI() {
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.innerHTML = '<p>Testing...</p>';
+        
+        try {
+            // Test items endpoint
+            const itemsResponse = await fetch('https://5470-inventory.fly.dev/api/v1/items');
+            const itemsData = await itemsResponse.json();
+            
+            // Test rooms endpoint
+            const roomsResponse = await fetch('https://5470-inventory.fly.dev/api/v1/rooms');
+            const roomsData = await roomsResponse.json();
+            
+            resultsDiv.innerHTML = `
+                <h2>✅ API Working!</h2>
+                <p>Items: ${itemsData.items ? itemsData.items.length : itemsData.length}</p>
+                <p>Rooms: ${roomsData.rooms ? roomsData.rooms.length : roomsData.length}</p>
+                <p>CORS: Allowed</p>
+            `;
+        } catch (error) {
+            resultsDiv.innerHTML = `
+                <h2>❌ API Error</h2>
+                <p>${error.message}</p>
+                <p>Check browser console for details</p>
+            `;
+            console.error('API Test Error:', error);
+        }
+    }
+    
+    // Test on load
+    testAPI();
+    </script>
+</body>
+</html>

@@ -59,9 +59,9 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
 
       const constraints: MediaStreamConstraints = {
         video: {
-          facingMode,
-          width: { ideal: settings.maxResolution, max: 3840 },
-          height: { ideal: Math.round(settings.maxResolution * 0.75), max: 2160 }
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
         }
       };
 
@@ -334,7 +334,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
         ref={fileInputRef}
         type="file"
         accept="image/*"
-        capture="environment"
+        capture="camera"
         onChange={handleFileInput}
         className="hidden"
       />
@@ -434,6 +434,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
             <button
               onClick={captureFromCamera}
               disabled={isCapturing || !stream}
+              data-capture-button="true"
               className={`w-20 h-20 rounded-full border-4 border-white bg-transparent hover:bg-white hover:bg-opacity-20 transition-all ${
                 isCapturing ? 'animate-pulse' : ''
               }`}

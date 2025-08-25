@@ -7,6 +7,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
+	"log"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -31,6 +32,11 @@ type PhotoHandler struct {
 
 // NewPhotoHandler creates a new photo handler
 func NewPhotoHandler(handler *Handler) *PhotoHandler {
+	// Defensive check for nil handler
+	if handler == nil {
+		log.Printf("[PHOTO_HANDLER] Warning: base Handler is nil, creating with nil base")
+	}
+
 	uploadDir := os.Getenv("UPLOAD_DIR")
 	if uploadDir == "" {
 		uploadDir = "./uploads"
@@ -69,9 +75,16 @@ func (ph *PhotoHandler) HandleWebSocket(c *websocket.Conn) {
 
 // Broadcast message to all connected WebSocket clients
 func (ph *PhotoHandler) broadcastMessage(msg models.WebSocketMessage) {
+	// Defensive check for nil wsClients
+	if ph.wsClients == nil {
+		log.Printf("[WEBSOCKET] Warning: wsClients is nil, skipping broadcast")
+		return
+	}
+
 	msg.Timestamp = time.Now()
 	for client := range ph.wsClients {
 		if err := client.WriteJSON(msg); err != nil {
+			log.Printf("[WEBSOCKET] Error broadcasting to client: %v", err)
 			delete(ph.wsClients, client)
 			client.Close()
 		}
@@ -82,23 +95,36 @@ func (ph *PhotoHandler) broadcastMessage(msg models.WebSocketMessage) {
 func (ph *PhotoHandler) UploadItemPhoto(c *fiber.Ctx) error {
 	itemID := c.Params("id")
 	if itemID == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "Item ID is required"})
+		log.Printf("[PHOTO_UPLOAD] Missing item ID parameter")
+		return c.Status(400).JSON(fiber.Map{"error": "Item ID is required", "details": "Item ID parameter is missing from URL"})
 	}
 
 	itemUUID, err := uuid.Parse(itemID)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid item ID"})
+		log.Printf("[PHOTO_UPLOAD] Invalid item ID format: %s", itemID)
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid item ID", "details": "Item ID must be a valid UUID"})
 	}
+
+	log.Printf("[PHOTO_UPLOAD] Starting photo upload for item ID: %s", itemID)
 
 	// Get multipart form
 	form, err := c.MultipartForm()
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Failed to parse multipart form"})
+		log.Printf("[PHOTO_UPLOAD] Failed to parse multipart form: %v", err)
+		return c.Status(400).JSON(fiber.Map{"error": "Failed to parse multipart form", "details": err.Error()})
 	}
 
+	// Try both 'photos' and 'photo' field names for flexibility
 	files := form.File["photos"]
 	if len(files) == 0 {
-		return c.Status(400).JSON(fiber.Map{"error": "No photos uploaded"})
+		files = form.File["photo"]
+		if len(files) == 0 {
+			log.Printf("[PHOTO_UPLOAD] No photos found in form fields 'photos' or 'photo'")
+			return c.Status(400).JSON(fiber.Map{"error": "No photo file provided", "details": "Expected 'photos' or 'photo' field in multipart form"})
+		}
+		log.Printf("[PHOTO_UPLOAD] Found %d files in 'photo' field", len(files))
+	} else {
+		log.Printf("[PHOTO_UPLOAD] Found %d files in 'photos' field", len(files))
 	}
 
 	// Parse optional parameters
@@ -122,39 +148,79 @@ func (ph *PhotoHandler) UploadItemPhoto(c *fiber.Ctx) error {
 	}
 
 	var results []fiber.Map
-	for _, file := range files {
+	successfulUploads := 0
+	for i, file := range files {
+		log.Printf("[PHOTO_UPLOAD] Processing file %d/%d: %s (size: %d bytes)", i+1, len(files), file.Filename, file.Size)
+
+		// Check file size (limit to 50MB)
+		if file.Size > 50*1024*1024 {
+			log.Printf("[PHOTO_UPLOAD] File too large: %s (%d bytes)", file.Filename, file.Size)
+			results = append(results, fiber.Map{
+				"filename": file.Filename,
+				"error":    "File too large (max 50MB)",
+				"success":  false,
+			})
+			continue
+		}
+
+		// Check file type
+		contentType := file.Header.Get("Content-Type")
+		if !strings.HasPrefix(contentType, "image/") {
+			log.Printf("[PHOTO_UPLOAD] Invalid file type: %s (%s)", file.Filename, contentType)
+			results = append(results, fiber.Map{
+				"filename": file.Filename,
+				"error":    "Unsupported file type (images only)",
+				"success":  false,
+			})
+			continue
+		}
+
 		result, err := ph.processPhotoUpload(file, &itemUUID, sessionUUID, photoAngle, &caption, isPrimary)
 		if err != nil {
+			log.Printf("[PHOTO_UPLOAD] Failed to process %s: %v", file.Filename, err)
 			results = append(results, fiber.Map{
 				"filename": file.Filename,
 				"error":    err.Error(),
 				"success":  false,
 			})
 		} else {
+			log.Printf("[PHOTO_UPLOAD] Successfully processed %s (ID: %s)", file.Filename, result.ID)
+			successfulUploads++
 			results = append(results, fiber.Map{
 				"filename": file.Filename,
 				"photo":    result,
 				"success":  true,
 			})
 
-			// Broadcast WebSocket update
+			// Broadcast WebSocket update with enhanced data
+			log.Printf("[PHOTO_UPLOAD] Broadcasting WebSocket update for photo %s", result.ID)
 			ph.broadcastMessage(models.WebSocketMessage{
 				Type: models.WSPhotoUploaded,
 				Data: map[string]interface{}{
+					"type": "photoUploaded",
 					"item_id": itemUUID,
 					"photo":   result,
+					"timestamp": time.Now(),
 				},
 			})
 		}
 	}
 
-	// Log activity
-	details := fmt.Sprintf("%d photos uploaded for item", len(files))
-	ph.logItemActivity(models.ActivityAction("photo_uploaded"), itemUUID, &details, nil, nil)
+	// Log activity (with defensive check)
+	details := fmt.Sprintf("%d/%d photos uploaded successfully for item", successfulUploads, len(files))
+	if ph.Handler != nil {
+		ph.logItemActivity(models.ActivityAction("photo_uploaded"), itemUUID, &details, nil, nil)
+	} else {
+		log.Printf("[PHOTO_UPLOAD] Warning: Handler is nil, cannot log activity")
+	}
+
+	log.Printf("[PHOTO_UPLOAD] Upload completed for item %s: %d/%d successful", itemID, successfulUploads, len(files))
 
 	return c.JSON(fiber.Map{
 		"results": results,
 		"total":   len(results),
+		"successful": successfulUploads,
+		"failed": len(results) - successfulUploads,
 	})
 }
 
@@ -164,11 +230,31 @@ func (ph *PhotoHandler) processPhotoUpload(file *multipart.FileHeader, itemID *u
 	ext := filepath.Ext(file.Filename)
 	filename := fmt.Sprintf("%s%s", uuid.New().String(), ext)
 
+	log.Printf("[PHOTO_PROCESS] Processing upload: original=%s, generated=%s", file.Filename, filename)
+
+	// Ensure upload directories exist
+	uploadDirs := []string{
+		filepath.Join(ph.uploadDir, "full"),
+		filepath.Join(ph.uploadDir, "thumbnails"),
+		filepath.Join(ph.uploadDir, "web"),
+	}
+
+	for _, dir := range uploadDirs {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			log.Printf("[PHOTO_PROCESS] Failed to create directory %s: %v", dir, err)
+			return nil, fmt.Errorf("failed to prepare upload directory %s: %v", dir, err)
+		}
+	}
+
 	// Save original file
 	fullPath := filepath.Join(ph.uploadDir, "full", filename)
+	log.Printf("[PHOTO_PROCESS] Saving file to: %s", fullPath)
 	if err := ph.saveFile(file, fullPath); err != nil {
+		log.Printf("[PHOTO_PROCESS] Failed to save file %s: %v", fullPath, err)
 		return nil, fmt.Errorf("failed to save file: %v", err)
 	}
+
+	log.Printf("[PHOTO_PROCESS] File saved successfully: %s", fullPath)
 
 	// Extract image dimensions and EXIF data
 	width, height, metadata, err := ph.extractImageInfo(fullPath)
@@ -177,9 +263,19 @@ func (ph *PhotoHandler) processPhotoUpload(file *multipart.FileHeader, itemID *u
 	}
 
 	// Create database record
+	// Handle nil sessionID safely
+	var actualSessionID uuid.UUID
+	if sessionID != nil {
+		actualSessionID = *sessionID
+	} else {
+		// Generate a default session ID if none provided
+		actualSessionID = uuid.New()
+		log.Printf("[PHOTO_PROCESS] No session ID provided, generated default: %s", actualSessionID)
+	}
+
 	photoUpload := &models.PhotoUpload{
 		ID:           uuid.New(),
-		SessionID:    *sessionID,
+		SessionID:    actualSessionID,
 		ItemID:       itemID,
 		Filename:     filename,
 		OriginalName: file.Filename,
@@ -192,18 +288,24 @@ func (ph *PhotoHandler) processPhotoUpload(file *multipart.FileHeader, itemID *u
 	}
 
 	if ph.db != nil {
+		log.Printf("[PHOTO_PROCESS] Inserting photo record into database: %s", photoUpload.ID)
 		// Insert photo upload record
 		query := `
-			INSERT INTO photo_uploads (id, session_id, item_id, filename, original_name, mime_type, file_size, angle, caption, is_primary, uploaded_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			INSERT INTO photo_uploads (id, session_id, item_id, filename, mime_type, size_bytes, width, height, metadata, uploaded_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		`
+
+		// Convert metadata map to JSON
+		metadataJSON, _ := json.Marshal(metadata)
+
 		_, err = ph.db.Exec(query, photoUpload.ID, photoUpload.SessionID, photoUpload.ItemID,
-			photoUpload.Filename, photoUpload.OriginalName, photoUpload.MimeType,
-			photoUpload.FileSize, photoUpload.Angle, photoUpload.Caption,
-			photoUpload.IsPrimary, photoUpload.UploadedAt)
+			photoUpload.Filename, photoUpload.MimeType, photoUpload.FileSize,
+			width, height, metadataJSON, photoUpload.UploadedAt)
 		if err != nil {
+			log.Printf("[PHOTO_PROCESS] Database insert failed: %v", err)
 			return nil, fmt.Errorf("failed to save photo record: %v", err)
 		}
+		log.Printf("[PHOTO_PROCESS] Photo record inserted successfully: %s", photoUpload.ID)
 
 		// Save metadata if available
 		if metadata != nil {
@@ -212,7 +314,8 @@ func (ph *PhotoHandler) processPhotoUpload(file *multipart.FileHeader, itemID *u
 
 		// Also add to item_images table for backward compatibility
 		if itemID != nil {
-			ph.createItemImageRecord(*itemID, photoUpload, sessionID)
+			// Use the actual session ID (not the potentially nil sessionID parameter)
+			ph.createItemImageRecord(*itemID, photoUpload, &photoUpload.SessionID)
 		}
 	}
 
@@ -474,28 +577,67 @@ func (ph *PhotoHandler) savePhotoVersion(photoID uuid.UUID, resolution models.Ph
 func (ph *PhotoHandler) BatchUploadPhotos(c *fiber.Ctx) error {
 	sessionID := c.Params("sessionId")
 	if sessionID == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "Session ID is required"})
+		log.Printf("[BATCH_UPLOAD] Missing session ID parameter")
+		return c.Status(400).JSON(fiber.Map{"error": "Session ID is required", "details": "Session ID parameter is missing from URL"})
 	}
 
 	sessionUUID, err := uuid.Parse(sessionID)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid session ID"})
+		log.Printf("[BATCH_UPLOAD] Invalid session ID format: %s", sessionID)
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid session ID", "details": "Session ID must be a valid UUID"})
 	}
+
+	log.Printf("[BATCH_UPLOAD] Starting batch photo upload for session ID: %s", sessionID)
 
 	// Get multipart form
 	form, err := c.MultipartForm()
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Failed to parse multipart form"})
+		log.Printf("[BATCH_UPLOAD] Failed to parse multipart form: %v", err)
+		return c.Status(400).JSON(fiber.Map{"error": "Failed to parse multipart form", "details": err.Error()})
 	}
 
+	// Try both 'photos' and 'photo' field names for flexibility
 	files := form.File["photos"]
 	if len(files) == 0 {
-		return c.Status(400).JSON(fiber.Map{"error": "No photos uploaded"})
+		files = form.File["photo"]
+		if len(files) == 0 {
+			log.Printf("[BATCH_UPLOAD] No photos found in form fields 'photos' or 'photo'")
+			return c.Status(400).JSON(fiber.Map{"error": "No photo file provided", "details": "Expected 'photos' or 'photo' field in multipart form"})
+		}
+		log.Printf("[BATCH_UPLOAD] Found %d files in 'photo' field", len(files))
+	} else {
+		log.Printf("[BATCH_UPLOAD] Found %d files in 'photos' field", len(files))
 	}
 
 	// Process each photo
 	var results []fiber.Map
+	successfulUploads := 0
 	for i, file := range files {
+		log.Printf("[BATCH_UPLOAD] Processing file %d/%d: %s (size: %d bytes)", i+1, len(files), file.Filename, file.Size)
+
+		// Check file size (limit to 50MB)
+		if file.Size > 50*1024*1024 {
+			log.Printf("[BATCH_UPLOAD] File too large: %s (%d bytes)", file.Filename, file.Size)
+			results = append(results, fiber.Map{
+				"filename": file.Filename,
+				"error":    "File too large (max 50MB)",
+				"success":  false,
+			})
+			continue
+		}
+
+		// Check file type
+		contentType := file.Header.Get("Content-Type")
+		if !strings.HasPrefix(contentType, "image/") {
+			log.Printf("[BATCH_UPLOAD] Invalid file type: %s (%s)", file.Filename, contentType)
+			results = append(results, fiber.Map{
+				"filename": file.Filename,
+				"error":    "Unsupported file type (images only)",
+				"success":  false,
+			})
+			continue
+		}
+
 		// Parse per-photo metadata from form
 		itemIDKey := fmt.Sprintf("item_ids[%d]", i)
 		angleKey := fmt.Sprintf("angles[%d]", i)
@@ -506,6 +648,8 @@ func (ph *PhotoHandler) BatchUploadPhotos(c *fiber.Ctx) error {
 		if itemIDStr := c.FormValue(itemIDKey); itemIDStr != "" {
 			if parsed, err := uuid.Parse(itemIDStr); err == nil {
 				itemID = &parsed
+			} else {
+				log.Printf("[BATCH_UPLOAD] Invalid item ID format for file %s: %s", file.Filename, itemIDStr)
 			}
 		}
 
@@ -523,39 +667,51 @@ func (ph *PhotoHandler) BatchUploadPhotos(c *fiber.Ctx) error {
 
 		result, err := ph.processPhotoUpload(file, itemID, &sessionUUID, angle, &caption, isPrimary)
 		if err != nil {
+			log.Printf("[BATCH_UPLOAD] Failed to process %s: %v", file.Filename, err)
 			results = append(results, fiber.Map{
 				"filename": file.Filename,
 				"error":    err.Error(),
 				"success":  false,
 			})
 		} else {
+			log.Printf("[BATCH_UPLOAD] Successfully processed %s (ID: %s)", file.Filename, result.ID)
+			successfulUploads++
 			results = append(results, fiber.Map{
 				"filename": file.Filename,
 				"photo":    result,
 				"success":  true,
 			})
 
-			// Broadcast WebSocket update
+			// Broadcast WebSocket update with enhanced data
+			log.Printf("[BATCH_UPLOAD] Broadcasting WebSocket update for photo %s", result.ID)
 			ph.broadcastMessage(models.WebSocketMessage{
 				Type: models.WSPhotoUploaded,
 				Data: map[string]interface{}{
+					"type": "photoUploaded",
 					"session_id": sessionUUID,
 					"photo":      result,
+					"timestamp": time.Now(),
 				},
 			})
 		}
 	}
 
-	// Log activity
-	details := fmt.Sprintf("Batch uploaded %d photos", len(results))
-	ph.logActivity(models.ActivityAction("photo_uploaded"), nil, nil, nil, &details, nil, nil, nil)
+	// Log activity (with defensive check)
+	details := fmt.Sprintf("Batch uploaded %d/%d photos successfully", successfulUploads, len(files))
+	if ph.Handler != nil {
+		ph.logActivity(models.ActivityAction("photo_uploaded"), nil, nil, nil, &details, nil, nil, nil)
+	} else {
+		log.Printf("[BATCH_UPLOAD] Warning: Handler is nil, cannot log activity")
+	}
+
+	log.Printf("[BATCH_UPLOAD] Batch upload completed for session %s: %d/%d successful", sessionID, successfulUploads, len(files))
 
 	return c.JSON(fiber.Map{
 		"session_id": sessionUUID,
 		"results":    results,
 		"total":      len(results),
-		"successful": len(files) - countErrors(results),
-		"failed":     countErrors(results),
+		"successful": successfulUploads,
+		"failed":     len(results) - successfulUploads,
 	})
 }
 
@@ -606,9 +762,13 @@ func (ph *PhotoHandler) CreatePhotoSession(c *fiber.Ctx) error {
 		}
 	}
 
-	// Log activity
+	// Log activity (with defensive check)
 	details := fmt.Sprintf("Photo session created: %s", session.Name)
-	ph.logActivity(models.ActivityAction("session_created"), nil, nil, nil, &details, nil, nil, nil)
+	if ph.Handler != nil {
+		ph.logActivity(models.ActivityAction("session_created"), nil, nil, nil, &details, nil, nil, nil)
+	} else {
+		log.Printf("[PHOTO_SESSION] Warning: Handler is nil, cannot log activity")
+	}
 
 	// Broadcast WebSocket update
 	ph.broadcastMessage(models.WebSocketMessage{
@@ -727,10 +887,14 @@ func (ph *PhotoHandler) UpdatePhotoSession(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to update session"})
 	}
 
-	// Log activity if completed
+	// Log activity if completed (with defensive check)
 	if req.Status != nil && *req.Status == models.SessionCompleted {
 		details := fmt.Sprintf("Photo session completed: %s", session.Name)
-		ph.logActivity(models.ActivityAction("session_completed"), nil, nil, nil, &details, nil, nil, nil)
+		if ph.Handler != nil {
+			ph.logActivity(models.ActivityAction("session_completed"), nil, nil, nil, &details, nil, nil, nil)
+		} else {
+			log.Printf("[PHOTO_SESSION] Warning: Handler is nil, cannot log activity")
+		}
 	}
 
 	// Broadcast WebSocket update

@@ -127,8 +127,15 @@ const VisualProgressMap: React.FC<VisualProgressMapProps> = ({
   // Find actual room by matching name
   const findRoomByLayoutId = useCallback((layoutId: string, floorName: string) => {
     const layoutRoom = FLOOR_PLANS[floorName]?.rooms.find(r => r.id === layoutId);
-    return rooms.find(room => room.name.toLowerCase().replace(/\s+/g, '-') === layoutId ||
-                              room.name === layoutRoom?.name);
+    if (!layoutRoom) return null;
+
+    // Match by name similarity instead of exact ID
+    return rooms.find(room => {
+      const normalizedRoomName = room.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const normalizedLayoutName = layoutRoom.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      return normalizedRoomName.includes(normalizedLayoutName) ||
+             normalizedLayoutName.includes(normalizedRoomName);
+    });
   }, [rooms]);
 
   const currentFloorPlan = FLOOR_PLANS[selectedFloor];

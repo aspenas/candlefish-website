@@ -1,0 +1,436 @@
+name: Release Automation
+
+# Automated semantic versioning and release management
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - prerelease
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  packages: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.version.outputs.new_version }}
+      changelog: ${{ steps.changelog.outputs.changelog }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          npm install -g semantic-release @semantic-release/changelog @semantic-release/git
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+      - name: Determine version bump
+        id: version
+        run: |
+          # Get current version
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "Current version: $CURRENT_VERSION"
+
+          # Determine new version based on commits or manual input
+          if [ "${{ github.event.inputs.release_type }}" != "" ]; then
+            RELEASE_TYPE="${{ github.event.inputs.release_type }}"
+          else
+            # Analyze commits for semantic versioning
+            if git log --format=%B -n 50 | grep -q "BREAKING CHANGE\|!:"; then
+              RELEASE_TYPE="major"
+            elif git log --format=%B -n 50 | grep -q "^feat"; then
+              RELEASE_TYPE="minor"
+            else
+              RELEASE_TYPE="patch"
+            fi
+          fi
+
+          # Calculate new version
+          NEW_VERSION=$(npx semver $CURRENT_VERSION -i $RELEASE_TYPE)
+          echo "New version: $NEW_VERSION"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "release_type=$RELEASE_TYPE" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Generate changelog from commits
+          cat <<'EOF' > generate-changelog.js
+          const { execSync } = require('child_process');
+          const fs = require('fs');
+
+          const currentVersion = process.argv[2];
+          const newVersion = process.argv[3];
+
+          // Get commits since last tag
+          const lastTag = execSync('git describe --tags --abbrev=0 2>/dev/null || echo ""').toString().trim();
+          const commits = execSync(`git log ${lastTag}..HEAD --pretty=format:"%h %s" --no-merges`).toString().trim().split('\n');
+
+          // Categorize commits
+          const features = [];
+          const fixes = [];
+          const breaking = [];
+          const other = [];
+
+          commits.forEach(commit => {
+            if (commit.includes('BREAKING CHANGE') || commit.includes('!:')) {
+              breaking.push(commit);
+            } else if (commit.includes('feat:') || commit.includes('feat(')) {
+              features.push(commit);
+            } else if (commit.includes('fix:') || commit.includes('fix(')) {
+              fixes.push(commit);
+            } else if (commit && !commit.includes('chore:') && !commit.includes('docs:')) {
+              other.push(commit);
+            }
+          });
+
+          // Generate changelog
+          let changelog = `# Release ${newVersion}\n\n`;
+          changelog += `Released on ${new Date().toISOString().split('T')[0]}\n\n`;
+
+          if (breaking.length > 0) {
+            changelog += '## 🚨 Breaking Changes\n\n';
+            breaking.forEach(commit => changelog += `- ${commit}\n`);
+            changelog += '\n';
+          }
+
+          if (features.length > 0) {
+            changelog += '## ✨ Features\n\n';
+            features.forEach(commit => changelog += `- ${commit}\n`);
+            changelog += '\n';
+          }
+
+          if (fixes.length > 0) {
+            changelog += '## 🐛 Bug Fixes\n\n';
+            fixes.forEach(commit => changelog += `- ${commit}\n`);
+            changelog += '\n';
+          }
+
+          if (other.length > 0) {
+            changelog += '## 📝 Other Changes\n\n';
+            other.forEach(commit => changelog += `- ${commit}\n`);
+            changelog += '\n';
+          }
+
+          // Add migration guide for breaking changes
+          if (breaking.length > 0) {
+            changelog += '## 📋 Migration Guide\n\n';
+            changelog += 'Please review the breaking changes above and update your code accordingly.\n\n';
+          }
+
+          // Write to file
+          fs.writeFileSync('RELEASE_NOTES.md', changelog);
+
+          // Output for GitHub Actions
+          console.log(changelog);
+          EOF
+
+          node generate-changelog.js "${{ steps.version.outputs.current_version }}" "${{ steps.version.outputs.new_version }}" > RELEASE_NOTES.md
+
+          # Set output
+          CHANGELOG=$(cat RELEASE_NOTES.md)
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Update version in all packages
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.new_version }}"
+
+          # Update root package.json
+          npm version $NEW_VERSION --no-git-tag-version
+
+          # Update all workspace packages
+          for pkg in apps/* packages/* services/*; do
+            if [ -f "$pkg/package.json" ]; then
+              echo "Updating version in $pkg"
+              (cd $pkg && npm version $NEW_VERSION --no-git-tag-version)
+            fi
+          done
+
+          # Update version in other files
+          if [ -f "version.txt" ]; then
+            echo $NEW_VERSION > version.txt
+          fi
+
+          # Update Helm charts
+          for chart in infrastructure/*/Chart.yaml; do
+            if [ -f "$chart" ]; then
+              sed -i "s/^version:.*/version: $NEW_VERSION/" "$chart"
+              sed -i "s/^appVersion:.*/appVersion: $NEW_VERSION/" "$chart"
+            fi
+          done
+
+      - name: Update CHANGELOG.md
+        run: |
+          # Prepend new release notes to CHANGELOG.md
+          if [ -f "CHANGELOG.md" ]; then
+            cat RELEASE_NOTES.md CHANGELOG.md > CHANGELOG.tmp
+            mv CHANGELOG.tmp CHANGELOG.md
+          else
+            cp RELEASE_NOTES.md CHANGELOG.md
+          fi
+
+      - name: Commit version bump
+        run: |
+          git add -A
+          git commit -m "chore(release): ${{ steps.version.outputs.new_version }} [skip ci]
+
+          ${{ steps.changelog.outputs.changelog }}"
+
+      - name: Create and push tag
+        run: |
+          git tag -a "v${{ steps.version.outputs.new_version }}" -m "Release v${{ steps.version.outputs.new_version }}"
+          git push origin main --follow-tags
+
+      - name: Create GitHub Release
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const release = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: `v${{ steps.version.outputs.new_version }}`,
+              name: `Release v${{ steps.version.outputs.new_version }}`,
+              body: `${{ steps.changelog.outputs.changelog }}`,
+              draft: false,
+              prerelease: ${{ steps.version.outputs.release_type == 'prerelease' }}
+            });
+
+            console.log(`Created release: ${release.data.html_url}`);
+
+  # Build and publish artifacts
+  publish-artifacts:
+    name: Publish Artifacts
+    needs: release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package:
+          - packages/shared
+          - packages/design-system
+          - packages/api-client
+          - packages/jwt-auth
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main  # Use updated main branch with version bump
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build package
+        run: |
+          cd ${{ matrix.package }}
+          pnpm build
+
+      - name: Publish to NPM
+        if: matrix.package != 'packages/internal'
+        run: |
+          cd ${{ matrix.package }}
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # Deploy documentation
+  deploy-docs:
+    name: Deploy Documentation
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate API documentation
+        run: |
+          npx typedoc --out docs/api \
+            --entryPoints "packages/*/src/index.ts" \
+            --exclude "**/node_modules/**" \
+            --exclude "**/*.test.ts" \
+            --exclude "**/*.spec.ts" \
+            --name "Candlefish AI v${{ needs.release.outputs.new_version }}" \
+            --readme README.md
+
+      - name: Generate architecture diagrams
+        run: |
+          npm install -g @mermaid-js/mermaid-cli
+
+          # Generate diagrams from markdown files
+          for file in docs/diagrams/*.mmd; do
+            if [ -f "$file" ]; then
+              mmdc -i "$file" -o "${file%.mmd}.svg"
+            fi
+          done
+
+      - name: Build documentation site
+        run: |
+          cd apps/docs-site
+          npm run build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./apps/docs-site/.next
+          cname: docs.candlefish.ai
+
+  # Create release PR for protected branches
+  create-release-pr:
+    name: Create Release PR
+    needs: release
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create Pull Request
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Release v${{ needs.release.outputs.new_version }}`,
+              head: context.ref,
+              base: 'main',
+              body: `## 🚀 Release v${{ needs.release.outputs.new_version }}
+
+              ${{ needs.release.outputs.changelog }}
+
+              ### Pre-release Checklist
+              - [ ] All tests passing
+              - [ ] Security scans completed
+              - [ ] Documentation updated
+              - [ ] Migration guide reviewed (if breaking changes)
+              - [ ] Team notified
+
+              ### Post-release Tasks
+              - [ ] Monitor error rates
+              - [ ] Check performance metrics
+              - [ ] Verify deployments
+              - [ ] Update status page
+
+              ---
+              *This PR was automatically created by the release workflow.*`
+            });
+
+            // Add labels
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              labels: ['release', 'automated']
+            });
+
+            // Add reviewers
+            await github.rest.pulls.requestReviewers({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              reviewers: ['aaron', 'tyler', 'james']
+            });
+
+  # Notify team
+  notify-release:
+    name: Notify Team
+    needs: [release, publish-artifacts, deploy-docs]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            🎉 New Release: v${{ needs.release.outputs.new_version }}
+
+            ${{ needs.release.outputs.changelog }}
+
+            📦 Artifacts: Published to NPM
+            📚 Documentation: https://docs.candlefish.ai
+            🔗 Release: https://github.com/${{ github.repository }}/releases/tag/v${{ needs.release.outputs.new_version }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+      - name: Create Jira release
+        if: env.JIRA_URL != ''
+        run: |
+          curl -X POST "${{ secrets.JIRA_URL }}/rest/api/2/version" \
+            -H "Authorization: Basic ${{ secrets.JIRA_AUTH }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "name": "v${{ needs.release.outputs.new_version }}",
+              "archived": false,
+              "released": true,
+              "releaseDate": "'$(date +%Y-%m-%d)'",
+              "project": "CANDLEFISH",
+              "description": "${{ needs.release.outputs.changelog }}"
+            }'
+
+      - name: Update status page
+        run: |
+          # Update status page with new version
+          curl -X POST "https://api.statuspage.io/v1/pages/${{ secrets.STATUSPAGE_PAGE_ID }}/incidents" \
+            -H "Authorization: OAuth ${{ secrets.STATUSPAGE_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "incident": {
+                "name": "Release v${{ needs.release.outputs.new_version }} deployed",
+                "status": "resolved",
+                "impact": "none",
+                "body": "New version deployed successfully. Check release notes for details."
+              }
+            }'

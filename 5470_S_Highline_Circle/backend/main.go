@@ -52,9 +52,10 @@ func main() {
 	app.Use(recover.New())
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*",
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
-		AllowMethods: "GET, HEAD, PUT, PATCH, POST, DELETE",
+		AllowOrigins:     "https://inventory.highline.work,http://localhost:3000,https://5470-inventory.netlify.app",
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, X-Requested-With",
+		AllowMethods:     "GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS",
+		AllowCredentials: true,
 	}))
 
 	// Swagger documentation
