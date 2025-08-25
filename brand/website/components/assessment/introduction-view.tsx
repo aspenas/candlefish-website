@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import Link from 'next/link'
 
 interface IntroductionViewProps {
   onBegin: () => void
@@ -94,6 +95,10 @@ export const IntroductionView = ({ onBegin }: IntroductionViewProps) => (
     <p className="mt-6 text-xs text-[#415A77]">
       Your responses are stored securely and never shared.
       Assessment ID will be generated for your reference.
+      <span className="mx-2">·</span>
+      <Link href="/privacy" className="hover:text-[#3FD3C6] transition-colors">Privacy Policy</Link>
+      <span className="mx-2">·</span>
+      <Link href="/terms" className="hover:text-[#3FD3C6] transition-colors">Terms of Service</Link>
     </p>
   </motion.section>
 )

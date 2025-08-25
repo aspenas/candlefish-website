@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { instruments } from '../../lib/instruments/data'
 import { Instrument, InstrumentCategory, InstrumentStatus } from '../../lib/instruments/types'
 import InstrumentTelemetry from '../../components/instruments/InstrumentTelemetry'
+import { ArtifactsStrip } from '../../components/ArtifactsStrip'
 
 // Status indicator with live pulse
 const StatusIndicator = ({ status }: { status: InstrumentStatus }) => {
@@ -75,6 +76,7 @@ const PerformanceMetric = ({
 // Instrument card component
 const InstrumentCard = ({ instrument }: { instrument: Instrument }) => {
   const [showDetails, setShowDetails] = useState(false)
+  const [showProvenance, setShowProvenance] = useState(false)
   const [liveData, setLiveData] = useState(instrument)
 
   // Simulate live data updates
@@ -104,6 +106,9 @@ const InstrumentCard = ({ instrument }: { instrument: Instrument }) => {
           <div>
             <h3 className="text-lg text-[#fff] group-hover:text-[#3FD3C6] transition-colors">
               {instrument.name}
+              {(instrument.status === 'testing' || instrument.status === 'calibrating') && (
+                <span className="ml-2 text-xs text-[#666]">(simulated)</span>
+              )}
             </h3>
             <p className="text-xs text-[#666] mt-1">{instrument.description}</p>
           </div>
@@ -183,13 +188,47 @@ const InstrumentCard = ({ instrument }: { instrument: Instrument }) => {
               <p className="text-sm text-[#fff] font-mono">{liveData.activeInstances}</p>
             </div>
           </div>
-          <button
-            onClick={() => setShowDetails(!showDetails)}
-            className="text-xs text-[#6666ff] hover:text-[#8888ff] transition-colors"
-          >
-            {showDetails ? 'Hide' : 'Show'} Details
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowProvenance(!showProvenance)}
+              className="text-xs text-[#3FD3C6] hover:text-[#3FD3C6]/80 transition-colors"
+            >
+              Provenance
+            </button>
+            <button
+              onClick={() => setShowDetails(!showDetails)}
+              className="text-xs text-[#6666ff] hover:text-[#8888ff] transition-colors"
+            >
+              {showDetails ? 'Hide' : 'Show'} Details
+            </button>
+          </div>
         </div>
+
+        {/* Provenance Information */}
+        {showProvenance && (
+          <div className="mt-3 p-3 bg-[#0a0a0a]/50 rounded border border-[#3FD3C6]/20">
+            <h4 className="text-xs text-[#3FD3C6] mb-2">Data Provenance</h4>
+            <div className="space-y-1 text-xs">
+              <div className="flex justify-between">
+                <span className="text-[#666]">Last sampled:</span>
+                <span className="text-[#aaa]">{new Date().toLocaleTimeString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#666]">Sampling window:</span>
+                <span className="text-[#aaa]">5 minute rolling</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#666]">Data source:</span>
+                <span className="text-[#aaa]">Prometheus</span>
+              </div>
+              <div className="mt-2 pt-2 border-t border-[#333]">
+                <code className="text-[#666] text-xs block">
+                  {`rate(instrument_ops_total{name="${instrument.name}"}[5m])`}
+                </code>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Expandable Details */}
@@ -402,6 +441,9 @@ export default function InstrumentsPage() {
             ))}
           </div>
         </section>
+
+        {/* Artifacts Strip */}
+        <ArtifactsStrip />
       </div>
     </main>
   )
