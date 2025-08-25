@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/swagger"
+	"github.com/gofiber/websocket/v2"
 	"github.com/joho/godotenv"
 	"github.com/patricksmith/highline-inventory/handlers"
 	"github.com/patricksmith/highline-inventory/database"
@@ -123,6 +124,9 @@ func main() {
 	// Migration route for creating activities table
 	api.Post("/admin/migrate", h.RunMigration)
 
+	// Photo migration route
+	api.Post("/admin/migrate-photos", h.RunPhotoMigration)
+
 	// Transaction routes
 	api.Get("/transactions", h.GetTransactions)
 	api.Post("/transactions", h.CreateTransaction)
@@ -153,6 +157,32 @@ func main() {
 
 	// Collaboration overview
 	api.Get("/collaboration/overview", h.GetCollaborationOverview)
+
+	// Photo batch capture endpoints
+	// WebSocket for real-time updates with upgrade check
+	app.Use("/ws", func(c *fiber.Ctx) error {
+		if websocket.IsWebSocketUpgrade(c) {
+			c.Locals("allowed", true)
+			return c.Next()
+		}
+		return fiber.ErrUpgradeRequired
+	})
+	app.Get("/ws/photos", websocket.New(h.PhotoHandler.HandleWebSocket))
+
+	// Photo sessions
+	api.Post("/photos/sessions", h.PhotoHandler.CreatePhotoSession)
+	api.Get("/photos/sessions/:id", h.PhotoHandler.GetPhotoSession)
+	api.Put("/photos/sessions/:id", h.PhotoHandler.UpdatePhotoSession)
+
+	// Photo uploads
+	api.Post("/items/:id/photos", h.PhotoHandler.UploadItemPhoto)
+	api.Post("/photos/batch/:sessionId", h.PhotoHandler.BatchUploadPhotos)
+
+	// Photo progress and room tracking
+	api.Get("/rooms/progress", h.PhotoHandler.GetRoomPhotoProgress)
+
+	// Serve photo files
+	api.Get("/photos/:resolution/:filename", h.PhotoHandler.ServePhoto)
 
 	// Start server
 	port := os.Getenv("PORT")

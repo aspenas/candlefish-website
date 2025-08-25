@@ -1,65 +1,13 @@
-# Netlify Configuration with Extensions
-# Generated: 20250823_211146
+# Minimal Netlify Configuration for Photo Capture System
+# Basic SPA deployment with security headers
 
 [build]
   command = "npm run build"
-  publish = ".next"
-  
+  publish = "dist"
+
 [build.environment]
   NODE_VERSION = "18"
-  NEXT_TELEMETRY_DISABLED = "1"
-
-# Performance Monitoring
-[[plugins]]
-  package = "@netlify/plugin-lighthouse"
-  [plugins.inputs]
-    audits = [
-      { url = "/", name = "Homepage" }
-    ]
-    [plugins.inputs.thresholds]
-      performance = 0.8
-      accessibility = 0.9
-      best-practices = 0.9
-      seo = 0.9
-
-# Next.js Optimization
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
-
-# Build Caching
-[[plugins]]
-  package = "netlify-plugin-cache-nextjs"
-
-# Image Optimization
-[[plugins]]
-  package = "netlify-plugin-image-optim"
-
-# SEO
-[[plugins]]
-  package = "netlify-plugin-submit-sitemap"
-  [plugins.inputs]
-    baseUrl = "https://inventory.candlefish.ai"
-    sitemapPath = "/sitemap.xml"
-
-# HTML Minification
-[[plugins]]
-  package = "netlify-plugin-minify-html"
-  [plugins.inputs.minifierOptions]
-    removeComments = true
-    collapseWhitespace = true
-    minifyCSS = true
-    minifyJS = true
-
-# 404 Prevention
-[[plugins]]
-  package = "netlify-plugin-no-more-404"
-  [plugins.inputs]
-    on404 = "error"
-    cacheKey = "404-plugin-cache"
-
-# Bundle Environment Variables
-[[plugins]]
-  package = "netlify-plugin-bundle-env"
+  VITE_API_URL = "https://5470-inventory.fly.dev/api/v1"
 
 # Security Headers
 [[headers]]
@@ -69,43 +17,11 @@
     X-Content-Type-Options = "nosniff"
     X-XSS-Protection = "1; mode=block"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://api.candlefish.ai"
+    Permissions-Policy = "camera=(self), microphone=(self), geolocation=(self)"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://5470-inventory.fly.dev wss://5470-inventory.fly.dev"
 
-# Cache Control
-[[headers]]
-  for = "/_next/static/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-[[headers]]
-  for = "/images/*"
-  [headers.values]
-    Cache-Control = "public, max-age=86400, must-revalidate"
-
-[[headers]]
-  for = "*.js"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-[[headers]]
-  for = "*.css"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-# Edge Functions (if applicable)
-[[edge_functions]]
-  path = "/api/edge/*"
-  function = "api-edge"
-
-# Redirects
+# SPA Redirects
 [[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
+  from = "/*"
+  to = "/index.html"
   status = 200
-  force = true
-
-# Performance optimizations
-[functions]
-  node_bundler = "esbuild"
-  

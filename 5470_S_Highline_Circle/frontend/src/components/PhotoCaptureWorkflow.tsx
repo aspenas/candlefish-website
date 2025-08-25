@@ -10,24 +10,36 @@ import {
   ArrowRightIcon,
   EyeIcon,
   TrashIcon,
-  CloudArrowUpIcon
+  CloudArrowUpIcon,
+  WifiIcon,
+  MapIcon,
+  SignalIcon
 } from '@heroicons/react/24/outline';
 import { Item, Room, PhotoSession, CapturedPhoto, PhotoAngle, PhotoCaptureSettings } from '../types';
 import { format } from '../utils/format';
 import CameraCapture from './CameraCapture';
+import VisualProgressMap from './VisualProgressMap';
+import RoomProgressTracker from './RoomProgressTracker';
+import { useMobileGestures, useCameraGestures, useDeviceOrientation } from '../hooks/useMobileGestures';
+import { usePhotoUploader } from '../services/photoAutoUploader';
+import { useWebSocketStatus, usePhotoUploadEvents, usePhotoSessionEvents } from '../services/websocketManager';
 
 interface PhotoCaptureWorkflowProps {
   items: Item[];
   rooms: Room[];
   onPhotosUpdated: (itemId: string, photos: CapturedPhoto[]) => void;
   onSessionSaved: (session: PhotoSession) => void;
+  selectedRoomId?: string;
+  onRoomSelected?: (roomId: string) => void;
 }
 
 const PhotoCaptureWorkflow: React.FC<PhotoCaptureWorkflowProps> = ({
   items,
   rooms,
   onPhotosUpdated,
-  onSessionSaved
+  onSessionSaved,
+  selectedRoomId,
+  onRoomSelected
 }) => {
   const [currentSession, setCurrentSession] = useState<PhotoSession | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<string>('');
@@ -38,13 +50,35 @@ const PhotoCaptureWorkflow: React.FC<PhotoCaptureWorkflowProps> = ({
     maxResolution: 1920,
     requireConfirmation: false,
     saveToLocal: true,
-    autoUpload: false
+    autoUpload: true // Enable auto-upload by default for iPhone
   });
   const [currentAngle, setCurrentAngle] = useState<PhotoAngle>('main');
   const [capturedPhotosForCurrentItem, setCapturedPhotosForCurrentItem] = useState<CapturedPhoto[]>([]);
   const [showSettings, setShowSettings] = useState(false);
-  const [captureMode, setCaptureMode] = useState<'batch' | 'qr' | 'bulk'>('batch');
+  const [captureMode, setCaptureMode] = useState<'batch' | 'qr' | 'bulk' | 'visual'>('visual');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [recentPhotos, setRecentPhotos] = useState<CapturedPhoto[]>([]);
+  const [uploadQueueVisible, setUploadQueueVisible] = useState(false);
+  const [qualityMode, setQualityMode] = useState<'high' | 'medium' | 'low'>('high');
+
+  // Mobile and gesture support
+  const cameraRef = useRef<HTMLDivElement>(null);
+  const { isGesturing } = useCameraGestures(cameraRef, {
+    onCapture: () => {
+      // Trigger photo capture
+      const captureButton = cameraRef.current?.querySelector('[data-capture-button]') as HTMLButtonElement;
+      if (captureButton && !captureButton.disabled) {
+        captureButton.click();
+      }
+    },
+    onNextItem: () => nextItem(),
+    onPreviousItem: () => previousItem(),
+    disabled: !isFullscreen || !currentSession
+  });
+
+  const orientation = useDeviceOrientation();
+  const { queuePhoto, progress: uploadProgress, queueStatus } = usePhotoUploader();
+  const { isConnected, connectionState, getStatusColor, getStatusText } = useWebSocketStatus();
 
   // Session management
   const startPhotoSession = useCallback((roomId: string) => {
@@ -143,6 +177,7 @@ const PhotoCaptureWorkflow: React.FC<PhotoCaptureWorkflowProps> = ({
   // Handle photo capture from camera
   const handlePhotoCapture = useCallback((photo: CapturedPhoto) => {
     setCapturedPhotosForCurrentItem(prev => [...prev, photo]);
+    setRecentPhotos(prev => [photo, ...prev.slice(0, 9)]); // Keep last 10 photos
 
     if (currentSession) {
       const updatedPhotos = new Map(currentSession.photos);
@@ -160,6 +195,16 @@ const PhotoCaptureWorkflow: React.FC<PhotoCaptureWorkflowProps> = ({
       onSessionSaved(updatedSession);
       onPhotosUpdated(photo.itemId, [...itemPhotos, photo]);
 
+      // Queue for auto-upload if enabled
+      if (settings.autoUpload) {
+        queuePhoto(photo, photo.itemId, 'normal');
+      }
+
+      // iPhone haptic feedback
+      if ('vibrate' in navigator) {
+        navigator.vibrate([50, 50, 50]); // Success pattern
+      }
+
       // Auto-advance if enabled
       if (settings.autoAdvance) {
         setTimeout(() => {
@@ -167,7 +212,7 @@ const PhotoCaptureWorkflow: React.FC<PhotoCaptureWorkflowProps> = ({
         }, 1500);
       }
     }
-  }, [currentSession, settings.autoAdvance, onSessionSaved, onPhotosUpdated]);
+  }, [currentSession, settings.autoAdvance, settings.autoUpload, onSessionSaved, onPhotosUpdated, queuePhoto]);
 
   // Navigate to next item
   const nextItem = useCallback(() => {
@@ -198,7 +243,58 @@ const PhotoCaptureWorkflow: React.FC<PhotoCaptureWorkflowProps> = ({
 
     setCapturedPhotosForCurrentItem([]);
     setCurrentAngle('main');
+
+    // Haptic feedback for navigation
+    if ('vibrate' in navigator) {
+      navigator.vibrate(10);
+    }
   }, [currentSession]);
+
+  // WebSocket event handlers
+  usePhotoUploadEvents((data) => {
+    console.log('Photo uploaded via WebSocket:', data);
+    // Update UI to reflect uploaded photo
+  });
+
+  usePhotoSessionEvents(
+    (data) => {
+      console.log('Photo session started:', data);
+    },
+    (data) => {
+      console.log('Photo session ended:', data);
+    }
+  );
+
+  // Handle room selection from visual progress map
+  const handleRoomSelected = useCallback((roomId: string) => {
+    if (onRoomSelected) {
+      onRoomSelected(roomId);
+    }
+    startPhotoSession(roomId);
+  }, [onRoomSelected]);
+
+  // Adjust quality based on connection
+  useEffect(() => {
+    if (!isConnected && qualityMode === 'high') {
+      setQualityMode('medium');
+    } else if (isConnected && navigator.connection) {
+      const connection = navigator.connection as any;
+      if (connection.effectiveType === '4g' && qualityMode !== 'high') {
+        setQualityMode('high');
+      } else if (connection.effectiveType === '3g' && qualityMode !== 'medium') {
+        setQualityMode('medium');
+      }
+    }
+  }, [isConnected, qualityMode]);
+
+  // Update settings based on quality mode
+  useEffect(() => {
+    setSettings(prev => ({
+      ...prev,
+      compressionQuality: qualityMode === 'high' ? 0.9 : qualityMode === 'medium' ? 0.7 : 0.5,
+      maxResolution: qualityMode === 'high' ? 2560 : qualityMode === 'medium' ? 1920 : 1280
+    }));
+  }, [qualityMode]);
 
   return (
     <div className={`${isFullscreen ? 'fixed inset-0 z-50 bg-black' : 'space-y-6'}`}>
@@ -273,7 +369,22 @@ const PhotoCaptureWorkflow: React.FC<PhotoCaptureWorkflowProps> = ({
 
           {/* Capture Mode Selection */}
           <div className="px-6 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <button
+                onClick={() => setCaptureMode('visual')}
+                className={`p-4 border rounded-lg text-left hover:border-indigo-500 transition-colors ${
+                  captureMode === 'visual' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <MapIcon className="h-8 w-8 text-indigo-600" />
+                  <div>
+                    <h4 className="font-medium text-gray-900">Visual Progress</h4>
+                    <p className="text-sm text-gray-500">Interactive floor plan</p>
+                  </div>
+                </div>
+              </button>
+
               <button
                 onClick={() => setCaptureMode('batch')}
                 className={`p-4 border rounded-lg text-left hover:border-indigo-500 transition-colors ${
@@ -321,6 +432,107 @@ const PhotoCaptureWorkflow: React.FC<PhotoCaptureWorkflowProps> = ({
             </div>
           </div>
 
+          {/* Connection Status & Quality Settings - Mobile Optimized */}
+          <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              {/* Connection Status */}
+              <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm ${
+                isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${
+                  isConnected ? 'bg-green-500' : 'bg-red-500'
+                }`}></div>
+                <WifiIcon className="h-4 w-4" />
+                <span>{getStatusText()}</span>
+              </div>
+
+              {/* Quality Mode */}
+              <div className="flex items-center space-x-2">
+                <SignalIcon className="h-4 w-4 text-gray-500" />
+                <select
+                  value={qualityMode}
+                  onChange={(e) => setQualityMode(e.target.value as any)}
+                  className="text-xs border-gray-300 rounded px-2 py-1"
+                >
+                  <option value="high">High Quality</option>
+                  <option value="medium">Medium Quality</option>
+                  <option value="low">Low Quality</option>
+                </select>
+              </div>
+
+              {/* Upload Queue Status */}
+              {queueStatus.total > 0 && (
+                <button
+                  onClick={() => setUploadQueueVisible(!uploadQueueVisible)}
+                  className="flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm"
+                >
+                  <CloudArrowUpIcon className="h-4 w-4" />
+                  <span>{queueStatus.active}/{queueStatus.total}</span>
+                </button>
+              )}
+            </div>
+
+            {/* Upload Progress Details */}
+            {uploadQueueVisible && uploadProgress.length > 0 && (
+              <div className="mt-3 space-y-2 max-h-32 overflow-y-auto">
+                {uploadProgress.slice(0, 3).map(item => (
+                  <div key={item.id} className="flex items-center space-x-3 text-xs">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-gray-600">Photo {item.id.slice(-6)}</span>
+                        <span className="text-gray-500">{item.progress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-1">
+                        <div
+                          className={`h-1 rounded-full transition-all ${
+                            item.status === 'completed' ? 'bg-green-500' :
+                            item.status === 'failed' ? 'bg-red-500' : 'bg-blue-500'
+                          }`}
+                          style={{ width: `${item.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {uploadProgress.length > 3 && (
+                  <div className="text-xs text-gray-500 text-center">
+                    +{uploadProgress.length - 3} more uploads
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Visual Progress Map Mode */}
+          {captureMode === 'visual' && (
+            <div className="px-6 pb-6">
+              <VisualProgressMap
+                rooms={rooms}
+                items={items}
+                onRoomSelected={handleRoomSelected}
+                selectedRoomId={selectedRoomId}
+                className=""
+              />
+
+              {selectedRoomId && (
+                <div className="mt-6">
+                  <RoomProgressTracker
+                    room={rooms.find(r => r.id === selectedRoomId)!}
+                    items={items.filter(item => item.room_id === selectedRoomId)}
+                    onStartPhotoSession={(itemId) => {
+                      const item = items.find(i => i.id === itemId);
+                      if (item) {
+                        startPhotoSession(item.room_id);
+                      }
+                    }}
+                    recentPhotos={recentPhotos}
+                    className="mt-4"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Room Selection for Batch Mode */}
           {captureMode === 'batch' && (
             <div className="px-6 pb-6">
@@ -339,6 +551,8 @@ const PhotoCaptureWorkflow: React.FC<PhotoCaptureWorkflowProps> = ({
                         roomItems.length === 0
                           ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
                           : 'border-gray-300 hover:border-indigo-500 hover:bg-indigo-50'
+                      } ${
+                        room.id === selectedRoomId ? 'border-indigo-500 bg-indigo-50' : ''
                       }`}
                     >
                       <div className="flex items-center justify-between mb-2">
@@ -362,7 +576,9 @@ const PhotoCaptureWorkflow: React.FC<PhotoCaptureWorkflowProps> = ({
         </div>
       ) : (
         /* Active Photo Session */
-        <div className="h-screen flex flex-col bg-black text-white">
+        <div className={`h-screen flex flex-col bg-black text-white ${
+          orientation.isPortrait ? 'portrait' : 'landscape'
+        }`} ref={cameraRef}>
           {/* Session Header */}
           <div className="flex items-center justify-between px-4 py-2 bg-gray-900">
             <div className="flex items-center space-x-4">
@@ -464,7 +680,49 @@ const PhotoCaptureWorkflow: React.FC<PhotoCaptureWorkflowProps> = ({
 
                 {/* Camera Capture Area */}
                 <div className="flex-1 flex flex-col">
-                  <div className="flex-1 bg-black relative">
+                  <div className="flex-1 bg-black relative touch-manipulation">
+                    {/* Gesture Instructions for iPhone */}
+                    {isGesturing && (
+                      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 bg-black bg-opacity-75 text-white px-3 py-1 rounded-full text-sm">
+                        Gesture detected
+                      </div>
+                    )}
+
+                    {/* Connection Status Indicator */}
+                    <div className={`absolute top-4 right-4 z-20 flex items-center space-x-2 px-3 py-1 rounded-full text-sm ${
+                      isConnected ? 'bg-green-500 bg-opacity-80' : 'bg-red-500 bg-opacity-80'
+                    }`}>
+                      <div className={`w-2 h-2 rounded-full ${
+                        isConnected ? 'bg-white' : 'bg-white animate-pulse'
+                      }`}></div>
+                      <span className="text-white">{getStatusText()}</span>
+                    </div>
+
+                    {/* Upload Queue Indicator */}
+                    {queueStatus.total > 0 && (
+                      <div className="absolute top-14 right-4 z-20 bg-blue-500 bg-opacity-80 text-white px-3 py-1 rounded-full text-sm">
+                        {queueStatus.active > 0 ? (
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 rounded-full bg-white animate-pulse"></div>
+                            <span>Uploading {queueStatus.active}/{queueStatus.total}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center space-x-2">
+                            <CheckCircleIcon className="h-3 w-3" />
+                            <span>Queue: {queueStatus.total}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Orientation Guide for iPhone */}
+                    {!orientation.isPortrait && currentItem && (
+                      <div className="absolute bottom-20 left-4 z-20 bg-yellow-500 bg-opacity-80 text-white px-3 py-1 rounded-full text-sm flex items-center space-x-2">
+                        <div className="w-4 h-4 border-2 border-white rounded transform rotate-90"></div>
+                        <span>Rotate to portrait for better framing</span>
+                      </div>
+                    )}
+
                     {currentItem && (
                       <CameraCapture
                         onPhotoCapture={handlePhotoCapture}
@@ -473,10 +731,30 @@ const PhotoCaptureWorkflow: React.FC<PhotoCaptureWorkflowProps> = ({
                         autoAdvance={settings.autoAdvance}
                         settings={{
                           compressionQuality: settings.compressionQuality,
-                          maxResolution: settings.maxResolution
+                          maxResolution: settings.maxResolution,
+                          // iPhone optimizations
+                          enableTouchToFocus: true,
+                          enablePinchToZoom: true,
+                          enableVolumeCapture: true,
+                          preferBackCamera: true,
+                          enableImageStabilization: true
                         }}
                       />
                     )}
+
+                    {/* Swipe Instructions */}
+                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10 text-white text-center">
+                      <div className="bg-black bg-opacity-50 px-4 py-2 rounded-lg text-sm">
+                        <div className="flex items-center justify-center space-x-4 mb-1">
+                          <span>← Previous</span>
+                          <span>Tap to Capture</span>
+                          <span>Next →</span>
+                        </div>
+                        <div className="text-xs text-gray-300">
+                          Double tap: Toggle flash • Pinch: Zoom
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Capture Controls */}
@@ -520,35 +798,51 @@ const PhotoCaptureWorkflow: React.FC<PhotoCaptureWorkflowProps> = ({
                       </div>
                     )}
 
-                    {/* Navigation */}
+                    {/* Navigation - iPhone Optimized */}
                     <div className="flex items-center justify-between">
                       <button
                         onClick={previousItem}
                         disabled={currentSession.currentItemIndex === 0}
-                        className="flex items-center space-x-2 text-gray-400 hover:text-white disabled:opacity-50"
+                        className="flex items-center space-x-2 text-gray-400 hover:text-white disabled:opacity-50 touch-manipulation p-3 -m-3"
                       >
-                        <ArrowLeftIcon className="h-5 w-5" />
-                        <span>Previous</span>
+                        <ArrowLeftIcon className="h-6 w-6" />
+                        <span className="hidden sm:inline">Previous</span>
                       </button>
 
-                      <div className="text-center">
-                        <div className="text-white font-medium">
+                      <div className="text-center flex-1 mx-4">
+                        <div className="text-white font-medium text-lg">
                           {currentItem?.name}
                         </div>
-                        <div className="text-gray-400 text-sm">
-                          {capturedPhotosForCurrentItem.length} photos captured
+                        <div className="text-gray-400 text-sm flex items-center justify-center space-x-2">
+                          <PhotoIcon className="h-4 w-4" />
+                          <span>{capturedPhotosForCurrentItem.length} captured</span>
+                          {settings.autoUpload && queueStatus.active > 0 && (
+                            <div className="flex items-center space-x-1">
+                              <CloudArrowUpIcon className="h-4 w-4 animate-pulse" />
+                              <span>Uploading...</span>
+                            </div>
+                          )}
                         </div>
                       </div>
 
                       <button
                         onClick={nextItem}
                         disabled={currentSession.currentItemIndex >= currentSession.itemsTotal - 1}
-                        className="flex items-center space-x-2 text-gray-400 hover:text-white disabled:opacity-50"
+                        className="flex items-center space-x-2 text-gray-400 hover:text-white disabled:opacity-50 touch-manipulation p-3 -m-3"
                       >
-                        <span>Next</span>
-                        <ArrowRightIcon className="h-5 w-5" />
+                        <span className="hidden sm:inline">Next</span>
+                        <ArrowRightIcon className="h-6 w-6" />
                       </button>
                     </div>
+
+                    {/* iPhone Specific Controls */}
+                    {/iPhone|iPad|iPod/.test(navigator.userAgent) && (
+                      <div className="mt-2 text-center">
+                        <div className="bg-black bg-opacity-50 inline-block px-3 py-1 rounded text-xs text-gray-300">
+                          Volume buttons work as shutter • Swipe for navigation
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -559,5 +853,44 @@ const PhotoCaptureWorkflow: React.FC<PhotoCaptureWorkflowProps> = ({
     </div>
   );
 };
+
+// Add iPhone-specific CSS optimizations
+if (typeof document !== 'undefined') {
+  const iPhoneStyles = document.createElement('style');
+  iPhoneStyles.textContent = `
+    /* iPhone Safari optimizations */
+    .touch-manipulation {
+      touch-action: manipulation;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    /* Prevent zoom on double tap while allowing gestures */
+    .portrait {
+      -webkit-text-size-adjust: none;
+      text-size-adjust: none;
+    }
+
+    /* Smooth camera transitions */
+    @media screen and (max-width: 768px) {
+      .camera-container {
+        -webkit-transform: translateZ(0);
+        transform: translateZ(0);
+        will-change: transform;
+      }
+    }
+
+    /* iPhone notch safe area */
+    @media screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) {
+      .h-screen {
+        height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+    }
+  `;
+  document.head.appendChild(iPhoneStyles);
+}
 
 export default PhotoCaptureWorkflow;

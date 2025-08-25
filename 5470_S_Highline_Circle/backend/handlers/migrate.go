@@ -4,6 +4,96 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+// RunPhotoMigration creates the photo batch capture tables
+func (h *Handler) RunPhotoMigration(c *fiber.Ctx) error {
+	if h.db == nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Database connection not available"})
+	}
+
+	// Create photo-related enums
+	_, err := h.db.Exec(`
+		DO $$
+		BEGIN
+			IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'photo_session_status') THEN
+				CREATE TYPE photo_session_status AS ENUM ('active', 'paused', 'completed', 'cancelled');
+			END IF;
+		END $$;
+	`)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	_, err = h.db.Exec(`
+		DO $$
+		BEGIN
+			IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'photo_angle') THEN
+				CREATE TYPE photo_angle AS ENUM ('front', 'back', 'left', 'right', 'top', 'detail', 'contextual', 'overview');
+			END IF;
+		END $$;
+	`)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	_, err = h.db.Exec(`
+		DO $$
+		BEGIN
+			IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'photo_resolution') THEN
+				CREATE TYPE photo_resolution AS ENUM ('thumbnail', 'web', 'full');
+			END IF;
+		END $$;
+	`)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	// Create photo sessions table
+	_, err = h.db.Exec(`
+		CREATE TABLE IF NOT EXISTS photo_sessions (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			room_id UUID REFERENCES rooms(id) ON DELETE SET NULL,
+			name VARCHAR(255) NOT NULL,
+			description TEXT,
+			status photo_session_status DEFAULT 'active',
+			total_photos INTEGER DEFAULT 0,
+			uploaded_photos INTEGER DEFAULT 0,
+			processed_photos INTEGER DEFAULT 0,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			completed_at TIMESTAMP
+		)
+	`)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	// Create photo uploads table
+	_, err = h.db.Exec(`
+		CREATE TABLE IF NOT EXISTS photo_uploads (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			session_id UUID REFERENCES photo_sessions(id) ON DELETE CASCADE,
+			item_id UUID REFERENCES items(id) ON DELETE SET NULL,
+			filename VARCHAR(255) NOT NULL,
+			original_name VARCHAR(255) NOT NULL,
+			mime_type VARCHAR(100) NOT NULL,
+			file_size BIGINT NOT NULL,
+			angle photo_angle,
+			caption TEXT,
+			is_primary BOOLEAN DEFAULT FALSE,
+			uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			processed_at TIMESTAMP
+		)
+	`)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "Photo migration completed successfully",
+	})
+}
+
 // RunMigration creates the activities table and collaboration tables if they don't exist
 func (h *Handler) RunMigration(c *fiber.Ctx) error {
 	if h.db == nil {

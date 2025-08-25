@@ -1,106 +1,114 @@
-# Multi-stage Docker build for Netlify Extension Management Frontend Dashboard
-# Optimized for production deployment with security best practices
+# Multi-stage build for React frontend
+FROM node:20-alpine AS base
+
+# Install system dependencies
+RUN apk add --no-cache \
+    libc6-compat \
+    git
+
+WORKDIR /app
+
+# Dependencies stage
+FROM base AS deps
+
+# Copy package files
+COPY 5470_S_Highline_Circle/frontend/package*.json ./
+
+# Install dependencies with npm ci for faster, reliable builds
+RUN npm ci --only=production && \
+    cp -R node_modules prod_node_modules && \
+    npm ci
+
+# Development stage
+FROM base AS development
+
+WORKDIR /app
+
+# Copy all dependencies
+COPY --from=deps /app/node_modules ./node_modules
+COPY 5470_S_Highline_Circle/frontend/ .
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
+
+USER nextjs
+
+EXPOSE 5173
+
+# Development server with hot reload
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
 # Build stage
-FROM node:18-alpine AS builder
+FROM base AS builder
 
-# Build arguments
-ARG NODE_VERSION=18
+WORKDIR /app
+
+# Copy dependencies and source
+COPY --from=deps /app/node_modules ./node_modules
+COPY 5470_S_Highline_Circle/frontend/ .
+
+# Build arguments for environment variables
+ARG VITE_API_URL
+ARG VITE_APP_VERSION
 ARG BUILD_DATE
 ARG VCS_REF
 
-# Add build metadata
-LABEL build.date=$BUILD_DATE \
-      build.vcs-ref=$VCS_REF \
-      build.version="1.0.0"
+ENV VITE_API_URL=${VITE_API_URL:-http://localhost:8080/api/v1}
+ENV VITE_APP_VERSION=${VITE_APP_VERSION:-unknown}
+ENV VITE_BUILD_DATE=${BUILD_DATE}
+ENV VITE_GIT_COMMIT=${VCS_REF}
 
-# Security: Create non-root user
-RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
+# Build application
+RUN npm run build
 
-# Set working directory
-WORKDIR /app
+# Test stage
+FROM builder AS test
 
-# Copy package files for dependency installation
-COPY brand/website/package*.json ./
-COPY brand/website/tsconfig.json ./
-COPY brand/website/next.config.js ./
-COPY brand/website/tailwind.config.js ./
-COPY brand/website/postcss.config.js ./
+# Install test dependencies
+RUN npm ci
 
-# Install dependencies with security optimizations
-RUN npm ci --include=dev --no-audit --ignore-scripts && \
-    npm cache clean --force
+# Run tests
+RUN npm run type-check
+RUN npm run lint
+# RUN npm run test:ci (if tests exist)
 
-# Copy source code
-COPY brand/website/src ./src
-COPY brand/website/app ./app
-COPY brand/website/components ./components
-COPY brand/website/lib ./lib
-COPY brand/website/hooks ./hooks
-COPY brand/website/public ./public
-COPY brand/website/styles ./styles
+# Production stage
+FROM nginx:alpine AS production
 
-# Build Next.js application with static export
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-ENV GENERATE_SOURCEMAP=false
+# Install curl for health checks
+RUN apk add --no-cache curl
 
-RUN npm run build && npm run export
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
 
-# Production stage - Nginx for serving static files
-FROM nginx:1.25-alpine AS production
+# Copy nginx configuration
+COPY deployment/docker/nginx/frontend.conf /etc/nginx/conf.d/default.conf
 
-# Security updates
-RUN apk upgrade --no-cache && \
-    apk add --no-cache \
-    curl \
-    ca-certificates \
-    tzdata && \
-    rm -rf /var/cache/apk/*
+# Copy built application
+COPY --from=builder --chown=nextjs:nodejs /app/dist /usr/share/nginx/html
 
-# Remove default nginx config and files
-RUN rm /etc/nginx/conf.d/default.conf
-RUN rm -rf /usr/share/nginx/html/*
+# Copy security headers configuration
+COPY deployment/docker/nginx/security-headers.conf /etc/nginx/conf.d/security-headers.conf
+COPY deployment/docker/nginx/compression.conf /etc/nginx/conf.d/compression.conf
 
-# Copy built static files
-COPY --from=builder /app/out /usr/share/nginx/html
-
-# Copy custom nginx configuration
-COPY deployment/docker/nginx/netlify-extension.conf /etc/nginx/conf.d/netlify-extension.conf
-
-# Create nginx user and set permissions
-RUN addgroup -g 101 -S nginx || true && \
-    adduser -S -D -H -u 101 -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx nginx || true && \
-    chown -R nginx:nginx /usr/share/nginx/html && \
-    chown -R nginx:nginx /var/cache/nginx && \
-    chown -R nginx:nginx /var/log/nginx && \
-    chown -R nginx:nginx /etc/nginx/conf.d
-
-# Switch to non-root user
-USER nginx
-
-# Environment variables
-ENV NGINX_WORKER_PROCESSES=auto \
-    NGINX_WORKER_CONNECTIONS=1024 \
-    NGINX_KEEPALIVE_TIMEOUT=65
+# Add metadata labels
+LABEL maintainer="Patrick Smith <patrick@candlefish.ai>"
+LABEL org.opencontainers.image.title="Inventory Frontend"
+LABEL org.opencontainers.image.description="React frontend for inventory management system"
+LABEL org.opencontainers.image.vendor="Candlefish AI"
+LABEL org.opencontainers.image.version="${VITE_APP_VERSION}"
+LABEL org.opencontainers.image.created="${BUILD_DATE}"
+LABEL org.opencontainers.image.revision="${VCS_REF}"
+LABEL org.opencontainers.image.source="https://github.com/candlefish-ai/candlefish-ai"
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:80/health.html || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:80/health || exit 1
 
 # Expose port
 EXPOSE 80
 
-# Start nginx
+# Run nginx
 CMD ["nginx", "-g", "daemon off;"]
-
-# Security metadata
-LABEL org.opencontainers.image.title="Netlify Extension Management Dashboard" \
-      org.opencontainers.image.description="React-based dashboard for Netlify site management and monitoring" \
-      org.opencontainers.image.version="1.0.0" \
-      org.opencontainers.image.vendor="Candlefish Enterprise" \
-      org.opencontainers.image.licenses="MIT" \
-      org.opencontainers.image.source="https://github.com/candlefish-enterprise/candlefish-ai" \
-      org.opencontainers.image.documentation="https://docs.candlefish.ai/netlify-extension" \
-      org.opencontainers.image.created=$BUILD_DATE \
-      org.opencontainers.image.revision=$VCS_REF

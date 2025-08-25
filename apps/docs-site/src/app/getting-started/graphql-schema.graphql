@@ -1,0 +1,137 @@
+# Candlefish GraphQL Schema Documentation
+
+# Custom Scalars
+scalar DateTime
+scalar JSON
+
+# Agent Type: Represents an intelligent agent in the system
+type Agent {
+  "Unique identifier for the agent"
+  agent_id: ID!
+
+  "Name of the agent"
+  name: String!
+
+  "Platform where the agent operates"
+  platform: String!
+
+  "List of capabilities the agent possesses"
+  capabilities: [String!]!
+
+  "Timestamp of agent creation"
+  created_at: DateTime!
+
+  "Timestamp of last agent update"
+  updated_at: DateTime!
+
+  "Additional metadata for the agent"
+  metadata: JSON
+}
+
+# Paginated Agent Connection for efficient data retrieval
+type AgentConnection {
+  "List of agent edges"
+  edges: [AgentEdge!]!
+
+  "Pagination information"
+  pageInfo: PageInfo!
+
+  "Total number of agents"
+  totalCount: Int!
+}
+
+# Agent Edge for cursor-based pagination
+type AgentEdge {
+  "The agent node"
+  node: Agent!
+
+  "Cursor for pagination"
+  cursor: String!
+}
+
+# Pagination Information
+type PageInfo {
+  "Whether there are more pages after the current page"
+  hasNextPage: Boolean!
+
+  "Whether there are pages before the current page"
+  hasPreviousPage: Boolean!
+
+  "Cursor for the first item in the current page"
+  startCursor: String
+
+  "Cursor for the last item in the current page"
+  endCursor: String
+}
+
+# Input for creating or updating an agent
+input AgentInput {
+  "Name of the agent"
+  name: String!
+
+  "Platform of the agent"
+  platform: String!
+
+  "Agent capabilities"
+  capabilities: [String!]!
+
+  "Additional metadata"
+  metadata: JSON
+}
+
+# Query Operations
+type Query {
+  "Retrieve a list of agents with optional filtering and pagination"
+  agents(
+    "Number of agents to retrieve"
+    first: Int,
+
+    "Cursor for pagination"
+    after: String,
+
+    "Filter agents by platform"
+    platform: String
+  ): AgentConnection!
+
+  "Retrieve a specific agent by ID"
+  agent(
+    "Unique agent identifier"
+    id: ID!
+  ): Agent
+
+  "Health check endpoint"
+  health: String!
+}
+
+# Mutation Operations
+type Mutation {
+  "Register a new agent in the system"
+  registerAgent(
+    "Agent registration details"
+    input: AgentInput!
+  ): Agent!
+
+  "Update an existing agent's information"
+  updateAgent(
+    "ID of the agent to update"
+    id: ID!,
+
+    "Updated agent details"
+    input: AgentInput!
+  ): Agent!
+
+  "Delete an agent from the system"
+  deleteAgent(
+    "ID of the agent to delete"
+    id: ID!
+  ): Boolean!
+}
+
+# Real-time Subscriptions
+type Subscription {
+  "Subscribe to new agent registrations"
+  agentRegistered: Agent!
+
+  "Subscribe to agent updates"
+  agentUpdated: Agent!
+}

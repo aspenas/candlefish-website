@@ -21,6 +21,7 @@
     "declarationMap": true,
     "outDir": "./dist",
     "rootDir": "./src",
+    "types": [],
     "plugins": [
       {
         "name": "next"

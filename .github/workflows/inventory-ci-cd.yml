@@ -1,0 +1,416 @@
+name: Inventory Management System CI/CD
+
+on:
+  push:
+    branches: [ main, develop, production-deployment-* ]
+    paths:
+      - '5470_S_Highline_Circle/**'
+      - '.github/workflows/inventory-ci-cd.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '5470_S_Highline_Circle/**'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/inventory
+  AWS_REGION: us-east-1
+  CLUSTER_NAME: candlefish-production
+
+jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.changes.outputs.backend }}
+      frontend: ${{ steps.changes.outputs.frontend }}
+      database: ${{ steps.changes.outputs.database }}
+      mobile: ${{ steps.changes.outputs.mobile }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            backend:
+              - '5470_S_Highline_Circle/backend/**'
+              - '5470_S_Highline_Circle/docker-compose.yml'
+            frontend:
+              - '5470_S_Highline_Circle/frontend/**'
+            database:
+              - '5470_S_Highline_Circle/database/**'
+              - '5470_S_Highline_Circle/scripts/**'
+            mobile:
+              - '5470_S_Highline_Circle/mobile/**'
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '5470_S_Highline_Circle'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true' || github.event_name == 'push'
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+          POSTGRES_USER: test_user
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('5470_S_Highline_Circle/backend/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
+
+      - name: Install dependencies
+        working-directory: 5470_S_Highline_Circle/backend
+        run: go mod download
+
+      - name: Run tests
+        working-directory: 5470_S_Highline_Circle/backend
+        env:
+          DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db?sslmode=disable
+          REDIS_URL: redis://localhost:6379
+        run: |
+          go test -v -race -coverprofile=coverage.out ./...
+          go tool cover -html=coverage.out -o coverage.html
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./5470_S_Highline_Circle/backend/coverage.out
+          flags: backend
+
+  test-frontend:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true' || github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 5470_S_Highline_Circle/frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: 5470_S_Highline_Circle/frontend
+        run: npm ci
+
+      - name: Run type check
+        working-directory: 5470_S_Highline_Circle/frontend
+        run: npm run type-check
+
+      - name: Run linter
+        working-directory: 5470_S_Highline_Circle/frontend
+        run: npm run lint
+
+      - name: Run tests
+        working-directory: 5470_S_Highline_Circle/frontend
+        run: npm test -- --coverage
+
+      - name: Build application
+        working-directory: 5470_S_Highline_Circle/frontend
+        run: npm run build
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./5470_S_Highline_Circle/frontend/coverage/lcov.info
+          flags: frontend
+
+  build-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend, security-scan]
+    if: always() && (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped') && (needs.test-frontend.result == 'success' || needs.test-frontend.result == 'skipped')
+    strategy:
+      matrix:
+        component: [backend, frontend, mobile]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.component }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./5470_S_Highline_Circle
+          file: ./deployment/docker/Dockerfile.${{ matrix.component }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+            BUILD_DATE=${{ steps.meta.outputs.created }}
+            VCS_REF=${{ github.sha }}
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-images
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment: staging
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
+
+      - name: Deploy to staging
+        run: |
+          # Update image tags in Kubernetes manifests
+          IMAGE_TAG=${{ github.sha }}
+          sed -i "s|IMAGE_TAG|${IMAGE_TAG}|g" deployment/k8s/staging/*.yaml
+
+          # Apply Kubernetes manifests
+          kubectl apply -f deployment/k8s/staging/ -n inventory-staging
+
+          # Wait for rollout
+          kubectl rollout status deployment/inventory-backend -n inventory-staging --timeout=300s
+          kubectl rollout status deployment/inventory-frontend -n inventory-staging --timeout=300s
+
+      - name: Run health checks
+        run: |
+          sleep 30
+          kubectl get pods -n inventory-staging
+          # Add health check endpoints here
+
+      - name: Run smoke tests
+        working-directory: 5470_S_Highline_Circle
+        run: |
+          npm install -g newman
+          newman run tests/smoke-tests.json \
+            --environment tests/staging-environment.json \
+            --reporters cli,junit \
+            --reporter-junit-export staging-test-results.xml
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build-images
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install kubectl and Argo Rollouts
+        run: |
+          # Install kubectl
+          curl -LO "https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
+          # Install Argo Rollouts CLI
+          curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
+          chmod +x kubectl-argo-rollouts-linux-amd64
+          sudo mv kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
+
+      - name: Blue-Green Deployment
+        run: |
+          # Update image tags in Rollout manifests
+          IMAGE_TAG=${{ github.sha }}
+          sed -i "s|IMAGE_TAG|${IMAGE_TAG}|g" deployment/k8s/production/*.yaml
+
+          # Apply Rollout manifests
+          kubectl apply -f deployment/k8s/production/ -n inventory-production
+
+          # Start rollout
+          kubectl argo rollouts set image inventory-backend-rollout \
+            backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }} \
+            -n inventory-production
+
+          kubectl argo rollouts set image inventory-frontend-rollout \
+            frontend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }} \
+            -n inventory-production
+
+          # Wait for analysis phase
+          kubectl argo rollouts wait inventory-backend-rollout \
+            --for=condition=Progressing \
+            --timeout=600s \
+            -n inventory-production
+
+      - name: Production Health Checks
+        run: |
+          # Wait for services to be ready
+          sleep 60
+
+          # Run comprehensive health checks
+          scripts/production-health-check.sh
+
+          # Run performance tests
+          scripts/performance-test.sh
+
+      - name: Promote or Rollback
+        run: |
+          # Check if health checks passed
+          if [ -f "/tmp/health_check_failed" ]; then
+            echo "Health checks failed, rolling back"
+            kubectl argo rollouts abort inventory-backend-rollout -n inventory-production
+            kubectl argo rollouts abort inventory-frontend-rollout -n inventory-production
+            exit 1
+          else
+            echo "Health checks passed, promoting"
+            kubectl argo rollouts promote inventory-backend-rollout -n inventory-production
+            kubectl argo rollouts promote inventory-frontend-rollout -n inventory-production
+          fi
+
+  e2e-tests:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright
+        working-directory: 5470_S_Highline_Circle
+        run: |
+          npm install @playwright/test
+          npx playwright install --with-deps
+
+      - name: Run E2E tests
+        working-directory: 5470_S_Highline_Circle
+        env:
+          BASE_URL: https://inventory-staging.candlefish.ai
+        run: |
+          npx playwright test
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: 5470_S_Highline_Circle/playwright-report/
+
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run K6 Load Tests
+        uses: grafana/k6-action@v0.3.1
+        with:
+          filename: 5470_S_Highline_Circle/tests/k6-load-test.js
+        env:
+          BASE_URL: https://inventory-staging.candlefish.ai
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k6-results
+          path: k6-results.json
+
+  notify:
+    name: Notify Teams
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+
+    steps:
+      - name: Slack Notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow

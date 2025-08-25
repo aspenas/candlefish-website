@@ -1,110 +1,64 @@
-# Multi-stage Python build for FastAPI backend
-FROM python:3.12-slim AS base
+# Multi-stage build for Go backend
+FROM golang:1.21-alpine AS builder
 
-# Set environment variables
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    POETRY_VERSION=1.7.1
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates tzdata
 
-# Install system dependencies and security updates
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+# Create app directory
+WORKDIR /build
 
-# Install Poetry
-RUN pip install poetry==$POETRY_VERSION
+# Copy go mod files
+COPY 5470_S_Highline_Circle/backend/go.mod 5470_S_Highline_Circle/backend/go.sum ./
 
-# Dependencies stage
-FROM base AS deps
-WORKDIR /app
+# Download dependencies
+RUN go mod download && go mod verify
 
-# Copy poetry files
-COPY pyproject.toml poetry.lock ./
+# Copy source code
+COPY 5470_S_Highline_Circle/backend/ .
 
-# Configure poetry
-RUN poetry config virtualenvs.create false
+# Build arguments for versioning
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION=unknown
 
-# Install dependencies
-RUN poetry install --only=main --no-dev
-
-# Development stage
-FROM base AS development
-WORKDIR /app
-
-# Install all dependencies including dev
-COPY pyproject.toml poetry.lock ./
-RUN poetry config virtualenvs.create false && \
-    poetry install
-
-# Copy application code
-COPY . .
-
-# Create non-root user for security
-RUN groupadd -r appuser && useradd -r -g appuser appuser
-RUN chown -R appuser:appuser /app
-USER appuser
-
-# Expose port
-EXPOSE 8000
-
-# Start development server with hot reload
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
-
-# Test stage
-FROM development AS test
-USER root
-WORKDIR /app
-
-# Run tests with coverage
-RUN pytest --cov=src --cov-report=xml --cov-report=html
-
-# Run security checks
-RUN bandit -r src/
-
-# Run code quality checks
-RUN black --check src/
-RUN isort --check-only src/
-RUN flake8 src/
+# Build the application with optimizations
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -a -installsuffix cgo \
+    -ldflags="-w -s \
+    -X main.version=${VERSION} \
+    -X main.buildDate=${BUILD_DATE} \
+    -X main.gitCommit=${VCS_REF}" \
+    -o inventory-backend main.go
 
 # Production stage
-FROM base AS production
-WORKDIR /app
+FROM scratch
 
-# Copy installed dependencies from deps stage
-COPY --from=deps /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
-COPY --from=deps /usr/local/bin /usr/local/bin
+# Copy timezone data
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-# Copy application code
-COPY src/ ./src/
-COPY alembic/ ./alembic/
-COPY alembic.ini ./
-COPY pyproject.toml poetry.lock ./
+# Copy binary
+COPY --from=builder /build/inventory-backend /inventory-backend
 
-# Create non-root user for security
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+# Add metadata labels
+LABEL maintainer="Patrick Smith <patrick@candlefish.ai>"
+LABEL org.opencontainers.image.title="Inventory Backend API"
+LABEL org.opencontainers.image.description="High-performance Go backend for inventory management"
+LABEL org.opencontainers.image.vendor="Candlefish AI"
+LABEL org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.created="${BUILD_DATE}"
+LABEL org.opencontainers.image.revision="${VCS_REF}"
+LABEL org.opencontainers.image.source="https://github.com/candlefish-ai/candlefish-ai"
 
-# Create necessary directories
-RUN mkdir -p /app/logs && \
-    chown -R appuser:appuser /app
+# Run as non-root user for security
+USER 65534:65534
 
-# Switch to non-root user
-USER appuser
+# Expose port
+EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD ["/inventory-backend", "health-check"]
 
-# Expose ports
-EXPOSE 8000 9090
-
-# Production startup script
-COPY deployment/scripts/start-backend.sh /app/start.sh
-RUN chmod +x /app/start.sh
-
-# Start application
-CMD ["/app/start.sh"]
+# Run the binary
+ENTRYPOINT ["/inventory-backend"]

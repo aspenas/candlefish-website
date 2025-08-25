@@ -1,0 +1,398 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: success-rate
+  namespace: inventory-production
+spec:
+  args:
+  - name: service-name
+  - name: canary-hash
+    valueFrom:
+      podTemplateHashValue: Stable
+  metrics:
+  - name: success-rate
+    # NOTE: prometheus queries return results in the form of a vector.
+    # So it is common to access the index 0 of the returned array to obtain the value
+    successCondition: result[0] >= 0.95
+    interval: 60s
+    count: 5
+    failureLimit: 3
+    provider:
+      prometheus:
+        address: http://prometheus-service:9090
+        query: |
+          sum(rate(
+            nginx_ingress_controller_requests{
+              namespace="inventory-production",
+              ingress=~".*{{args.service-name}}.*",
+              status!~"[4-5].*"
+            }[1m]
+          )) /
+          sum(rate(
+            nginx_ingress_controller_requests{
+              namespace="inventory-production",
+              ingress=~".*{{args.service-name}}.*"
+            }[1m]
+          ))
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: latency-check
+  namespace: inventory-production
+spec:
+  args:
+  - name: service-name
+  metrics:
+  - name: p95-latency
+    successCondition: result[0] <= 2.0
+    interval: 60s
+    count: 5
+    failureLimit: 3
+    provider:
+      prometheus:
+        address: http://prometheus-service:9090
+        query: |
+          histogram_quantile(0.95,
+            sum(rate(
+              nginx_ingress_controller_request_duration_seconds_bucket{
+                namespace="inventory-production",
+                ingress=~".*{{args.service-name}}.*"
+              }[5m]
+            )) by (le)
+          )
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: error-rate-check
+  namespace: inventory-production
+spec:
+  args:
+  - name: service-name
+  metrics:
+  - name: error-rate
+    successCondition: result[0] <= 0.05
+    interval: 60s
+    count: 5
+    failureLimit: 2
+    provider:
+      prometheus:
+        address: http://prometheus-service:9090
+        query: |
+          sum(rate(
+            nginx_ingress_controller_requests{
+              namespace="inventory-production",
+              ingress=~".*{{args.service-name}}.*",
+              status=~"[4-5].*"
+            }[1m]
+          )) /
+          sum(rate(
+            nginx_ingress_controller_requests{
+              namespace="inventory-production",
+              ingress=~".*{{args.service-name}}.*"
+            }[1m]
+          ))
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: cpu-usage-check
+  namespace: inventory-production
+spec:
+  args:
+  - name: service-name
+  metrics:
+  - name: cpu-usage
+    successCondition: result[0] <= 0.8
+    interval: 60s
+    count: 3
+    failureLimit: 2
+    provider:
+      prometheus:
+        address: http://prometheus-service:9090
+        query: |
+          avg(rate(
+            container_cpu_usage_seconds_total{
+              namespace="inventory-production",
+              pod=~".*{{args.service-name}}.*",
+              container!="POD",
+              container!=""
+            }[5m]
+          ))
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: memory-usage-check
+  namespace: inventory-production
+spec:
+  args:
+  - name: service-name
+  metrics:
+  - name: memory-usage
+    successCondition: result[0] <= 0.9
+    interval: 60s
+    count: 3
+    failureLimit: 2
+    provider:
+      prometheus:
+        address: http://prometheus-service:9090
+        query: |
+          avg(
+            container_memory_working_set_bytes{
+              namespace="inventory-production",
+              pod=~".*{{args.service-name}}.*",
+              container!="POD",
+              container!=""
+            } /
+            container_spec_memory_limit_bytes{
+              namespace="inventory-production",
+              pod=~".*{{args.service-name}}.*",
+              container!="POD",
+              container!=""
+            }
+          )
+---
+# Comprehensive AnalysisTemplate combining multiple metrics
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: comprehensive-analysis
+  namespace: inventory-production
+spec:
+  args:
+  - name: service-name
+  metrics:
+  # Success rate check
+  - name: success-rate
+    successCondition: result[0] >= 0.95
+    interval: 60s
+    count: 5
+    failureLimit: 3
+    provider:
+      prometheus:
+        address: http://prometheus-service:9090
+        query: |
+          sum(rate(
+            http_requests_total{
+              namespace="inventory-production",
+              service=~".*{{args.service-name}}.*",
+              code!~"[4-5].*"
+            }[1m]
+          )) /
+          sum(rate(
+            http_requests_total{
+              namespace="inventory-production",
+              service=~".*{{args.service-name}}.*"
+            }[1m]
+          ))
+
+  # Response time check
+  - name: p95-response-time
+    successCondition: result[0] <= 2.0
+    interval: 60s
+    count: 5
+    failureLimit: 3
+    provider:
+      prometheus:
+        address: http://prometheus-service:9090
+        query: |
+          histogram_quantile(0.95,
+            sum(rate(
+              http_request_duration_seconds_bucket{
+                namespace="inventory-production",
+                service=~".*{{args.service-name}}.*"
+              }[5m]
+            )) by (le)
+          )
+
+  # CPU usage check
+  - name: cpu-usage
+    successCondition: result[0] <= 0.8
+    interval: 60s
+    count: 3
+    failureLimit: 2
+    provider:
+      prometheus:
+        address: http://prometheus-service:9090
+        query: |
+          avg(rate(
+            container_cpu_usage_seconds_total{
+              namespace="inventory-production",
+              pod=~".*{{args.service-name}}.*",
+              container!="POD",
+              container!=""
+            }[5m]
+          ))
+
+  # Memory usage check
+  - name: memory-usage
+    successCondition: result[0] <= 0.9
+    interval: 60s
+    count: 3
+    failureLimit: 2
+    provider:
+      prometheus:
+        address: http://prometheus-service:9090
+        query: |
+          avg(
+            container_memory_working_set_bytes{
+              namespace="inventory-production",
+              pod=~".*{{args.service-name}}.*",
+              container!="POD",
+              container!=""
+            } /
+            container_spec_memory_limit_bytes{
+              namespace="inventory-production",
+              pod=~".*{{args.service-name}}.*",
+              container!="POD",
+              container!=""
+            }
+          )
+---
+# Web Analysis for frontend performance
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: web-performance-check
+  namespace: inventory-production
+spec:
+  args:
+  - name: service-name
+  - name: host
+  metrics:
+  - name: web-performance
+    successCondition: result == "true"
+    interval: 120s
+    count: 3
+    failureLimit: 1
+    provider:
+      web:
+        # This would require a webhook service that runs lighthouse/performance tests
+        url: http://performance-analyzer:8080/analyze
+        headers:
+        - key: Content-Type
+          value: application/json
+        body: |
+          {
+            "url": "https://{{args.host}}",
+            "service": "{{args.service-name}}",
+            "thresholds": {
+              "performance": 80,
+              "accessibility": 90,
+              "bestPractices": 85,
+              "seo": 85,
+              "firstContentfulPaint": 2000,
+              "largestContentfulPaint": 4000
+            }
+          }
+        jsonPath: "{$.passed}"
+---
+# Database connection analysis
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: database-health-check
+  namespace: inventory-production
+spec:
+  metrics:
+  - name: db-connection-pool
+    successCondition: result[0] <= 0.8
+    interval: 60s
+    count: 3
+    failureLimit: 2
+    provider:
+      prometheus:
+        address: http://prometheus-service:9090
+        query: |
+          pg_stat_activity_count{
+            namespace="inventory-production"
+          } / pg_settings_max_connections{
+            namespace="inventory-production"
+          }
+
+  - name: db-response-time
+    successCondition: result[0] <= 0.1
+    interval: 60s
+    count: 3
+    failureLimit: 2
+    provider:
+      prometheus:
+        address: http://prometheus-service:9090
+        query: |
+          avg(pg_stat_database_blk_read_time{
+            namespace="inventory-production",
+            datname="inventory_production"
+          } + pg_stat_database_blk_write_time{
+            namespace="inventory-production",
+            datname="inventory_production"
+          }) /
+          avg(pg_stat_database_xact_commit{
+            namespace="inventory-production",
+            datname="inventory_production"
+          } + pg_stat_database_xact_rollback{
+            namespace="inventory-production",
+            datname="inventory_production"
+          })
+---
+# Custom metric provider for business metrics
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: business-metrics-check
+  namespace: inventory-production
+spec:
+  args:
+  - name: service-name
+  metrics:
+  - name: api-success-rate
+    successCondition: result[0] >= 0.99
+    interval: 120s
+    count: 3
+    failureLimit: 1
+    provider:
+      prometheus:
+        address: http://prometheus-service:9090
+        query: |
+          sum(rate(
+            inventory_api_requests_total{
+              status="success",
+              service="{{args.service-name}}"
+            }[5m]
+          )) /
+          sum(rate(
+            inventory_api_requests_total{
+              service="{{args.service-name}}"
+            }[5m]
+          ))
+
+  - name: photo-upload-success-rate
+    successCondition: result[0] >= 0.95
+    interval: 120s
+    count: 3
+    failureLimit: 2
+    provider:
+      prometheus:
+        address: http://prometheus-service:9090
+        query: |
+          sum(rate(
+            inventory_photo_uploads_total{
+              status="success"
+            }[5m]
+          )) /
+          sum(rate(
+            inventory_photo_uploads_total[5m]
+          ))
+
+  - name: websocket-connections
+    successCondition: result[0] >= 0.9
+    interval: 60s
+    count: 3
+    failureLimit: 2
+    provider:
+      prometheus:
+        address: http://prometheus-service:9090
+        query: |
+          inventory_websocket_active_connections /
+          inventory_websocket_total_connections
