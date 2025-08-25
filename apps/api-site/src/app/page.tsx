@@ -144,16 +144,16 @@ export default function Home() {
                 border: '1px solid transparent'
               }}
               onMouseOver={(e) => {
-                e.target.style.color = item.color;
-                e.target.style.background = `${item.color}10`;
-                e.target.style.borderColor = `${item.color}30`;
-                e.target.style.transform = 'translateY(-1px)';
+                (e.currentTarget as HTMLElement).style.color = item.color;
+                (e.currentTarget as HTMLElement).style.background = `${item.color}10`;
+                (e.currentTarget as HTMLElement).style.borderColor = `${item.color}30`;
+                (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)';
               }}
               onMouseOut={(e) => {
-                e.target.style.color = '#cbd5e1';
-                e.target.style.background = 'transparent';
-                e.target.style.borderColor = 'transparent';
-                e.target.style.transform = 'translateY(0)';
+                (e.currentTarget as HTMLElement).style.color = '#cbd5e1';
+                (e.currentTarget as HTMLElement).style.background = 'transparent';
+                (e.currentTarget as HTMLElement).style.borderColor = 'transparent';
+                (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
               }}
               >{item.name}</a>
             ))}
@@ -302,12 +302,12 @@ export default function Home() {
               position: 'relative'
             }}
             onMouseOver={(e) => {
-              e.target.style.transform = 'translateY(-2px) scale(1.02)';
-              e.target.style.boxShadow = '0 25px 50px rgba(99, 102, 241, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
+              (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px) scale(1.02)';
+              (e.currentTarget as HTMLElement).style.boxShadow = '0 25px 50px rgba(99, 102, 241, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
             }}
             onMouseOut={(e) => {
-              e.target.style.transform = 'translateY(0) scale(1)';
-              e.target.style.boxShadow = '0 20px 40px rgba(99, 102, 241, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
+              (e.currentTarget as HTMLElement).style.transform = 'translateY(0) scale(1)';
+              (e.currentTarget as HTMLElement).style.boxShadow = '0 20px 40px rgba(99, 102, 241, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
             }}
             >
               Try GraphQL Playground
@@ -326,14 +326,14 @@ export default function Home() {
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
             }}
             onMouseOver={(e) => {
-              e.target.style.background = 'rgba(99, 102, 241, 0.1)';
-              e.target.style.borderColor = '#6366f1';
-              e.target.style.transform = 'translateY(-1px)';
+              (e.currentTarget as HTMLElement).style.background = 'rgba(99, 102, 241, 0.1)';
+              (e.currentTarget as HTMLElement).style.borderColor = '#6366f1';
+              (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)';
             }}
             onMouseOut={(e) => {
-              e.target.style.background = 'rgba(15, 23, 42, 0.8)';
-              e.target.style.borderColor = 'rgba(99, 102, 241, 0.3)';
-              e.target.style.transform = 'translateY(0)';
+              (e.currentTarget as HTMLElement).style.background = 'rgba(15, 23, 42, 0.8)';
+              (e.currentTarget as HTMLElement).style.borderColor = 'rgba(99, 102, 241, 0.3)';
+              (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
             }}
             >
               View Documentation
@@ -558,8 +558,8 @@ export default function Home() {
                 fontWeight: '500',
                 transition: 'color 0.3s ease'
               }}
-              onMouseOver={(e) => e.target.style.color = '#6366f1'}
-              onMouseOut={(e) => e.target.style.color = '#94a3b8'}
+              onMouseOver={(e) => (e.currentTarget as HTMLElement).style.color = '#6366f1'}
+              onMouseOut={(e) => (e.currentTarget as HTMLElement).style.color = '#94a3b8'}
               >{item}</a>
             ))}
           </div>

@@ -1,0 +1,441 @@
+name: Kong API Gateway Deployment
+
+# Automated Kong deployment with Linkerd integration
+on:
+  push:
+    paths:
+      - 'infrastructure/kong/**'
+      - '.github/workflows/kong-deployment.yml'
+    branches: [main, staging]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      enable_linkerd:
+        description: 'Enable Linkerd service mesh'
+        type: boolean
+        default: false
+
+env:
+  KONG_VERSION: '3.4'
+  LINKERD_VERSION: '2.14.1'
+  HELM_VERSION: '3.13.0'
+
+jobs:
+  validate-config:
+    name: Validate Kong Configuration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup deck CLI
+        run: |
+          curl -sL https://github.com/Kong/deck/releases/download/v1.30.0/deck_1.30.0_linux_amd64.tar.gz | tar xz
+          sudo mv deck /usr/local/bin/
+
+      - name: Validate Kong configuration
+        run: |
+          deck validate --state infrastructure/kong/kong.yml
+          deck diff --state infrastructure/kong/kong.yml \
+            --kong-addr https://api-staging.candlefish.ai \
+            --headers "Kong-Admin-Token: ${{ secrets.KONG_ADMIN_TOKEN_STAGING }}" \
+            --select-tag candlefish || true
+
+      - name: Lint Kong plugins
+        run: |
+          for plugin in infrastructure/kong/plugins/*.lua; do
+            luacheck "$plugin" || true
+          done
+
+  deploy-kong:
+    name: Deploy Kong Gateway
+    needs: validate-config
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.environment || 'staging' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::681214184463:role/github-actions
+          aws-region: us-east-1
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Configure kubeconfig
+        run: |
+          aws eks update-kubeconfig --region us-east-1 --name candlefish-${{ github.event.inputs.environment || 'staging' }}
+
+      - name: Add Kong Helm repository
+        run: |
+          helm repo add kong https://charts.konghq.com
+          helm repo update
+
+      - name: Deploy Kong
+        run: |
+          ENV="${{ github.event.inputs.environment || 'staging' }}"
+
+          # Create namespace if not exists
+          kubectl create namespace kong-$ENV --dry-run=client -o yaml | kubectl apply -f -
+
+          # Deploy Kong with Helm
+          helm upgrade --install kong kong/kong \
+            --namespace kong-$ENV \
+            --values infrastructure/kong/values-$ENV.yaml \
+            --set image.tag=${{ env.KONG_VERSION }} \
+            --set admin.enabled=true \
+            --set admin.http.enabled=true \
+            --set env.database=postgres \
+            --set env.pg_host=${{ secrets.POSTGRES_HOST }} \
+            --set env.pg_password=${{ secrets.POSTGRES_PASSWORD }} \
+            --set env.pg_user=kong \
+            --set env.pg_database=kong_$ENV \
+            --wait \
+            --timeout 10m
+
+      - name: Apply Kong configuration
+        run: |
+          ENV="${{ github.event.inputs.environment || 'staging' }}"
+
+          # Wait for Kong to be ready
+          kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=kong -n kong-$ENV --timeout=300s
+
+          # Get Kong admin URL
+          KONG_ADMIN=$(kubectl get svc -n kong-$ENV kong-kong-admin -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+
+          # Apply declarative config
+          deck sync --state infrastructure/kong/kong.yml \
+            --kong-addr http://$KONG_ADMIN:8001 \
+            --select-tag candlefish
+
+      - name: Configure Kong plugins
+        run: |
+          ENV="${{ github.event.inputs.environment || 'staging' }}"
+          KONG_ADMIN=$(kubectl get svc -n kong-$ENV kong-kong-admin -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+
+          # Rate limiting plugin
+          curl -X POST http://$KONG_ADMIN:8001/plugins \
+            -H "Content-Type: application/json" \
+            -d '{
+              "name": "rate-limiting",
+              "config": {
+                "minute": 100,
+                "hour": 10000,
+                "policy": "redis",
+                "redis_host": "${{ secrets.REDIS_HOST }}",
+                "redis_port": 6379
+              }
+            }'
+
+          # JWT plugin
+          curl -X POST http://$KONG_ADMIN:8001/plugins \
+            -H "Content-Type: application/json" \
+            -d '{
+              "name": "jwt",
+              "config": {
+                "key_claim_name": "kid",
+                "secret_is_base64": false
+              }
+            }'
+
+          # CORS plugin
+          curl -X POST http://$KONG_ADMIN:8001/plugins \
+            -H "Content-Type: application/json" \
+            -d '{
+              "name": "cors",
+              "config": {
+                "origins": ["https://candlefish.ai", "https://*.candlefish.ai"],
+                "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                "headers": ["Accept", "Accept-Version", "Content-Length", "Content-Type", "Authorization"],
+                "exposed_headers": ["X-Request-Id"],
+                "credentials": true,
+                "max_age": 3600
+              }
+            }'
+
+  deploy-linkerd:
+    name: Deploy Linkerd Service Mesh
+    needs: deploy-kong
+    if: github.event.inputs.enable_linkerd == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::681214184463:role/github-actions
+          aws-region: us-east-1
+
+      - name: Configure kubeconfig
+        run: |
+          aws eks update-kubeconfig --region us-east-1 --name candlefish-${{ github.event.inputs.environment || 'staging' }}
+
+      - name: Install Linkerd CLI
+        run: |
+          curl -sL https://github.com/linkerd/linkerd2/releases/download/stable-${{ env.LINKERD_VERSION }}/linkerd2-cli-stable-${{ env.LINKERD_VERSION }}-linux-amd64 \
+            -o linkerd
+          chmod +x linkerd
+          sudo mv linkerd /usr/local/bin/
+
+      - name: Install Linkerd control plane
+        run: |
+          linkerd check --pre
+          linkerd install --cluster-name candlefish-${{ github.event.inputs.environment || 'staging' }} | kubectl apply -f -
+          linkerd check
+
+      - name: Install Linkerd Viz
+        run: |
+          linkerd viz install | kubectl apply -f -
+          linkerd viz check
+
+      - name: Inject Linkerd into Kong namespace
+        run: |
+          ENV="${{ github.event.inputs.environment || 'staging' }}"
+          kubectl get deploy -n kong-$ENV -o yaml | \
+            linkerd inject - | \
+            kubectl apply -f -
+
+      - name: Apply Linkerd service profiles
+        run: |
+          kubectl apply -f infrastructure/linkerd/service-profiles/
+
+      - name: Configure traffic policies
+        run: |
+          kubectl apply -f infrastructure/linkerd/traffic-policies/
+
+  configure-routing:
+    name: Configure API Routing
+    needs: [deploy-kong, deploy-linkerd]
+    if: always() && needs.deploy-kong.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::681214184463:role/github-actions
+          aws-region: us-east-1
+
+      - name: Update Route53 DNS
+        run: |
+          ENV="${{ github.event.inputs.environment || 'staging' }}"
+
+          # Get Kong proxy LoadBalancer hostname
+          KONG_LB=$(kubectl get svc -n kong-$ENV kong-kong-proxy -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+
+          # Update Route53
+          if [ "$ENV" == "production" ]; then
+            ZONE_ID="${{ secrets.ROUTE53_ZONE_ID_PROD }}"
+            DOMAIN="api.candlefish.ai"
+          else
+            ZONE_ID="${{ secrets.ROUTE53_ZONE_ID_STAGING }}"
+            DOMAIN="api-staging.candlefish.ai"
+          fi
+
+          cat <<EOF > /tmp/change-batch.json
+          {
+            "Changes": [{
+              "Action": "UPSERT",
+              "ResourceRecordSet": {
+                "Name": "$DOMAIN",
+                "Type": "CNAME",
+                "TTL": 300,
+                "ResourceRecords": [{"Value": "$KONG_LB"}]
+              }
+            }]
+          }
+          EOF
+
+          aws route53 change-resource-record-sets \
+            --hosted-zone-id $ZONE_ID \
+            --change-batch file:///tmp/change-batch.json
+
+      - name: Configure service routes
+        run: |
+          ENV="${{ github.event.inputs.environment || 'staging' }}"
+          KONG_ADMIN=$(kubectl get svc -n kong-$ENV kong-kong-admin -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+
+          # GraphQL Federation Route
+          curl -X POST http://$KONG_ADMIN:8001/services \
+            -d name=graphql-federation \
+            -d url=http://graphql-gateway.default.svc.cluster.local:4000
+
+          curl -X POST http://$KONG_ADMIN:8001/services/graphql-federation/routes \
+            -d paths[]=/graphql \
+            -d methods[]=POST \
+            -d methods[]=GET
+
+          # Inventory API Route
+          curl -X POST http://$KONG_ADMIN:8001/services \
+            -d name=inventory-api \
+            -d url=http://inventory-backend.default.svc.cluster.local:8080
+
+          curl -X POST http://$KONG_ADMIN:8001/services/inventory-api/routes \
+            -d paths[]=/api/inventory \
+            -d strip_path=true
+
+          # NANDA API Route
+          curl -X POST http://$KONG_ADMIN:8001/services \
+            -d name=nanda-api \
+            -d url=http://nanda-api.default.svc.cluster.local:8001
+
+          curl -X POST http://$KONG_ADMIN:8001/services/nanda-api/routes \
+            -d paths[]=/api/nanda \
+            -d strip_path=true
+
+  verify-deployment:
+    name: Verify Deployment
+    needs: configure-routing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install test tools
+        run: |
+          npm install -g newman @stoplight/spectral-cli
+
+      - name: Wait for DNS propagation
+        run: |
+          ENV="${{ github.event.inputs.environment || 'staging' }}"
+          if [ "$ENV" == "production" ]; then
+            DOMAIN="api.candlefish.ai"
+          else
+            DOMAIN="api-staging.candlefish.ai"
+          fi
+
+          for i in {1..60}; do
+            if nslookup $DOMAIN 8.8.8.8; then
+              echo "DNS resolved successfully"
+              break
+            fi
+            echo "Waiting for DNS propagation... ($i/60)"
+            sleep 5
+          done
+
+      - name: Test Kong health
+        run: |
+          ENV="${{ github.event.inputs.environment || 'staging' }}"
+          if [ "$ENV" == "production" ]; then
+            URL="https://api.candlefish.ai"
+          else
+            URL="https://api-staging.candlefish.ai"
+          fi
+
+          curl -f $URL/status || exit 1
+
+      - name: Run API tests
+        run: |
+          ENV="${{ github.event.inputs.environment || 'staging' }}"
+          newman run tests/postman/kong-api-tests.json \
+            --environment tests/postman/environments/$ENV.json \
+            --reporters cli,json
+
+      - name: Test rate limiting
+        run: |
+          ENV="${{ github.event.inputs.environment || 'staging' }}"
+          if [ "$ENV" == "production" ]; then
+            URL="https://api.candlefish.ai"
+          else
+            URL="https://api-staging.candlefish.ai"
+          fi
+
+          # Make 101 requests to trigger rate limit
+          for i in {1..101}; do
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" $URL/api/test)
+            if [ "$i" -eq 101 ] && [ "$RESPONSE" -eq 429 ]; then
+              echo "Rate limiting is working correctly"
+              exit 0
+            fi
+          done
+          echo "Rate limiting test failed"
+          exit 1
+
+      - name: Test JWT authentication
+        run: |
+          ENV="${{ github.event.inputs.environment || 'staging' }}"
+          if [ "$ENV" == "production" ]; then
+            URL="https://api.candlefish.ai"
+          else
+            URL="https://api-staging.candlefish.ai"
+          fi
+
+          # Test without JWT (should fail)
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" $URL/api/protected)
+          if [ "$RESPONSE" -ne 401 ]; then
+            echo "Expected 401 without JWT, got $RESPONSE"
+            exit 1
+          fi
+
+          # Test with valid JWT
+          JWT="${{ secrets.TEST_JWT_TOKEN }}"
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $JWT" $URL/api/protected)
+          if [ "$RESPONSE" -ne 200 ]; then
+            echo "Expected 200 with valid JWT, got $RESPONSE"
+            exit 1
+          fi
+
+      - name: Generate deployment report
+        run: |
+          ENV="${{ github.event.inputs.environment || 'staging' }}"
+
+          cat <<EOF > deployment-report.md
+          # Kong Deployment Report
+
+          ## Environment: $ENV
+          ## Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          ## Commit: ${{ github.sha }}
+
+          ### Services Configured:
+          - GraphQL Federation Gateway
+          - Inventory API
+          - NANDA API
+
+          ### Plugins Enabled:
+          - Rate Limiting (100 req/min)
+          - JWT Authentication
+          - CORS
+
+          ### Linkerd Status: ${{ github.event.inputs.enable_linkerd == 'true' && 'Enabled' || 'Disabled' }}
+
+          ### Health Check: ✅ Passed
+          ### API Tests: ✅ Passed
+          ### Rate Limiting: ✅ Working
+          ### JWT Auth: ✅ Working
+          EOF
+
+          cat deployment-report.md
+
+      - name: Upload deployment report
+        uses: actions/upload-artifact@v3
+        with:
+          name: kong-deployment-report
+          path: deployment-report.md
+
+      - name: Notify team
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            Kong Gateway Deployment Complete!
+            Environment: ${{ github.event.inputs.environment || 'staging' }}
+            Linkerd: ${{ github.event.inputs.enable_linkerd == 'true' && 'Enabled' || 'Disabled' }}
+            URL: https://api${{ github.event.inputs.environment == 'staging' && '-staging' || '' }}.candlefish.ai
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        if: always()

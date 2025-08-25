@@ -20,6 +20,9 @@
     Permissions-Policy = "camera=(self), microphone=(self), geolocation=(self)"
     Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://5470-inventory.fly.dev wss://5470-inventory.fly.dev"
 
+# API calls go directly to backend (no proxy needed)
+# Password protection doesn't interfere with client-side API calls
+
 # SPA Redirects
 [[redirects]]
   from = "/*"

@@ -1,0 +1,439 @@
+name: Security & Compliance
+
+# Comprehensive security scanning and compliance checks
+on:
+  push:
+    branches: [main, staging, develop]
+  pull_request:
+  schedule:
+    - cron: '0 2 * * 1'  # Weekly on Monday at 2 AM UTC
+  workflow_dispatch:
+
+env:
+  SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+  SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+jobs:
+  # Secret scanning
+  secret-scan:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better detection
+
+      - name: TruffleHog OSS
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --debug --only-verified
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: detect-secrets
+        run: |
+          pip install detect-secrets
+          detect-secrets scan --baseline .secrets.baseline
+          detect-secrets audit .secrets.baseline
+
+  # Dependency scanning
+  dependency-scan:
+    name: Dependency Security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: NPM Audit
+        run: |
+          pnpm audit --production
+
+          # Generate detailed report
+          pnpm audit --json > npm-audit-report.json || true
+
+          # Check for critical vulnerabilities
+          CRITICAL=$(cat npm-audit-report.json | jq '.metadata.vulnerabilities.critical')
+          HIGH=$(cat npm-audit-report.json | jq '.metadata.vulnerabilities.high')
+
+          if [ "$CRITICAL" -gt 0 ] || [ "$HIGH" -gt 0 ]; then
+            echo "::error::Found $CRITICAL critical and $HIGH high vulnerabilities"
+            cat npm-audit-report.json | jq '.advisories'
+            exit 1
+          fi
+
+      - name: Snyk Security Scan
+        uses: snyk/actions/node@master
+        with:
+          args: --severity-threshold=high --json > snyk-report.json
+        continue-on-error: true
+
+      - name: OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'candlefish-ai'
+          path: '.'
+          format: 'ALL'
+          args: >
+            --enableRetired
+            --enableExperimental
+            --nvdApiKey ${{ secrets.NVD_API_KEY }}
+
+      - name: Upload dependency reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-reports
+          path: |
+            npm-audit-report.json
+            snyk-report.json
+            dependency-check-report.html
+
+  # Container scanning
+  container-scan:
+    name: Container Security
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - brand-website
+          - api-site
+          - nanda-api
+          - inventory-backend
+          - kong-gateway
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: |
+          case "${{ matrix.service }}" in
+            "brand-website")
+              cd brand/website && docker build -t scan-target:latest .
+              ;;
+            "api-site")
+              cd apps/api-site && docker build -t scan-target:latest .
+              ;;
+            "nanda-api")
+              cd apps/nanda-api && docker build -t scan-target:latest .
+              ;;
+            "inventory-backend")
+              cd 5470_S_Highline_Circle/backend && docker build -t scan-target:latest .
+              ;;
+            "kong-gateway")
+              cd infrastructure/kong && docker build -t scan-target:latest .
+              ;;
+          esac
+
+      - name: Trivy scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: scan-target:latest
+          format: 'sarif'
+          output: 'trivy-${{ matrix.service }}.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+
+      - name: Grype scan
+        uses: anchore/scan-action@v3
+        with:
+          image: scan-target:latest
+          fail-build: true
+          severity-cutoff: high
+
+      - name: Upload scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-${{ matrix.service }}.sarif'
+
+  # SAST scanning
+  sast-scan:
+    name: Static Application Security Testing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: javascript, typescript, go, python
+          queries: security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v2
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+
+      - name: Semgrep scan
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/secrets
+            p/owasp-top-ten
+            p/nodejs
+            p/typescript
+            p/golang
+            p/docker
+
+      - name: SonarCloud scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=candlefish-ai
+            -Dsonar.organization=candlefish
+            -Dsonar.sources=.
+            -Dsonar.exclusions=**/node_modules/**,**/test/**,**/tests/**
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+
+  # Infrastructure scanning
+  infrastructure-scan:
+    name: Infrastructure Security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkov scan
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: .
+          framework: all
+          output_format: sarif
+          output_file_path: checkov.sarif
+          skip_check: CKV_DOCKER_2,CKV_DOCKER_3  # Skip specific checks
+
+      - name: Terrascan
+        run: |
+          docker run --rm -v "$(pwd):/src" \
+            tenable/terrascan scan -t aws,k8s,docker \
+            -f infrastructure/ \
+            --output json > terrascan-report.json
+
+      - name: tfsec scan
+        uses: aquasecurity/tfsec-action@v1.0.0
+        with:
+          working_directory: infrastructure/terraform
+
+      - name: Upload infrastructure reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: infrastructure-reports
+          path: |
+            checkov.sarif
+            terrascan-report.json
+
+  # License compliance
+  license-compliance:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: License check
+        run: |
+          npx license-checker --production --json > licenses.json
+
+          # Check for problematic licenses
+          PROBLEMATIC=$(cat licenses.json | jq -r '.[].licenses' | \
+            grep -E "GPL|LGPL|AGPL|Commons-Clause" || true)
+
+          if [ ! -z "$PROBLEMATIC" ]; then
+            echo "::warning::Found potentially problematic licenses: $PROBLEMATIC"
+
+            # Generate detailed report
+            npx license-checker --production --onlyAllow \
+              'MIT;Apache-2.0;BSD-3-Clause;BSD-2-Clause;ISC;CC0-1.0;Unlicense' \
+              --excludePackages 'package1;package2' > allowed-licenses.txt || true
+          fi
+
+      - name: FOSSA scan
+        uses: fossas/fossa-action@main
+        with:
+          api-key: ${{ secrets.FOSSA_API_KEY }}
+          run-tests: false
+
+      - name: Generate SBOM
+        run: |
+          npm install -g @cyclonedx/cyclonedx-npm
+          cyclonedx-npm --output-format json --output-file sbom.json
+
+      - name: Upload compliance reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: compliance-reports
+          path: |
+            licenses.json
+            allowed-licenses.txt
+            sbom.json
+
+  # Security policy validation
+  security-policies:
+    name: Security Policy Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check security headers
+        run: |
+          # Check for security headers in configuration files
+          echo "Checking security headers..."
+
+          # Next.js security headers
+          grep -r "X-Frame-Options\|X-Content-Type-Options\|X-XSS-Protection" \
+            --include="*.js" --include="*.ts" --include="*.json" . || \
+            echo "::warning::Security headers not found in configuration"
+
+          # Check middleware security
+          if [ -f "middleware.ts" ] || [ -f "middleware.js" ]; then
+            echo "Middleware security configuration found"
+          else
+            echo "::warning::No middleware security configuration found"
+          fi
+
+      - name: Check authentication implementation
+        run: |
+          # Check for proper JWT implementation
+          grep -r "jsonwebtoken\|jose\|@auth0" package.json || \
+            echo "::warning::No JWT library found"
+
+          # Check for proper session management
+          grep -r "express-session\|cookie-session\|iron-session" package.json || \
+            echo "::warning::No session management library found"
+
+      - name: Check for security best practices
+        run: |
+          # Check for environment variable usage
+          grep -r "process.env" --include="*.ts" --include="*.js" . | \
+            grep -v ".env" | head -20 || true
+
+          # Check for hardcoded secrets (basic check)
+          grep -r "password\|secret\|key\|token" --include="*.ts" --include="*.js" . | \
+            grep -v "process.env\|import\|require\|interface\|type" | \
+            grep "=\s*['\"]" || echo "No obvious hardcoded secrets found"
+
+  # Generate security report
+  security-report:
+    name: Generate Security Report
+    needs: [secret-scan, dependency-scan, container-scan, sast-scan, infrastructure-scan, license-compliance, security-policies]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Generate consolidated report
+        run: |
+          cat <<EOF > security-report.md
+          # Security Scan Report
+
+          ## Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          ## Branch: ${{ github.ref_name }}
+          ## Commit: ${{ github.sha }}
+
+          ### Scan Results Summary
+
+          | Scan Type | Status |
+          |-----------|--------|
+          | Secret Detection | ${{ needs.secret-scan.result }} |
+          | Dependency Security | ${{ needs.dependency-scan.result }} |
+          | Container Security | ${{ needs.container-scan.result }} |
+          | SAST | ${{ needs.sast-scan.result }} |
+          | Infrastructure Security | ${{ needs.infrastructure-scan.result }} |
+          | License Compliance | ${{ needs.license-compliance.result }} |
+          | Security Policies | ${{ needs.security-policies.result }} |
+
+          ### Action Items
+
+          1. Review any failing scans above
+          2. Check detailed reports in artifacts
+          3. Create tickets for remediation
+          4. Update security baseline if needed
+
+          ### Next Steps
+
+          - [ ] Review critical vulnerabilities
+          - [ ] Update dependencies with security patches
+          - [ ] Review and approve security exceptions
+          - [ ] Update security documentation
+
+          ---
+          Generated by GitHub Actions Workflow: security-scanning.yml
+          EOF
+
+          cat security-report.md
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-summary-report
+          path: security-report.md
+
+      - name: Create issue for failures
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const title = `Security Scan Failures - ${new Date().toISOString().split('T')[0]}`;
+            const body = `
+            ## Security scan detected issues
+
+            **Workflow Run:** ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}
+            **Commit:** ${context.sha}
+            **Branch:** ${context.ref}
+
+            ### Failed Scans:
+            ${needs.secret-scan.result === 'failure' ? '- Secret Detection\n' : ''}
+            ${needs.dependency-scan.result === 'failure' ? '- Dependency Security\n' : ''}
+            ${needs.container-scan.result === 'failure' ? '- Container Security\n' : ''}
+            ${needs.sast-scan.result === 'failure' ? '- SAST\n' : ''}
+            ${needs.infrastructure-scan.result === 'failure' ? '- Infrastructure Security\n' : ''}
+            ${needs.license-compliance.result === 'failure' ? '- License Compliance\n' : ''}
+            ${needs.security-policies.result === 'failure' ? '- Security Policies\n' : ''}
+
+            Please review the workflow run for details and remediate the issues.
+            `;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['security', 'automated', 'high-priority']
+            });

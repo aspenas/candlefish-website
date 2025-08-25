@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
   experimental: {
     optimizePackageImports: ['@candlefish-ai/shared', 'lucide-react', 'swagger-ui-react'],
   },

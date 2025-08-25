@@ -107,7 +107,7 @@ const server = setupServer(
       updatedAt: new Date().toISOString(),
     };
 
-    mockDocuments.push(newDocument as any);
+    mockDocuments.push(newDocument);
 
     return res(ctx.json(newDocument));
   }),

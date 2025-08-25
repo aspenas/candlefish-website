@@ -43,18 +43,40 @@ const PhotoCapture: React.FC = () => {
   // Fetch data
   const { data: itemsData, isLoading: itemsLoading, error: itemsError } = useQuery({
     queryKey: ['items'],
-    queryFn: api.getItems,
+    queryFn: async () => {
+      console.log('Fetching items from API...');
+      const result = await api.getItems();
+      console.log('Items API result:', result);
+      return result;
+    },
     retry: 3,
+    onError: (error) => {
+      console.error('Items query error:', error);
+    }
   });
 
   const { data: roomsData, isLoading: roomsLoading, error: roomsError } = useQuery({
     queryKey: ['rooms'],
-    queryFn: api.getRooms,
+    queryFn: async () => {
+      console.log('Fetching rooms from API...');
+      const result = await api.getRooms();
+      console.log('Rooms API result:', result);
+      return result;
+    },
     retry: 3,
+    onError: (error) => {
+      console.error('Rooms query error:', error);
+    }
   });
 
   const items = Array.isArray(itemsData) ? itemsData : (itemsData?.items || itemsData || []);
   const rooms = Array.isArray(roomsData) ? roomsData : (roomsData?.rooms || roomsData || []);
+
+  // Debug logging
+  console.log('Final parsed items:', items, 'Length:', items.length);
+  console.log('Final parsed rooms:', rooms, 'Length:', rooms.length);
+  console.log('Items loading:', itemsLoading, 'Rooms loading:', roomsLoading);
+  console.log('Items error:', itemsError, 'Rooms error:', roomsError);
 
   // Photo upload mutation
   const uploadPhotoMutation = useMutation({
@@ -64,7 +86,7 @@ const PhotoCapture: React.FC = () => {
       angle: string;
     }) => {
       const formData = new FormData();
-      formData.append('photo', photo.blob, `${itemId}_${angle}_${Date.now()}.jpg`);
+      formData.append('photos', photo.blob, `${itemId}_${angle}_${Date.now()}.jpg`);
       formData.append('itemId', itemId);
       formData.append('angle', angle);
       formData.append('metadata', JSON.stringify(photo.metadata));
@@ -72,10 +94,7 @@ const PhotoCapture: React.FC = () => {
       // Simulate progress for demo
       setUploadProgress(prev => ({ ...prev, [photo.id]: 0 }));
 
-      const response = await fetch('/api/items/photos', {
-        method: 'POST',
-        body: formData
-      });
+      const response = await api.uploadItemPhoto(itemId, formData);
 
       if (!response.ok) {
         throw new Error(`Upload failed: ${response.statusText}`);

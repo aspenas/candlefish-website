@@ -370,3 +370,41 @@ ORDER BY
         ELSE 4
     END,
     i.asking_price DESC;
+
+-- Photo uploads table
+CREATE TABLE IF NOT EXISTS photo_uploads (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    item_id UUID REFERENCES items(id) ON DELETE CASCADE,
+    filename TEXT NOT NULL,
+    original_url TEXT,
+    thumbnail_url TEXT,
+    web_url TEXT,
+    size_bytes INTEGER,
+    mime_type TEXT,
+    width INTEGER,
+    height INTEGER,
+    session_id UUID,
+    metadata JSONB,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index for faster queries
+CREATE INDEX IF NOT EXISTS idx_photo_uploads_item_id ON photo_uploads(item_id);
+CREATE INDEX IF NOT EXISTS idx_photo_uploads_session_id ON photo_uploads(session_id);
+CREATE INDEX IF NOT EXISTS idx_photo_uploads_uploaded_at ON photo_uploads(uploaded_at);
+
+-- Add trigger to update updated_at
+CREATE OR REPLACE FUNCTION update_photo_uploads_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_photo_uploads_updated_at_trigger
+BEFORE UPDATE ON photo_uploads
+FOR EACH ROW
+EXECUTE FUNCTION update_photo_uploads_updated_at();

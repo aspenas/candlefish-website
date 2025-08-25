@@ -31,16 +31,37 @@ apiClient.interceptors.response.use(
     return data;
   },
   (error) => {
-    console.error('API Error:', error.response?.status, error.response?.data || error.message);
+    console.error('API Error Details:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      method: error.config?.method,
+      baseURL: error.config?.baseURL,
+      message: error.message,
+      data: error.response?.data
+    });
 
-    // Return sensible defaults for specific endpoints
+    // Handle network errors (CORS, connection issues)
+    if (error.code === 'ERR_NETWORK' || !error.response) {
+      console.error('Network error - possible CORS or connection issue');
+    }
+
+    // Return sensible defaults for specific endpoints wrapped in response format
     if (error.response?.status === 404 || error.response?.status === 500) {
       const url = error.config?.url || '';
 
-      if (url.includes('/items')) return [];
-      if (url.includes('/analytics')) return {};
-      if (url.includes('/rooms')) return { rooms: [] };
-      if (url.includes('/categories')) return { categories: [] };
+      if (url.includes('/items')) {
+        return Promise.resolve({ data: { items: [], total: 0 } });
+      }
+      if (url.includes('/analytics')) {
+        return Promise.resolve({ data: {} });
+      }
+      if (url.includes('/rooms')) {
+        return Promise.resolve({ data: { rooms: [] } });
+      }
+      if (url.includes('/categories')) {
+        return Promise.resolve({ data: { categories: [] } });
+      }
     }
 
     return Promise.reject(error);
@@ -137,4 +158,21 @@ export const api = {
 
   // Collaboration - Overview
   getCollaborationOverview: () => apiClient.get('/collaboration/overview'),
+
+  // Photo operations
+  uploadItemPhoto: (itemId: string, formData: FormData) =>
+    apiClient.post(`/items/${itemId}/photos`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+
+  createPhotoSession: (data: any) => apiClient.post('/photos/sessions', data),
+  getPhotoSession: (id: string) => apiClient.get(`/photos/sessions/${id}`),
+  updatePhotoSession: (id: string, data: any) => apiClient.put(`/photos/sessions/${id}`, data),
+
+  batchUploadPhotos: (sessionId: string, formData: FormData) =>
+    apiClient.post(`/photos/batch/${sessionId}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+
+  getRoomPhotoProgress: () => apiClient.get('/rooms/progress'),
 };
