@@ -4,12 +4,9 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Only use static export for production builds
-  ...(process.env.NODE_ENV === 'production' && {
-    output: 'export',
-    trailingSlash: true,
-    distDir: 'out',
-  }),
+  // Static export disabled - application now has API routes that require server-side functionality
+  // Previously: output: 'export' was used but is incompatible with /api routes
+  trailingSlash: true,
   // Webpack configuration for Three.js and WebGL
   webpack: (config, { isServer }) => {
     // Ignore fs module for client-side builds (Three.js compatibility)

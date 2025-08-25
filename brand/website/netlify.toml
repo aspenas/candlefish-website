@@ -3,7 +3,7 @@
 
 [build]
   command = "npm run build"
-  publish = "out"
+  publish = ".next"
 
 [build.environment]
   NODE_VERSION = "18"
@@ -98,12 +98,12 @@
   path = "/api/edge/*"
   function = "api-edge"
 
-# Redirects
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-  force = true
+# Redirects - API routes handled automatically by @netlify/plugin-nextjs
+# [[redirects]]
+#   from = "/api/*"
+#   to = "/.netlify/functions/:splat"
+#   status = 200
+#   force = true
 
 # Performance optimizations
 [functions]
