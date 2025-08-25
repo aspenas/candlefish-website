@@ -1,0 +1,147 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: inventory-frontend-rollout
+  namespace: inventory-production
+  labels:
+    app: inventory-frontend
+  annotations:
+    linkerd.io/inject: enabled
+spec:
+  replicas: 3
+  strategy:
+    blueGreen:
+      activeService: inventory-frontend-active
+      previewService: inventory-frontend-preview
+      autoPromotionEnabled: false
+      scaleDownDelaySeconds: 30
+      prePromotionAnalysis:
+        templates:
+        - templateName: success-rate
+        args:
+        - name: service-name
+          value: inventory-frontend-preview
+      postPromotionAnalysis:
+        templates:
+        - templateName: success-rate
+        args:
+        - name: service-name
+          value: inventory-frontend-active
+      previewReplicaCount: 2
+      revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: inventory-frontend
+  template:
+    metadata:
+      labels:
+        app: inventory-frontend
+        version: "IMAGE_TAG"
+      annotations:
+        linkerd.io/inject: enabled
+        config.linkerd.io/proxy-cpu-request: "50m"
+        config.linkerd.io/proxy-memory-request: "20Mi"
+    spec:
+      serviceAccountName: inventory-frontend-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        fsGroup: 101
+      containers:
+      - name: inventory-frontend
+        image: ghcr.io/candlefish-ai/candlefish-ai/inventory-frontend:IMAGE_TAG
+        ports:
+        - containerPort: 80
+          name: http
+          protocol: TCP
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d/default.conf
+          subPath: nginx.conf
+        - name: nginx-cache
+          mountPath: /var/cache/nginx
+        - name: nginx-run
+          mountPath: /var/run
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: inventory-config
+          items:
+          - key: nginx.conf
+            path: nginx.conf
+      - name: nginx-cache
+        emptyDir: {}
+      - name: nginx-run
+        emptyDir: {}
+      terminationGracePeriodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory-frontend-active
+  namespace: inventory-production
+  labels:
+    app: inventory-frontend
+    service: active
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+    name: http
+  selector:
+    app: inventory-frontend
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory-frontend-preview
+  namespace: inventory-production
+  labels:
+    app: inventory-frontend
+    service: preview
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+    name: http
+  selector:
+    app: inventory-frontend
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: inventory-frontend-sa
+  namespace: inventory-production
+  labels:
+    app: inventory-frontend

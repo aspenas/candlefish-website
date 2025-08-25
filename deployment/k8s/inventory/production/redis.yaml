@@ -1,0 +1,180 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+  namespace: inventory-production
+  labels:
+    app: redis
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: gp3-csi
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: inventory-production
+  labels:
+    app: redis
+    version: "7.2"
+  annotations:
+    linkerd.io/inject: enabled
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+        version: "7.2"
+      annotations:
+        linkerd.io/inject: enabled
+        config.linkerd.io/skip-outbound-ports: "6379"
+    spec:
+      securityContext:
+        fsGroup: 999
+      containers:
+      - name: redis
+        image: redis:7.2-alpine
+        ports:
+        - containerPort: 6379
+          name: redis
+        command:
+        - redis-server
+        - /etc/redis/redis.conf
+        - --requirepass
+        - $(REDIS_PASSWORD)
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: inventory-redis-secret
+              key: REDIS_PASSWORD
+        volumeMounts:
+        - name: redis-storage
+          mountPath: /data
+        - name: redis-config
+          mountPath: /etc/redis
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - -a
+            - $(REDIS_PASSWORD)
+            - ping
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - -a
+            - $(REDIS_PASSWORD)
+            - ping
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      volumes:
+      - name: redis-storage
+        persistentVolumeClaim:
+          claimName: redis-pvc
+      - name: redis-config
+        configMap:
+          name: redis-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: inventory-production
+  labels:
+    app: redis
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+    name: redis
+  selector:
+    app: redis
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: inventory-production
+data:
+  redis.conf: |
+    # Network settings
+    bind 0.0.0.0
+    port 6379
+    tcp-backlog 511
+    timeout 0
+    tcp-keepalive 300
+
+    # General settings
+    daemonize no
+    supervised no
+    pidfile /var/run/redis_6379.pid
+    loglevel notice
+    logfile ""
+    databases 16
+
+    # Persistence settings
+    save 900 1
+    save 300 10
+    save 60 10000
+    stop-writes-on-bgsave-error yes
+    rdbcompression yes
+    rdbchecksum yes
+    dbfilename dump.rdb
+    dir /data
+
+    # Append Only File
+    appendonly yes
+    appendfilename "appendonly.aof"
+    appendfsync everysec
+    no-appendfsync-on-rewrite no
+    auto-aof-rewrite-percentage 100
+    auto-aof-rewrite-min-size 64mb
+    aof-load-truncated yes
+
+    # Memory management
+    maxmemory 800mb
+    maxmemory-policy allkeys-lru
+    maxmemory-samples 5
+
+    # Security
+    protected-mode no
+    # requirepass will be set via command line
+
+    # Performance tuning
+    lazy-free-lazy-eviction yes
+    lazy-free-lazy-expire yes
+    lazy-free-lazy-server-del yes
+    replica-lazy-flush yes
+
+    # Client settings
+    maxclients 10000
+
+    # Slow log
+    slowlog-log-slower-than 10000
+    slowlog-max-len 128

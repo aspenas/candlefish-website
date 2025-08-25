@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: inventory-production
+  labels:
+    name: inventory-production
+    environment: production
+    team: candlefish-ai
+    linkerd.io/inject: enabled
+  annotations:
+    linkerd.io/inject: enabled
+    config.linkerd.io/proxy-cpu-request: "0.1"
+    config.linkerd.io/proxy-memory-request: "20Mi"
+    config.linkerd.io/proxy-cpu-limit: "1.0"
+    config.linkerd.io/proxy-memory-limit: "250Mi"

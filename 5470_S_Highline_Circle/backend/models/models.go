@@ -88,15 +88,24 @@ type Item struct {
 	Plant  *Plant   `json:"plant,omitempty"`
 }
 
-// Image model
+// Image model (enhanced for photo batch capture)
 type Image struct {
-	ID           uuid.UUID `json:"id" db:"id"`
-	ItemID       uuid.UUID `json:"item_id" db:"item_id"`
-	URL          string    `json:"url" db:"url"`
-	ThumbnailURL *string   `json:"thumbnail_url,omitempty" db:"thumbnail_url"`
-	Caption      *string   `json:"caption,omitempty" db:"caption"`
-	IsPrimary    bool      `json:"is_primary" db:"is_primary"`
-	UploadedAt   time.Time `json:"uploaded_at" db:"uploaded_at"`
+	ID                uuid.UUID   `json:"id" db:"id"`
+	ItemID            uuid.UUID   `json:"item_id" db:"item_id"`
+	URL               string      `json:"url" db:"url"`
+	ThumbnailURL      *string     `json:"thumbnail_url,omitempty" db:"thumbnail_url"`
+	Caption           *string     `json:"caption,omitempty" db:"caption"`
+	IsPrimary         bool        `json:"is_primary" db:"is_primary"`
+	UploadedAt        time.Time   `json:"uploaded_at" db:"uploaded_at"`
+
+	// New fields for photo batch capture
+	Angle             *PhotoAngle `json:"angle,omitempty" db:"angle"`
+	CaptureSessionID  *uuid.UUID  `json:"capture_session_id,omitempty" db:"capture_session_id"`
+	OriginalFilename  *string     `json:"original_filename,omitempty" db:"original_filename"`
+	FileSize          *int64      `json:"file_size,omitempty" db:"file_size"`
+	Width             *int        `json:"width,omitempty" db:"width"`
+	Height            *int        `json:"height,omitempty" db:"height"`
+	ProcessedAt       *time.Time  `json:"processed_at,omitempty" db:"processed_at"`
 }
 
 // Transaction model
@@ -368,7 +377,212 @@ type BundleUpdateRequest struct {
 	Notes      *string       `json:"notes,omitempty"`
 }
 
+// Photo batch capture models
+
+// PhotoSessionStatus enum
+type PhotoSessionStatus string
+
+const (
+	SessionActive    PhotoSessionStatus = "active"
+	SessionPaused    PhotoSessionStatus = "paused"
+	SessionCompleted PhotoSessionStatus = "completed"
+	SessionCancelled PhotoSessionStatus = "cancelled"
+)
+
+// PhotoAngle enum
+type PhotoAngle string
+
+const (
+	AngleFront        PhotoAngle = "front"
+	AngleBack         PhotoAngle = "back"
+	AngleLeft         PhotoAngle = "left"
+	AngleRight        PhotoAngle = "right"
+	AngleTop          PhotoAngle = "top"
+	AngleDetail       PhotoAngle = "detail"
+	AngleContextual   PhotoAngle = "contextual"
+	AngleOverview     PhotoAngle = "overview"
+)
+
+// PhotoResolution enum
+type PhotoResolution string
+
+const (
+	ResolutionThumbnail PhotoResolution = "thumbnail"
+	ResolutionWeb       PhotoResolution = "web"
+	ResolutionFull      PhotoResolution = "full"
+)
+
+// PhotoSession model for tracking batch capture sessions
+type PhotoSession struct {
+	ID          uuid.UUID          `json:"id" db:"id"`
+	RoomID      *uuid.UUID         `json:"room_id,omitempty" db:"room_id"`
+	Name        string             `json:"name" db:"name"`
+	Description *string            `json:"description,omitempty" db:"description"`
+	Status      PhotoSessionStatus `json:"status" db:"status"`
+	CreatedAt   time.Time          `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time          `json:"updated_at" db:"updated_at"`
+	CompletedAt *time.Time         `json:"completed_at,omitempty" db:"completed_at"`
+
+	// Progress tracking
+	TotalPhotos     int `json:"total_photos" db:"total_photos"`
+	UploadedPhotos  int `json:"uploaded_photos" db:"uploaded_photos"`
+	ProcessedPhotos int `json:"processed_photos" db:"processed_photos"`
+
+	// Relations
+	Room   *Room         `json:"room,omitempty"`
+	Photos []PhotoUpload `json:"photos,omitempty"`
+}
+
+// PhotoUpload model for individual photo uploads
+type PhotoUpload struct {
+	ID              uuid.UUID       `json:"id" db:"id"`
+	SessionID       uuid.UUID       `json:"session_id" db:"session_id"`
+	ItemID          *uuid.UUID      `json:"item_id,omitempty" db:"item_id"`
+	Filename        string          `json:"filename" db:"filename"`
+	OriginalName    string          `json:"original_name" db:"original_name"`
+	MimeType        string          `json:"mime_type" db:"mime_type"`
+	FileSize        int64           `json:"file_size" db:"file_size"`
+	Angle           *PhotoAngle     `json:"angle,omitempty" db:"angle"`
+	Caption         *string         `json:"caption,omitempty" db:"caption"`
+	IsPrimary       bool            `json:"is_primary" db:"is_primary"`
+	UploadedAt      time.Time       `json:"uploaded_at" db:"uploaded_at"`
+	ProcessedAt     *time.Time      `json:"processed_at,omitempty" db:"processed_at"`
+
+	// Relations
+	Session *PhotoSession `json:"session,omitempty"`
+	Item    *Item         `json:"item,omitempty"`
+	Versions []PhotoVersion `json:"versions,omitempty"`
+	Metadata *PhotoMetadata `json:"metadata,omitempty"`
+}
+
+// PhotoVersion model for different resolutions
+type PhotoVersion struct {
+	ID          uuid.UUID       `json:"id" db:"id"`
+	PhotoID     uuid.UUID       `json:"photo_id" db:"photo_id"`
+	Resolution  PhotoResolution `json:"resolution" db:"resolution"`
+	URL         string          `json:"url" db:"url"`
+	Width       int             `json:"width" db:"width"`
+	Height      int             `json:"height" db:"height"`
+	FileSize    int64           `json:"file_size" db:"file_size"`
+	CreatedAt   time.Time       `json:"created_at" db:"created_at"`
+
+	// Relations
+	Photo *PhotoUpload `json:"photo,omitempty"`
+}
+
+// PhotoMetadata model for EXIF and capture details
+type PhotoMetadata struct {
+	ID          uuid.UUID  `json:"id" db:"id"`
+	PhotoID     uuid.UUID  `json:"photo_id" db:"photo_id"`
+	ExifData    *string    `json:"exif_data,omitempty" db:"exif_data"`
+	Latitude    *float64   `json:"latitude,omitempty" db:"latitude"`
+	Longitude   *float64   `json:"longitude,omitempty" db:"longitude"`
+	TakenAt     *time.Time `json:"taken_at,omitempty" db:"taken_at"`
+	CameraModel *string    `json:"camera_model,omitempty" db:"camera_model"`
+	Aperture    *float64   `json:"aperture,omitempty" db:"aperture"`
+	ShutterSpeed *string   `json:"shutter_speed,omitempty" db:"shutter_speed"`
+	ISO         *int       `json:"iso,omitempty" db:"iso"`
+	FocalLength *float64   `json:"focal_length,omitempty" db:"focal_length"`
+	Flash       *bool      `json:"flash,omitempty" db:"flash"`
+	Orientation *int       `json:"orientation,omitempty" db:"orientation"`
+	CreatedAt   time.Time  `json:"created_at" db:"created_at"`
+
+	// Relations
+	Photo *PhotoUpload `json:"photo,omitempty"`
+}
+
+// PhotoProgress model for room-by-room tracking
+type PhotoProgress struct {
+	ID            uuid.UUID `json:"id" db:"id"`
+	RoomID        uuid.UUID `json:"room_id" db:"room_id"`
+	SessionID     *uuid.UUID `json:"session_id,omitempty" db:"session_id"`
+	ItemsTotal    int       `json:"items_total" db:"items_total"`
+	ItemsWithPhotos int     `json:"items_with_photos" db:"items_with_photos"`
+	PhotosTotal   int       `json:"photos_total" db:"photos_total"`
+	LastPhotoAt   *time.Time `json:"last_photo_at,omitempty" db:"last_photo_at"`
+	UpdatedAt     time.Time  `json:"updated_at" db:"updated_at"`
+
+	// Relations
+	Room    *Room         `json:"room,omitempty"`
+	Session *PhotoSession `json:"session,omitempty"`
+}
+
+// Request/Response models for photo APIs
+
+// PhotoUploadRequest for single photo upload
+type PhotoUploadRequest struct {
+	ItemID    *uuid.UUID  `json:"item_id,omitempty"`
+	SessionID *uuid.UUID  `json:"session_id,omitempty"`
+	Angle     *PhotoAngle `json:"angle,omitempty"`
+	Caption   *string     `json:"caption,omitempty"`
+	IsPrimary bool        `json:"is_primary"`
+}
+
+// BatchPhotoUploadRequest for multiple photos
+type BatchPhotoUploadRequest struct {
+	SessionID uuid.UUID               `json:"session_id" binding:"required"`
+	Photos    []PhotoUploadRequest    `json:"photos" binding:"required"`
+}
+
+// CreatePhotoSessionRequest for new sessions
+type CreatePhotoSessionRequest struct {
+	RoomID      *uuid.UUID `json:"room_id,omitempty"`
+	Name        string     `json:"name" binding:"required"`
+	Description *string    `json:"description,omitempty"`
+}
+
+// UpdatePhotoSessionRequest for session updates
+type UpdatePhotoSessionRequest struct {
+	Name        *string             `json:"name,omitempty"`
+	Description *string             `json:"description,omitempty"`
+	Status      *PhotoSessionStatus `json:"status,omitempty"`
+}
+
+// PhotoProgressSummary for room progress overview
+type PhotoProgressSummary struct {
+	RoomID          uuid.UUID `json:"room_id" db:"room_id"`
+	RoomName        string    `json:"room_name" db:"room_name"`
+	Floor           FloorLevel `json:"floor" db:"floor"`
+	ItemsTotal      int       `json:"items_total" db:"items_total"`
+	ItemsWithPhotos int       `json:"items_with_photos" db:"items_with_photos"`
+	PhotosTotal     int       `json:"photos_total" db:"photos_total"`
+	CompletionRate  float64   `json:"completion_rate" db:"completion_rate"`
+	LastPhotoAt     *time.Time `json:"last_photo_at,omitempty" db:"last_photo_at"`
+}
+
+// WebSocket message types for real-time updates
+type WSMessageType string
+
+const (
+	WSPhotoUploaded    WSMessageType = "photo_uploaded"
+	WSPhotoProcessed   WSMessageType = "photo_processed"
+	WSSessionUpdated   WSMessageType = "session_updated"
+	WSProgressUpdated  WSMessageType = "progress_updated"
+	WSError           WSMessageType = "error"
+)
+
+// WebSocketMessage for real-time communication
+type WebSocketMessage struct {
+	Type      WSMessageType `json:"type"`
+	SessionID *uuid.UUID   `json:"session_id,omitempty"`
+	RoomID    *uuid.UUID   `json:"room_id,omitempty"`
+	Data      interface{}  `json:"data,omitempty"`
+	Timestamp time.Time    `json:"timestamp"`
+}
+
 // Implement driver.Valuer for new custom types
+func (p PhotoSessionStatus) Value() (driver.Value, error) {
+	return string(p), nil
+}
+
+func (a PhotoAngle) Value() (driver.Value, error) {
+	return string(a), nil
+}
+
+func (r PhotoResolution) Value() (driver.Value, error) {
+	return string(r), nil
+}
+
 func (i InterestLevel) Value() (driver.Value, error) {
 	return string(i), nil
 }

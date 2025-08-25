@@ -6,7 +6,8 @@ import {
   CloudArrowUpIcon,
   ArrowLeftIcon,
   CheckCircleIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  MapIcon
 } from '@heroicons/react/24/outline';
 import { api } from '../services/api';
 import { PhotoSession, CapturedPhoto } from '../types';
@@ -29,10 +30,15 @@ interface PhotoMatch {
 
 const PhotoCapture: React.FC = () => {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'workflow' | 'qr' | 'bulk'>('workflow');
+  const [activeTab, setActiveTab] = useState<'workflow' | 'qr' | 'bulk' | 'visual'>('workflow');
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
   const [offlineQueue, setOfflineQueue] = useState<CapturedPhoto[]>([]);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [selectedRoomId, setSelectedRoomId] = useState<string>('');
+
+  // Enhanced photo upload management (mock for now - implement as needed)
+  const queueStatus = { total: 0, active: 0, pending: 0, failed: 0 };
+  const isConnected = isOnline;
 
   // Fetch data
   const { data: itemsData, isLoading: itemsLoading, error: itemsError } = useQuery({
@@ -299,6 +305,20 @@ const PhotoCapture: React.FC = () => {
             </button>
 
             <button
+              onClick={() => setActiveTab('visual')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'visual'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <MapIcon className="h-5 w-5" />
+                <span>Visual Progress</span>
+              </div>
+            </button>
+
+            <button
               onClick={() => setActiveTab('qr')}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'qr'
@@ -360,7 +380,7 @@ const PhotoCapture: React.FC = () => {
         )}
 
         {/* Tab Content */}
-        {activeTab === 'workflow' && (
+        {(activeTab === 'workflow' || activeTab === 'visual') && (
           <div className="bg-white rounded-lg p-4">
             <ErrorBoundary fallback={<div className="p-4 text-center text-red-600">Unable to load photo capture workflow. Please try refreshing the page.</div>}>
               <PhotoCaptureWorkflow
@@ -368,6 +388,8 @@ const PhotoCapture: React.FC = () => {
                 rooms={rooms}
                 onPhotosUpdated={handlePhotosUpdated}
                 onSessionSaved={handleSessionSaved}
+                selectedRoomId={selectedRoomId}
+                onRoomSelected={setSelectedRoomId}
               />
             </ErrorBoundary>
           </div>

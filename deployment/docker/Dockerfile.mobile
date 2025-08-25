@@ -1,38 +1,45 @@
-# React Native mobile app builder
-FROM node:18-bullseye AS base
+# Multi-stage build for React Native mobile app
+FROM node:20-alpine AS base
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    openjdk-11-jdk \
-    android-sdk \
-    unzip \
-    wget \
-    && rm -rf /var/lib/apt/lists/*
+# Install system dependencies for mobile development
+RUN apk add --no-cache \
+    git \
+    python3 \
+    make \
+    g++ \
+    bash \
+    curl \
+    openjdk11-jdk
 
-# Set JAVA_HOME
-ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+WORKDIR /app
+
+# Dependencies stage
+FROM base AS deps
+
+# Copy package files
+COPY 5470_S_Highline_Circle/mobile/package*.json ./
+
+# Install dependencies
+RUN npm ci
 
 # Install Android SDK
 ENV ANDROID_HOME=/opt/android-sdk
-ENV PATH=${PATH}:${ANDROID_HOME}/tools:${ANDROID_HOME}/tools/bin:${ANDROID_HOME}/platform-tools
+ENV PATH=${PATH}:${ANDROID_HOME}/tools:${ANDROID_HOME}/platform-tools
 
-# Download Android SDK
-RUN wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O android-sdk.zip && \
-    mkdir -p ${ANDROID_HOME}/cmdline-tools && \
-    unzip -q android-sdk.zip -d ${ANDROID_HOME}/cmdline-tools && \
+RUN mkdir -p ${ANDROID_HOME} && \
+    wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O /tmp/android-sdk.zip && \
+    unzip -q /tmp/android-sdk.zip -d ${ANDROID_HOME}/cmdline-tools && \
     mv ${ANDROID_HOME}/cmdline-tools/cmdline-tools ${ANDROID_HOME}/cmdline-tools/latest && \
-    rm android-sdk.zip
+    rm /tmp/android-sdk.zip
 
 # Accept Android SDK licenses
 RUN yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses
 
-# Install required Android SDK packages
+# Install Android build tools and platform
 RUN ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager \
-    "platform-tools" \
     "platforms;android-33" \
     "build-tools;33.0.0" \
-    "extras;android;m2repository" \
-    "extras;google;m2repository"
+    "platform-tools"
 
 # Development stage
 FROM base AS development

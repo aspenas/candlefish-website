@@ -21,10 +21,13 @@ import (
 
 type Handler struct {
 	db *sqlx.DB
+	PhotoHandler *PhotoHandler
 }
 
 func New(db *sqlx.DB) *Handler {
-	return &Handler{db: db}
+	h := &Handler{db: db}
+	h.PhotoHandler = NewPhotoHandler(h)
+	return h
 }
 
 // Activity logging helper functions
