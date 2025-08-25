@@ -3,63 +3,18 @@
 
 [build]
   command = "npm run build"
-  publish = ".next"
 
 [build.environment]
   NODE_VERSION = "18"
   NEXT_TELEMETRY_DISABLED = "1"
 
-# Performance Monitoring - Temporarily disabled due to module resolution issue
+# Performance Monitoring - Disabled due to module conflicts with Next.js
 # [[plugins]]
 #   package = "@netlify/plugin-lighthouse"
-#   [plugins.inputs]
-#     audits = [
-#       { url = "/", name = "Homepage" }
-#     ]
-#     [plugins.inputs.thresholds]
-#       performance = 0.8
-#       accessibility = 0.9
-#       best-practices = 0.9
-#       seo = 0.9
 
-# Next.js Optimization
+# Essential Next.js Plugin Only
 [[plugins]]
   package = "@netlify/plugin-nextjs"
-
-# Build Caching
-[[plugins]]
-  package = "netlify-plugin-cache-nextjs"
-
-# Image Optimization
-[[plugins]]
-  package = "netlify-plugin-image-optim"
-
-# SEO
-[[plugins]]
-  package = "netlify-plugin-submit-sitemap"
-  [plugins.inputs]
-    baseUrl = "https://staging.candlefish.ai"
-    sitemapPath = "/sitemap.xml"
-
-# HTML Minification
-[[plugins]]
-  package = "netlify-plugin-minify-html"
-  [plugins.inputs.minifierOptions]
-    removeComments = true
-    collapseWhitespace = true
-    minifyCSS = true
-    minifyJS = true
-
-# 404 Prevention - Disabled due to compatibility issues
-# [[plugins]]
-#   package = "netlify-plugin-no-more-404"
-#   [plugins.inputs]
-#     on404 = "error"
-#     cacheKey = "404-plugin-cache"
-
-# Bundle Environment Variables
-[[plugins]]
-  package = "netlify-plugin-bundle-env"
 
 # Security Headers
 [[headers]]
@@ -93,17 +48,7 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
-# Edge Functions (if applicable)
-[[edge_functions]]
-  path = "/api/edge/*"
-  function = "api-edge"
-
-# Redirects - API routes handled automatically by @netlify/plugin-nextjs
-# [[redirects]]
-#   from = "/api/*"
-#   to = "/.netlify/functions/:splat"
-#   status = 200
-#   force = true
+# API routes and redirects are handled automatically by @netlify/plugin-nextjs
 
 # Performance optimizations
 [functions]

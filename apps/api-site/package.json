@@ -10,26 +10,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@apidevtools/swagger-parser": "^10.1.0",
-    "@apollo/client": "^3.11.4",
-    "@candlefish-ai/shared": "workspace:*",
-    "@radix-ui/react-collapsible": "^1.0.3",
-    "@radix-ui/react-select": "^2.0.0",
-    "@radix-ui/react-tabs": "^1.0.4",
-    "clsx": "^2.1.1",
-    "date-fns": "^3.6.0",
-    "framer-motion": "^10.18.0",
-    "graphql": "^16.8.1",
-    "lucide-react": "^0.424.0",
     "next": "^14.2.25",
-    "prism-react-renderer": "^2.3.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-hook-form": "^7.52.1",
-    "react-intersection-observer": "^9.16.0",
-    "swagger-ui-react": "^5.17.14",
-    "tailwind-merge": "^2.5.2",
-    "zod": "^3.23.8"
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.5.2"
   },
   "devDependencies": {
     "@types/node": "^20.14.10",
