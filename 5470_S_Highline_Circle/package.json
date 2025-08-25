@@ -1,0 +1,14 @@
+{
+  "name": "mad-valuation-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "build": "pnpm -C packages/mad-tokens build && pnpm -C apps/mad-valuation-web build",
+    "dev": "pnpm -C packages/mad-tokens build && pnpm -C apps/mad-valuation-web dev"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "dependencies": {
+    "rimraf": "^6.0.1",
+    "style-dictionary": "^3.9.1"
+  }
+}

@@ -1,0 +1,246 @@
+# Real-time Security Event Subscription
+subscription SecurityEventAdded($organizationId: ID!) {
+  securityEventAdded(organizationId: $organizationId) {
+    id
+    title
+    description
+    severity
+    eventType
+    source
+    createdAt
+    asset {
+      id
+      name
+      platform
+      environment
+    }
+    metadata
+    requiresAction
+  }
+}
+
+# Alert Created Subscription
+subscription AlertCreated($organizationId: ID!) {
+  alertCreated(organizationId: $organizationId) {
+    id
+    title
+    description
+    severity
+    status
+    alertType
+    createdAt
+    asset {
+      id
+      name
+      platform
+    }
+    source
+    metadata
+    escalationLevel
+  }
+}
+
+# Vulnerability Detection Subscription
+subscription VulnerabilityDetected($organizationId: ID!) {
+  vulnerabilityDetected(organizationId: $organizationId) {
+    id
+    cveId
+    title
+    description
+    severity
+    cvssScore
+    discoveredAt
+    asset {
+      id
+      name
+      platform
+      environment
+    }
+    affectedComponents
+    isExploitable
+    hasPatch
+    references {
+      url
+      title
+    }
+  }
+}
+
+# Kong Admin API Status Changes
+subscription KongAdminApiStatusChanged {
+  kongAdminApiStatusChanged {
+    isSecure
+    protocol
+    isVulnerable
+    vulnerabilityDescription
+    riskLevel
+    recommendedActions
+    lastChecked
+    endpoint
+    changeType
+    previousStatus {
+      isVulnerable
+      protocol
+    }
+  }
+}
+
+# Asset Health Status Changes
+subscription AssetHealthStatusChanged($organizationId: ID!, $assetIds: [ID!]) {
+  assetHealthStatusChanged(organizationId: $organizationId, assetIds: $assetIds) {
+    id
+    name
+    healthStatus
+    previousHealthStatus
+    lastHealthCheck
+    healthDetails {
+      checks {
+        name
+        status
+        message
+        timestamp
+      }
+      metrics {
+        cpu
+        memory
+        network
+        storage
+      }
+    }
+    platform
+    environment
+  }
+}
+
+# Compliance Status Updates
+subscription ComplianceStatusChanged($organizationId: ID!) {
+  complianceStatusChanged(organizationId: $organizationId) {
+    framework
+    overallScore
+    previousScore
+    changedRequirements {
+      id
+      title
+      status
+      previousStatus
+      lastAssessed
+    }
+    criticalFailures
+    updatedAt
+  }
+}
+
+# Real-time Metrics Updates
+subscription SecurityMetricsUpdated($organizationId: ID!) {
+  securityMetricsUpdated(organizationId: $organizationId) {
+    timestamp
+    metrics {
+      totalAssets
+      criticalVulnerabilities
+      activeAlerts
+      complianceScore
+      threatLevel
+    }
+    changes {
+      field
+      oldValue
+      newValue
+      changeType
+    }
+  }
+}
+
+# Incident Status Updates
+subscription IncidentStatusChanged($organizationId: ID!) {
+  incidentStatusChanged(organizationId: $organizationId) {
+    id
+    title
+    status
+    previousStatus
+    severity
+    updatedAt
+    updatedBy {
+      id
+      name
+    }
+    affectedAssets {
+      id
+      name
+    }
+    timeline {
+      timestamp
+      action
+      description
+      performedBy {
+        name
+      }
+    }
+  }
+}
+
+# System Status Updates
+subscription SystemStatusChanged {
+  systemStatusChanged {
+    component
+    status
+    previousStatus
+    message
+    timestamp
+    affectedServices
+    estimatedResolution
+    maintenanceWindow {
+      start
+      end
+      description
+    }
+  }
+}
+
+# Threat Intelligence Updates
+subscription ThreatIntelligenceUpdated($organizationId: ID!) {
+  threatIntelligenceUpdated(organizationId: $organizationId) {
+    id
+    threatType
+    severity
+    description
+    indicators {
+      type
+      value
+      confidence
+    }
+    affectedAssets {
+      id
+      name
+      riskLevel
+    }
+    recommendedActions
+    source
+    publishedAt
+    expiresAt
+  }
+}
+
+# User Activity Monitoring (for audit)
+subscription SecurityAuditEvent($organizationId: ID!) {
+  securityAuditEvent(organizationId: $organizationId) {
+    id
+    eventType
+    description
+    user {
+      id
+      name
+      email
+    }
+    timestamp
+    sourceIp
+    userAgent
+    resource {
+      type
+      id
+      name
+    }
+    action
+    result
+    metadata
+  }
+}

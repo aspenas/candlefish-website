@@ -47,7 +47,8 @@ const PhotoCapture: React.FC = () => {
       console.log('Fetching items from API...');
       const result = await api.getItems();
       console.log('Items API result:', result);
-      return result;
+      // Extract data from axios response
+      return result.data;
     },
     retry: 3,
     onError: (error) => {
@@ -61,7 +62,8 @@ const PhotoCapture: React.FC = () => {
       console.log('Fetching rooms from API...');
       const result = await api.getRooms();
       console.log('Rooms API result:', result);
-      return result;
+      // Extract data from axios response
+      return result.data;
     },
     retry: 3,
     onError: (error) => {
@@ -69,8 +71,9 @@ const PhotoCapture: React.FC = () => {
     }
   });
 
-  const items = Array.isArray(itemsData) ? itemsData : (itemsData?.items || itemsData || []);
-  const rooms = Array.isArray(roomsData) ? roomsData : (roomsData?.rooms || roomsData || []);
+  // API returns raw arrays directly
+  const items = Array.isArray(itemsData) ? itemsData : [];
+  const rooms = Array.isArray(roomsData) ? roomsData : [];
 
   // Debug logging
   console.log('Final parsed items:', items, 'Length:', items.length);

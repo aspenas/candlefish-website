@@ -19,16 +19,11 @@ apiClient.interceptors.response.use(
     // Handle empty or malformed responses
     if (data === null || data === undefined) {
       console.warn('Received null/undefined response from API');
-      return [];
+      return { data: [] };
     }
 
-    // If expecting an array but got something else, return empty array
-    if (response.config.url?.includes('/items') && !Array.isArray(data) && !data.id) {
-      console.warn('Expected array of items but received:', typeof data);
-      return [];
-    }
-
-    return data;
+    // Return the response object as-is, the component will handle parsing
+    return response;
   },
   (error) => {
     console.error('API Error Details:', {

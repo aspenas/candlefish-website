@@ -1,0 +1,257 @@
+# Security Overview Query
+query SecurityOverview($organizationId: ID!) {
+  securityOverview(organizationId: $organizationId) {
+    totalAssets
+    criticalVulnerabilities
+    activeAlerts
+    complianceScore
+    threatLevel
+    kongAdminApiVulnerability {
+      isVulnerable
+      riskLevel
+      recommendedActions
+      lastChecked
+    }
+    vulnerabilitiesBySeverity {
+      severity
+      count
+    }
+    alertsByStatus {
+      status
+      count
+    }
+    complianceBreakdown {
+      framework
+      score
+      criticalIssues
+    }
+  }
+}
+
+# Assets Query with Filtering
+query Assets($filter: AssetFilter, $limit: Int = 50, $offset: Int = 0) {
+  assets(filter: $filter, limit: $limit, offset: $offset) {
+    id
+    name
+    assetType
+    environment
+    platform
+    securityLevel
+    healthStatus
+    lastHealthCheck
+    createdAt
+    updatedAt
+    vulnerabilities {
+      id
+      severity
+      status
+      cveId
+      title
+      description
+      discoveredAt
+    }
+    alerts(status: ACTIVE) {
+      id
+      severity
+      title
+      status
+      createdAt
+    }
+    tags
+  }
+}
+
+# Vulnerabilities Query
+query Vulnerabilities(
+  $filter: VulnerabilityFilter
+  $sort: VulnerabilitySort
+  $limit: Int = 50
+  $offset: Int = 0
+) {
+  vulnerabilities(filter: $filter, sort: $sort, limit: $limit, offset: $offset) {
+    id
+    cveId
+    title
+    description
+    severity
+    status
+    cvssScore
+    publishedAt
+    discoveredAt
+    lastUpdated
+    asset {
+      id
+      name
+      platform
+      environment
+    }
+    affectedComponents
+    remediation {
+      description
+      estimatedEffort
+      priority
+    }
+    references {
+      url
+      title
+    }
+  }
+}
+
+# Alerts Query
+query Alerts(
+  $filter: AlertFilter
+  $sort: AlertSort
+  $limit: Int = 50
+  $offset: Int = 0
+) {
+  alerts(filter: $filter, sort: $sort, limit: $limit, offset: $offset) {
+    id
+    title
+    description
+    severity
+    status
+    alertType
+    createdAt
+    acknowledgedAt
+    resolvedAt
+    assignedTo {
+      id
+      name
+      email
+    }
+    asset {
+      id
+      name
+      platform
+    }
+    source
+    metadata
+    escalationLevel
+    responseTime
+    resolutionTime
+  }
+}
+
+# Kong Admin API Status
+query KongAdminApiStatus {
+  kongAdminApiStatus {
+    isSecure
+    protocol
+    isVulnerable
+    vulnerabilityDescription
+    riskLevel
+    recommendedActions
+    lastChecked
+    endpoint
+    port
+  }
+}
+
+# Compliance Overview
+query ComplianceOverview($organizationId: ID!) {
+  complianceOverview(organizationId: $organizationId) {
+    overallScore
+    frameworks {
+      name
+      version
+      score
+      requirements {
+        id
+        title
+        status
+        description
+        evidence
+        lastAssessed
+      }
+      criticalFailures
+      recommendations
+    }
+    trends {
+      date
+      score
+    }
+    nextAssessmentDue
+  }
+}
+
+# Security Metrics for Charts
+query SecurityMetrics($organizationId: ID!, $timeRange: TimeRange!) {
+  securityMetrics(organizationId: $organizationId, timeRange: $timeRange) {
+    vulnerabilityTrends {
+      date
+      critical
+      high
+      medium
+      low
+    }
+    alertTrends {
+      date
+      count
+      resolved
+      acknowledged
+    }
+    assetHealthTrends {
+      date
+      healthy
+      warning
+      critical
+      unknown
+    }
+    threatActivityTrends {
+      date
+      blocked
+      allowed
+      investigated
+    }
+  }
+}
+
+# Real-time Dashboard Data
+query RealTimeDashboard($organizationId: ID!) {
+  securityOverview(organizationId: $organizationId) {
+    totalAssets
+    criticalVulnerabilities
+    activeAlerts
+    complianceScore
+    threatLevel
+  }
+  
+  recentAlerts: alerts(
+    filter: { organizationId: $organizationId, status: [ACTIVE, ACKNOWLEDGED] }
+    sort: { field: CREATED_AT, direction: DESC }
+    limit: 10
+  ) {
+    id
+    title
+    severity
+    status
+    createdAt
+    asset {
+      name
+      platform
+    }
+  }
+  
+  criticalVulnerabilities: vulnerabilities(
+    filter: { organizationId: $organizationId, severity: [CRITICAL] }
+    sort: { field: DISCOVERED_AT, direction: DESC }
+    limit: 10
+  ) {
+    id
+    cveId
+    title
+    severity
+    discoveredAt
+    asset {
+      name
+      platform
+    }
+  }
+  
+  kongAdminApiStatus {
+    isVulnerable
+    riskLevel
+    lastChecked
+  }
+}

@@ -1,0 +1,52 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Candlefish.ai//Meeting Scheduler//EN
+METHOD:REQUEST
+NAME:Candlefish Meeting
+X-WR-CALNAME:Candlefish Meeting
+TIMEZONE-ID:America/Denver
+X-WR-TIMEZONE:America/Denver
+BEGIN:VEVENT
+UID:29632b2a-6e68-4f70-898c-74cd8e6bb98a
+SEQUENCE:0
+DTSTAMP:20250825T152422
+DTSTART:20250829T150000
+DTEND:20250829T160000
+SUMMARY:Candlefish.ai × Retti — Working Session
+LOCATION:https://us06web.zoom.us/j/89371686095?pwd=GnmgZnD6dsujCdEjDQjyI4I
+ aVeVgc7.1
+DESCRIPTION:Join Zoom Meeting:\nhttps://us06web.zoom.us/j/89371686095?pwd=
+ GnmgZnD6dsujCdEjDQjyI4IaVeVgc7.1\n\nMeeting ID: 89371686095\nPasscode: 958
+ 465\n\nMeeting with Read.ai Copilot enabled for automatic notes and highli
+ ghts.\n\n---\nRead.ai Copilot will join this meeting to provide:\n• Real
+ -time transcription\n• Meeting summary and action items\n• Shared high
+ lights for all participants\n\nMeeting organized by Candlefish.ai
+ORGANIZER;CN="Patrick Smith":mailto:patrick@candlefish.ai
+ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:MAILTO:erusi
+ n@retti.com
+ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:MAILTO:katie
+ @retti.com
+ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:MAILTO:jon@j
+ denver.com
+BEGIN:VALARM
+ACTION:EMAIL
+TRIGGER:-PT30M
+DESCRIPTION:Reminder: Candlefish.ai × Retti — Working Session starting 
+ in 30 minutes
+SUMMARY:Candlefish.ai × Retti — Working Session
+END:VALARM
+BEGIN:VALARM
+ACTION:DISPLAY
+TRIGGER:-PT15M
+DESCRIPTION:Candlefish.ai × Retti — Working Session starting in 15 minu
+ tes
+END:VALARM
+URL;VALUE=URI:https://us06web.zoom.us/j/89371686095?pwd=GnmgZnD6dsujCdEjDQ
+ jyI4IaVeVgc7.1
+STATUS:CONFIRMED
+PRIORITY:5
+X-ZOOM-MEETING-ID:89371686095
+X-ZOOM-PASSCODE:958465
+CLASS:PUBLIC
+END:VEVENT
+END:VCALENDAR

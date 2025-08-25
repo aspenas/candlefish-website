@@ -1,0 +1,50 @@
+AWS SES Production Access Request
+
+Account ID: 681214184463
+Region: us-east-1
+Domain: candlefish.ai
+Contact: patrick@candlefish.ai
+
+BUSINESS USE CASE:
+Candlefish.ai requires SES production access for transactional business communications. We send meeting invitations with calendar attachments to business partners, clients, and team members. All emails are expected and requested by recipients.
+
+EMAIL TYPES:
+- Meeting invitations with ICS calendar files
+- Business coordination messages  
+- Project updates to clients
+- Team collaboration notices
+
+VOLUME:
+- Current: 500-1000 emails/month
+- Growth projection: 2000-3000 emails/month by Q1 2026
+- Daily maximum: 100 emails
+- Send rate needed: 5 emails/second
+
+COMPLIANCE & BEST PRACTICES:
+✓ Domain verified with DKIM, SPF, and DMARC
+✓ Bounce handling via SNS topics configured
+✓ Complaint handling via SNS topics configured  
+✓ Suppression list management implemented
+✓ No marketing or promotional emails
+✓ All recipients have business relationship with sender
+✓ Double opt-in for any subscriptions
+✓ Unsubscribe link in all applicable emails
+✓ CAN-SPAM compliant
+
+TECHNICAL IMPLEMENTATION:
+- Application: Meeting automation system
+- Authentication: OAuth2 for Zoom, AWS SDK for SES
+- Monitoring: CloudWatch metrics and alarms
+- Error handling: Exponential backoff and retry logic
+- Content: Personalized transactional content only
+
+SENDER REPUTATION:
+- New to SES but following all best practices
+- No history of spam or abuse complaints
+- Professional B2B communications only
+- Manual review of all automated emails
+
+REQUEST:
+Please approve production access for candlefish.ai in us-east-1 region. We need to send meeting invitations to business partners immediately.
+
+Thank you for your consideration.

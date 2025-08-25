@@ -1,83 +1,55 @@
-# 5470 S Highline Circle - Furnishings Inventory System
+# Modern Architecture Denver — Highline Valuation
 
-A modern, full-stack inventory management system for tracking and managing home furnishings.
+Quiet, architectural valuation web app. Tokens → Style Dictionary → Tailwind preset → Next.js (App Router).
 
-## Access Information
-
-**Production URL**: https://inventory.candlefish.ai
-
-**Authentication**: Password Protection (Netlify)
-- Password: `highline!`
-- Configured via: Netlify Dashboard → Project Settings → Visitor Access
-- Protection Level: Basic protection on all deploys
-
-## Features
-
-- 📊 **Comprehensive Inventory Management**: Track items by room, category, and price
-- 🔍 **Advanced Search & Filtering**: Find items quickly with multi-criteria search
-- 💰 **Sell/Keep Decision Tracking**: Manage disposition decisions for each item
-- 📈 **Real-time Analytics**: Visual dashboards showing inventory value by room and category
-- 📄 **Export Capabilities**: Generate PDF reports and Excel exports
-- 📱 **Mobile Responsive**: Works seamlessly on all devices
-- 🤖 **AI Integration**: NANDA agents for intelligent recommendations
-- 🔄 **Workflow Automation**: n8n integration for automated processes
-
-## Tech Stack
-
-- **Backend**: Go (Fiber framework)
-- **Frontend**: React + TypeScript + Tailwind CSS
-- **Database**: PostgreSQL
-- **Cache**: Redis
-- **Automation**: n8n workflows
-- **AI**: NANDA agent integration
-- **Export**: PDF generation, Excel export
-
-## Project Structure
-
-```
-5470_S_Highline_Circle/
-├── backend/              # Go backend API
-├── frontend/            # React frontend
-├── database/           # PostgreSQL schemas and migrations
-├── workflows/          # n8n workflow definitions
-├── agents/             # NANDA agent configurations
-├── docker-compose.yml  # Container orchestration
-└── README.md
-```
-
-## Quick Start
-
-### Local Development
+## Run locally
 ```bash
-# Start all services
-docker-compose up -d
-
-# Access the application
-open http://localhost:3000
-
-# Access n8n workflows
-open http://localhost:5678
-
-# Access API documentation
-open http://localhost:8080/swagger
+pnpm install
+pnpm dev
+# open http://localhost:3000/highline
 ```
 
-### Production Access
-Visit https://inventory.candlefish.ai and enter password:
-- Password: `highline!`
+## Share gate
+- Copy `.env.example` to `.env` and set `MAD_SHARE_PASSPHRASE=your-secret`.
+- Start dev: `pnpm dev`
+- Share link: `/share/highline` (cookie lasts ~8h).
 
-Note: Password protection is managed through Netlify's dashboard settings (Project Settings → Visitor Access)
+## Deploy — Vercel
+1. Push this repo to GitHub.
+2. In Vercel:
+   - **Add New… → Project → Import from Git**.
+   - **Root Directory**: `apps/mad-valuation-web` (Monorepo setting) — see docs.
+   - **Install Command**: `pnpm install`
+   - **Build Command**: `pnpm -C ../../packages/mad-tokens build && next build`
+   - **Environment Variables**: `MAD_SHARE_PASSPHRASE=...`
+   - Deploy.
 
-## Current Status
+## Deploy — Cloudflare Pages (SSR)
+Cloudflare now supports full-stack Next.js via **next-on-pages**.
+```bash
+pnpm -C packages/mad-tokens build
+pnpm -C apps/mad-valuation-web build:cf
+# Then deploy the .vercel output:
+cd apps/mad-valuation-web
+npx wrangler pages deploy .vercel/output/static --project-name mad-highline
+# Set env var in Pages → Settings → Environment Variables: MAD_SHARE_PASSPHRASE
+```
+References: Next.js on Pages guide + next-on-pages quick start.
 
-- Total Items: 239
-- Total Value: $400,000+
-- Rooms: 40
-- Categories: 11
+## Brand
+- Palette: Ink #111111, Bone #F9F7F3, Bronze #C49A6C, Midnight #2F3042, Slate #6B6B6B, Stone #D8D3C7
+- Type: Georgia (display), Inter (UI)
+- Layout: restrained grid, bronze for emphasis only
 
-## Decision Process
+## Sources
+- CMA Pro Report (REcolorado), Aug 16, 2025 — CP/LP 96.44% across 14 sales ≥ $5M.
 
-1. **Sell vs. Keep**: Review each item and mark disposition
-2. **Set Asking Prices**: Determine sale prices for items marked "Sell"
-3. **Prepare Buyer View**: Generate clean inventory for potential buyers
-4. **Negotiate**: Use room bundles and package deals
+
+## One-click share tokens (HMAC)
+- Add env: `MAD_SHARE_TOKEN_SECRET` (long random string)
+- Generate token (72h):
+  ```bash
+  export MAD_SHARE_TOKEN_SECRET='YOUR_LONG_RANDOM_SECRET'
+  node -e "const crypto=require('crypto');const s=process.env.MAD_SHARE_TOKEN_SECRET;const p='/share/highline';const exp=Math.floor(Date.now()/1000)+60*60*72;const sig=crypto.createHmac('sha256',s).update(`${p}:${exp}`).digest('base64url');console.log(`${exp}.${sig}`)"
+  ```
+- Share URL: `https://<domain>/share/highline?t=<exp>.<sig>`
