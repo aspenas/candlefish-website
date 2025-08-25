@@ -2,6 +2,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { mockExtensionsByCategory } from '../../../__tests__/factories/netlify-factory';
 
+// Force dynamic rendering for this route since it uses searchParams
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // In a real implementation, this would fetch from a database or external service

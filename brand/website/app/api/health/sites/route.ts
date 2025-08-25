@@ -2,6 +2,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { mockCandlefishSites } from '../../../../__tests__/factories/netlify-factory';
 
+// Force dynamic rendering for this route since it uses searchParams
+export const dynamic = 'force-dynamic';
+
 interface SiteHealth {
   siteId: string;
   name: string;
