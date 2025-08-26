@@ -1,0 +1,303 @@
+# Security Dashboard Namespace and Resource Management
+# Isolates security dashboard components with resource quotas and limits
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: security-dashboard
+  labels:
+    name: security-dashboard
+    tier: application
+    environment: production
+    security-level: high
+    monitoring: enabled
+  annotations:
+    description: "Security Dashboard - Real-time security monitoring and alerting platform"
+    owner: "security-team@candlefish.ai"
+    cost-center: "security-operations"
+
+---
+# Resource Quota - Controls resource consumption
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: security-dashboard-quota
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/component: resource-management
+spec:
+  hard:
+    # Compute Resources
+    requests.cpu: "8"
+    requests.memory: 16Gi
+    limits.cpu: "16"
+    limits.memory: 32Gi
+    
+    # Storage Resources
+    requests.storage: 100Gi
+    persistentvolumeclaims: "10"
+    
+    # Object Count Limits
+    pods: "50"
+    services: "20"
+    secrets: "30"
+    configmaps: "20"
+    replicationcontrollers: "0"
+    deployments.apps: "20"
+    statefulsets.apps: "5"
+    jobs.batch: "10"
+    cronjobs.batch: "5"
+    
+    # Network Resources
+    services.loadbalancers: "2"
+    services.nodeports: "0"
+
+---
+# Limit Range - Default resource limits for containers
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: security-dashboard-limits
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/component: resource-management
+spec:
+  limits:
+    # Container limits
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 1Gi
+      defaultRequest:
+        cpu: 100m
+        memory: 256Mi
+      max:
+        cpu: "4"
+        memory: 8Gi
+      min:
+        cpu: 50m
+        memory: 128Mi
+        
+    # Pod limits
+    - type: Pod
+      max:
+        cpu: "8"
+        memory: 16Gi
+      min:
+        cpu: 100m
+        memory: 256Mi
+        
+    # PVC limits
+    - type: PersistentVolumeClaim
+      max:
+        storage: 50Gi
+      min:
+        storage: 1Gi
+
+---
+# Network Policy - Micro-segmentation for security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: security-dashboard-network-policy
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/component: network-security
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+    
+  # Ingress Rules
+  ingress:
+    # Allow ingress from Kong Gateway
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: kong-system
+        - podSelector:
+            matchLabels:
+              app: kong
+      ports:
+        - protocol: TCP
+          port: 4000
+        - protocol: TCP
+          port: 8080
+    
+    # Allow monitoring ingress
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 9090
+        - protocol: TCP
+          port: 9464
+    
+    # Allow internal service communication
+    - from:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 4000
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 6379
+    
+  # Egress Rules
+  egress:
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+    
+    # Allow HTTPS outbound (for external APIs)
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+    
+    # Allow database connections
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgresql
+      ports:
+        - protocol: TCP
+          port: 5432
+    
+    # Allow Redis connections
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    
+    # Allow internal service communication
+    - to:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 4000
+
+---
+# Pod Security Policy (if enabled)
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: security-dashboard-psp
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/component: security-policy
+spec:
+  privileged: false
+  allowPrivilegeEscalation: false
+  requiredDropCapabilities:
+    - ALL
+  volumes:
+    - 'configMap'
+    - 'emptyDir'
+    - 'projected'
+    - 'secret'
+    - 'downwardAPI'
+    - 'persistentVolumeClaim'
+  runAsUser:
+    rule: 'MustRunAsNonRoot'
+  runAsGroup:
+    rule: 'MustRunAs'
+    ranges:
+      - min: 1000
+        max: 65534
+  seLinux:
+    rule: 'RunAsAny'
+  fsGroup:
+    rule: 'RunAsAny'
+  readOnlyRootFilesystem: false
+
+---
+# Service Account for Security Dashboard
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: security-dashboard-sa
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/component: service-account
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::681214184463:role/security-dashboard-irsa
+
+---
+# RBAC ClusterRole for Security Dashboard
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: security-dashboard-role
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/component: rbac
+rules:
+  # Read access to security-related resources
+  - apiGroups: [""]
+    resources: ["pods", "services", "endpoints", "nodes"]
+    verbs: ["get", "list", "watch"]
+  
+  # Access to secrets for configuration
+  - apiGroups: [""]
+    resources: ["secrets", "configmaps"]
+    verbs: ["get", "list", "watch"]
+    resourceNames: ["security-dashboard-secrets", "security-dashboard-config"]
+  
+  # Access to network policies for security monitoring
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "list", "watch"]
+  
+  # Access to security policies
+  - apiGroups: ["policy"]
+    resources: ["podsecuritypolicies"]
+    verbs: ["get", "list", "watch"]
+
+---
+# RBAC ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: security-dashboard-binding
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/component: rbac
+subjects:
+  - kind: ServiceAccount
+    name: security-dashboard-sa
+    namespace: security-dashboard
+roleRef:
+  kind: ClusterRole
+  name: security-dashboard-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Priority Class for Security Dashboard (High Priority)
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: security-dashboard-priority
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/component: scheduling
+value: 1000
+globalDefault: false
+description: "High priority class for security dashboard components"

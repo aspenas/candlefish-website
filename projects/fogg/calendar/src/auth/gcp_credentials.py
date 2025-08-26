@@ -151,7 +151,12 @@ class GCPCredentialsManager:
 
         # Refresh if within buffer time of expiry
         buffer = timedelta(minutes=self.refresh_buffer_minutes)
-        return datetime.now(UTC) >= (self._credentials.expiry - buffer)
+        # Make sure expiry is timezone aware for comparison
+        expiry = self._credentials.expiry
+        if expiry.tzinfo is None:
+            # Assume UTC if no timezone info
+            expiry = expiry.replace(tzinfo=UTC)
+        return datetime.now(UTC) >= (expiry - buffer)
 
     def _time_until_expiry(self) -> str | None:
         """Get human-readable time until credential expiry.
@@ -165,7 +170,10 @@ class GCPCredentialsManager:
         if not self._credentials.expiry:
             return None
 
-        delta = self._credentials.expiry - datetime.now(UTC)
+        expiry = self._credentials.expiry
+        if expiry.tzinfo is None:
+            expiry = expiry.replace(tzinfo=UTC)
+        delta = expiry - datetime.now(UTC)
         return f"{delta.total_seconds() / 60:.1f} minutes"
 
 

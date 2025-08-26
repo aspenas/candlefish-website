@@ -1,1 +1,7 @@
+# Proxy API and WebSocket requests to Fly.io backend
+https://inventory.highline.work/api/* https://5470-inventory.fly.dev/api/:splat 200!
+https://inventory.highline.work/ws https://5470-inventory.fly.dev/ws 200!
+https://inventory.highline.work/health https://5470-inventory.fly.dev/health 200!
+
+# SPA fallback for all other routes
 /*    /index.html   200

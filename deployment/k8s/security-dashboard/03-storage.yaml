@@ -1,0 +1,343 @@
+# Security Dashboard Storage Configuration
+# Persistent volumes, storage classes, and database storage
+
+# Fast SSD Storage Class for Database
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: security-dashboard-ssd
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/component: storage
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: gp3
+  iops: "3000"
+  throughput: "125"
+  encrypted: "true"
+  kmsKeyId: alias/security-dashboard-ebs
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+
+---
+# Standard Storage Class for Logs and Backups
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: security-dashboard-standard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/component: storage
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: gp2
+  encrypted: "true"
+  kmsKeyId: alias/security-dashboard-ebs
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+
+---
+# Database Primary Storage - PostgreSQL with TimescaleDB
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgresql-data
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: postgresql
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: primary
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: security-dashboard-ssd
+  selector:
+    matchLabels:
+      type: database
+      tier: primary
+
+---
+# Redis Persistent Storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-data
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: cache
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: security-dashboard-ssd
+  selector:
+    matchLabels:
+      type: cache
+
+---
+# Application Logs Storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: app-logs
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/component: logging
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: security-dashboard-standard
+
+---
+# Backup Storage for Database Dumps
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backup-storage
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/component: backup
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 200Gi
+  storageClassName: security-dashboard-standard
+
+---
+# Prometheus Metrics Storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-data
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: monitoring
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: security-dashboard-ssd
+
+---
+# Grafana Dashboard Storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-data
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/component: monitoring
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: security-dashboard-standard
+
+---
+# Elasticsearch Storage for Log Analytics
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: elasticsearch-data
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/component: logging
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: security-dashboard-ssd
+
+---
+# Shared Storage for File Uploads and Reports
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shared-storage
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/component: shared-storage
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 30Gi
+  storageClassName: security-dashboard-standard
+
+---
+# Volume Snapshot Class for Backups
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: security-dashboard-snapshot
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/component: backup
+driver: ebs.csi.aws.com
+deletionPolicy: Retain
+parameters:
+  encrypted: "true"
+
+---
+# Database Backup Snapshot Schedule
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshot
+metadata:
+  name: postgresql-backup-snapshot
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: postgresql
+    app.kubernetes.io/component: backup
+spec:
+  volumeSnapshotClassName: security-dashboard-snapshot
+  source:
+    persistentVolumeClaimName: postgresql-data
+
+---
+# ConfigMap for Storage Scripts
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: storage-scripts
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/component: storage-management
+data:
+  backup-database.sh: |
+    #!/bin/bash
+    set -e
+    
+    # Database backup script
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    BACKUP_FILE="/backup/postgresql_backup_${TIMESTAMP}.sql"
+    
+    echo "Starting database backup at $(date)"
+    
+    # Create backup
+    pg_dump -h ${POSTGRES_HOST} -U ${POSTGRES_USER} -d ${POSTGRES_DB} > ${BACKUP_FILE}
+    
+    # Compress backup
+    gzip ${BACKUP_FILE}
+    
+    # Clean up old backups (keep 7 days)
+    find /backup -name "postgresql_backup_*.sql.gz" -mtime +7 -delete
+    
+    echo "Database backup completed: ${BACKUP_FILE}.gz"
+  
+  restore-database.sh: |
+    #!/bin/bash
+    set -e
+    
+    if [ -z "$1" ]; then
+        echo "Usage: $0 <backup_file.sql.gz>"
+        exit 1
+    fi
+    
+    BACKUP_FILE=$1
+    
+    echo "Starting database restore from ${BACKUP_FILE}"
+    
+    # Extract backup
+    gunzip -c ${BACKUP_FILE} > /tmp/restore.sql
+    
+    # Restore database
+    psql -h ${POSTGRES_HOST} -U ${POSTGRES_USER} -d ${POSTGRES_DB} -f /tmp/restore.sql
+    
+    # Clean up
+    rm /tmp/restore.sql
+    
+    echo "Database restore completed"
+  
+  cleanup-logs.sh: |
+    #!/bin/bash
+    set -e
+    
+    # Log cleanup script
+    LOG_DIR="/app/logs"
+    RETENTION_DAYS=30
+    
+    echo "Starting log cleanup for files older than ${RETENTION_DAYS} days"
+    
+    # Remove old log files
+    find ${LOG_DIR} -name "*.log" -mtime +${RETENTION_DAYS} -delete
+    find ${LOG_DIR} -name "*.log.gz" -mtime +${RETENTION_DAYS} -delete
+    
+    # Rotate current logs if they're too large (>100MB)
+    find ${LOG_DIR} -name "*.log" -size +100M -exec gzip {} \;
+    
+    echo "Log cleanup completed"
+  
+  monitor-storage.sh: |
+    #!/bin/bash
+    set -e
+    
+    # Storage monitoring script
+    THRESHOLD=85
+    
+    # Check disk usage for all mounted volumes
+    df -h | grep -E '^/dev/' | while read output; do
+        usage=$(echo $output | awk '{ print $5}' | sed 's/%//g')
+        partition=$(echo $output | awk '{ print $1 }')
+        
+        if [ $usage -gt $THRESHOLD ]; then
+            echo "WARNING: Disk usage on $partition is ${usage}%"
+            # Send alert (implement your alerting mechanism here)
+            curl -X POST "${SLACK_WEBHOOK_URL}" \
+                -H 'Content-type: application/json' \
+                --data "{\"text\":\"🚨 Storage Alert: Disk usage on $partition is ${usage}% on security-dashboard\"}"
+        fi
+    done
+    
+    # Check PVC usage
+    kubectl get pvc -n security-dashboard -o custom-columns=NAME:.metadata.name,STATUS:.status.phase,CAPACITY:.status.capacity.storage,USED:.status.capacity.storage --no-headers
+  
+  volume-expansion.sh: |
+    #!/bin/bash
+    set -e
+    
+    if [ $# -ne 2 ]; then
+        echo "Usage: $0 <pvc_name> <new_size>"
+        echo "Example: $0 postgresql-data 200Gi"
+        exit 1
+    fi
+    
+    PVC_NAME=$1
+    NEW_SIZE=$2
+    
+    echo "Expanding PVC ${PVC_NAME} to ${NEW_SIZE}"
+    
+    # Update PVC size
+    kubectl patch pvc ${PVC_NAME} -n security-dashboard -p "{\"spec\":{\"resources\":{\"requests\":{\"storage\":\"${NEW_SIZE}\"}}}}"
+    
+    # Wait for expansion to complete
+    echo "Waiting for volume expansion to complete..."
+    kubectl wait --for=condition=FileSystemResizePending=false pvc/${PVC_NAME} -n security-dashboard --timeout=300s
+    
+    echo "Volume expansion completed successfully"

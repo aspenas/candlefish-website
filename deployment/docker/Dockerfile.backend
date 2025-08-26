@@ -1,64 +1,127 @@
-# Multi-stage build for Go backend
-FROM golang:1.21-alpine AS builder
+# Security Dashboard Backend - Production Optimized Multi-stage Build
+# Supports GraphQL Federation, WebSocket subscriptions, and high-concurrency
 
-# Install build dependencies
-RUN apk add --no-cache git ca-certificates tzdata
+# ============================================================================
+# Build Stage - Optimized for fast, secure builds
+# ============================================================================
+FROM node:20-alpine3.18 AS builder
 
-# Create app directory
-WORKDIR /build
+# Install security updates and build dependencies
+RUN apk update && apk upgrade && \
+    apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    git \
+    curl && \
+    rm -rf /var/cache/apk/*
 
-# Copy go mod files
-COPY 5470_S_Highline_Circle/backend/go.mod 5470_S_Highline_Circle/backend/go.sum ./
+# Create non-root user for build
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
 
-# Download dependencies
-RUN go mod download && go mod verify
+# Set working directory
+WORKDIR /app
+
+# Copy package files for dependency installation
+COPY package*.json pnpm-lock.yaml* ./
+COPY graphql/package*.json ./graphql/
+COPY apps/security-dashboard/package*.json ./apps/security-dashboard/
+
+# Install pnpm and dependencies
+RUN npm install -g pnpm@8.7.0 && \
+    pnpm install --frozen-lockfile --production=false
 
 # Copy source code
-COPY 5470_S_Highline_Circle/backend/ .
+COPY . .
 
-# Build arguments for versioning
-ARG BUILD_DATE
-ARG VCS_REF
-ARG VERSION=unknown
+# Build GraphQL schema and backend
+RUN cd graphql && \
+    pnpm run codegen && \
+    pnpm run build
 
-# Build the application with optimizations
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -a -installsuffix cgo \
-    -ldflags="-w -s \
-    -X main.version=${VERSION} \
-    -X main.buildDate=${BUILD_DATE} \
-    -X main.gitCommit=${VCS_REF}" \
-    -o inventory-backend main.go
+# Build security dashboard frontend for embedding
+RUN cd apps/security-dashboard && \
+    pnpm run build
 
-# Production stage
-FROM scratch
+# Remove development dependencies to reduce image size
+RUN pnpm prune --production
 
-# Copy timezone data
-COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+# ============================================================================
+# Production Runtime Stage - Minimal attack surface
+# ============================================================================
+FROM node:20-alpine3.18 AS runtime
 
-# Copy binary
-COPY --from=builder /build/inventory-backend /inventory-backend
+# Install latest security updates
+RUN apk update && apk upgrade && \
+    apk add --no-cache \
+    dumb-init \
+    curl \
+    ca-certificates \
+    tzdata && \
+    rm -rf /var/cache/apk/*
 
-# Add metadata labels
-LABEL maintainer="Patrick Smith <patrick@candlefish.ai>"
-LABEL org.opencontainers.image.title="Inventory Backend API"
-LABEL org.opencontainers.image.description="High-performance Go backend for inventory management"
-LABEL org.opencontainers.image.vendor="Candlefish AI"
-LABEL org.opencontainers.image.version="${VERSION}"
-LABEL org.opencontainers.image.created="${BUILD_DATE}"
-LABEL org.opencontainers.image.revision="${VCS_REF}"
-LABEL org.opencontainers.image.source="https://github.com/candlefish-ai/candlefish-ai"
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
 
-# Run as non-root user for security
-USER 65534:65534
+# Set working directory
+WORKDIR /app
+
+# Copy built application from builder stage
+COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nodejs:nodejs /app/graphql/dist ./graphql/dist
+COPY --from=builder --chown=nodejs:nodejs /app/graphql/schema.graphql ./graphql/
+COPY --from=builder --chown=nodejs:nodejs /app/apps/security-dashboard/dist ./public
+COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
+
+# Copy configuration files
+COPY --chown=nodejs:nodejs deployment/config/backend-config.json ./config/
+COPY --chown=nodejs:nodejs deployment/ssl-certs/ca-certificates.crt /etc/ssl/certs/
+
+# Create required directories
+RUN mkdir -p /app/logs /app/tmp && \
+    chown -R nodejs:nodejs /app/logs /app/tmp
+
+# Switch to non-root user
+USER nodejs
+
+# Health check configuration
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:4000/health || exit 1
+
+# Environment configuration
+ENV NODE_ENV=production \
+    PORT=4000 \
+    NODE_OPTIONS="--max-old-space-size=2048 --enable-source-maps" \
+    GRAPHQL_PLAYGROUND=false \
+    GRAPHQL_INTROSPECTION=false \
+    LOG_LEVEL=info \
+    METRICS_ENABLED=true
 
 # Expose port
-EXPOSE 8080
+EXPOSE 4000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD ["/inventory-backend", "health-check"]
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
 
-# Run the binary
-ENTRYPOINT ["/inventory-backend"]
+# Start the application
+CMD ["node", "graphql/dist/server.js"]
+
+# ============================================================================
+# Build arguments and labels for metadata
+# ============================================================================
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION
+
+LABEL org.label-schema.build-date=$BUILD_DATE \
+      org.label-schema.name="Security Dashboard Backend" \
+      org.label-schema.description="GraphQL Federation Gateway with Security Monitoring" \
+      org.label-schema.url="https://candlefish.ai" \
+      org.label-schema.vcs-ref=$VCS_REF \
+      org.label-schema.vcs-url="https://github.com/candlefish-ai/security-dashboard" \
+      org.label-schema.vendor="Candlefish AI" \
+      org.label-schema.version=$VERSION \
+      org.label-schema.schema-version="1.0" \
+      maintainer="patrick@candlefish.ai"
