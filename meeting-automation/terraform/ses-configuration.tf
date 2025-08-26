@@ -9,7 +9,7 @@ terraform {
       version = "~> 5.0"
     }
   }
-  
+
   backend "s3" {
     bucket = "candlefish-terraform-state"
     key    = "ses/terraform.tfstate"
@@ -69,7 +69,7 @@ resource "aws_ses_email_identity" "complaints" {
 # SES Configuration Set
 resource "aws_ses_configuration_set" "main" {
   name = "candlefish-main"
-  
+
   reputation_tracking_enabled = true
   sending_enabled            = true
 }
@@ -77,7 +77,7 @@ resource "aws_ses_configuration_set" "main" {
 # SNS Topic for Bounces
 resource "aws_sns_topic" "ses_bounces" {
   name = "ses-bounces-candlefish"
-  
+
   tags = {
     Environment = "production"
     Service     = "SES"
@@ -88,7 +88,7 @@ resource "aws_sns_topic" "ses_bounces" {
 # SNS Topic for Complaints
 resource "aws_sns_topic" "ses_complaints" {
   name = "ses-complaints-candlefish"
-  
+
   tags = {
     Environment = "production"
     Service     = "SES"
@@ -99,7 +99,7 @@ resource "aws_sns_topic" "ses_complaints" {
 # SNS Topic for Deliveries (optional but useful for tracking)
 resource "aws_sns_topic" "ses_deliveries" {
   name = "ses-deliveries-candlefish"
-  
+
   tags = {
     Environment = "production"
     Service     = "SES"
@@ -147,7 +147,7 @@ resource "aws_ses_event_destination" "deliveries" {
 resource "aws_cloudwatch_log_group" "ses_events" {
   name              = "/aws/ses/candlefish"
   retention_in_days = 30
-  
+
   tags = {
     Environment = "production"
     Service     = "SES"
@@ -222,26 +222,26 @@ output "configuration_set_name" {
 output "required_dns_records" {
   value = <<-EOT
     Required DNS Records for candlefish.ai:
-    
+
     1. Domain Verification (TXT Record):
        Name: _amazonses.candlefish.ai
        Type: TXT
        Value: ${aws_ses_domain_identity.candlefish.verification_token}
-    
+
     2. DKIM Records (CNAME Records):
-       ${join("\n       ", [for token in aws_ses_domain_dkim.candlefish.dkim_tokens : 
+       ${join("\n       ", [for token in aws_ses_domain_dkim.candlefish.dkim_tokens :
          "Name: ${token}._domainkey.candlefish.ai\n       Type: CNAME\n       Value: ${token}.dkim.amazonses.com\n"])}
-    
+
     3. SPF Record (TXT Record):
        Name: candlefish.ai
        Type: TXT
        Value: "v=spf1 include:amazonses.com ~all"
-    
+
     4. DMARC Record (TXT Record):
        Name: _dmarc.candlefish.ai
        Type: TXT
        Value: "v=DMARC1; p=quarantine; rua=mailto:dmarc@candlefish.ai; ruf=mailto:dmarc@candlefish.ai; fo=1"
-    
+
     5. MX Record (for receiving bounces/complaints):
        Name: candlefish.ai
        Type: MX

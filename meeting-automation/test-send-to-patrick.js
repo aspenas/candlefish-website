@@ -6,12 +6,12 @@ import fs from 'fs/promises';
 
 async function testSend() {
   const sesClient = new SESClient({ region: 'us-east-1' });
-  
+
   try {
     const zoomMeeting = JSON.parse(
       await fs.readFile('zoom_meeting.json', 'utf8')
     );
-    
+
     const command = new SendEmailCommand({
       Source: 'patrick@candlefish.ai',
       Destination: {
@@ -34,7 +34,7 @@ Time: Friday, August 29, 3:00 PM–4:00 PM MDT
 
 Once we exit sandbox mode, this will be sent to:
 - erusin@retti.com
-- katie@retti.com  
+- katie@retti.com
 - jon@jdenver.com
 
 AWS SES is currently in sandbox mode. To send to unverified recipients, we need production access.`
@@ -42,10 +42,10 @@ AWS SES is currently in sandbox mode. To send to unverified recipients, we need 
         }
       }
     });
-    
+
     console.log('Sending test email to patrick@candlefish.ai...');
     const response = await sesClient.send(command);
-    
+
     console.log('✅ Test email sent successfully!');
     console.log(`Message ID: ${response.MessageId}`);
     console.log('\nThis confirms:');
@@ -55,7 +55,7 @@ AWS SES is currently in sandbox mode. To send to unverified recipients, we need 
     console.log('\n⚠️  To send to Retti team, we need:');
     console.log('1. Exit sandbox mode (request production access)');
     console.log('2. OR have recipients click verification links');
-    
+
   } catch (error) {
     console.error('Error:', error.message);
   }

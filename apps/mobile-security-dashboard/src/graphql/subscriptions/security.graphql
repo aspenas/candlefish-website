@@ -1,0 +1,346 @@
+# Mobile Security Dashboard GraphQL Subscriptions
+# Optimized for mobile real-time updates and battery efficiency
+
+# Critical Alert Subscription - High Priority Mobile Notifications
+subscription MobileCriticalAlerts($organizationId: ID!) {
+  alertTriggered(organizationId: $organizationId, severity: [CRITICAL, HIGH]) {
+    id
+    title
+    description
+    severity
+    alertType
+    createdAt
+    asset {
+      id
+      name
+      platform
+      environment
+    }
+    source
+    metadata
+    escalationLevel
+    requiresImmediateAction
+  }
+}
+
+# Kong Admin API Status Changes - Critical Security Monitoring
+subscription MobileKongAdminApiStatusChanged {
+  kongAdminApiStatusChanged {
+    isSecure
+    protocol
+    isVulnerable
+    vulnerabilityDescription
+    riskLevel
+    recommendedActions
+    lastChecked
+    endpoint
+    changeType
+    previousStatus {
+      isVulnerable
+      protocol
+    }
+    alertRequired
+  }
+}
+
+# Vulnerability Discoveries - Mobile Optimized
+subscription MobileVulnerabilityDiscovered($organizationId: ID!) {
+  vulnerabilityDiscovered(organizationId: $organizationId, severity: [CRITICAL, HIGH]) {
+    id
+    cveId
+    title
+    description
+    severity
+    cvssScore
+    discoveredAt
+    isExploitable
+    hasPatch
+    asset {
+      id
+      name
+      platform
+      environment
+    }
+    affectedComponents
+    remediation {
+      description
+      priority
+      estimatedEffort
+    }
+  }
+}
+
+# Security Event Updates - Mobile Timeline
+subscription MobileSecurityEventAdded($organizationId: ID!) {
+  securityEventAdded(organizationId: $organizationId) {
+    id
+    eventType
+    severity
+    title
+    description
+    source
+    createdAt
+    asset {
+      id
+      name
+      platform
+    }
+    affectedComponents
+    requiresAction
+    metadata
+  }
+}
+
+# Alert Status Updates - Real-time Status Changes
+subscription MobileAlertUpdated($organizationId: ID!) {
+  alertUpdated(organizationId: $organizationId) {
+    id
+    status
+    acknowledgedAt
+    resolvedAt
+    assignedTo {
+      id
+      name
+      email
+      avatar
+    }
+    escalationLevel
+    lastUpdated
+    resolution
+    acknowledgmentNote
+  }
+}
+
+# Asset Health Changes - System Monitoring
+subscription MobileAssetHealthChanged($organizationId: ID!, $assetIds: [ID!]) {
+  assetHealthChanged(organizationId: $organizationId, assetIds: $assetIds) {
+    id
+    name
+    healthStatus
+    previousHealthStatus
+    lastHealthCheck
+    platform
+    environment
+    criticalIssues {
+      type
+      description
+      severity
+    }
+    metrics {
+      cpu
+      memory
+      network
+      storage
+    }
+  }
+}
+
+# Compliance Status Changes
+subscription MobileComplianceStatusChanged($organizationId: ID!) {
+  complianceStatusChanged(organizationId: $organizationId) {
+    framework
+    overallScore
+    previousScore
+    changedRequirements {
+      id
+      title
+      status
+      previousStatus
+      impact
+    }
+    criticalFailures
+    updatedAt
+  }
+}
+
+# Live Security Metrics - Dashboard Updates
+subscription MobileLiveMetrics($organizationId: ID!, $metricTypes: [String!]!) {
+  liveMetrics(organizationId: $organizationId, metricTypes: $metricTypes) {
+    timestamp
+    organizationId
+    metrics {
+      totalAssets
+      criticalVulnerabilities
+      activeAlerts
+      complianceScore
+      threatLevel
+      kongAdminApiStatus
+    }
+    changes {
+      field
+      oldValue
+      newValue
+      changeType
+      severity
+    }
+    alerts {
+      newCritical
+      newHigh
+      resolved
+    }
+  }
+}
+
+# System Status Updates - Operational Awareness
+subscription MobileSystemStatusChanged {
+  systemStatusChanged {
+    component
+    status
+    previousStatus
+    message
+    timestamp
+    affectedServices
+    estimatedResolution
+    userImpact
+    maintenanceWindow {
+      start
+      end
+      description
+      services
+    }
+  }
+}
+
+# User-Specific Notifications - Personalized Updates
+subscription MobileUserNotifications($userId: ID!) {
+  userNotifications(userId: $userId) {
+    id
+    type
+    title
+    message
+    severity
+    timestamp
+    data {
+      entityType
+      entityId
+      action
+      deepLink
+    }
+    requiresAction
+    expiresAt
+  }
+}
+
+# Emergency Broadcast - Critical System-wide Alerts
+subscription MobileEmergencyBroadcast($organizationId: ID!) {
+  emergencyBroadcast(organizationId: $organizationId) {
+    id
+    type
+    severity
+    title
+    message
+    timestamp
+    affectedSystems
+    actionRequired {
+      type
+      deadline
+      instructions
+    }
+    contact {
+      name
+      phone
+      email
+    }
+    updates {
+      timestamp
+      message
+      status
+    }
+  }
+}
+
+# Incident Response Updates - Crisis Management
+subscription MobileIncidentUpdated($organizationId: ID!) {
+  incidentUpdated(organizationId: $organizationId) {
+    id
+    title
+    severity
+    status
+    updatedAt
+    timeline {
+      timestamp
+      action
+      description
+      performedBy {
+        name
+        email
+      }
+      impact
+    }
+    affectedAssets {
+      id
+      name
+      platform
+    }
+    assignedTeam {
+      id
+      name
+      email
+      role
+    }
+  }
+}
+
+# Threat Intelligence Updates - Security Awareness
+subscription MobileThreatIntelligenceUpdated($organizationId: ID!) {
+  threatIntelligenceUpdated(organizationId: $organizationId) {
+    id
+    threatType
+    severity
+    description
+    indicators {
+      type
+      value
+      confidence
+    }
+    affectedAssets {
+      id
+      name
+      riskLevel
+    }
+    recommendedActions {
+      priority
+      action
+      deadline
+    }
+    source
+    publishedAt
+    expiresAt
+  }
+}
+
+# Mobile-Specific Connection Health
+subscription MobileConnectionHealth {
+  connectionHealth {
+    status
+    latency
+    serverHealth
+    maintenanceMode
+    performanceIssues {
+      type
+      severity
+      impact
+    }
+    recommendations
+  }
+}
+
+# Offline Sync Status - Mobile Connectivity
+subscription MobileOfflineSyncStatus($userId: ID!) {
+  offlineSyncStatus(userId: $userId) {
+    status
+    lastSync
+    pendingActions
+    conflicts {
+      id
+      type
+      description
+      resolution
+    }
+    syncProgress {
+      completed
+      total
+      currentOperation
+    }
+  }
+}

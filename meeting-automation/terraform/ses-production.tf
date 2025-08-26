@@ -8,7 +8,7 @@ terraform {
       version = "~> 5.0"
     }
   }
-  
+
   backend "s3" {
     bucket = "candlefish-terraform-state"
     key    = "ses/production/terraform.tfstate"
@@ -32,9 +32,9 @@ variable "notification_email" {
 # Configuration Set for tracking
 resource "aws_ses_configuration_set" "main" {
   name = "candlefish-main"
-  
+
   reputation_tracking_enabled = true
-  
+
   delivery_options {
     tls_policy = "REQUIRE"
   }
@@ -58,7 +58,7 @@ resource "aws_ses_configuration_set_event_destination" "cloudwatch" {
 # SNS Topics for notifications
 resource "aws_sns_topic" "ses_bounces" {
   name = "ses-bounces"
-  
+
   tags = {
     Environment = "production"
     Service     = "SES"
@@ -67,7 +67,7 @@ resource "aws_sns_topic" "ses_bounces" {
 
 resource "aws_sns_topic" "ses_complaints" {
   name = "ses-complaints"
-  
+
   tags = {
     Environment = "production"
     Service     = "SES"
@@ -150,29 +150,29 @@ resource "aws_dynamodb_table" "suppression_list" {
   name           = "ses-suppression-list"
   billing_mode   = "PAY_PER_REQUEST"
   hash_key       = "email"
-  
+
   attribute {
     name = "email"
     type = "S"
   }
-  
+
   attribute {
     name = "reason"
     type = "S"
   }
-  
+
   attribute {
     name = "timestamp"
     type = "N"
   }
-  
+
   global_secondary_index {
     name            = "reason-index"
     hash_key        = "reason"
     range_key       = "timestamp"
     projection_type = "ALL"
   }
-  
+
   tags = {
     Environment = "production"
     Service     = "SES"
@@ -247,7 +247,7 @@ resource "aws_cloudwatch_metric_alarm" "high_complaint_rate" {
 # S3 bucket for email logs
 resource "aws_s3_bucket" "email_logs" {
   bucket = "candlefish-ses-logs"
-  
+
   tags = {
     Environment = "production"
     Service     = "SES"
@@ -276,10 +276,10 @@ resource "aws_kinesis_firehose_delivery_stream" "ses_logs" {
     role_arn   = aws_iam_role.firehose.arn
     bucket_arn = aws_s3_bucket.email_logs.arn
     prefix     = "ses-logs/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/"
-    
+
     buffer_size     = 5
     buffer_interval = 300
-    
+
     compression_format = "GZIP"
   }
 }

@@ -1,0 +1,33 @@
+# Go test coverage configuration for Security Dashboard
+# Enforces 80% minimum coverage across all packages
+
+threshold: 80.0
+min_coverage: 80.0
+
+override:
+  - path: internal/models/
+    threshold: 75.0  # Models may have lower coverage due to struct definitions
+  - path: cmd/
+    threshold: 70.0  # Command line entry points have limited testability
+  - path: internal/handlers/
+    threshold: 85.0  # HTTP handlers should have high coverage
+  - path: internal/services/
+    threshold: 90.0  # Business logic requires comprehensive testing
+
+exclude:
+  - "*.pb.go"        # Generated protobuf files
+  - "mock_*.go"      # Generated mock files
+  - "*_gen.go"       # Other generated files
+  - "vendor/"        # Third-party dependencies
+  - "testdata/"      # Test fixtures
+
+report:
+  format:
+    - html
+    - json
+    - lcov
+  output_dir: coverage/
+
+quality_gate:
+  fail_on_decrease: true
+  max_decrease: 2.0  # Allow maximum 2% coverage decrease

@@ -34,13 +34,13 @@ import {
 const DATALOADER_CONFIG = {
   // Batch window to collect requests (ms)
   batchScheduleFn: (callback: () => void) => setTimeout(callback, 10),
-  
+
   // Enable caching for repeated requests within the same GraphQL request
   cache: true,
-  
+
   // Maximum batch size to prevent memory issues
   maxBatchSize: 100,
-  
+
   // Cache key function for debugging
   cacheKeyFn: (key: string) => key,
 };
@@ -69,7 +69,7 @@ class CachedDataLoader<K, V> extends DataLoader<K, V> {
     serviceName: string = 'unknown'
   ) {
     super(batchLoadFn, DATALOADER_CONFIG);
-    
+
     this.localCache = new LRU(LRU_CONFIG);
     this.redis = redis;
     this.cachePrefix = cachePrefix;
@@ -80,12 +80,12 @@ class CachedDataLoader<K, V> extends DataLoader<K, V> {
   async load(key: K): Promise<V> {
     const stringKey = String(key);
     const cacheKey = `${this.cachePrefix}:${stringKey}`;
-    
+
     // L1: Check local LRU cache first (fastest)
     if (this.localCache.has(cacheKey)) {
       return this.localCache.get(cacheKey)!;
     }
-    
+
     // L2: Check Redis cache (fast, distributed)
     try {
       const cached = await this.redis.get(cacheKey);
@@ -98,24 +98,24 @@ class CachedDataLoader<K, V> extends DataLoader<K, V> {
       // Log Redis error but continue to database
       console.error(`Redis cache error for ${cacheKey}:`, error);
     }
-    
+
     // L3: Load from DataLoader (database/service)
     const startTime = performance.now();
     const value = await super.load(key);
     const endTime = performance.now();
-    
+
     // Cache the result in both layers
     this.localCache.set(cacheKey, value);
-    
+
     try {
       await this.redis.setex(cacheKey, this.cacheTTL, JSON.stringify(value));
     } catch (error) {
       console.error(`Redis cache set error for ${cacheKey}:`, error);
     }
-    
+
     // Record performance metrics
     await this.recordLoadTime(this.serviceName, endTime - startTime);
-    
+
     return value;
   }
 
@@ -123,24 +123,24 @@ class CachedDataLoader<K, V> extends DataLoader<K, V> {
     const startTime = performance.now();
     const results = await super.loadMany(keys);
     const endTime = performance.now();
-    
+
     // Cache successful results
     results.forEach((result, index) => {
       if (!(result instanceof Error)) {
         const stringKey = String(keys[index]);
         const cacheKey = `${this.cachePrefix}:${stringKey}`;
-        
+
         this.localCache.set(cacheKey, result);
-        
+
         // Cache in Redis asynchronously
         this.redis.setex(cacheKey, this.cacheTTL, JSON.stringify(result))
           .catch(error => console.error(`Redis cache set error for ${cacheKey}:`, error));
       }
     });
-    
+
     // Record batch performance metrics
     await this.recordBatchLoadTime(this.serviceName, keys.length, endTime - startTime);
-    
+
     return results;
   }
 
@@ -148,13 +148,13 @@ class CachedDataLoader<K, V> extends DataLoader<K, V> {
   async invalidate(key: K): Promise<void> {
     const stringKey = String(key);
     const cacheKey = `${this.cachePrefix}:${stringKey}`;
-    
+
     // Clear from local cache
     this.localCache.delete(cacheKey);
-    
+
     // Clear from DataLoader cache
     this.clear(key);
-    
+
     // Clear from Redis
     try {
       await this.redis.del(cacheKey);
@@ -171,10 +171,10 @@ class CachedDataLoader<K, V> extends DataLoader<K, V> {
         this.localCache.delete(key);
       }
     }
-    
+
     // Clear all DataLoader cache
     this.clearAll();
-    
+
     // Clear Redis entries matching pattern
     try {
       const keys = await this.redis.keys(`${this.cachePrefix}:*${pattern}*`);
@@ -234,10 +234,10 @@ export function createAssetDataLoader(
   return new CachedDataLoader(
     async (assetIds: readonly string[]) => {
       const assets = await assetService.getAssetsByIds(Array.from(assetIds));
-      
+
       // Create a map for O(1) lookup
       const assetMap = new Map(assets.map(asset => [asset.id, asset]));
-      
+
       // Return results in the same order as requested keys
       return assetIds.map(id => assetMap.get(id) || null);
     },
@@ -312,7 +312,7 @@ export function createUserDataLoader(
       // Separate IDs and emails
       const userIds: string[] = [];
       const emails: string[] = [];
-      
+
       userKeys.forEach(key => {
         if (key.includes('@')) {
           emails.push(key);
@@ -320,17 +320,17 @@ export function createUserDataLoader(
           userIds.push(key);
         }
       });
-      
+
       // Fetch users by both IDs and emails
       const [usersById, usersByEmail] = await Promise.all([
         userIds.length > 0 ? userService.getUsersByIds(userIds) : [],
         emails.length > 0 ? userService.getUsersByEmails(emails) : [],
       ]);
-      
+
       // Create maps for O(1) lookup
       const userIdMap = new Map(usersById.map(user => [user.id, user]));
       const userEmailMap = new Map(usersByEmail.map(user => [user.email, user]));
-      
+
       // Return results in the same order as requested keys
       return userKeys.map(key => {
         if (key.includes('@')) {
@@ -465,7 +465,7 @@ export function createAssetVulnerabilitiesDataLoader(
   return new CachedDataLoader(
     async (assetIds: readonly string[]) => {
       const vulnerabilities = await vulnerabilityService.getVulnerabilitiesByAssetIds(Array.from(assetIds));
-      
+
       // Group by asset ID
       const vulnerabilityMap = new Map<string, Vulnerability[]>();
       vulnerabilities.forEach(vuln => {
@@ -474,7 +474,7 @@ export function createAssetVulnerabilitiesDataLoader(
         }
         vulnerabilityMap.get(vuln.assetId)!.push(vuln);
       });
-      
+
       return assetIds.map(id => vulnerabilityMap.get(id) || []);
     },
     redis,
@@ -491,7 +491,7 @@ export function createAssetSecurityEventsDataLoader(
   return new CachedDataLoader(
     async (assetIds: readonly string[]) => {
       const events = await securityEventService.getEventsByAssetIds(Array.from(assetIds));
-      
+
       // Group by asset ID
       const eventMap = new Map<string, SecurityEvent[]>();
       events.forEach(event => {
@@ -500,7 +500,7 @@ export function createAssetSecurityEventsDataLoader(
         }
         eventMap.get(event.assetId)!.push(event);
       });
-      
+
       return assetIds.map(id => eventMap.get(id) || []);
     },
     redis,
@@ -517,7 +517,7 @@ export function createAssetAlertsDataLoader(
   return new CachedDataLoader(
     async (assetIds: readonly string[]) => {
       const alerts = await alertService.getAlertsByAssetIds(Array.from(assetIds));
-      
+
       // Group by asset ID
       const alertMap = new Map<string, Alert[]>();
       alerts.forEach(alert => {
@@ -526,7 +526,7 @@ export function createAssetAlertsDataLoader(
         }
         alertMap.get(alert.assetId)!.push(alert);
       });
-      
+
       return assetIds.map(id => alertMap.get(id) || []);
     },
     redis,
@@ -549,7 +549,7 @@ export interface SecurityDataLoaders {
   assetTypes: CachedDataLoader<string, AssetType | null>;
   complianceControls: CachedDataLoader<string, ComplianceControl | null>;
   alertRules: CachedDataLoader<string, AlertRule | null>;
-  
+
   // Relationship DataLoaders
   assetVulnerabilities: CachedDataLoader<string, Vulnerability[]>;
   assetSecurityEvents: CachedDataLoader<string, SecurityEvent[]>;
@@ -580,7 +580,7 @@ export function createSecurityDataLoaders(
     assetTypes: createAssetTypeDataLoader(services.assetService, redis),
     complianceControls: createComplianceControlDataLoader(services.complianceService, redis),
     alertRules: createAlertRuleDataLoader(services.alertService, redis),
-    
+
     // Relationship DataLoaders
     assetVulnerabilities: createAssetVulnerabilitiesDataLoader(services.vulnerabilityService, redis),
     assetSecurityEvents: createAssetSecurityEventsDataLoader(services.securityEventService, redis),

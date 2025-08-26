@@ -1,0 +1,414 @@
+# Mobile Security Dashboard GraphQL Mutations
+# Optimized for mobile incident response actions
+
+# Alert Management Mutations
+mutation MobileAcknowledgeAlert($id: ID!, $note: String) {
+  acknowledgeAlert(id: $id, note: $note) {
+    id
+    status
+    acknowledgedAt
+    acknowledgedBy {
+      id
+      name
+      email
+    }
+    acknowledgmentNote
+  }
+}
+
+mutation MobileResolveAlert($id: ID!, $resolution: String!) {
+  resolveAlert(id: $id, resolution: $resolution) {
+    id
+    status
+    resolvedAt
+    resolvedBy {
+      id
+      name
+      email
+    }
+    resolution
+    resolutionTime
+  }
+}
+
+mutation MobileEscalateAlert($id: ID!, $assignTo: ID, $reason: String) {
+  escalateAlert(id: $id, assignTo: $assignTo, reason: $reason) {
+    id
+    status
+    escalationLevel
+    assignedTo {
+      id
+      name
+      email
+      avatar
+    }
+    escalatedAt
+    escalationNote
+  }
+}
+
+# Security Event Mutations
+mutation MobileResolveSecurityEvent($id: ID!, $resolution: String!) {
+  resolveSecurityEvent(id: $id, resolution: $resolution) {
+    id
+    resolved
+    resolvedAt
+    resolvedBy {
+      id
+      name
+      email
+    }
+    resolution
+  }
+}
+
+mutation MobileEscalateSecurityEvent($id: ID!, $assignTo: ID) {
+  escalateSecurityEvent(id: $id, assignTo: $assignTo) {
+    id
+    escalated
+    escalatedAt
+    escalatedBy {
+      id
+      name
+      email
+    }
+    assignedTo {
+      id
+      name
+      email
+      avatar
+    }
+  }
+}
+
+# Vulnerability Management Mutations
+mutation MobileUpdateVulnerability($id: ID!, $input: UpdateVulnerabilityInput!) {
+  updateVulnerability(id: $id, input: $input) {
+    id
+    status
+    lastUpdated
+    statusHistory {
+      status
+      changedAt
+      changedBy {
+        name
+        email
+      }
+      note
+    }
+  }
+}
+
+mutation MobileAcceptVulnerabilityRisk($id: ID!, $reason: String!) {
+  acceptVulnerabilityRisk(id: $id, reason: $reason) {
+    id
+    status
+    riskAccepted
+    riskReason
+    riskAcceptedBy {
+      id
+      name
+      email
+    }
+    riskAcceptedAt
+  }
+}
+
+# Asset Management Mutations
+mutation MobileUpdateAsset($id: ID!, $input: UpdateAssetInput!) {
+  updateAsset(id: $id, input: $input) {
+    id
+    name
+    description
+    tags
+    securityLevel
+    lastHealthCheck
+    updatedAt
+  }
+}
+
+# Incident Response Mutations
+mutation MobileCreateIncident($input: CreateIncidentInput!) {
+  createIncident(input: $input) {
+    id
+    title
+    description
+    severity
+    status
+    createdAt
+    createdBy {
+      id
+      name
+      email
+    }
+    affectedAssets {
+      id
+      name
+      platform
+    }
+  }
+}
+
+mutation MobileUpdateIncident($id: ID!, $input: UpdateIncidentInput!) {
+  updateIncident(id: $id, input: $input) {
+    id
+    title
+    description
+    severity
+    status
+    updatedAt
+    timeline {
+      timestamp
+      action
+      description
+      performedBy {
+        name
+        email
+      }
+    }
+  }
+}
+
+# User Preferences - Mobile Specific
+mutation MobileUpdateUserPreferences($input: UpdateUserPreferencesInput!) {
+  updateUserPreferences(input: $input) {
+    id
+    preferences {
+      theme
+      notifications {
+        pushEnabled
+        criticalAlertsOnly
+        kongVulnerabilityAlerts
+        quietHours {
+          enabled
+          start
+          end
+        }
+        soundEnabled
+        vibrationEnabled
+      }
+      dashboard {
+        defaultView
+        refreshInterval
+        compactMode
+      }
+    }
+  }
+}
+
+# Push Notification Token Management
+mutation MobileRegisterPushToken($token: String!, $platform: String!) {
+  registerPushToken(token: $token, platform: $platform) {
+    success
+    message
+  }
+}
+
+mutation MobileUnregisterPushToken($token: String!) {
+  unregisterPushToken(token: $token) {
+    success
+    message
+  }
+}
+
+# Mobile Session Management
+mutation MobileSyncOfflineActions($actions: [OfflineActionInput!]!) {
+  syncOfflineActions(actions: $actions) {
+    processedCount
+    failedCount
+    errors {
+      actionId
+      error
+    }
+  }
+}
+
+# Kong Admin API Security Actions - Mobile Priority
+mutation MobileFixKongAdminApiSecurity($config: KongSecurityConfigInput!) {
+  fixKongAdminApiSecurity(config: $config) {
+    success
+    message
+    newStatus {
+      isSecure
+      protocol
+      isVulnerable
+      riskLevel
+      lastChecked
+    }
+  }
+}
+
+# Quick Actions for Mobile Swipe Gestures
+mutation MobileQuickActionAlert($id: ID!, $action: QuickActionType!) {
+  quickActionAlert(id: $id, action: $action) {
+    id
+    status
+    updatedAt
+  }
+}
+
+mutation MobileQuickActionVulnerability($id: ID!, $action: QuickActionType!) {
+  quickActionVulnerability(id: $id, action: $action) {
+    id
+    status
+    updatedAt
+  }
+}
+
+# Bulk Actions for Mobile Efficiency
+mutation MobileBulkAcknowledgeAlerts($ids: [ID!]!, $note: String) {
+  bulkAcknowledgeAlerts(ids: $ids, note: $note) {
+    successCount
+    failedCount
+    results {
+      id
+      success
+      error
+    }
+  }
+}
+
+mutation MobileBulkResolveAlerts($ids: [ID!]!, $resolution: String!) {
+  bulkResolveAlerts(ids: $ids, resolution: $resolution) {
+    successCount
+    failedCount
+    results {
+      id
+      success
+      error
+    }
+  }
+}
+
+# Mobile Analytics and Feedback
+mutation MobileSubmitFeedback($feedback: FeedbackInput!) {
+  submitFeedback(feedback: $feedback) {
+    id
+    message
+  }
+}
+
+mutation MobileLogAnalytics($events: [AnalyticsEventInput!]!) {
+  logAnalytics(events: $events) {
+    success
+    message
+  }
+}
+
+# Emergency Response Actions
+mutation MobileEmergencyEscalation($input: EmergencyEscalationInput!) {
+  emergencyEscalation(input: $input) {
+    id
+    escalationId
+    notificationsSent
+    escalatedTo {
+      name
+      email
+      phone
+    }
+  }
+}
+
+# Input Types (would be defined in schema)
+input UpdateVulnerabilityInput {
+  status: VulnerabilityStatus
+  notes: String
+  assignedTo: ID
+  dueDate: DateTime
+}
+
+input UpdateAssetInput {
+  name: String
+  description: String
+  tags: [String!]
+  securityLevel: SecurityLevel
+  metadata: JSON
+}
+
+input CreateIncidentInput {
+  title: String!
+  description: String!
+  severity: Severity!
+  affectedAssetIds: [ID!]!
+  category: String!
+}
+
+input UpdateIncidentInput {
+  title: String
+  description: String
+  severity: Severity
+  status: IncidentStatus
+  notes: String
+}
+
+input UpdateUserPreferencesInput {
+  theme: String
+  notifications: NotificationPreferencesInput
+  dashboard: DashboardPreferencesInput
+}
+
+input NotificationPreferencesInput {
+  pushEnabled: Boolean
+  criticalAlertsOnly: Boolean
+  kongVulnerabilityAlerts: Boolean
+  quietHours: QuietHoursInput
+  soundEnabled: Boolean
+  vibrationEnabled: Boolean
+}
+
+input QuietHoursInput {
+  enabled: Boolean
+  start: String
+  end: String
+}
+
+input DashboardPreferencesInput {
+  defaultView: DashboardView
+  refreshInterval: Int
+  compactMode: Boolean
+}
+
+input OfflineActionInput {
+  id: String!
+  type: String!
+  targetId: String!
+  targetType: String!
+  payload: JSON!
+  timestamp: DateTime!
+}
+
+input KongSecurityConfigInput {
+  enableHttps: Boolean!
+  adminApiPort: Int
+  allowedIPs: [String!]
+  authenticationEnabled: Boolean!
+}
+
+input FeedbackInput {
+  type: String!
+  rating: Int
+  message: String!
+  screenContext: String
+  deviceInfo: JSON
+}
+
+input AnalyticsEventInput {
+  name: String!
+  properties: JSON
+  timestamp: DateTime!
+}
+
+input EmergencyEscalationInput {
+  incidentId: ID!
+  reason: String!
+  urgency: String!
+  contactMethods: [String!]!
+}
+
+enum QuickActionType {
+  ACKNOWLEDGE
+  RESOLVE
+  ESCALATE
+  SUPPRESS
+  ASSIGN_TO_ME
+}

@@ -196,7 +196,7 @@ const SecurityOverview: React.FC = () => {
             </Button>
           }
         >
-          <strong>CRITICAL VULNERABILITY:</strong> Kong Admin API is using HTTP protocol. 
+          <strong>CRITICAL VULNERABILITY:</strong> Kong Admin API is using HTTP protocol.
           This exposes your API gateway to security risks.
         </Alert>
       )}

@@ -9,27 +9,27 @@ dotenv.config();
 async function sendProductionEmail() {
   console.log('\n🚀 Sending Meeting Invitation (Production Mode)');
   console.log('============================================\n');
-  
-  const sesClient = new SESClient({ 
+
+  const sesClient = new SESClient({
     region: 'us-east-1',
     credentials: {
       accessKeyId: process.env.AWS_ACCESS_KEY_ID,
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
     }
   });
-  
+
   try {
     // Load meeting details
     const zoomMeeting = JSON.parse(
       await fs.readFile('zoom_meeting.json', 'utf8')
     );
-    
+
     // Load ICS file
     const icsContent = await fs.readFile(
       '/Users/patricksmith/candlefish-ai/calendar/Candlefish-Meeting.ics',
       'utf8'
     );
-    
+
     const emailBody = `Hi Erusin, Katie, and Jon —
 
 Looking forward to our conversation. Here are the details:
@@ -128,22 +128,22 @@ ${Buffer.from(icsContent).toString('base64')}
       Source: 'patrick@candlefish.ai',
       Destinations: [
         'erusin@retti.com',
-        'katie@retti.com', 
+        'katie@retti.com',
         'jon@jdenver.com',
         'patrick@candlefish.ai'
       ]
     });
-    
+
     console.log('Sending email via AWS SES (Production)...');
     console.log('From: patrick@candlefish.ai');
     console.log('To: erusin@retti.com, katie@retti.com, jon@jdenver.com');
     console.log('CC: patrick@candlefish.ai\n');
-    
+
     const response = await sesClient.send(command);
-    
+
     console.log('✅ Email sent successfully!');
     console.log(`Message ID: ${response.MessageId}`);
-    
+
     // Save confirmation
     const result = {
       success: true,
@@ -154,18 +154,18 @@ ${Buffer.from(icsContent).toString('base64')}
         cc: ['patrick@candlefish.ai']
       }
     };
-    
+
     await fs.writeFile('email_send_confirmation.json', JSON.stringify(result, null, 2));
     console.log('\n📄 Confirmation saved to email_send_confirmation.json');
-    
+
     return result;
-    
+
   } catch (error) {
     console.error('\n❌ Error:', error.message);
-    
+
     if (error.message.includes('not verified')) {
       console.log('\n⚠️  Still in sandbox mode. Checking account details...');
-      
+
       // Check sending statistics
       const { GetSendStatisticsCommand } = await import('@aws-sdk/client-ses');
       try {
@@ -175,7 +175,7 @@ ${Buffer.from(icsContent).toString('base64')}
         console.log('Could not retrieve statistics');
       }
     }
-    
+
     throw error;
   }
 }

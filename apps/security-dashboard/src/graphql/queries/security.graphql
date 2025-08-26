@@ -216,7 +216,7 @@ query RealTimeDashboard($organizationId: ID!) {
     complianceScore
     threatLevel
   }
-  
+
   recentAlerts: alerts(
     filter: { organizationId: $organizationId, status: [ACTIVE, ACKNOWLEDGED] }
     sort: { field: CREATED_AT, direction: DESC }
@@ -232,7 +232,7 @@ query RealTimeDashboard($organizationId: ID!) {
       platform
     }
   }
-  
+
   criticalVulnerabilities: vulnerabilities(
     filter: { organizationId: $organizationId, severity: [CRITICAL] }
     sort: { field: DISCOVERED_AT, direction: DESC }
@@ -248,7 +248,7 @@ query RealTimeDashboard($organizationId: ID!) {
       platform
     }
   }
-  
+
   kongAdminApiStatus {
     isVulnerable
     riskLevel

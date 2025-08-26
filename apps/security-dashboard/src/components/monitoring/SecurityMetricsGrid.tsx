@@ -22,9 +22,9 @@ const SecurityMetricsGrid: React.FC = () => {
               <Typography variant="subtitle2" gutterBottom>
                 {metric.label}
               </Typography>
-              <Chip 
-                label={metric.value} 
-                size="small" 
+              <Chip
+                label={metric.value}
+                size="small"
                 color={metric.color as any}
                 variant="outlined"
               />
