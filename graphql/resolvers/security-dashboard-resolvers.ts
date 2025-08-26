@@ -87,34 +87,34 @@ const SUBSCRIPTION_CHANNELS = {
 const createTimedResolver = (resolverFn: Function, resolverName: string) => {
   return async (parent: any, args: any, context: SecurityDashboardContext, info: any) => {
     const startTime = performance.now();
-    
+
     try {
       // Security checks
       await checkRateLimit(context.user, context.redis);
       validateQueryComplexity(info);
-      
+
       const result = await resolverFn(parent, args, context, info);
-      
+
       const endTime = performance.now();
       const duration = endTime - startTime;
-      
+
       // Log performance metrics
       await context.metricsService.recordResolverPerformance(
         resolverName,
         duration,
         context.organizationId
       );
-      
+
       // Audit access for sensitive operations
       if (resolverName.includes('security') || resolverName.includes('vulnerability')) {
         await auditSecurityAccess(context.user, resolverName, args, context.auditService);
       }
-      
+
       return result;
     } catch (error) {
       const endTime = performance.now();
       const duration = endTime - startTime;
-      
+
       // Log error metrics
       await context.metricsService.recordResolverError(
         resolverName,
@@ -122,7 +122,7 @@ const createTimedResolver = (resolverFn: Function, resolverName: string) => {
         duration,
         context.organizationId
       );
-      
+
       throw sanitizeError(error, context.nodeEnv);
     }
   };
@@ -138,7 +138,7 @@ export const securityDashboardResolvers: IResolvers<any, SecurityDashboardContex
     securityOverview: createTimedResolver(
       async (_: any, { organizationId }: { organizationId: string }, context: SecurityDashboardContext) => {
         const cacheKey = `security-overview:${organizationId}`;
-        
+
         return context.cacheManager.getOrSet(
           cacheKey,
           async () => {
@@ -188,7 +188,7 @@ export const securityDashboardResolvers: IResolvers<any, SecurityDashboardContex
     assets: createTimedResolver(
       async (_: any, { filter }: { filter?: any }, context: SecurityDashboardContext) => {
         const cacheKey = `assets:${JSON.stringify(filter)}`;
-        
+
         return context.cacheManager.getOrSet(
           cacheKey,
           () => context.assetService.getAssets(filter),
@@ -254,7 +254,7 @@ export const securityDashboardResolvers: IResolvers<any, SecurityDashboardContex
     complianceStatus: createTimedResolver(
       async (_: any, { organizationId }: { organizationId: string }, context: SecurityDashboardContext) => {
         const cacheKey = `compliance-status:${organizationId}`;
-        
+
         return context.cacheManager.getOrSet(
           cacheKey,
           () => context.complianceService.getComplianceStatus(organizationId),
@@ -275,7 +275,7 @@ export const securityDashboardResolvers: IResolvers<any, SecurityDashboardContex
     kongServices: createTimedResolver(
       async (_: any, { filter }: { filter?: any }, context: SecurityDashboardContext) => {
         const cacheKey = `kong-services:${JSON.stringify(filter)}`;
-        
+
         return context.cacheManager.getOrSet(
           cacheKey,
           () => context.kongMonitoringService.getKongServices(filter),
@@ -296,12 +296,12 @@ export const securityDashboardResolvers: IResolvers<any, SecurityDashboardContex
     kongAdminApiStatus: createTimedResolver(
       async (_: any, __: any, context: SecurityDashboardContext) => {
         const cacheKey = 'kong-admin-api-status';
-        
+
         return context.cacheManager.getOrSet(
           cacheKey,
           async () => {
             const status = await context.kongMonitoringService.getAdminApiStatus();
-            
+
             // If vulnerable, trigger immediate alert
             if (status.isVulnerable) {
               await context.notificationService.sendCriticalAlert({
@@ -312,7 +312,7 @@ export const securityDashboardResolvers: IResolvers<any, SecurityDashboardContex
                 metadata: status,
               });
             }
-            
+
             return status;
           },
           30 // 30 second cache for critical security status
@@ -332,7 +332,7 @@ export const securityDashboardResolvers: IResolvers<any, SecurityDashboardContex
     threatTrends: createTimedResolver(
       async (_: any, { timeRange }: { timeRange: any }, context: SecurityDashboardContext) => {
         const cacheKey = `threat-trends:${JSON.stringify(timeRange)}`;
-        
+
         return context.cacheManager.getOrSet(
           cacheKey,
           () => context.metricsService.getThreatTrends(timeRange),
@@ -348,11 +348,11 @@ export const securityDashboardResolvers: IResolvers<any, SecurityDashboardContex
     createAsset: createTimedResolver(
       async (_: any, { input }: { input: any }, context: SecurityDashboardContext) => {
         const asset = await context.assetService.createAsset(input);
-        
+
         // Invalidate related caches
         await context.cacheManager.invalidatePattern(`assets:*`);
         await context.cacheManager.invalidatePattern(`security-overview:*`);
-        
+
         return asset;
       },
       'createAsset'
@@ -361,12 +361,12 @@ export const securityDashboardResolvers: IResolvers<any, SecurityDashboardContex
     updateAsset: createTimedResolver(
       async (_: any, { id, input }: { id: string; input: any }, context: SecurityDashboardContext) => {
         const asset = await context.assetService.updateAsset(id, input);
-        
+
         // Clear specific asset from cache and related caches
         context.dataloaders.assets.clear(id);
         await context.cacheManager.invalidatePattern(`assets:*`);
         await context.cacheManager.invalidatePattern(`security-overview:*`);
-        
+
         return asset;
       },
       'updateAsset'
@@ -375,14 +375,14 @@ export const securityDashboardResolvers: IResolvers<any, SecurityDashboardContex
     deleteAsset: createTimedResolver(
       async (_: any, { id }: { id: string }, context: SecurityDashboardContext) => {
         const success = await context.assetService.deleteAsset(id);
-        
+
         if (success) {
           // Clear asset from cache and related caches
           context.dataloaders.assets.clear(id);
           await context.cacheManager.invalidatePattern(`assets:*`);
           await context.cacheManager.invalidatePattern(`security-overview:*`);
         }
-        
+
         return success;
       },
       'deleteAsset'
@@ -392,17 +392,17 @@ export const securityDashboardResolvers: IResolvers<any, SecurityDashboardContex
     acknowledgeAlert: createTimedResolver(
       async (_: any, { id }: { id: string }, context: SecurityDashboardContext) => {
         const alert = await context.alertService.acknowledgeAlert(id, context.user.id);
-        
+
         // Publish real-time update
         pubsub.publish(SUBSCRIPTION_CHANNELS.ALERT_UPDATED, {
           alertUpdated: alert,
           organizationId: context.organizationId,
         });
-        
+
         // Clear cache
         context.dataloaders.alerts.clear(id);
         await context.cacheManager.invalidatePattern(`alerts:*`);
-        
+
         return alert;
       },
       'acknowledgeAlert'
@@ -411,18 +411,18 @@ export const securityDashboardResolvers: IResolvers<any, SecurityDashboardContex
     resolveAlert: createTimedResolver(
       async (_: any, { id, resolution }: { id: string; resolution: string }, context: SecurityDashboardContext) => {
         const alert = await context.alertService.resolveAlert(id, resolution, context.user.id);
-        
+
         // Publish real-time update
         pubsub.publish(SUBSCRIPTION_CHANNELS.ALERT_UPDATED, {
           alertUpdated: alert,
           organizationId: context.organizationId,
         });
-        
+
         // Clear cache
         context.dataloaders.alerts.clear(id);
         await context.cacheManager.invalidatePattern(`alerts:*`);
         await context.cacheManager.invalidatePattern(`security-overview:*`);
-        
+
         return alert;
       },
       'resolveAlert'
@@ -455,18 +455,18 @@ export const securityDashboardResolvers: IResolvers<any, SecurityDashboardContex
     resolveSecurityEvent: createTimedResolver(
       async (_: any, { id, resolution }: { id: string; resolution: string }, context: SecurityDashboardContext) => {
         const event = await context.securityEventService.resolveSecurityEvent(id, resolution, context.user.id);
-        
+
         // Publish real-time update
         pubsub.publish(SUBSCRIPTION_CHANNELS.SECURITY_EVENT_UPDATED, {
           securityEventUpdated: event,
           organizationId: context.organizationId,
         });
-        
+
         // Clear cache
         context.dataloaders.securityEvents.clear(id);
         await context.cacheManager.invalidatePattern(`security-events:*`);
         await context.cacheManager.invalidatePattern(`security-overview:*`);
-        
+
         return event;
       },
       'resolveSecurityEvent'
@@ -475,21 +475,21 @@ export const securityDashboardResolvers: IResolvers<any, SecurityDashboardContex
     escalateSecurityEvent: createTimedResolver(
       async (_: any, { id, assignTo }: { id: string; assignTo?: string }, context: SecurityDashboardContext) => {
         const event = await context.securityEventService.escalateSecurityEvent(id, assignTo, context.user.id);
-        
+
         // Publish real-time update
         pubsub.publish(SUBSCRIPTION_CHANNELS.SECURITY_EVENT_UPDATED, {
           securityEventUpdated: event,
           organizationId: context.organizationId,
         });
-        
+
         // Send notification to assignee
         if (assignTo) {
           await context.notificationService.sendEscalationNotification(assignTo, event);
         }
-        
+
         // Clear cache
         context.dataloaders.securityEvents.clear(id);
-        
+
         return event;
       },
       'escalateSecurityEvent'
@@ -499,12 +499,12 @@ export const securityDashboardResolvers: IResolvers<any, SecurityDashboardContex
     updateVulnerability: createTimedResolver(
       async (_: any, { id, input }: { id: string; input: any }, context: SecurityDashboardContext) => {
         const vulnerability = await context.vulnerabilityService.updateVulnerability(id, input);
-        
+
         // Clear cache
         context.dataloaders.vulnerabilities.clear(id);
         await context.cacheManager.invalidatePattern(`vulnerabilities:*`);
         await context.cacheManager.invalidatePattern(`security-overview:*`);
-        
+
         return vulnerability;
       },
       'updateVulnerability'
@@ -513,15 +513,15 @@ export const securityDashboardResolvers: IResolvers<any, SecurityDashboardContex
     acceptVulnerabilityRisk: createTimedResolver(
       async (_: any, { id, reason }: { id: string; reason: string }, context: SecurityDashboardContext) => {
         const vulnerability = await context.vulnerabilityService.acceptRisk(id, reason, context.user.id);
-        
+
         // Audit risk acceptance
         await context.auditService.logRiskAcceptance(vulnerability, context.user, reason);
-        
+
         // Clear cache
         context.dataloaders.vulnerabilities.clear(id);
         await context.cacheManager.invalidatePattern(`vulnerabilities:*`);
         await context.cacheManager.invalidatePattern(`security-overview:*`);
-        
+
         return vulnerability;
       },
       'acceptVulnerabilityRisk'
@@ -531,13 +531,13 @@ export const securityDashboardResolvers: IResolvers<any, SecurityDashboardContex
     updateComplianceAssessment: createTimedResolver(
       async (_: any, { input }: { input: any }, context: SecurityDashboardContext) => {
         const assessment = await context.complianceService.updateAssessment(input, context.user.id);
-        
+
         // Clear compliance cache
         await context.cacheManager.invalidatePattern(`compliance-*`);
-        
+
         // Check if this triggers compliance status change
         const newStatus = await context.complianceService.getComplianceStatus(context.organizationId);
-        
+
         pubsub.publish(SUBSCRIPTION_CHANNELS.COMPLIANCE_STATUS_CHANGED, {
           complianceStatusChanged: {
             organizationId: context.organizationId,
@@ -545,7 +545,7 @@ export const securityDashboardResolvers: IResolvers<any, SecurityDashboardContex
             timestamp: new Date(),
           },
         });
-        
+
         return assessment;
       },
       'updateComplianceAssessment'
@@ -555,12 +555,12 @@ export const securityDashboardResolvers: IResolvers<any, SecurityDashboardContex
     createIncident: createTimedResolver(
       async (_: any, { input }: { input: any }, context: SecurityDashboardContext) => {
         const incident = await context.incidentService.createIncident(input, context.user.id);
-        
+
         // Send immediate notifications for critical incidents
         if (input.severity === 'CRITICAL') {
           await context.notificationService.sendCriticalIncidentAlert(incident);
         }
-        
+
         return incident;
       },
       'createIncident'
@@ -577,10 +577,10 @@ export const securityDashboardResolvers: IResolvers<any, SecurityDashboardContex
     updateMonitoringConfig: createTimedResolver(
       async (_: any, { input }: { input: any }, context: SecurityDashboardContext) => {
         const config = await context.monitoringService.updateConfig(input, context.user.id);
-        
+
         // Restart monitoring services with new configuration
         await context.kongMonitoringService.updateConfiguration(config.kongMonitoring);
-        
+
         return config;
       },
       'updateMonitoringConfig'

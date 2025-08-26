@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Photo Capture System Diagnostic</title>
+    <style>
+        body { font-family: system-ui; padding: 20px; max-width: 800px; margin: auto; }
+        .test { padding: 10px; margin: 10px 0; border: 1px solid #ddd; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        .pending { background: #fff3cd; border-color: #ffeeba; }
+        pre { background: #f4f4f4; padding: 10px; overflow-x: auto; }
+        button { padding: 10px 20px; font-size: 16px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Photo Capture System Diagnostic</h1>
+    <button onclick="runAllTests()">Run All Tests</button>
+
+    <div id="tests">
+        <div id="test-api-items" class="test pending">
+            <h3>Test 1: Items API</h3>
+            <div class="result"></div>
+        </div>
+
+        <div id="test-api-rooms" class="test pending">
+            <h3>Test 2: Rooms API</h3>
+            <div class="result"></div>
+        </div>
+
+        <div id="test-cors" class="test pending">
+            <h3>Test 3: CORS Headers</h3>
+            <div class="result"></div>
+        </div>
+
+        <div id="test-photo-upload" class="test pending">
+            <h3>Test 4: Photo Upload Endpoint</h3>
+            <div class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://5470-inventory.fly.dev/api/v1';
+
+        async function testItemsAPI() {
+            const testDiv = document.getElementById('test-api-items');
+            const resultDiv = testDiv.querySelector('.result');
+
+            try {
+                console.log('Testing Items API...');
+                const response = await fetch(`${API_BASE}/items`);
+                const data = await response.json();
+
+                // Check different possible response formats
+                let itemCount = 0;
+                let items = [];
+
+                if (Array.isArray(data)) {
+                    items = data;
+                    itemCount = data.length;
+                } else if (data.items && Array.isArray(data.items)) {
+                    items = data.items;
+                    itemCount = data.items.length;
+                }
+
+                testDiv.className = 'test success';
+                resultDiv.innerHTML = `
+                    <p>✅ Success! Found ${itemCount} items</p>
+                    <p>Response format: ${Array.isArray(data) ? 'Array' : 'Object with items property'}</p>
+                    <p>First item: ${items[0]?.name || 'N/A'}</p>
+                    <details>
+                        <summary>Raw Response (first 500 chars)</summary>
+                        <pre>${JSON.stringify(data, null, 2).substring(0, 500)}</pre>
+                    </details>
+                `;
+
+                console.log('Items API Response:', data);
+                return true;
+            } catch (error) {
+                testDiv.className = 'test error';
+                resultDiv.innerHTML = `
+                    <p>❌ Error: ${error.message}</p>
+                    <p>This might be a CORS issue or network error</p>
+                `;
+                console.error('Items API Error:', error);
+                return false;
+            }
+        }
+
+        async function testRoomsAPI() {
+            const testDiv = document.getElementById('test-api-rooms');
+            const resultDiv = testDiv.querySelector('.result');
+
+            try {
+                console.log('Testing Rooms API...');
+                const response = await fetch(`${API_BASE}/rooms`);
+                const data = await response.json();
+
+                let roomCount = 0;
+                let rooms = [];
+
+                if (Array.isArray(data)) {
+                    rooms = data;
+                    roomCount = data.length;
+                } else if (data.rooms && Array.isArray(data.rooms)) {
+                    rooms = data.rooms;
+                    roomCount = data.rooms.length;
+                }
+
+                testDiv.className = 'test success';
+                resultDiv.innerHTML = `
+                    <p>✅ Success! Found ${roomCount} rooms</p>
+                    <p>Response format: ${Array.isArray(data) ? 'Array' : 'Object with rooms property'}</p>
+                    <p>First room: ${rooms[0]?.name || 'N/A'}</p>
+                    <details>
+                        <summary>Raw Response (first 500 chars)</summary>
+                        <pre>${JSON.stringify(data, null, 2).substring(0, 500)}</pre>
+                    </details>
+                `;
+
+                console.log('Rooms API Response:', data);
+                return true;
+            } catch (error) {
+                testDiv.className = 'test error';
+                resultDiv.innerHTML = `
+                    <p>❌ Error: ${error.message}</p>
+                    <p>This might be a CORS issue or network error</p>
+                `;
+                console.error('Rooms API Error:', error);
+                return false;
+            }
+        }
+
+        async function testCORS() {
+            const testDiv = document.getElementById('test-cors');
+            const resultDiv = testDiv.querySelector('.result');
+
+            try {
+                console.log('Testing CORS...');
+                const response = await fetch(`${API_BASE}/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Origin': window.location.origin
+                    }
+                });
+
+                const corsHeader = response.headers.get('access-control-allow-origin');
+
+                if (corsHeader) {
+                    testDiv.className = 'test success';
+                    resultDiv.innerHTML = `
+                        <p>✅ CORS is configured</p>
+                        <p>Access-Control-Allow-Origin: ${corsHeader}</p>
+                    `;
+                } else {
+                    testDiv.className = 'test error';
+                    resultDiv.innerHTML = `
+                        <p>⚠️ CORS header not found in response</p>
+                        <p>API might still work if proxy is configured</p>
+                    `;
+                }
+
+                return true;
+            } catch (error) {
+                testDiv.className = 'test error';
+                resultDiv.innerHTML = `
+                    <p>❌ Error: ${error.message}</p>
+                `;
+                console.error('CORS Test Error:', error);
+                return false;
+            }
+        }
+
+        async function testPhotoUpload() {
+            const testDiv = document.getElementById('test-photo-upload');
+            const resultDiv = testDiv.querySelector('.result');
+
+            try {
+                console.log('Testing Photo Upload Endpoint...');
+                // Just check if endpoint exists with OPTIONS
+                const response = await fetch(`${API_BASE}/items/test/photos`, {
+                    method: 'OPTIONS'
+                });
+
+                if (response.ok || response.status === 405) {
+                    testDiv.className = 'test success';
+                    resultDiv.innerHTML = `
+                        <p>✅ Photo upload endpoint is accessible</p>
+                        <p>Status: ${response.status}</p>
+                    `;
+                } else {
+                    testDiv.className = 'test error';
+                    resultDiv.innerHTML = `
+                        <p>⚠️ Photo endpoint returned status: ${response.status}</p>
+                    `;
+                }
+
+                return true;
+            } catch (error) {
+                testDiv.className = 'test error';
+                resultDiv.innerHTML = `
+                    <p>❌ Error: ${error.message}</p>
+                `;
+                console.error('Photo Upload Test Error:', error);
+                return false;
+            }
+        }
+
+        async function runAllTests() {
+            console.log('Starting diagnostic tests...');
+            console.log('API Base:', API_BASE);
+            console.log('Current Origin:', window.location.origin);
+
+            await testItemsAPI();
+            await testRoomsAPI();
+            await testCORS();
+            await testPhotoUpload();
+
+            console.log('All tests complete. Check results above.');
+        }
+
+        // Auto-run tests on load
+        window.addEventListener('load', runAllTests);
+    </script>
+</body>
+</html>

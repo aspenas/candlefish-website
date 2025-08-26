@@ -31,7 +31,7 @@ ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:MAILTO:jon@j
 BEGIN:VALARM
 ACTION:EMAIL
 TRIGGER:-PT30M
-DESCRIPTION:Reminder: Candlefish.ai × Retti — Working Session starting 
+DESCRIPTION:Reminder: Candlefish.ai × Retti — Working Session starting
  in 30 minutes
 SUMMARY:Candlefish.ai × Retti — Working Session
 END:VALARM

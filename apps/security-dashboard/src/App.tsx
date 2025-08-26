@@ -44,29 +44,29 @@ const App: React.FC = () => {
                   <Routes>
                     {/* Main Dashboard */}
                     <Route path="/" element={<SecurityOverview />} />
-                    
+
                     {/* Kong Gateway Monitoring */}
                     <Route path="/kong" element={<KongMonitoring />} />
-                    
+
                     {/* Asset Management */}
                     <Route path="/assets" element={<AssetManagement />} />
                     <Route path="/assets/:category" element={<AssetManagement />} />
-                    
+
                     {/* Vulnerability Management */}
                     <Route path="/vulnerabilities" element={<VulnerabilityManagement />} />
-                    
+
                     {/* Alert Management */}
                     <Route path="/alerts" element={<AlertManagement />} />
-                    
+
                     {/* Compliance */}
                     <Route path="/compliance" element={<ComplianceDashboard />} />
-                    
+
                     {/* Reports */}
                     <Route path="/reports" element={<Reports />} />
-                    
+
                     {/* Settings */}
                     <Route path="/settings" element={<Settings />} />
-                    
+
                     {/* 404 Page */}
                     <Route path="*" element={<NotFoundPage />} />
                   </Routes>

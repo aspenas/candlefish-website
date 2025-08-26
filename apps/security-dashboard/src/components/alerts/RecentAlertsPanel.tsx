@@ -223,7 +223,7 @@ const RecentAlertsPanel: React.FC = () => {
                   <ListItemIcon sx={{ mt: 1 }}>
                     {getSeverityIcon(alert.severity)}
                   </ListItemIcon>
-                  
+
                   <ListItemText
                     primary={
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
@@ -248,7 +248,7 @@ const RecentAlertsPanel: React.FC = () => {
                         >
                           {alert.description}
                         </Typography>
-                        
+
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                           <Box sx={{ display: 'flex', alignItems: 'center' }}>
                             <ScheduleIcon sx={{ fontSize: 14, mr: 0.5, color: 'text.secondary' }} />
@@ -256,13 +256,13 @@ const RecentAlertsPanel: React.FC = () => {
                               {formatDistanceToNow(new Date(alert.createdAt), { addSuffix: true })}
                             </Typography>
                           </Box>
-                          
+
                           {alert.asset && (
                             <Typography variant="caption" color="text.secondary">
                               • {alert.asset.name} ({alert.asset.platform})
                             </Typography>
                           )}
-                          
+
                           {alert.assignedTo && (
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                               <PersonIcon sx={{ fontSize: 14, mr: 0.5, color: 'text.secondary' }} />
@@ -275,7 +275,7 @@ const RecentAlertsPanel: React.FC = () => {
                       </Box>
                     }
                   />
-                  
+
                   <ListItemSecondaryAction>
                     <IconButton
                       size="small"
@@ -285,7 +285,7 @@ const RecentAlertsPanel: React.FC = () => {
                     </IconButton>
                   </ListItemSecondaryAction>
                 </ListItem>
-                
+
                 {index < alerts.length - 1 && <Divider sx={{ my: 1, opacity: 0.3 }} />}
               </React.Fragment>
             ))}

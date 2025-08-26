@@ -62,7 +62,7 @@ const navigationItems: NavigationItem[] = [
     badge: 1,
     color: 'error',
   },
-  
+
   // Monitoring Section
   {
     id: 'monitoring',
@@ -91,7 +91,7 @@ const navigationItems: NavigationItem[] = [
       },
     ],
   },
-  
+
   // Assets & Vulnerabilities
   {
     id: 'assets',
@@ -124,7 +124,7 @@ const navigationItems: NavigationItem[] = [
       },
     ],
   },
-  
+
   {
     id: 'vulnerabilities',
     label: 'Vulnerabilities',
@@ -133,7 +133,7 @@ const navigationItems: NavigationItem[] = [
     badge: 42,
     color: 'error',
   },
-  
+
   {
     id: 'alerts',
     label: 'Alerts & Incidents',
@@ -142,7 +142,7 @@ const navigationItems: NavigationItem[] = [
     badge: 8,
     color: 'warning',
   },
-  
+
   {
     id: 'compliance',
     label: 'Compliance',
@@ -151,7 +151,7 @@ const navigationItems: NavigationItem[] = [
     badge: '92%',
     color: 'success',
   },
-  
+
   {
     id: 'reports',
     label: 'Reports & Analytics',
@@ -197,7 +197,7 @@ const Navigation: React.FC<NavigationProps> = ({ onItemClick }) => {
 
   const isActive = (path?: string) => {
     if (!path) return false;
-    return location.pathname === path || 
+    return location.pathname === path ||
            (path === '/' && location.pathname === '/');
   };
 
@@ -236,8 +236,8 @@ const Navigation: React.FC<NavigationProps> = ({ onItemClick }) => {
             }}
           >
             {item.badge && typeof item.badge === 'number' && item.badge > 0 ? (
-              <Badge 
-                badgeContent={item.badge} 
+              <Badge
+                badgeContent={item.badge}
                 color={item.color || 'error'}
                 max={99}
               >
@@ -247,7 +247,7 @@ const Navigation: React.FC<NavigationProps> = ({ onItemClick }) => {
               item.icon
             )}
           </ListItemIcon>
-          
+
           <ListItemText
             primary={item.label}
             sx={{
@@ -258,7 +258,7 @@ const Navigation: React.FC<NavigationProps> = ({ onItemClick }) => {
               },
             }}
           />
-          
+
           {item.badge && typeof item.badge === 'string' && (
             <Chip
               label={item.badge}
@@ -271,12 +271,12 @@ const Navigation: React.FC<NavigationProps> = ({ onItemClick }) => {
               }}
             />
           )}
-          
+
           {hasChildren && (
             isExpanded ? <ExpandLess /> : <ExpandMore />
           )}
         </ListItemButton>
-        
+
         {hasChildren && (
           <Collapse in={isExpanded} timeout="auto" unmountOnExit>
             <List component="div" disablePadding>
@@ -294,10 +294,10 @@ const Navigation: React.FC<NavigationProps> = ({ onItemClick }) => {
       <List sx={{ flex: 1, pt: 2 }}>
         {navigationItems.map(item => renderNavigationItem(item))}
       </List>
-      
+
       {/* Divider */}
       <Divider sx={{ mx: 2, my: 1, borderColor: '#333' }} />
-      
+
       {/* System status indicator */}
       <Box sx={{ px: 3, py: 1 }}>
         <Typography variant="caption" color="text.secondary">
@@ -324,7 +324,7 @@ const Navigation: React.FC<NavigationProps> = ({ onItemClick }) => {
           </Typography>
         </Box>
       </Box>
-      
+
       {/* Bottom navigation */}
       <List sx={{ pt: 0 }}>
         {bottomNavigationItems.map(item => renderNavigationItem(item))}

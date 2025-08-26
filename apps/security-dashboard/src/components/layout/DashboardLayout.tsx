@@ -42,14 +42,14 @@ interface DashboardLayoutProps {
 
 const DRAWER_WIDTH = 280;
 
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ 
-  children, 
-  title = 'Security Dashboard' 
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({
+  children,
+  title = 'Security Dashboard'
 }) => {
   const theme = useTheme();
   const { isDarkMode, toggleTheme } = useCustomTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
-  
+
   // State management
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -128,7 +128,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             >
               <MenuIcon />
             </IconButton>
-            
+
             <SecurityIcon sx={{ mr: 1, color: '#1976d2' }} />
             <Typography
               variant="h6"
@@ -143,7 +143,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             >
               {title}
             </Typography>
-            
+
             {/* Connection status indicator */}
             {!connectionStatus.connected && (
               <Box sx={{ ml: 2 }}>
@@ -152,7 +152,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 </Tooltip>
               </Box>
             )}
-            
+
             {connectionStatus.reconnecting && (
               <Box sx={{ ml: 2 }}>
                 <Typography variant="caption" color="warning.main">
@@ -216,12 +216,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 <CloseIcon fontSize="inherit" />
               </IconButton>
             }
-            sx={{ 
+            sx={{
               borderRadius: 0,
               borderBottom: '1px solid #333',
             }}
           >
-            <strong>CRITICAL:</strong> Kong Admin API vulnerability detected - HTTP protocol in use. 
+            <strong>CRITICAL:</strong> Kong Admin API vulnerability detected - HTTP protocol in use.
             Immediate action required to secure your API gateway.
           </Alert>
         </Collapse>

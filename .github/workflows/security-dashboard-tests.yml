@@ -1,0 +1,581 @@
+name: Security Dashboard Test Suite
+
+on:
+  push:
+    paths:
+      - 'services/security-dashboard/**'
+      - 'apps/security-dashboard/**'
+      - 'apps/mobile-security-dashboard/**'
+      - '__tests__/**'
+      - '.github/workflows/security-dashboard-tests.yml'
+  pull_request:
+    paths:
+      - 'services/security-dashboard/**'
+      - 'apps/security-dashboard/**'
+      - 'apps/mobile-security-dashboard/**'
+      - '__tests__/**'
+      - '.github/workflows/security-dashboard-tests.yml'
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  GO_VERSION: '1.22'
+  POSTGRES_VERSION: '16'
+  REDIS_VERSION: '7'
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.changes.outputs.backend }}
+      frontend: ${{ steps.changes.outputs.frontend }}
+      mobile: ${{ steps.changes.outputs.mobile }}
+      graphql: ${{ steps.changes.outputs.graphql }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            backend:
+              - 'services/security-dashboard/**'
+              - '__tests__/backend/**'
+            frontend:
+              - 'apps/security-dashboard/**'
+              - '__tests__/frontend/**'
+            mobile:
+              - 'apps/mobile-security-dashboard/**'
+              - '__tests__/mobile/**'
+            graphql:
+              - '__tests__/graphql/**'
+              - 'graphql/**'
+
+  # Backend Go Service Tests
+  backend-tests:
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+
+    services:
+      postgres:
+        image: timescale/timescaledb:2.14.2-pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: security_dashboard_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: services/security-dashboard/go.sum
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('services/security-dashboard/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install dependencies
+        working-directory: services/security-dashboard
+        run: go mod download
+
+      - name: Run database migrations
+        working-directory: services/security-dashboard
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          DB_NAME: security_dashboard_test
+          DB_SSLMODE: disable
+        run: |
+          go run cmd/migrate/main.go
+
+      - name: Run unit tests
+        working-directory: services/security-dashboard
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          DB_NAME: security_dashboard_test
+          DB_SSLMODE: disable
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          REDIS_PASSWORD: ""
+          REDIS_DB: 1
+        run: |
+          go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Run integration tests
+        working-directory: services/security-dashboard
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          DB_NAME: security_dashboard_test
+          DB_SSLMODE: disable
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          REDIS_PASSWORD: ""
+          REDIS_DB: 2
+        run: |
+          go test -v -tags=integration -coverprofile=integration-coverage.out ./...
+
+      - name: Run performance tests
+        working-directory: services/security-dashboard
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          DB_NAME: security_dashboard_test
+          DB_SSLMODE: disable
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+        run: |
+          go test -v -tags=performance -bench=. -benchmem ./...
+
+      - name: Generate coverage report
+        working-directory: services/security-dashboard
+        run: |
+          go tool cover -html=coverage.out -o coverage.html
+          go tool cover -func=coverage.out
+
+      - name: Check coverage threshold
+        working-directory: services/security-dashboard
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print substr($3, 1, length($3)-1)}')
+          echo "Coverage: $COVERAGE%"
+          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+            echo "Coverage $COVERAGE% is below threshold of 80%"
+            exit 1
+          fi
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: services/security-dashboard/coverage.out
+          flags: backend
+          name: backend-coverage
+
+  # GraphQL API Tests
+  graphql-tests:
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.graphql == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+
+    services:
+      postgres:
+        image: timescale/timescaledb:2.14.2-pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: security_dashboard_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run GraphQL schema validation tests
+        run: npm run test -- __tests__/graphql/security-dashboard/schema-validation.test.ts
+
+      - name: Run GraphQL resolver tests
+        run: npm run test -- __tests__/graphql/security-dashboard/resolvers.test.ts
+
+      - name: Run GraphQL subscription tests
+        run: npm run test -- __tests__/graphql/security-dashboard/subscriptions.test.ts
+
+      - name: Run GraphQL federation tests
+        run: npm run test -- __tests__/graphql/security-dashboard/federation.test.ts
+
+      - name: Run GraphQL performance tests
+        run: npm run test -- __tests__/graphql/security-dashboard/performance.test.ts
+
+      - name: Generate GraphQL coverage report
+        run: |
+          npm run test:coverage -- --testPathPattern=__tests__/graphql
+
+      - name: Upload GraphQL coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: coverage/lcov.info
+          flags: graphql
+          name: graphql-coverage
+
+  # Frontend React Tests
+  frontend-tests:
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: apps/security-dashboard/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/security-dashboard
+        run: npm ci
+
+      - name: Run unit tests
+        working-directory: apps/security-dashboard
+        run: npm run test -- --watchAll=false --coverage --testPathPattern=src
+
+      - name: Run component integration tests
+        working-directory: apps/security-dashboard
+        run: npm run test -- --watchAll=false --testPathPattern=__tests__/frontend/security-dashboard/components
+
+      - name: Run E2E tests
+        working-directory: apps/security-dashboard
+        run: |
+          npm run build
+          npm run test:e2e
+
+      - name: Run accessibility tests
+        working-directory: apps/security-dashboard
+        run: npm run test:a11y
+
+      - name: Run visual regression tests
+        working-directory: apps/security-dashboard
+        run: npm run test:visual
+
+      - name: Run performance tests
+        working-directory: apps/security-dashboard
+        run: npm run test:performance
+
+      - name: Check bundle size
+        working-directory: apps/security-dashboard
+        run: |
+          npm run build
+          npx bundlesize
+
+      - name: Upload frontend coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: apps/security-dashboard/coverage/lcov.info
+          flags: frontend
+          name: frontend-coverage
+
+  # Mobile React Native Tests
+  mobile-tests:
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.mobile == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: apps/mobile-security-dashboard/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/mobile-security-dashboard
+        run: npm ci
+
+      - name: Run unit tests
+        working-directory: apps/mobile-security-dashboard
+        run: npm run test -- --watchAll=false --coverage
+
+      - name: Run component tests
+        working-directory: apps/mobile-security-dashboard
+        run: npm run test -- --watchAll=false --testPathPattern=__tests__/mobile
+
+      - name: Run navigation tests
+        working-directory: apps/mobile-security-dashboard
+        run: npm run test:navigation
+
+      - name: Run offline functionality tests
+        working-directory: apps/mobile-security-dashboard
+        run: npm run test:offline
+
+      - name: Run cross-platform compatibility tests
+        working-directory: apps/mobile-security-dashboard
+        run: npm run test:platform
+
+      - name: Upload mobile coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: apps/mobile-security-dashboard/coverage/lcov.info
+          flags: mobile
+          name: mobile-coverage
+
+  # Performance and Load Testing
+  performance-tests:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+
+    services:
+      postgres:
+        image: timescale/timescaledb:2.14.2-pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: security_dashboard_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install K6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run API load tests
+        run: k6 run __tests__/performance/k6/security-dashboard-load-test.js
+
+      - name: Run API stress tests
+        run: k6 run __tests__/performance/k6/security-dashboard-stress-test.js
+
+      - name: Run WebSocket subscription tests
+        run: k6 run __tests__/performance/k6/websocket-subscription-test.js
+
+      - name: Run database performance tests
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          DB_NAME: security_dashboard_test
+        run: npm run test:db-performance
+
+  # Security Tests
+  security-tests:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Semgrep Security Analysis
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/secrets
+            p/owasp-top-ten
+            p/javascript
+            p/typescript
+            p/go
+          generateSarif: "1"
+
+      - name: Upload Semgrep results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+
+      - name: Run npm audit
+        run: |
+          npm audit --audit-level high
+          cd apps/security-dashboard && npm audit --audit-level high
+          cd apps/mobile-security-dashboard && npm audit --audit-level high
+
+      - name: Run Go vulnerability check
+        working-directory: services/security-dashboard
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+  # Integration Tests
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests, graphql-tests]
+    if: ${{ always() && !cancelled() }}
+
+    services:
+      postgres:
+        image: timescale/timescaledb:2.14.2-pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: security_dashboard_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start backend services
+        working-directory: services/security-dashboard
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          DB_NAME: security_dashboard_test
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+        run: |
+          go mod download
+          go build -o security-dashboard-server .
+          ./security-dashboard-server &
+          sleep 10
+
+      - name: Run end-to-end integration tests
+        run: npm run test:integration
+
+      - name: Run API integration tests
+        run: npm run test:api-integration
+
+      - name: Run WebSocket integration tests
+        run: npm run test:websocket-integration
+
+  # Test Summary and Notifications
+  test-summary:
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests, mobile-tests, graphql-tests, integration-tests]
+    if: ${{ always() }}
+
+    steps:
+      - name: Test Results Summary
+        run: |
+          echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend Tests | ${{ needs.backend-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend Tests | ${{ needs.frontend-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Mobile Tests | ${{ needs.mobile-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| GraphQL Tests | ${{ needs.graphql-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Integration Tests | ${{ needs.integration-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify on failure
+        if: ${{ failure() }}
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          channel: '#security-alerts'
+          text: 'Security Dashboard test suite failed!'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Update deployment status
+        if: ${{ success() && github.ref == 'refs/heads/main' }}
+        run: |
+          echo "All tests passed - ready for deployment" >> $GITHUB_STEP_SUMMARY
+          # Add deployment trigger logic here

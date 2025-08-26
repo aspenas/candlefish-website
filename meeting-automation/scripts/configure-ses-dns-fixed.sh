@@ -46,9 +46,9 @@ create_dns_record() {
     local content="$3"
     local ttl="${4:-300}"
     local priority="${5:-}"
-    
+
     echo "➕ Creating $type record: ${name:-root}"
-    
+
     # Build the JSON payload
     local payload="{
         \"secretapikey\": \"$SECRET_KEY\",
@@ -56,21 +56,21 @@ create_dns_record() {
         \"type\": \"$type\",
         \"content\": \"$content\",
         \"ttl\": \"$ttl\""
-    
+
     if [ -n "$name" ] && [ "$name" != "@" ] && [ "$name" != "" ]; then
         payload="$payload,\"name\": \"$name\""
     fi
-    
+
     if [ -n "$priority" ]; then
         payload="$payload,\"prio\": \"$priority\""
     fi
-    
+
     payload="$payload}"
-    
+
     response=$(curl -s -X POST "$PORKBUN_API/dns/create/$DOMAIN" \
         -H "Content-Type: application/json" \
         -d "$payload")
-    
+
     if echo "$response" | grep -q "SUCCESS"; then
         echo "✅ $type record created successfully"
         return 0
@@ -87,14 +87,14 @@ create_dns_record() {
 # Function to list existing DNS records
 list_dns_records() {
     echo "📋 Fetching existing DNS records..."
-    
+
     local response=$(curl -s -X POST "$PORKBUN_API/dns/retrieve/$DOMAIN" \
         -H "Content-Type: application/json" \
         -d "{
             \"secretapikey\": \"$SECRET_KEY\",
             \"apikey\": \"$API_KEY\"
         }")
-    
+
     if echo "$response" | grep -q "SUCCESS"; then
         echo "$response" | jq -r '.records[] | "\(.type) \(.name) -> \(.content)"' 2>/dev/null || echo "No records found"
     else
@@ -105,16 +105,16 @@ list_dns_records() {
 # Function to delete a specific DNS record
 delete_dns_record() {
     local record_id="$1"
-    
+
     echo "  🗑️  Deleting record ID: $record_id"
-    
+
     local response=$(curl -s -X POST "$PORKBUN_API/dns/delete/$DOMAIN/$record_id" \
         -H "Content-Type: application/json" \
         -d "{
             \"secretapikey\": \"$SECRET_KEY\",
             \"apikey\": \"$API_KEY\"
         }")
-    
+
     if echo "$response" | grep -q "SUCCESS"; then
         echo "  ✅ Record deleted"
         return 0
