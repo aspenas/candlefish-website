@@ -1,0 +1,218 @@
+# Mobile Security Dashboard - React Native with Expo
+# Supports iOS and Android builds with EAS Build
+
+# ============================================================================
+# Base Stage - Node.js with Expo CLI
+# ============================================================================
+FROM node:20-alpine3.18 AS base
+
+# Install system dependencies and security updates
+RUN apk update && apk upgrade && \
+    apk add --no-cache \
+    git \
+    curl \
+    bash \
+    python3 \
+    make \
+    g++ \
+    openjdk11-jre \
+    android-tools && \
+    rm -rf /var/cache/apk/*
+
+# Create non-root user
+RUN addgroup -g 1001 -S expo && \
+    adduser -S expo -u 1001 -G expo
+
+# Set working directory
+WORKDIR /app
+
+# Install global dependencies
+RUN npm install -g @expo/eas-cli @expo/cli pnpm@8.7.0
+
+# ============================================================================
+# Development Stage - For local development and testing
+# ============================================================================
+FROM base AS development
+
+# Copy package files
+COPY apps/mobile-security-dashboard/package*.json ./
+COPY apps/mobile-security-dashboard/pnpm-lock.yaml* ./
+
+# Install dependencies
+RUN pnpm install
+
+# Copy source code
+COPY --chown=expo:expo apps/mobile-security-dashboard ./
+
+# Switch to non-root user
+USER expo
+
+# Expose Expo dev server port
+EXPOSE 8081 19000 19001 19002
+
+# Start Expo development server
+CMD ["pnpm", "start", "--web"]
+
+# ============================================================================
+# Build Stage - Production build preparation
+# ============================================================================
+FROM base AS builder
+
+# Set environment variables for build
+ENV NODE_ENV=production
+ENV EXPO_NO_TELEMETRY=1
+ENV EXPO_NO_UPDATE_CHECK=1
+
+# Copy package files
+COPY apps/mobile-security-dashboard/package*.json ./
+COPY apps/mobile-security-dashboard/pnpm-lock.yaml* ./
+
+# Install production dependencies
+RUN pnpm install --frozen-lockfile --production=false
+
+# Copy source code and configuration
+COPY --chown=expo:expo apps/mobile-security-dashboard ./
+COPY graphql/schema.graphql ./graphql/
+
+# Generate GraphQL types
+RUN pnpm run codegen
+
+# Configure app for production
+RUN jq '.expo.extra.apiUrl = env.API_URL // "https://api.security.candlefish.ai"' app.json > app.json.tmp && \
+    mv app.json.tmp app.json && \
+    jq '.expo.extra.wsUrl = env.WS_URL // "wss://api.security.candlefish.ai/subscriptions"' app.json > app.json.tmp && \
+    mv app.json.tmp app.json
+
+# Pre-build the app (optimize for faster EAS builds)
+RUN pnpm run prebuild:clean && \
+    pnpm run prebuild
+
+# Switch to non-root user
+USER expo
+
+# ============================================================================
+# Production Stage - Ready for EAS Build service
+# ============================================================================
+FROM builder AS production
+
+# Environment variables for production
+ENV NODE_ENV=production
+ENV EXPO_PUBLIC_ENV=production
+ENV API_URL=https://api.security.candlefish.ai
+ENV WS_URL=wss://api.security.candlefish.ai/subscriptions
+
+# Health check script
+COPY --chown=expo:expo deployment/docker/scripts/mobile-health-check.js ./health-check.js
+
+# Health check for container readiness
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD node health-check.js
+
+# Default command for CI/CD pipeline usage
+CMD ["pnpm", "run", "build:production"]
+
+# ============================================================================
+# EAS Build Stage - Optimized for Expo Application Services
+# ============================================================================
+FROM production AS eas-build
+
+# Install additional build tools for EAS
+RUN apk add --no-cache \
+    ruby \
+    ruby-dev \
+    ruby-bundler && \
+    rm -rf /var/cache/apk/*
+
+# Install fastlane for iOS/Android deployment
+RUN gem install fastlane
+
+# Configure EAS build environment
+ENV EAS_BUILD_PLATFORM=all
+ENV EAS_BUILD_PROFILE=production
+ENV EAS_NO_VCS=1
+
+# Copy EAS configuration
+COPY apps/mobile-security-dashboard/eas.json ./
+COPY deployment/fastlane ./fastlane/
+
+# Create build script
+RUN cat > build-mobile.sh << 'EOF'
+#!/bin/bash
+set -e
+
+echo "Starting mobile app build process..."
+
+# Verify EAS CLI authentication
+if ! eas whoami; then
+    echo "Error: Not authenticated with EAS. Please run 'eas login' first."
+    exit 1
+fi
+
+# Build for iOS
+if [ "$EAS_BUILD_PLATFORM" = "ios" ] || [ "$EAS_BUILD_PLATFORM" = "all" ]; then
+    echo "Building iOS app..."
+    eas build --platform ios --profile $EAS_BUILD_PROFILE --non-interactive
+fi
+
+# Build for Android  
+if [ "$EAS_BUILD_PLATFORM" = "android" ] || [ "$EAS_BUILD_PLATFORM" = "all" ]; then
+    echo "Building Android app..."
+    eas build --platform android --profile $EAS_BUILD_PROFILE --non-interactive
+fi
+
+# Submit to stores (if configured)
+if [ "$SUBMIT_TO_STORES" = "true" ]; then
+    echo "Submitting to app stores..."
+    if [ "$EAS_BUILD_PLATFORM" = "ios" ] || [ "$EAS_BUILD_PLATFORM" = "all" ]; then
+        eas submit --platform ios --profile $EAS_BUILD_PROFILE --non-interactive || echo "iOS submission failed"
+    fi
+    if [ "$EAS_BUILD_PLATFORM" = "android" ] || [ "$EAS_BUILD_PLATFORM" = "all" ]; then
+        eas submit --platform android --profile $EAS_BUILD_PROFILE --non-interactive || echo "Android submission failed"
+    fi
+fi
+
+echo "Build process completed successfully!"
+EOF
+
+RUN chmod +x build-mobile.sh
+
+# Build command for CI/CD
+CMD ["./build-mobile.sh"]
+
+# ============================================================================
+# Testing Stage - For running mobile app tests
+# ============================================================================
+FROM builder AS testing
+
+# Install additional testing dependencies
+RUN pnpm install --dev
+
+# Install testing tools
+RUN npm install -g detox-cli
+
+# Copy test configuration
+COPY apps/mobile-security-dashboard/.detoxrc.js ./
+COPY apps/mobile-security-dashboard/e2e ./e2e/
+
+# Run tests
+CMD ["pnpm", "run", "test:ci"]
+
+# ============================================================================
+# Metadata and build arguments
+# ============================================================================
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION
+ARG API_URL=https://api.security.candlefish.ai
+ARG WS_URL=wss://api.security.candlefish.ai/subscriptions
+
+LABEL org.label-schema.build-date=$BUILD_DATE \
+      org.label-schema.name="Mobile Security Dashboard" \
+      org.label-schema.description="React Native mobile app for security monitoring" \
+      org.label-schema.url="https://candlefish.ai" \
+      org.label-schema.vcs-ref=$VCS_REF \
+      org.label-schema.vcs-url="https://github.com/candlefish-ai/security-dashboard" \
+      org.label-schema.vendor="Candlefish AI" \
+      org.label-schema.version=$VERSION \
+      org.label-schema.schema-version="1.0" \
+      maintainer="patrick@candlefish.ai"

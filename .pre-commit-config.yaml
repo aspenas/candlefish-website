@@ -1,77 +1,186 @@
----
-# Pre-commit hooks for candlefish-ai
-# Run: pre-commit install
-# Manual: pre-commit run --all-files
+# Pre-commit hooks configuration
+# See https://pre-commit.com for more information
 
+default_stages: [commit]
+fail_fast: false
 repos:
-  # Security scanning
-  - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.18.4
-    hooks:
-      - id: gitleaks
-
-  # Python linting and formatting
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.1
-    hooks:
-      - id: ruff
-        args: [--fix]
-        exclude: ^(projects/fogg/calendar/|apps/rtpm-api/test_client\.py)
-      - id: ruff-format
-        exclude: ^(projects/fogg/calendar/|apps/rtpm-api/test_client\.py)
-
-  # JavaScript/TypeScript - Disabled until ESLint v9 config is properly set up
-  # - repo: https://github.com/pre-commit/mirrors-eslint
-  #   rev: v9.8.0
-  #   hooks:
-  #     - id: eslint
-  #       files: \.(js|jsx|ts|tsx)$
-  #       additional_dependencies:
-  #         - eslint@9.8.0
-  #         - eslint-config-prettier@9.1.0
-  #       exclude: ^(node_modules|dist|build)/
-
-  # YAML validation
+  # General purpose hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v4.5.0
     hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
       - id: check-yaml
         args: [--allow-multiple-documents]
-        exclude: '\.yml$|template\.yaml$|serverless\.yml$|cloudwatch-alarms\.yml$|projects/paintbox/\.pre-commit-config\.yaml$'
       - id: check-json
-        exclude: 'tsconfig.*\.json$'  # Exclude TypeScript config files (may have comments)
       - id: check-toml
-      - id: end-of-file-fixer
-        exclude: '\.(lock|zip|tar\.gz|png|jpg|jpeg|gif|ico|pdf|bin)$'
-      - id: trailing-whitespace
-        exclude: '\.(lock|zip|tar\.gz|png|jpg|jpeg|gif|ico|pdf|bin|md)$'
+      - id: check-xml
       - id: check-added-large-files
-        args: [--maxkb=10000]  # Increase limit to 10MB
-        exclude: '\.serverless/.*\.zip$'  # Exclude serverless build artifacts
+        args: ['--maxkb=1000']
+      - id: check-case-conflict
       - id: check-merge-conflict
       - id: detect-private-key
+      - id: detect-aws-credentials
+        args: [--allow-missing-credentials]
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: no-commit-to-branch
+        args: [--branch, main, --branch, production]
 
-  # Markdown - Disabled due to extensive formatting issues that would require major changes
-  # - repo: https://github.com/igorshubovych/markdownlint-cli
-  #   rev: v0.41.0
-  #   hooks:
-  #     - id: markdownlint
-  #       args: [--fix]
-
-  # Shell scripts
-  - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: v0.10.0.1
+  # Security scanning
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
     hooks:
-      - id: shellcheck
-        args: [-e, SC2162, -e, SC2086, -e, SC2034, -e, SC2155, -e, SC2129, -e, SC2181, -e, SC1091, -e, SC2012, -e, SC2164, -e, SC2044, -e, SC2046, -e, SC2103, -e, SC2002, -e, SC2236, -e, SC2317, -e, SC2015, -e, SC2004, -e, SC1083, -e, SC2016, -e, SC2207, -e, SC2116, -e, SC2145, -e, SC2206, -e, SC2124]
-        exclude: ^(terminal-backup/|node_modules/|\.netlify/|apps/website/candlefish-production/|public/docs/privileged/)
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: package-lock.json
 
-# Local hooks
+  # JavaScript/TypeScript
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v8.56.0
+    hooks:
+      - id: eslint
+        files: \.[jt]sx?$
+        types: [file]
+        additional_dependencies:
+          - eslint@8.56.0
+          - eslint-config-prettier@9.1.0
+          - eslint-plugin-react@7.33.2
+          - eslint-plugin-react-hooks@4.6.0
+          - '@typescript-eslint/eslint-plugin@6.13.0'
+          - '@typescript-eslint/parser@6.13.0'
+        args: [--fix, --max-warnings=0]
+
+  # Prettier formatting
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        types_or: [css, scss, javascript, jsx, typescript, tsx, json, yaml, markdown]
+        exclude: |
+          (?x)^(
+            pnpm-lock.yaml|
+            package-lock.json|
+            CHANGELOG.md
+          )$
+
+  # TypeScript type checking
   - repo: local
     hooks:
-      - id: no-direct-secrets
-        name: Block direct secrets
-        entry: "(?i)(api[_-]?key|secret|token|password|pwd|auth|credential)\\s*=\\s*[\"'][^\"']{10,}"
-        language: pygrep
-        types: [text]
-        exclude: '\.(md|txt|lock|example|sample|test|spec)$|__tests__/|\.tfvars$|test_client\.py$|\.spec\.(ts|js)$|\.test\.(ts|js)$|security-audit\.ts$|candlefish_update_.*\.html$|claude-deploy-authenticated\.html$|global-setup\.ts$|examples\.ts$|test-api\.sh$|deploy.*\.sh$|netlify-deploy-api\.sh$|db-migrate\.sh$|error-handling\.ts$'
+      - id: typescript
+        name: TypeScript Type Check
+        entry: bash -c 'pnpm type-check || npm run typecheck'
+        language: system
+        files: \.(ts|tsx)$
+        pass_filenames: false
+
+  # Test runner
+  - repo: local
+    hooks:
+      - id: unit-tests
+        name: Unit Tests
+        entry: bash -c 'pnpm test:unit --passWithNoTests || npm test -- --passWithNoTests'
+        language: system
+        pass_filenames: false
+        stages: [commit]
+
+  # Security dashboard specific checks
+  - repo: local
+    hooks:
+      - id: security-compliance
+        name: Security Compliance Check
+        entry: bash -c './scripts/security-compliance-check.sh'
+        language: system
+        pass_filenames: false
+        files: ^apps/security-dashboard/
+
+      - id: accessibility-check
+        name: Accessibility Standards Check
+        entry: bash -c 'npx pa11y-ci --threshold 0 || true'
+        language: system
+        pass_filenames: false
+        files: \.(jsx|tsx)$
+
+  # Dockerfile linting
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        args: [--ignore, DL3008, --ignore, DL3009]
+
+  # Shell script linting
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.9.0.6
+    hooks:
+      - id: shellcheck
+        args: [-x]
+
+  # YAML linting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.33.0
+    hooks:
+      - id: yamllint
+        args: [--format, parsable, --strict]
+
+  # Markdown linting
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.38.0
+    hooks:
+      - id: markdownlint
+        args: [--fix]
+        exclude: CHANGELOG.md
+
+  # Commit message linting
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: 3.13.0
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
+
+  # GitHub Actions workflow linting
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.6.26
+    hooks:
+      - id: actionlint
+
+  # Terraform formatting
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.86.0
+    hooks:
+      - id: terraform_fmt
+      - id: terraform_validate
+      - id: terraform_tflint
+
+  # Python hooks (for scripts)
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        language_version: python3
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        additional_dependencies: [flake8-docstrings]
+        args: [--max-line-length=100]
+
+# Custom hooks configuration
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit.com hooks
+
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_branch: ''
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_schedule: weekly
+  skip: [typescript, unit-tests, security-compliance, accessibility-check]
+  submodules: false

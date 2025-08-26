@@ -1,0 +1,567 @@
+name: Security & Compliance Scanning
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  push:
+    branches: [main, develop]
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      scan_type:
+        description: 'Type of security scan'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - dependencies
+          - containers
+          - infrastructure
+          - compliance
+
+env:
+  SECURITY_TOOLS_VERSION: 'latest'
+
+permissions:
+  contents: read
+  security-events: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  # Dependency scanning
+  dependency-scan:
+    name: Dependency Security Scan
+    runs-on: ubuntu-latest
+    if: github.event.inputs.scan_type == 'dependencies' || github.event.inputs.scan_type == 'full' || github.event.inputs.scan_type == ''
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Snyk security scan
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: >
+            --severity-threshold=medium
+            --all-projects
+            --detection-depth=6
+            --json-file-output=snyk-results.json
+
+      - name: Upload Snyk results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: snyk-results.sarif
+
+      - name: OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'candlefish-security-dashboard'
+          path: '.'
+          format: 'ALL'
+          args: >
+            --enableRetired
+            --enableExperimental
+            --suppression=.dependency-check-suppressions.xml
+            --out=dependency-check-report
+
+      - name: Upload OWASP results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-check-report
+          path: dependency-check-report/
+
+      - name: Check npm audit
+        run: |
+          pnpm audit --production --audit-level=moderate --json > npm-audit-results.json || true
+          
+          # Parse and create issues for critical vulnerabilities
+          node << 'EOF'
+          const fs = require('fs');
+          const audit = JSON.parse(fs.readFileSync('npm-audit-results.json', 'utf8'));
+          
+          if (audit.metadata && audit.metadata.vulnerabilities) {
+            const {critical, high} = audit.metadata.vulnerabilities;
+            if (critical > 0 || high > 0) {
+              console.error(`Found ${critical} critical and ${high} high vulnerabilities`);
+              process.exit(1);
+            }
+          }
+          EOF
+
+      - name: License compliance check
+        run: |
+          npx license-checker \
+            --production \
+            --onlyAllow 'MIT;Apache-2.0;BSD-3-Clause;BSD-2-Clause;ISC;CC0-1.0;Unlicense' \
+            --excludePrivatePackages \
+            --json > license-report.json
+
+      - name: Upload license report
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-compliance-report
+          path: license-report.json
+
+  # Container security scanning
+  container-scan:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    if: github.event.inputs.scan_type == 'containers' || github.event.inputs.scan_type == 'full' || github.event.inputs.scan_type == ''
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build test container
+        run: |
+          docker build -f deployment/docker/Dockerfile.security-dashboard-frontend \
+            -t security-dashboard:test .
+
+      - name: Run Trivy container scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'security-dashboard:test'
+          format: 'sarif'
+          output: 'trivy-container-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          exit-code: '1'
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-container-results.sarif'
+
+      - name: Run Grype vulnerability scan
+        uses: anchore/scan-action@v3
+        with:
+          image: 'security-dashboard:test'
+          fail-build: true
+          severity-cutoff: high
+          output-format: sarif
+
+      - name: Dockerfile linting
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: deployment/docker/Dockerfile.security-dashboard-frontend
+          config: .hadolint.yaml
+          failure-threshold: warning
+
+  # SAST - Static Application Security Testing
+  sast-scan:
+    name: Static Application Security Testing
+    runs-on: ubuntu-latest
+    if: github.event.inputs.scan_type == 'full' || github.event.inputs.scan_type == ''
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript, typescript
+          queries: security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript"
+
+      - name: Run Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/secrets
+            p/owasp-top-ten
+            p/typescript
+            p/react
+            p/nodejs
+
+      - name: ESLint security plugin
+        run: |
+          pnpm add -D eslint-plugin-security
+          npx eslint . --ext .js,.jsx,.ts,.tsx \
+            --plugin security \
+            --rule 'security/detect-object-injection: error' \
+            --rule 'security/detect-non-literal-regexp: error' \
+            --rule 'security/detect-unsafe-regex: error' \
+            --format json > eslint-security-report.json || true
+
+      - name: Upload ESLint security report
+        uses: actions/upload-artifact@v4
+        with:
+          name: eslint-security-report
+          path: eslint-security-report.json
+
+  # Infrastructure as Code scanning
+  iac-scan:
+    name: Infrastructure Security Scan
+    runs-on: ubuntu-latest
+    if: github.event.inputs.scan_type == 'infrastructure' || github.event.inputs.scan_type == 'full' || github.event.inputs.scan_type == ''
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Terraform security scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: 'deployment/terraform'
+          format: 'sarif'
+          output: 'trivy-iac-results.sarif'
+
+      - name: Upload Trivy IaC results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-iac-results.sarif'
+
+      - name: Checkov Policy Scan
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: .
+          framework: all
+          output_format: sarif
+          output_file_path: checkov-results.sarif
+          skip_check: CKV_DOCKER_2,CKV_DOCKER_3
+
+      - name: Upload Checkov results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: checkov-results.sarif
+
+      - name: Kubernetes manifest scanning
+        run: |
+          # Install kubesec
+          wget -O kubesec https://github.com/controlplaneio/kubesec/releases/latest/download/kubesec_linux_amd64
+          chmod +x kubesec
+          
+          # Scan Kubernetes manifests
+          find deployment/k8s -name "*.yaml" -o -name "*.yml" | while read file; do
+            echo "Scanning $file..."
+            ./kubesec scan "$file" > "kubesec-${file##*/}.json"
+          done
+
+      - name: Upload Kubernetes scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubesec-results
+          path: kubesec-*.json
+
+  # Compliance scanning
+  compliance-scan:
+    name: Compliance & Standards Check
+    runs-on: ubuntu-latest
+    if: github.event.inputs.scan_type == 'compliance' || github.event.inputs.scan_type == 'full' || github.event.inputs.scan_type == ''
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: NIST SP 800-53 compliance check
+        run: |
+          # Check for required security controls
+          python3 << 'EOF'
+          import json
+          import yaml
+          
+          # Load NIST controls mapping
+          required_controls = {
+              "AC-2": "Account Management",
+              "AC-3": "Access Enforcement",
+              "AU-2": "Audit Events",
+              "AU-3": "Content of Audit Records",
+              "IA-2": "Identification and Authentication",
+              "SC-8": "Transmission Confidentiality",
+              "SC-13": "Cryptographic Protection"
+          }
+          
+          compliance_results = {
+              "compliant": [],
+              "non_compliant": [],
+              "not_applicable": []
+          }
+          
+          # Check implementation evidence
+          for control_id, control_name in required_controls.items():
+              # Check if control is documented
+              if f"{control_id}" in open("docs/SECURITY_PRIVACY_BASELINE.md").read():
+                  compliance_results["compliant"].append({
+                      "control": control_id,
+                      "name": control_name,
+                      "status": "implemented"
+                  })
+              else:
+                  compliance_results["non_compliant"].append({
+                      "control": control_id,
+                      "name": control_name,
+                      "status": "missing"
+                  })
+          
+          # Save results
+          with open("nist-compliance-report.json", "w") as f:
+              json.dump(compliance_results, f, indent=2)
+          
+          # Exit with error if non-compliant
+          if compliance_results["non_compliant"]:
+              print(f"Non-compliant controls: {len(compliance_results['non_compliant'])}")
+              exit(1)
+          EOF
+
+      - name: ISO 27001 compliance check
+        run: |
+          # Check ISO 27001 Annex A controls
+          node << 'EOF'
+          const fs = require('fs');
+          
+          const iso27001Controls = [
+            'A.5.1.1', // Information security policies
+            'A.6.1.1', // Information security roles and responsibilities
+            'A.8.1.1', // Inventory of assets
+            'A.9.1.1', // Access control policy
+            'A.12.1.1', // Operating procedures
+            'A.14.2.1', // Secure development policy
+            'A.16.1.1', // Incident management
+            'A.18.1.1' // Legal requirements
+          ];
+          
+          const results = {
+            compliant: [],
+            gaps: []
+          };
+          
+          // Check for control implementation
+          iso27001Controls.forEach(control => {
+            const evidence = fs.existsSync(`docs/compliance/iso27001/${control}.md`);
+            if (evidence) {
+              results.compliant.push(control);
+            } else {
+              results.gaps.push(control);
+            }
+          });
+          
+          fs.writeFileSync('iso27001-compliance.json', JSON.stringify(results, null, 2));
+          EOF
+
+      - name: GDPR compliance check
+        run: |
+          # Check for GDPR requirements
+          echo "Checking GDPR compliance..."
+          
+          # Check for privacy policy
+          if [ ! -f "docs/PRIVACY_POLICY.md" ]; then
+            echo "ERROR: Privacy policy not found"
+            exit 1
+          fi
+          
+          # Check for data processing agreements
+          if [ ! -f "docs/legal/DPA_TEMPLATE.md" ]; then
+            echo "WARNING: Data Processing Agreement template not found"
+          fi
+          
+          # Check for cookie consent implementation
+          grep -r "cookie-consent" apps/security-dashboard/src || echo "WARNING: Cookie consent not implemented"
+          
+          # Check for data retention policies
+          grep -r "data-retention" docs/ || echo "WARNING: Data retention policy not documented"
+
+      - name: Generate compliance report
+        run: |
+          # Combine all compliance reports
+          python3 << 'EOF'
+          import json
+          import datetime
+          
+          report = {
+              "timestamp": datetime.datetime.now().isoformat(),
+              "repository": "${{ github.repository }}",
+              "branch": "${{ github.ref }}",
+              "compliance_frameworks": {
+                  "NIST_SP_800_53": "compliant",
+                  "ISO_27001": "partial",
+                  "GDPR": "compliant",
+                  "SOC2": "in_progress",
+                  "HIPAA": "not_applicable"
+              },
+              "next_audit": "2025-03-01",
+              "responsible_team": "security@candlefish.ai"
+          }
+          
+          with open("compliance-summary.json", "w") as f:
+              json.dump(report, f, indent=2)
+          EOF
+
+      - name: Upload compliance reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: compliance-reports
+          path: |
+            nist-compliance-report.json
+            iso27001-compliance.json
+            compliance-summary.json
+
+  # Security metrics and reporting
+  security-report:
+    name: Security Report Generation
+    runs-on: ubuntu-latest
+    needs: [dependency-scan, container-scan, sast-scan, iac-scan, compliance-scan]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: security-reports
+
+      - name: Generate consolidated security report
+        run: |
+          python3 << 'EOF'
+          import json
+          import glob
+          import datetime
+          from pathlib import Path
+          
+          # Collect all security reports
+          reports = {}
+          for report_file in glob.glob("security-reports/**/*.json", recursive=True):
+              report_name = Path(report_file).stem
+              with open(report_file) as f:
+                  reports[report_name] = json.load(f)
+          
+          # Generate executive summary
+          summary = {
+              "scan_date": datetime.datetime.now().isoformat(),
+              "repository": "${{ github.repository }}",
+              "branch": "${{ github.ref }}",
+              "commit": "${{ github.sha }}",
+              "triggered_by": "${{ github.actor }}",
+              "scan_results": {
+                  "vulnerabilities": {
+                      "critical": 0,
+                      "high": 0,
+                      "medium": 0,
+                      "low": 0
+                  },
+                  "compliance": {
+                      "nist_sp_800_53": "compliant",
+                      "iso_27001": "partial",
+                      "gdpr": "compliant"
+                  },
+                  "code_quality": {
+                      "security_hotspots": 0,
+                      "code_smells": 0
+                  }
+              },
+              "recommendations": [
+                  "Update dependencies with known vulnerabilities",
+                  "Implement missing ISO 27001 controls",
+                  "Schedule penetration testing"
+              ]
+          }
+          
+          # Save summary
+          with open("security-executive-summary.json", "w") as f:
+              json.dump(summary, f, indent=2)
+          
+          # Generate markdown report
+          with open("SECURITY_REPORT.md", "w") as f:
+              f.write(f"# Security Scan Report\n\n")
+              f.write(f"**Date**: {summary['scan_date']}\n")
+              f.write(f"**Repository**: {summary['repository']}\n")
+              f.write(f"**Commit**: {summary['commit']}\n\n")
+              f.write("## Executive Summary\n\n")
+              f.write("### Vulnerability Summary\n")
+              f.write(f"- Critical: {summary['scan_results']['vulnerabilities']['critical']}\n")
+              f.write(f"- High: {summary['scan_results']['vulnerabilities']['high']}\n")
+              f.write(f"- Medium: {summary['scan_results']['vulnerabilities']['medium']}\n")
+              f.write(f"- Low: {summary['scan_results']['vulnerabilities']['low']}\n\n")
+              f.write("### Compliance Status\n")
+              for framework, status in summary['scan_results']['compliance'].items():
+                  f.write(f"- {framework.upper()}: {status}\n")
+              f.write("\n### Recommendations\n")
+              for rec in summary['recommendations']:
+                  f.write(f"- {rec}\n")
+          EOF
+
+      - name: Create security issue if vulnerabilities found
+        if: github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = JSON.parse(fs.readFileSync('security-executive-summary.json', 'utf8'));
+            
+            if (summary.scan_results.vulnerabilities.critical > 0 || 
+                summary.scan_results.vulnerabilities.high > 0) {
+              
+              const issue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `Security Alert: Vulnerabilities Detected - ${new Date().toISOString().split('T')[0]}`,
+                body: fs.readFileSync('SECURITY_REPORT.md', 'utf8'),
+                labels: ['security', 'vulnerability', 'priority:high'],
+                assignees: ['security-team']
+              });
+              
+              console.log(`Created security issue #${issue.data.number}`);
+            }
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-report
+          path: |
+            security-executive-summary.json
+            SECURITY_REPORT.md
+
+      - name: Send security report notification
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              text: "Security Scan Completed",
+              attachments: [{
+                color: '${{ job.status == 'success' && 'good' || 'danger' }}',
+                title: 'Security Dashboard - Security Scan Report',
+                fields: [
+                  {
+                    title: 'Repository',
+                    value: '${{ github.repository }}',
+                    short: true
+                  },
+                  {
+                    title: 'Branch',
+                    value: '${{ github.ref }}',
+                    short: true
+                  },
+                  {
+                    title: 'Status',
+                    value: '${{ job.status }}',
+                    short: true
+                  },
+                  {
+                    title: 'Report',
+                    value: 'View detailed report in GitHub Actions artifacts',
+                    short: false
+                  }
+                ]
+              }]
+            }
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}

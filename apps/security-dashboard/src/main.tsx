@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
+// import App from './App';
+import App from './App.simple'; // Using simple version for preview
 
 // Accessibility announcer for dynamic updates
 window.announceToScreenReader = (message: string) => {
@@ -23,17 +24,8 @@ window.addEventListener('unhandledrejection', (event) => {
   console.error('Unhandled promise rejection:', event.reason);
 });
 
-// Performance monitoring
-if (import.meta.env.PROD) {
-  // Monitor Core Web Vitals
-  import('web-vitals').then(({ getCLS, getFID, getFCP, getLCP, getTTFB }) => {
-    getCLS(console.log);
-    getFID(console.log);
-    getFCP(console.log);
-    getLCP(console.log);
-    getTTFB(console.log);
-  });
-}
+// Performance monitoring - disabled for now
+// TODO: Add web-vitals when ready for production
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement

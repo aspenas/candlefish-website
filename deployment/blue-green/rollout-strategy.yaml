@@ -1,0 +1,496 @@
+# Security Dashboard Blue-Green Deployment Strategy
+# Argo Rollouts configuration for zero-downtime deployments
+
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: security-dashboard-backend
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: security-dashboard
+spec:
+  replicas: 5
+  revisionHistoryLimit: 10
+  
+  # Rollout Strategy Configuration
+  strategy:
+    blueGreen:
+      # Traffic routing
+      activeService: security-dashboard-backend-active
+      previewService: security-dashboard-backend-preview
+      
+      # Automated rollback on failure
+      autoPromotionEnabled: false
+      scaleDownDelaySeconds: 30
+      prePromotionAnalysis:
+        templates:
+        - templateName: success-rate
+        args:
+        - name: service-name
+          value: security-dashboard-backend-preview
+        - name: prometheus-server
+          value: http://security-dashboard-monitoring-prometheus:9090
+      
+      # Post promotion verification
+      postPromotionAnalysis:
+        templates:
+        - templateName: success-rate
+        args:
+        - name: service-name
+          value: security-dashboard-backend-active
+        - name: prometheus-server
+          value: http://security-dashboard-monitoring-prometheus:9090
+      
+      # Promotion criteria
+      previewReplicaCount: 2
+      scaleDownDelaySeconds: 60
+      
+  # Pod Template
+  selector:
+    matchLabels:
+      app: security-dashboard-backend
+      
+  template:
+    metadata:
+      labels:
+        app: security-dashboard-backend
+        app.kubernetes.io/name: security-dashboard
+        app.kubernetes.io/component: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: security-dashboard-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      
+      containers:
+      - name: backend
+        image: 681214184463.dkr.ecr.us-east-1.amazonaws.com/security-dashboard-backend:latest
+        imagePullPolicy: Always
+        
+        ports:
+        - name: http
+          containerPort: 4000
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        
+        # Resource management
+        resources:
+          requests:
+            memory: 512Mi
+            cpu: 250m
+          limits:
+            memory: 1Gi
+            cpu: 500m
+        
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+          successThreshold: 1
+        
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        
+        # Startup probe for slow initialization
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 10
+          successThreshold: 1
+        
+        # Environment configuration
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "4000"
+        - name: METRICS_PORT
+          value: "9090"
+        - name: LOG_LEVEL
+          value: "info"
+        
+        # Database configuration
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: database-secrets
+              key: connection-string
+        
+        # Redis configuration
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: redis-secrets
+              key: connection-string
+        
+        # JWT configuration
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: api-secrets
+              key: jwt-secret
+        
+        # Volume mounts
+        volumeMounts:
+        - name: config
+          mountPath: /app/config
+          readOnly: true
+        - name: logs
+          mountPath: /app/logs
+        
+      volumes:
+      - name: config
+        configMap:
+          name: security-dashboard-config
+      - name: logs
+        emptyDir:
+          sizeLimit: 1Gi
+
+---
+# Analysis Template for Success Rate
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: success-rate
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/component: analysis
+spec:
+  args:
+  - name: service-name
+    value: security-dashboard-backend-preview
+  - name: prometheus-server
+    value: http://security-dashboard-monitoring-prometheus:9090
+  
+  metrics:
+  - name: success-rate
+    interval: 30s
+    successCondition: result[0] >= 0.95
+    failureLimit: 3
+    provider:
+      prometheus:
+        address: "{{args.prometheus-server}}"
+        query: |
+          sum(irate(
+            http_requests_total{job="{{args.service-name}}",status!~"5.."}[2m]
+          )) / 
+          sum(irate(
+            http_requests_total{job="{{args.service-name}}"}[2m]
+          ))
+  
+  - name: latency-p99
+    interval: 30s
+    successCondition: result[0] <= 1
+    failureLimit: 3
+    provider:
+      prometheus:
+        address: "{{args.prometheus-server}}"
+        query: |
+          histogram_quantile(0.99,
+            sum(irate(
+              http_request_duration_seconds_bucket{job="{{args.service-name}}"}[2m]
+            )) by (le)
+          )
+  
+  - name: error-rate
+    interval: 30s
+    successCondition: result[0] <= 0.05
+    failureLimit: 3
+    provider:
+      prometheus:
+        address: "{{args.prometheus-server}}"
+        query: |
+          sum(irate(
+            http_requests_total{job="{{args.service-name}}",status=~"5.."}[2m]
+          )) / 
+          sum(irate(
+            http_requests_total{job="{{args.service-name}}"}[2m]
+          ))
+
+---
+# GraphQL Gateway Rollout
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: graphql-gateway
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/component: graphql-gateway
+spec:
+  replicas: 3
+  revisionHistoryLimit: 10
+  
+  strategy:
+    canary:
+      # Canary deployment with 20% traffic split initially
+      canaryService: graphql-gateway-canary
+      stableService: graphql-gateway-stable
+      trafficRouting:
+        istio:
+          virtualService:
+            name: graphql-gateway-vs
+            routes:
+            - primary
+          destinationRule:
+            name: graphql-gateway-dr
+            canarySubsetName: canary
+            stableSubsetName: stable
+      
+      steps:
+      - setWeight: 20
+      - pause:
+          duration: 2m
+      - analysis:
+          templates:
+          - templateName: success-rate
+          args:
+          - name: service-name
+            value: graphql-gateway-canary
+          - name: prometheus-server
+            value: http://security-dashboard-monitoring-prometheus:9090
+      - setWeight: 50
+      - pause:
+          duration: 5m
+      - analysis:
+          templates:
+          - templateName: success-rate
+          args:
+          - name: service-name
+            value: graphql-gateway-canary
+          - name: prometheus-server
+            value: http://security-dashboard-monitoring-prometheus:9090
+      - setWeight: 100
+      - pause:
+          duration: 2m
+  
+  selector:
+    matchLabels:
+      app: graphql-gateway
+      
+  template:
+    metadata:
+      labels:
+        app: graphql-gateway
+        app.kubernetes.io/name: security-dashboard
+        app.kubernetes.io/component: graphql-gateway
+    spec:
+      serviceAccountName: security-dashboard-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      
+      containers:
+      - name: gateway
+        image: 681214184463.dkr.ecr.us-east-1.amazonaws.com/security-dashboard-graphql-gateway:latest
+        imagePullPolicy: Always
+        
+        ports:
+        - name: http
+          containerPort: 4000
+          protocol: TCP
+        - name: metrics
+          containerPort: 9464
+          protocol: TCP
+        
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 100m
+          limits:
+            memory: 512Mi
+            cpu: 250m
+        
+        livenessProbe:
+          httpGet:
+            path: /.well-known/apollo/server-health
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+        
+        readinessProbe:
+          httpGet:
+            path: /.well-known/apollo/server-health
+            port: http
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+        
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "4000"
+        - name: FEDERATION_POLL_INTERVAL
+          value: "10s"
+
+---
+# Frontend Rollout with Traffic Shifting
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: security-dashboard-frontend
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: 3
+  revisionHistoryLimit: 10
+  
+  strategy:
+    canary:
+      canaryService: frontend-canary
+      stableService: frontend-stable
+      
+      # Progressive traffic shifting
+      steps:
+      - setWeight: 10
+      - pause:
+          duration: 1m
+      - setWeight: 25
+      - pause:
+          duration: 2m
+      - analysis:
+          templates:
+          - templateName: frontend-analysis
+          args:
+          - name: service-name
+            value: frontend-canary
+      - setWeight: 50
+      - pause:
+          duration: 3m
+      - setWeight: 75
+      - pause:
+          duration: 2m
+      - setWeight: 100
+      
+      # Analysis for frontend specific metrics
+      analysis:
+        templates:
+        - templateName: frontend-analysis
+        args:
+        - name: service-name
+          value: frontend-canary
+        - name: prometheus-server
+          value: http://security-dashboard-monitoring-prometheus:9090
+  
+  selector:
+    matchLabels:
+      app: security-dashboard-frontend
+      
+  template:
+    metadata:
+      labels:
+        app: security-dashboard-frontend
+        app.kubernetes.io/name: security-dashboard
+        app.kubernetes.io/component: frontend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 472
+        fsGroup: 472
+      
+      containers:
+      - name: frontend
+        image: 681214184463.dkr.ecr.us-east-1.amazonaws.com/security-dashboard-frontend:latest
+        imagePullPolicy: Always
+        
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        
+        resources:
+          requests:
+            memory: 128Mi
+            cpu: 50m
+          limits:
+            memory: 256Mi
+            cpu: 100m
+        
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+
+---
+# Frontend Analysis Template
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: frontend-analysis
+  namespace: security-dashboard
+spec:
+  args:
+  - name: service-name
+    value: frontend-canary
+  - name: prometheus-server
+    value: http://security-dashboard-monitoring-prometheus:9090
+  
+  metrics:
+  - name: frontend-success-rate
+    interval: 30s
+    successCondition: result[0] >= 0.98
+    failureLimit: 2
+    provider:
+      prometheus:
+        address: "{{args.prometheus-server}}"
+        query: |
+          sum(rate(
+            nginx_http_requests_total{service="{{args.service-name}}",status!~"5.."}[2m]
+          )) / 
+          sum(rate(
+            nginx_http_requests_total{service="{{args.service-name}}"}[2m]
+          ))
+  
+  - name: frontend-response-time
+    interval: 30s
+    successCondition: result[0] <= 0.5
+    failureLimit: 3
+    provider:
+      prometheus:
+        address: "{{args.prometheus-server}}"
+        query: |
+          histogram_quantile(0.95,
+            sum(rate(
+              nginx_http_request_duration_seconds_bucket{service="{{args.service-name}}"}[2m]
+            )) by (le)
+          )

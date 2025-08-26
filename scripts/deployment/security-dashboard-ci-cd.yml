@@ -1,0 +1,988 @@
+# Security Dashboard - Production CI/CD Pipeline
+# Comprehensive multi-platform deployment automation
+# Handles backend, frontend, mobile, and infrastructure deployment
+
+name: Security Dashboard - Production Deployment
+
+on:
+  push:
+    branches:
+      - main
+      - production-*
+    paths:
+      - 'apps/security-dashboard/**'
+      - 'apps/mobile-security-dashboard/**'
+      - 'graphql/**'
+      - 'deployment/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'apps/security-dashboard/**'
+      - 'apps/mobile-security-dashboard/**'
+      - 'graphql/**'
+      - 'deployment/**'
+  workflow_dispatch:
+    inputs:
+      deployment_type:
+        description: 'Deployment type'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+          - canary
+      force_deploy:
+        description: 'Force deployment (skip tests)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ACCOUNT_ID: 681214184463
+  CLUSTER_NAME: candlefish-eks-cluster
+  NAMESPACE: security-dashboard
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+  SLACK_WEBHOOK: ${{ secrets.SLACK_DEPLOYMENT_WEBHOOK }}
+  PAGER_DUTY_ROUTING_KEY: ${{ secrets.PAGERDUTY_ROUTING_KEY }}
+
+jobs:
+  # ===============================================
+  # SECURITY SCANNING AND VALIDATION
+  # ===============================================
+  
+  security-scan:
+    name: Security Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    outputs:
+      security-status: ${{ steps.security-check.outputs.status }}
+      vulnerability-count: ${{ steps.security-check.outputs.vulnerability-count }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Secret scanning
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+          extra_args: --debug --only-verified
+      
+      - name: Dependency vulnerability scan
+        run: |
+          # Frontend dependencies
+          cd apps/security-dashboard
+          npm audit --audit-level=moderate --json > security-audit-frontend.json
+          
+          # Mobile dependencies  
+          cd ../mobile-security-dashboard
+          npm audit --audit-level=moderate --json > security-audit-mobile.json
+          
+          # GraphQL dependencies
+          cd ../../graphql
+          npm audit --audit-level=moderate --json > security-audit-graphql.json
+      
+      - name: SAST with CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript,typescript
+      
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+      
+      - name: Container security scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+      
+      - name: Kubernetes security scan
+        run: |
+          # Install kubesec
+          curl -sSX GET "https://api.github.com/repos/controlplaneio/kubesec/releases/latest" | \
+            jq -r '.assets[] | select(.name=="kubesec_linux_amd64.tar.gz") | .browser_download_url' | \
+            xargs curl -sSL | tar xz
+          chmod +x kubesec
+          
+          # Scan Kubernetes manifests
+          find deployment/k8s -name "*.yaml" -exec ./kubesec scan {} \; > kubesec-results.json
+      
+      - name: Security report summary
+        id: security-check
+        run: |
+          VULN_COUNT=$(jq '.vulnerabilities | length' apps/security-dashboard/security-audit-frontend.json)
+          echo "vulnerability-count=$VULN_COUNT" >> $GITHUB_OUTPUT
+          
+          if [ "$VULN_COUNT" -gt 10 ]; then
+            echo "status=fail" >> $GITHUB_OUTPUT
+            echo "❌ Security scan failed: $VULN_COUNT vulnerabilities found"
+            exit 1
+          else
+            echo "status=pass" >> $GITHUB_OUTPUT
+            echo "✅ Security scan passed: $VULN_COUNT vulnerabilities found"
+          fi
+
+  # ===============================================
+  # BUILD AND TEST PIPELINE
+  # ===============================================
+  
+  test-suite:
+    name: Comprehensive Test Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [security-scan]
+    if: needs.security-scan.outputs.security-status == 'pass'
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: security_dashboard_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    strategy:
+      matrix:
+        test-type: [unit, integration, e2e, performance, accessibility]
+        include:
+          - test-type: unit
+            timeout: 10
+            coverage-threshold: 80
+          - test-type: integration
+            timeout: 15
+            coverage-threshold: 70
+          - test-type: e2e
+            timeout: 20
+            coverage-threshold: 60
+          - test-type: performance
+            timeout: 15
+            target-rps: 1000
+          - test-type: accessibility
+            timeout: 10
+            wcag-level: AA
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: |
+          # Frontend
+          cd apps/security-dashboard
+          npm ci --prefer-offline --no-audit
+          
+          # Mobile
+          cd ../mobile-security-dashboard
+          npm ci --prefer-offline --no-audit
+          
+          # GraphQL
+          cd ../../graphql
+          npm ci --prefer-offline --no-audit
+      
+      - name: Run ${{ matrix.test-type }} tests
+        timeout-minutes: ${{ matrix.timeout }}
+        run: |
+          case "${{ matrix.test-type }}" in
+            unit)
+              npm run test:unit -- --coverage --coverageThreshold='{"global":{"branches":${{ matrix.coverage-threshold }},"functions":${{ matrix.coverage-threshold }},"lines":${{ matrix.coverage-threshold }},"statements":${{ matrix.coverage-threshold }}}}'
+              ;;
+            integration)
+              npm run test:integration -- --coverage
+              ;;
+            e2e)
+              npm run test:e2e:ci
+              ;;
+            performance)
+              npm run test:performance -- --target-rps=${{ matrix.target-rps }} --duration=5m
+              ;;
+            accessibility)
+              npm run test:accessibility -- --level=${{ matrix.wcag-level }}
+              ;;
+          esac
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.test-type }}
+          path: |
+            coverage/
+            test-results/
+            playwright-report/
+      
+      - name: Performance gate
+        if: matrix.test-type == 'performance'
+        run: |
+          # Extract performance metrics
+          RESPONSE_TIME_P95=$(jq '.metrics.response_time_p95' test-results/performance-metrics.json)
+          ERROR_RATE=$(jq '.metrics.error_rate' test-results/performance-metrics.json)
+          
+          # Check against thresholds
+          if (( $(echo "$RESPONSE_TIME_P95 > 500" | bc -l) )); then
+            echo "❌ Performance gate failed: P95 response time $RESPONSE_TIME_P95ms > 500ms"
+            exit 1
+          fi
+          
+          if (( $(echo "$ERROR_RATE > 0.1" | bc -l) )); then
+            echo "❌ Performance gate failed: Error rate $ERROR_RATE% > 0.1%"
+            exit 1
+          fi
+          
+          echo "✅ Performance gate passed"
+
+  # ===============================================
+  # CONTAINER BUILD AND REGISTRY PUSH
+  # ===============================================
+  
+  build-containers:
+    name: Build and Push Container Images
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [test-suite]
+    if: success() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/production-'))
+    
+    outputs:
+      backend-image: ${{ steps.build-backend.outputs.image }}
+      frontend-image: ${{ steps.build-frontend.outputs.image }}
+      mobile-image: ${{ steps.build-mobile.outputs.image }}
+      graphql-gateway-image: ${{ steps.build-graphql.outputs.image }}
+      kong-gateway-image: ${{ steps.build-kong.outputs.image }}
+    
+    strategy:
+      matrix:
+        service: [backend, frontend, mobile, graphql-gateway, kong-gateway]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      
+      - name: Build and push ${{ matrix.service }} image
+        id: build-${{ matrix.service }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: deployment/docker/Dockerfile.${{ matrix.service }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/security-dashboard-${{ matrix.service }}:${{ github.sha }}
+            ${{ env.ECR_REGISTRY }}/security-dashboard-${{ matrix.service }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ github.ref_name }}
+      
+      - name: Container image security scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.ECR_REGISTRY }}/security-dashboard-${{ matrix.service }}:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-${{ matrix.service }}.sarif'
+      
+      - name: Upload scan results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-${{ matrix.service }}.sarif'
+
+  # ===============================================
+  # INFRASTRUCTURE DEPLOYMENT
+  # ===============================================
+  
+  deploy-infrastructure:
+    name: Deploy Infrastructure
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: [build-containers]
+    if: success() && github.ref == 'refs/heads/main'
+    environment: production
+    
+    outputs:
+      cluster-endpoint: ${{ steps.terraform-output.outputs.cluster-endpoint }}
+      rds-endpoint: ${{ steps.terraform-output.outputs.rds-endpoint }}
+      redis-endpoint: ${{ steps.terraform-output.outputs.redis-endpoint }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+      
+      - name: Terraform Init
+        working-directory: deployment/terraform
+        run: terraform init
+      
+      - name: Terraform Plan
+        working-directory: deployment/terraform
+        run: |
+          terraform plan \
+            -var="environment=production" \
+            -var="cluster_name=${{ env.CLUSTER_NAME }}" \
+            -var="aws_region=${{ env.AWS_REGION }}" \
+            -out=tfplan
+      
+      - name: Terraform Apply
+        working-directory: deployment/terraform
+        run: terraform apply -auto-approve tfplan
+      
+      - name: Extract Terraform outputs
+        id: terraform-output
+        working-directory: deployment/terraform
+        run: |
+          echo "cluster-endpoint=$(terraform output -raw cluster_endpoint)" >> $GITHUB_OUTPUT
+          echo "rds-endpoint=$(terraform output -raw rds_endpoint)" >> $GITHUB_OUTPUT
+          echo "redis-endpoint=$(terraform output -raw redis_endpoint)" >> $GITHUB_OUTPUT
+
+  # ===============================================
+  # KUBERNETES DEPLOYMENT (BLUE-GREEN)
+  # ===============================================
+  
+  deploy-kubernetes:
+    name: Deploy to Kubernetes (Blue-Green)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [deploy-infrastructure, build-containers]
+    if: success()
+    environment: production
+    
+    strategy:
+      matrix:
+        environment: [staging, production]
+        exclude:
+          - environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: '1.28.0'
+      
+      - name: Install Argo Rollouts CLI
+        run: |
+          curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
+          chmod +x kubectl-argo-rollouts-linux-amd64
+          sudo mv kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
+      
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
+      
+      - name: Deploy secrets and config
+        run: |
+          # Create namespace if it doesn't exist
+          kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+          
+          # Apply secrets (from AWS Secrets Manager)
+          envsubst < deployment/k8s/02-secrets.yaml | kubectl apply -f -
+          
+          # Apply config maps
+          envsubst < deployment/k8s/01-configmap.yaml | kubectl apply -f -
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          DATABASE_ENDPOINT: ${{ needs.deploy-infrastructure.outputs.rds-endpoint }}
+          REDIS_ENDPOINT: ${{ needs.deploy-infrastructure.outputs.redis-endpoint }}
+      
+      - name: Deploy storage and databases
+        run: |
+          kubectl apply -f deployment/k8s/03-storage.yaml
+          kubectl apply -f deployment/k8s/04-timescaledb.yaml
+          kubectl apply -f deployment/k8s/05-redis.yaml
+          
+          # Wait for databases to be ready
+          kubectl wait --for=condition=Ready pod -l app.kubernetes.io/component=database -n ${{ env.NAMESPACE }} --timeout=300s
+      
+      - name: Run database migrations
+        run: |
+          # Run migrations in a job
+          envsubst < deployment/k8s/migration-job.yaml | kubectl apply -f -
+          kubectl wait --for=condition=complete job/db-migration -n ${{ env.NAMESPACE }} --timeout=300s
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+      
+      - name: Deploy application services (Blue-Green)
+        run: |
+          # Update image tags in deployment manifests
+          export IMAGE_TAG=${{ github.sha }}
+          
+          # Deploy backend API with rollout strategy
+          envsubst < deployment/k8s/06-backend-rollout.yaml | kubectl apply -f -
+          
+          # Deploy GraphQL Gateway
+          envsubst < deployment/k8s/07-graphql-gateway.yaml | kubectl apply -f -
+          
+          # Deploy frontend
+          envsubst < deployment/k8s/08-frontend.yaml | kubectl apply -f -
+          
+          # Deploy Kong Gateway (with HTTPS fix)
+          envsubst < deployment/k8s/09-kong-gateway.yaml | kubectl apply -f -
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+      
+      - name: Deploy ingress and networking
+        run: |
+          # Deploy ingress with SSL/TLS
+          envsubst < deployment/k8s/10-ingress.yaml | kubectl apply -f -
+          
+          # Deploy network policies
+          kubectl apply -f deployment/k8s/11-network-policies.yaml
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+      
+      - name: Monitor rollout
+        run: |
+          # Monitor backend rollout
+          kubectl argo rollouts get rollout security-dashboard-backend -n ${{ env.NAMESPACE }} --watch --timeout=600s
+          
+          # Check rollout status
+          kubectl argo rollouts status security-dashboard-backend -n ${{ env.NAMESPACE }}
+      
+      - name: Run post-deployment tests
+        run: |
+          # Health check all services
+          kubectl get pods -n ${{ env.NAMESPACE }}
+          
+          # Test API endpoints
+          API_ENDPOINT=$(kubectl get ingress -n ${{ env.NAMESPACE }} -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}')
+          
+          # Wait for ingress to be ready
+          sleep 60
+          
+          # Test GraphQL endpoint
+          curl -f -X POST "https://$API_ENDPOINT/graphql" \
+            -H "Content-Type: application/json" \
+            -d '{"query":"query { healthCheck { status version } }"}' || exit 1
+          
+          # Test security dashboard API
+          curl -f "https://$API_ENDPOINT/api/health" || exit 1
+      
+      - name: Promote to production (if staging successful)
+        if: matrix.environment == 'staging' && success()
+        run: |
+          # Promote rollout
+          kubectl argo rollouts promote security-dashboard-backend -n ${{ env.NAMESPACE }}
+          
+          # Wait for promotion to complete
+          kubectl argo rollouts status security-dashboard-backend -n ${{ env.NAMESPACE }}
+
+  # ===============================================
+  # MOBILE APP DEPLOYMENT
+  # ===============================================
+  
+  deploy-mobile:
+    name: Deploy Mobile Apps
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: [deploy-kubernetes, test-suite]
+    if: success() && github.ref == 'refs/heads/main'
+    
+    strategy:
+      matrix:
+        platform: [ios, android]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Setup EAS CLI
+        run: npm install -g @expo/eas-cli
+      
+      - name: Configure EAS credentials
+        run: |
+          echo "${{ secrets.EXPO_TOKEN }}" | eas login --stdin
+        working-directory: apps/mobile-security-dashboard
+      
+      - name: Install dependencies
+        run: npm ci
+        working-directory: apps/mobile-security-dashboard
+      
+      - name: Build for ${{ matrix.platform }}
+        run: |
+          # Update app.json with production config
+          jq '.expo.extra.apiUrl = "https://api.security.candlefish.ai"' app.json > app.json.tmp
+          mv app.json.tmp app.json
+          
+          # Build for platform
+          if [ "${{ matrix.platform }}" = "ios" ]; then
+            eas build --platform ios --profile production --non-interactive
+          else
+            eas build --platform android --profile production --non-interactive
+          fi
+        working-directory: apps/mobile-security-dashboard
+      
+      - name: Submit to store (iOS)
+        if: matrix.platform == 'ios'
+        run: eas submit --platform ios --profile production --non-interactive
+        working-directory: apps/mobile-security-dashboard
+      
+      - name: Submit to store (Android)
+        if: matrix.platform == 'android'
+        run: eas submit --platform android --profile production --non-interactive
+        working-directory: apps/mobile-security-dashboard
+
+  # ===============================================
+  # FRONTEND DEPLOYMENT (VERCEL/NETLIFY)
+  # ===============================================
+  
+  deploy-frontend:
+    name: Deploy Frontend to CDN
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [deploy-kubernetes]
+    if: success()
+    
+    strategy:
+      matrix:
+        platform: [vercel, netlify]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+        working-directory: apps/security-dashboard
+      
+      - name: Build production bundle
+        run: |
+          # Set production environment variables
+          export VITE_API_URL="https://api.security.candlefish.ai/graphql"
+          export VITE_WS_URL="wss://api.security.candlefish.ai/subscriptions"
+          export VITE_ENV="production"
+          
+          npm run build
+        working-directory: apps/security-dashboard
+      
+      - name: Deploy to Vercel
+        if: matrix.platform == 'vercel'
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: apps/security-dashboard
+          production: true
+      
+      - name: Deploy to Netlify
+        if: matrix.platform == 'netlify'
+        uses: nwtgck/actions-netlify@v2
+        with:
+          publish-dir: 'apps/security-dashboard/dist'
+          production-branch: main
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Deploy from GitHub Actions - ${{ github.sha }}"
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SECURITY_DASHBOARD_SITE_ID }}
+
+  # ===============================================
+  # MONITORING AND OBSERVABILITY SETUP
+  # ===============================================
+  
+  setup-monitoring:
+    name: Deploy Monitoring Stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [deploy-kubernetes]
+    if: success()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
+      
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: '3.13.0'
+      
+      - name: Deploy Prometheus stack
+        run: |
+          # Add Prometheus community repo
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update
+          
+          # Install kube-prometheus-stack
+          helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+            --namespace monitoring \
+            --create-namespace \
+            --values deployment/monitoring/prometheus-values.yaml \
+            --wait
+      
+      - name: Deploy Grafana dashboards
+        run: |
+          # Apply custom dashboards
+          kubectl apply -f deployment/monitoring/dashboards/ -n monitoring
+      
+      - name: Deploy ELK stack
+        run: |
+          # Deploy Elasticsearch
+          kubectl apply -f deployment/logging/elasticsearch.yaml
+          
+          # Wait for Elasticsearch to be ready
+          kubectl wait --for=condition=Ready pod -l app=elasticsearch -n ${{ env.NAMESPACE }} --timeout=300s
+          
+          # Deploy Logstash and Kibana
+          kubectl apply -f deployment/logging/logstash.yaml
+          kubectl apply -f deployment/logging/kibana.yaml
+          kubectl apply -f deployment/logging/filebeat.yaml
+      
+      - name: Configure alerting
+        run: |
+          # Apply alert rules
+          kubectl apply -f deployment/monitoring/alert-rules.yaml -n monitoring
+          
+          # Configure PagerDuty integration
+          envsubst < deployment/monitoring/alertmanager-config.yaml | kubectl apply -f - -n monitoring
+        env:
+          PAGERDUTY_ROUTING_KEY: ${{ secrets.PAGERDUTY_ROUTING_KEY }}
+      
+      - name: Setup APM with Jaeger
+        run: |
+          # Add Jaeger operator
+          kubectl create namespace observability --dry-run=client -o yaml | kubectl apply -f -
+          kubectl apply -f https://github.com/jaegertracing/jaeger-operator/releases/download/v1.51.0/jaeger-operator.yaml -n observability
+          
+          # Deploy Jaeger instance
+          kubectl apply -f deployment/monitoring/jaeger.yaml -n observability
+
+  # ===============================================
+  # POST-DEPLOYMENT VALIDATION
+  # ===============================================
+  
+  post-deployment-validation:
+    name: Post-Deployment Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [deploy-kubernetes, deploy-frontend, setup-monitoring]
+    if: success()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
+      
+      - name: System health check
+        run: |
+          # Check all pods are running
+          kubectl get pods -n ${{ env.NAMESPACE }}
+          
+          # Verify no pods are in crash loop or error state
+          FAILED_PODS=$(kubectl get pods -n ${{ env.NAMESPACE }} --field-selector=status.phase!=Running --output=jsonpath='{.items[*].metadata.name}')
+          if [ ! -z "$FAILED_PODS" ]; then
+            echo "❌ Failed pods detected: $FAILED_PODS"
+            exit 1
+          fi
+          
+          echo "✅ All pods are running healthy"
+      
+      - name: Service connectivity test
+        run: |
+          # Get ingress endpoint
+          INGRESS_HOST=$(kubectl get ingress -n ${{ env.NAMESPACE }} -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}')
+          
+          # Test GraphQL endpoint
+          echo "Testing GraphQL endpoint..."
+          RESPONSE=$(curl -s -X POST "https://$INGRESS_HOST/graphql" \
+            -H "Content-Type: application/json" \
+            -d '{"query":"query { healthCheck { status version } }"}')
+          
+          STATUS=$(echo $RESPONSE | jq -r '.data.healthCheck.status')
+          if [ "$STATUS" != "healthy" ]; then
+            echo "❌ GraphQL health check failed: $RESPONSE"
+            exit 1
+          fi
+          
+          echo "✅ GraphQL endpoint is healthy"
+      
+      - name: Performance validation
+        run: |
+          # Run load test to ensure system can handle expected load
+          INGRESS_HOST=$(kubectl get ingress -n ${{ env.NAMESPACE }} -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}')
+          
+          # Install k6
+          curl -s https://github.com/grafana/k6/releases/download/v0.47.0/k6-v0.47.0-linux-amd64.tar.gz | tar xz
+          sudo mv k6-v0.47.0-linux-amd64/k6 /usr/local/bin/
+          
+          # Run performance test
+          cat > performance-test.js << EOF
+          import http from 'k6/http';
+          import { check } from 'k6';
+          
+          export let options = {
+            stages: [
+              { duration: '30s', target: 50 },
+              { duration: '1m', target: 100 },
+              { duration: '30s', target: 0 },
+            ],
+          };
+          
+          export default function() {
+            let response = http.post('https://$INGRESS_HOST/graphql', JSON.stringify({
+              query: 'query { healthCheck { status } }'
+            }), {
+              headers: { 'Content-Type': 'application/json' },
+            });
+            
+            check(response, {
+              'status is 200': (r) => r.status === 200,
+              'response time < 500ms': (r) => r.timings.duration < 500,
+            });
+          }
+          EOF
+          
+          k6 run performance-test.js
+      
+      - name: Security validation
+        run: |
+          INGRESS_HOST=$(kubectl get ingress -n ${{ env.NAMESPACE }} -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}')
+          
+          # Test SSL/TLS configuration
+          echo "Testing SSL/TLS configuration..."
+          SSL_SCORE=$(curl -s "https://api.ssllabs.com/api/v3/analyze?host=$INGRESS_HOST&publish=off&startNew=on&all=done" | jq -r '.endpoints[0].grade')
+          
+          # Test security headers
+          echo "Testing security headers..."
+          HEADERS=$(curl -s -I "https://$INGRESS_HOST")
+          
+          if ! echo "$HEADERS" | grep -q "Strict-Transport-Security"; then
+            echo "❌ Missing HSTS header"
+            exit 1
+          fi
+          
+          if ! echo "$HEADERS" | grep -q "X-Content-Type-Options: nosniff"; then
+            echo "❌ Missing X-Content-Type-Options header"
+            exit 1
+          fi
+          
+          echo "✅ Security headers are properly configured"
+      
+      - name: Kong Gateway HTTPS validation
+        run: |
+          # Validate Kong Gateway is properly configured for HTTPS
+          KONG_ENDPOINT=$(kubectl get service kong-gateway -n ${{ env.NAMESPACE }} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          
+          # Test Kong admin API (should redirect HTTP to HTTPS)
+          HTTP_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "http://$KONG_ENDPOINT:8001/status")
+          if [ "$HTTP_RESPONSE" != "301" ] && [ "$HTTP_RESPONSE" != "302" ]; then
+            echo "❌ Kong Gateway not properly redirecting HTTP to HTTPS"
+            exit 1
+          fi
+          
+          # Test HTTPS endpoint
+          HTTPS_RESPONSE=$(curl -s -k "https://$KONG_ENDPOINT:8443/status")
+          if ! echo "$HTTPS_RESPONSE" | jq -e '.server.connections_accepted' > /dev/null; then
+            echo "❌ Kong Gateway HTTPS endpoint not responding properly"
+            exit 1
+          fi
+          
+          echo "✅ Kong Gateway HTTPS configuration validated"
+
+  # ===============================================
+  # NOTIFICATION AND CLEANUP
+  # ===============================================
+  
+  notify-deployment-status:
+    name: Deployment Notifications
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [
+      security-scan,
+      test-suite,
+      build-containers,
+      deploy-infrastructure,
+      deploy-kubernetes,
+      deploy-mobile,
+      deploy-frontend,
+      setup-monitoring,
+      post-deployment-validation
+    ]
+    
+    steps:
+      - name: Determine deployment status
+        id: status
+        run: |
+          if [ "${{ needs.post-deployment-validation.result }}" = "success" ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "message=✅ Security Dashboard deployment completed successfully" >> $GITHUB_OUTPUT
+            echo "color=good" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "message=❌ Security Dashboard deployment failed" >> $GITHUB_OUTPUT
+            echo "color=danger" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Send Slack notification
+        if: env.SLACK_WEBHOOK != ''
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              text: "${{ steps.status.outputs.message }}",
+              attachments: [
+                {
+                  color: "${{ steps.status.outputs.color }}",
+                  fields: [
+                    {
+                      title: "Repository",
+                      value: "${{ github.repository }}",
+                      short: true
+                    },
+                    {
+                      title: "Commit",
+                      value: "${{ github.sha }}",
+                      short: true
+                    },
+                    {
+                      title: "Branch",
+                      value: "${{ github.ref_name }}",
+                      short: true
+                    },
+                    {
+                      title: "Author",
+                      value: "${{ github.actor }}",
+                      short: true
+                    },
+                    {
+                      title: "Workflow",
+                      value: "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>",
+                      short: false
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ env.SLACK_WEBHOOK }}
+      
+      - name: Send PagerDuty alert (on failure)
+        if: steps.status.outputs.status == 'failure' && env.PAGER_DUTY_ROUTING_KEY != ''
+        run: |
+          curl -X POST https://events.pagerduty.com/v2/enqueue \
+            -H "Content-Type: application/json" \
+            -d '{
+              "routing_key": "${{ env.PAGER_DUTY_ROUTING_KEY }}",
+              "event_action": "trigger",
+              "payload": {
+                "summary": "Security Dashboard deployment failed",
+                "source": "GitHub Actions",
+                "severity": "error",
+                "component": "deployment-pipeline",
+                "group": "security-dashboard",
+                "class": "deployment",
+                "custom_details": {
+                  "repository": "${{ github.repository }}",
+                  "commit": "${{ github.sha }}",
+                  "branch": "${{ github.ref_name }}",
+                  "workflow_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                }
+              }
+            }'
+      
+      - name: Update deployment status badge
+        if: always()
+        run: |
+          # Update README badge or status page
+          STATUS_COLOR=${{ steps.status.outputs.status == 'success' && 'brightgreen' || 'red' }}
+          STATUS_TEXT=${{ steps.status.outputs.status == 'success' && 'passing' || 'failing' }}
+          
+          echo "Deployment status: $STATUS_TEXT"
+          # Badge URL: https://img.shields.io/badge/deployment-$STATUS_TEXT-$STATUS_COLOR
