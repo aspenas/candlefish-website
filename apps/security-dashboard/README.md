@@ -1,79 +1,93 @@
 # Candlefish Security Dashboard
 
-A comprehensive, real-time security monitoring dashboard built with React, TypeScript, Apollo Client, and Material-UI. Designed specifically for Security Operations Centers (SOC) with dark mode optimization and enterprise-grade features.
+A comprehensive, real-time security operations center (SOC) dashboard built with React 18, TypeScript, and Tailwind CSS. Features include real-time threat detection, incident management, security event timeline, and compliance reporting.
 
 ## 🚀 Features
 
-### Core Security Monitoring
-- **Real-time Security Overview** - Live dashboard with key security metrics
-- **Kong API Gateway Monitoring** - Critical HTTP vulnerability detection and alerts
-- **Vulnerability Management** - Track, prioritize, and remediate security vulnerabilities
-- **Alert Management** - Incident response workflows with escalation and assignment
-- **Asset Inventory** - Multi-platform asset discovery and monitoring (AWS, Netlify, Vercel, Kubernetes, etc.)
-- **Compliance Reporting** - Automated compliance assessments and reporting
+- **Real-time Security Monitoring**: Live WebSocket updates for security events and threats
+- **Security Event Timeline**: Comprehensive event tracking with filtering and search
+- **Threat Detection Panel**: Advanced threat monitoring with severity indicators
+- **Incident Management**: Kanban-style workflow for security incident response
+- **Compliance Dashboard**: Reporting and audit management
+- **User Management**: Role-based access control (RBAC)
+- **Grafana Integration**: Embedded dashboards from existing monitoring
+- **Dark Theme SOC UI**: Optimized for security operations center environments
+- **Mobile Responsive**: Fully responsive design for all screen sizes
+- **JWT Authentication**: Secure RS256 token-based authentication
 
-### Real-time Capabilities
-- **WebSocket Subscriptions** - Live updates for security events, alerts, and status changes
-- **1000+ Concurrent Connections** - Optimized for large security operations teams
-- **Real-time Charts** - Live vulnerability trends and threat activity monitoring
+## 🛠️ Tech Stack
 
-### Enterprise Features
-- **Dark Mode Optimized** - Designed for 24/7 SOC environments
-- **Accessibility Compliant** - WCAG 2.1 AA compliant for all users
-- **Performance Optimized** - Code splitting, lazy loading, and caching strategies
-- **Mobile Responsive** - Full functionality on desktop and tablet devices
+### Frontend
+- **React 18** with TypeScript
+- **Tailwind CSS** for styling
+- **React Query** for API state management
+- **Socket.io Client** for WebSocket connections
+- **Recharts** for data visualization
+- **React Hook Form** for form handling
+- **Zustand** for global state management
+- **React Router DOM** for navigation
+- **Heroicons** for icons
 
-## 🛠 Technology Stack
+### Backend Integration
+- REST API endpoints at `http://localhost:4000/api/v1`
+- WebSocket connection at `ws://localhost:4000/ws`
+- JWT RS256 authentication
+- Real-time event streaming
 
-- **Frontend**: React 18+ with TypeScript
-- **GraphQL**: Apollo Client with subscriptions and caching
-- **UI Framework**: Material-UI (MUI) with custom security-focused theme
-- **Charts**: Recharts with D3.js for advanced visualizations  
-- **State Management**: Zustand for client-side state
-- **Real-time**: GraphQL subscriptions over WebSocket
-- **Build Tool**: Vite with PWA support
-- **Testing**: Vitest with React Testing Library
+## 📁 Project Structure
 
-## 🚦 Getting Started
+```
+src/
+├── components/          # Reusable UI components
+│   ├── dashboard/      # Main dashboard components
+│   ├── events/         # Security event components
+│   ├── threats/        # Threat detection components
+│   ├── incidents/      # Incident management components
+│   ├── layout/         # Layout components
+│   ├── notifications/  # Notification system
+│   └── ui/            # Base UI components
+├── hooks/              # React Query hooks and API integration
+├── lib/                # Utility libraries and API client
+├── pages/              # Route components
+├── store/              # Zustand stores
+├── styles/             # Global styles and Tailwind config
+└── types/              # TypeScript type definitions
+```
+
+## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ 
-- pnpm (recommended) or npm
+
+- Node.js 18+ and npm/pnpm
+- Backend API server running on port 4000
+- Grafana instance (optional, running on port 3003)
 
 ### Installation
 
-```bash
-# Install dependencies
-pnpm install
+1. **Install dependencies:**
+   ```bash
+   cd apps/security-dashboard
+   npm install
+   ```
 
-# Start development server
-pnpm dev
+2. **Set environment variables:**
+   ```bash
+   # .env.local
+   VITE_API_BASE_URL=http://localhost:4000/api/v1
+   VITE_WS_URL=ws://localhost:4000/ws
+   ```
 
-# Build for production
-pnpm build
+3. **Start development server:**
+   ```bash
+   npm run dev
+   ```
 
-# Run tests
-pnpm test
+4. **Open browser:**
+   Navigate to `http://localhost:5173`
 
-# Run tests with coverage
-pnpm test:coverage
-
-# Type checking
-pnpm type-check
-
-# Linting
-pnpm lint
-```
-
-### Environment Variables
-
-Create a `.env.local` file in the project root:
-
-```env
-VITE_GRAPHQL_HTTP_URI=https://api.candlefish.ai/graphql
-VITE_GRAPHQL_WS_URI=wss://api.candlefish.ai/graphql
-VITE_APP_ENV=development
-```
+### Demo Login
+- **Email**: admin@candlefish.ai
+- **Password**: admin123
 
 ## 📱 Component Architecture
 

@@ -1,0 +1,350 @@
+# Security Dashboard Ingress Configuration
+# Production-ready ingress with SSL/TLS, security headers, and load balancing
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: security-dashboard-ingress
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard-ingress
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: ingress
+  annotations:
+    # Ingress class
+    kubernetes.io/ingress.class: "alb"
+    
+    # ALB configuration
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    
+    # SSL configuration
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/certificate-arn: "${SSL_CERTIFICATE_ARN}"
+    alb.ingress.kubernetes.io/ssl-policy: "ELBSecurityPolicy-TLS-1-2-2017-01"
+    
+    # Health check configuration
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "30"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "3"
+    
+    # Load balancing
+    alb.ingress.kubernetes.io/load-balancer-attributes: |
+      routing.http2.enabled=true,
+      idle_timeout.timeout_seconds=60,
+      deletion_protection.enabled=false,
+      access_logs.s3.enabled=true,
+      access_logs.s3.bucket=${ALB_LOGS_BUCKET},
+      access_logs.s3.prefix=security-dashboard-alb
+    
+    # Security annotations
+    alb.ingress.kubernetes.io/wafv2-acl-arn: "${WAF_WEB_ACL_ARN}"
+    
+    # Rate limiting and DDoS protection
+    nginx.ingress.kubernetes.io/rate-limit-connections: "100"
+    nginx.ingress.kubernetes.io/rate-limit-rps: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    
+    # Security headers
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "Strict-Transport-Security: max-age=31536000; includeSubDomains; preload";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-Frame-Options: DENY";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
+      more_set_headers "Referrer-Policy: strict-origin-when-cross-origin";
+      more_set_headers "Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https: wss:; frame-ancestors 'none';";
+      more_set_headers "Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), vr=(), accelerometer=(), gyroscope=(), magnetometer=()";
+      more_clear_headers "Server";
+    
+    # CORS configuration
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://security.candlefish.ai,https://dashboard.candlefish.ai"
+    nginx.ingress.kubernetes.io/cors-max-age: "1728000"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    
+    # Compression
+    nginx.ingress.kubernetes.io/compression-types: "application/json,application/javascript,text/css,text/javascript,text/plain,text/xml"
+    
+    # Custom backend timeout
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    
+    # WebSocket support
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/websocket-services: "security-dashboard-backend"
+
+spec:
+  ingressClassName: alb
+  tls:
+  - hosts:
+    - security.candlefish.ai
+    - api.security.candlefish.ai
+    - dashboard.candlefish.ai
+    secretName: security-dashboard-tls
+  
+  rules:
+  # Main dashboard domain
+  - host: security.candlefish.ai
+    http:
+      paths:
+      # Frontend routes (catch-all for SPA)
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kong-gateway
+            port:
+              number: 80
+      
+      # API routes via Kong Gateway
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: kong-gateway
+            port:
+              number: 80
+      
+      # GraphQL routes via Kong Gateway
+      - path: /graphql
+        pathType: Prefix
+        backend:
+          service:
+            name: kong-gateway
+            port:
+              number: 80
+      
+      # WebSocket subscriptions
+      - path: /subscriptions
+        pathType: Prefix
+        backend:
+          service:
+            name: kong-gateway
+            port:
+              number: 80
+      
+      # Health checks
+      - path: /health
+        pathType: Exact
+        backend:
+          service:
+            name: security-dashboard-backend
+            port:
+              number: 4000
+      
+      - path: /.well-known/health
+        pathType: Exact
+        backend:
+          service:
+            name: security-dashboard-backend
+            port:
+              number: 4000
+
+  # API-specific domain
+  - host: api.security.candlefish.ai
+    http:
+      paths:
+      # Direct API access
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: security-dashboard-backend
+            port:
+              number: 4000
+      
+      # GraphQL endpoint
+      - path: /graphql
+        pathType: Prefix
+        backend:
+          service:
+            name: security-dashboard-graphql
+            port:
+              number: 4000
+      
+      # WebSocket subscriptions
+      - path: /subscriptions
+        pathType: Prefix
+        backend:
+          service:
+            name: security-dashboard-backend
+            port:
+              number: 4001
+      
+      # Health checks
+      - path: /health
+        pathType: Exact
+        backend:
+          service:
+            name: security-dashboard-backend
+            port:
+              number: 4000
+
+  # Dashboard-specific domain
+  - host: dashboard.candlefish.ai
+    http:
+      paths:
+      # Frontend application
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: security-dashboard-frontend
+            port:
+              number: 80
+      
+      # API proxy
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: kong-gateway
+            port:
+              number: 80
+
+---
+# TLS Certificate (if using cert-manager)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: security-dashboard-tls
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard-tls
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: security
+spec:
+  secretName: security-dashboard-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: security.candlefish.ai
+  dnsNames:
+  - security.candlefish.ai
+  - api.security.candlefish.ai
+  - dashboard.candlefish.ai
+
+---
+# Network Policies for Security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: security-dashboard-network-policy
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard-network-policy
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: security
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  # Ingress rules
+  ingress:
+  # Allow ingress from ALB/Load Balancer
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: TCP
+      port: 8000
+    - protocol: TCP
+      port: 8443
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 4000
+  
+  # Allow internal communication between services
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/part-of: security-dashboard
+    ports:
+    - protocol: TCP
+      port: 4000
+    - protocol: TCP
+      port: 4001
+    - protocol: TCP
+      port: 8000
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 8443
+  
+  # Allow monitoring access
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9090
+    - protocol: TCP
+      port: 8001
+  
+  # Egress rules
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  
+  # Allow HTTPS outbound (for external APIs, JWKS, etc.)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+  
+  # Allow internal service communication
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/part-of: security-dashboard
+    ports:
+    - protocol: TCP
+      port: 4000
+    - protocol: TCP
+      port: 4001
+    - protocol: TCP
+      port: 5432
+    - protocol: TCP
+      port: 6379
+
+---
+# Service Monitor for Prometheus
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: security-dashboard-monitor
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard-monitor
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: security-dashboard
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+  - port: http
+    interval: 30s
+    path: /metrics
+  namespaceSelector:
+    matchNames:
+    - security-dashboard
