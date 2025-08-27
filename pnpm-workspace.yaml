@@ -7,8 +7,10 @@ packages:
   - "apps/partners-site" 
   - "apps/api-site"
   
-  # Existing apps
+  # Existing apps (excluding mobile apps which cause CI hangs)
   - "apps/*"
+  - "!apps/mobile-*"
+  - "!apps/security-dashboard/mobile"
   
   # Backend services
   - "services/*"
