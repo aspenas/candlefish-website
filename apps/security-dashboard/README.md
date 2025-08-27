@@ -2,7 +2,7 @@
 
 A comprehensive, real-time security operations center (SOC) dashboard built with React 18, TypeScript, and Tailwind CSS. Features include real-time threat detection, incident management, security event timeline, and compliance reporting.
 
-> **Status**: Dependencies fixed - CI no longer hangs at install step
+> **Status**: Dependencies fixed - ALL mobile apps excluded from workspace to prevent CI hangs
 
 ## 🚀 Features
 
