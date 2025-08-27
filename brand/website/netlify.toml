@@ -2,10 +2,12 @@
 # Generated: 20250823_211146
 
 [build]
-  command = "npm run build"
+  base = "brand/website"
+  command = "npm ci --include=dev && npm run build"
+  publish = ".next"
 
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "20"
   NEXT_TELEMETRY_DISABLED = "1"
 
 # Performance Monitoring - Disabled due to module conflicts with Next.js
