@@ -1,0 +1,31 @@
+schema:
+  - 'http://localhost:4000/graphql'
+documents: 
+  - 'src/**/*.graphql'
+  - 'src/**/*.ts'
+  - 'src/**/*.tsx'
+generates:
+  src/generated/graphql.ts:
+    plugins:
+      - typescript
+      - typescript-operations
+      - typescript-react-apollo
+    config:
+      withHooks: true
+      withHOC: false
+      withComponent: false
+      withRefetchFn: true
+      withResultType: true
+      withMutationFn: false
+      scalars:
+        DateTime: string
+        JSON: any
+        Upload: any
+        EmailAddress: string
+        URL: string
+        UUID: string
+  src/generated/introspection.ts:
+    plugins:
+      - introspection
+    config:
+      minify: true

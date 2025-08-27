@@ -1,0 +1,1192 @@
+# Event Microservice Schema - Federation v2
+extend schema @link(url: "https://specs.apollo.dev/federation/v2.0", import: ["@key", "@shareable", "@provides", "@external", "@requires", "@override", "@inaccessible", "@tag"])
+
+# Security Event Entity - Primary in Event Service
+type SecurityEvent @key(fields: "id") @key(fields: "organizationId timestamp") {
+  id: ID!
+  eventType: SecurityEventType!
+  severity: Severity! @shareable
+  title: String!
+  description: String!
+  organizationId: ID! @shareable
+  
+  # Source Information
+  source: String!
+  sourceSystem: String!
+  sourceVersion: String
+  sourceIp: String
+  sourceCountry: String
+  sourceCity: String
+  sourceAsn: String
+  sourceProvider: String
+  
+  # Target Information
+  targetAsset: Asset @external
+  targetAssetId: ID
+  targetUser: User @external
+  targetUserId: ID
+  targetResource: String
+  targetProtocol: String
+  targetPort: Int
+  
+  # Event Classification
+  category: EventCategory!
+  subCategory: String
+  attackVector: AttackVector
+  killChainPhase: KillChainPhase
+  
+  # MITRE ATT&CK Framework
+  mitreAttack: MitreAttackMapping
+  
+  # Detection Information
+  ruleId: String
+  ruleName: String
+  ruleDescription: String
+  detectorName: String
+  detectorVersion: String
+  confidenceScore: Float # 0.0 to 1.0
+  riskScore: Float # 0.0 to 100.0
+  
+  # Network Information
+  networkProtocol: String
+  networkDirection: NetworkDirection
+  bytesIn: Int
+  bytesOut: Int
+  packetsIn: Int
+  packetsOut: Int
+  connectionState: ConnectionState
+  
+  # Authentication Context
+  username: String
+  userDomain: String
+  authMethod: String
+  sessionId: String
+  
+  # File Information
+  fileName: String
+  filePath: String
+  fileHash: String
+  fileSize: Int
+  fileType: String
+  
+  # Process Information
+  processName: String
+  processId: Int
+  parentProcessName: String
+  parentProcessId: Int
+  commandLine: String
+  
+  # Registry Information (Windows)
+  registryKey: String
+  registryValue: String
+  registryData: String
+  
+  # Web Information
+  httpMethod: String
+  httpUri: String
+  httpUserAgent: String
+  httpReferer: String
+  httpStatusCode: Int
+  httpResponseSize: Int
+  
+  # DNS Information
+  dnsQuery: String
+  dnsQueryType: String
+  dnsResponse: [String!]!
+  dnsResponseCode: String
+  
+  # Threat Intelligence
+  indicators: [Indicator!]!
+  iocs: [IOC!]! @provides(fields: "indicators")
+  threatActors: [ThreatActor!]! @provides(fields: "indicators")
+  campaigns: [ThreatCampaign!]! @provides(fields: "indicators")
+  
+  # Event Data
+  rawPayload: JSON!
+  normalizedPayload: JSON!
+  enrichedData: JSON
+  
+  # Temporal Information
+  timestamp: DateTime! @shareable
+  duration: Int # milliseconds
+  detectedAt: DateTime!
+  ingestedAt: DateTime!
+  processedAt: DateTime
+  
+  # Relationships
+  parentEvent: SecurityEvent @provides(fields: "id")
+  childEvents: [SecurityEvent!]! @provides(fields: "id")
+  relatedEvents: [SecurityEvent!]! @provides(fields: "id")
+  correlationId: String
+  sessionCorrelationId: String
+  
+  # Actions and Response
+  triggeredAlerts: [Alert!]! @external
+  triggeredIncidents: [Incident!]! @external
+  automatedActions: [AutomatedAction!]!
+  
+  # Compliance Context
+  complianceFrameworks: [String!]!
+  complianceViolations: [ComplianceViolation!]! @external
+  
+  # Metadata
+  tags: [String!]! @shareable
+  labels: JSON
+  metadata: JSON @shareable
+  
+  # Audit Information
+  archived: Boolean!
+  archivedAt: DateTime
+  retentionExpiry: DateTime
+  exportStatus: ExportStatus
+  
+  createdAt: DateTime! @shareable
+  updatedAt: DateTime! @shareable
+}
+
+enum SecurityEventType {
+  # Authentication Events
+  AUTHENTICATION_SUCCESS
+  AUTHENTICATION_FAILURE
+  AUTHENTICATION_LOCKED_OUT
+  AUTHENTICATION_BRUTE_FORCE
+  AUTHENTICATION_ANOMALY
+  
+  # Authorization Events
+  AUTHORIZATION_FAILURE
+  PRIVILEGE_ESCALATION
+  UNAUTHORIZED_ACCESS_ATTEMPT
+  PERMISSION_GRANTED
+  PERMISSION_DENIED
+  
+  # Network Events
+  NETWORK_CONNECTION_ESTABLISHED
+  NETWORK_CONNECTION_BLOCKED
+  NETWORK_ANOMALY
+  PORT_SCAN_DETECTED
+  DDoS_ATTACK_DETECTED
+  LATERAL_MOVEMENT_DETECTED
+  
+  # Malware Events
+  MALWARE_DETECTED
+  VIRUS_QUARANTINED
+  SUSPICIOUS_FILE_DETECTED
+  RANSOMWARE_DETECTED
+  ROOTKIT_DETECTED
+  
+  # Data Events
+  DATA_ACCESS
+  DATA_MODIFICATION
+  DATA_DELETION
+  DATA_EXFILTRATION
+  SENSITIVE_DATA_EXPOSED
+  DATA_BREACH_SUSPECTED
+  
+  # System Events
+  SYSTEM_CONFIGURATION_CHANGED
+  SOFTWARE_INSTALLED
+  SOFTWARE_UNINSTALLED
+  SERVICE_STARTED
+  SERVICE_STOPPED
+  SYSTEM_SHUTDOWN
+  SYSTEM_RESTART
+  
+  # Application Events
+  APPLICATION_ERROR
+  APPLICATION_CRASH
+  SQL_INJECTION_ATTEMPT
+  XSS_ATTEMPT
+  COMMAND_INJECTION_ATTEMPT
+  
+  # Compliance Events
+  COMPLIANCE_VIOLATION
+  POLICY_VIOLATION
+  AUDIT_LOG_TAMPERING
+  
+  # Threat Intelligence Events
+  IOC_MATCH
+  THREAT_ACTOR_ACTIVITY
+  CAMPAIGN_ACTIVITY
+  
+  # Custom Events
+  CUSTOM_RULE_TRIGGERED
+  ANOMALY_DETECTED
+  BASELINE_DEVIATION
+}
+
+enum EventCategory {
+  AUTHENTICATION
+  AUTHORIZATION
+  NETWORK
+  SYSTEM
+  APPLICATION
+  DATA
+  COMPLIANCE
+  THREAT_INTELLIGENCE
+  MALWARE
+  ANOMALY
+  CUSTOM
+}
+
+enum AttackVector {
+  NETWORK
+  ADJACENT_NETWORK
+  LOCAL
+  PHYSICAL
+  EMAIL
+  WEB_APPLICATION
+  SUPPLY_CHAIN
+  WIRELESS
+  BLUETOOTH
+  USB
+}
+
+enum KillChainPhase {
+  RECONNAISSANCE
+  WEAPONIZATION
+  DELIVERY
+  EXPLOITATION
+  INSTALLATION
+  COMMAND_AND_CONTROL
+  ACTIONS_ON_OBJECTIVES
+}
+
+enum NetworkDirection {
+  INBOUND
+  OUTBOUND
+  LATERAL
+  INTERNAL
+  UNKNOWN
+}
+
+enum ConnectionState {
+  ESTABLISHED
+  CLOSED
+  LISTENING
+  SYN_SENT
+  SYN_RECEIVED
+  FIN_WAIT_1
+  FIN_WAIT_2
+  CLOSE_WAIT
+  CLOSING
+  LAST_ACK
+  TIME_WAIT
+}
+
+enum ExportStatus {
+  NOT_EXPORTED
+  PENDING_EXPORT
+  EXPORTED
+  EXPORT_FAILED
+}
+
+# Automated Action Entity
+type AutomatedAction {
+  id: ID!
+  name: String!
+  actionType: ActionType! @external
+  triggered: Boolean!
+  triggeredAt: DateTime
+  executedAt: DateTime
+  result: ActionResult @external
+  parameters: JSON
+  automated: Boolean!
+  approvalRequired: Boolean!
+  approvedBy: User @external
+  executedBy: User @external
+}
+
+# Event Stream Entity for Real-time Processing
+type EventStream @key(fields: "id") {
+  id: ID!
+  name: String!
+  description: String!
+  organizationId: ID!
+  
+  # Stream Configuration
+  sourceTypes: [String!]!
+  filters: EventStreamFilters!
+  aggregationWindow: Int # seconds
+  batchSize: Int!
+  maxLatency: Int # milliseconds
+  
+  # Processing Rules
+  enrichmentRules: [EnrichmentRule!]!
+  correlationRules: [CorrelationRule!]!
+  alertRules: [AlertRule!]!
+  
+  # Stream Status
+  status: StreamStatus!
+  lastProcessedAt: DateTime
+  eventsProcessed: Int!
+  processingRate: Float # events per second
+  errorRate: Float
+  latency: StreamLatency!
+  
+  # Output Configuration
+  outputs: [StreamOutput!]!
+  
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type EventStreamFilters {
+  eventTypes: [SecurityEventType!]
+  severities: [Severity!]
+  sources: [String!]
+  categories: [EventCategory!]
+  tags: [String!]
+  customFilters: JSON
+}
+
+type EnrichmentRule {
+  id: ID!
+  name: String!
+  description: String!
+  enabled: Boolean!
+  priority: Int!
+  conditions: [RuleCondition!]! @external
+  enrichments: [DataEnrichment!]!
+  lastExecuted: DateTime
+  executionCount: Int!
+}
+
+type DataEnrichment {
+  field: String!
+  source: EnrichmentSource!
+  mapping: JSON
+  fallback: String
+}
+
+enum EnrichmentSource {
+  THREAT_INTELLIGENCE
+  GEO_LOCATION
+  DNS_RESOLUTION
+  WHOIS_LOOKUP
+  ASSET_INVENTORY
+  USER_DIRECTORY
+  VULNERABILITY_DATABASE
+  CUSTOM_DATABASE
+}
+
+type CorrelationRule {
+  id: ID!
+  name: String!
+  description: String!
+  enabled: Boolean!
+  priority: Int!
+  timeWindow: Int! # seconds
+  conditions: [CorrelationCondition!]!
+  actions: [CorrelationAction!]!
+  lastTriggered: DateTime
+  triggerCount: Int!
+}
+
+type CorrelationCondition {
+  eventTypes: [SecurityEventType!]!
+  threshold: Int!
+  uniqueFields: [String!]
+  aggregateFunction: AggregateFunction!
+  comparison: ComparisonOperator!
+  value: Float!
+}
+
+enum AggregateFunction {
+  COUNT
+  SUM
+  AVERAGE
+  MIN
+  MAX
+  DISTINCT_COUNT
+}
+
+enum ComparisonOperator {
+  EQUALS
+  NOT_EQUALS
+  GREATER_THAN
+  GREATER_THAN_OR_EQUAL
+  LESS_THAN
+  LESS_THAN_OR_EQUAL
+  CONTAINS
+  NOT_CONTAINS
+}
+
+type CorrelationAction {
+  type: CorrelationActionType!
+  parameters: JSON
+}
+
+enum CorrelationActionType {
+  CREATE_ALERT
+  CREATE_INCIDENT
+  ENRICH_EVENT
+  TRIGGER_AUTOMATION
+  SEND_NOTIFICATION
+}
+
+type AlertRule @external {
+  id: ID!
+  name: String!
+  description: String!
+  enabled: Boolean!
+  severity: Severity!
+  conditions: [RuleCondition!]!
+  actions: [ActionType!]!
+  suppressionRules: [SuppressionRule!]!
+  lastTriggered: DateTime
+  triggerCount: Int!
+  falsePositiveRate: Float
+}
+
+type SuppressionRule {
+  id: ID!
+  name: String!
+  conditions: [RuleCondition!]!
+  duration: Int! # seconds
+  enabled: Boolean!
+}
+
+enum StreamStatus {
+  RUNNING
+  STOPPED
+  ERROR
+  STARTING
+  STOPPING
+}
+
+type StreamLatency {
+  p50: Float! # milliseconds
+  p95: Float! # milliseconds
+  p99: Float! # milliseconds
+  average: Float! # milliseconds
+  max: Float! # milliseconds
+}
+
+type StreamOutput {
+  id: ID!
+  type: OutputType!
+  destination: String!
+  format: OutputFormat!
+  enabled: Boolean!
+  configuration: JSON
+  lastDelivered: DateTime
+  deliveryCount: Int!
+  errorCount: Int!
+}
+
+enum OutputType {
+  WEBHOOK
+  KAFKA
+  ELASTICSEARCH
+  SIEM
+  S3
+  AZURE_BLOB
+  GCS
+  SPLUNK
+  SUMO_LOGIC
+}
+
+enum OutputFormat {
+  JSON
+  CEF
+  LEEF
+  SYSLOG
+  CSV
+  PARQUET
+}
+
+# Event Analytics and Aggregation
+type EventAnalytics @key(fields: "organizationId timeRange") {
+  organizationId: ID!
+  timeRange: TimeRange!
+  
+  # Volume Metrics
+  totalEvents: Int!
+  eventsPerHour: [DataPoint!]!
+  eventsByType: [EventTypeCount!]!
+  eventsBySeverity: [SeverityCount!]! @external
+  eventsBySource: [SourceCount!]!
+  
+  # Top Events
+  topEventTypes: [TopEventType!]!
+  topSources: [TopSource!]!
+  topTargetAssets: [TopAsset!]!
+  
+  # Trends
+  volumeTrend: TrendAnalysis!
+  severityTrend: TrendAnalysis!
+  uniqueSourcesTrend: TrendAnalysis!
+  
+  # Anomalies
+  volumeAnomalies: [VolumeAnomaly!]!
+  patternAnomalies: [PatternAnomaly!]!
+  
+  # Geographic Distribution
+  eventsByCountry: [CountryCount!]!
+  eventsByRegion: [RegionCount!]!
+  
+  # Time-based Analysis
+  eventsByHour: [HourlyCount!]!
+  eventsByDayOfWeek: [DayOfWeekCount!]!
+  
+  lastUpdated: DateTime!
+}
+
+type DataPoint {
+  timestamp: DateTime!
+  value: Float!
+  label: String
+}
+
+type EventTypeCount {
+  eventType: SecurityEventType!
+  count: Int!
+  percentage: Float!
+}
+
+type SourceCount {
+  source: String!
+  count: Int!
+  percentage: Float!
+}
+
+type TopEventType {
+  eventType: SecurityEventType!
+  count: Int!
+  trend: Float! # percentage change
+}
+
+type TopSource {
+  source: String!
+  count: Int!
+  uniqueAssets: Int!
+  averageSeverity: Float!
+}
+
+type TopAsset {
+  assetId: ID!
+  assetName: String!
+  eventCount: Int!
+  severityScore: Float!
+}
+
+type TrendAnalysis {
+  current: Float!
+  previous: Float!
+  change: Float! # percentage
+  direction: TrendDirection!
+}
+
+enum TrendDirection {
+  UP
+  DOWN
+  STABLE
+}
+
+type VolumeAnomaly {
+  timestamp: DateTime!
+  expectedVolume: Int!
+  actualVolume: Int!
+  deviationScore: Float!
+  anomalyType: AnomalyType!
+}
+
+type PatternAnomaly {
+  timestamp: DateTime!
+  pattern: String!
+  description: String!
+  score: Float!
+  eventIds: [ID!]!
+}
+
+enum AnomalyType {
+  VOLUME_SPIKE
+  VOLUME_DROP
+  NEW_PATTERN
+  MISSING_PATTERN
+  FREQUENCY_CHANGE
+}
+
+type CountryCount {
+  countryCode: String!
+  countryName: String!
+  count: Int!
+  percentage: Float!
+}
+
+type RegionCount {
+  region: String!
+  count: Int!
+  percentage: Float!
+}
+
+type HourlyCount {
+  hour: Int! # 0-23
+  count: Int!
+  averageCount: Int!
+}
+
+type DayOfWeekCount {
+  dayOfWeek: Int! # 0-6 (Sunday to Saturday)
+  count: Int!
+  averageCount: Int!
+}
+
+# Queries
+type Query {
+  # Event queries with complex filtering
+  securityEvents(
+    filter: SecurityEventFilter
+    sort: SecurityEventSort
+    first: Int
+    after: String
+    last: Int
+    before: String
+  ): SecurityEventConnection @auth(requires: ANALYST) @organizationScope @complexity(value: 20)
+  
+  # Single event query
+  securityEvent(id: ID!): SecurityEvent @auth(requires: ANALYST) @organizationScope
+  
+  # Event search with full-text capabilities
+  searchEvents(
+    query: String!
+    filter: SecurityEventFilter
+    sort: SecurityEventSort
+    first: Int
+    after: String
+  ): SecurityEventSearchResult @auth(requires: ANALYST) @organizationScope @complexity(value: 50)
+  
+  # Related events discovery
+  relatedEvents(
+    eventId: ID!
+    maxResults: Int = 20
+    timeWindow: Int = 3600 # seconds
+    correlationThreshold: Float = 0.7
+  ): [SecurityEvent!]! @auth(requires: ANALYST) @organizationScope @complexity(value: 100)
+  
+  # Event analytics and aggregations
+  eventAnalytics(
+    organizationId: ID!
+    timeRange: TimeRange!
+    filters: SecurityEventFilter
+  ): EventAnalytics @auth(requires: ANALYST) @organizationScope @complexity(value: 200)
+  
+  # Event timeline for visualization
+  eventTimeline(
+    filter: SecurityEventFilter
+    granularity: TimeGranularity!
+    timeRange: TimeRange!
+  ): [TimelinePoint!]! @auth(requires: ANALYST) @organizationScope @complexity(value: 100)
+  
+  # Event streams management
+  eventStreams: [EventStream!]! @auth(requires: ADMIN) @organizationScope
+  eventStream(id: ID!): EventStream @auth(requires: ADMIN) @organizationScope
+  
+  # Event processing statistics
+  processingStats(
+    timeRange: TimeRange!
+  ): ProcessingStats @auth(requires: ADMIN) @organizationScope
+  
+  # Event export capabilities
+  exportEvents(
+    filter: SecurityEventFilter
+    format: ExportFormat!
+    compression: CompressionType = GZIP
+  ): ExportJob! @auth(requires: ANALYST) @organizationScope @rateLimit(max: 5, window: 3600)
+}
+
+# Mutations
+type Mutation {
+  # Event ingestion (for custom sources)
+  ingestEvent(input: IngestEventInput!): IngestEventResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  ingestEvents(input: [IngestEventInput!]!): IngestEventsResult! @auth(requires: ADMIN) @organizationScope @auditLog @rateLimit(max: 100, window: 60)
+  
+  # Event enrichment
+  enrichEvent(eventId: ID!, enrichments: [EnrichmentInput!]!): EnrichEventResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  
+  # Event tagging and classification
+  tagEvent(eventId: ID!, tags: [String!]!): TagEventResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  untagEvent(eventId: ID!, tags: [String!]!): UntagEventResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  
+  # Event archival
+  archiveEvent(eventId: ID!, reason: String): ArchiveEventResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  archiveEvents(filter: SecurityEventFilter!, reason: String): ArchiveEventsResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  # Event stream management
+  createEventStream(input: CreateEventStreamInput!): CreateEventStreamResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  updateEventStream(id: ID!, input: UpdateEventStreamInput!): UpdateEventStreamResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  deleteEventStream(id: ID!): DeleteEventStreamResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  startEventStream(id: ID!): StartEventStreamResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  stopEventStream(id: ID!): StopEventStreamResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  # Rule management
+  createCorrelationRule(input: CreateCorrelationRuleInput!): CreateCorrelationRuleResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  updateCorrelationRule(id: ID!, input: UpdateCorrelationRuleInput!): UpdateCorrelationRuleResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  deleteCorrelationRule(id: ID!): DeleteCorrelationRuleResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  testCorrelationRule(input: TestCorrelationRuleInput!): TestCorrelationRuleResult! @auth(requires: ADMIN) @organizationScope
+  
+  # Automated actions
+  triggerAutomatedAction(eventId: ID!, actionType: ActionType!, parameters: JSON): TriggerActionResult! @auth(requires: INCIDENT_RESPONDER) @organizationScope @auditLog
+}
+
+# Subscriptions for Real-time Event Processing
+type Subscription {
+  # Real-time event stream
+  securityEventStream(
+    filter: SecurityEventFilter
+    organizationId: ID!
+  ): SecurityEventStreamUpdate! @auth(requires: ANALYST) @organizationScope
+  
+  # Event processing updates
+  eventProcessingUpdates(
+    streamId: ID!
+  ): EventProcessingUpdate! @auth(requires: ADMIN) @organizationScope
+  
+  # Analytics updates
+  eventAnalyticsUpdates(
+    organizationId: ID!
+    updateInterval: Int = 60 # seconds
+  ): EventAnalyticsUpdate! @auth(requires: ANALYST) @organizationScope
+  
+  # Anomaly detection alerts
+  anomalyDetected(
+    organizationId: ID!
+    severityThreshold: Severity = MEDIUM
+  ): AnomalyAlert! @auth(requires: ANALYST) @organizationScope
+  
+  # Correlation rule triggers
+  correlationTriggered(
+    organizationId: ID!
+    ruleIds: [ID!]
+  ): CorrelationTrigger! @auth(requires: ANALYST) @organizationScope
+}
+
+# Input Types
+input SecurityEventFilter {
+  eventTypes: [SecurityEventType!]
+  severities: [Severity!]
+  categories: [EventCategory!]
+  sources: [String!]
+  targetAssetIds: [ID!]
+  targetUserIds: [ID!]
+  dateRange: DateRangeFilter
+  riskScoreRange: FloatRangeFilter
+  confidenceScoreRange: FloatRangeFilter
+  tags: StringFilter
+  correlationId: String
+  hasAlerts: Boolean
+  hasIncidents: Boolean
+  mitreAttack: MitreAttackFilter
+  customFilters: JSON
+}
+
+input FloatRangeFilter {
+  gte: Float
+  lte: Float
+  gt: Float
+  lt: Float
+}
+
+input MitreAttackFilter {
+  tacticIds: [String!]
+  techniqueIds: [String!]
+  subTechniqueIds: [String!]
+}
+
+input SecurityEventSort {
+  field: SecurityEventSortField!
+  direction: SortDirection!
+}
+
+enum SecurityEventSortField {
+  TIMESTAMP
+  SEVERITY
+  RISK_SCORE
+  CONFIDENCE_SCORE
+  CREATED_AT
+  UPDATED_AT
+}
+
+input IngestEventInput {
+  eventType: SecurityEventType!
+  severity: Severity!
+  title: String!
+  description: String!
+  source: String!
+  timestamp: DateTime!
+  rawPayload: JSON!
+  metadata: JSON
+  tags: [String!]
+}
+
+input EnrichmentInput {
+  field: String!
+  value: String!
+  source: String
+}
+
+input CreateEventStreamInput {
+  name: String!
+  description: String!
+  sourceTypes: [String!]!
+  filters: EventStreamFiltersInput!
+  batchSize: Int = 100
+  maxLatency: Int = 5000
+  outputs: [StreamOutputInput!]!
+}
+
+input UpdateEventStreamInput {
+  name: String
+  description: String
+  sourceTypes: [String!]
+  filters: EventStreamFiltersInput
+  batchSize: Int
+  maxLatency: Int
+  outputs: [StreamOutputInput!]
+}
+
+input EventStreamFiltersInput {
+  eventTypes: [SecurityEventType!]
+  severities: [Severity!]
+  sources: [String!]
+  categories: [EventCategory!]
+  tags: [String!]
+  customFilters: JSON
+}
+
+input StreamOutputInput {
+  type: OutputType!
+  destination: String!
+  format: OutputFormat!
+  configuration: JSON
+}
+
+input CreateCorrelationRuleInput {
+  name: String!
+  description: String!
+  timeWindow: Int!
+  conditions: [CorrelationConditionInput!]!
+  actions: [CorrelationActionInput!]!
+}
+
+input UpdateCorrelationRuleInput {
+  name: String
+  description: String
+  enabled: Boolean
+  timeWindow: Int
+  conditions: [CorrelationConditionInput!]
+  actions: [CorrelationActionInput!]
+}
+
+input CorrelationConditionInput {
+  eventTypes: [SecurityEventType!]!
+  threshold: Int!
+  uniqueFields: [String!]
+  aggregateFunction: AggregateFunction!
+  comparison: ComparisonOperator!
+  value: Float!
+}
+
+input CorrelationActionInput {
+  type: CorrelationActionType!
+  parameters: JSON
+}
+
+input TestCorrelationRuleInput {
+  rule: CreateCorrelationRuleInput!
+  testEvents: [IngestEventInput!]!
+  timeRange: TimeRange!
+}
+
+enum TimeGranularity {
+  MINUTE
+  HOUR
+  DAY
+  WEEK
+  MONTH
+}
+
+enum ExportFormat {
+  JSON
+  CSV
+  CEF
+  LEEF
+  SYSLOG
+}
+
+enum CompressionType {
+  NONE
+  GZIP
+  ZIP
+}
+
+# Connection Types
+type SecurityEventConnection {
+  edges: [SecurityEventEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+  aggregations: SecurityEventAggregations
+}
+
+type SecurityEventEdge {
+  node: SecurityEvent!
+  cursor: String!
+}
+
+type SecurityEventAggregations {
+  bySeverity: [SeverityCount!]!
+  byType: [EventTypeCount!]!
+  bySource: [SourceCount!]!
+  byCategory: [CategoryCount!]!
+  totalRiskScore: Float!
+  averageRiskScore: Float!
+}
+
+type CategoryCount {
+  category: EventCategory!
+  count: Int!
+  percentage: Float!
+}
+
+type SecurityEventSearchResult {
+  events: SecurityEventConnection!
+  suggestions: [String!]!
+  facets: SearchFacets!
+  totalTime: Int! # milliseconds
+}
+
+type SearchFacets {
+  eventTypes: [EventTypeFacet!]!
+  severities: [SeverityFacet!]!
+  sources: [SourceFacet!]!
+  categories: [CategoryFacet!]!
+}
+
+type EventTypeFacet {
+  eventType: SecurityEventType!
+  count: Int!
+}
+
+type SeverityFacet {
+  severity: Severity!
+  count: Int!
+}
+
+type SourceFacet {
+  source: String!
+  count: Int!
+}
+
+type CategoryFacet {
+  category: EventCategory!
+  count: Int!
+}
+
+type TimelinePoint {
+  timestamp: DateTime!
+  count: Int!
+  severity: Severity!
+  eventTypes: [SecurityEventType!]!
+}
+
+type ProcessingStats {
+  totalProcessed: Int!
+  processingRate: Float! # events per second
+  averageLatency: Float! # milliseconds
+  errorRate: Float!
+  queueDepth: Int!
+  activeStreams: Int!
+  lastProcessed: DateTime!
+}
+
+type ExportJob {
+  id: ID!
+  status: ExportJobStatus!
+  format: ExportFormat!
+  totalEvents: Int!
+  processedEvents: Int!
+  downloadUrl: URL
+  expiresAt: DateTime!
+  createdAt: DateTime!
+  completedAt: DateTime
+  error: String
+}
+
+enum ExportJobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  EXPIRED
+}
+
+# Result Types
+type IngestEventResult {
+  success: Boolean!
+  eventId: ID
+  errors: [ValidationError!]!
+}
+
+type IngestEventsResult {
+  success: Boolean!
+  successCount: Int!
+  failureCount: Int!
+  eventIds: [ID!]!
+  errors: [ValidationError!]!
+}
+
+type EnrichEventResult {
+  success: Boolean!
+  event: SecurityEvent
+  enrichments: [AppliedEnrichment!]!
+  errors: [ValidationError!]!
+}
+
+type AppliedEnrichment {
+  field: String!
+  oldValue: String
+  newValue: String!
+  source: String!
+}
+
+type TagEventResult {
+  success: Boolean!
+  event: SecurityEvent
+  addedTags: [String!]!
+}
+
+type UntagEventResult {
+  success: Boolean!
+  event: SecurityEvent
+  removedTags: [String!]!
+}
+
+type ArchiveEventResult {
+  success: Boolean!
+  archivedAt: DateTime!
+}
+
+type ArchiveEventsResult {
+  success: Boolean!
+  archivedCount: Int!
+  archivedAt: DateTime!
+}
+
+type CreateEventStreamResult {
+  success: Boolean!
+  stream: EventStream
+  errors: [ValidationError!]!
+}
+
+type UpdateEventStreamResult {
+  success: Boolean!
+  stream: EventStream
+  errors: [ValidationError!]!
+}
+
+type DeleteEventStreamResult {
+  success: Boolean!
+  message: String!
+}
+
+type StartEventStreamResult {
+  success: Boolean!
+  stream: EventStream
+  message: String!
+}
+
+type StopEventStreamResult {
+  success: Boolean!
+  stream: EventStream
+  message: String!
+}
+
+type CreateCorrelationRuleResult {
+  success: Boolean!
+  rule: CorrelationRule
+  errors: [ValidationError!]!
+}
+
+type UpdateCorrelationRuleResult {
+  success: Boolean!
+  rule: CorrelationRule
+  errors: [ValidationError!]!
+}
+
+type DeleteCorrelationRuleResult {
+  success: Boolean!
+  message: String!
+}
+
+type TestCorrelationRuleResult {
+  success: Boolean!
+  matches: [CorrelationMatch!]!
+  executionTime: Int! # milliseconds
+}
+
+type CorrelationMatch {
+  events: [SecurityEvent!]!
+  score: Float!
+  triggeredAt: DateTime!
+}
+
+type TriggerActionResult {
+  success: Boolean!
+  action: AutomatedAction
+  message: String!
+  errors: [ValidationError!]!
+}
+
+# Subscription Event Types
+type SecurityEventStreamUpdate {
+  type: StreamUpdateType!
+  event: SecurityEvent
+  events: [SecurityEvent!]
+  timestamp: DateTime!
+}
+
+enum StreamUpdateType {
+  EVENT_CREATED
+  EVENT_UPDATED
+  BATCH_PROCESSED
+}
+
+type EventProcessingUpdate {
+  streamId: ID!
+  status: StreamStatus!
+  stats: StreamProcessingStats!
+  timestamp: DateTime!
+}
+
+type StreamProcessingStats {
+  eventsProcessed: Int!
+  processingRate: Float!
+  errorCount: Int!
+  latency: StreamLatency!
+}
+
+type EventAnalyticsUpdate {
+  analytics: EventAnalytics!
+  changedMetrics: [String!]!
+  timestamp: DateTime!
+}
+
+type AnomalyAlert {
+  id: ID!
+  type: AnomalyType!
+  severity: Severity!
+  description: String!
+  events: [SecurityEvent!]!
+  score: Float!
+  detectedAt: DateTime!
+  metadata: JSON
+}
+
+type CorrelationTrigger {
+  ruleId: ID!
+  ruleName: String!
+  events: [SecurityEvent!]!
+  score: Float!
+  triggeredAt: DateTime!
+  actions: [CorrelationAction!]!
+}

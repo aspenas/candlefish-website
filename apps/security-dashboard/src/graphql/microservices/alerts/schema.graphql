@@ -1,0 +1,1786 @@
+# Alert Microservice Schema - Federation v2
+extend schema @link(url: "https://specs.apollo.dev/federation/v2.0", import: ["@key", "@shareable", "@provides", "@external", "@requires", "@override", "@inaccessible", "@tag"])
+
+# Alert Entity - Primary in Alert Service
+type Alert @key(fields: "id") @key(fields: "organizationId severity status") {
+  id: ID!
+  title: String!
+  description: String!
+  severity: Severity! @shareable
+  alertType: AlertType!
+  organizationId: ID! @shareable
+  
+  # Status and Lifecycle
+  status: AlertStatus!
+  statusHistory: [StatusChange!]! @external
+  priority: AlertPriority!
+  urgency: AlertUrgency!
+  impact: AlertImpact!
+  
+  # Assignment and Ownership
+  assignedTo: User @external
+  assignedToId: ID
+  assignedBy: User @external
+  assignedAt: DateTime
+  assignmentHistory: [AlertAssignment!]!
+  escalationLevel: Int!
+  escalationPath: [EscalationStep!]!
+  
+  # Source Information
+  source: String!
+  sourceSystem: String!
+  sourceVersion: String
+  ruleId: String
+  ruleName: String
+  ruleDescription: String
+  detectionMethod: DetectionMethod!
+  
+  # Asset Relationships
+  primaryAsset: Asset @external
+  primaryAssetId: ID
+  affectedAssets: [Asset!]! @external
+  affectedAssetIds: [ID!]!
+  assetImpactScore: Float # 0.0 to 100.0
+  
+  # User Context
+  affectedUsers: [User!]! @external
+  affectedUserIds: [ID!]!
+  
+  # Event Relationships
+  triggeringEvent: SecurityEvent @external
+  triggeringEventId: ID
+  relatedEvents: [SecurityEvent!]! @external
+  relatedEventIds: [ID!]!
+  correlationId: String
+  
+  # Incident Relationships
+  incident: Incident @external
+  incidentId: ID
+  incidentCreationEligible: Boolean!
+  
+  # Threat Intelligence Context
+  threatIntelligence: ThreatContext
+  indicators: [Indicator!]! @external
+  iocs: [IOC!]! @external
+  threatActors: [ThreatActor!]! @external
+  
+  # MITRE ATT&CK Context
+  mitreAttack: MitreAttackMapping @external
+  attackVector: AttackVector @external
+  killChainPhase: KillChainPhase @external
+  
+  # Evidence and Artifacts
+  evidence: [Evidence!]! @external
+  artifacts: [Artifact!]!
+  screenshots: [Screenshot!]!
+  logs: [LogEntry!]!
+  networkCaptures: [NetworkCapture!]!
+  
+  # Temporal Information
+  firstTriggered: DateTime!
+  lastTriggered: DateTime!
+  acknowledgedAt: DateTime
+  acknowledgedBy: User @external
+  resolvedAt: DateTime
+  resolvedBy: User @external
+  closedAt: DateTime
+  closedBy: User @external
+  
+  # Metrics and KPIs
+  responseTime: Int # seconds from creation to acknowledgment
+  resolutionTime: Int # seconds from creation to resolution
+  timeToClose: Int # seconds from creation to closure
+  slaBreached: Boolean!
+  slaBreachReason: String
+  
+  # Automation and Response
+  automatedActions: [AutomatedAction!]! @external
+  automationEligible: Boolean!
+  automationRules: [AutomationRule!]! @external
+  playbooks: [Playbook!]!
+  
+  # False Positive Management
+  falsePositive: Boolean!
+  falsePositiveReason: String
+  falsePositiveConfidence: Float # 0.0 to 1.0
+  suppressionRules: [SuppressionRule!]! @external
+  
+  # Escalation Management
+  escalations: [AlertEscalation!]!
+  escalationPolicy: EscalationPolicy
+  snoozedUntil: DateTime
+  snoozedBy: User @external
+  snoozeReason: String
+  
+  # Notification and Communication
+  notifications: [AlertNotification!]!
+  communicationHistory: [Communication!]!
+  externalReferences: [ExternalReference!]!
+  
+  # Compliance Context
+  complianceFrameworks: [String!]!
+  complianceViolations: [ComplianceViolation!]! @external
+  regulatoryReporting: RegulatoryReporting
+  
+  # Scoring and Ranking
+  riskScore: Float! # 0.0 to 100.0
+  businessImpactScore: Float! # 0.0 to 100.0
+  confidenceScore: Float! # 0.0 to 1.0
+  priorityScore: Float! # Calculated priority score
+  
+  # Data Enrichment
+  enrichedData: JSON
+  enrichmentSources: [String!]!
+  geoLocation: GeoLocation
+  threatContext: ThreatContext
+  
+  # Workflow and Process
+  workflow: AlertWorkflow
+  workflowSteps: [WorkflowStep!]!
+  approvals: [AlertApproval!]!
+  
+  # Analytics and Learning
+  similarAlerts: [SimilarAlert!]! @provides(fields: "id organizationId")
+  patternMatches: [PatternMatch!]!
+  anomalyScore: Float
+  baselineDeviation: Float
+  
+  # Metadata
+  tags: [String!]! @shareable
+  labels: JSON
+  customFields: JSON
+  metadata: JSON @shareable
+  
+  # Audit and Tracking
+  createdAt: DateTime! @shareable
+  updatedAt: DateTime! @shareable
+  auditTrail: [AuditEntry!]! @external
+  
+  # Export and Reporting
+  exportStatus: ExportStatus @external
+  reportedToExternal: [ExternalSystem!]!
+}
+
+enum AlertType {
+  SECURITY_EVENT
+  VULNERABILITY
+  COMPLIANCE_VIOLATION
+  THREAT_DETECTION
+  MALWARE_DETECTION
+  ANOMALY_DETECTION
+  PERFORMANCE_DEGRADATION
+  AVAILABILITY_ISSUE
+  CONFIGURATION_DRIFT
+  DATA_LOSS_PREVENTION
+  ACCESS_CONTROL_VIOLATION
+  NETWORK_INTRUSION
+  BEHAVIORAL_ANOMALY
+  SYSTEM_COMPROMISE
+  DATA_BREACH
+  INSIDER_THREAT
+  SUPPLY_CHAIN_RISK
+  RANSOMWARE
+  APT_ACTIVITY
+  IOC_MATCH
+}
+
+enum AlertStatus {
+  NEW
+  ACKNOWLEDGED
+  INVESTIGATING
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  SUPPRESSED
+  FALSE_POSITIVE
+  DUPLICATE
+  ESCALATED
+  ON_HOLD
+  PENDING_APPROVAL
+}
+
+enum AlertPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+  URGENT
+}
+
+enum AlertUrgency {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AlertImpact {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum DetectionMethod {
+  SIGNATURE_BASED
+  BEHAVIORAL_ANALYSIS
+  STATISTICAL_ANALYSIS
+  MACHINE_LEARNING
+  THREAT_INTELLIGENCE
+  USER_REPORTED
+  CORRELATION_RULE
+  ANOMALY_DETECTION
+  MANUAL_ASSESSMENT
+  AUTOMATED_SCAN
+  HONEYPOT
+  DECEPTION_TECHNOLOGY
+}
+
+# Alert Assignment and Escalation
+type AlertAssignment {
+  id: ID!
+  assignedTo: User! @external
+  assignedBy: User! @external
+  assignedAt: DateTime!
+  unassignedAt: DateTime
+  reason: String
+  autoAssigned: Boolean!
+  workloadScore: Float # Current assignee workload
+}
+
+type EscalationStep {
+  level: Int!
+  assignee: User @external
+  team: Team @external
+  escalationTime: Int! # seconds
+  conditions: [EscalationCondition!]!
+  actions: [EscalationAction!]!
+}
+
+type EscalationCondition {
+  field: String!
+  operator: ComparisonOperator! @external
+  value: String!
+  timeWindow: Int # seconds
+}
+
+type EscalationAction {
+  type: EscalationActionType!
+  parameters: JSON
+  automated: Boolean!
+}
+
+enum EscalationActionType {
+  ASSIGN_TO_USER
+  ASSIGN_TO_TEAM
+  INCREASE_PRIORITY
+  SEND_NOTIFICATION
+  CREATE_INCIDENT
+  TRIGGER_AUTOMATION
+  SEND_EMAIL
+  SEND_SMS
+  CREATE_TICKET
+  PAGE_ON_CALL
+}
+
+type Team {
+  id: ID!
+  name: String!
+  members: [User!]! @external
+  onCallRotation: OnCallRotation
+  escalationPolicy: EscalationPolicy
+}
+
+type OnCallRotation {
+  id: ID!
+  name: String!
+  schedule: [OnCallSchedule!]!
+  currentOnCall: [User!]! @external
+  nextRotation: DateTime
+}
+
+type OnCallSchedule {
+  dayOfWeek: Int! # 0-6
+  startTime: String! # HH:mm
+  endTime: String! # HH:mm
+  assignee: User! @external
+  backup: User @external
+}
+
+type EscalationPolicy {
+  id: ID!
+  name: String!
+  steps: [EscalationStep!]!
+  repeatCount: Int!
+  repeatInterval: Int! # seconds
+  enabled: Boolean!
+}
+
+# Alert Escalation Tracking
+type AlertEscalation {
+  id: ID!
+  fromLevel: Int!
+  toLevel: Int!
+  escalatedAt: DateTime!
+  escalatedBy: User @external
+  reason: String!
+  automatic: Boolean!
+  acknowledged: Boolean!
+  acknowledgedAt: DateTime
+  acknowledgedBy: User @external
+}
+
+# Playbooks and Response Procedures
+type Playbook @key(fields: "id") {
+  id: ID!
+  name: String!
+  description: String!
+  version: String!
+  alertTypes: [AlertType!]!
+  severities: [Severity!]!
+  steps: [PlaybookStep!]!
+  estimatedDuration: Int! # minutes
+  lastUpdated: DateTime!
+  createdBy: User! @external
+  approvedBy: User @external
+  tags: [String!]!
+}
+
+type PlaybookStep {
+  id: ID!
+  order: Int!
+  title: String!
+  description: String!
+  type: PlaybookStepType!
+  estimatedDuration: Int! # minutes
+  required: Boolean!
+  automatable: Boolean!
+  instructions: String!
+  checklistItems: [ChecklistItem!]!
+  conditions: [StepCondition!]!
+  outputs: [StepOutput!]!
+}
+
+enum PlaybookStepType {
+  INVESTIGATION
+  CONTAINMENT
+  ERADICATION
+  RECOVERY
+  LESSONS_LEARNED
+  COMMUNICATION
+  DOCUMENTATION
+  APPROVAL
+  AUTOMATION
+  MANUAL_ACTION
+}
+
+type ChecklistItem {
+  id: ID!
+  text: String!
+  completed: Boolean!
+  completedBy: User @external
+  completedAt: DateTime
+  required: Boolean!
+}
+
+type StepCondition {
+  field: String!
+  operator: String!
+  value: String!
+  description: String!
+}
+
+type StepOutput {
+  name: String!
+  type: String!
+  description: String!
+  required: Boolean!
+}
+
+# Artifacts and Evidence Management
+type Artifact {
+  id: ID!
+  name: String!
+  type: ArtifactType!
+  mimeType: String!
+  size: Int!
+  hash: String!
+  url: URL
+  description: String
+  collectedAt: DateTime!
+  collectedBy: User! @external
+  chain_of_custody: [CustodyEntry!]!
+  metadata: JSON
+}
+
+enum ArtifactType {
+  LOG_FILE
+  NETWORK_CAPTURE
+  MEMORY_DUMP
+  DISK_IMAGE
+  EXECUTABLE
+  DOCUMENT
+  SCREENSHOT
+  VIDEO
+  AUDIO
+  DATABASE_EXPORT
+  CONFIGURATION_FILE
+  CERTIFICATE
+  EMAIL
+  CHAT_LOG
+}
+
+type CustodyEntry {
+  handedOverBy: User! @external
+  handedOverTo: User! @external
+  handedOverAt: DateTime!
+  reason: String!
+  location: String
+  integrity_verified: Boolean!
+}
+
+type Screenshot {
+  id: ID!
+  url: URL!
+  thumbnail: URL
+  width: Int!
+  height: Int!
+  takenAt: DateTime!
+  takenBy: User! @external
+  description: String
+  annotations: [ScreenshotAnnotation!]!
+}
+
+type ScreenshotAnnotation {
+  id: ID!
+  x: Int!
+  y: Int!
+  width: Int!
+  height: Int!
+  type: AnnotationType!
+  text: String!
+  createdBy: User! @external
+  createdAt: DateTime!
+}
+
+enum AnnotationType {
+  HIGHLIGHT
+  ARROW
+  TEXT
+  CIRCLE
+  RECTANGLE
+}
+
+type LogEntry {
+  id: ID!
+  timestamp: DateTime!
+  level: LogLevel!
+  message: String!
+  source: String!
+  fields: JSON
+  rawLog: String!
+}
+
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+  FATAL
+}
+
+type NetworkCapture {
+  id: ID!
+  filename: String!
+  size: Int!
+  duration: Int! # seconds
+  packetCount: Int!
+  protocols: [String!]!
+  sourceIps: [String!]!
+  destinationIps: [String!]!
+  url: URL!
+  capturedAt: DateTime!
+  capturedBy: User! @external
+  analysis: NetworkCaptureAnalysis
+}
+
+type NetworkCaptureAnalysis {
+  suspiciousConnections: Int!
+  maliciousIndicators: [String!]!
+  protocols: [ProtocolStatistic!]!
+  topTalkers: [NetworkEndpoint!]!
+  anomalies: [NetworkAnomaly!]!
+}
+
+type ProtocolStatistic {
+  protocol: String!
+  packetCount: Int!
+  byteCount: Int!
+  percentage: Float!
+}
+
+type NetworkEndpoint {
+  ip: String!
+  port: Int
+  packetCount: Int!
+  byteCount: Int!
+  country: String
+  asn: String
+  reputation: ThreatReputation
+}
+
+enum ThreatReputation {
+  CLEAN
+  SUSPICIOUS
+  MALICIOUS
+  UNKNOWN
+}
+
+type NetworkAnomaly {
+  type: NetworkAnomalyType!
+  description: String!
+  severity: Severity!
+  confidence: Float!
+  affectedConnections: Int!
+}
+
+enum NetworkAnomalyType {
+  UNUSUAL_TRAFFIC_PATTERN
+  SUSPICIOUS_PORT_USAGE
+  ABNORMAL_DATA_VOLUME
+  IRREGULAR_TIMING
+  PROTOCOL_ANOMALY
+  GEOGRAPHIC_ANOMALY
+}
+
+# Notification and Communication
+type AlertNotification {
+  id: ID!
+  type: NotificationType! @external
+  channel: NotificationChannel!
+  recipient: String!
+  status: NotificationStatus!
+  sentAt: DateTime
+  deliveredAt: DateTime
+  readAt: DateTime
+  content: String!
+  metadata: JSON
+  retryCount: Int!
+  maxRetries: Int!
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  PUSH_NOTIFICATION
+  SLACK
+  TEAMS
+  WEBHOOK
+  PAGERDUTY
+  OPSGENIE
+  VICTOROPS
+  IN_APP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  CANCELLED
+  RETRY
+}
+
+type Communication {
+  id: ID!
+  type: CommunicationType!
+  from: User! @external
+  to: [User!]! @external
+  subject: String
+  content: String!
+  timestamp: DateTime!
+  attachments: [File!]! @external
+  threadId: String
+  metadata: JSON
+}
+
+enum CommunicationType {
+  COMMENT
+  EMAIL
+  SLACK_MESSAGE
+  TEAMS_MESSAGE
+  PHONE_CALL
+  VIDEO_CALL
+  IN_PERSON_MEETING
+}
+
+type ExternalReference {
+  id: ID!
+  system: String!
+  referenceId: String!
+  referenceType: ExternalReferenceType!
+  url: URL
+  title: String
+  description: String
+  createdAt: DateTime!
+  lastSyncedAt: DateTime
+  syncStatus: SyncStatus!
+}
+
+enum ExternalReferenceType {
+  TICKET
+  INCIDENT
+  VULNERABILITY
+  THREAT_INTEL
+  COMPLIANCE_FINDING
+  AUDIT_FINDING
+  INVESTIGATION
+}
+
+enum SyncStatus {
+  SYNCED
+  PENDING
+  FAILED
+  CONFLICT
+}
+
+# Threat Intelligence Context
+type ThreatContext {
+  threatLevel: ThreatLevel! @external
+  threatActors: [ThreatActor!]! @external
+  campaigns: [ThreatCampaign!]! @external
+  techniques: [MitreTechnique!]! @external
+  indicators: [Indicator!]! @external
+  attribution: ThreatAttribution
+  timeline: [ThreatEvent!]!
+  relatedThreats: [RelatedThreat!]!
+}
+
+type ThreatAttribution {
+  confidence: AttributionConfidence!
+  country: String
+  organization: String
+  motivations: [ThreatMotivation!]!
+  capabilities: [ThreatCapability!]!
+  evidence: [AttributionEvidence!]!
+}
+
+enum AttributionConfidence {
+  LOW
+  MEDIUM
+  HIGH
+  CONFIRMED
+}
+
+enum ThreatMotivation {
+  FINANCIAL_GAIN
+  ESPIONAGE
+  SABOTAGE
+  HACKTIVISM
+  TESTING_SECURITY
+  PERSONAL_VENDETTA
+  STATE_SPONSORED
+  CYBER_WARFARE
+}
+
+enum ThreatCapability {
+  SCRIPT_KIDDIE
+  SKILLED_INDIVIDUAL
+  ORGANIZED_GROUP
+  NATION_STATE
+  ADVANCED_PERSISTENT_THREAT
+}
+
+type AttributionEvidence {
+  type: EvidenceType! @external
+  description: String!
+  confidence: Float!
+  source: String!
+  collectedAt: DateTime!
+}
+
+type ThreatEvent {
+  timestamp: DateTime!
+  event: String!
+  description: String!
+  confidence: Float!
+  sources: [String!]!
+}
+
+type RelatedThreat {
+  threatId: ID!
+  relationship: ThreatRelationship!
+  confidence: Float!
+  description: String!
+}
+
+enum ThreatRelationship {
+  SAME_ACTOR
+  SAME_CAMPAIGN
+  SAME_TECHNIQUE
+  SIMILAR_INDICATOR
+  RELATED_INFRASTRUCTURE
+  SHARED_RESOURCES
+}
+
+# Geo Location and Context
+type GeoLocation {
+  country: String!
+  region: String
+  city: String
+  latitude: Float
+  longitude: Float
+  timezone: String
+  isp: String
+  organization: String
+  asn: String
+  threatLevel: GeoThreatLevel!
+}
+
+enum GeoThreatLevel {
+  LOW_RISK
+  MEDIUM_RISK
+  HIGH_RISK
+  HOSTILE
+  UNKNOWN
+}
+
+# Workflow Management
+type AlertWorkflow {
+  id: ID!
+  name: String!
+  currentStep: WorkflowStep!
+  steps: [WorkflowStep!]!
+  startedAt: DateTime!
+  expectedCompletionAt: DateTime
+  actualCompletionAt: DateTime
+  status: WorkflowStatus!
+  progress: Float! # 0.0 to 1.0
+}
+
+type WorkflowStep {
+  id: ID!
+  name: String!
+  description: String!
+  order: Int!
+  status: WorkflowStepStatus!
+  assignee: User @external
+  startedAt: DateTime
+  completedAt: DateTime
+  estimatedDuration: Int # minutes
+  actualDuration: Int # minutes
+  dependencies: [WorkflowStep!]!
+  outputs: JSON
+  notes: String
+}
+
+enum WorkflowStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  ON_HOLD
+  FAILED
+}
+
+enum WorkflowStepStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+  FAILED
+  BLOCKED
+}
+
+type AlertApproval {
+  id: ID!
+  type: ApprovalType!
+  requiredApprovers: [User!]! @external
+  approvers: [ApprovalEntry!]!
+  status: ApprovalStatus!
+  requestedAt: DateTime!
+  requiredBy: DateTime
+  completedAt: DateTime
+  reason: String!
+}
+
+enum ApprovalType {
+  CLOSURE
+  ESCALATION
+  FALSE_POSITIVE
+  SUPPRESSION
+  AUTOMATION_EXECUTION
+  INCIDENT_CREATION
+  EXTERNAL_SHARING
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+type ApprovalEntry {
+  approver: User! @external
+  decision: ApprovalDecision!
+  decidedAt: DateTime!
+  comments: String
+  delegatedTo: User @external
+}
+
+enum ApprovalDecision {
+  APPROVED
+  REJECTED
+  ABSTAINED
+}
+
+# Pattern Matching and Similarity
+type SimilarAlert {
+  alert: Alert! @external
+  similarity: Float! # 0.0 to 1.0
+  matchingFields: [String!]!
+  reasons: [SimilarityReason!]!
+  confidence: Float!
+}
+
+type SimilarityReason {
+  type: SimilarityType!
+  field: String!
+  score: Float!
+  description: String!
+}
+
+enum SimilarityType {
+  EXACT_MATCH
+  PATTERN_MATCH
+  SEMANTIC_MATCH
+  TEMPORAL_PROXIMITY
+  ASSET_OVERLAP
+  USER_OVERLAP
+  INDICATOR_OVERLAP
+}
+
+type PatternMatch {
+  pattern: AlertPattern!
+  confidence: Float!
+  matchingFields: [String!]!
+  historicalMatches: Int!
+  lastSeen: DateTime
+}
+
+type AlertPattern {
+  id: ID!
+  name: String!
+  description: String!
+  conditions: [PatternCondition!]!
+  frequency: PatternFrequency!
+  severity: Severity!
+  falsePositiveRate: Float!
+  lastUpdated: DateTime!
+}
+
+type PatternCondition {
+  field: String!
+  operator: PatternOperator!
+  value: String!
+  weight: Float!
+}
+
+enum PatternOperator {
+  EQUALS
+  CONTAINS
+  MATCHES_REGEX
+  IN_RANGE
+  GREATER_THAN
+  LESS_THAN
+  EXISTS
+}
+
+type PatternFrequency {
+  count: Int!
+  timeWindow: Int! # seconds
+  trend: FrequencyTrend!
+}
+
+enum FrequencyTrend {
+  INCREASING
+  DECREASING
+  STABLE
+  SPORADIC
+}
+
+# Regulatory Reporting
+type RegulatoryReporting {
+  frameworks: [ComplianceFramework!]! @external
+  reportingRequired: Boolean!
+  reportingDeadline: DateTime
+  reportedAt: DateTime
+  reportedBy: User @external
+  reportingStatus: ReportingStatus!
+  externalReferences: [ExternalReference!]!
+}
+
+enum ReportingStatus {
+  NOT_REQUIRED
+  REQUIRED
+  IN_PROGRESS
+  SUBMITTED
+  ACKNOWLEDGED
+  OVERDUE
+}
+
+# External System Integration
+type ExternalSystem {
+  id: ID!
+  name: String!
+  type: ExternalSystemType!
+  url: URL
+  reportedAt: DateTime!
+  status: ExternalReportStatus!
+  referenceId: String
+  metadata: JSON
+}
+
+enum ExternalSystemType {
+  SIEM
+  SOAR
+  ITSM
+  THREAT_INTELLIGENCE
+  COMPLIANCE_TOOL
+  VULNERABILITY_SCANNER
+  INCIDENT_RESPONSE
+  FORENSICS_TOOL
+}
+
+enum ExternalReportStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  PARTIAL
+  RETRY
+}
+
+# Queries
+type Query {
+  # Alert queries with advanced filtering
+  alerts(
+    filter: AlertFilter
+    sort: AlertSort
+    first: Int
+    after: String
+    last: Int
+    before: String
+  ): AlertConnection @auth(requires: ANALYST) @organizationScope @complexity(value: 20)
+  
+  # Single alert query with full context
+  alert(id: ID!): Alert @auth(requires: ANALYST) @organizationScope
+  
+  # Alert search with full-text capabilities
+  searchAlerts(
+    query: String!
+    filter: AlertFilter
+    sort: AlertSort
+    first: Int
+    after: String
+  ): AlertSearchResult @auth(requires: ANALYST) @organizationScope @complexity(value: 50)
+  
+  # Similar alerts discovery
+  similarAlerts(
+    alertId: ID!
+    maxResults: Int = 10
+    similarityThreshold: Float = 0.7
+    timeWindow: Int = 2592000 # 30 days in seconds
+  ): [SimilarAlert!]! @auth(requires: ANALYST) @organizationScope @complexity(value: 100)
+  
+  # Alert analytics and metrics
+  alertAnalytics(
+    organizationId: ID!
+    timeRange: TimeRange!
+    filters: AlertFilter
+    groupBy: [AlertGroupBy!]
+  ): AlertAnalytics @auth(requires: ANALYST) @organizationScope @complexity(value: 200)
+  
+  # Alert patterns and trends
+  alertPatterns(
+    organizationId: ID!
+    timeRange: TimeRange!
+    minConfidence: Float = 0.8
+  ): [AlertPattern!]! @auth(requires: ANALYST) @organizationScope @complexity(value: 150)
+  
+  # Escalation policies
+  escalationPolicies: [EscalationPolicy!]! @auth(requires: ADMIN) @organizationScope
+  escalationPolicy(id: ID!): EscalationPolicy @auth(requires: ADMIN) @organizationScope
+  
+  # Playbooks
+  playbooks(
+    filter: PlaybookFilter
+    sort: PlaybookSort
+  ): [Playbook!]! @auth(requires: ANALYST) @organizationScope
+  playbook(id: ID!): Playbook @auth(requires: ANALYST) @organizationScope
+  
+  # On-call information
+  whoIsOnCall(teamId: ID): [User!]! @auth(requires: ANALYST) @organizationScope
+  onCallSchedule(
+    teamId: ID
+    timeRange: TimeRange!
+  ): OnCallRotation @auth(requires: ANALYST) @organizationScope
+  
+  # Alert dashboard metrics
+  alertDashboard(
+    organizationId: ID!
+    timeRange: TimeRange!
+  ): AlertDashboard @auth(requires: ANALYST) @organizationScope @complexity(value: 100)
+  
+  # Export alerts
+  exportAlerts(
+    filter: AlertFilter
+    format: ExportFormat! @external
+    compression: CompressionType = GZIP @external
+  ): ExportJob! @auth(requires: ANALYST) @organizationScope @rateLimit(max: 5, window: 3600)
+}
+
+# Mutations
+type Mutation {
+  # Alert lifecycle management
+  acknowledgeAlert(id: ID!, note: String): AcknowledgeAlertResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  resolveAlert(id: ID!, resolution: String!, evidence: [ID!]): ResolveAlertResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  closeAlert(id: ID!, reason: String!, requiresApproval: Boolean = false): CloseAlertResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  reopenAlert(id: ID!, reason: String!): ReopenAlertResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  
+  # Assignment management
+  assignAlert(id: ID!, assigneeId: ID!, note: String): AssignAlertResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  unassignAlert(id: ID!, reason: String): UnassignAlertResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  bulkAssignAlerts(alertIds: [ID!]!, assigneeId: ID!): BulkAssignResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  
+  # Escalation management
+  escalateAlert(id: ID!, reason: String!, targetLevel: Int): EscalateAlertResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  deEscalateAlert(id: ID!, reason: String!): DeEscalateAlertResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  snoozeAlert(id: ID!, duration: Int!, reason: String!): SnoozeAlertResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  unsnoozeAlert(id: ID!): UnsnoozeAlertResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  
+  # False positive management
+  markAsFalsePositive(
+    id: ID!,
+    reason: String!,
+    confidence: Float!,
+    createSuppressionRule: Boolean = false
+  ): MarkFalsePositiveResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  
+  # Bulk operations
+  bulkUpdateAlerts(alertIds: [ID!]!, updates: BulkAlertUpdate!): BulkUpdateResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  bulkCloseAlerts(alertIds: [ID!]!, reason: String!): BulkCloseResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  
+  # Evidence and artifact management
+  addEvidence(alertId: ID!, evidence: EvidenceInput!): AddEvidenceResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  addArtifact(alertId: ID!, file: Upload!): AddArtifactResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  addScreenshot(alertId: ID!, file: Upload!, description: String): AddScreenshotResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  
+  # Communication and collaboration
+  addComment(alertId: ID!, content: String!, visibility: CommentVisibility = INTERNAL): AddCommentResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  sendNotification(alertId: ID!, recipients: [ID!]!, message: String!): SendNotificationResult! @auth(requires: ANALYST) @organizationScope
+  
+  # Incident creation from alert
+  createIncidentFromAlert(alertId: ID!, input: CreateIncidentInput!): CreateIncidentResult! @auth(requires: INCIDENT_RESPONDER) @organizationScope @auditLog
+  
+  # Automation triggers
+  executePlaybook(alertId: ID!, playbookId: ID!): ExecutePlaybookResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  triggerAutomation(alertId: ID!, automationId: ID!, parameters: JSON): TriggerAutomationResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  
+  # Configuration management
+  createEscalationPolicy(input: CreateEscalationPolicyInput!): CreateEscalationPolicyResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  updateEscalationPolicy(id: ID!, input: UpdateEscalationPolicyInput!): UpdateEscalationPolicyResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  deleteEscalationPolicy(id: ID!): DeleteEscalationPolicyResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  # Playbook management
+  createPlaybook(input: CreatePlaybookInput!): CreatePlaybookResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  updatePlaybook(id: ID!, input: UpdatePlaybookInput!): UpdatePlaybookResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  deletePlaybook(id: ID!): DeletePlaybookResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  # Pattern management
+  createAlertPattern(input: CreateAlertPatternInput!): CreateAlertPatternResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  updateAlertPattern(id: ID!, input: UpdateAlertPatternInput!): UpdateAlertPatternResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  deleteAlertPattern(id: ID!): DeleteAlertPatternResult! @auth(requires: ADMIN) @organizationScope @auditLog
+}
+
+# Subscriptions
+type Subscription {
+  # Real-time alert updates
+  alertUpdates(
+    organizationId: ID!
+    filter: AlertFilter
+  ): AlertUpdate! @auth(requires: ANALYST) @organizationScope
+  
+  # Assignment notifications
+  assignmentUpdates(
+    userId: ID!
+  ): AssignmentUpdate! @auth(requires: ANALYST)
+  
+  # Escalation notifications
+  escalationUpdates(
+    organizationId: ID!
+    severityThreshold: Severity = HIGH
+  ): EscalationUpdate! @auth(requires: ANALYST) @organizationScope
+  
+  # New alerts in real-time
+  newAlerts(
+    organizationId: ID!
+    filter: AlertFilter
+  ): NewAlertNotification! @auth(requires: ANALYST) @organizationScope
+  
+  # Alert analytics updates
+  alertMetricsUpdates(
+    organizationId: ID!
+    updateInterval: Int = 300 # seconds
+  ): AlertMetricsUpdate! @auth(requires: ANALYST) @organizationScope
+  
+  # Pattern detection notifications
+  patternDetected(
+    organizationId: ID!
+    minConfidence: Float = 0.8
+  ): PatternDetectionAlert! @auth(requires: ANALYST) @organizationScope
+}
+
+# Input Types
+input AlertFilter {
+  alertTypes: [AlertType!]
+  severities: [Severity!]
+  statuses: [AlertStatus!]
+  priorities: [AlertPriority!]
+  assigneeIds: [ID!]
+  unassigned: Boolean
+  assetIds: [ID!]
+  sources: [String!]
+  dateRange: DateRangeFilter @external
+  riskScoreRange: FloatRangeFilter @external
+  tags: StringFilter @external
+  escalationLevel: IntFilter @external
+  slaBreached: Boolean
+  falsePositive: Boolean
+  hasIncident: Boolean
+  hasEvidence: Boolean
+  customFilters: JSON
+}
+
+input AlertSort {
+  field: AlertSortField!
+  direction: SortDirection! @external
+}
+
+enum AlertSortField {
+  CREATED_AT
+  UPDATED_AT
+  FIRST_TRIGGERED
+  LAST_TRIGGERED
+  SEVERITY
+  PRIORITY
+  RISK_SCORE
+  RESPONSE_TIME
+  RESOLUTION_TIME
+  ESCALATION_LEVEL
+}
+
+enum AlertGroupBy {
+  ALERT_TYPE
+  SEVERITY
+  STATUS
+  PRIORITY
+  ASSIGNEE
+  SOURCE
+  ASSET
+  DATE
+  HOUR
+  DAY_OF_WEEK
+}
+
+input BulkAlertUpdate {
+  status: AlertStatus
+  priority: AlertPriority
+  assigneeId: ID
+  tags: [String!]
+  escalationLevel: Int
+}
+
+input EvidenceInput {
+  type: EvidenceType! @external
+  content: String!
+  contentType: String!
+  description: String
+}
+
+enum CommentVisibility {
+  INTERNAL
+  EXTERNAL
+  CUSTOMER_FACING
+}
+
+input CreateIncidentInput @external {
+  title: String!
+  description: String!
+  severity: Severity!
+  priority: IncidentPriority! @external
+}
+
+input CreateEscalationPolicyInput {
+  name: String!
+  steps: [EscalationStepInput!]!
+  repeatCount: Int = 3
+  repeatInterval: Int = 3600
+}
+
+input EscalationStepInput {
+  level: Int!
+  assigneeId: ID
+  teamId: ID
+  escalationTime: Int!
+  conditions: [EscalationConditionInput!]
+  actions: [EscalationActionInput!]!
+}
+
+input EscalationConditionInput {
+  field: String!
+  operator: ComparisonOperator! @external
+  value: String!
+  timeWindow: Int
+}
+
+input EscalationActionInput {
+  type: EscalationActionType!
+  parameters: JSON
+}
+
+input UpdateEscalationPolicyInput {
+  name: String
+  steps: [EscalationStepInput!]
+  repeatCount: Int
+  repeatInterval: Int
+  enabled: Boolean
+}
+
+input CreatePlaybookInput {
+  name: String!
+  description: String!
+  alertTypes: [AlertType!]!
+  severities: [Severity!]!
+  steps: [PlaybookStepInput!]!
+  tags: [String!]
+}
+
+input UpdatePlaybookInput {
+  name: String
+  description: String
+  alertTypes: [AlertType!]
+  severities: [Severity!]
+  steps: [PlaybookStepInput!]
+  tags: [String!]
+}
+
+input PlaybookStepInput {
+  title: String!
+  description: String!
+  type: PlaybookStepType!
+  estimatedDuration: Int
+  required: Boolean = true
+  instructions: String!
+  checklistItems: [String!]
+}
+
+input PlaybookFilter {
+  alertTypes: [AlertType!]
+  severities: [Severity!]
+  tags: [String!]
+  search: String
+}
+
+input PlaybookSort {
+  field: PlaybookSortField!
+  direction: SortDirection! @external
+}
+
+enum PlaybookSortField {
+  NAME
+  CREATED_AT
+  LAST_UPDATED
+  USAGE_COUNT
+}
+
+input CreateAlertPatternInput {
+  name: String!
+  description: String!
+  conditions: [PatternConditionInput!]!
+  severity: Severity!
+}
+
+input UpdateAlertPatternInput {
+  name: String
+  description: String
+  conditions: [PatternConditionInput!]
+  severity: Severity
+  enabled: Boolean
+}
+
+input PatternConditionInput {
+  field: String!
+  operator: PatternOperator!
+  value: String!
+  weight: Float = 1.0
+}
+
+# Connection Types
+type AlertConnection {
+  edges: [AlertEdge!]!
+  pageInfo: PageInfo! @external
+  totalCount: Int!
+  aggregations: AlertAggregations
+}
+
+type AlertEdge {
+  node: Alert!
+  cursor: String!
+}
+
+type AlertAggregations {
+  bySeverity: [SeverityCount!]! @external
+  byStatus: [AlertStatusCount!]!
+  byType: [AlertTypeCount!]!
+  byPriority: [PriorityCount!]!
+  averageResponseTime: Float
+  averageResolutionTime: Float
+  slaBreachRate: Float
+  falsePositiveRate: Float
+}
+
+type AlertStatusCount {
+  status: AlertStatus!
+  count: Int!
+  percentage: Float!
+}
+
+type AlertTypeCount {
+  alertType: AlertType!
+  count: Int!
+  percentage: Float!
+}
+
+type PriorityCount {
+  priority: AlertPriority!
+  count: Int!
+  percentage: Float!
+}
+
+# Analytics Types
+type AlertAnalytics {
+  organizationId: ID!
+  timeRange: TimeRange! @external
+  totalAlerts: Int!
+  newAlerts: Int!
+  resolvedAlerts: Int!
+  falsePositives: Int!
+  
+  # Trends
+  alertTrend: [DataPoint!]! @external
+  severityTrend: [SeverityTrendPoint!]!
+  responseTimeTrend: [DataPoint!]! @external
+  resolutionTimeTrend: [DataPoint!]! @external
+  
+  # Distributions
+  alertsByType: [AlertTypeCount!]!
+  alertsBySeverity: [SeverityCount!]! @external
+  alertsByStatus: [AlertStatusCount!]!
+  alertsByAssignee: [AssigneeCount!]!
+  alertsBySource: [SourceCount!]! @external
+  
+  # Performance Metrics
+  averageResponseTime: Float!
+  averageResolutionTime: Float!
+  medianResponseTime: Float!
+  medianResolutionTime: Float!
+  slaBreachRate: Float!
+  escalationRate: Float!
+  falsePositiveRate: Float!
+  
+  # Top Lists
+  topAlertTypes: [TopAlertType!]!
+  topSources: [TopSource!]! @external
+  topAssignees: [TopAssignee!]!
+  mostEscalatedAlerts: [Alert!]!
+  
+  lastUpdated: DateTime!
+}
+
+type SeverityTrendPoint {
+  timestamp: DateTime!
+  low: Int!
+  medium: Int!
+  high: Int!
+  critical: Int!
+}
+
+type AssigneeCount {
+  assignee: User @external
+  count: Int!
+  averageResponseTime: Float
+  averageResolutionTime: Float
+}
+
+type TopAlertType {
+  alertType: AlertType!
+  count: Int!
+  trend: Float
+  averageSeverity: Float!
+}
+
+type TopAssignee {
+  assignee: User! @external
+  alertCount: Int!
+  resolvedCount: Int!
+  averageResponseTime: Float!
+  workloadScore: Float!
+}
+
+type AlertDashboard {
+  overview: AlertOverview!
+  recentAlerts: [Alert!]!
+  criticalAlerts: [Alert!]!
+  myAlerts: [Alert!]!
+  teamAlerts: [Alert!]!
+  trends: AlertTrends!
+  performance: AlertPerformance!
+}
+
+type AlertOverview {
+  total: Int!
+  new: Int!
+  acknowledged: Int!
+  inProgress: Int!
+  resolved: Int!
+  criticalOpen: Int!
+  slaBreached: Int!
+  averageResponseTime: Float!
+}
+
+type AlertTrends {
+  last24Hours: [DataPoint!]! @external
+  last7Days: [DataPoint!]! @external
+  last30Days: [DataPoint!]! @external
+  volumeChange: Float!
+  severityChange: Float!
+}
+
+type AlertPerformance {
+  responseTimeP50: Float!
+  responseTimeP95: Float!
+  resolutionTimeP50: Float!
+  resolutionTimeP95: Float!
+  mttr: Float! # Mean Time To Resolution
+  mtta: Float! # Mean Time To Acknowledge
+  escalationRate: Float!
+  falsePositiveRate: Float!
+}
+
+type AlertSearchResult {
+  alerts: AlertConnection!
+  suggestions: [String!]!
+  facets: AlertSearchFacets!
+  totalTime: Int!
+}
+
+type AlertSearchFacets {
+  alertTypes: [AlertTypeFacet!]!
+  severities: [SeverityFacet!]! @external
+  statuses: [AlertStatusFacet!]!
+  sources: [SourceFacet!]! @external
+  assignees: [AssigneeFacet!]!
+}
+
+type AlertTypeFacet {
+  alertType: AlertType!
+  count: Int!
+}
+
+type AlertStatusFacet {
+  status: AlertStatus!
+  count: Int!
+}
+
+type AssigneeFacet {
+  assignee: User! @external
+  count: Int!
+}
+
+# Result Types
+type AcknowledgeAlertResult {
+  success: Boolean!
+  alert: Alert
+  message: String!
+}
+
+type ResolveAlertResult {
+  success: Boolean!
+  alert: Alert
+  message: String!
+}
+
+type CloseAlertResult {
+  success: Boolean!
+  alert: Alert
+  requiresApproval: Boolean!
+  approvalId: ID
+  message: String!
+}
+
+type ReopenAlertResult {
+  success: Boolean!
+  alert: Alert
+  message: String!
+}
+
+type AssignAlertResult {
+  success: Boolean!
+  alert: Alert
+  previousAssignee: User @external
+  message: String!
+}
+
+type UnassignAlertResult {
+  success: Boolean!
+  alert: Alert
+  message: String!
+}
+
+type BulkAssignResult {
+  success: Boolean!
+  successCount: Int!
+  failureCount: Int!
+  errors: [BulkOperationError!]!
+}
+
+type BulkOperationError {
+  alertId: ID!
+  error: String!
+}
+
+type EscalateAlertResult {
+  success: Boolean!
+  alert: Alert
+  escalation: AlertEscalation
+  message: String!
+}
+
+type DeEscalateAlertResult {
+  success: Boolean!
+  alert: Alert
+  message: String!
+}
+
+type SnoozeAlertResult {
+  success: Boolean!
+  alert: Alert
+  snoozedUntil: DateTime!
+  message: String!
+}
+
+type UnsnoozeAlertResult {
+  success: Boolean!
+  alert: Alert
+  message: String!
+}
+
+type MarkFalsePositiveResult {
+  success: Boolean!
+  alert: Alert
+  suppressionRuleCreated: Boolean!
+  suppressionRuleId: ID
+  message: String!
+}
+
+type BulkUpdateResult {
+  success: Boolean!
+  updatedCount: Int!
+  failureCount: Int!
+  errors: [BulkOperationError!]!
+}
+
+type BulkCloseResult {
+  success: Boolean!
+  closedCount: Int!
+  failureCount: Int!
+  errors: [BulkOperationError!]!
+}
+
+type AddEvidenceResult {
+  success: Boolean!
+  evidence: Evidence @external
+  message: String!
+}
+
+type AddArtifactResult {
+  success: Boolean!
+  artifact: Artifact
+  message: String!
+}
+
+type AddScreenshotResult {
+  success: Boolean!
+  screenshot: Screenshot
+  message: String!
+}
+
+type AddCommentResult {
+  success: Boolean!
+  comment: Communication
+  message: String!
+}
+
+type SendNotificationResult {
+  success: Boolean!
+  sentCount: Int!
+  failureCount: Int!
+  message: String!
+}
+
+type CreateIncidentResult {
+  success: Boolean!
+  incident: Incident @external
+  message: String!
+}
+
+type ExecutePlaybookResult {
+  success: Boolean!
+  workflow: AlertWorkflow
+  message: String!
+}
+
+type TriggerAutomationResult {
+  success: Boolean!
+  action: AutomatedAction @external
+  message: String!
+}
+
+type CreateEscalationPolicyResult {
+  success: Boolean!
+  policy: EscalationPolicy
+  errors: [ValidationError!]! @external
+}
+
+type UpdateEscalationPolicyResult {
+  success: Boolean!
+  policy: EscalationPolicy
+  errors: [ValidationError!]! @external
+}
+
+type DeleteEscalationPolicyResult {
+  success: Boolean!
+  message: String!
+}
+
+type CreatePlaybookResult {
+  success: Boolean!
+  playbook: Playbook
+  errors: [ValidationError!]! @external
+}
+
+type UpdatePlaybookResult {
+  success: Boolean!
+  playbook: Playbook
+  errors: [ValidationError!]! @external
+}
+
+type DeletePlaybookResult {
+  success: Boolean!
+  message: String!
+}
+
+type CreateAlertPatternResult {
+  success: Boolean!
+  pattern: AlertPattern
+  errors: [ValidationError!]! @external
+}
+
+type UpdateAlertPatternResult {
+  success: Boolean!
+  pattern: AlertPattern
+  errors: [ValidationError!]! @external
+}
+
+type DeleteAlertPatternResult {
+  success: Boolean!
+  message: String!
+}
+
+# Subscription Event Types
+type AlertUpdate {
+  type: AlertUpdateType!
+  alert: Alert!
+  previousValues: JSON
+  changedBy: User @external
+  timestamp: DateTime!
+}
+
+enum AlertUpdateType {
+  CREATED
+  UPDATED
+  STATUS_CHANGED
+  ASSIGNED
+  ESCALATED
+  RESOLVED
+  CLOSED
+  EVIDENCE_ADDED
+  COMMENT_ADDED
+}
+
+type AssignmentUpdate {
+  type: AssignmentUpdateType!
+  alert: Alert!
+  assignee: User! @external
+  assigner: User @external
+  timestamp: DateTime!
+}
+
+enum AssignmentUpdateType {
+  ASSIGNED
+  UNASSIGNED
+  REASSIGNED
+}
+
+type EscalationUpdate {
+  type: EscalationUpdateType!
+  alert: Alert!
+  escalation: AlertEscalation
+  timestamp: DateTime!
+}
+
+enum EscalationUpdateType {
+  ESCALATED
+  DE_ESCALATED
+  ESCALATION_OVERDUE
+}
+
+type NewAlertNotification {
+  alert: Alert!
+  matchedFilters: [String!]!
+  priority: NotificationPriority!
+  timestamp: DateTime!
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+type AlertMetricsUpdate {
+  metrics: AlertAnalytics!
+  changedMetrics: [String!]!
+  timestamp: DateTime!
+}
+
+type PatternDetectionAlert {
+  pattern: AlertPattern!
+  matchingAlerts: [Alert!]!
+  confidence: Float!
+  detectedAt: DateTime!
+}

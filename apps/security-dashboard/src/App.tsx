@@ -4,10 +4,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { ErrorBoundary } from 'react-error-boundary';
 import { HelmetProvider } from 'react-helmet-async';
+import { ApolloProvider } from '@apollo/client';
 
 // Store
 import { useAuthStore } from './store/authStore';
 import { useRealTimeUpdates } from './hooks/useApi';
+
+// Apollo Client
+import { apolloClient } from './lib/apollo-client';
 
 // Layout
 import DashboardLayout from './components/layout/DashboardLayout';
@@ -20,7 +24,7 @@ import NotificationSystem from './components/notifications/NotificationSystem';
 // Lazy-loaded pages for performance
 const SecurityOverview = lazy(() => import('./pages/SecurityOverview'));
 const EventTimeline = lazy(() => import('./pages/EventTimeline'));
-const ThreatDetection = lazy(() => import('./pages/ThreatDetection'));
+const ThreatDetectionDashboard = lazy(() => import('./pages/ThreatDetectionDashboard'));
 const IncidentManagement = lazy(() => import('./pages/IncidentManagement'));
 const ComplianceDashboard = lazy(() => import('./pages/ComplianceDashboard'));
 const UserManagement = lazy(() => import('./pages/UserManagement'));
@@ -88,8 +92,9 @@ const App: React.FC = () => {
       }}
     >
       <QueryClientProvider client={queryClient}>
-        <HelmetProvider>
-          <div className="dark min-h-screen bg-soc-background text-white">
+        <ApolloProvider client={apolloClient}>
+          <HelmetProvider>
+            <div className="dark min-h-screen bg-soc-background text-white">
             <Router>
               <Routes>
                 {/* Public Routes */}
@@ -118,7 +123,7 @@ const App: React.FC = () => {
                             <Route path="/events" element={<EventTimeline />} />
 
                             {/* Threat Detection */}
-                            <Route path="/threats" element={<ThreatDetection />} />
+                            <Route path="/threats" element={<ThreatDetectionDashboard />} />
 
                             {/* Incident Management */}
                             <Route path="/incidents" element={<IncidentManagement />} />
@@ -145,8 +150,9 @@ const App: React.FC = () => {
               {/* Global Notification System */}
               <NotificationSystem />
             </Router>
-          </div>
-        </HelmetProvider>
+            </div>
+          </HelmetProvider>
+        </ApolloProvider>
         
         {/* React Query DevTools */}
         <ReactQueryDevtools initialIsOpen={false} />
