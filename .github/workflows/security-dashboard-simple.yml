@@ -33,7 +33,7 @@ jobs:
           npm run build || echo "Build completed with warnings"
           
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: security-dashboard-dist
           path: apps/security-dashboard/dist/
