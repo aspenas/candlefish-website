@@ -23,14 +23,26 @@ jobs:
         with:
           node-version: '20'
           
-      - name: Build Security Dashboard Only
-        working-directory: apps/security-dashboard
+      - name: Build Security Dashboard Only  
         run: |
-          # Install dependencies for Security Dashboard only
-          npm install --legacy-peer-deps
+          # Copy Security Dashboard to temp location to isolate from monorepo
+          cp -r apps/security-dashboard /tmp/security-dashboard-build
+          cd /tmp/security-dashboard-build
+          
+          # Remove any pnpm artifacts
+          rm -f pnpm-lock.yaml .pnpmfile.cjs
+          
+          # Create fresh package-lock.json
+          npm install --legacy-peer-deps --package-lock-only
+          
+          # Install dependencies
+          npm ci --legacy-peer-deps || npm install --legacy-peer-deps
           
           # Build the application
           npm run build || echo "Build completed with warnings"
+          
+          # Copy dist back
+          cp -r dist ${{ github.workspace }}/apps/security-dashboard/
           
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
