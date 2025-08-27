@@ -15,6 +15,7 @@ const OperationalCraft = lazy(() =>
 )
 
 export default function OperationalHomepage() {
+  // Force rebuild after netlify.toml configuration fix
   const [isClient, setIsClient] = useState(false)
 
   useEffect(() => {
