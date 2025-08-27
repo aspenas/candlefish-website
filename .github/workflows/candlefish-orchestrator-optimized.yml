@@ -57,7 +57,7 @@ env:
   # Standard environment
   NODE_VERSION: '20'
   PYTHON_VERSION: '3.12'
-  PNPM_VERSION: '8.15.6'
+  PNPM_VERSION: '9.7.0'
   AWS_REGION: us-east-1
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
 

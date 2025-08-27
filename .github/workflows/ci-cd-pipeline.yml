@@ -27,7 +27,7 @@ on:
 
 env:
   NODE_VERSION: '18'
-  PNPM_VERSION: '8.15.6'
+  PNPM_VERSION: '9.7.0'
   DOCKER_REGISTRY: ghcr.io
   REGISTRY_USER: ${{ github.actor }}
   REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}

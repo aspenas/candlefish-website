@@ -46,7 +46,7 @@ env:
   ECS_TASK_DEFINITION: security-dashboard-task
   CLOUDFRONT_DISTRIBUTION_ID: E1234567890ABC
   NODE_VERSION: 20.x
-  PNPM_VERSION: 9
+  PNPM_VERSION: '9.7.0'
 
 jobs:
   # ============================================
