@@ -240,7 +240,7 @@ const KongSecurityStatus: React.FC = () => {
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        
+
         <DialogContent>
           <Typography variant="body2" paragraph>
             Apply the following security measures to secure your Kong Admin API:
@@ -250,13 +250,13 @@ const KongSecurityStatus: React.FC = () => {
             {kongStatus.recommendedActions.map((action, index) => (
               <ListItem key={index}>
                 <ListItemIcon>
-                  {index === 0 ? <VpnLockIcon color="error" /> : 
-                   index === 1 ? <NetworkCheckIcon color="warning" /> : 
+                  {index === 0 ? <VpnLockIcon color="error" /> :
+                   index === 1 ? <NetworkCheckIcon color="warning" /> :
                    <SecurityUpdateIcon color="info" />}
                 </ListItemIcon>
-                <ListItemText 
+                <ListItemText
                   primary={action}
-                  secondary={index === 0 ? 'Critical - Apply immediately' : 
+                  secondary={index === 0 ? 'Critical - Apply immediately' :
                            index === 1 ? 'High priority' : 'Recommended'}
                 />
               </ListItem>
@@ -272,13 +272,13 @@ const KongSecurityStatus: React.FC = () => {
             </Box>
           )}
         </DialogContent>
-        
+
         <DialogActions>
           <Button onClick={handleCloseFixDialog}>
             Cancel
           </Button>
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             onClick={handleApplySecurityFix}
             disabled={loading}
             startIcon={<SecurityUpdateIcon />}

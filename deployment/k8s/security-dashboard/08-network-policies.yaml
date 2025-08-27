@@ -1,0 +1,563 @@
+# Security Dashboard - Network Security Policies
+# Comprehensive network security for production deployment
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: security-dashboard-default-deny
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard-network-policy
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: security
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+
+---
+# Backend API Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: security-dashboard-backend-policy
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard-backend-policy
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: security
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: security-dashboard-backend
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  ingress:
+  # Allow ingress from Kong Gateway
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: kong-gateway
+    ports:
+    - protocol: TCP
+      port: 4000
+    - protocol: TCP
+      port: 4001
+  
+  # Allow ingress from GraphQL Gateway
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: security-dashboard-graphql
+    ports:
+    - protocol: TCP
+      port: 4000
+    - protocol: TCP
+      port: 4001
+  
+  # Allow ingress from ALB/Load Balancer (for health checks)
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: TCP
+      port: 4000
+  
+  # Allow Prometheus scraping
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9090
+  
+  egress:
+  # DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  
+  # Database access
+  - to:
+    - podSelector:
+        matchLabels:
+          app: postgres
+    ports:
+    - protocol: TCP
+      port: 5432
+  
+  # Redis access
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+  
+  # External HTTPS (for JWKS, external APIs)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+  
+  # External HTTP (for health checks, webhooks)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 80
+
+---
+# Frontend Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: security-dashboard-frontend-policy
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard-frontend-policy
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: security
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: security-dashboard-frontend
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  ingress:
+  # Allow ingress from Kong Gateway
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: kong-gateway
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 8443
+  
+  # Allow ingress from ALB/Load Balancer
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: TCP
+      port: 8080
+  
+  # Allow Prometheus scraping
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9090
+  
+  egress:
+  # DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  
+  # Backend API access
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: security-dashboard-backend
+    ports:
+    - protocol: TCP
+      port: 4000
+    - protocol: TCP
+      port: 4001
+  
+  # GraphQL Gateway access
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: security-dashboard-graphql
+    ports:
+    - protocol: TCP
+      port: 4000
+
+---
+# Kong Gateway Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kong-gateway-policy
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: kong-gateway-policy
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: security
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: kong-gateway
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  ingress:
+  # Allow ingress from anywhere (public-facing)
+  - from: []
+    ports:
+    - protocol: TCP
+      port: 8000
+    - protocol: TCP
+      port: 8443
+  
+  # Allow admin access only from specific namespaces
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/component: admin
+    ports:
+    - protocol: TCP
+      port: 8001
+    - protocol: TCP
+      port: 8444
+  
+  # Allow Prometheus scraping
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 8001
+  
+  egress:
+  # DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  
+  # Backend services
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: security-dashboard-backend
+    ports:
+    - protocol: TCP
+      port: 4000
+    - protocol: TCP
+      port: 4001
+  
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: security-dashboard-graphql
+    ports:
+    - protocol: TCP
+      port: 4000
+  
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: security-dashboard-frontend
+    ports:
+    - protocol: TCP
+      port: 8080
+  
+  # External HTTPS for plugin validation
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+
+---
+# Database Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-policy
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: postgres-policy
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: security
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  ingress:
+  # Allow ingress from backend services only
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: security-dashboard-backend
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: security-dashboard-graphql
+    ports:
+    - protocol: TCP
+      port: 5432
+  
+  # Allow monitoring access
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9187  # postgres_exporter port
+  
+  egress:
+  # DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+---
+# Redis Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-policy
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: redis-policy
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: security
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  ingress:
+  # Allow ingress from backend services only
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: security-dashboard-backend
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: security-dashboard-graphql
+    ports:
+    - protocol: TCP
+      port: 6379
+  
+  # Allow monitoring access
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9121  # redis_exporter port
+  
+  egress:
+  # DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+---
+# Monitoring Access Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: monitoring-access-policy
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: monitoring-access-policy
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: security
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  
+  ingress:
+  # Allow Prometheus to scrape all services
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    - podSelector:
+        matchLabels:
+          app: prometheus
+  
+  # Allow Grafana to access services
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    - podSelector:
+        matchLabels:
+          app: grafana
+  
+  # Allow Jaeger collector
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: observability
+    - podSelector:
+        matchLabels:
+          app: jaeger
+    ports:
+    - protocol: TCP
+      port: 14268
+    - protocol: UDP
+      port: 14267
+
+---
+# Pod Security Policy (for PSP-enabled clusters)
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: security-dashboard-psp
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard-psp
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: security
+spec:
+  privileged: false
+  allowPrivilegeEscalation: false
+  requiredDropCapabilities:
+    - ALL
+  volumes:
+    - 'configMap'
+    - 'emptyDir'
+    - 'projected'
+    - 'secret'
+    - 'downwardAPI'
+    - 'persistentVolumeClaim'
+  runAsUser:
+    rule: 'MustRunAsNonRoot'
+  seLinux:
+    rule: 'RunAsAny'
+  fsGroup:
+    rule: 'RunAsAny'
+  readOnlyRootFilesystem: true
+  hostNetwork: false
+  hostIPC: false
+  hostPID: false
+
+---
+# Security Context Constraints (for OpenShift)
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: security-dashboard-scc
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard-scc
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: security
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegedContainer: false
+allowedCapabilities: []
+defaultAddCapabilities: []
+fsGroup:
+  type: MustRunAs
+  ranges:
+  - min: 1000
+    max: 65535
+readOnlyRootFilesystem: true
+requiredDropCapabilities:
+- ALL
+runAsUser:
+  type: MustRunAsNonRoot
+seLinuxContext:
+  type: RunAsAny
+volumes:
+- configMap
+- downwardAPI
+- emptyDir
+- persistentVolumeClaim
+- projected
+- secret
+
+---
+# Service Mesh Security Policy (if using Istio)
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: security-dashboard-authz
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard-authz
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: security
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: security-dashboard
+  rules:
+  # Allow health checks
+  - to:
+    - operation:
+        paths: ["/health", "/ready", "/.well-known/health"]
+  
+  # Allow authenticated API access
+  - to:
+    - operation:
+        paths: ["/api/*", "/graphql"]
+    when:
+    - key: request.auth.claims[aud]
+      values: ["security-dashboard"]
+  
+  # Allow frontend access
+  - to:
+    - operation:
+        paths: ["/*"]
+    when:
+    - key: source.labels[app.kubernetes.io/name]
+      values: ["kong-gateway", "security-dashboard-frontend"]
+
+---
+# Peer Authentication (mTLS for service mesh)
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: security-dashboard-mtls
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard-mtls
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: security
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: security-dashboard
+  mtls:
+    mode: STRICT

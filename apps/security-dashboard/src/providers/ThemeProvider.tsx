@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { 
-  ThemeProvider as MuiThemeProvider, 
+import {
+  ThemeProvider as MuiThemeProvider,
   createTheme,
   Theme,
   CssBaseline,
@@ -55,7 +55,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   // Apply theme changes to document for consistency
   useEffect(() => {
     const root = document.documentElement;
-    
+
     if (isDarkMode) {
       root.style.setProperty('--background-color', '#0a0a0a');
       root.style.setProperty('--surface-color', '#1a1a1a');
@@ -82,7 +82,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   // Listen for system theme changes (optional feature)
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
+
     const handleSystemThemeChange = (e: MediaQueryListEvent) => {
       // Only auto-switch if user hasn't explicitly set a preference
       const savedTheme = localStorage.getItem('security-dashboard-theme');
@@ -92,7 +92,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     };
 
     mediaQuery.addEventListener('change', handleSystemThemeChange);
-    
+
     return () => {
       mediaQuery.removeEventListener('change', handleSystemThemeChange);
     };

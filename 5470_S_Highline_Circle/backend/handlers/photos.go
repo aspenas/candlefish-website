@@ -91,6 +91,30 @@ func (ph *PhotoHandler) broadcastMessage(msg models.WebSocketMessage) {
 	}
 }
 
+// GetPhotoStatus returns the status of the photo service
+func (ph *PhotoHandler) GetPhotoStatus(c *fiber.Ctx) error {
+	status := "operational"
+	connectedClients := 0
+	
+	// Check if wsClients is initialized
+	if ph.wsClients != nil {
+		connectedClients = len(ph.wsClients)
+	}
+	
+	// Check if upload directory exists and is writable
+	if _, err := os.Stat(ph.uploadDir); os.IsNotExist(err) {
+		status = "degraded"
+	}
+	
+	return c.JSON(fiber.Map{
+		"status":            status,
+		"upload_dir":        ph.uploadDir,
+		"connected_clients": connectedClients,
+		"service":           "photo-handler",
+		"timestamp":         time.Now().Format(time.RFC3339),
+	})
+}
+
 // Upload single photo for item
 func (ph *PhotoHandler) UploadItemPhoto(c *fiber.Ctx) error {
 	itemID := c.Params("id")

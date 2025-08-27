@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test React Query Logic</title>
+    <style>
+        body { font-family: system-ui; padding: 20px; }
+        .result { padding: 10px; margin: 10px 0; border: 1px solid #ddd; }
+        pre { background: #f4f4f4; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Testing Exact React Query Logic</h1>
+
+    <div id="test-results"></div>
+
+    <script>
+        // Mimicking the exact code from api.ts
+        const BASE_URL = 'https://5470-inventory.fly.dev/api/v1';
+
+        // Mimicking the apiClient with response interceptor
+        async function simulateApiCall(endpoint) {
+            console.log(`Calling: ${BASE_URL}${endpoint}`);
+
+            try {
+                const response = await fetch(`${BASE_URL}${endpoint}`);
+                const data = await response.json();
+
+                console.log('Raw response:', data);
+
+                // This is what the interceptor does
+                const interceptedResponse = {
+                    data: data,
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: response.headers,
+                    config: {},
+                    request: {}
+                };
+
+                console.log('Intercepted response:', interceptedResponse);
+                return interceptedResponse;
+
+            } catch (error) {
+                console.error('Error:', error);
+                throw error;
+            }
+        }
+
+        // Mimicking the React Query functions
+        async function getItems() {
+            const result = await simulateApiCall('/items');
+            console.log('getItems result:', result);
+            console.log('result.data:', result.data);
+            return result.data; // This is what React Query gets
+        }
+
+        async function getRooms() {
+            const result = await simulateApiCall('/rooms');
+            console.log('getRooms result:', result);
+            console.log('result.data:', result.data);
+            return result.data; // This is what React Query gets
+        }
+
+        // Mimicking PhotoCapture.tsx data processing
+        function processItemsData(data) {
+            console.log('Processing items data:', data);
+
+            // This is the exact logic from PhotoCapture.tsx
+            const items = Array.isArray(data) ? data : (data?.items || data || []);
+
+            console.log('Processed items:', items);
+            console.log('Items count:', items.length);
+
+            return items;
+        }
+
+        function processRoomsData(data) {
+            console.log('Processing rooms data:', data);
+
+            // This is the exact logic from PhotoCapture.tsx
+            const rooms = Array.isArray(data) ? data : (data?.rooms || data || []);
+
+            console.log('Processed rooms:', rooms);
+            console.log('Rooms count:', rooms.length);
+
+            return rooms;
+        }
+
+        // Run the test
+        async function runTest() {
+            const resultsDiv = document.getElementById('test-results');
+
+            try {
+                resultsDiv.innerHTML = '<h2>Testing Items API...</h2>';
+                const itemsData = await getItems();
+                const items = processItemsData(itemsData);
+
+                resultsDiv.innerHTML += `
+                    <div class="result">
+                        <h3>Items Test</h3>
+                        <p>✅ Raw data type: ${typeof itemsData}</p>
+                        <p>✅ Is array: ${Array.isArray(itemsData)}</p>
+                        <p>✅ Has items property: ${itemsData?.items ? 'Yes' : 'No'}</p>
+                        <p>✅ Final items count: ${items.length}</p>
+                        <details>
+                            <summary>First item</summary>
+                            <pre>${JSON.stringify(items[0], null, 2)}</pre>
+                        </details>
+                    </div>
+                `;
+
+                resultsDiv.innerHTML += '<h2>Testing Rooms API...</h2>';
+                const roomsData = await getRooms();
+                const rooms = processRoomsData(roomsData);
+
+                resultsDiv.innerHTML += `
+                    <div class="result">
+                        <h3>Rooms Test</h3>
+                        <p>✅ Raw data type: ${typeof roomsData}</p>
+                        <p>✅ Is array: ${Array.isArray(roomsData)}</p>
+                        <p>✅ Has rooms property: ${roomsData?.rooms ? 'Yes' : 'No'}</p>
+                        <p>✅ Final rooms count: ${rooms.length}</p>
+                        <details>
+                            <summary>First room</summary>
+                            <pre>${JSON.stringify(rooms[0], null, 2)}</pre>
+                        </details>
+                    </div>
+                `;
+
+                // Check what the UI would show
+                const photosNeeded = items.filter(item => !item.images || item.images.length === 0);
+                const progressPercent = items.length > 0 ?
+                    Math.round(((items.length - photosNeeded.length) / items.length) * 100) : 0;
+
+                resultsDiv.innerHTML += `
+                    <div class="result">
+                        <h3>What PhotoCapture.tsx would display:</h3>
+                        <p>📊 Total items: ${items.length}</p>
+                        <p>📸 Photos needed: ${photosNeeded.length}</p>
+                        <p>✅ Progress: ${progressPercent}%</p>
+                        <p>🏠 Total rooms: ${rooms.length}</p>
+                        <p style="font-size: 1.2em; font-weight: bold;">
+                            Display text: "${photosNeeded.length} of ${items.length} items need photos (${progressPercent}% complete)"
+                        </p>
+                    </div>
+                `;
+
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="result">
+                        <h3>❌ Error</h3>
+                        <pre>${error.message}</pre>
+                    </div>
+                `;
+                console.error('Test failed:', error);
+            }
+        }
+
+        // Run test on load
+        runTest();
+    </script>
+</body>
+</html>

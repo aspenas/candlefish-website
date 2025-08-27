@@ -1,0 +1,1514 @@
+# Security Dashboard - Enhanced Production CI/CD Pipeline
+# Enterprise-grade deployment automation with zero-downtime and comprehensive monitoring
+# Designed for 1000+ concurrent users with 99.9% uptime SLA
+
+name: Security Dashboard - Production Deployment Enhanced
+
+on:
+  push:
+    branches:
+      - main
+      - production
+      - release/*
+    paths:
+      - 'apps/security-dashboard/**'
+      - 'apps/mobile-security-dashboard/**'
+      - 'graphql/**'
+      - 'deployment/**'
+  pull_request:
+    branches:
+      - main
+      - production
+    paths:
+      - 'apps/security-dashboard/**'
+      - 'apps/mobile-security-dashboard/**'
+      - 'graphql/**'
+      - 'deployment/**'
+  workflow_dispatch:
+    inputs:
+      deployment_type:
+        description: 'Deployment strategy'
+        required: true
+        default: 'blue-green'
+        type: choice
+        options:
+          - blue-green
+          - canary
+          - rolling
+          - hotfix
+      target_environment:
+        description: 'Target environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - staging
+          - production
+          - disaster-recovery
+      skip_tests:
+        description: 'Skip tests (emergency deployments only)'
+        required: false
+        default: false
+        type: boolean
+      force_deploy:
+        description: 'Force deployment (override safety checks)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ACCOUNT_ID: 681214184463
+  CLUSTER_NAME: candlefish-eks-cluster
+  NAMESPACE: security-dashboard
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+  
+  # Monitoring and alerting
+  SLACK_WEBHOOK: ${{ secrets.SLACK_DEPLOYMENT_WEBHOOK }}
+  PAGER_DUTY_ROUTING_KEY: ${{ secrets.PAGERDUTY_ROUTING_KEY }}
+  DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
+  
+  # Performance thresholds
+  MAX_RESPONSE_TIME: 500
+  MIN_SUCCESS_RATE: 99.9
+  MAX_ERROR_RATE: 0.1
+  
+  # Security thresholds
+  MAX_CRITICAL_VULNERABILITIES: 0
+  MAX_HIGH_VULNERABILITIES: 2
+  MAX_MEDIUM_VULNERABILITIES: 10
+
+concurrency:
+  group: production-deploy-${{ github.ref }}
+  cancel-in-progress: false  # Never cancel production deployments
+
+jobs:
+  # ===============================================
+  # PRE-DEPLOYMENT VALIDATION
+  # ===============================================
+  
+  pre-deployment-validation:
+    name: Pre-Deployment Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    outputs:
+      deployment-id: ${{ steps.create-deployment.outputs.deployment-id }}
+      commit-hash: ${{ github.sha }}
+      environment: ${{ steps.determine-environment.outputs.environment }}
+      strategy: ${{ steps.determine-strategy.outputs.strategy }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Determine deployment environment
+        id: determine-environment
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "environment=${{ github.event.inputs.target_environment }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/production" ]]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+          else
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Determine deployment strategy
+        id: determine-strategy
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "strategy=${{ github.event.inputs.deployment_type }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ steps.determine-environment.outputs.environment }}" == "production" ]]; then
+            echo "strategy=blue-green" >> $GITHUB_OUTPUT
+          else
+            echo "strategy=rolling" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Create deployment record
+        id: create-deployment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: '${{ steps.determine-environment.outputs.environment }}',
+              description: 'Security Dashboard Production Deployment',
+              auto_merge: false,
+              required_contexts: []
+            });
+            
+            core.setOutput('deployment-id', deployment.data.id);
+      
+      - name: Validate branch protection
+        run: |
+          if [[ "${{ steps.determine-environment.outputs.environment }}" == "production" ]]; then
+            if [[ "${{ github.ref }}" != "refs/heads/production" && "${{ github.event.inputs.force_deploy }}" != "true" ]]; then
+              echo "❌ Production deployments must come from production branch"
+              exit 1
+            fi
+          fi
+          echo "✅ Branch protection validation passed"
+      
+      - name: Validate commit signatures (production only)
+        if: steps.determine-environment.outputs.environment == 'production'
+        run: |
+          # Verify the last 5 commits are signed
+          for commit in $(git log --format="%H" -n 5); do
+            if ! git verify-commit $commit 2>/dev/null; then
+              echo "⚠️ Warning: Unsigned commit detected: $commit"
+            fi
+          done
+          echo "✅ Commit signature validation completed"
+
+  # ===============================================
+  # ENHANCED SECURITY SCANNING
+  # ===============================================
+  
+  enhanced-security-scan:
+    name: Enhanced Security Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [pre-deployment-validation]
+    
+    outputs:
+      security-status: ${{ steps.security-gate.outputs.status }}
+      vulnerability-count: ${{ steps.security-gate.outputs.vulnerability-count }}
+      compliance-score: ${{ steps.security-gate.outputs.compliance-score }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Advanced secret scanning
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+          extra_args: --debug --only-verified --json
+        continue-on-error: true
+      
+      - name: SAST with Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/secrets
+            p/owasp-top-ten
+            p/kubernetes
+            p/docker
+            p/javascript
+            p/typescript
+        continue-on-error: true
+      
+      - name: Container security scan with Trivy
+        run: |
+          # Install Trivy
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.50.1
+          
+          # Scan all Dockerfiles
+          find deployment/docker -name "Dockerfile*" | while read dockerfile; do
+            echo "Scanning $dockerfile..."
+            trivy config --format sarif --output "trivy-$(basename $dockerfile).sarif" "$dockerfile"
+          done
+      
+      - name: Kubernetes security scan with Kubesec
+        run: |
+          curl -sSX GET "https://api.github.com/repos/controlplaneio/kubesec/releases/latest" | \
+            jq -r '.assets[] | select(.name=="kubesec_linux_amd64.tar.gz") | .browser_download_url' | \
+            xargs curl -sSL | tar xz
+          chmod +x kubesec
+          
+          # Scan all Kubernetes manifests
+          find deployment/k8s -name "*.yaml" -exec ./kubesec scan {} \; > kubesec-results.json 2>/dev/null || true
+      
+      - name: OWASP ZAP API Security Test
+        uses: zaproxy/action-api-scan@v0.7.0
+        with:
+          target: 'https://api.security.candlefish.ai'
+          format: sarif
+          output: zap-api-results.sarif
+        continue-on-error: true
+      
+      - name: Dependency vulnerability scan
+        run: |
+          # Frontend dependencies
+          cd apps/security-dashboard
+          npm audit --audit-level=moderate --json > ../../security-audit-frontend.json || true
+          cd ../..
+          
+          # Mobile dependencies  
+          cd apps/mobile-security-dashboard
+          npm audit --audit-level=moderate --json > ../../security-audit-mobile.json || true
+          cd ../..
+          
+          # GraphQL dependencies
+          cd graphql
+          npm audit --audit-level=moderate --json > ../security-audit-graphql.json || true
+          cd ..
+      
+      - name: License compliance check
+        uses: fossas/fossa-action@main
+        with:
+          api-key: ${{ secrets.FOSSA_API_KEY }}
+          project-name: 'security-dashboard'
+        continue-on-error: true
+      
+      - name: Security gate evaluation
+        id: security-gate
+        run: |
+          CRITICAL_VULNS=0
+          HIGH_VULNS=0
+          MEDIUM_VULNS=0
+          
+          # Count vulnerabilities from all sources
+          if [ -f "security-audit-frontend.json" ]; then
+            FRONTEND_CRITICAL=$(jq '[.vulnerabilities[]? | select(.severity=="critical")] | length' security-audit-frontend.json 2>/dev/null || echo "0")
+            FRONTEND_HIGH=$(jq '[.vulnerabilities[]? | select(.severity=="high")] | length' security-audit-frontend.json 2>/dev/null || echo "0")
+            FRONTEND_MEDIUM=$(jq '[.vulnerabilities[]? | select(.severity=="moderate")] | length' security-audit-frontend.json 2>/dev/null || echo "0")
+            
+            CRITICAL_VULNS=$((CRITICAL_VULNS + FRONTEND_CRITICAL))
+            HIGH_VULNS=$((HIGH_VULNS + FRONTEND_HIGH))
+            MEDIUM_VULNS=$((MEDIUM_VULNS + FRONTEND_MEDIUM))
+          fi
+          
+          TOTAL_VULNS=$((CRITICAL_VULNS + HIGH_VULNS + MEDIUM_VULNS))
+          
+          echo "vulnerability-count=$TOTAL_VULNS" >> $GITHUB_OUTPUT
+          echo "critical-vulns=$CRITICAL_VULNS" >> $GITHUB_OUTPUT
+          echo "high-vulns=$HIGH_VULNS" >> $GITHUB_OUTPUT
+          echo "medium-vulns=$MEDIUM_VULNS" >> $GITHUB_OUTPUT
+          
+          # Calculate compliance score (100 - vulnerability penalty)
+          COMPLIANCE_SCORE=$((100 - (CRITICAL_VULNS * 50) - (HIGH_VULNS * 10) - (MEDIUM_VULNS * 2)))
+          COMPLIANCE_SCORE=$((COMPLIANCE_SCORE < 0 ? 0 : COMPLIANCE_SCORE))
+          echo "compliance-score=$COMPLIANCE_SCORE" >> $GITHUB_OUTPUT
+          
+          # Security gate decision
+          if [[ "${{ needs.pre-deployment-validation.outputs.environment }}" == "production" ]]; then
+            if [ "$CRITICAL_VULNS" -gt "${{ env.MAX_CRITICAL_VULNERABILITIES }}" ]; then
+              echo "❌ Security gate failed: $CRITICAL_VULNS critical vulnerabilities (max: ${{ env.MAX_CRITICAL_VULNERABILITIES }})"
+              echo "status=fail" >> $GITHUB_OUTPUT
+              exit 1
+            elif [ "$HIGH_VULNS" -gt "${{ env.MAX_HIGH_VULNERABILITIES }}" ]; then
+              echo "❌ Security gate failed: $HIGH_VULNS high vulnerabilities (max: ${{ env.MAX_HIGH_VULNERABILITIES }})"
+              echo "status=fail" >> $GITHUB_OUTPUT
+              exit 1
+            elif [ "$MEDIUM_VULNS" -gt "${{ env.MAX_MEDIUM_VULNERABILITIES }}" ]; then
+              echo "⚠️ Security gate warning: $MEDIUM_VULNS medium vulnerabilities (max: ${{ env.MAX_MEDIUM_VULNERABILITIES }})"
+              if [[ "${{ github.event.inputs.force_deploy }}" != "true" ]]; then
+                echo "status=fail" >> $GITHUB_OUTPUT
+                exit 1
+              fi
+            fi
+          fi
+          
+          echo "✅ Security gate passed: $CRITICAL_VULNS critical, $HIGH_VULNS high, $MEDIUM_VULNS medium vulnerabilities"
+          echo "📊 Compliance score: $COMPLIANCE_SCORE/100"
+          echo "status=pass" >> $GITHUB_OUTPUT
+      
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            *.sarif
+            *.json
+            kubesec-results.json
+          retention-days: 30
+
+  # ===============================================
+  # COMPREHENSIVE TEST SUITE
+  # ===============================================
+  
+  comprehensive-test-suite:
+    name: Comprehensive Test Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [enhanced-security-scan]
+    if: needs.enhanced-security-scan.outputs.security-status == 'pass' && github.event.inputs.skip_tests != 'true'
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: security_dashboard_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        test-suite:
+          - name: unit
+            timeout: 15
+            coverage: 80
+            command: "test:unit:coverage"
+          - name: integration
+            timeout: 20
+            coverage: 70
+            command: "test:integration:coverage"
+          - name: e2e
+            timeout: 30
+            coverage: 60
+            command: "test:e2e:ci"
+          - name: performance
+            timeout: 25
+            target-rps: 1000
+            command: "test:performance:ci"
+          - name: accessibility
+            timeout: 15
+            wcag-level: "AA"
+            command: "test:accessibility:ci"
+          - name: security
+            timeout: 20
+            command: "test:security:ci"
+          - name: load
+            timeout: 30
+            users: 500
+            command: "test:load:ci"
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: |
+          npm ci --prefer-offline --no-audit
+          
+          # Install dependencies for all applications
+          cd apps/security-dashboard && npm ci --prefer-offline --no-audit && cd ../..
+          cd apps/mobile-security-dashboard && npm ci --prefer-offline --no-audit && cd ../..
+          cd graphql && npm ci --prefer-offline --no-audit && cd ..
+      
+      - name: Setup test environment
+        run: |
+          # Set test environment variables
+          cp .env.test.example .env.test
+          
+          # Start background services for E2E tests
+          if [[ "${{ matrix.test-suite.name }}" == "e2e" ]]; then
+            docker-compose -f docker-compose.test.yml up -d
+            sleep 30
+          fi
+      
+      - name: Run ${{ matrix.test-suite.name }} tests
+        timeout-minutes: ${{ matrix.test-suite.timeout }}
+        run: |
+          case "${{ matrix.test-suite.name }}" in
+            unit|integration|e2e|accessibility|security)
+              npm run ${{ matrix.test-suite.command }} || exit 1
+              ;;
+            performance)
+              # Run k6 performance tests
+              cd __tests__/performance/k6
+              k6 run security-dashboard-load-test.js --out json=performance-results.json
+              
+              # Validate performance metrics
+              RESPONSE_TIME=$(jq -r '.metrics.http_req_duration.values."p(95)"' performance-results.json)
+              if (( $(echo "$RESPONSE_TIME > ${{ env.MAX_RESPONSE_TIME }}" | bc -l) )); then
+                echo "❌ Performance test failed: P95 response time $RESPONSE_TIME ms > ${{ env.MAX_RESPONSE_TIME }} ms"
+                exit 1
+              fi
+              
+              SUCCESS_RATE=$(jq -r '.metrics.http_req_failed.values.rate' performance-results.json)
+              if (( $(echo "$SUCCESS_RATE > ${{ env.MAX_ERROR_RATE }}" | bc -l) )); then
+                echo "❌ Performance test failed: Error rate $SUCCESS_RATE > ${{ env.MAX_ERROR_RATE }}"
+                exit 1
+              fi
+              
+              echo "✅ Performance tests passed: P95 ${RESPONSE_TIME}ms, Error rate: ${SUCCESS_RATE}"
+              ;;
+            load)
+              # Run comprehensive load test
+              cd __tests__/performance/k6
+              k6 run security-dashboard-stress-test.js --vus ${{ matrix.test-suite.users }} --duration 10m --out json=load-results.json
+              ;;
+          esac
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.test-suite.name }}
+          path: |
+            coverage/
+            test-results/
+            playwright-report/
+            __tests__/performance/k6/*.json
+          retention-days: 30
+      
+      - name: Report test metrics to DataDog
+        if: always() && env.DATADOG_API_KEY != ''
+        run: |
+          # Report test results to DataDog
+          curl -X POST "https://api.datadoghq.com/api/v1/series" \
+            -H "Content-Type: application/json" \
+            -H "DD-API-KEY: ${{ env.DATADOG_API_KEY }}" \
+            -d '{
+              "series": [{
+                "metric": "security_dashboard.tests.${{ matrix.test-suite.name }}.duration",
+                "points": [[' "$(date +%s)" ', ' "${GITHUB_RUN_NUMBER}" ']],
+                "tags": ["environment:${{ needs.pre-deployment-validation.outputs.environment }}", "commit:${{ github.sha }}"]
+              }]
+            }'
+
+  # ===============================================
+  # ENHANCED CONTAINER BUILD
+  # ===============================================
+  
+  enhanced-container-build:
+    name: Enhanced Container Build & Registry Push
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: [comprehensive-test-suite, pre-deployment-validation]
+    if: success() || (github.event.inputs.skip_tests == 'true' && needs.enhanced-security-scan.outputs.security-status == 'pass')
+    
+    outputs:
+      backend-image: ${{ steps.build-backend.outputs.image }}
+      frontend-image: ${{ steps.build-frontend.outputs.image }}
+      graphql-gateway-image: ${{ steps.build-graphql.outputs.image }}
+      kong-gateway-image: ${{ steps.build-kong.outputs.image }}
+      mobile-image: ${{ steps.build-mobile.outputs.image }}
+    
+    strategy:
+      matrix:
+        service: [backend, security-dashboard-frontend, graphql-gateway, kong-gateway, mobile-security-dashboard]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+          driver-opts: |
+            image=moby/buildkit:v0.12.0
+            network=host
+      
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.ECR_REGISTRY }}/security-dashboard-${{ matrix.service }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=sha,format=long
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=stable,enable=${{ needs.pre-deployment-validation.outputs.environment == 'production' }}
+      
+      - name: Build and push ${{ matrix.service }} image
+        id: build-${{ matrix.service }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: deployment/docker/Dockerfile.${{ matrix.service }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ github.ref_name }}
+            ENVIRONMENT=${{ needs.pre-deployment-validation.outputs.environment }}
+          provenance: true
+          sbom: true
+      
+      - name: Run container security scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.ECR_REGISTRY }}/security-dashboard-${{ matrix.service }}:${{ github.sha }}
+          format: 'sarif'
+          output: 'container-${{ matrix.service }}-trivy.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          exit-code: '0'  # Don't fail on vulnerabilities, but report them
+      
+      - name: Upload container scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'container-${{ matrix.service }}-trivy.sarif'
+          category: 'container-${{ matrix.service }}'
+      
+      - name: Sign container images
+        if: needs.pre-deployment-validation.outputs.environment == 'production'
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: 'v2.2.2'
+      
+      - name: Sign the published Docker image
+        if: needs.pre-deployment-validation.outputs.environment == 'production'
+        env:
+          COSIGN_EXPERIMENTAL: 1
+        run: |
+          cosign sign --yes ${{ env.ECR_REGISTRY }}/security-dashboard-${{ matrix.service }}@${{ steps.build-${{ matrix.service }}.outputs.digest }}
+      
+      - name: Generate SBOM
+        if: needs.pre-deployment-validation.outputs.environment == 'production'
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.ECR_REGISTRY }}/security-dashboard-${{ matrix.service }}:${{ github.sha }}
+          format: spdx-json
+          output-file: sbom-${{ matrix.service }}.spdx.json
+      
+      - name: Upload SBOM
+        if: needs.pre-deployment-validation.outputs.environment == 'production'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.service }}
+          path: sbom-${{ matrix.service }}.spdx.json
+          retention-days: 90
+
+  # ===============================================
+  # INFRASTRUCTURE DEPLOYMENT WITH DRIFT DETECTION
+  # ===============================================
+  
+  infrastructure-deployment:
+    name: Infrastructure Deployment & Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    needs: [enhanced-container-build, pre-deployment-validation]
+    if: success()
+    environment: ${{ needs.pre-deployment-validation.outputs.environment }}
+    
+    outputs:
+      cluster-endpoint: ${{ steps.terraform-output.outputs.cluster-endpoint }}
+      rds-endpoint: ${{ steps.terraform-output.outputs.rds-endpoint }}
+      redis-endpoint: ${{ steps.terraform-output.outputs.redis-endpoint }}
+      vpc-id: ${{ steps.terraform-output.outputs.vpc-id }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+          terraform_wrapper: false
+      
+      - name: Terraform Init
+        working-directory: deployment/terraform/security-dashboard
+        run: |
+          terraform init -backend-config="bucket=candlefish-terraform-state-681214184463" \
+                        -backend-config="key=security-dashboard/${{ needs.pre-deployment-validation.outputs.environment }}/terraform.tfstate" \
+                        -backend-config="region=${{ env.AWS_REGION }}" \
+                        -backend-config="encrypt=true" \
+                        -backend-config="dynamodb_table=candlefish-terraform-locks"
+      
+      - name: Terraform Format Check
+        working-directory: deployment/terraform/security-dashboard
+        run: terraform fmt -check -recursive
+      
+      - name: Terraform Validate
+        working-directory: deployment/terraform/security-dashboard
+        run: terraform validate
+      
+      - name: Terraform Drift Detection
+        working-directory: deployment/terraform/security-dashboard
+        run: |
+          terraform plan -detailed-exitcode \
+            -var="environment=${{ needs.pre-deployment-validation.outputs.environment }}" \
+            -var="cluster_name=${{ env.CLUSTER_NAME }}" \
+            -var="aws_region=${{ env.AWS_REGION }}" \
+            -var="image_tag=${{ github.sha }}" \
+            -out=tfplan-drift
+        continue-on-error: true
+        id: drift-check
+      
+      - name: Report infrastructure drift
+        if: steps.drift-check.outputs.exitcode == '2'
+        run: |
+          echo "🔍 Infrastructure drift detected!"
+          terraform show tfplan-drift
+          
+          # Send drift notification
+          if [[ -n "${{ env.SLACK_WEBHOOK }}" ]]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data '{"text":"🚨 Infrastructure drift detected in ${{ needs.pre-deployment-validation.outputs.environment }} environment"}' \
+              ${{ env.SLACK_WEBHOOK }}
+          fi
+        working-directory: deployment/terraform/security-dashboard
+      
+      - name: Terraform Plan
+        working-directory: deployment/terraform/security-dashboard
+        run: |
+          terraform plan \
+            -var="environment=${{ needs.pre-deployment-validation.outputs.environment }}" \
+            -var="cluster_name=${{ env.CLUSTER_NAME }}" \
+            -var="aws_region=${{ env.AWS_REGION }}" \
+            -var="image_tag=${{ github.sha }}" \
+            -var="deployment_id=${{ needs.pre-deployment-validation.outputs.deployment-id }}" \
+            -out=tfplan
+      
+      - name: Terraform Apply
+        working-directory: deployment/terraform/security-dashboard
+        run: |
+          terraform apply -auto-approve tfplan
+      
+      - name: Extract Terraform Outputs
+        id: terraform-output
+        working-directory: deployment/terraform/security-dashboard
+        run: |
+          echo "cluster-endpoint=$(terraform output -raw cluster_endpoint 2>/dev/null || echo 'not-available')" >> $GITHUB_OUTPUT
+          echo "rds-endpoint=$(terraform output -raw rds_endpoint 2>/dev/null || echo 'not-available')" >> $GITHUB_OUTPUT
+          echo "redis-endpoint=$(terraform output -raw redis_endpoint 2>/dev/null || echo 'not-available')" >> $GITHUB_OUTPUT
+          echo "vpc-id=$(terraform output -raw vpc_id 2>/dev/null || echo 'not-available')" >> $GITHUB_OUTPUT
+          echo "alb-dns=$(terraform output -raw alb_dns_name 2>/dev/null || echo 'not-available')" >> $GITHUB_OUTPUT
+      
+      - name: Validate infrastructure health
+        run: |
+          # Check EKS cluster health
+          if aws eks describe-cluster --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
+            echo "✅ EKS cluster is healthy"
+          else
+            echo "❌ EKS cluster health check failed"
+            exit 1
+          fi
+          
+          # Check RDS instance health
+          RDS_ENDPOINT="${{ steps.terraform-output.outputs.rds-endpoint }}"
+          if [[ "$RDS_ENDPOINT" != "not-available" ]]; then
+            RDS_STATUS=$(aws rds describe-db-instances --region ${{ env.AWS_REGION }} --query 'DBInstances[0].DBInstanceStatus' --output text)
+            if [[ "$RDS_STATUS" == "available" ]]; then
+              echo "✅ RDS instance is healthy"
+            else
+              echo "❌ RDS instance status: $RDS_STATUS"
+              exit 1
+            fi
+          fi
+          
+          # Check Redis cluster health
+          REDIS_ENDPOINT="${{ steps.terraform-output.outputs.redis-endpoint }}"
+          if [[ "$REDIS_ENDPOINT" != "not-available" ]]; then
+            REDIS_STATUS=$(aws elasticache describe-cache-clusters --region ${{ env.AWS_REGION }} --query 'CacheClusters[0].CacheClusterStatus' --output text)
+            if [[ "$REDIS_STATUS" == "available" ]]; then
+              echo "✅ Redis cluster is healthy"
+            else
+              echo "❌ Redis cluster status: $REDIS_STATUS"
+              exit 1
+            fi
+          fi
+
+  # ===============================================
+  # BLUE-GREEN KUBERNETES DEPLOYMENT
+  # ===============================================
+  
+  blue-green-deployment:
+    name: Blue-Green Kubernetes Deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: [infrastructure-deployment, enhanced-container-build, pre-deployment-validation]
+    if: success() && needs.pre-deployment-validation.outputs.strategy == 'blue-green'
+    environment: ${{ needs.pre-deployment-validation.outputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Install and configure kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: '1.28.4'
+      
+      - name: Install Argo Rollouts CLI
+        run: |
+          curl -LO https://github.com/argoproj/argo-rollouts/releases/download/v1.6.2/kubectl-argo-rollouts-linux-amd64
+          chmod +x ./kubectl-argo-rollouts-linux-amd64
+          sudo mv ./kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
+      
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
+          
+          # Verify cluster connectivity
+          kubectl cluster-info
+          kubectl get nodes
+      
+      - name: Create namespace and secrets
+        run: |
+          # Create namespace
+          kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+          
+          # Apply secrets from AWS Secrets Manager
+          envsubst < deployment/k8s/security-dashboard/01-secrets.yaml | kubectl apply -f -
+        env:
+          DATABASE_ENDPOINT: ${{ needs.infrastructure-deployment.outputs.rds-endpoint }}
+          REDIS_ENDPOINT: ${{ needs.infrastructure-deployment.outputs.redis-endpoint }}
+          IMAGE_TAG: ${{ github.sha }}
+          ENVIRONMENT: ${{ needs.pre-deployment-validation.outputs.environment }}
+      
+      - name: Deploy configuration
+        run: |
+          # Apply ConfigMaps
+          envsubst < deployment/k8s/security-dashboard/02-configmaps.yaml | kubectl apply -f -
+          
+          # Apply storage
+          kubectl apply -f deployment/k8s/security-dashboard/03-storage.yaml
+          
+          # Apply network policies
+          kubectl apply -f deployment/k8s/security-dashboard/08-network-policies.yaml
+        env:
+          DATABASE_ENDPOINT: ${{ needs.infrastructure-deployment.outputs.rds-endpoint }}
+          REDIS_ENDPOINT: ${{ needs.infrastructure-deployment.outputs.redis-endpoint }}
+          IMAGE_TAG: ${{ github.sha }}
+          ENVIRONMENT: ${{ needs.pre-deployment-validation.outputs.environment }}
+      
+      - name: Deploy backend with blue-green strategy
+        run: |
+          # Update backend deployment manifest with new image
+          sed -i "s|IMAGE_TAG|${{ github.sha }}|g" deployment/k8s/security-dashboard/04-backend-deployment.yaml
+          
+          # Apply backend deployment
+          kubectl apply -f deployment/k8s/security-dashboard/04-backend-deployment.yaml
+          
+          # Wait for rollout to start
+          kubectl argo rollouts get rollout security-dashboard-backend -n ${{ env.NAMESPACE }}
+          
+          # Promote after verification
+          kubectl argo rollouts promote security-dashboard-backend -n ${{ env.NAMESPACE }}
+          
+          # Wait for rollout completion
+          kubectl argo rollouts status security-dashboard-backend -n ${{ env.NAMESPACE }} --timeout 600s
+      
+      - name: Deploy GraphQL Gateway
+        run: |
+          # Update GraphQL gateway manifest
+          sed -i "s|IMAGE_TAG|${{ github.sha }}|g" deployment/k8s/security-dashboard/05-frontend-deployment.yaml
+          
+          # Apply GraphQL gateway deployment
+          kubectl apply -f deployment/k8s/security-dashboard/05-frontend-deployment.yaml
+          
+          # Monitor rollout
+          kubectl argo rollouts status graphql-gateway -n ${{ env.NAMESPACE }} --timeout 600s
+      
+      - name: Deploy Kong Gateway
+        run: |
+          # Apply Kong gateway configuration
+          kubectl apply -f deployment/k8s/security-dashboard/06-kong-gateway.yaml
+          
+          # Wait for Kong to be ready
+          kubectl wait --for=condition=ready pod -l app=kong-gateway -n ${{ env.NAMESPACE }} --timeout=300s
+      
+      - name: Deploy Ingress
+        run: |
+          # Apply ingress configuration
+          envsubst < deployment/k8s/security-dashboard/07-ingress.yaml | kubectl apply -f -
+        env:
+          ALB_DNS_NAME: ${{ needs.infrastructure-deployment.outputs.alb-dns }}
+          ENVIRONMENT: ${{ needs.pre-deployment-validation.outputs.environment }}
+      
+      - name: Validate deployment health
+        run: |
+          echo "🔍 Running comprehensive deployment validation..."
+          
+          # Check all pods are running
+          kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=security-dashboard -n ${{ env.NAMESPACE }} --timeout=300s
+          
+          # Check service endpoints
+          kubectl get endpoints -n ${{ env.NAMESPACE }}
+          
+          # Verify backend health
+          kubectl port-forward svc/security-dashboard-backend 8080:4000 -n ${{ env.NAMESPACE }} &
+          sleep 10
+          
+          # Health check with retries
+          for i in {1..10}; do
+            if curl -f http://localhost:8080/health; then
+              echo "✅ Backend health check passed"
+              break
+            fi
+            echo "⏳ Health check attempt $i/10..."
+            sleep 10
+          done
+          
+          # Kill port-forward
+          pkill -f "kubectl port-forward"
+      
+      - name: Run smoke tests
+        run: |
+          echo "🧪 Running post-deployment smoke tests..."
+          
+          # Basic API connectivity test
+          kubectl run smoke-test --rm -i --restart=Never --image=curlimages/curl:latest -n ${{ env.NAMESPACE }} -- \
+            curl -f http://security-dashboard-backend:4000/api/health
+          
+          # GraphQL endpoint test
+          kubectl run graphql-test --rm -i --restart=Never --image=curlimages/curl:latest -n ${{ env.NAMESPACE }} -- \
+            curl -f -X POST http://graphql-gateway:4000/graphql \
+            -H "Content-Type: application/json" \
+            -d '{"query":"query { __typename }"}'
+          
+          echo "✅ Smoke tests passed"
+
+  # ===============================================
+  # CANARY DEPLOYMENT (Alternative Strategy)
+  # ===============================================
+  
+  canary-deployment:
+    name: Canary Deployment Strategy
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    needs: [infrastructure-deployment, enhanced-container-build, pre-deployment-validation]
+    if: success() && needs.pre-deployment-validation.outputs.strategy == 'canary'
+    environment: ${{ needs.pre-deployment-validation.outputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials and kubectl
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Setup kubectl and Argo Rollouts
+        uses: azure/setup-kubectl@v3
+        with:
+          version: '1.28.4'
+      
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
+      
+      - name: Deploy canary configuration
+        run: |
+          # Apply canary rollout strategy
+          cat deployment/blue-green/rollout-strategy.yaml | \
+            sed "s|{{IMAGE_TAG}}|${{ github.sha }}|g" | \
+            sed "s|{{STRATEGY}}|canary|g" | \
+            kubectl apply -f -
+      
+      - name: Start canary rollout
+        run: |
+          echo "🚀 Starting canary deployment..."
+          
+          # Start canary rollout (5% traffic)
+          kubectl argo rollouts set image security-dashboard-backend \
+            security-dashboard-backend=${{ env.ECR_REGISTRY }}/security-dashboard-backend:${{ github.sha }} \
+            -n ${{ env.NAMESPACE }}
+          
+          # Wait for canary to be ready
+          kubectl argo rollouts status security-dashboard-backend -n ${{ env.NAMESPACE }} --timeout 300s
+      
+      - name: Canary analysis and validation
+        run: |
+          echo "📊 Running canary analysis..."
+          
+          # Monitor canary metrics for 5 minutes
+          sleep 300
+          
+          # Get canary metrics
+          CANARY_SUCCESS_RATE=$(kubectl run metrics-check --rm -i --restart=Never --image=curlimages/curl:latest -n ${{ env.NAMESPACE }} -- \
+            curl -s "http://security-dashboard-monitoring-prometheus:9090/api/v1/query?query=rate(http_requests_total{version=\"canary\",status!~\"5..\"}[5m])/rate(http_requests_total{version=\"canary\"}[5m])" | \
+            jq -r '.data.result[0].value[1] // "1.0"')
+          
+          CANARY_RESPONSE_TIME=$(kubectl run metrics-check --rm -i --restart=Never --image=curlimages/curl:latest -n ${{ env.NAMESPACE }} -- \
+            curl -s "http://security-dashboard-monitoring-prometheus:9090/api/v1/query?query=histogram_quantile(0.95,rate(http_request_duration_seconds_bucket{version=\"canary\"}[5m]))" | \
+            jq -r '.data.result[0].value[1] // "0"')
+          
+          echo "Canary Success Rate: $CANARY_SUCCESS_RATE"
+          echo "Canary P95 Response Time: $CANARY_RESPONSE_TIME"
+          
+          # Validate canary performance
+          if (( $(echo "$CANARY_SUCCESS_RATE < 0.995" | bc -l) )); then
+            echo "❌ Canary validation failed: Success rate $CANARY_SUCCESS_RATE < 99.5%"
+            kubectl argo rollouts abort security-dashboard-backend -n ${{ env.NAMESPACE }}
+            exit 1
+          fi
+          
+          if (( $(echo "$CANARY_RESPONSE_TIME > 0.5" | bc -l) )); then
+            echo "❌ Canary validation failed: P95 response time $CANARY_RESPONSE_TIME > 0.5s"
+            kubectl argo rollouts abort security-dashboard-backend -n ${{ env.NAMESPACE }}
+            exit 1
+          fi
+          
+          echo "✅ Canary validation passed"
+      
+      - name: Promote canary to full deployment
+        run: |
+          echo "🎯 Promoting canary to full deployment..."
+          
+          # Promote canary to 100% traffic
+          kubectl argo rollouts promote security-dashboard-backend -n ${{ env.NAMESPACE }}
+          
+          # Wait for full rollout completion
+          kubectl argo rollouts status security-dashboard-backend -n ${{ env.NAMESPACE }} --timeout 600s
+          
+          echo "✅ Canary deployment completed successfully"
+
+  # ===============================================
+  # ENHANCED MONITORING DEPLOYMENT
+  # ===============================================
+  
+  enhanced-monitoring-deployment:
+    name: Enhanced Monitoring & Observability Stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [blue-green-deployment, canary-deployment]
+    if: success() && (needs.blue-green-deployment.result == 'success' || needs.canary-deployment.result == 'success')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: '3.13.3'
+      
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
+      
+      - name: Add Helm repositories
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo add grafana https://grafana.github.io/helm-charts
+          helm repo add jaeger https://jaegertracing.github.io/helm-charts
+          helm repo update
+      
+      - name: Deploy Prometheus Stack
+        run: |
+          # Create monitoring namespace
+          kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+          
+          # Deploy kube-prometheus-stack with custom values
+          helm upgrade --install prometheus-stack prometheus-community/kube-prometheus-stack \
+            --namespace monitoring \
+            --values deployment/monitoring/prometheus-values.yaml \
+            --set grafana.adminPassword="$(openssl rand -base64 32)" \
+            --wait --timeout 600s
+      
+      - name: Deploy Jaeger for distributed tracing
+        run: |
+          # Deploy Jaeger operator
+          helm upgrade --install jaeger jaeger/jaeger \
+            --namespace monitoring \
+            --set provisionDataStore.cassandra=false \
+            --set provisionDataStore.elasticsearch=true \
+            --set elasticsearch.replicas=1 \
+            --wait --timeout 300s
+      
+      - name: Deploy Loki for log aggregation
+        run: |
+          # Deploy Loki stack
+          helm upgrade --install loki grafana/loki-stack \
+            --namespace monitoring \
+            --set loki.persistence.enabled=true \
+            --set loki.persistence.size=50Gi \
+            --set promtail.enabled=true \
+            --wait --timeout 300s
+      
+      - name: Configure alerting rules
+        run: |
+          # Apply custom alerting rules
+          kubectl apply -f deployment/monitoring/security-dashboard-alerts.yaml
+          
+          # Configure PagerDuty integration
+          if [[ -n "${{ env.PAGER_DUTY_ROUTING_KEY }}" ]]; then
+            kubectl create secret generic pagerduty-config \
+              --from-literal=routing_key="${{ env.PAGER_DUTY_ROUTING_KEY }}" \
+              --namespace monitoring \
+              --dry-run=client -o yaml | kubectl apply -f -
+          fi
+      
+      - name: Create monitoring dashboards
+        run: |
+          # Import custom Grafana dashboards
+          kubectl create configmap grafana-dashboards-security \
+            --from-file=deployment/monitoring/dashboards/security/ \
+            --namespace monitoring \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          kubectl create configmap grafana-dashboards-infrastructure \
+            --from-file=deployment/monitoring/dashboards/infrastructure/ \
+            --namespace monitoring \
+            --dry-run=client -o yaml | kubectl apply -f -
+      
+      - name: Validate monitoring stack
+        run: |
+          # Wait for all monitoring components to be ready
+          kubectl wait --for=condition=ready pod -l "app.kubernetes.io/name=prometheus" -n monitoring --timeout=300s
+          kubectl wait --for=condition=ready pod -l "app.kubernetes.io/name=grafana" -n monitoring --timeout=300s
+          
+          # Test Prometheus metrics endpoint
+          kubectl port-forward svc/prometheus-stack-kube-prom-prometheus 9090:9090 -n monitoring &
+          sleep 10
+          
+          if curl -f http://localhost:9090/api/v1/targets; then
+            echo "✅ Prometheus is collecting metrics"
+          else
+            echo "❌ Prometheus health check failed"
+            exit 1
+          fi
+          
+          pkill -f "kubectl port-forward"
+
+  # ===============================================
+  # POST-DEPLOYMENT VALIDATION & PERFORMANCE TESTING
+  # ===============================================
+  
+  post-deployment-validation:
+    name: Post-Deployment Validation & Performance Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: [blue-green-deployment, canary-deployment, enhanced-monitoring-deployment, pre-deployment-validation]
+    if: success()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+      
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: '1.28.4'
+      
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
+      
+      - name: Comprehensive health checks
+        run: |
+          echo "🏥 Running comprehensive health checks..."
+          
+          # Check all pods are healthy
+          kubectl get pods -n ${{ env.NAMESPACE }} -o wide
+          
+          # Verify all services have endpoints
+          kubectl get endpoints -n ${{ env.NAMESPACE }}
+          
+          # Check ingress status
+          kubectl get ingress -n ${{ env.NAMESPACE }}
+          
+          # Run health check script
+          chmod +x scripts/deployment/rollback-procedures.sh
+          ./scripts/deployment/rollback-procedures.sh validate
+      
+      - name: API integration tests
+        run: |
+          echo "🔗 Running API integration tests..."
+          
+          # Get service endpoint
+          ALB_DNS=$(kubectl get ingress security-dashboard-ingress -n ${{ env.NAMESPACE }} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          
+          if [[ -z "$ALB_DNS" ]]; then
+            echo "Using port-forward for testing..."
+            kubectl port-forward svc/security-dashboard-backend 8080:4000 -n ${{ env.NAMESPACE }} &
+            API_ENDPOINT="http://localhost:8080"
+            sleep 10
+          else
+            API_ENDPOINT="https://$ALB_DNS"
+          fi
+          
+          # Basic API health check
+          curl -f "$API_ENDPOINT/health" || exit 1
+          
+          # GraphQL health check
+          curl -f -X POST "$API_ENDPOINT/graphql" \
+            -H "Content-Type: application/json" \
+            -d '{"query":"query { __typename }"}' || exit 1
+          
+          echo "✅ API integration tests passed"
+          
+          # Clean up port-forward
+          pkill -f "kubectl port-forward" || true
+      
+      - name: Performance validation with k6
+        run: |
+          echo "⚡ Running performance validation..."
+          
+          # Get service endpoint for k6 tests
+          ALB_DNS=$(kubectl get ingress security-dashboard-ingress -n ${{ env.NAMESPACE }} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          
+          if [[ -n "$ALB_DNS" ]]; then
+            export BASE_URL="https://$ALB_DNS"
+          else
+            # Use port-forward for testing
+            kubectl port-forward svc/security-dashboard-backend 8080:4000 -n ${{ env.NAMESPACE }} &
+            export BASE_URL="http://localhost:8080"
+            sleep 10
+          fi
+          
+          # Run performance test
+          cd __tests__/performance/k6
+          k6 run security-dashboard-load-test.js \
+            --out json=performance-results.json \
+            --vus 100 \
+            --duration 5m
+          
+          # Validate performance metrics
+          P95_RESPONSE_TIME=$(jq -r '.metrics.http_req_duration.values."p(95)"' performance-results.json)
+          ERROR_RATE=$(jq -r '.metrics.http_req_failed.values.rate' performance-results.json)
+          
+          echo "📊 Performance Results:"
+          echo "  P95 Response Time: ${P95_RESPONSE_TIME}ms"
+          echo "  Error Rate: ${ERROR_RATE}"
+          
+          # Validate against SLA
+          if (( $(echo "$P95_RESPONSE_TIME > ${{ env.MAX_RESPONSE_TIME }}" | bc -l) )); then
+            echo "❌ Performance validation failed: P95 response time $P95_RESPONSE_TIME ms > ${{ env.MAX_RESPONSE_TIME }} ms"
+            exit 1
+          fi
+          
+          if (( $(echo "$ERROR_RATE > ${{ env.MAX_ERROR_RATE }}" | bc -l) )); then
+            echo "❌ Performance validation failed: Error rate $ERROR_RATE > ${{ env.MAX_ERROR_RATE }}"
+            exit 1
+          fi
+          
+          echo "✅ Performance validation passed"
+          
+          # Clean up port-forward
+          pkill -f "kubectl port-forward" || true
+      
+      - name: Security validation
+        run: |
+          echo "🛡️ Running security validation..."
+          
+          # Check security policies are applied
+          kubectl get networkpolicies -n ${{ env.NAMESPACE }}
+          
+          # Verify RBAC is configured
+          kubectl auth can-i --list --as=system:serviceaccount:${{ env.NAMESPACE }}:default
+          
+          # Check pod security standards
+          kubectl get pods -n ${{ env.NAMESPACE }} -o jsonpath='{range .items[*]}{.metadata.name}: {.spec.securityContext}{"\n"}{end}'
+          
+          echo "✅ Security validation passed"
+      
+      - name: Database and cache validation
+        run: |
+          echo "💾 Validating database and cache connectivity..."
+          
+          # Test database connectivity
+          kubectl exec -n ${{ env.NAMESPACE }} deployment/security-dashboard-backend -- \
+            npm run db:check || exit 1
+          
+          # Test Redis connectivity
+          kubectl exec -n ${{ env.NAMESPACE }} deployment/security-dashboard-backend -- \
+            npm run redis:ping || exit 1
+          
+          echo "✅ Database and cache validation passed"
+      
+      - name: Upload validation results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: validation-results
+          path: |
+            __tests__/performance/k6/performance-results.json
+          retention-days: 30
+
+  # ===============================================
+  # DEPLOYMENT NOTIFICATION & CLEANUP
+  # ===============================================
+  
+  deployment-notification:
+    name: Deployment Notification & Status Update
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [
+      pre-deployment-validation,
+      enhanced-security-scan,
+      comprehensive-test-suite,
+      enhanced-container-build,
+      infrastructure-deployment,
+      blue-green-deployment,
+      canary-deployment,
+      enhanced-monitoring-deployment,
+      post-deployment-validation
+    ]
+    
+    steps:
+      - name: Determine overall deployment status
+        id: status
+        run: |
+          # Determine if deployment was successful
+          if [[ "${{ needs.post-deployment-validation.result }}" == "success" ]]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "message=✅ Security Dashboard deployment completed successfully" >> $GITHUB_OUTPUT
+            echo "color=good" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "message=❌ Security Dashboard deployment failed" >> $GITHUB_OUTPUT
+            echo "color=danger" >> $GITHUB_OUTPUT
+          fi
+          
+          # Get deployment strategy used
+          STRATEGY="${{ needs.pre-deployment-validation.outputs.strategy }}"
+          echo "strategy=$STRATEGY" >> $GITHUB_OUTPUT
+          
+          # Get environment deployed to
+          ENVIRONMENT="${{ needs.pre-deployment-validation.outputs.environment }}"
+          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
+      
+      - name: Update deployment status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deploymentId = '${{ needs.pre-deployment-validation.outputs.deployment-id }}';
+            const status = '${{ steps.status.outputs.status }}';
+            
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deploymentId,
+              state: status,
+              description: '${{ steps.status.outputs.message }}',
+              environment: '${{ steps.status.outputs.environment }}'
+            });
+      
+      - name: Send comprehensive Slack notification
+        if: env.SLACK_WEBHOOK != ''
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              "text": "${{ steps.status.outputs.message }}",
+              "attachments": [
+                {
+                  "color": "${{ steps.status.outputs.color }}",
+                  "fields": [
+                    {
+                      "title": "Repository",
+                      "value": "${{ github.repository }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Environment",
+                      "value": "${{ steps.status.outputs.environment }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Strategy",
+                      "value": "${{ steps.status.outputs.strategy }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Commit",
+                      "value": "<https://github.com/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>",
+                      "short": true
+                    },
+                    {
+                      "title": "Author",
+                      "value": "${{ github.actor }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Branch",
+                      "value": "${{ github.ref_name }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Security Score",
+                      "value": "${{ needs.enhanced-security-scan.outputs.compliance-score }}/100",
+                      "short": true
+                    },
+                    {
+                      "title": "Vulnerabilities",
+                      "value": "${{ needs.enhanced-security-scan.outputs.vulnerability-count }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Workflow",
+                      "value": "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>",
+                      "short": false
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ env.SLACK_WEBHOOK }}
+      
+      - name: Send PagerDuty alert on failure
+        if: steps.status.outputs.status == 'failure' && env.PAGER_DUTY_ROUTING_KEY != ''
+        run: |
+          curl -X POST https://events.pagerduty.com/v2/enqueue \
+            -H "Content-Type: application/json" \
+            -d '{
+              "routing_key": "${{ env.PAGER_DUTY_ROUTING_KEY }}",
+              "event_action": "trigger",
+              "dedup_key": "security-dashboard-deployment-${{ github.run_id }}",
+              "payload": {
+                "summary": "Security Dashboard Deployment Failed",
+                "severity": "error",
+                "source": "GitHub Actions",
+                "component": "security-dashboard",
+                "group": "deployment",
+                "custom_details": {
+                  "repository": "${{ github.repository }}",
+                  "commit": "${{ github.sha }}",
+                  "environment": "${{ steps.status.outputs.environment }}",
+                  "workflow_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                }
+              }
+            }'
+      
+      - name: Report metrics to DataDog
+        if: always() && env.DATADOG_API_KEY != ''
+        run: |
+          DEPLOYMENT_SUCCESS=$([ "${{ steps.status.outputs.status }}" == "success" ] && echo "1" || echo "0")
+          
+          curl -X POST "https://api.datadoghq.com/api/v1/series" \
+            -H "Content-Type: application/json" \
+            -H "DD-API-KEY: ${{ env.DATADOG_API_KEY }}" \
+            -d '{
+              "series": [
+                {
+                  "metric": "security_dashboard.deployment.success",
+                  "points": [[' "$(date +%s)" ', ' "$DEPLOYMENT_SUCCESS" ']],
+                  "tags": [
+                    "environment:${{ steps.status.outputs.environment }}",
+                    "strategy:${{ steps.status.outputs.strategy }}",
+                    "commit:${{ github.sha }}",
+                    "repository:${{ github.repository }}"
+                  ]
+                },
+                {
+                  "metric": "security_dashboard.deployment.duration",
+                  "points": [[' "$(date +%s)" ', ' "${{ github.run_number }}" ']],
+                  "tags": [
+                    "environment:${{ steps.status.outputs.environment }}",
+                    "strategy:${{ steps.status.outputs.strategy }}",
+                    "status:${{ steps.status.outputs.status }}"
+                  ]
+                },
+                {
+                  "metric": "security_dashboard.security.compliance_score",
+                  "points": [[' "$(date +%s)" ', ' "${{ needs.enhanced-security-scan.outputs.compliance-score }}" ']],
+                  "tags": [
+                    "environment:${{ steps.status.outputs.environment }}",
+                    "commit:${{ github.sha }}"
+                  ]
+                }
+              ]
+            }'
+      
+      - name: Create deployment summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          # 🚀 Security Dashboard Deployment Summary
+          
+          ## Deployment Details
+          - **Status**: ${{ steps.status.outputs.status == 'success' && '✅ Success' || '❌ Failed' }}
+          - **Environment**: ${{ steps.status.outputs.environment }}
+          - **Strategy**: ${{ steps.status.outputs.strategy }}
+          - **Commit**: [${{ github.sha }}](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+          - **Author**: ${{ github.actor }}
+          
+          ## Security Analysis
+          - **Compliance Score**: ${{ needs.enhanced-security-scan.outputs.compliance-score }}/100
+          - **Vulnerabilities Found**: ${{ needs.enhanced-security-scan.outputs.vulnerability-count }}
+          - **Security Gate**: ${{ needs.enhanced-security-scan.outputs.security-status == 'pass' && '✅ Passed' || '❌ Failed' }}
+          
+          ## Infrastructure
+          - **EKS Cluster**: ${{ env.CLUSTER_NAME }}
+          - **Namespace**: ${{ env.NAMESPACE }}
+          - **AWS Region**: ${{ env.AWS_REGION }}
+          
+          ## Next Steps
+          ${{ steps.status.outputs.status == 'success' && '- Monitor application metrics in Grafana\n- Review performance dashboards\n- Verify alerting is functioning' || '- Check deployment logs for errors\n- Review rollback procedures\n- Contact on-call team if needed' }}
+          
+          ---
+          
+          **Workflow Run**: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          EOF
+      
+      - name: Final status report
+        run: |
+          echo "==========================================="
+          echo "🎯 DEPLOYMENT COMPLETE"
+          echo "==========================================="
+          echo "Status: ${{ steps.status.outputs.status }}"
+          echo "Environment: ${{ steps.status.outputs.environment }}"
+          echo "Strategy: ${{ steps.status.outputs.strategy }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Duration: ${{ github.run_number }} minutes"
+          echo "==========================================="

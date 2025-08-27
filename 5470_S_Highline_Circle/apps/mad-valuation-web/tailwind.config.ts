@@ -2,7 +2,7 @@ import type { Config } from 'tailwindcss'
 
 export default {
   content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
-  theme: { 
+  theme: {
     extend: {
       colors: {
         'mad-bone': '#fafaf9',
@@ -23,7 +23,7 @@ export default {
       borderRadius: {
         'brand': 'var(--mad-radius-xl)'
       }
-    } 
+    }
   },
   plugins: []
 } satisfies Config

@@ -1,0 +1,416 @@
+# Mobile Security Dashboard GraphQL Queries
+# Optimized for mobile bandwidth and performance
+
+# Security Overview Query - Mobile Optimized
+query MobileSecurityOverview($organizationId: ID!) {
+  securityOverview(organizationId: $organizationId) {
+    totalAssets
+    criticalVulnerabilities
+    activeAlerts
+    complianceScore
+    threatLevel
+    kongAdminApiVulnerability {
+      isVulnerable
+      riskLevel
+      recommendedActions
+      lastChecked
+    }
+    vulnerabilitiesBySeverity {
+      severity
+      count
+    }
+    alertsByStatus {
+      status
+      count
+    }
+  }
+}
+
+# Lightweight Assets Query for Mobile
+query MobileAssets($filter: AssetFilter, $limit: Int = 20, $offset: Int = 0) {
+  assets(filter: $filter, limit: $limit, offset: $offset) {
+    id
+    name
+    assetType
+    environment
+    platform
+    securityLevel
+    healthStatus
+    lastHealthCheck
+    vulnerabilities(status: [OPEN, IN_PROGRESS]) {
+      id
+      severity
+      cveId
+      title
+    }
+    alerts(status: [ACTIVE]) {
+      id
+      severity
+      title
+      createdAt
+    }
+    tags
+  }
+}
+
+# Critical Alerts Query - Mobile Priority
+query MobileCriticalAlerts($organizationId: ID!, $limit: Int = 10) {
+  alerts(
+    filter: {
+      organizationId: $organizationId,
+      severity: [CRITICAL, HIGH],
+      status: [ACTIVE, ACKNOWLEDGED]
+    }
+    limit: $limit
+  ) {
+    id
+    title
+    description
+    severity
+    status
+    alertType
+    createdAt
+    acknowledgedAt
+    asset {
+      id
+      name
+      platform
+      environment
+    }
+    source
+    escalationLevel
+  }
+}
+
+# Vulnerabilities Query - Mobile Optimized
+query MobileVulnerabilities(
+  $filter: VulnerabilityFilter
+  $limit: Int = 20
+  $offset: Int = 0
+) {
+  vulnerabilities(filter: $filter, limit: $limit, offset: $offset) {
+    id
+    cveId
+    title
+    severity
+    status
+    cvssScore
+    discoveredAt
+    isExploitable
+    hasPatch
+    asset {
+      id
+      name
+      platform
+      environment
+    }
+    affectedComponents
+    remediation {
+      description
+      priority
+      estimatedEffort
+    }
+  }
+}
+
+# Kong Admin API Status - Critical for Mobile Alerts
+query MobileKongAdminApiStatus {
+  kongAdminApiStatus {
+    isSecure
+    protocol
+    isVulnerable
+    vulnerabilityDescription
+    riskLevel
+    recommendedActions
+    lastChecked
+    endpoint
+  }
+}
+
+# Recent Security Events for Mobile Timeline
+query MobileRecentSecurityEvents($organizationId: ID!, $limit: Int = 15) {
+  securityEvents(
+    filter: { organizationId: $organizationId }
+    limit: $limit
+    sort: { field: CREATED_AT, direction: DESC }
+  ) {
+    id
+    eventType
+    severity
+    title
+    description
+    source
+    createdAt
+    resolved
+    asset {
+      id
+      name
+      platform
+    }
+    affectedComponents
+  }
+}
+
+# Mobile Dashboard Summary - Single Query for Overview Screen
+query MobileDashboardSummary($organizationId: ID!) {
+  securityOverview(organizationId: $organizationId) {
+    totalAssets
+    criticalVulnerabilities
+    activeAlerts
+    complianceScore
+    threatLevel
+    kongAdminApiVulnerability {
+      isVulnerable
+      riskLevel
+      lastChecked
+    }
+  }
+
+  criticalAlerts: alerts(
+    filter: {
+      organizationId: $organizationId,
+      severity: [CRITICAL, HIGH],
+      status: [ACTIVE]
+    }
+    limit: 5
+  ) {
+    id
+    title
+    severity
+    createdAt
+    asset {
+      name
+      platform
+    }
+  }
+
+  recentVulnerabilities: vulnerabilities(
+    filter: {
+      organizationId: $organizationId,
+      severity: [CRITICAL, HIGH],
+      status: [OPEN, IN_PROGRESS]
+    }
+    limit: 5
+  ) {
+    id
+    title
+    severity
+    cveId
+    discoveredAt
+    asset {
+      name
+      platform
+    }
+  }
+
+  kongAdminApiStatus {
+    isVulnerable
+    protocol
+    riskLevel
+    lastChecked
+  }
+}
+
+# User Profile for Mobile
+query MobileUserProfile {
+  me {
+    id
+    name
+    email
+    role
+    avatar
+    preferences {
+      theme
+      notifications {
+        pushEnabled
+        criticalAlertsOnly
+        quietHours {
+          enabled
+          start
+          end
+        }
+      }
+    }
+  }
+}
+
+# Asset Details for Mobile View
+query MobileAssetDetails($id: ID!) {
+  asset(id: $id) {
+    id
+    name
+    description
+    assetType
+    environment
+    platform
+    securityLevel
+    healthStatus
+    lastHealthCheck
+    endpointUrl
+    tags
+    metadata
+
+    vulnerabilities {
+      id
+      severity
+      status
+      title
+      cveId
+      cvssScore
+      discoveredAt
+      isExploitable
+      hasPatch
+      remediation {
+        description
+        priority
+      }
+    }
+
+    alerts(status: [ACTIVE, ACKNOWLEDGED]) {
+      id
+      severity
+      status
+      title
+      createdAt
+      alertType
+    }
+
+    securityEvents(limit: 10) {
+      id
+      eventType
+      severity
+      title
+      createdAt
+      resolved
+    }
+
+    createdAt
+    updatedAt
+  }
+}
+
+# Vulnerability Details for Mobile
+query MobileVulnerabilityDetails($id: ID!) {
+  vulnerability(id: $id) {
+    id
+    cveId
+    title
+    description
+    severity
+    status
+    cvssScore
+    publishedAt
+    discoveredAt
+    lastUpdated
+
+    asset {
+      id
+      name
+      assetType
+      environment
+      platform
+    }
+
+    affectedComponents
+    isExploitable
+    hasPatch
+
+    remediation {
+      description
+      estimatedEffort
+      priority
+      steps
+      resources {
+        url
+        title
+        type
+      }
+    }
+
+    references {
+      url
+      title
+      type
+    }
+
+    statusHistory {
+      status
+      changedAt
+      changedBy {
+        name
+        email
+      }
+      note
+    }
+  }
+}
+
+# Alert Details for Mobile
+query MobileAlertDetails($id: ID!) {
+  alert(id: $id) {
+    id
+    title
+    description
+    severity
+    status
+    alertType
+    createdAt
+    acknowledgedAt
+    resolvedAt
+
+    assignedTo {
+      id
+      name
+      email
+      avatar
+    }
+
+    asset {
+      id
+      name
+      assetType
+      environment
+      platform
+    }
+
+    source
+    metadata
+    escalationLevel
+    responseTime
+    resolutionTime
+    acknowledgmentNote
+    resolution
+  }
+}
+
+# Search Query for Mobile
+query MobileSearch($query: String!, $types: [String!]!, $limit: Int = 10) {
+  search(query: $query, types: $types, limit: $limit) {
+    ... on Asset {
+      id
+      name
+      assetType
+      platform
+      environment
+      healthStatus
+    }
+    ... on Vulnerability {
+      id
+      title
+      severity
+      cveId
+      asset {
+        name
+      }
+    }
+    ... on Alert {
+      id
+      title
+      severity
+      status
+      asset {
+        name
+      }
+    }
+  }
+}

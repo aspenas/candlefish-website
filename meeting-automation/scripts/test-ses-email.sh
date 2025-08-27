@@ -61,7 +61,7 @@ HTML_BODY=$(cat <<EOF
         <div class="content">
             <h2>✅ Email Delivery Successful!</h2>
             <p>This test email confirms that AWS SES is properly configured for <strong>candlefish.ai</strong>.</p>
-            
+
             <table class="info-table">
                 <tr>
                     <td>Sent From:</td>
@@ -84,14 +84,14 @@ HTML_BODY=$(cat <<EOF
                     <td>us-east-1</td>
                 </tr>
             </table>
-            
+
             <h3>Authentication Status</h3>
             <ul>
                 <li>SPF: ✅ Configured (include:amazonses.com)</li>
                 <li>DKIM: ✅ Enabled and verified</li>
                 <li>DMARC: ✅ Policy configured</li>
             </ul>
-            
+
             <h3>Next Steps</h3>
             <ol>
                 <li>Monitor bounce and complaint rates in CloudWatch</li>
@@ -167,7 +167,7 @@ if [ $? -eq 0 ]; then
     echo "   Message ID: $message_id"
     echo ""
     echo "Check the recipient's inbox (and spam folder) for the test email."
-    
+
     # Check sending statistics
     echo ""
     echo "📊 Current sending statistics:"

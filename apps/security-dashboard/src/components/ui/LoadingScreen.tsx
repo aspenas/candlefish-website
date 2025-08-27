@@ -17,13 +17,13 @@ const LoadingScreen: React.FC = () => {
       aria-label="Loading security dashboard"
     >
       <SecurityIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
-      
-      <CircularProgress 
-        size={40} 
+
+      <CircularProgress
+        size={40}
         thickness={4}
         sx={{ mb: 2 }}
       />
-      
+
       <Typography variant="h6" color="text.secondary">
         Loading Security Dashboard...
       </Typography>

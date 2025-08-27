@@ -74,6 +74,10 @@ func main() {
 
 	// Initialize handlers
 	h := handlers.New(db)
+	
+	// Initialize photo handler
+	photoHandler := handlers.NewPhotoHandler(h)
+	h.PhotoHandler = photoHandler
 
 	// Room routes
 	api.Get("/rooms", h.GetRooms)
@@ -168,8 +172,16 @@ func main() {
 		}
 		return fiber.ErrUpgradeRequired
 	})
+	
+	// Main WebSocket endpoint for frontend
+	app.Get("/ws", websocket.New(h.PhotoHandler.HandleWebSocket))
+	
+	// Alternative WebSocket endpoint for photo-specific operations
 	app.Get("/ws/photos", websocket.New(h.PhotoHandler.HandleWebSocket))
 
+	// Photo status endpoint
+	api.Get("/photos/status", h.PhotoHandler.GetPhotoStatus)
+	
 	// Photo sessions
 	api.Post("/photos/sessions", h.PhotoHandler.CreatePhotoSession)
 	api.Get("/photos/sessions/:id", h.PhotoHandler.GetPhotoSession)

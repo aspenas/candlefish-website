@@ -2,6 +2,7 @@ import { ApolloServer } from '@apollo/server';
 import { gql } from 'graphql-tag';
 import { DocumentNode } from 'graphql';
 import jwt from 'jsonwebtoken';
+import { jest } from '@jest/globals';
 
 // GraphQL test utilities for comprehensive testing
 
@@ -15,7 +16,7 @@ export const createTestServer = async (typeDefs: DocumentNode, resolvers: any) =
     context: async ({ req }: { req: any }) => {
       const token = req?.headers?.authorization?.replace('Bearer ', '');
       let user = null;
-      
+
       if (token) {
         try {
           user = jwt.verify(token, process.env.JWT_SECRET || 'test-secret');
@@ -23,7 +24,7 @@ export const createTestServer = async (typeDefs: DocumentNode, resolvers: any) =
           // Invalid token, user remains null
         }
       }
-      
+
       return {
         user,
         db: createMockDatabase(),
@@ -31,8 +32,171 @@ export const createTestServer = async (typeDefs: DocumentNode, resolvers: any) =
       };
     },
   });
-  
+
   return server;
+};
+
+// Mock context for Security Dashboard GraphQL resolvers
+export interface MockContext {
+  user: any;
+  organizationId: string;
+  securityService: {
+    getSecurityOverview: jest.MockedFunction<any>;
+    getAssets: jest.MockedFunction<any>;
+    getAssetById: jest.MockedFunction<any>;
+    createAsset: jest.MockedFunction<any>;
+    updateAsset: jest.MockedFunction<any>;
+    deleteAsset: jest.MockedFunction<any>;
+    getAssetVulnerabilities: jest.MockedFunction<any>;
+    getAssetSecurityEvents: jest.MockedFunction<any>;
+    createVulnerability: jest.MockedFunction<any>;
+    createSecurityEvent: jest.MockedFunction<any>;
+  };
+  kongService: {
+    getAdminAPIStatus: jest.MockedFunction<any>;
+    getKongInfo: jest.MockedFunction<any>;
+    getServices: jest.MockedFunction<any>;
+    getRoutes: jest.MockedFunction<any>;
+    checkInsecureRoutes: jest.MockedFunction<any>;
+  };
+  alertService: {
+    getAlerts: jest.MockedFunction<any>;
+    createAlert: jest.MockedFunction<any>;
+    updateAlert: jest.MockedFunction<any>;
+    deleteAlert: jest.MockedFunction<any>;
+    acknowledgeAlert: jest.MockedFunction<any>;
+    resolveAlert: jest.MockedFunction<any>;
+  };
+  dataloaders: {
+    assetVulnerabilities: {
+      load: jest.MockedFunction<any>;
+      loadMany: jest.MockedFunction<any>;
+      clear: jest.MockedFunction<any>;
+      clearAll: jest.MockedFunction<any>;
+    };
+    assetSecurityEvents: {
+      load: jest.MockedFunction<any>;
+      loadMany: jest.MockedFunction<any>;
+      clear: jest.MockedFunction<any>;
+      clearAll: jest.MockedFunction<any>;
+    };
+    assetAlerts: {
+      load: jest.MockedFunction<any>;
+      loadMany: jest.MockedFunction<any>;
+      clear: jest.MockedFunction<any>;
+      clearAll: jest.MockedFunction<any>;
+    };
+  };
+  pubsub?: any;
+  logger: {
+    info: jest.MockedFunction<any>;
+    error: jest.MockedFunction<any>;
+    warn: jest.MockedFunction<any>;
+    debug: jest.MockedFunction<any>;
+  };
+  metrics: {
+    incrementCounter: jest.MockedFunction<any>;
+    recordHistogram: jest.MockedFunction<any>;
+    setGauge: jest.MockedFunction<any>;
+  };
+  cacheManager: {
+    get: jest.MockedFunction<any>;
+    set: jest.MockedFunction<any>;
+    del: jest.MockedFunction<any>;
+    getOrSet: jest.MockedFunction<any>;
+  };
+}
+
+export const createMockContext = (overrides: Partial<MockContext> = {}): MockContext => {
+  return {
+    user: {
+      id: 'user-123',
+      organizationId: 'org-123',
+      role: 'ADMIN',
+      email: 'test@example.com',
+    },
+    organizationId: 'org-123',
+
+    // Security Service Mocks
+    securityService: {
+      getSecurityOverview: jest.fn(),
+      getAssets: jest.fn(),
+      getAssetById: jest.fn(),
+      createAsset: jest.fn(),
+      updateAsset: jest.fn(),
+      deleteAsset: jest.fn(),
+      getAssetVulnerabilities: jest.fn(),
+      getAssetSecurityEvents: jest.fn(),
+      createVulnerability: jest.fn(),
+      createSecurityEvent: jest.fn(),
+    },
+
+    // Kong Service Mocks
+    kongService: {
+      getAdminAPIStatus: jest.fn(),
+      getKongInfo: jest.fn(),
+      getServices: jest.fn(),
+      getRoutes: jest.fn(),
+      checkInsecureRoutes: jest.fn(),
+    },
+
+    // Alert Service Mocks
+    alertService: {
+      getAlerts: jest.fn(),
+      createAlert: jest.fn(),
+      updateAlert: jest.fn(),
+      deleteAlert: jest.fn(),
+      acknowledgeAlert: jest.fn(),
+      resolveAlert: jest.fn(),
+    },
+
+    // DataLoader Mocks
+    dataloaders: {
+      assetVulnerabilities: {
+        load: jest.fn(),
+        loadMany: jest.fn(),
+        clear: jest.fn(),
+        clearAll: jest.fn(),
+      },
+      assetSecurityEvents: {
+        load: jest.fn(),
+        loadMany: jest.fn(),
+        clear: jest.fn(),
+        clearAll: jest.fn(),
+      },
+      assetAlerts: {
+        load: jest.fn(),
+        loadMany: jest.fn(),
+        clear: jest.fn(),
+        clearAll: jest.fn(),
+      },
+    },
+
+    // Logger Mocks
+    logger: {
+      info: jest.fn(),
+      error: jest.fn(),
+      warn: jest.fn(),
+      debug: jest.fn(),
+    },
+
+    // Metrics Mocks
+    metrics: {
+      incrementCounter: jest.fn(),
+      recordHistogram: jest.fn(),
+      setGauge: jest.fn(),
+    },
+
+    // Cache Manager Mocks
+    cacheManager: {
+      get: jest.fn(),
+      set: jest.fn(),
+      del: jest.fn(),
+      getOrSet: jest.fn(),
+    },
+
+    ...overrides,
+  };
 };
 
 /**
@@ -60,7 +224,7 @@ export const createMockDatabase = () => {
         updatedAt: new Date('2024-01-01'),
       }],
     ]),
-    
+
     documents: new Map([
       ['doc-1', {
         id: 'doc-1',
@@ -73,7 +237,7 @@ export const createMockDatabase = () => {
         updatedAt: new Date('2024-01-01'),
       }],
     ]),
-    
+
     organizations: new Map([
       ['org-1', {
         id: 'org-1',
@@ -84,12 +248,12 @@ export const createMockDatabase = () => {
         updatedAt: new Date('2024-01-01'),
       }],
     ]),
-    
+
     collaborationSessions: new Map(),
     comments: new Map(),
     subscriptions: new Map(),
   };
-  
+
   return {
     // User operations
     findUserById: jest.fn((id: string) => mockData.users.get(id)),
@@ -112,7 +276,7 @@ export const createMockDatabase = () => {
       mockData.users.set(id, updated);
       return updated;
     }),
-    
+
     // Document operations
     findDocumentById: jest.fn((id: string) => mockData.documents.get(id)),
     findDocumentsByAuthor: jest.fn((authorId: string) => {
@@ -132,7 +296,7 @@ export const createMockDatabase = () => {
       mockData.documents.set(id, updated);
       return updated;
     }),
-    
+
     // Organization operations
     findOrganizationById: jest.fn((id: string) => mockData.organizations.get(id)),
     createOrganization: jest.fn((orgData: any) => {
@@ -141,7 +305,7 @@ export const createMockDatabase = () => {
       mockData.organizations.set(id, org);
       return org;
     }),
-    
+
     // Collaboration operations
     createCollaborationSession: jest.fn((sessionData: any) => {
       const id = `session-${Date.now()}`;
@@ -149,7 +313,7 @@ export const createMockDatabase = () => {
       mockData.collaborationSessions.set(id, session);
       return session;
     }),
-    
+
     // Comment operations
     createComment: jest.fn((commentData: any) => {
       const id = `comment-${Date.now()}`;
@@ -157,7 +321,7 @@ export const createMockDatabase = () => {
       mockData.comments.set(id, comment);
       return comment;
     }),
-    
+
     // Subscription operations
     createSubscription: jest.fn((subData: any) => {
       const id = `sub-${Date.now()}`;
@@ -165,7 +329,7 @@ export const createMockDatabase = () => {
       mockData.subscriptions.set(id, subscription);
       return subscription;
     }),
-    
+
     // Reset mock data
     reset: jest.fn(() => {
       mockData.users.clear();
@@ -193,7 +357,7 @@ export const graphqlTestUtils = {
     if (user) {
       token = jwt.sign(user, process.env.JWT_SECRET || 'test-secret');
     }
-    
+
     const response = await server.executeOperation({
       query,
       variables,
@@ -208,10 +372,10 @@ export const graphqlTestUtils = {
         },
       },
     });
-    
+
     return response;
   },
-  
+
   // Create test user with specific role
   createTestUser(overrides: Partial<any> = {}) {
     return {
@@ -223,7 +387,7 @@ export const graphqlTestUtils = {
       ...overrides,
     };
   },
-  
+
   // Create admin user for testing
   createAdminUser(overrides: Partial<any> = {}) {
     return this.createTestUser({ role: 'ADMIN', ...overrides });
@@ -248,7 +412,7 @@ export const TEST_QUERIES = {
       }
     }
   `,
-  
+
   GET_DOCUMENTS: gql`
     query GetDocuments($authorId: ID) {
       documents(authorId: $authorId) {
@@ -264,7 +428,7 @@ export const TEST_QUERIES = {
       }
     }
   `,
-  
+
   CREATE_DOCUMENT: gql`
     mutation CreateDocument($input: CreateDocumentInput!) {
       createDocument(input: $input) {
@@ -279,7 +443,7 @@ export const TEST_QUERIES = {
       }
     }
   `,
-  
+
   LOGIN: gql`
     mutation Login($email: String!, $password: String!) {
       login(email: $email, password: $password) {
@@ -293,7 +457,7 @@ export const TEST_QUERIES = {
       }
     }
   `,
-  
+
   DOCUMENT_UPDATED: gql`
     subscription DocumentUpdated($documentId: ID!) {
       documentUpdated(documentId: $documentId) {
@@ -319,15 +483,15 @@ export const errorTestUtils = {
     expect(response.body.singleResult.errors).toHaveLength(1);
     expect(response.body.singleResult.errors[0].message).toContain(expectedErrorMessage);
   },
-  
+
   expectUnauthorizedError(response: any) {
     this.expectGraphQLError(response, 'Not authenticated');
   },
-  
+
   expectForbiddenError(response: any) {
     this.expectGraphQLError(response, 'Forbidden');
   },
-  
+
   expectValidationError(response: any) {
     this.expectGraphQLError(response, 'Validation error');
   },
@@ -344,18 +508,18 @@ export const performanceTestUtils = {
     iterations: number = 10
   ) {
     const times: number[] = [];
-    
+
     for (let i = 0; i < iterations; i++) {
       const start = performance.now();
       await server.executeOperation({ query, variables });
       const end = performance.now();
       times.push(end - start);
     }
-    
+
     const average = times.reduce((sum, time) => sum + time, 0) / times.length;
     const min = Math.min(...times);
     const max = Math.max(...times);
-    
+
     return {
       average,
       min,

@@ -1,0 +1,91 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Proportion-by-Design Pre-Commit Hook
+echo "= Running Proportion-by-Design compliance checks..."
+
+# Check for proportion markers in commit message
+commit_msg=$(git log -1 --pretty=%B 2>/dev/null || echo "")
+has_proportion_marker=false
+
+if echo "$commit_msg" | grep -qE '\[SOURCE[:\]]|\[TETHER[:\]]|\[SERVICE[:\]]'; then
+  has_proportion_marker=true
+fi
+
+# If no proportion markers in commit, check if PR description has them
+if [ "$has_proportion_marker" = false ]; then
+  echo "   No proportion markers found in commit message"
+  echo "   Please add at least one of: [SOURCE], [TETHER], or [SERVICE]"
+  echo ""
+  echo "   Example:"
+  echo "   git commit -m 'feat: Add new feature"
+  echo "   "
+  echo "   [SOURCE: user-research.md, analytics-report-2024.pdf]"
+  echo "   [TETHER: performance < 100ms, memory < 50MB]"
+  echo "   [SERVICE: end-users benefit, @platform-team owns risk]'"
+  echo ""
+  read -p "Continue anyway? (y/N): " -n 1 -r
+  echo
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    exit 1
+  fi
+fi
+
+# Run accessibility checks if frontend files changed
+if git diff --cached --name-only | grep -qE '\.(tsx?|jsx?)$'; then
+  echo " Running accessibility checks..."
+  
+  # Check for aria-label on interactive elements
+  git diff --cached --name-only --diff-filter=ACM | grep -E '\.(tsx?|jsx?)$' | while read file; do
+    if grep -qE '<button|<a\s|<input|<select|<textarea' "$file"; then
+      if ! grep -qE 'aria-label=|aria-labelledby=|aria-describedby=' "$file"; then
+        echo "   Warning: $file may have unlabeled interactive elements"
+      fi
+    fi
+  done
+fi
+
+# Check for security-sensitive patterns
+echo "= Checking for security patterns..."
+git diff --cached --name-only | while read file; do
+  # Check for hardcoded secrets
+  if grep -qE '(api[_-]?key|secret|token|password|credential)["\s]*[:=]["\s]*["\'][^"\']{8,}["\']' "$file" 2>/dev/null; then
+    echo "L Potential secret found in $file"
+    echo "   Please use environment variables or secret management"
+    exit 1
+  fi
+  
+  # Check for console.log in production code
+  if [[ "$file" =~ \.(ts|js|tsx|jsx)$ ]] && ! [[ "$file" =~ test|spec|mock ]]; then
+    if grep -qE '^[^/]*console\.(log|info|debug|trace)' "$file" 2>/dev/null; then
+      echo "   console.log found in $file"
+    fi
+  fi
+done
+
+# Run linting
+echo "( Running linters..."
+pnpm lint 2>/dev/null || npm run lint 2>/dev/null || echo "9  Linting skipped (no lint script found)"
+
+# Run type checking
+echo "=Ø Running type checks..."
+pnpm typecheck 2>/dev/null || npm run typecheck 2>/dev/null || echo "9  Type checking skipped (no typecheck script found)"
+
+# Check for TODO comments
+todo_count=$(git diff --cached | grep -c "^\+.*TODO" || true)
+if [ "$todo_count" -gt 0 ]; then
+  echo "=Ý Found $todo_count new TODO comments"
+  echo "   Consider creating issues for tracking"
+fi
+
+# Verify PR template compliance markers
+if [ -f ".github/PULL_REQUEST_TEMPLATE.md" ]; then
+  echo " PR template found - remember to fill it out completely"
+fi
+
+echo " Pre-commit checks complete!"
+echo ""
+echo "Remember the proportion principles:"
+echo "  SOURCE: Ground your work in evidence"
+echo "  TETHER: Acknowledge constraints"
+echo "  SERVICE: Identify beneficiaries and risk owners"

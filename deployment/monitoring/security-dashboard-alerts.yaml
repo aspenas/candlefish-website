@@ -1,0 +1,357 @@
+# Security Dashboard Alert Rules
+# Comprehensive alerting for security events, performance, and infrastructure
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: security-dashboard-alerts
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/component: monitoring
+    prometheus: security-dashboard
+    role: alert-rules
+spec:
+  groups:
+    # ========================================================================
+    # Critical Security Alerts
+    # ========================================================================
+    - name: security.critical
+      interval: 30s
+      rules:
+        - alert: SecurityDashboardDown
+          expr: up{job="security-dashboard-backend"} == 0
+          for: 1m
+          labels:
+            severity: critical
+            team: security
+            runbook: "https://docs.candlefish.ai/runbooks/security-dashboard-down"
+          annotations:
+            summary: "Security Dashboard is down"
+            description: "Security Dashboard backend has been down for more than 1 minute. This affects security monitoring capabilities."
+            impact: "Security monitoring is unavailable"
+            action: "Check backend pods and logs immediately"
+
+        - alert: HighSecurityEventRate
+          expr: rate(security_events_total[5m]) > 100
+          for: 2m
+          labels:
+            severity: critical
+            team: security
+          annotations:
+            summary: "High security event rate detected"
+            description: "Security events are being generated at {{ $value }} events per second, which is above the critical threshold of 100/sec."
+            impact: "Potential security breach or attack in progress"
+            action: "Investigate security logs and activate incident response"
+
+        - alert: FailedAuthenticationSpike
+          expr: rate(authentication_failures_total[5m]) > 10
+          for: 1m
+          labels:
+            severity: critical
+            team: security
+          annotations:
+            summary: "Authentication failure spike detected"
+            description: "Failed authentication attempts: {{ $value }} per second over 5 minutes."
+            impact: "Possible brute force attack"
+            action: "Check authentication logs and consider IP blocking"
+
+        - alert: UnauthorizedAPIAccess
+          expr: rate(api_requests_total{status=~"401|403"}[5m]) > 5
+          for: 30s
+          labels:
+            severity: critical
+            team: security
+          annotations:
+            summary: "High rate of unauthorized API access attempts"
+            description: "{{ $value }} unauthorized API requests per second detected."
+            impact: "Potential security breach attempt"
+            action: "Review API access logs and check for malicious activity"
+
+        - alert: DatabaseConnectionFailure
+          expr: up{job="postgresql"} == 0
+          for: 30s
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "Database connection failure"
+            description: "Cannot connect to PostgreSQL database for {{ $labels.instance }}."
+            impact: "Security dashboard cannot access historical data"
+            action: "Check database connectivity and health immediately"
+
+    # ========================================================================
+    # High Priority Performance Alerts
+    # ========================================================================
+    - name: performance.high
+      interval: 60s
+      rules:
+        - alert: HighResponseTime
+          expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+          for: 3m
+          labels:
+            severity: high
+            team: platform
+          annotations:
+            summary: "High API response time"
+            description: "95th percentile response time is {{ $value }}s, above 1s threshold."
+            impact: "Poor user experience"
+            action: "Check application performance and scaling"
+
+        - alert: HighMemoryUsage
+          expr: (container_memory_usage_bytes{container!="POD",container!=""} / container_spec_memory_limit_bytes) * 100 > 85
+          for: 5m
+          labels:
+            severity: high
+            team: platform
+          annotations:
+            summary: "High memory usage in {{ $labels.container }}"
+            description: "Container {{ $labels.container }} in pod {{ $labels.pod }} is using {{ $value }}% of memory."
+            impact: "Risk of OOM kill and service disruption"
+            action: "Scale up resources or investigate memory leaks"
+
+        - alert: HighCPUUsage
+          expr: rate(container_cpu_usage_seconds_total{container!="POD",container!=""}[5m]) * 100 > 80
+          for: 5m
+          labels:
+            severity: high
+            team: platform
+          annotations:
+            summary: "High CPU usage in {{ $labels.container }}"
+            description: "Container {{ $labels.container }} CPU usage is {{ $value }}%."
+            impact: "Performance degradation"
+            action: "Scale up resources or optimize application"
+
+        - alert: HighErrorRate
+          expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+          for: 2m
+          labels:
+            severity: high
+            team: platform
+          annotations:
+            summary: "High error rate detected"
+            description: "Error rate is {{ $value | humanizePercentage }} over 5 minutes."
+            impact: "Service reliability compromised"
+            action: "Check application logs and dependencies"
+
+        - alert: DatabaseSlowQueries
+          expr: rate(postgresql_slow_queries_total[5m]) > 2
+          for: 3m
+          labels:
+            severity: high
+            team: platform
+          annotations:
+            summary: "Database slow queries detected"
+            description: "{{ $value }} slow queries per second detected."
+            impact: "Database performance degradation"
+            action: "Review query performance and optimize indexes"
+
+    # ========================================================================
+    # Medium Priority Infrastructure Alerts
+    # ========================================================================
+    - name: infrastructure.medium
+      interval: 120s
+      rules:
+        - alert: KubernetesPodCrashLooping
+          expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+          for: 5m
+          labels:
+            severity: medium
+            team: platform
+          annotations:
+            summary: "Pod {{ $labels.pod }} is crash looping"
+            description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is restarting frequently."
+            impact: "Service instability"
+            action: "Check pod logs and resource constraints"
+
+        - alert: KubernetesNodeNotReady
+          expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+          for: 10m
+          labels:
+            severity: medium
+            team: platform
+          annotations:
+            summary: "Node {{ $labels.node }} is not ready"
+            description: "Kubernetes node {{ $labels.node }} has been not ready for more than 10 minutes."
+            impact: "Reduced cluster capacity"
+            action: "Investigate node health and connectivity"
+
+        - alert: PersistentVolumeUsageHigh
+          expr: kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes * 100 > 85
+          for: 5m
+          labels:
+            severity: medium
+            team: platform
+          annotations:
+            summary: "Persistent volume usage high"
+            description: "PV {{ $labels.persistentvolumeclaim }} usage is {{ $value }}%."
+            impact: "Risk of storage exhaustion"
+            action: "Expand volume or clean up data"
+
+        - alert: RedisConnectionsHigh
+          expr: redis_connected_clients / redis_config_maxclients * 100 > 80
+          for: 5m
+          labels:
+            severity: medium
+            team: platform
+          annotations:
+            summary: "Redis connection usage high"
+            description: "Redis connections are at {{ $value }}% of maximum."
+            impact: "Risk of connection exhaustion"
+            action: "Review connection pooling and client configuration"
+
+    # ========================================================================
+    # Security Monitoring Alerts
+    # ========================================================================
+    - name: security.monitoring
+      interval: 60s
+      rules:
+        - alert: SuspiciousGraphQLQueries
+          expr: rate(graphql_query_complexity_total[5m]) > 1000
+          for: 2m
+          labels:
+            severity: medium
+            team: security
+          annotations:
+            summary: "Suspicious GraphQL query complexity"
+            description: "High complexity GraphQL queries detected: {{ $value }} per second."
+            impact: "Potential DoS attack or resource abuse"
+            action: "Review GraphQL query patterns and implement rate limiting"
+
+        - alert: UnusualTrafficPattern
+          expr: rate(http_requests_total[5m]) > (2 * rate(http_requests_total[1h] offset 1h))
+          for: 5m
+          labels:
+            severity: medium
+            team: security
+          annotations:
+            summary: "Unusual traffic pattern detected"
+            description: "Current request rate is significantly higher than historical average."
+            impact: "Possible DDoS attack or traffic spike"
+            action: "Monitor traffic sources and activate DDoS protection if needed"
+
+        - alert: KongGatewayErrors
+          expr: rate(kong_http_status{code=~"5.."}[5m]) > 5
+          for: 2m
+          labels:
+            severity: medium
+            team: security
+          annotations:
+            summary: "Kong Gateway errors detected"
+            description: "Kong Gateway is returning {{ $value }} 5xx errors per second."
+            impact: "API Gateway reliability issues"
+            action: "Check Kong Gateway health and upstream services"
+
+        - alert: CertificateExpiringSoon
+          expr: (x509_cert_not_after - time()) / 86400 < 30
+          for: 1h
+          labels:
+            severity: medium
+            team: security
+          annotations:
+            summary: "SSL Certificate expiring soon"
+            description: "Certificate {{ $labels.subject_CN }} expires in {{ $value }} days."
+            impact: "Risk of service outage due to expired certificate"
+            action: "Renew SSL certificate before expiration"
+
+    # ========================================================================
+    # Application Health Alerts
+    # ========================================================================
+    - name: application.health
+      interval: 90s
+      rules:
+        - alert: HealthCheckFailing
+          expr: up{job=~"security-dashboard-.*"} == 0
+          for: 3m
+          labels:
+            severity: medium
+            team: platform
+          annotations:
+            summary: "Health check failing for {{ $labels.job }}"
+            description: "Health check has been failing for {{ $labels.instance }} for more than 3 minutes."
+            impact: "Service may be unhealthy"
+            action: "Check service health and dependencies"
+
+        - alert: WebSocketConnectionsHigh
+          expr: websocket_connections_active > 1000
+          for: 10m
+          labels:
+            severity: medium
+            team: platform
+          annotations:
+            summary: "High WebSocket connection count"
+            description: "Active WebSocket connections: {{ $value }}"
+            impact: "High resource usage"
+            action: "Monitor connection patterns and consider scaling"
+
+        - alert: QueueDepthHigh
+          expr: security_event_queue_depth > 1000
+          for: 5m
+          labels:
+            severity: medium
+            team: platform
+          annotations:
+            summary: "Security event queue depth high"
+            description: "Queue depth is {{ $value }}, indicating processing delays."
+            impact: "Delayed security event processing"
+            action: "Scale processing capacity or investigate bottlenecks"
+
+    # ========================================================================
+    # Data Quality Alerts
+    # ========================================================================
+    - name: data.quality
+      interval: 300s
+      rules:
+        - alert: SecurityDataIngestionStopped
+          expr: increase(security_events_processed_total[10m]) == 0
+          for: 10m
+          labels:
+            severity: high
+            team: security
+          annotations:
+            summary: "Security data ingestion has stopped"
+            description: "No security events have been processed in the last 10 minutes."
+            impact: "Missing security data and blind spots"
+            action: "Check data ingestion pipeline and sources"
+
+        - alert: DataProcessingLag
+          expr: security_event_processing_lag_seconds > 300
+          for: 5m
+          labels:
+            severity: medium
+            team: platform
+          annotations:
+            summary: "Security data processing lag detected"
+            description: "Data processing lag is {{ $value }} seconds."
+            impact: "Delayed security insights"
+            action: "Scale processing or investigate bottlenecks"
+
+    # ========================================================================
+    # Alert Routing Labels
+    # ========================================================================
+    - name: alert.routing
+      interval: 600s
+      rules:
+        - alert: AlertmanagerConfigReloadFailed
+          expr: increase(alertmanager_config_last_reload_success_timestamp_seconds[5m]) == 0
+          for: 10m
+          labels:
+            severity: medium
+            team: platform
+          annotations:
+            summary: "Alertmanager configuration reload failed"
+            description: "Alertmanager has failed to reload configuration."
+            impact: "Alert routing may not work correctly"
+            action: "Check Alertmanager configuration and restart if needed"
+
+        - alert: PrometheusRuleEvaluationFailures
+          expr: rate(prometheus_rule_evaluation_failures_total[5m]) > 0
+          for: 10m
+          labels:
+            severity: medium
+            team: platform
+          annotations:
+            summary: "Prometheus rule evaluation failures"
+            description: "Prometheus rule evaluations are failing at {{ $value }} per second."
+            impact: "Some alerts may not trigger correctly"
+            action: "Check Prometheus rule syntax and expressions"

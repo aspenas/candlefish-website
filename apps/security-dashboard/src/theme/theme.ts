@@ -9,31 +9,31 @@ const securityColors = {
   medium: '#fbc02d',      // Medium severity warnings
   low: '#388e3c',         // Low severity or resolved
   info: '#1976d2',        // Informational
-  
+
   // Status colors
   healthy: '#2e7d32',     // Green for healthy assets
   warning: '#f57c00',     // Orange for warnings
   error: '#d32f2f',       // Red for errors/critical
   unknown: '#757575',     // Gray for unknown status
-  
+
   // SOC-optimized dark palette
   background: {
     primary: '#0a0a0a',    // Deep black for primary background
     secondary: '#1a1a1a',  // Dark gray for cards/surfaces
     tertiary: '#2a2a2a',   // Lighter gray for elevated surfaces
   },
-  
+
   // High contrast text for readability
   text: {
     primary: '#ffffff',     // Pure white for primary text
     secondary: '#b3b3b3',   // Light gray for secondary text
     disabled: '#666666',    // Medium gray for disabled text
   },
-  
+
   // Border and divider colors
   divider: '#333333',
   border: '#404040',
-  
+
   // Kong-specific status colors
   kong: {
     secure: '#2e7d32',      // Green for secure Kong API
@@ -54,7 +54,7 @@ const commonThemeOptions: ThemeOptions = {
       'Arial',
       'sans-serif',
     ].join(','),
-    
+
     // Improved typography hierarchy for dashboards
     h1: {
       fontSize: '2.5rem',
@@ -86,7 +86,7 @@ const commonThemeOptions: ThemeOptions = {
       fontWeight: 500,
       lineHeight: 1.5,
     },
-    
+
     // Body text optimized for readability
     body1: {
       fontSize: '1rem',
@@ -96,20 +96,20 @@ const commonThemeOptions: ThemeOptions = {
       fontSize: '0.875rem',
       lineHeight: 1.6,
     },
-    
+
     // Monospace for technical data
     caption: {
       fontFamily: '"Fira Code", "Monaco", "Consolas", monospace',
       fontSize: '0.75rem',
     },
   },
-  
+
   spacing: 8, // 8px base spacing unit
-  
+
   shape: {
     borderRadius: 8,
   },
-  
+
   breakpoints: {
     values: {
       xs: 0,
@@ -119,7 +119,7 @@ const commonThemeOptions: ThemeOptions = {
       xl: 1920,
     },
   },
-  
+
   components: {
     // Global component overrides
     MuiCssBaseline: {
@@ -143,7 +143,7 @@ const commonThemeOptions: ThemeOptions = {
         },
       },
     },
-    
+
     // Paper component for cards and surfaces
     MuiPaper: {
       styleOverrides: {
@@ -161,7 +161,7 @@ const commonThemeOptions: ThemeOptions = {
         },
       },
     },
-    
+
     // Button component
     MuiButton: {
       styleOverrides: {
@@ -178,7 +178,7 @@ const commonThemeOptions: ThemeOptions = {
         },
       },
     },
-    
+
     // Card component
     MuiCard: {
       styleOverrides: {
@@ -187,7 +187,7 @@ const commonThemeOptions: ThemeOptions = {
         },
       },
     },
-    
+
     // Chip component for tags and status indicators
     MuiChip: {
       styleOverrides: {
@@ -211,7 +211,7 @@ const commonThemeOptions: ThemeOptions = {
         },
       },
     },
-    
+
     // Table components for data grids
     MuiTableHead: {
       styleOverrides: {
@@ -220,7 +220,7 @@ const commonThemeOptions: ThemeOptions = {
         },
       },
     },
-    
+
     MuiTableRow: {
       styleOverrides: {
         root: {
@@ -230,7 +230,7 @@ const commonThemeOptions: ThemeOptions = {
         },
       },
     },
-    
+
     // Alert component for notifications
     MuiAlert: {
       styleOverrides: {
@@ -309,14 +309,14 @@ export const darkTheme = createTheme({
       disabled: securityColors.text.disabled,
     },
     divider: securityColors.divider,
-    
+
     // Custom security colors
     ...(securityColors as any),
   },
-  
+
   components: {
     ...commonThemeOptions.components,
-    
+
     // Dark-specific component overrides
     MuiAppBar: {
       styleOverrides: {
@@ -326,7 +326,7 @@ export const darkTheme = createTheme({
         },
       },
     },
-    
+
     MuiDrawer: {
       styleOverrides: {
         paper: {
@@ -335,7 +335,7 @@ export const darkTheme = createTheme({
         },
       },
     },
-    
+
     MuiTextField: {
       styleOverrides: {
         root: {

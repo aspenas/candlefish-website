@@ -1,0 +1,1608 @@
+openapi: 3.0.3
+info:
+  title: Security Dashboard Enhanced API
+  description: |
+    Comprehensive security dashboard API with real-time event streaming,
+    advanced threat detection, and multi-tenant support.
+    
+    Designed to handle 15,000 events/second with horizontal scaling.
+  version: 2.0.0
+  contact:
+    name: Candlefish Security Team
+    email: security@candlefish.ai
+    url: https://security.candlefish.ai
+
+servers:
+  - url: https://api.security.candlefish.ai/v2
+    description: Production API
+  - url: https://staging-api.security.candlefish.ai/v2
+    description: Staging API
+  - url: http://localhost:4000/v2
+    description: Local development
+
+security:
+  - bearerAuth: []
+
+paths:
+  # Authentication Endpoints
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: User login with MFA support
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                mfa_code:
+                  type: string
+                  pattern: '^[0-9]{6}$'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+                  expires_in:
+                    type: integer
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          description: MFA required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "mfa_required"
+                  message:
+                    type: string
+                    example: "Multi-factor authentication required"
+
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: Refresh access token
+      operationId: refreshToken
+      security:
+        - refreshToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  expires_in:
+                    type: integer
+
+  # Real-time Security Events
+  /events:
+    get:
+      tags: [Security Events]
+      summary: List security events with filtering and pagination
+      operationId: listSecurityEvents
+      parameters:
+        - name: organization_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: asset_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [critical, high, medium, low, info]
+        - name: event_type
+          in: query
+          schema:
+            type: string
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: resolved
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Security events retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SecurityEvent'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationInfo'
+                  aggregations:
+                    type: object
+                    properties:
+                      by_severity:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                      by_event_type:
+                        type: object
+                        additionalProperties:
+                          type: integer
+
+    post:
+      tags: [Security Events]
+      summary: Create new security event
+      operationId: createSecurityEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSecurityEvent'
+      responses:
+        '201':
+          description: Security event created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecurityEvent'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+
+  /events/bulk:
+    post:
+      tags: [Security Events]
+      summary: Bulk create security events (high throughput)
+      operationId: bulkCreateSecurityEvents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [events]
+              properties:
+                events:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/CreateSecurityEvent'
+                  maxItems: 1000
+                batch_id:
+                  type: string
+                  description: Optional batch identifier for tracking
+      responses:
+        '202':
+          description: Events accepted for processing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  batch_id:
+                    type: string
+                  accepted_count:
+                    type: integer
+                  rejected_count:
+                    type: integer
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        index:
+                          type: integer
+                        error:
+                          type: string
+
+  /events/{event_id}:
+    get:
+      tags: [Security Events]
+      summary: Get security event by ID
+      operationId: getSecurityEvent
+      parameters:
+        - name: event_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Security event retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecurityEvent'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+    patch:
+      tags: [Security Events]
+      summary: Update security event (resolve, acknowledge, etc.)
+      operationId: updateSecurityEvent
+      parameters:
+        - name: event_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resolved:
+                  type: boolean
+                resolution_notes:
+                  type: string
+                severity:
+                  type: string
+                  enum: [critical, high, medium, low, info]
+      responses:
+        '200':
+          description: Security event updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecurityEvent'
+
+  # Advanced Threat Detection
+  /threat-detection/rules:
+    get:
+      tags: [Threat Detection]
+      summary: List threat detection rules
+      operationId: listThreatRules
+      parameters:
+        - name: enabled
+          in: query
+          schema:
+            type: boolean
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [critical, high, medium, low]
+      responses:
+        '200':
+          description: Threat detection rules retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ThreatDetectionRule'
+
+    post:
+      tags: [Threat Detection]
+      summary: Create new threat detection rule
+      operationId: createThreatRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateThreatDetectionRule'
+      responses:
+        '201':
+          description: Threat detection rule created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreatDetectionRule'
+
+  /threat-detection/analyze:
+    post:
+      tags: [Threat Detection]
+      summary: Analyze events for threats (ML-ready endpoint)
+      operationId: analyzeThreatEvents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [time_window]
+              properties:
+                time_window:
+                  type: string
+                  description: Time window for analysis (e.g., '15m', '1h', '24h')
+                asset_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                ml_model:
+                  type: string
+                  enum: [anomaly_detection, pattern_matching, behavioral_analysis]
+                  default: anomaly_detection
+      responses:
+        '200':
+          description: Threat analysis completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  analysis_id:
+                    type: string
+                    format: uuid
+                  threats_detected:
+                    type: integer
+                  anomalies:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ThreatAnomaly'
+                  recommendations:
+                    type: array
+                    items:
+                      type: string
+
+  # Security Incident Management
+  /incidents:
+    get:
+      tags: [Incident Management]
+      summary: List security incidents
+      operationId: listIncidents
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, investigating, contained, resolved, closed]
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [critical, high, medium, low]
+        - name: assignee_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Incidents retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SecurityIncident'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationInfo'
+
+    post:
+      tags: [Incident Management]
+      summary: Create new security incident
+      operationId: createIncident
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSecurityIncident'
+      responses:
+        '201':
+          description: Incident created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecurityIncident'
+
+  /incidents/{incident_id}/workflow:
+    post:
+      tags: [Incident Management]
+      summary: Execute incident response workflow action
+      operationId: executeIncidentWorkflow
+      parameters:
+        - name: incident_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [escalate, contain, investigate, resolve, close]
+                notes:
+                  type: string
+                assignee_id:
+                  type: string
+                  format: uuid
+                automated:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: Workflow action executed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  incident:
+                    $ref: '#/components/schemas/SecurityIncident'
+                  workflow_state:
+                    type: object
+                    properties:
+                      previous_status:
+                        type: string
+                      current_status:
+                        type: string
+                      next_possible_actions:
+                        type: array
+                        items:
+                          type: string
+
+  # Compliance Management
+  /compliance/frameworks:
+    get:
+      tags: [Compliance]
+      summary: List compliance frameworks
+      operationId: listComplianceFrameworks
+      responses:
+        '200':
+          description: Compliance frameworks retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ComplianceFramework'
+
+  /compliance/assessments:
+    get:
+      tags: [Compliance]
+      summary: Get compliance assessment status
+      operationId: getComplianceAssessments
+      parameters:
+        - name: framework_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: asset_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Compliance assessments retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assessments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ComplianceAssessment'
+                  overall_score:
+                    type: number
+                    minimum: 0
+                    maximum: 100
+                  by_framework:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        score:
+                          type: number
+                        total_controls:
+                          type: integer
+                        compliant:
+                          type: integer
+                        non_compliant:
+                          type: integer
+
+    post:
+      tags: [Compliance]
+      summary: Create compliance assessment
+      operationId: createComplianceAssessment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateComplianceAssessment'
+      responses:
+        '201':
+          description: Assessment created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceAssessment'
+
+  /compliance/reports/audit-trail:
+    get:
+      tags: [Compliance]
+      summary: Generate compliance audit trail report
+      operationId: getAuditTrail
+      parameters:
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: framework_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, pdf, csv]
+            default: json
+      responses:
+        '200':
+          description: Audit trail report generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditTrailReport'
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            text/csv:
+              schema:
+                type: string
+
+  # Asset Management
+  /assets:
+    get:
+      tags: [Asset Management]
+      summary: List managed assets
+      operationId: listAssets
+      parameters:
+        - name: platform
+          in: query
+          schema:
+            type: string
+            enum: [kong, netlify, vercel, fly, k8s, aws, gcp, azure]
+        - name: environment
+          in: query
+          schema:
+            type: string
+            enum: [production, staging, development]
+        - name: tags
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: Assets retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Asset'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationInfo'
+
+    post:
+      tags: [Asset Management]
+      summary: Register new asset
+      operationId: createAsset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAsset'
+      responses:
+        '201':
+          description: Asset registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+
+  /assets/{asset_id}/security-posture:
+    get:
+      tags: [Asset Management]
+      summary: Get asset security posture
+      operationId: getAssetSecurityPosture
+      parameters:
+        - name: asset_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Security posture retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  asset:
+                    $ref: '#/components/schemas/Asset'
+                  security_score:
+                    type: integer
+                    minimum: 0
+                    maximum: 100
+                  vulnerabilities:
+                    type: object
+                    properties:
+                      critical:
+                        type: integer
+                      high:
+                        type: integer
+                      medium:
+                        type: integer
+                      low:
+                        type: integer
+                  compliance_status:
+                    type: object
+                    additionalProperties:
+                      type: string
+                      enum: [compliant, non_compliant, not_assessed]
+                  last_scan:
+                    type: string
+                    format: date-time
+                  recommendations:
+                    type: array
+                    items:
+                      type: string
+
+  # Multi-tenant Management
+  /organizations:
+    get:
+      tags: [Multi-tenant]
+      summary: List organizations (admin only)
+      operationId: listOrganizations
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Organizations retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Organization'
+
+    post:
+      tags: [Multi-tenant]
+      summary: Create new organization (admin only)
+      operationId: createOrganization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrganization'
+      responses:
+        '201':
+          description: Organization created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+
+  /organizations/{org_id}/users:
+    get:
+      tags: [Multi-tenant]
+      summary: List organization users
+      operationId: listOrganizationUsers
+      parameters:
+        - name: org_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Users retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+
+    post:
+      tags: [Multi-tenant]
+      summary: Invite user to organization
+      operationId: inviteUserToOrganization
+      parameters:
+        - name: org_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email:
+                  type: string
+                  format: email
+                role:
+                  type: string
+                  enum: [admin, security_analyst, viewer]
+      responses:
+        '201':
+          description: User invited successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invitation_id:
+                    type: string
+                    format: uuid
+                  email:
+                    type: string
+                  role:
+                    type: string
+                  expires_at:
+                    type: string
+                    format: date-time
+
+  # WebSocket Streaming
+  /stream/events:
+    get:
+      tags: [Real-time Streaming]
+      summary: WebSocket endpoint for real-time event streaming
+      operationId: streamEvents
+      parameters:
+        - name: organization_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: severity_filter
+          in: query
+          schema:
+            type: string
+            enum: [critical, high, medium, low, info]
+        - name: asset_filter
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+      responses:
+        '101':
+          description: WebSocket connection established
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # External Integrations
+  /integrations/siem:
+    get:
+      tags: [External Integrations]
+      summary: List SIEM integrations
+      operationId: listSIEMIntegrations
+      responses:
+        '200':
+          description: SIEM integrations retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SIEMIntegration'
+
+    post:
+      tags: [External Integrations]
+      summary: Create SIEM integration
+      operationId: createSIEMIntegration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSIEMIntegration'
+      responses:
+        '201':
+          description: SIEM integration created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIEMIntegration'
+
+  /integrations/siem/{integration_id}/test:
+    post:
+      tags: [External Integrations]
+      summary: Test SIEM integration connectivity
+      operationId: testSIEMIntegration
+      parameters:
+        - name: integration_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Integration test successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [success, failure]
+                  response_time_ms:
+                    type: integer
+                  last_test:
+                    type: string
+                    format: date-time
+                  error_message:
+                    type: string
+
+  # Health and Monitoring
+  /health:
+    get:
+      tags: [System]
+      summary: System health check
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded, unhealthy]
+                  version:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+                  services:
+                    type: object
+                    properties:
+                      database:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                          latency_ms:
+                            type: integer
+                      redis:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                          latency_ms:
+                            type: integer
+                      event_processor:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                          queue_size:
+                            type: integer
+
+  /metrics:
+    get:
+      tags: [System]
+      summary: Prometheus metrics endpoint
+      operationId: getMetrics
+      security: []
+      responses:
+        '200':
+          description: Prometheus metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    refreshToken:
+      type: apiKey
+      in: header
+      name: X-Refresh-Token
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organization_id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, security_analyst, viewer]
+        mfa_enabled:
+          type: boolean
+        last_login:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    Organization:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    CreateOrganization:
+      type: object
+      required: [name, slug]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        slug:
+          type: string
+          pattern: '^[a-z0-9-]+$'
+          minLength: 1
+          maxLength: 100
+
+    SecurityEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organization_id:
+          type: string
+          format: uuid
+        asset_id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+        severity:
+          type: string
+          enum: [critical, high, medium, low, info]
+        title:
+          type: string
+        description:
+          type: string
+        source:
+          type: string
+        raw_data:
+          type: object
+        resolved:
+          type: boolean
+        resolved_by:
+          type: string
+          format: uuid
+        resolved_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    CreateSecurityEvent:
+      type: object
+      required: [event_type, severity, title, source]
+      properties:
+        asset_id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+          minLength: 1
+        severity:
+          type: string
+          enum: [critical, high, medium, low, info]
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+        description:
+          type: string
+        source:
+          type: string
+          minLength: 1
+        raw_data:
+          type: object
+
+    ThreatDetectionRule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organization_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        condition:
+          type: object
+          description: JSON rule definition
+        severity:
+          type: string
+          enum: [critical, high, medium, low]
+        enabled:
+          type: boolean
+        notification_channels:
+          type: array
+          items:
+            type: string
+            format: uuid
+        created_by:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+
+    CreateThreatDetectionRule:
+      type: object
+      required: [name, condition, severity]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        condition:
+          type: object
+        severity:
+          type: string
+          enum: [critical, high, medium, low]
+        enabled:
+          type: boolean
+          default: true
+        notification_channels:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    ThreatAnomaly:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        anomaly_type:
+          type: string
+        description:
+          type: string
+        confidence_score:
+          type: number
+          minimum: 0
+          maximum: 1
+        affected_assets:
+          type: array
+          items:
+            type: string
+            format: uuid
+        recommendations:
+          type: array
+          items:
+            type: string
+        detected_at:
+          type: string
+          format: date-time
+
+    SecurityIncident:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organization_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        severity:
+          type: string
+          enum: [critical, high, medium, low]
+        status:
+          type: string
+          enum: [open, investigating, contained, resolved, closed]
+        assignee_id:
+          type: string
+          format: uuid
+        affected_assets:
+          type: array
+          items:
+            type: string
+            format: uuid
+        related_events:
+          type: array
+          items:
+            type: string
+            format: uuid
+        created_by:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateSecurityIncident:
+      type: object
+      required: [title, severity, status]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+        description:
+          type: string
+        severity:
+          type: string
+          enum: [critical, high, medium, low]
+        status:
+          type: string
+          enum: [open, investigating, contained, resolved, closed]
+        assignee_id:
+          type: string
+          format: uuid
+        affected_assets:
+          type: array
+          items:
+            type: string
+            format: uuid
+        related_events:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    ComplianceFramework:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        version:
+          type: string
+        description:
+          type: string
+
+    ComplianceAssessment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organization_id:
+          type: string
+          format: uuid
+        asset_id:
+          type: string
+          format: uuid
+        control_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [compliant, non_compliant, not_applicable, in_progress]
+        evidence:
+          type: string
+        assessed_by:
+          type: string
+          format: uuid
+        assessed_at:
+          type: string
+          format: date-time
+        next_assessment:
+          type: string
+          format: date-time
+
+    CreateComplianceAssessment:
+      type: object
+      required: [asset_id, control_id, status]
+      properties:
+        asset_id:
+          type: string
+          format: uuid
+        control_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [compliant, non_compliant, not_applicable, in_progress]
+        evidence:
+          type: string
+        next_assessment:
+          type: string
+          format: date-time
+
+    AuditTrailReport:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        generated_at:
+          type: string
+          format: date-time
+        period:
+          type: object
+          properties:
+            start_date:
+              type: string
+              format: date-time
+            end_date:
+              type: string
+              format: date-time
+        total_events:
+          type: integer
+        compliance_changes:
+          type: integer
+        user_activities:
+          type: integer
+        events:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              user_id:
+                type: string
+                format: uuid
+              action:
+                type: string
+              resource:
+                type: string
+              details:
+                type: object
+
+    Asset:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organization_id:
+          type: string
+          format: uuid
+        asset_type_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        environment:
+          type: string
+          enum: [production, staging, development]
+        platform:
+          type: string
+          enum: [kong, netlify, vercel, fly, k8s, aws, gcp, azure]
+        endpoint_url:
+          type: string
+          format: uri
+        metadata:
+          type: object
+        tags:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+
+    CreateAsset:
+      type: object
+      required: [name, environment, platform]
+      properties:
+        asset_type_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        environment:
+          type: string
+          enum: [production, staging, development]
+        platform:
+          type: string
+          enum: [kong, netlify, vercel, fly, k8s, aws, gcp, azure]
+        endpoint_url:
+          type: string
+          format: uri
+        metadata:
+          type: object
+        tags:
+          type: array
+          items:
+            type: string
+
+    SIEMIntegration:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organization_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        platform:
+          type: string
+          enum: [splunk, elastic, qradar, sentinel, chronicle]
+        endpoint_url:
+          type: string
+          format: uri
+        authentication_type:
+          type: string
+          enum: [api_key, oauth2, basic_auth, certificate]
+        enabled:
+          type: boolean
+        last_sync:
+          type: string
+          format: date-time
+        sync_status:
+          type: string
+          enum: [success, error, pending]
+
+    CreateSIEMIntegration:
+      type: object
+      required: [name, platform, endpoint_url, authentication_type]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        platform:
+          type: string
+          enum: [splunk, elastic, qradar, sentinel, chronicle]
+        endpoint_url:
+          type: string
+          format: uri
+        authentication_type:
+          type: string
+          enum: [api_key, oauth2, basic_auth, certificate]
+        credentials:
+          type: object
+          description: Platform-specific authentication data
+        enabled:
+          type: boolean
+          default: true
+
+    PaginationInfo:
+      type: object
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        has_more:
+          type: boolean
+
+  responses:
+    UnauthorizedError:
+      description: Authentication required or invalid token
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "unauthorized"
+              message:
+                type: string
+                example: "Invalid or expired authentication token"
+
+    BadRequestError:
+      description: Invalid request data
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "bad_request"
+              message:
+                type: string
+                example: "Invalid request data"
+              validation_errors:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    field:
+                      type: string
+                    message:
+                      type: string
+
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "not_found"
+              message:
+                type: string
+                example: "Resource not found"
+
+    RateLimitError:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "rate_limit_exceeded"
+              message:
+                type: string
+                example: "Too many requests"
+              retry_after:
+                type: integer
+                description: Seconds to wait before retry
+
+tags:
+  - name: Authentication
+    description: User authentication and authorization
+  - name: Security Events
+    description: Security event management and processing
+  - name: Threat Detection
+    description: Advanced threat detection and ML preparation
+  - name: Incident Management
+    description: Security incident response workflow
+  - name: Compliance
+    description: Compliance management and audit trails
+  - name: Asset Management
+    description: Security asset inventory and monitoring
+  - name: Multi-tenant
+    description: Organization and user management
+  - name: Real-time Streaming
+    description: WebSocket-based real-time data streaming
+  - name: External Integrations
+    description: SIEM and SOAR tool integrations
+  - name: System
+    description: System health and monitoring endpoints

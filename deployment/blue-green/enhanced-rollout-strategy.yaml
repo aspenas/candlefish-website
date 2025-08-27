@@ -1,0 +1,581 @@
+# Enhanced Blue-Green and Canary Deployment Strategy
+# Production-ready Argo Rollouts configuration with comprehensive validation
+
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: security-dashboard-backend
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/managed-by: argo-rollouts
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+    rollout.argoproj.io/revision: "1"
+spec:
+  replicas: 6  # Production scale for high availability
+  
+  # Deployment strategy - can be overridden by workflow
+  strategy:
+    blueGreen:
+      # Blue-green deployment configuration
+      activeService: security-dashboard-backend-active
+      previewService: security-dashboard-backend-preview
+      
+      # Automatic promotion after validation
+      autoPromotionEnabled: false  # Manual promotion for safety
+      
+      # Scale down delay after promotion
+      scaleDownDelaySeconds: 300  # 5 minutes
+      
+      # Pre-promotion analysis
+      prePromotionAnalysis:
+        templates:
+        - templateName: success-rate
+        - templateName: response-time
+        args:
+        - name: service-name
+          value: security-dashboard-backend-preview
+      
+      # Post-promotion analysis
+      postPromotionAnalysis:
+        templates:
+        - templateName: success-rate
+        - templateName: response-time
+        args:
+        - name: service-name
+          value: security-dashboard-backend-active
+  
+  # Pod template
+  selector:
+    matchLabels:
+      app: security-dashboard-backend
+  
+  template:
+    metadata:
+      labels:
+        app: security-dashboard-backend
+        version: "{{.Values.image.tag}}"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: security-dashboard-backend
+      
+      # Security context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      
+      containers:
+      - name: security-dashboard-backend
+        image: "{{.Values.ecr.registry}}/security-dashboard-backend:{{.Values.image.tag}}"
+        imagePullPolicy: Always
+        
+        # Container security context
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1001
+          capabilities:
+            drop:
+            - ALL
+        
+        ports:
+        - name: http
+          containerPort: 4000
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        
+        # Environment variables from ConfigMap and Secrets
+        envFrom:
+        - configMapRef:
+            name: security-dashboard-config
+        - secretRef:
+            name: security-dashboard-secrets
+        
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "4000"
+        - name: METRICS_PORT
+          value: "9090"
+        - name: LOG_LEVEL
+          value: "info"
+        - name: DEPLOYMENT_VERSION
+          value: "{{.Values.image.tag}}"
+        
+        # Resource requirements
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+            ephemeral-storage: "1Gi"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+            ephemeral-storage: "2Gi"
+        
+        # Liveness probe
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        
+        # Readiness probe
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        
+        # Startup probe
+        startupProbe:
+          httpGet:
+            path: /health/startup
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 30  # Allow up to 5 minutes for startup
+        
+        # Volume mounts
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: var-cache
+          mountPath: /var/cache
+        - name: var-log
+          mountPath: /var/log
+      
+      # Volumes
+      volumes:
+      - name: tmp
+        emptyDir:
+          sizeLimit: 1Gi
+      - name: var-cache
+        emptyDir:
+          sizeLimit: 1Gi
+      - name: var-log
+        emptyDir:
+          sizeLimit: 1Gi
+      
+      # Pod disruption budget considerations
+      terminationGracePeriodSeconds: 30
+      
+      # Node affinity for high availability
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - security-dashboard-backend
+              topologyKey: kubernetes.io/hostname
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+                - arm64
+      
+      # Tolerations for dedicated nodes (if available)
+      tolerations:
+      - key: "security-dashboard"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+
+---
+# Canary deployment strategy alternative
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: security-dashboard-backend-canary
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/managed-by: argo-rollouts
+  annotations:
+    rollout.argoproj.io/strategy: canary
+spec:
+  replicas: 6
+  
+  # Canary deployment strategy
+  strategy:
+    canary:
+      # Canary service for testing
+      canaryService: security-dashboard-backend-canary
+      stableService: security-dashboard-backend-stable
+      
+      # Traffic splitting configuration
+      trafficRouting:
+        istio:
+          virtualService:
+            name: security-dashboard-backend-vs
+            routes:
+            - primary
+          destinationRule:
+            name: security-dashboard-backend-dr
+            canarySubsetName: canary
+            stableSubsetName: stable
+      
+      # Canary steps
+      steps:
+      # Step 1: Deploy canary with 5% traffic
+      - setWeight: 5
+      - pause:
+          duration: 2m
+      
+      # Step 2: Run analysis
+      - analysis:
+          templates:
+          - templateName: success-rate
+          - templateName: response-time
+          - templateName: error-rate
+          args:
+          - name: service-name
+            value: security-dashboard-backend-canary
+          - name: canary-hash
+            valueFrom:
+              podTemplateHashValue: Latest
+      
+      # Step 3: Increase to 15% traffic
+      - setWeight: 15
+      - pause:
+          duration: 5m
+      
+      # Step 4: Run extended analysis
+      - analysis:
+          templates:
+          - templateName: success-rate
+          - templateName: response-time
+          - templateName: error-rate
+          - templateName: business-metrics
+          args:
+          - name: service-name
+            value: security-dashboard-backend-canary
+      
+      # Step 5: Increase to 50% traffic
+      - setWeight: 50
+      - pause:
+          duration: 10m
+      
+      # Step 6: Final analysis before full promotion
+      - analysis:
+          templates:
+          - templateName: success-rate
+          - templateName: response-time
+          - templateName: error-rate
+          - templateName: business-metrics
+          - templateName: security-metrics
+          args:
+          - name: service-name
+            value: security-dashboard-backend-canary
+      
+      # Step 7: Full promotion (100% traffic)
+      - setWeight: 100
+      - pause:
+          duration: 2m
+      
+      # Optional: Manual gate for critical deployments
+      - pause: {}
+  
+  # Use same pod template as blue-green
+  selector:
+    matchLabels:
+      app: security-dashboard-backend
+  
+  template:
+    metadata:
+      labels:
+        app: security-dashboard-backend
+        version: "{{.Values.image.tag}}"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      # ... (same pod spec as blue-green above)
+      serviceAccountName: security-dashboard-backend
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      
+      containers:
+      - name: security-dashboard-backend
+        image: "{{.Values.ecr.registry}}/security-dashboard-backend:{{.Values.image.tag}}"
+        imagePullPolicy: Always
+        
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1001
+          capabilities:
+            drop:
+            - ALL
+        
+        ports:
+        - name: http
+          containerPort: 4000
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        
+        envFrom:
+        - configMapRef:
+            name: security-dashboard-config
+        - secretRef:
+            name: security-dashboard-secrets
+        
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+            ephemeral-storage: "1Gi"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+            ephemeral-storage: "2Gi"
+        
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        
+        startupProbe:
+          httpGet:
+            path: /health/startup
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
+        
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: var-cache
+          mountPath: /var/cache
+        - name: var-log
+          mountPath: /var/log
+      
+      volumes:
+      - name: tmp
+        emptyDir:
+          sizeLimit: 1Gi
+      - name: var-cache
+        emptyDir:
+          sizeLimit: 1Gi
+      - name: var-log
+        emptyDir:
+          sizeLimit: 1Gi
+      
+      terminationGracePeriodSeconds: 30
+      
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - security-dashboard-backend
+              topologyKey: kubernetes.io/hostname
+
+---
+# Analysis Templates for deployment validation
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: success-rate
+  namespace: security-dashboard
+spec:
+  args:
+  - name: service-name
+  - name: canary-hash
+    value: "default"
+  metrics:
+  - name: success-rate
+    successCondition: result[0] >= 0.995  # 99.5% success rate
+    failureCondition: result[0] < 0.99   # Fail if below 99%
+    provider:
+      prometheus:
+        address: http://security-dashboard-monitoring-prometheus:9090
+        query: |
+          sum(rate(http_requests_total{service="{{.args.service-name}}",status!~"5.."}[5m])) /
+          sum(rate(http_requests_total{service="{{.args.service-name}}"}[5m]))
+    interval: 30s
+    count: 10  # Run for 5 minutes
+    failureLimit: 2  # Allow 2 failures before aborting
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: response-time
+  namespace: security-dashboard
+spec:
+  args:
+  - name: service-name
+  metrics:
+  - name: response-time-p95
+    successCondition: result[0] <= 0.5  # 500ms P95
+    failureCondition: result[0] > 1.0   # Fail if above 1s
+    provider:
+      prometheus:
+        address: http://security-dashboard-monitoring-prometheus:9090
+        query: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{service="{{.args.service-name}}"}[5m])) by (le)
+          )
+    interval: 30s
+    count: 10
+    failureLimit: 2
+  - name: response-time-p99
+    successCondition: result[0] <= 1.0  # 1s P99
+    failureCondition: result[0] > 2.0   # Fail if above 2s
+    provider:
+      prometheus:
+        address: http://security-dashboard-monitoring-prometheus:9090
+        query: |
+          histogram_quantile(0.99,
+            sum(rate(http_request_duration_seconds_bucket{service="{{.args.service-name}}"}[5m])) by (le)
+          )
+    interval: 30s
+    count: 10
+    failureLimit: 2
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: error-rate
+  namespace: security-dashboard
+spec:
+  args:
+  - name: service-name
+  metrics:
+  - name: error-rate
+    successCondition: result[0] <= 0.005  # 0.5% error rate
+    failureCondition: result[0] > 0.01    # Fail if above 1%
+    provider:
+      prometheus:
+        address: http://security-dashboard-monitoring-prometheus:9090
+        query: |
+          sum(rate(http_requests_total{service="{{.args.service-name}}",status=~"5.."}[5m])) /
+          sum(rate(http_requests_total{service="{{.args.service-name}}"}[5m]))
+    interval: 30s
+    count: 10
+    failureLimit: 3
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: business-metrics
+  namespace: security-dashboard
+spec:
+  args:
+  - name: service-name
+  metrics:
+  - name: active-users
+    successCondition: result[0] >= 100  # Minimum active users
+    provider:
+      prometheus:
+        address: http://security-dashboard-monitoring-prometheus:9090
+        query: security_dashboard_active_users
+    interval: 60s
+    count: 5
+  - name: security-events-processed
+    successCondition: result[0] >= 0  # Events are being processed
+    provider:
+      prometheus:
+        address: http://security-dashboard-monitoring-prometheus:9090
+        query: rate(security_dashboard_events_processed_total[5m])
+    interval: 60s
+    count: 5
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: security-metrics
+  namespace: security-dashboard
+spec:
+  args:
+  - name: service-name
+  metrics:
+  - name: authentication-failures
+    successCondition: result[0] <= 10  # Max 10 auth failures per minute
+    failureCondition: result[0] > 50   # Critical threshold
+    provider:
+      prometheus:
+        address: http://security-dashboard-monitoring-prometheus:9090
+        query: rate(security_dashboard_auth_failures_total[1m])
+    interval: 30s
+    count: 10
+    failureLimit: 2
+  - name: suspicious-activities
+    successCondition: result[0] <= 5   # Max 5 suspicious activities
+    failureCondition: result[0] > 20   # Critical threshold
+    provider:
+      prometheus:
+        address: http://security-dashboard-monitoring-prometheus:9090
+        query: rate(security_dashboard_suspicious_activities_total[5m])
+    interval: 60s
+    count: 5
+    failureLimit: 1

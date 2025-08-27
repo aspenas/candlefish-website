@@ -14,10 +14,10 @@ export class EmailDispatcher {
     this.provider = config.provider || 'ses';
     this.fromAddress = 'noreply@candlefish.ai';  // Using verified domain
     this.fromName = 'Patrick Smith';
-    
+
     if (this.provider === 'ses') {
-      this.sesClient = new SESClient({ 
-        region: config.region || 'us-east-1' 
+      this.sesClient = new SESClient({
+        region: config.region || 'us-east-1'
       });
     } else {
       // Gmail transporter
@@ -39,10 +39,10 @@ export class EmailDispatcher {
         .join(' ');
       return name;
     });
-    
+
     if (names.length === 1) return names[0];
     if (names.length === 2) return `${names[0]} and ${names[1]}`;
-    
+
     const last = names.pop();
     return `${names.join(', ')}, and ${last}`;
   }
@@ -54,12 +54,12 @@ export class EmailDispatcher {
       day: 'numeric',
       timeZone: timezone
     };
-    
+
     const dateStr = new Date(`${date}T${startTime}`).toLocaleDateString('en-US', options);
     const start = this.formatTime(startTime);
     const end = this.formatTime(endTime);
     const tz = this.getTimezoneAbbr(timezone);
-    
+
     return `${dateStr}, ${start}–${end} ${tz}`;
   }
 
@@ -137,9 +137,9 @@ patrick@candlefish.ai`;
 <body>
   <div class="container">
     <p>Hi ${friendlyNames} —</p>
-    
+
     <p>Looking forward to our conversation. Here are the details:</p>
-    
+
     <div class="meeting-details">
       <div class="detail-row">
         <span class="label">Time:</span>
@@ -158,16 +158,16 @@ patrick@candlefish.ai`;
         <span class="value">${passcode}</span>
       </div>
     </div>
-    
+
     <div class="read-ai-note">
       <strong>📝 Read.ai Copilot</strong><br>
       I've scheduled Read.ai Copilot to join — it produces a shared set of notes and highlights we'll all receive after the call.
       If you'd prefer not to have it participate, just let me know and I'll disable it.
       If you haven't seen the output before, it's surprisingly fun and useful.
     </div>
-    
+
     <p>I've attached a calendar invite for your convenience.</p>
-    
+
     <div class="signature">
       <p>Best,<br>Patrick</p>
       <p style="color: #666; font-size: 14px;">
@@ -209,13 +209,13 @@ patrick@candlefish.ai`;
 
     try {
       let messageId;
-      
+
       if (this.provider === 'ses') {
         messageId = await this.sendViaSES(messageData);
       } else {
         messageId = await this.sendViaGmail(messageData);
       }
-      
+
       logger.info('Email sent successfully', {
         to: to,
         cc: cc,
@@ -223,12 +223,12 @@ patrick@candlefish.ai`;
         messageId: messageId,
         provider: this.provider
       });
-      
+
       return { success: true, messageId, provider: this.provider };
     } catch (error) {
-      logger.error('Failed to send email', { 
+      logger.error('Failed to send email', {
         error: error.message,
-        provider: this.provider 
+        provider: this.provider
       });
       throw error;
     }
@@ -252,7 +252,7 @@ patrick@candlefish.ai`;
   async createAttachment(filePath, filename) {
     try {
       const content = await fs.readFile(filePath);
-      
+
       return {
         filename: filename || 'meeting.ics',
         content: content,

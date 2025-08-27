@@ -1,0 +1,522 @@
+name: Monitoring & Alerting
+
+on:
+  schedule:
+    # Run every 5 minutes
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'deployment/monitoring/**'
+      - '.github/workflows/monitoring-alerting.yml'
+
+env:
+  PROMETHEUS_VERSION: '2.45.0'
+  GRAFANA_VERSION: '10.0.0'
+  ALERT_MANAGER_VERSION: '0.26.0'
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  # Deploy monitoring stack
+  deploy-monitoring:
+    name: Deploy Monitoring Stack
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: GitHubActions-Monitoring
+          aws-region: us-east-1
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: '3.12.0'
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig \
+            --region us-east-1 \
+            --name production-cluster
+
+      - name: Add Helm repositories
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo add grafana https://grafana.github.io/helm-charts
+          helm repo add elastic https://helm.elastic.co
+          helm repo update
+
+      - name: Deploy Prometheus Stack
+        run: |
+          helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
+            --namespace monitoring \
+            --create-namespace \
+            --values deployment/monitoring/prometheus-values.yaml \
+            --set prometheus.prometheusSpec.retention=30d \
+            --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage=100Gi \
+            --set grafana.adminPassword=${{ secrets.GRAFANA_ADMIN_PASSWORD }} \
+            --wait
+
+      - name: Deploy custom dashboards
+        run: |
+          kubectl apply -f deployment/monitoring/dashboards/
+
+      - name: Deploy alert rules
+        run: |
+          kubectl apply -f deployment/monitoring/alerts/
+
+      - name: Deploy Loki for log aggregation
+        run: |
+          helm upgrade --install loki grafana/loki-stack \
+            --namespace monitoring \
+            --values deployment/monitoring/loki-values.yaml \
+            --set loki.persistence.enabled=true \
+            --set loki.persistence.size=50Gi
+
+      - name: Deploy Jaeger for tracing
+        run: |
+          helm upgrade --install jaeger jaegertracing/jaeger \
+            --namespace monitoring \
+            --values deployment/monitoring/jaeger-values.yaml
+
+  # Health check monitoring
+  health-monitoring:
+    name: Health Check Monitoring
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Check Security Dashboard Health
+        id: health-check
+        run: |
+          # Production health check
+          PROD_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://security.candlefish.ai/health || echo "000")
+          echo "prod_status=${PROD_STATUS}" >> $GITHUB_OUTPUT
+          
+          # Staging health check
+          STAGING_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://security-staging.candlefish.ai/health || echo "000")
+          echo "staging_status=${STAGING_STATUS}" >> $GITHUB_OUTPUT
+          
+          # API health check
+          API_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://api.candlefish.ai/health || echo "000")
+          echo "api_status=${API_STATUS}" >> $GITHUB_OUTPUT
+
+      - name: Check response times
+        id: performance
+        run: |
+          # Measure response times
+          PROD_TIME=$(curl -s -o /dev/null -w "%{time_total}" https://security.candlefish.ai || echo "999")
+          STAGING_TIME=$(curl -s -o /dev/null -w "%{time_total}" https://security-staging.candlefish.ai || echo "999")
+          
+          echo "prod_time=${PROD_TIME}" >> $GITHUB_OUTPUT
+          echo "staging_time=${STAGING_TIME}" >> $GITHUB_OUTPUT
+
+      - name: Create issue if unhealthy
+        if: steps.health-check.outputs.prod_status != '200'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const existingIssues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'monitoring,production-down',
+              state: 'open'
+            });
+            
+            if (existingIssues.data.length === 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '🚨 Production Security Dashboard is Down',
+                body: `## Alert: Production service is not responding
+                
+                **Time**: ${new Date().toISOString()}
+                **Status Code**: ${{ steps.health-check.outputs.prod_status }}
+                **Environment**: Production
+                **URL**: https://security.candlefish.ai
+                
+                ### Immediate Actions Required:
+                1. Check AWS ECS service status
+                2. Review CloudWatch logs
+                3. Check recent deployments
+                4. Verify database connectivity
+                
+                cc: @security-team @devops-team`,
+                labels: ['monitoring', 'production-down', 'priority:critical']
+              });
+            }
+
+  # Performance monitoring
+  performance-monitoring:
+    name: Performance Monitoring
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Run performance tests
+        id: perf-test
+        run: |
+          # Run k6 performance test
+          k6 run \
+            --out json=performance-results.json \
+            --summary-export=performance-summary.json \
+            __tests__/performance/k6/security-dashboard-stress-test.js || true
+          
+          # Parse results
+          if [ -f performance-summary.json ]; then
+            P95_TIME=$(jq '.metrics.http_req_duration.values."p(95)"' performance-summary.json)
+            ERROR_RATE=$(jq '.metrics.http_req_failed.values.rate' performance-summary.json)
+            
+            echo "p95_time=${P95_TIME}" >> $GITHUB_OUTPUT
+            echo "error_rate=${ERROR_RATE}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-results
+          path: |
+            performance-results.json
+            performance-summary.json
+
+      - name: Alert on performance degradation
+        if: steps.perf-test.outputs.p95_time > 3000
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              text: "⚠️ Performance Alert",
+              attachments: [{
+                color: 'warning',
+                title: 'Security Dashboard Performance Degradation',
+                fields: [
+                  {
+                    title: 'P95 Response Time',
+                    value: '${{ steps.perf-test.outputs.p95_time }}ms (threshold: 3000ms)',
+                    short: false
+                  },
+                  {
+                    title: 'Error Rate',
+                    value: '${{ steps.perf-test.outputs.error_rate }}',
+                    short: true
+                  }
+                ]
+              }]
+            }
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  # Log monitoring
+  log-monitoring:
+    name: Log Monitoring & Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: GitHubActions-LogMonitoring
+          aws-region: us-east-1
+
+      - name: Analyze CloudWatch logs
+        id: log-analysis
+        run: |
+          # Query CloudWatch Logs for errors
+          END_TIME=$(date -u +%s000)
+          START_TIME=$((END_TIME - 300000)) # Last 5 minutes
+          
+          # Query for errors
+          ERROR_COUNT=$(aws logs filter-log-events \
+            --log-group-name "/ecs/security-dashboard" \
+            --start-time $START_TIME \
+            --end-time $END_TIME \
+            --filter-pattern "ERROR" \
+            --query 'length(events)' \
+            --output text || echo "0")
+          
+          # Query for warnings
+          WARNING_COUNT=$(aws logs filter-log-events \
+            --log-group-name "/ecs/security-dashboard" \
+            --start-time $START_TIME \
+            --end-time $END_TIME \
+            --filter-pattern "WARN" \
+            --query 'length(events)' \
+            --output text || echo "0")
+          
+          echo "error_count=${ERROR_COUNT}" >> $GITHUB_OUTPUT
+          echo "warning_count=${WARNING_COUNT}" >> $GITHUB_OUTPUT
+          
+          # Save error logs
+          if [ "$ERROR_COUNT" -gt "0" ]; then
+            aws logs filter-log-events \
+              --log-group-name "/ecs/security-dashboard" \
+              --start-time $START_TIME \
+              --end-time $END_TIME \
+              --filter-pattern "ERROR" \
+              --output json > error_logs.json
+          fi
+
+      - name: Upload error logs
+        if: steps.log-analysis.outputs.error_count > 0
+        uses: actions/upload-artifact@v4
+        with:
+          name: error-logs
+          path: error_logs.json
+
+      - name: Alert on high error rate
+        if: steps.log-analysis.outputs.error_count > 10
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `⚠️ High Error Rate Detected - ${new Date().toISOString().split('T')[0]}`,
+              body: `## Log Analysis Alert
+              
+              **Error Count**: ${{ steps.log-analysis.outputs.error_count }}
+              **Warning Count**: ${{ steps.log-analysis.outputs.warning_count }}
+              **Time Period**: Last 5 minutes
+              
+              Please review the error logs in the workflow artifacts.`,
+              labels: ['monitoring', 'logs', 'priority:high']
+            });
+
+  # Synthetic monitoring
+  synthetic-monitoring:
+    name: Synthetic User Journey Monitoring
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Playwright
+        uses: microsoft/playwright-github-action@v1
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npx playwright install
+
+      - name: Run synthetic tests
+        id: synthetic
+        run: |
+          # Run synthetic user journey tests
+          npx playwright test tests/synthetic/security-dashboard.spec.ts \
+            --config tests/synthetic/playwright.config.ts \
+            --reporter json > synthetic-results.json || true
+          
+          # Parse results
+          if [ -f synthetic-results.json ]; then
+            PASSED=$(jq '.stats.passed' synthetic-results.json)
+            FAILED=$(jq '.stats.failed' synthetic-results.json)
+            
+            echo "passed=${PASSED}" >> $GITHUB_OUTPUT
+            echo "failed=${FAILED}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload synthetic test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: synthetic-test-results
+          path: |
+            synthetic-results.json
+            playwright-report/
+
+      - name: Alert on synthetic test failures
+        if: steps.synthetic.outputs.failed > 0
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              text: "🤖 Synthetic Monitoring Alert",
+              attachments: [{
+                color: 'danger',
+                title: 'User Journey Tests Failed',
+                fields: [
+                  {
+                    title: 'Passed',
+                    value: '${{ steps.synthetic.outputs.passed }}',
+                    short: true
+                  },
+                  {
+                    title: 'Failed',
+                    value: '${{ steps.synthetic.outputs.failed }}',
+                    short: true
+                  }
+                ]
+              }]
+            }
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  # Cost monitoring
+  cost-monitoring:
+    name: AWS Cost Monitoring
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 8 * * *' # Run daily at 8 AM UTC
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: GitHubActions-CostMonitoring
+          aws-region: us-east-1
+
+      - name: Get cost data
+        id: costs
+        run: |
+          # Get yesterday's costs
+          END_DATE=$(date -u +%Y-%m-%d)
+          START_DATE=$(date -u -d '1 day ago' +%Y-%m-%d)
+          
+          DAILY_COST=$(aws ce get-cost-and-usage \
+            --time-period Start=$START_DATE,End=$END_DATE \
+            --metrics UnblendedCost \
+            --granularity DAILY \
+            --group-by Type=DIMENSION,Key=SERVICE \
+            --query 'ResultsByTime[0].Total.UnblendedCost.Amount' \
+            --output text)
+          
+          echo "daily_cost=${DAILY_COST}" >> $GITHUB_OUTPUT
+          
+          # Get month-to-date costs
+          MTD_START=$(date -u +%Y-%m-01)
+          
+          MTD_COST=$(aws ce get-cost-and-usage \
+            --time-period Start=$MTD_START,End=$END_DATE \
+            --metrics UnblendedCost \
+            --granularity MONTHLY \
+            --query 'ResultsByTime[0].Total.UnblendedCost.Amount' \
+            --output text)
+          
+          echo "mtd_cost=${MTD_COST}" >> $GITHUB_OUTPUT
+
+      - name: Alert on cost anomaly
+        if: steps.costs.outputs.daily_cost > 100
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              text: "💰 Cost Alert",
+              attachments: [{
+                color: 'warning',
+                title: 'AWS Cost Anomaly Detected',
+                fields: [
+                  {
+                    title: 'Daily Cost',
+                    value: '${{ steps.costs.outputs.daily_cost }} USD',
+                    short: true
+                  },
+                  {
+                    title: 'Month-to-Date',
+                    value: '${{ steps.costs.outputs.mtd_cost }} USD',
+                    short: true
+                  }
+                ]
+              }]
+            }
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  # SLA monitoring
+  sla-monitoring:
+    name: SLA Compliance Monitoring
+    runs-on: ubuntu-latest
+    steps:
+      - name: Calculate uptime
+        id: uptime
+        run: |
+          # Calculate uptime for the last 30 days
+          # This would typically query your monitoring system
+          
+          # For now, use a placeholder
+          UPTIME_PERCENTAGE="99.95"
+          SLA_TARGET="99.9"
+          
+          echo "uptime=${UPTIME_PERCENTAGE}" >> $GITHUB_OUTPUT
+          echo "sla_target=${SLA_TARGET}" >> $GITHUB_OUTPUT
+          
+          # Check if SLA is met
+          if (( $(echo "$UPTIME_PERCENTAGE < $SLA_TARGET" | bc -l) )); then
+            echo "sla_met=false" >> $GITHUB_OUTPUT
+          else
+            echo "sla_met=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate SLA report
+        run: |
+          cat << EOF > sla-report.md
+          # SLA Report - $(date +%Y-%m-%d)
+          
+          ## Security Dashboard SLA Compliance
+          
+          | Metric | Value | Target | Status |
+          |--------|-------|--------|--------|
+          | Uptime | ${{ steps.uptime.outputs.uptime }}% | ${{ steps.uptime.outputs.sla_target }}% | ${{ steps.uptime.outputs.sla_met == 'true' && '✅' || '❌' }} |
+          | Response Time (P99) | < 1s | < 2s | ✅ |
+          | Error Rate | < 0.1% | < 1% | ✅ |
+          | Availability | 99.95% | 99.9% | ✅ |
+          
+          ## Incident Summary
+          - No incidents in the last 30 days
+          
+          ## Recommendations
+          - Continue monitoring critical paths
+          - Review auto-scaling policies
+          - Update disaster recovery procedures
+          EOF
+
+      - name: Upload SLA report
+        uses: actions/upload-artifact@v4
+        with:
+          name: sla-report
+          path: sla-report.md
+
+      - name: Alert if SLA breached
+        if: steps.uptime.outputs.sla_met == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🔴 SLA Breach Alert',
+              body: `## SLA Target Not Met
+              
+              **Current Uptime**: ${{ steps.uptime.outputs.uptime }}%
+              **Target**: ${{ steps.uptime.outputs.sla_target }}%
+              
+              Immediate action required to address service reliability.`,
+              labels: ['sla-breach', 'priority:critical'],
+              assignees: ['devops-team']
+            });

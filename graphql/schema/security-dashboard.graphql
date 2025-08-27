@@ -4,31 +4,31 @@
 extend type Query {
   # Security Overview
   securityOverview(organizationId: ID!): SecurityOverview!
-  
+
   # Asset Management
   assets(filter: AssetFilter): [Asset!]!
   asset(id: ID!): Asset
-  
+
   # Security Events & Alerts
   securityEvents(filter: SecurityEventFilter): SecurityEventConnection!
   securityEvent(id: ID!): SecurityEvent
-  
+
   alerts(filter: AlertFilter): AlertConnection!
   alert(id: ID!): Alert
-  
+
   # Vulnerability Management
   vulnerabilities(filter: VulnerabilityFilter): VulnerabilityConnection!
   vulnerability(id: ID!): Vulnerability
-  
+
   # Compliance
   complianceStatus(organizationId: ID!): ComplianceStatus!
   complianceControls(frameworkId: ID!): [ComplianceControl!]!
-  
+
   # Kong Gateway Monitoring (Critical for HTTP Admin API vulnerability)
   kongServices(filter: KongServiceFilter): [KongService!]!
   kongRoutes(serviceId: ID): [KongRoute!]!
   kongAdminApiStatus: KongAdminApiStatus!
-  
+
   # Metrics and Analytics
   securityMetrics(query: MetricsQuery!): MetricsResult!
   threatTrends(timeRange: TimeRange!): ThreatTrends!
@@ -39,29 +39,29 @@ extend type Mutation {
   createAsset(input: CreateAssetInput!): Asset!
   updateAsset(id: ID!, input: UpdateAssetInput!): Asset!
   deleteAsset(id: ID!): Boolean!
-  
+
   # Alert Management
   acknowledgeAlert(id: ID!): Alert!
   resolveAlert(id: ID!, resolution: String!): Alert!
   createAlertRule(input: CreateAlertRuleInput!): AlertRule!
   updateAlertRule(id: ID!, input: UpdateAlertRuleInput!): AlertRule!
   deleteAlertRule(id: ID!): Boolean!
-  
+
   # Security Event Management
   resolveSecurityEvent(id: ID!, resolution: String!): SecurityEvent!
   escalateSecurityEvent(id: ID!, assignTo: ID): SecurityEvent!
-  
+
   # Vulnerability Management
   updateVulnerability(id: ID!, input: UpdateVulnerabilityInput!): Vulnerability!
   acceptVulnerabilityRisk(id: ID!, reason: String!): Vulnerability!
-  
+
   # Compliance Management
   updateComplianceAssessment(input: UpdateComplianceAssessmentInput!): ComplianceAssessment!
-  
+
   # Incident Response
   createIncident(input: CreateIncidentInput!): SecurityIncident!
   updateIncident(id: ID!, input: UpdateIncidentInput!): SecurityIncident!
-  
+
   # Configuration Updates
   updateMonitoringConfig(input: MonitoringConfigInput!): MonitoringConfig!
 }
@@ -70,23 +70,23 @@ extend type Subscription {
   # Real-time Security Events
   securityEventAdded(organizationId: ID!): SecurityEvent!
   securityEventUpdated(organizationId: ID!): SecurityEvent!
-  
+
   # Real-time Alerts
   alertTriggered(organizationId: ID!): Alert!
   alertUpdated(organizationId: ID!): Alert!
-  
+
   # System Health Updates
   assetHealthChanged(assetId: ID): AssetHealthUpdate!
-  
+
   # Kong Admin API Monitoring (Critical Priority)
   kongAdminApiStatusChanged: KongAdminApiStatus!
-  
+
   # Vulnerability Updates
   vulnerabilityDiscovered(organizationId: ID!): Vulnerability!
-  
+
   # Compliance Status Changes
   complianceStatusChanged(organizationId: ID!): ComplianceStatusUpdate!
-  
+
   # Live Metrics
   liveMetrics(organizationId: ID!, metricTypes: [String!]!): LiveMetricsUpdate!
 }
@@ -101,14 +101,14 @@ type SecurityOverview {
   complianceScore: Float!
   threatLevel: ThreatLevel!
   lastUpdated: DateTime!
-  
+
   # Kong Admin API specific status (high priority)
   kongAdminApiVulnerability: KongAdminApiVulnerabilityStatus!
-  
+
   # Summary stats by severity
   vulnerabilitiesBySeverity: [SeverityCount!]!
   alertsBySeverity: [SeverityCount!]!
-  
+
   # Recent activity
   recentEvents: [SecurityEvent!]!
 }
@@ -123,21 +123,21 @@ type Asset @key(fields: "id") {
   platform: Platform!
   endpointUrl: String
   tags: [String!]!
-  
+
   # Security properties
   securityLevel: SecurityLevel!
   lastSecurityScan: DateTime
-  
+
   # Relationships (use DataLoader pattern)
   vulnerabilities: [Vulnerability!]!
   securityEvents(limit: Int = 10): [SecurityEvent!]!
   alerts(status: AlertStatus): [Alert!]!
   complianceAssessments: [ComplianceAssessment!]!
-  
+
   # Health and status
   healthStatus: HealthStatus!
   lastHealthCheck: DateTime
-  
+
   # Metadata and configuration
   metadata: JSON
   createdAt: DateTime!
@@ -148,28 +148,28 @@ type SecurityEvent @key(fields: "id") {
   id: ID!
   organizationId: ID!
   asset: Asset
-  
+
   eventType: String!
   severity: Severity!
   title: String!
   description: String
   source: String!
-  
+
   # Event data and context
   rawData: JSON
   affectedComponents: [String!]!
-  
+
   # Resolution tracking
   resolved: Boolean!
   resolvedBy: User
   resolvedAt: DateTime
   resolution: String
-  
+
   # Escalation
   escalated: Boolean!
   escalatedBy: User
   escalatedAt: DateTime
-  
+
   createdAt: DateTime!
 }
 
@@ -178,11 +178,11 @@ type Alert @key(fields: "id") {
   organizationId: ID!
   rule: AlertRule!
   asset: Asset
-  
+
   severity: Severity!
   title: String!
   message: String!
-  
+
   # Status tracking
   status: AlertStatus!
   acknowledgedBy: User
@@ -190,12 +190,12 @@ type Alert @key(fields: "id") {
   resolvedBy: User
   resolvedAt: DateTime
   resolution: String
-  
+
   # Alert metadata
   triggerCount: Int!
   firstTriggered: DateTime!
   lastTriggered: DateTime!
-  
+
   createdAt: DateTime!
 }
 
@@ -204,20 +204,20 @@ type AlertRule @key(fields: "id") {
   organizationId: ID!
   name: String!
   description: String
-  
+
   # Rule configuration
   condition: JSON!
   severity: Severity!
   enabled: Boolean!
-  
+
   # Notification settings
   notificationChannels: [String!]!
   cooldownMinutes: Int!
-  
+
   # Statistics
   triggeredCount: Int!
   lastTriggered: DateTime
-  
+
   createdBy: User!
   createdAt: DateTime!
   updatedAt: DateTime!
@@ -227,36 +227,36 @@ type Vulnerability @key(fields: "id") {
   id: ID!
   organizationId: ID!
   asset: Asset!
-  
+
   # Vulnerability identification
   cveId: String
   cvssScore: Float
   severity: Severity!
   title: String!
   description: String!
-  
+
   # Affected components
   affectedComponent: String!
   affectedVersion: String
-  
+
   # Fix information
   fixAvailable: Boolean!
   fixVersion: String
   fixComplexity: FixComplexity
-  
+
   # Status and lifecycle
   status: VulnerabilityStatus!
   riskAccepted: Boolean!
   riskReason: String
-  
+
   # Discovery and timeline
   firstDetected: DateTime!
   lastSeen: DateTime!
-  
+
   # References and links
   references: [String!]!
   exploitAvailable: Boolean!
-  
+
   createdAt: DateTime!
 }
 
@@ -265,7 +265,7 @@ type ComplianceStatus @key(fields: "organizationId") {
   overallScore: Float!
   frameworks: [ComplianceFrameworkStatus!]!
   lastAssessment: DateTime!
-  
+
   # Critical compliance issues
   criticalGaps: [ComplianceGap!]!
   upcomingDeadlines: [ComplianceDeadline!]!
@@ -279,7 +279,7 @@ type ComplianceFrameworkStatus {
   nonCompliantControls: Int!
   notApplicableControls: Int!
   inProgressControls: Int!
-  
+
   # Recent assessments
   recentAssessments: [ComplianceAssessment!]!
 }
@@ -289,20 +289,20 @@ type KongAdminApiStatus {
   isSecure: Boolean!
   protocol: String!
   adminApiUrl: String!
-  
+
   # Vulnerability status
   isVulnerable: Boolean!
   vulnerabilityDescription: String
   riskLevel: ThreatLevel!
-  
+
   # Remediation
   recommendedActions: [String!]!
   fixEstimatedTime: String
-  
+
   # Monitoring
   lastChecked: DateTime!
   checkFrequency: String!
-  
+
   # Historical data
   statusHistory: [KongAdminApiStatusHistory!]!
 }
@@ -324,22 +324,22 @@ type KongService @key(fields: "id") {
   host: String!
   port: Int!
   path: String
-  
+
   # Security configuration
   httpsRedirectStatusCode: Int
   tlsVerify: Boolean!
-  
+
   # Associated routes
   routes: [KongRoute!]!
-  
+
   # Health and monitoring
   healthStatus: HealthStatus!
   lastHealthCheck: DateTime
-  
+
   # Security assessment
   securityRisk: SecurityRisk!
   vulnerabilities: [Vulnerability!]!
-  
+
   createdAt: DateTime!
   updatedAt: DateTime!
 }
@@ -348,20 +348,20 @@ type KongRoute @key(fields: "id") {
   id: ID!
   kongRouteId: String!
   service: KongService!
-  
+
   protocols: [String!]!
   methods: [String!]
   hosts: [String!]
   paths: [String!]
-  
+
   # Security settings
   httpsRedirectStatusCode: Int
   preserveHost: Boolean!
-  
+
   # Security assessment
   securityRisk: SecurityRisk!
   isPublic: Boolean!
-  
+
   createdAt: DateTime!
   updatedAt: DateTime!
 }

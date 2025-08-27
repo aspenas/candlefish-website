@@ -1,0 +1,459 @@
+name: Security Dashboard CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop, 'feature/**']
+    paths:
+      - 'apps/security-dashboard/**'
+      - 'packages/security-*/**'
+      - '.github/workflows/security-dashboard-ci-cd.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'apps/security-dashboard/**'
+      - 'packages/security-*/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+
+env:
+  NODE_VERSION: '18'
+  PNPM_VERSION: '8.15.6'
+  AWS_REGION: 'us-east-1'
+  DOCKER_REGISTRY: 'ghcr.io'
+  SERVICE_NAME: 'security-dashboard'
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+  id-token: write
+
+jobs:
+  # Code quality and security checks
+  quality-security:
+    name: Code Quality & Security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run linting
+        run: |
+          pnpm --filter @candlefish/security-dashboard lint
+          pnpm --filter @candlefish/security-dashboard type-check
+
+      - name: Security audit
+        run: |
+          pnpm audit --production --audit-level=high
+          
+      - name: Run Trivy security scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: 'apps/security-dashboard'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          projectBaseDir: apps/security-dashboard
+
+      - name: Check for secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Testing suite
+  test:
+    name: Test Suite
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node: [18, 20]
+    needs: quality-security
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run unit tests
+        run: |
+          pnpm --filter @candlefish/security-dashboard test:unit --coverage
+          pnpm test:security-dashboard
+
+      - name: Run integration tests
+        run: pnpm --filter @candlefish/security-dashboard test:integration
+        env:
+          TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+          TEST_API_KEY: ${{ secrets.TEST_API_KEY }}
+
+      - name: Upload coverage reports
+        if: matrix.node == 18 && matrix.os == 'ubuntu-latest'
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: security-dashboard
+          directory: ./apps/security-dashboard/coverage
+          name: security-dashboard-coverage
+
+  # Accessibility testing
+  accessibility:
+    name: Accessibility Tests
+    runs-on: ubuntu-latest
+    needs: quality-security
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build application
+        run: pnpm --filter @candlefish/security-dashboard build
+
+      - name: Run accessibility tests
+        run: |
+          pnpm test:accessibility
+          npx pa11y-ci --config .pa11yci.json
+
+      - name: Upload accessibility report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: accessibility-report
+          path: accessibility-report/
+
+  # Build and containerize
+  build:
+    name: Build & Containerize
+    runs-on: ubuntu-latest
+    needs: [test, accessibility]
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.SERVICE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./deployment/docker/Dockerfile.security-dashboard-frontend
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ steps.meta.outputs.version }}
+
+      - name: Run Trivy vulnerability scanner on image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.SERVICE_NAME }}:${{ steps.meta.outputs.version }}
+          format: 'sarif'
+          output: 'trivy-image-results.sarif'
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-image-results.sarif'
+
+  # Deploy to staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/develop' || github.event_name == 'workflow_dispatch'
+    environment:
+      name: staging
+      url: https://security-staging.candlefish.ai
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: GitHubActions-SecurityDashboard
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy to ECS
+        run: |
+          # Update ECS service with new image
+          aws ecs update-service \
+            --cluster staging-cluster \
+            --service security-dashboard-staging \
+            --force-new-deployment \
+            --desired-count 2
+
+      - name: Wait for deployment
+        run: |
+          aws ecs wait services-stable \
+            --cluster staging-cluster \
+            --services security-dashboard-staging
+
+      - name: Run smoke tests
+        run: |
+          npm install -g newman
+          newman run tests/postman/security-dashboard-smoke.json \
+            --environment tests/postman/staging.env.json \
+            --reporters cli,json \
+            --reporter-json-export smoke-test-results.json
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: staging-smoke-test-results
+          path: smoke-test-results.json
+
+  # Deploy to production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build, deploy-staging]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: production
+      url: https://security.candlefish.ai
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_PROD_ROLE_ARN }}
+          role-session-name: GitHubActions-SecurityDashboard-Prod
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Blue-Green Deployment
+        run: |
+          # Execute blue-green deployment script
+          ./scripts/deployment/blue-green-deploy.sh \
+            --cluster production-cluster \
+            --service security-dashboard \
+            --image ${{ needs.build.outputs.image-tag }} \
+            --health-check-url https://security.candlefish.ai/health \
+            --rollback-on-failure
+
+      - name: Update CloudFront distribution
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/*"
+
+      - name: Run production verification
+        run: |
+          # Run comprehensive production tests
+          npm install -g @playwright/test
+          playwright test --config=tests/e2e/production.config.ts
+
+      - name: Monitor deployment metrics
+        run: |
+          # Check CloudWatch metrics for errors
+          ./scripts/monitoring/check-deployment-health.sh \
+            --service security-dashboard \
+            --duration 300 \
+            --threshold 1
+
+  # Post-deployment monitoring
+  monitor-deployment:
+    name: Monitor Deployment
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup monitoring
+        run: |
+          npm install -g @datadog/datadog-ci
+          
+      - name: Send deployment event to Datadog
+        env:
+          DD_API_KEY: ${{ secrets.DATADOG_API_KEY }}
+          DD_APP_KEY: ${{ secrets.DATADOG_APP_KEY }}
+        run: |
+          datadog-ci deployment create \
+            --service security-dashboard \
+            --env ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'production' || 'staging' }} \
+            --version ${{ github.sha }} \
+            --repository-url ${{ github.server_url }}/${{ github.repository }} \
+            --started-at ${{ github.event.head_commit.timestamp }} \
+            --finished-at $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+      - name: Create GitHub deployment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const environment = context.ref === 'refs/heads/main' ? 'production' : 'staging';
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: environment,
+              description: 'Security Dashboard deployment',
+              auto_merge: false,
+              required_contexts: [],
+              production_environment: environment === 'production'
+            });
+            
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deployment.data.id,
+              state: 'success',
+              environment_url: `https://security${environment === 'staging' ? '-staging' : ''}.candlefish.ai`,
+              description: 'Deployment completed successfully'
+            });
+
+      - name: Send notification
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            Security Dashboard Deployment: ${{ job.status }}
+            Environment: ${{ github.ref == 'refs/heads/main' && 'Production' || 'Staging' }}
+            Version: ${{ github.sha }}
+            Author: ${{ github.actor }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  # Rollback on failure
+  rollback:
+    name: Rollback Deployment
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: failure()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_PROD_ROLE_ARN }}
+          role-session-name: GitHubActions-Rollback
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Rollback to previous version
+        run: |
+          # Get previous task definition
+          PREVIOUS_TASK_DEF=$(aws ecs describe-services \
+            --cluster production-cluster \
+            --services security-dashboard \
+            --query 'services[0].taskDefinition' \
+            --output text)
+          
+          # Update service with previous version
+          aws ecs update-service \
+            --cluster production-cluster \
+            --service security-dashboard \
+            --task-definition $PREVIOUS_TASK_DEF \
+            --force-new-deployment
+
+      - name: Notify rollback
+        uses: 8398a7/action-slack@v3
+        with:
+          status: 'warning'
+          text: |
+            ⚠️ Production deployment rolled back
+            Service: Security Dashboard
+            Reason: Deployment verification failed
+            Rolled back to previous stable version
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}

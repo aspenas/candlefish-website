@@ -92,18 +92,18 @@ export class ICSGenerator {
     let description = `Join Zoom Meeting:\n${joinUrl}\n\n`;
     description += `Meeting ID: ${meetingId}\n`;
     description += `Passcode: ${passcode}\n\n`;
-    
+
     if (additionalInfo) {
       description += `${additionalInfo}\n\n`;
     }
-    
+
     description += `---\n`;
     description += `Read.ai Copilot will join this meeting to provide:\n`;
     description += `• Real-time transcription\n`;
     description += `• Meeting summary and action items\n`;
     description += `• Shared highlights for all participants\n\n`;
     description += `Meeting organized by Candlefish.ai`;
-    
+
     return description;
   }
 
@@ -111,25 +111,25 @@ export class ICSGenerator {
     try {
       // Ensure directory exists
       await fs.mkdir(outputPath, { recursive: true });
-      
+
       const fullPath = path.join(outputPath, filename);
       const icsContent = calendar.toString();
-      
+
       // Debug: Save raw content for inspection
       await fs.writeFile(fullPath + '.debug', icsContent, 'utf8');
       logger.info('Debug ICS saved', { path: fullPath + '.debug' });
-      
+
       // Validate ICS content
       if (!this.validateICS(icsContent)) {
-        logger.error('ICS content preview', { 
+        logger.error('ICS content preview', {
           content: icsContent.substring(0, 500),
           hasOrganizer: icsContent.includes('ORGANIZER')
         });
         throw new Error('Generated ICS file failed validation');
       }
-      
+
       await fs.writeFile(fullPath, icsContent, 'utf8');
-      
+
       logger.info('ICS file saved', { path: fullPath });
       return fullPath;
     } catch (error) {
@@ -174,11 +174,11 @@ export class ICSGenerator {
   async parseICSFile(filePath) {
     try {
       const content = await fs.readFile(filePath, 'utf8');
-      
+
       // Basic parsing for verification
       const lines = content.split('\n');
       const event = {};
-      
+
       for (const line of lines) {
         if (line.startsWith('UID:')) {
           event.uid = line.substring(4).trim();
@@ -192,7 +192,7 @@ export class ICSGenerator {
           event.location = line.substring(9).trim();
         }
       }
-      
+
       return event;
     } catch (error) {
       logger.error('Failed to parse ICS file', { error: error.message });
