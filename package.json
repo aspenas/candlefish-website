@@ -6,7 +6,8 @@
   "workspaces": [
     "apps/*",
     "packages/*",
-    "projects/*"
+    "projects/*",
+    "!apps/security-dashboard/mobile"
   ],
   "scripts": {
     "prebuild": "pnpm brand:sync",
