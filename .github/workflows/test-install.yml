@@ -1,0 +1,60 @@
+name: Test Install Dependencies
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/test-install.yml'
+
+jobs:
+  test-install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install pnpm
+        run: |
+          npm install -g pnpm@9.7.0
+          pnpm --version
+          
+      - name: Debug environment
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          echo "PNPM version: $(pnpm --version)"
+          ls -la
+          
+      - name: Simple install with verbose output
+        run: |
+          echo "Starting pnpm install with verbose logging..."
+          pnpm install --verbose --no-frozen-lockfile 2>&1 | tee install.log || true
+          echo "Exit code: $?"
+          
+      - name: Show install log tail
+        if: always()
+        run: |
+          echo "Last 100 lines of install log:"
+          tail -100 install.log || echo "No log file found"
+          
+      - name: Check for common issues
+        if: always()
+        run: |
+          echo "Checking workspace configuration:"
+          cat pnpm-workspace.yaml
+          echo ""
+          echo "Checking root package.json:"
+          cat package.json | jq '.workspaces, .packageManager'
+          echo ""
+          echo "Checking for .npmrc:"
+          cat .npmrc 2>/dev/null || echo "No .npmrc file"
