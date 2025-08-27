@@ -17,7 +17,7 @@ const ComplianceScoreCard: React.FC = () => {
           <ComplianceIcon sx={{ mr: 1, color: 'success.main' }} />
           <Typography variant="h6">Compliance Status</Typography>
         </Box>
-        
+
         <Box sx={{ textAlign: 'center', mb: 3 }}>
           <Typography variant="h2" sx={{ color: 'success.main', mb: 1 }}>
             {complianceScore}%
@@ -27,9 +27,9 @@ const ComplianceScoreCard: React.FC = () => {
           </Typography>
         </Box>
 
-        <LinearProgress 
-          variant="determinate" 
-          value={complianceScore} 
+        <LinearProgress
+          variant="determinate"
+          value={complianceScore}
           sx={{ height: 8, borderRadius: 4, mb: 3 }}
         />
 
@@ -40,7 +40,7 @@ const ComplianceScoreCard: React.FC = () => {
           {frameworks.map((framework) => (
             <Box key={framework.name} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
               <Typography variant="body2">{framework.name}</Typography>
-              <Chip 
+              <Chip
                 label={`${framework.score}%`}
                 size="small"
                 color={framework.score >= 90 ? 'success' : framework.score >= 80 ? 'warning' : 'error'}

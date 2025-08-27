@@ -10,7 +10,7 @@ Candlefish.ai requires SES production access for transactional business communic
 
 EMAIL TYPES:
 - Meeting invitations with ICS calendar files
-- Business coordination messages  
+- Business coordination messages
 - Project updates to clients
 - Team collaboration notices
 
@@ -23,7 +23,7 @@ VOLUME:
 COMPLIANCE & BEST PRACTICES:
 ✓ Domain verified with DKIM, SPF, and DMARC
 ✓ Bounce handling via SNS topics configured
-✓ Complaint handling via SNS topics configured  
+✓ Complaint handling via SNS topics configured
 ✓ Suppression list management implemented
 ✓ No marketing or promotional emails
 ✓ All recipients have business relationship with sender

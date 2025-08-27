@@ -1,0 +1,215 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* Security Operations Center Global Styles */
+@layer base {
+  :root {
+    /* Light mode colors (fallback) */
+    --color-background: 255 255 255;
+    --color-foreground: 15 23 42;
+    --color-primary: 59 130 246;
+    --color-secondary: 100 116 139;
+    --color-accent: 236 72 153;
+    --color-muted: 148 163 184;
+    --color-border: 226 232 240;
+  }
+  
+  .dark {
+    /* Dark mode colors - optimized for SOC environments */
+    --color-background: 10 15 28;
+    --color-foreground: 248 250 252;
+    --color-primary: 59 130 246;
+    --color-secondary: 71 85 105;
+    --color-accent: 34 197 94;
+    --color-muted: 107 114 128;
+    --color-border: 55 65 81;
+  }
+  
+  * {
+    @apply border-border;
+  }
+  
+  html {
+    @apply antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  
+  body {
+    @apply bg-soc-background text-foreground font-sans;
+    @apply min-h-screen;
+  }
+  
+  /* Custom scrollbar for dark theme */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-soc-surface rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-soc-border rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-security-600;
+  }
+}
+
+@layer components {
+  /* Security-specific component styles */
+  .soc-card {
+    @apply bg-soc-surface border border-soc-border rounded-lg shadow-sm;
+    @apply backdrop-blur-sm;
+  }
+  
+  .soc-button {
+    @apply inline-flex items-center justify-center whitespace-nowrap rounded-md;
+    @apply text-sm font-medium transition-colors focus-visible:outline-none;
+    @apply focus-visible:ring-2 focus-visible:ring-security-500 focus-visible:ring-offset-2;
+    @apply disabled:pointer-events-none disabled:opacity-50;
+  }
+  
+  .soc-button-primary {
+    @apply soc-button bg-security-600 text-white hover:bg-security-700;
+    @apply shadow-sm hover:shadow-glow-sm;
+  }
+  
+  .soc-button-secondary {
+    @apply soc-button bg-soc-elevated text-white border border-soc-border;
+    @apply hover:bg-soc-surface hover:text-security-400;
+  }
+  
+  .soc-input {
+    @apply flex h-10 w-full rounded-md border border-soc-border;
+    @apply bg-soc-elevated px-3 py-2 text-sm text-white;
+    @apply placeholder:text-soc-muted focus-visible:outline-none;
+    @apply focus-visible:ring-2 focus-visible:ring-security-500;
+    @apply focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  
+  /* Severity indicator styles */
+  .severity-critical {
+    @apply text-critical-400 bg-critical-950/50 border-critical-800;
+  }
+  
+  .severity-high {
+    @apply text-warning-400 bg-warning-950/50 border-warning-800;
+  }
+  
+  .severity-medium {
+    @apply text-warning-300 bg-warning-950/30 border-warning-700;
+  }
+  
+  .severity-low {
+    @apply text-info-400 bg-info-950/50 border-info-800;
+  }
+  
+  .severity-info {
+    @apply text-success-400 bg-success-950/50 border-success-800;
+  }
+  
+  /* Status indicator styles */
+  .status-active {
+    @apply text-critical-400 bg-critical-950/20;
+  }
+  
+  .status-acknowledged {
+    @apply text-warning-400 bg-warning-950/20;
+  }
+  
+  .status-resolved {
+    @apply text-success-400 bg-success-950/20;
+  }
+  
+  .status-investigating {
+    @apply text-info-400 bg-info-950/20;
+  }
+  
+  /* Animation utilities */
+  .animate-glow {
+    @apply animate-pulse-slow;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+  }
+  
+  .animate-critical-glow {
+    @apply animate-pulse-slow;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+  }
+  
+  /* Layout utilities */
+  .dashboard-grid {
+    @apply grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+  }
+  
+  .metrics-grid {
+    @apply grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4;
+  }
+  
+  /* Data table styles */
+  .data-table {
+    @apply soc-card overflow-hidden;
+  }
+  
+  .data-table-header {
+    @apply bg-soc-elevated px-6 py-4 border-b border-soc-border;
+  }
+  
+  .data-table-row {
+    @apply border-b border-soc-border hover:bg-soc-elevated/50 transition-colors;
+  }
+  
+  .data-table-cell {
+    @apply px-6 py-4 text-sm text-white;
+  }
+}
+
+@layer utilities {
+  /* Text utilities for security context */
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .text-glow {
+    text-shadow: 0 0 10px currentColor;
+  }
+  
+  /* Focus utilities */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-security-500 focus-visible:ring-offset-2;
+  }
+  
+  /* Backdrop utilities */
+  .glass {
+    @apply backdrop-blur-md bg-white/5 border border-white/10;
+  }
+  
+  .glass-dark {
+    @apply backdrop-blur-md bg-black/20 border border-white/10;
+  }
+}
+
+/* Chart and visualization specific styles */
+.recharts-wrapper {
+  @apply text-white;
+}
+
+.recharts-cartesian-axis-tick-value {
+  @apply fill-soc-muted text-xs;
+}
+
+.recharts-legend-item-text {
+  @apply text-white;
+}
+
+/* Custom chart colors for security dashboard */
+:root {
+  --chart-critical: #ef4444;
+  --chart-high: #f59e0b;
+  --chart-medium: #eab308;
+  --chart-low: #22c55e;
+  --chart-info: #3b82f6;
+  --chart-grid: #374151;
+}

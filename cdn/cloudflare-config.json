@@ -1,0 +1,268 @@
+{
+  "zone_id": "YOUR_ZONE_ID",
+  "domain": "candlefish.ai",
+  "security_dashboard": {
+    "subdomain": "security.candlefish.ai",
+    "origin": "security-lb.candlefish.ai",
+    "ssl": {
+      "mode": "full_strict",
+      "min_tls_version": "1.2",
+      "certificate_pinning": true
+    },
+    "cache": {
+      "level": "aggressive",
+      "browser_ttl": 14400,
+      "edge_ttl": 86400,
+      "bypass_cookies": ["session", "auth_token"],
+      "purge_tags": ["security", "dashboard", "api"],
+      "rules": [
+        {
+          "match": "*.js",
+          "edge_ttl": 2592000,
+          "browser_ttl": 86400,
+          "cache_key": "include_query_string"
+        },
+        {
+          "match": "*.css",
+          "edge_ttl": 2592000,
+          "browser_ttl": 86400,
+          "cache_key": "include_query_string"
+        },
+        {
+          "match": "/api/*",
+          "bypass_cache": true,
+          "edge_ttl": 0
+        },
+        {
+          "match": "/graphql",
+          "bypass_cache": true,
+          "edge_ttl": 0
+        },
+        {
+          "match": "/static/*",
+          "edge_ttl": 31536000,
+          "browser_ttl": 604800,
+          "cache_key": "ignore_query_string"
+        },
+        {
+          "match": "/images/*",
+          "edge_ttl": 2592000,
+          "browser_ttl": 604800,
+          "polish": "lossless",
+          "webp": true,
+          "mirage": true
+        }
+      ]
+    },
+    "performance": {
+      "rocket_loader": true,
+      "minification": {
+        "js": true,
+        "css": true,
+        "html": true
+      },
+      "brotli": true,
+      "early_hints": true,
+      "http2_prioritization": true,
+      "http3": true,
+      "0rtt": true,
+      "image_optimization": {
+        "polish": "lossless",
+        "webp": true,
+        "avif": true,
+        "resize": {
+          "enabled": true,
+          "variants": [320, 640, 1280, 1920]
+        }
+      }
+    },
+    "security": {
+      "waf": {
+        "enabled": true,
+        "sensitivity": "high",
+        "rules": [
+          "OWASP Core Ruleset",
+          "Cloudflare Managed Ruleset"
+        ]
+      },
+      "ddos_protection": "enabled",
+      "bot_management": {
+        "enabled": true,
+        "challenge_threshold": 30,
+        "definitely_automated_action": "block",
+        "likely_automated_action": "challenge",
+        "verified_bot_action": "allow"
+      },
+      "rate_limiting": [
+        {
+          "threshold": 100,
+          "period": 60,
+          "path": "/api/*",
+          "action": "challenge"
+        },
+        {
+          "threshold": 50,
+          "period": 60,
+          "path": "/graphql",
+          "action": "challenge"
+        },
+        {
+          "threshold": 10,
+          "period": 60,
+          "path": "/api/auth/login",
+          "action": "block"
+        }
+      ],
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "X-XSS-Protection": "1; mode=block",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' wss://security.candlefish.ai https://api.candlefish.ai",
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()"
+      }
+    },
+    "workers": {
+      "routes": [
+        {
+          "pattern": "security.candlefish.ai/api/*",
+          "script": "security-api-worker"
+        },
+        {
+          "pattern": "security.candlefish.ai/graphql",
+          "script": "graphql-edge-worker"
+        }
+      ]
+    },
+    "page_rules": [
+      {
+        "target": "security.candlefish.ai/api/*",
+        "actions": {
+          "cache_level": "bypass",
+          "security_level": "high",
+          "ssl": "full_strict"
+        }
+      },
+      {
+        "target": "security.candlefish.ai/static/*",
+        "actions": {
+          "cache_level": "cache_everything",
+          "edge_cache_ttl": 31536000,
+          "browser_cache_ttl": 604800
+        }
+      }
+    ],
+    "analytics": {
+      "web_analytics": true,
+      "rum": true,
+      "log_push": {
+        "enabled": true,
+        "destination": "s3://candlefish-logs/cloudflare/",
+        "fields": [
+          "ClientIP",
+          "ClientRequestHost",
+          "ClientRequestMethod",
+          "ClientRequestURI",
+          "EdgeEndTimestamp",
+          "EdgeResponseBytes",
+          "EdgeResponseStatus",
+          "EdgeStartTimestamp",
+          "RayID",
+          "WAFAction",
+          "WAFMatchedVar",
+          "WorkerCPUTime",
+          "WorkerStatus",
+          "WorkerSubrequest",
+          "ZoneName"
+        ]
+      }
+    },
+    "load_balancing": {
+      "enabled": true,
+      "pools": [
+        {
+          "name": "security-dashboard-pool",
+          "origins": [
+            {
+              "name": "us-east-1",
+              "address": "security-use1.candlefish.ai",
+              "weight": 1,
+              "enabled": true
+            },
+            {
+              "name": "us-west-2",
+              "address": "security-usw2.candlefish.ai",
+              "weight": 1,
+              "enabled": true
+            },
+            {
+              "name": "eu-west-1",
+              "address": "security-euw1.candlefish.ai",
+              "weight": 1,
+              "enabled": true
+            }
+          ],
+          "check_regions": ["WNAM", "ENAM", "WEU", "EEU"],
+          "minimum_origins": 1,
+          "monitor": {
+            "expected_codes": "2xx",
+            "path": "/health",
+            "interval": 60,
+            "timeout": 5,
+            "retries": 2
+          }
+        }
+      ],
+      "geo_steering": {
+        "policy": "proximity",
+        "fallback_pool": "security-dashboard-pool"
+      },
+      "session_affinity": "cookie",
+      "session_affinity_ttl": 3600
+    },
+    "argo": {
+      "smart_routing": true,
+      "tiered_caching": true
+    },
+    "network": {
+      "websocket": true,
+      "http2": true,
+      "http3": true,
+      "ipv6": true,
+      "pseudo_ipv4": true,
+      "opportunistic_encryption": true
+    }
+  },
+  "workers_scripts": {
+    "security-api-worker": {
+      "file": "workers/security-api-worker.js",
+      "compatibility_date": "2024-01-01",
+      "compatibility_flags": ["nodejs_compat"],
+      "limits": {
+        "cpu_ms": 50,
+        "subrequest": 50
+      },
+      "bindings": {
+        "KV": "SECURITY_CACHE",
+        "DURABLE_OBJECTS": ["RateLimiter", "SessionManager"],
+        "R2": "SECURITY_ASSETS",
+        "D1": "SECURITY_EDGE_DB"
+      }
+    },
+    "graphql-edge-worker": {
+      "file": "workers/graphql-edge-worker.js",
+      "compatibility_date": "2024-01-01",
+      "compatibility_flags": ["nodejs_compat"],
+      "limits": {
+        "cpu_ms": 100,
+        "subrequest": 100
+      },
+      "bindings": {
+        "KV": "GRAPHQL_CACHE",
+        "DURABLE_OBJECTS": ["QueryComplexityAnalyzer"],
+        "D1": "GRAPHQL_EDGE_DB"
+      }
+    }
+  }
+}

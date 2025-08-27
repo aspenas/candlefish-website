@@ -1,5 +1,4 @@
-# Minimal Netlify Configuration for Photo Capture System
-# Basic SPA deployment with security headers
+# Netlify Configuration for Photo Capture System with Backend Proxy
 
 [build]
   command = "npm run build"
@@ -7,7 +6,7 @@
 
 [build.environment]
   NODE_VERSION = "18"
-  VITE_API_URL = "https://5470-inventory.fly.dev/api/v1"
+  VITE_API_URL = "https://inventory.highline.work/api/v1"
 
 # Security Headers
 [[headers]]
@@ -18,12 +17,28 @@
     X-XSS-Protection = "1; mode=block"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(self), microphone=(self), geolocation=(self)"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://5470-inventory.fly.dev wss://5470-inventory.fly.dev"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://inventory.highline.work https://5470-inventory.fly.dev wss://inventory.highline.work wss://5470-inventory.fly.dev"
 
-# API calls go directly to backend (no proxy needed)
-# Password protection doesn't interfere with client-side API calls
+# Proxy API requests to Fly.io backend
+[[redirects]]
+  from = "https://inventory.highline.work/api/*"
+  to = "https://5470-inventory.fly.dev/api/:splat"
+  status = 200
+  force = true
 
-# SPA Redirects
+[[redirects]]
+  from = "https://inventory.highline.work/ws"
+  to = "https://5470-inventory.fly.dev/ws"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "https://inventory.highline.work/health"
+  to = "https://5470-inventory.fly.dev/health"
+  status = 200
+  force = true
+
+# SPA Redirects (must be last)
 [[redirects]]
   from = "/*"
   to = "/index.html"

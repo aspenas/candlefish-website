@@ -391,9 +391,9 @@ paths:
       description: |
         WebSocket endpoint for receiving real-time security events and alerts.
         Supports subscription to specific event types and severity levels.
-        
+
         Connection URL: wss://security-api.candlefish.ai/v1/ws/events?token=<JWT_TOKEN>
-        
+
         Subscription message format:
         ```json
         {

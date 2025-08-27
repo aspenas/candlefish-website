@@ -197,7 +197,7 @@ export class SecurityDashboardError extends Error {
     this.name = this.constructor.name;
     this.traceId = uuidv4();
     this.timestamp = new Date();
-    
+
     this.context = {
       category: ErrorCategory.INTERNAL,
       severity: ErrorSeverity.MEDIUM,
@@ -312,31 +312,31 @@ export class ErrorHandler extends EventEmitter {
   ): Promise<GraphQLFormattedError> {
     const isProduction = process.env.NODE_ENV === 'production';
     const traceId = context.traceId || uuidv4();
-    
+
     // Classify and enrich the error
     const enrichedError = this.enrichError(error, context, traceId);
-    
+
     // Log the error with appropriate level
     await this.logError(enrichedError, context, operationName);
-    
+
     // Record metrics
     this.recordErrorMetrics(enrichedError, operationName);
-    
+
     // Send to Sentry for production errors
     if (isProduction && enrichedError.context.severity !== ErrorSeverity.LOW) {
       this.sendToSentry(enrichedError, context, operationName);
     }
-    
+
     // Handle critical errors
     if (enrichedError.context.severity === ErrorSeverity.CRITICAL) {
       await this.handleCriticalError(enrichedError, context, operationName);
     }
-    
+
     // Audit security violations
     if (enrichedError.context.category === ErrorCategory.SECURITY) {
       await this.auditSecurityViolation(enrichedError, context, operationName);
     }
-    
+
     // Emit error event for real-time monitoring
     this.emit('error', {
       error: enrichedError,
@@ -344,7 +344,7 @@ export class ErrorHandler extends EventEmitter {
       operationName,
       traceId,
     });
-    
+
     // Format error for GraphQL response
     return this.formatErrorForResponse(enrichedError, isProduction);
   }
@@ -403,7 +403,7 @@ export class ErrorHandler extends EventEmitter {
     operationName?: string
   ): Promise<void> {
     const logLevel = this.getLogLevel(error.context.severity);
-    
+
     const logData = {
       traceId: error.traceId,
       errorCategory: error.context.category,
@@ -452,7 +452,7 @@ export class ErrorHandler extends EventEmitter {
           limit_type: error.context.metadata.limitType || 'unknown',
         });
         break;
-        
+
       case ErrorCategory.AUTHENTICATION:
         metrics.authenticationFailures.inc({
           failure_type: error.context.metadata.failureType || 'unknown',
@@ -484,7 +484,7 @@ export class ErrorHandler extends EventEmitter {
         ip: context.clientIp,
         userAgent: context.userAgent,
       });
-      
+
       Sentry.captureException(error);
     });
   }
@@ -690,17 +690,17 @@ export function createMonitoringPlugin(
 
         didEncounterErrors: async (requestContext) => {
           const { errors, operationName } = requestContext;
-          
+
           if (errors && errors.length > 0) {
             // Process each error through our error handler
             const formattedErrors = await Promise.all(
-              errors.map(error => 
+              errors.map(error =>
                 errorHandler.handleError(error, requestContext.context, operationName || undefined)
               )
             );
 
             // Replace errors with formatted versions
-            requestContext.errors = formattedErrors.map(formatted => 
+            requestContext.errors = formattedErrors.map(formatted =>
               new GraphQLError(
                 formatted.message,
                 undefined,
@@ -740,7 +740,7 @@ export interface HealthCheckResult {
 // Health check implementation
 export async function getHealthCheck(redis: Redis): Promise<HealthCheckResult> {
   const startTime = Date.now();
-  
+
   // Check service health
   const serviceChecks = await Promise.allSettled([
     checkDatabaseHealth(),
@@ -757,7 +757,7 @@ export async function getHealthCheck(redis: Redis): Promise<HealthCheckResult> {
   // Calculate overall status
   const healthyServices = Object.values(services).filter(status => status === 'healthy').length;
   const totalServices = Object.keys(services).length;
-  
+
   let status: 'healthy' | 'degraded' | 'unhealthy';
   if (healthyServices === totalServices) {
     status = 'healthy';
@@ -800,7 +800,7 @@ async function getHealthMetrics(redis: Redis): Promise<HealthCheckResult['metric
   try {
     // Get recent performance data
     const recentRequests = await redis.lrange('performance:requests', 0, 59); // Last 60 requests
-    
+
     if (recentRequests.length === 0) {
       return {
         requestsPerMinute: 0,
@@ -813,15 +813,15 @@ async function getHealthMetrics(redis: Redis): Promise<HealthCheckResult['metric
     const requests = recentRequests.map(r => JSON.parse(r));
     const now = Date.now();
     const oneMinuteAgo = now - 60000;
-    
+
     // Filter requests from last minute
-    const recentRequestsInMinute = requests.filter(r => 
+    const recentRequestsInMinute = requests.filter(r =>
       new Date(r.timestamp).getTime() > oneMinuteAgo
     );
-    
+
     const errorCount = recentRequestsInMinute.filter(r => r.status === 'error').length;
     const totalRequests = recentRequestsInMinute.length;
-    const avgResponseTime = totalRequests > 0 
+    const avgResponseTime = totalRequests > 0
       ? recentRequestsInMinute.reduce((sum, r) => sum + r.duration, 0) / totalRequests
       : 0;
 

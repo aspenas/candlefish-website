@@ -1,288 +1,192 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Drawer,
-  AppBar,
-  Toolbar,
-  Typography,
-  IconButton,
-  Badge,
-  Avatar,
-  Menu,
-  MenuItem,
-  Divider,
-  useMediaQuery,
-  useTheme,
-  Tooltip,
-  Alert,
-  Collapse,
-} from '@mui/material';
-import {
-  Menu as MenuIcon,
-  Notifications as NotificationsIcon,
-  Settings as SettingsIcon,
-  AccountCircle as AccountIcon,
-  Brightness4 as DarkModeIcon,
-  Brightness7 as LightModeIcon,
-  Security as SecurityIcon,
-  Warning as WarningIcon,
-  Close as CloseIcon,
-} from '@mui/icons-material';
-
-import { useTheme as useCustomTheme } from '@/providers/ThemeProvider';
-import Navigation from './Navigation';
-import NotificationPanel from '../notifications/NotificationPanel';
-import UserMenu from '../user/UserMenu';
-import { ConnectionStatus } from '@/hooks/useConnectionStatus';
+  Bars3Icon,
+  BellIcon,
+  Cog6ToothIcon,
+  UserCircleIcon,
+  ShieldCheckIcon,
+  ExclamationTriangleIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
+import { useDashboardStore } from '../../store/dashboardStore';
+import { useAuthStore } from '../../store/authStore';
+import { useNotificationStore } from '../../store/notificationStore';
+import DashboardNavigation from './DashboardNavigation';
+import clsx from 'clsx';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
-  title?: string;
 }
 
-const DRAWER_WIDTH = 280;
-
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ 
-  children, 
-  title = 'Security Dashboard' 
-}) => {
-  const theme = useTheme();
-  const { isDarkMode, toggleTheme } = useCustomTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showCriticalAlert, setShowCriticalAlert] = useState(true);
   
-  // State management
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
-    connected: true,
-    reconnecting: false,
-  });
-  const [showKongAlert, setShowKongAlert] = useState(false);
+  const { sidebarOpen, setSidebarOpen, connectionStatus } = useDashboardStore();
+  const { user, logout } = useAuthStore();
+  const { notifications } = useNotificationStore();
 
-  // Mock connection status - replace with real implementation
-  useEffect(() => {
-    const checkConnection = () => {
-      setConnectionStatus({
-        connected: navigator.onLine,
-        reconnecting: false,
-      });
-    };
+  const unreadNotifications = notifications.filter(n => !n.read).length;
 
-    window.addEventListener('online', checkConnection);
-    window.addEventListener('offline', checkConnection);
-
-    return () => {
-      window.removeEventListener('online', checkConnection);
-      window.removeEventListener('offline', checkConnection);
-    };
-  }, []);
-
-  // Mock Kong vulnerability alert - replace with real data
-  useEffect(() => {
-    // Simulate Kong vulnerability detection
-    const timer = setTimeout(() => {
-      setShowKongAlert(true);
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
-
-  const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setUserMenuAnchor(event.currentTarget);
-  };
-
-  const handleUserMenuClose = () => {
-    setUserMenuAnchor(null);
-  };
-
-  const handleNotificationsToggle = () => {
-    setNotificationsOpen(!notificationsOpen);
+  const handleLogout = () => {
+    logout();
   };
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-      {/* App Bar */}
-      <AppBar
-        position="fixed"
-        sx={{
-          zIndex: (theme) => theme.zIndex.drawer + 1,
-          background: 'linear-gradient(90deg, #1a1a1a 0%, #2a2a2a 100%)',
-          borderBottom: '1px solid #333',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-        }}
+    <div className="min-h-screen bg-soc-background flex">
+      {/* Sidebar */}
+      <aside
+        className={clsx(
+          'fixed inset-y-0 left-0 z-50 w-64 bg-soc-surface border-r border-soc-border transform transition-transform duration-200 ease-in-out lg:translate-x-0',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
       >
-        <Toolbar sx={{ justifyContent: 'space-between' }}>
-          {/* Left side */}
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <IconButton
-              color="inherit"
-              aria-label="toggle navigation"
-              edge="start"
-              onClick={handleDrawerToggle}
-              sx={{ mr: 2, display: { lg: 'none' } }}
-            >
-              <MenuIcon />
-            </IconButton>
-            
-            <SecurityIcon sx={{ mr: 1, color: '#1976d2' }} />
-            <Typography
-              variant="h6"
-              component="h1"
-              sx={{
-                fontWeight: 600,
-                background: 'linear-gradient(45deg, #1976d2, #42a5f5)',
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-            >
-              {title}
-            </Typography>
-            
-            {/* Connection status indicator */}
-            {!connectionStatus.connected && (
-              <Box sx={{ ml: 2 }}>
-                <Tooltip title="Connection lost - working offline">
-                  <WarningIcon sx={{ color: 'warning.main', fontSize: 20 }} />
-                </Tooltip>
-              </Box>
-            )}
-            
-            {connectionStatus.reconnecting && (
-              <Box sx={{ ml: 2 }}>
-                <Typography variant="caption" color="warning.main">
-                  Reconnecting...
-                </Typography>
-              </Box>
-            )}
-          </Box>
+        <div className="flex flex-col h-full">
+          {/* Logo */}
+          <div className="flex items-center space-x-3 p-6 border-b border-soc-border">
+            <div className="p-2 bg-security-600 rounded-lg">
+              <ShieldCheckIcon className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold text-white">Security Dashboard</h1>
+              <p className="text-sm text-soc-muted">Candlefish</p>
+            </div>
+          </div>
 
-          {/* Right side */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {/* Theme toggle */}
-            <Tooltip title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}>
-              <IconButton color="inherit" onClick={toggleTheme}>
-                {isDarkMode ? <LightModeIcon /> : <DarkModeIcon />}
-              </IconButton>
-            </Tooltip>
+          {/* Navigation */}
+          <DashboardNavigation />
+        </div>
+      </aside>
 
-            {/* Notifications */}
-            <Tooltip title="Notifications">
-              <IconButton color="inherit" onClick={handleNotificationsToggle}>
-                <Badge badgeContent={5} color="error">
-                  <NotificationsIcon />
-                </Badge>
-              </IconButton>
-            </Tooltip>
-
-            {/* Settings */}
-            <Tooltip title="Settings">
-              <IconButton color="inherit">
-                <SettingsIcon />
-              </IconButton>
-            </Tooltip>
-
-            {/* User menu */}
-            <Tooltip title="User account">
-              <IconButton
-                color="inherit"
-                onClick={handleUserMenuOpen}
-                aria-label="user account"
-              >
-                <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
-                  <AccountIcon />
-                </Avatar>
-              </IconButton>
-            </Tooltip>
-          </Box>
-        </Toolbar>
-
-        {/* Kong vulnerability alert */}
-        <Collapse in={showKongAlert}>
-          <Alert
-            severity="error"
-            action={
-              <IconButton
-                aria-label="close"
-                color="inherit"
-                size="small"
-                onClick={() => setShowKongAlert(false)}
-              >
-                <CloseIcon fontSize="inherit" />
-              </IconButton>
-            }
-            sx={{ 
-              borderRadius: 0,
-              borderBottom: '1px solid #333',
-            }}
-          >
-            <strong>CRITICAL:</strong> Kong Admin API vulnerability detected - HTTP protocol in use. 
-            Immediate action required to secure your API gateway.
-          </Alert>
-        </Collapse>
-      </AppBar>
-
-      {/* Navigation Drawer */}
-      <Box
-        component="nav"
-        sx={{ width: { lg: DRAWER_WIDTH }, flexShrink: { lg: 0 } }}
-      >
-        <Drawer
-          variant={isMobile ? 'temporary' : 'permanent'}
-          open={isMobile ? mobileOpen : true}
-          onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true, // Better mobile performance
-          }}
-          sx={{
-            '& .MuiDrawer-paper': {
-              width: DRAWER_WIDTH,
-              boxSizing: 'border-box',
-              borderRight: '1px solid #333',
-              background: 'linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%)',
-            },
-          }}
-        >
-          <Toolbar /> {/* Spacer for AppBar */}
-          <Navigation onItemClick={() => isMobile && setMobileOpen(false)} />
-        </Drawer>
-      </Box>
+      {/* Mobile sidebar backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
       {/* Main content */}
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          p: 3,
-          pt: 2,
-          width: { lg: `calc(100% - ${DRAWER_WIDTH}px)` },
-          minHeight: '100vh',
-          background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%)',
-          position: 'relative',
-        }}
-      >
-        <Toolbar /> {/* Spacer for AppBar */}
-        {children}
-      </Box>
+      <div className="flex-1 lg:ml-64">
+        {/* Top bar */}
+        <header className="bg-soc-surface border-b border-soc-border px-6 py-4">
+          <div className="flex items-center justify-between">
+            {/* Left side */}
+            <div className="flex items-center space-x-4">
+              {/* Mobile menu button */}
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="p-2 text-soc-muted hover:text-white lg:hidden"
+              >
+                <Bars3Icon className="w-5 h-5" />
+              </button>
 
-      {/* User Menu */}
-      <UserMenu
-        anchorEl={userMenuAnchor}
-        open={Boolean(userMenuAnchor)}
-        onClose={handleUserMenuClose}
-      />
+              {/* Connection status */}
+              <div className="flex items-center space-x-2">
+                <div className={clsx(
+                  'w-2 h-2 rounded-full',
+                  connectionStatus.connected ? 'bg-success-500' : 'bg-critical-500'
+                )} />
+                <span className="text-sm text-soc-muted">
+                  {connectionStatus.connected ? 'Connected' : 'Disconnected'}
+                </span>
+              </div>
+            </div>
 
-      {/* Notifications Panel */}
-      <NotificationPanel
-        open={notificationsOpen}
-        onClose={() => setNotificationsOpen(false)}
-      />
-    </Box>
+            {/* Right side */}
+            <div className="flex items-center space-x-3">
+              {/* Notifications */}
+              <div className="relative">
+                <button className="p-2 text-soc-muted hover:text-white transition-colors">
+                  <BellIcon className="w-5 h-5" />
+                  {unreadNotifications > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-critical-500 text-white text-xs rounded-full flex items-center justify-center">
+                      {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Settings */}
+              <button className="p-2 text-soc-muted hover:text-white transition-colors">
+                <Cog6ToothIcon className="w-5 h-5" />
+              </button>
+
+              {/* User menu */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex items-center space-x-2 p-2 text-soc-muted hover:text-white transition-colors"
+                >
+                  <div className="w-8 h-8 bg-security-600 rounded-full flex items-center justify-center">
+                    <UserCircleIcon className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="text-sm font-medium">
+                    {user ? `${user.firstName} ${user.lastName}` : 'User'}
+                  </span>
+                </button>
+
+                {/* User dropdown */}
+                {showUserMenu && (
+                  <div className="absolute right-0 mt-2 w-48 bg-soc-elevated border border-soc-border rounded-lg shadow-lg z-50">
+                    <div className="py-1">
+                      <div className="px-4 py-2 border-b border-soc-border">
+                        <p className="text-sm font-medium text-white">
+                          {user?.email || 'user@example.com'}
+                        </p>
+                        <p className="text-xs text-soc-muted">
+                          {user?.role || 'Security Analyst'}
+                        </p>
+                      </div>
+                      <button className="w-full text-left px-4 py-2 text-sm text-soc-muted hover:text-white hover:bg-soc-surface">
+                        Profile Settings
+                      </button>
+                      <button className="w-full text-left px-4 py-2 text-sm text-soc-muted hover:text-white hover:bg-soc-surface">
+                        Preferences
+                      </button>
+                      <div className="border-t border-soc-border mt-1 pt-1">
+                        <button
+                          onClick={handleLogout}
+                          className="w-full text-left px-4 py-2 text-sm text-critical-400 hover:bg-soc-surface"
+                        >
+                          Sign Out
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Critical Alert Banner */}
+        {showCriticalAlert && (
+          <div className="bg-critical-950 border-b border-critical-800 px-6 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <ExclamationTriangleIcon className="w-5 h-5 text-critical-400" />
+                <span className="text-sm text-white">
+                  <strong>CRITICAL:</strong> Kong Admin API vulnerability detected - HTTP protocol in use.
+                  Immediate action required to secure your API gateway.
+                </span>
+              </div>
+              <button
+                onClick={() => setShowCriticalAlert(false)}
+                className="p-1 text-critical-400 hover:text-critical-300 transition-colors"
+              >
+                <XMarkIcon className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Main content area */}
+        <main className="p-6">
+          {children}
+        </main>
+      </div>
+    </div>
   );
 };
 

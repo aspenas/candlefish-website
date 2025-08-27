@@ -24,35 +24,35 @@ export const SUBSCRIPTION_CHANNELS = {
   // Security Events
   SECURITY_EVENT_ADDED: 'SECURITY_EVENT_ADDED',
   SECURITY_EVENT_UPDATED: 'SECURITY_EVENT_UPDATED',
-  
+
   // Alerts
   ALERT_TRIGGERED: 'ALERT_TRIGGERED',
   ALERT_UPDATED: 'ALERT_UPDATED',
   ALERT_RESOLVED: 'ALERT_RESOLVED',
-  
+
   // Asset Health
   ASSET_HEALTH_CHANGED: 'ASSET_HEALTH_CHANGED',
   ASSET_DISCOVERED: 'ASSET_DISCOVERED',
   ASSET_REMOVED: 'ASSET_REMOVED',
-  
+
   // Kong Gateway Critical Monitoring
   KONG_ADMIN_API_STATUS_CHANGED: 'KONG_ADMIN_API_STATUS_CHANGED',
   KONG_SERVICE_HEALTH_CHANGED: 'KONG_SERVICE_HEALTH_CHANGED',
   KONG_ROUTE_CONFIGURATION_CHANGED: 'KONG_ROUTE_CONFIGURATION_CHANGED',
-  
+
   // Vulnerabilities
   VULNERABILITY_DISCOVERED: 'VULNERABILITY_DISCOVERED',
   VULNERABILITY_UPDATED: 'VULNERABILITY_UPDATED',
   VULNERABILITY_FIXED: 'VULNERABILITY_FIXED',
-  
+
   // Compliance
   COMPLIANCE_STATUS_CHANGED: 'COMPLIANCE_STATUS_CHANGED',
   COMPLIANCE_ASSESSMENT_COMPLETED: 'COMPLIANCE_ASSESSMENT_COMPLETED',
-  
+
   // Live Metrics
   LIVE_METRICS: 'LIVE_METRICS',
   THREAT_LEVEL_CHANGED: 'THREAT_LEVEL_CHANGED',
-  
+
   // System Status
   SERVICE_STATUS_CHANGED: 'SERVICE_STATUS_CHANGED',
   MAINTENANCE_SCHEDULED: 'MAINTENANCE_SCHEDULED',
@@ -128,7 +128,7 @@ class OptimizedRedisPubSub extends RedisPubSub {
         trigger: triggerName,
         error: error.message,
       }, 'Error publishing message');
-      
+
       await this.metrics.recordError('publish', error.message);
       throw error;
     }
@@ -147,7 +147,7 @@ class OptimizedRedisPubSub extends RedisPubSub {
         };
 
         await super.publish(triggerName, batchPayload);
-        
+
         // Clear the buffer
         this.messageBuffer.set(triggerName, []);
 
@@ -290,7 +290,7 @@ class SecuritySubscriptionConnectionManager extends EventEmitter {
     connections.forEach(connectionId => {
       const websocket = this.connections.get(connectionId);
       const metadata = this.connectionMetadata.get(connectionId);
-      
+
       if (websocket && metadata && websocket.readyState === WebSocket.OPEN) {
         try {
           websocket.send(JSON.stringify(message));
@@ -386,7 +386,7 @@ class SecuritySubscriptionConnectionManager extends EventEmitter {
 
   private cleanupStaleConnections(): void {
     const staleThreshold = new Date(Date.now() - 5 * 60 * 1000); // 5 minutes
-    
+
     this.connectionMetadata.forEach((metadata, connectionId) => {
       if (metadata.lastActivity < staleThreshold) {
         const websocket = this.connections.get(connectionId);
@@ -394,7 +394,7 @@ class SecuritySubscriptionConnectionManager extends EventEmitter {
           websocket.terminate();
         }
         this.removeConnection(connectionId);
-        
+
         logger.info({
           connectionId,
           lastActivity: metadata.lastActivity,
@@ -597,7 +597,7 @@ export function createSecuritySubscriptionServer(
             error: error.message,
             ip: context.request.connection.remoteAddress,
           }, 'Subscription connection rejected');
-          
+
           throw error;
         }
       },
@@ -612,7 +612,7 @@ export function createSecuritySubscriptionServer(
       // Subscription lifecycle management
       onOperation: async (message: any, params: any, websocket: WebSocket) => {
         const context = await params.context;
-        
+
         // Check subscription permissions
         const hasPermission = await checkSubscriptionPermissions(
           context.user,

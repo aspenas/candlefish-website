@@ -23,9 +23,9 @@ create_dns_record() {
     local content="$3"
     local ttl="${4:-300}"
     local priority="${5:-}"
-    
+
     echo "➕ Creating $type record: $name"
-    
+
     # Build the JSON payload
     local payload="{
         \"apikey\": \"$API_KEY\",
@@ -33,21 +33,21 @@ create_dns_record() {
         \"type\": \"$type\",
         \"content\": \"$content\",
         \"ttl\": \"$ttl\""
-    
+
     if [ -n "$name" ] && [ "$name" != "@" ]; then
         payload="$payload,\"name\": \"$name\""
     fi
-    
+
     if [ -n "$priority" ]; then
         payload="$payload,\"prio\": \"$priority\""
     fi
-    
+
     payload="$payload}"
-    
+
     response=$(curl -s -X POST "$PORKBUN_API/dns/create/$DOMAIN" \
         -H "Content-Type: application/json" \
         -d "$payload")
-    
+
     if echo "$response" | jq -e '.status == "SUCCESS"' > /dev/null 2>&1; then
         echo "✅ $type record created successfully"
     else
@@ -60,9 +60,9 @@ create_dns_record() {
 delete_dns_records() {
     local type="$1"
     local name="$2"
-    
+
     echo "🗑️  Checking for existing $type records for $name..."
-    
+
     # Get all DNS records
     local records=$(curl -s -X POST "$PORKBUN_API/dns/retrieve/$DOMAIN" \
         -H "Content-Type: application/json" \
@@ -70,7 +70,7 @@ delete_dns_records() {
             \"apikey\": \"$API_KEY\",
             \"secretapikey\": \"$SECRET_KEY\"
         }")
-    
+
     # Filter and delete matching records
     echo "$records" | jq -r ".records[] | select(.type == \"$type\" and .name == \"$name\") | .id" | while read -r record_id; do
         if [ -n "$record_id" ]; then

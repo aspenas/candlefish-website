@@ -1,0 +1,468 @@
+# Security Dashboard Monitoring Stack
+# Prometheus, Grafana, AlertManager configuration for security monitoring
+
+# Global configuration
+fullnameOverride: "security-dashboard-monitoring"
+
+# ============================================================================
+# Prometheus Configuration
+# ============================================================================
+prometheus:
+  enabled: true
+  
+  prometheusSpec:
+    # Data retention
+    retention: 30d
+    retentionSize: 50GB
+    
+    # Resource allocation
+    resources:
+      requests:
+        memory: 2Gi
+        cpu: 1
+      limits:
+        memory: 4Gi
+        cpu: 2
+    
+    # Storage configuration
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: security-dashboard-ssd
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 100Gi
+    
+    # High availability
+    replicas: 2
+    
+    # Security configuration
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 65534
+      fsGroup: 65534
+    
+    # Additional scrape configurations
+    additionalScrapeConfigs:
+      # Kong Gateway metrics
+      - job_name: 'kong-gateway'
+        static_configs:
+          - targets: ['kong-gateway:8001']
+        metrics_path: '/metrics'
+        scrape_interval: 30s
+      
+      # GraphQL Gateway metrics
+      - job_name: 'graphql-gateway'
+        static_configs:
+          - targets: ['graphql-gateway:9464']
+        metrics_path: '/metrics'
+        scrape_interval: 15s
+      
+      # Security Dashboard Backend
+      - job_name: 'security-dashboard-backend'
+        static_configs:
+          - targets: ['security-dashboard-backend:9090']
+        metrics_path: '/metrics'
+        scrape_interval: 15s
+      
+      # PostgreSQL metrics
+      - job_name: 'postgresql'
+        static_configs:
+          - targets: ['postgresql-exporter:9187']
+        scrape_interval: 30s
+      
+      # Redis metrics
+      - job_name: 'redis'
+        static_configs:
+          - targets: ['redis-exporter:9121']
+        scrape_interval: 30s
+      
+      # AWS CloudWatch metrics
+      - job_name: 'cloudwatch-exporter'
+        static_configs:
+          - targets: ['cloudwatch-exporter:9106']
+        scrape_interval: 60s
+    
+    # Rule files for security monitoring
+    ruleNamespaceSelector:
+      matchLabels:
+        prometheus: security-dashboard
+    
+    ruleSelector:
+      matchLabels:
+        prometheus: security-dashboard
+        role: alert-rules
+    
+    # Service monitor selector
+    serviceMonitorSelector:
+      matchLabels:
+        prometheus: security-dashboard
+
+# ============================================================================
+# AlertManager Configuration
+# ============================================================================
+alertmanager:
+  enabled: true
+  
+  alertmanagerSpec:
+    # High availability
+    replicas: 2
+    
+    # Resource allocation
+    resources:
+      requests:
+        memory: 128Mi
+        cpu: 100m
+      limits:
+        memory: 256Mi
+        cpu: 200m
+    
+    # Storage
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: security-dashboard-standard
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+    
+    # Security
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 65534
+      fsGroup: 65534
+    
+    # Configuration
+    configSecret: alertmanager-config
+
+# ============================================================================
+# Grafana Configuration
+# ============================================================================
+grafana:
+  enabled: true
+  
+  # Admin credentials
+  adminPassword: ${GRAFANA_ADMIN_PASSWORD}
+  
+  # Resource allocation
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      cpu: 200m
+  
+  # Persistence
+  persistence:
+    enabled: true
+    storageClassName: security-dashboard-standard
+    size: 10Gi
+  
+  # Security
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 472
+    runAsGroup: 472
+    fsGroup: 472
+  
+  # Configuration
+  grafana.ini:
+    server:
+      root_url: https://grafana.security.candlefish.ai
+      serve_from_sub_path: false
+    
+    security:
+      admin_user: admin
+      admin_password: ${GRAFANA_ADMIN_PASSWORD}
+      disable_gravatar: true
+      cookie_secure: true
+      cookie_samesite: strict
+      strict_transport_security: true
+    
+    auth:
+      disable_login_form: false
+      oauth_auto_login: false
+    
+    auth.generic_oauth:
+      enabled: false  # Configure with your OAuth provider
+    
+    database:
+      type: postgres
+      host: ${DATABASE_HOST}:5432
+      name: grafana
+      user: ${DATABASE_USER}
+      password: ${DATABASE_PASSWORD}
+      ssl_mode: require
+    
+    session:
+      provider: redis
+      provider_config: addr=${REDIS_HOST}:6379,password=${REDIS_PASSWORD},db=1
+    
+    alerting:
+      enabled: true
+      execute_alerts: true
+  
+  # Dashboard providers
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+      - name: 'security-dashboard'
+        orgId: 1
+        folder: 'Security Dashboard'
+        type: file
+        disableDeletion: false
+        editable: true
+        updateIntervalSeconds: 30
+        options:
+          path: /var/lib/grafana/dashboards/security-dashboard
+      
+      - name: 'infrastructure'
+        orgId: 1
+        folder: 'Infrastructure'
+        type: file
+        disableDeletion: false
+        editable: true
+        updateIntervalSeconds: 30
+        options:
+          path: /var/lib/grafana/dashboards/infrastructure
+      
+      - name: 'applications'
+        orgId: 1
+        folder: 'Applications'
+        type: file
+        disableDeletion: false
+        editable: true
+        updateIntervalSeconds: 30
+        options:
+          path: /var/lib/grafana/dashboards/applications
+  
+  # Dashboard ConfigMaps
+  dashboardsConfigMaps:
+    security-dashboard: "grafana-dashboards-security"
+    infrastructure: "grafana-dashboards-infrastructure"
+    applications: "grafana-dashboards-applications"
+  
+  # Data sources
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://security-dashboard-monitoring-prometheus:9090
+        access: proxy
+        isDefault: true
+        editable: false
+        jsonData:
+          timeInterval: 15s
+          queryTimeout: 60s
+          httpMethod: POST
+      
+      - name: Loki
+        type: loki
+        url: http://loki:3100
+        access: proxy
+        editable: false
+        jsonData:
+          maxLines: 1000
+          derivedFields:
+            - datasourceUid: jaeger
+              matcherRegex: "trace_id=(\\w+)"
+              name: TraceID
+              url: "$${__value.raw}"
+      
+      - name: Jaeger
+        type: jaeger
+        url: http://jaeger-query:16686
+        access: proxy
+        uid: jaeger
+        editable: false
+      
+      - name: PostgreSQL
+        type: postgres
+        url: ${DATABASE_HOST}:5432
+        user: ${DATABASE_USER}
+        secureJsonData:
+          password: ${DATABASE_PASSWORD}
+        jsonData:
+          database: security_dashboard
+          sslmode: require
+          postgresVersion: 1500
+          timescaledb: true
+        editable: false
+  
+  # Plugins
+  plugins:
+    - grafana-piechart-panel
+    - grafana-worldmap-panel
+    - grafana-clock-panel
+    - grafana-simple-json-datasource
+    - redis-datasource
+    - marcusolsson-json-datasource
+    - yesoreyeram-boomtheme-panel
+    - volkovlabs-variable-panel
+    - volkovlabs-form-panel
+  
+  # SMTP configuration for alerts
+  smtp:
+    enabled: true
+    host: ${SMTP_HOST}
+    user: ${SMTP_USER}
+    password: ${SMTP_PASSWORD}
+    from_address: grafana@candlefish.ai
+    from_name: Security Dashboard Grafana
+    skip_verify: false
+  
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 3000
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "3000"
+      prometheus.io/path: "/metrics"
+
+# ============================================================================
+# Node Exporter Configuration
+# ============================================================================
+nodeExporter:
+  enabled: true
+  
+  # Security
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+  
+  # Resource allocation
+  resources:
+    requests:
+      memory: 50Mi
+      cpu: 50m
+    limits:
+      memory: 100Mi
+      cpu: 100m
+
+# ============================================================================
+# Kube State Metrics Configuration
+# ============================================================================
+kubeStateMetrics:
+  enabled: true
+  
+  # Resource allocation
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 100m
+    limits:
+      memory: 256Mi
+      cpu: 200m
+
+# ============================================================================
+# Prometheus Operator Configuration
+# ============================================================================
+prometheusOperator:
+  enabled: true
+  
+  # Resource allocation
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 100m
+    limits:
+      memory: 256Mi
+      cpu: 200m
+  
+  # Security
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+  
+  # TLS configuration
+  tls:
+    enabled: true
+    tlsMinVersion: VersionTLS12
+  
+  # Admission webhooks
+  admissionWebhooks:
+    enabled: true
+    failurePolicy: Fail
+    timeoutSeconds: 10
+
+# ============================================================================
+# Service Monitors
+# ============================================================================
+defaultRules:
+  create: true
+  rules:
+    alertmanager: true
+    etcd: true
+    configReloaders: true
+    general: true
+    k8s: true
+    kubeApiserverAvailability: true
+    kubeApiserverBurnrate: true
+    kubeApiserverHistogram: true
+    kubeApiserverSlos: true
+    kubeControllerManager: true
+    kubelet: true
+    kubeProxy: true
+    kubePrometheusGeneral: true
+    kubePrometheusNodeRecording: true
+    kubernetesApps: true
+    kubernetesResources: true
+    kubernetesStorage: true
+    kubernetesSystem: true
+    kubeScheduler: true
+    kubeStateMetrics: true
+    network: true
+    node: true
+    nodeExporterAlerting: true
+    nodeExporterRecording: true
+    prometheus: true
+    prometheusOperator: true
+
+# ============================================================================
+# Additional Components
+# ============================================================================
+
+# Enable components based on requirements
+kubeApiServer:
+  enabled: true
+
+kubelet:
+  enabled: true
+  serviceMonitor:
+    probes: true
+
+kubeControllerManager:
+  enabled: true
+
+coreDns:
+  enabled: true
+
+kubeDns:
+  enabled: false
+
+kubeEtcd:
+  enabled: true
+
+kubeScheduler:
+  enabled: true
+
+kubeProxy:
+  enabled: true
+
+# Global settings
+global:
+  rbac:
+    create: true
+    pspEnabled: false
+  
+  imagePullSecrets: []
+  
+  # Resource cleanup
+  cleanupOnUninstall: true

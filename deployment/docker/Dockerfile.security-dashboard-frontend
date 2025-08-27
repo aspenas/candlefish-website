@@ -1,0 +1,133 @@
+# Security Dashboard Frontend - Production Optimized Build
+# React + TypeScript + Vite with nginx serving
+
+# ============================================================================
+# Build Stage - Optimized Node.js build
+# ============================================================================
+FROM node:20-alpine3.18 AS builder
+
+# Install build dependencies and security updates
+RUN apk update && apk upgrade && \
+    apk add --no-cache git python3 make g++ && \
+    rm -rf /var/cache/apk/*
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files for better caching
+COPY package*.json pnpm-lock.yaml* ./
+COPY apps/security-dashboard/package*.json ./apps/security-dashboard/
+
+# Install pnpm and dependencies
+RUN npm install -g pnpm@8.7.0 && \
+    cd apps/security-dashboard && \
+    pnpm install --frozen-lockfile
+
+# Copy source code
+COPY apps/security-dashboard ./apps/security-dashboard
+COPY graphql/schema.graphql ./graphql/
+COPY shared ./shared
+
+# Build optimized production bundle
+WORKDIR /app/apps/security-dashboard
+
+# Generate GraphQL types
+RUN pnpm run codegen
+
+# Build production bundle with optimizations
+ENV NODE_ENV=production
+ENV GENERATE_SOURCEMAP=false
+ENV INLINE_RUNTIME_CHUNK=false
+ENV VITE_ANALYZE_BUNDLE=false
+
+RUN pnpm run build && \
+    pnpm run build:analyze
+
+# Optimize images and assets
+RUN if [ -d "dist/assets" ]; then \
+        find dist/assets -name "*.png" -exec optipng -o5 {} \; || true; \
+        find dist/assets -name "*.jpg" -exec jpegoptim --max=85 {} \; || true; \
+    fi
+
+# ============================================================================
+# Production Stage - nginx with security hardening
+# ============================================================================
+FROM nginx:1.25-alpine AS runtime
+
+# Install security updates
+RUN apk update && apk upgrade && \
+    apk add --no-cache curl && \
+    rm -rf /var/cache/apk/*
+
+# Remove default nginx content
+RUN rm -rf /usr/share/nginx/html/*
+
+# Create non-root user for nginx
+RUN addgroup -g 1001 -S www-data && \
+    adduser -S www-data -u 1001 -G www-data
+
+# Copy built application
+COPY --from=builder --chown=www-data:www-data /app/apps/security-dashboard/dist /usr/share/nginx/html
+
+# Copy nginx configuration with security headers
+COPY deployment/docker/nginx/security-dashboard.conf /etc/nginx/conf.d/default.conf
+COPY deployment/docker/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY deployment/docker/nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf
+COPY deployment/docker/nginx/gzip.conf /etc/nginx/snippets/gzip.conf
+
+# Copy SSL certificates (if using custom certs)
+COPY deployment/ssl-certs/nginx-selfsigned.crt /etc/nginx/ssl/
+COPY deployment/ssl-certs/nginx-selfsigned.key /etc/nginx/ssl/
+
+# Set proper permissions
+RUN chown -R www-data:www-data /usr/share/nginx/html && \
+    chmod -R 755 /usr/share/nginx/html && \
+    chown -R www-data:www-data /var/cache/nginx && \
+    chown -R www-data:www-data /var/log/nginx && \
+    chmod 644 /etc/nginx/ssl/nginx-selfsigned.crt && \
+    chmod 600 /etc/nginx/ssl/nginx-selfsigned.key
+
+# Create nginx PID directory
+RUN mkdir -p /var/run/nginx && \
+    chown www-data:www-data /var/run/nginx
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Environment variables
+ENV NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx/conf.d
+ENV NGINX_ENVSUBST_TEMPLATE_DIR=/etc/nginx/templates
+ENV API_URL=https://api.security.candlefish.ai
+ENV WS_URL=wss://api.security.candlefish.ai
+
+# Switch to non-root user
+USER www-data
+
+# Expose ports
+EXPOSE 8080 8443
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
+
+# ============================================================================
+# Metadata and labels
+# ============================================================================
+ARG BUILD_DATE
+ARG VCS_REF  
+ARG VERSION
+
+LABEL org.label-schema.build-date=$BUILD_DATE \
+      org.label-schema.name="Security Dashboard Frontend" \
+      org.label-schema.description="React frontend for security monitoring dashboard" \
+      org.label-schema.url="https://candlefish.ai" \
+      org.label-schema.vcs-ref=$VCS_REF \
+      org.label-schema.vcs-url="https://github.com/candlefish-ai/security-dashboard" \
+      org.label-schema.vendor="Candlefish AI" \
+      org.label-schema.version=$VERSION \
+      org.label-schema.schema-version="1.0" \
+      maintainer="patrick@candlefish.ai"

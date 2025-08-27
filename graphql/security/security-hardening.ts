@@ -72,7 +72,7 @@ const complexityAnalysisOptions: CostAnalysisOptions = {
       maxComplexity: max,
       actualComplexity: actual,
     }, 'Query complexity limit exceeded');
-    
+
     return new GraphQLError(
       `Query complexity limit exceeded: ${actual} > ${max}. Please simplify your query.`,
       undefined,
@@ -83,10 +83,10 @@ const complexityAnalysisOptions: CostAnalysisOptions = {
       { code: 'QUERY_COMPLEXITY_TOO_HIGH' }
     );
   },
-  
+
   // Custom field cost calculation
   fieldExtensions: true,
-  
+
   // Type-specific complexity costs
   typeComplexity: {
     // High-cost security operations
@@ -94,40 +94,40 @@ const complexityAnalysisOptions: CostAnalysisOptions = {
     Vulnerability: 5,
     Alert: 3,
     Asset: 2,
-    
+
     // Connection types are more expensive due to pagination
     SecurityEventConnection: 10,
     VulnerabilityConnection: 10,
     AlertConnection: 8,
-    
+
     // Real-time subscriptions have higher costs
     Subscription: 20,
-    
+
     // Kong monitoring operations
     KongService: 4,
     KongRoute: 3,
     KongAdminApiStatus: 10, // Critical security check
-    
+
     // Compliance operations
     ComplianceStatus: 8,
     ComplianceAssessment: 5,
   },
-  
+
   // Field-specific complexity costs
   fieldComplexity: {
     // Expensive aggregation operations
     'Query.securityOverview': 25,
     'Query.threatTrends': 30,
     'Query.securityMetrics': 20,
-    
+
     // Real-time data operations
     'Subscription.liveMetrics': 50,
     'Subscription.kongAdminApiStatusChanged': 40,
-    
+
     // Bulk operations
     'Mutation.createIncident': 15,
     'Mutation.updateMonitoringConfig': 20,
-    
+
     // Search operations
     'Query.assets': 10,
     'Query.vulnerabilities': 15,
@@ -294,7 +294,7 @@ export class SecurityRateLimiter {
 
     const key = `operation_limit:${userId}:${operationName}`;
     const current = await this.redis.incr(key);
-    
+
     if (current === 1) {
       await this.redis.expire(key, operationLimits.window);
     }
@@ -394,12 +394,12 @@ export class PersistedQueryManager {
 
   async addAllowedQuery(query: string): Promise<string> {
     const hash = this.createQueryHash(query);
-    
+
     await this.redis.sadd('security:allowed_queries', hash);
     await this.redis.hset('security:query_documents', hash, query);
-    
+
     this.allowedQueries.add(hash);
-    
+
     logger.info({
       queryHash: hash,
       queryLength: query.length,
@@ -572,7 +572,7 @@ export function createSecurityHardeningPlugin(
           // Set up query timeout
           const queryId = (requestContext as any).queryId;
           const timeoutPromise = timeoutManager.createTimeoutForQuery(queryId, config.queryTimeoutMs);
-          
+
           // Race the query execution against the timeout
           requestContext.context.queryTimeout = timeoutPromise;
 
@@ -611,7 +611,7 @@ export function createSecurityHardeningPlugin(
                 error.extensions?.code === 'QUERY_COMPLEXITY_TOO_HIGH' ||
                 error.extensions?.code === 'QUERY_TIMEOUT' ||
                 error.extensions?.code === 'QUERY_NOT_PERSISTED') {
-              
+
               await auditService.logSecurityEvent(
                 requestContext.context.user?.id,
                 error.extensions.code,

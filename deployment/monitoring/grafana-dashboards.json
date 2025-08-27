@@ -444,5 +444,482 @@
         }
       ]
     }
+  },
+  "security-dashboard-application": {
+    "dashboard": {
+      "id": null,
+      "title": "Security Dashboard - Application Metrics",
+      "tags": ["security-dashboard", "application"],
+      "style": "dark",
+      "timezone": "browser",
+      "refresh": "5s",
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Request Rate",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{job=\"security-dashboard-backend\"}[5m]))",
+              "legendFormat": "Backend Requests/sec"
+            },
+            {
+              "expr": "sum(rate(nginx_http_requests_total{job=\"security-dashboard-frontend\"}[5m]))",
+              "legendFormat": "Frontend Requests/sec"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "color": {
+                "mode": "palette-classic"
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "id": 2,
+          "title": "Response Time (95th percentile)",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"security-dashboard-backend\"}[5m])) by (le))",
+              "legendFormat": "95th percentile"
+            },
+            {
+              "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"security-dashboard-backend\"}[5m])) by (le))",
+              "legendFormat": "50th percentile"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "color": {
+                "mode": "palette-classic"
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          }
+        },
+        {
+          "id": 3,
+          "title": "Error Rate",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{job=\"security-dashboard-backend\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"security-dashboard-backend\"}[5m])) * 100",
+              "legendFormat": "Error Rate %"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  },
+                  {
+                    "color": "red",
+                    "value": 5
+                  }
+                ]
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 0,
+            "y": 8
+          }
+        },
+        {
+          "id": 4,
+          "title": "Active WebSocket Connections",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "sum(websocket_connections_active{job=\"security-dashboard-backend\"})",
+              "legendFormat": "Active Connections"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1000
+                  },
+                  {
+                    "color": "red",
+                    "value": 5000
+                  }
+                ]
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 6,
+            "y": 8
+          }
+        },
+        {
+          "id": 5,
+          "title": "Database Connections",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "sum(database_connections_active{job=\"security-dashboard-backend\"})",
+              "legendFormat": "Active Connections"
+            },
+            {
+              "expr": "sum(database_connections_idle{job=\"security-dashboard-backend\"})",
+              "legendFormat": "Idle Connections"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {
+                "mode": "palette-classic"
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          }
+        }
+      ]
+    }
+  },
+  "security-dashboard-security": {
+    "dashboard": {
+      "id": null,
+      "title": "Security Dashboard - Security Metrics",
+      "tags": ["security-dashboard", "security"],
+      "style": "dark",
+      "timezone": "browser",
+      "refresh": "30s",
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Failed Authentication Attempts",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "sum(increase(auth_failures_total{job=\"security-dashboard-backend\"}[1h]))",
+              "legendFormat": "Failed Attempts (1h)"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 10
+                  },
+                  {
+                    "color": "red",
+                    "value": 100
+                  }
+                ]
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "id": 2,
+          "title": "Rate Limited Requests",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "sum(increase(kong_http_status{job=\"kong-gateway\",code=\"429\"}[1h]))",
+              "legendFormat": "Rate Limited (1h)"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 100
+                  },
+                  {
+                    "color": "red",
+                    "value": 1000
+                  }
+                ]
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 6,
+            "y": 0
+          }
+        },
+        {
+          "id": 3,
+          "title": "SSL Certificate Expiry",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "(ssl_certificate_expiry_seconds{job=\"security-dashboard-backend\"} - time()) / 86400",
+              "legendFormat": "Days Until Expiry"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "d",
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 7
+                  },
+                  {
+                    "color": "green",
+                    "value": 30
+                  }
+                ]
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 12,
+            "y": 0
+          }
+        },
+        {
+          "id": 4,
+          "title": "JWT Token Validation",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "sum(rate(jwt_validations_total{job=\"security-dashboard-backend\"}[5m])) by (status)",
+              "legendFormat": "{{status}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "color": {
+                "mode": "palette-classic"
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 18,
+            "y": 0
+          }
+        }
+      ]
+    }
+  },
+  "security-dashboard-infrastructure": {
+    "dashboard": {
+      "id": null,
+      "title": "Security Dashboard - Infrastructure",
+      "tags": ["security-dashboard", "infrastructure"],
+      "style": "dark",
+      "timezone": "browser",
+      "refresh": "30s",
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Pod Status",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "sum(kube_pod_status_ready{namespace=\"security-dashboard\",condition=\"true\"})",
+              "legendFormat": "Ready Pods"
+            },
+            {
+              "expr": "sum(kube_pod_status_ready{namespace=\"security-dashboard\",condition=\"false\"})",
+              "legendFormat": "Not Ready Pods"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {
+                "mode": "thresholds"
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "id": 2,
+          "title": "PostgreSQL Connections",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "pg_stat_database_numbackends{datname=\"security_dashboard\"}",
+              "legendFormat": "Active Connections"
+            },
+            {
+              "expr": "pg_settings_max_connections",
+              "legendFormat": "Max Connections"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {
+                "mode": "palette-classic"
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          }
+        },
+        {
+          "id": 3,
+          "title": "Redis Memory Usage",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "redis_memory_used_bytes{job=\"redis\"} / 1024 / 1024",
+              "legendFormat": "Used Memory (MB)"
+            },
+            {
+              "expr": "redis_memory_max_bytes{job=\"redis\"} / 1024 / 1024",
+              "legendFormat": "Max Memory (MB)"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "MiB",
+              "color": {
+                "mode": "palette-classic"
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          }
+        },
+        {
+          "id": 4,
+          "title": "Kong Gateway Status",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "sum(rate(kong_http_status{job=\"kong-gateway\"}[5m])) by (code)",
+              "legendFormat": "HTTP {{code}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "color": {
+                "mode": "palette-classic"
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          }
+        }
+      ]
+    }
   }
 }

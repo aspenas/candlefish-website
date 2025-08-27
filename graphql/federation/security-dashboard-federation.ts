@@ -31,7 +31,7 @@ class SecurityDashboardRemoteDataSource extends RemoteGraphQLDataSource {
 
   constructor(options: { url: string; serviceName: string; redis: Redis }) {
     super({ url: options.url });
-    
+
     this.redis = options.redis;
     this.serviceName = options.serviceName;
     this.serviceUrl = options.url;
@@ -291,7 +291,7 @@ export function createSecurityDashboardGateway(
     alertServiceUrl: string;
   }
 ): { gateway: ApolloGateway; healthChecker: ServiceHealthChecker } {
-  
+
   const healthChecker = new ServiceHealthChecker(redis, 30000); // 30 second intervals
 
   // Add services to health checker
@@ -358,7 +358,7 @@ export function createSecurityDashboardGateway(
 
     // Service health integration
     serviceHealthCheck: true,
-    
+
     // Gateway composition update handlers
     didUpdateComposition: ({ compositionMetadata, graphRef }) => {
       logger.info({
@@ -446,9 +446,9 @@ export function createHealthEndpoint(healthChecker: ServiceHealthChecker) {
     const servicesHealth = healthChecker.getAllServicesHealth();
     const healthyServices = Object.values(servicesHealth).filter(Boolean).length;
     const totalServices = Object.keys(servicesHealth).length;
-    
+
     let status: 'healthy' | 'degraded' | 'unhealthy';
-    
+
     if (healthyServices === totalServices) {
       status = 'healthy';
     } else if (healthyServices > totalServices / 2) {
@@ -465,7 +465,7 @@ export function createHealthEndpoint(healthChecker: ServiceHealthChecker) {
     };
 
     const statusCode = status === 'healthy' ? 200 : status === 'degraded' ? 206 : 503;
-    
+
     res.status(statusCode).json(health);
   };
 }
@@ -492,7 +492,7 @@ export function createPerformanceMonitoringPlugin(redis: Redis) {
 
         willSendResponse(requestContext: any) {
           const duration = Date.now() - requestContext.request.http.startTime;
-          
+
           // Record response time metrics
           setImmediate(async () => {
             try {
@@ -513,12 +513,12 @@ export function createPerformanceMonitoringPlugin(redis: Redis) {
 
         didEncounterErrors(requestContext: any) {
           const errors = requestContext.errors || [];
-          
+
           // Record error metrics
           setImmediate(async () => {
             try {
               await redis.hincrby('gateway:errors', 'total', errors.length);
-              
+
               errors.forEach(async (error: any) => {
                 await redis.hincrby('gateway:errors:by_type', error.constructor.name, 1);
               });

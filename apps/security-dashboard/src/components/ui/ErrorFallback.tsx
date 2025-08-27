@@ -21,13 +21,13 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({ error, resetErrorBoundary
       }}
     >
       <ErrorIcon sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
-      
+
       <Typography variant="h4" component="h1" gutterBottom>
         Something went wrong
       </Typography>
-      
+
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3, maxWidth: 600 }}>
-        We encountered an unexpected error in the security dashboard. 
+        We encountered an unexpected error in the security dashboard.
         Our team has been notified and is working to resolve the issue.
       </Typography>
 
