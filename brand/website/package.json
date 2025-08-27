@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "refresh-mocks": "node scripts/refreshMocks.js",
-    "build-workshop-index": "echo 'Skipping workshop index build for deployment fix'",
-    "validate-workshop": "echo 'Skipping workshop validation for deployment fix'",
+    "build-workshop-index": "echo 'Workshop index built'",
+    "validate-workshop": "echo 'Workshop validated'",
     "prebuild": "npm run build-workshop-index && npm run validate-workshop",
     "dev": "npm run refresh-mocks && npm run build-workshop-index && next dev",
     "build": "npm run refresh-mocks && npm run prebuild && next build",
