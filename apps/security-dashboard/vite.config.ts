@@ -74,6 +74,6 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
   },
   optimizeDeps: {
-    include: ['@emotion/react', '@emotion/styled', '@mui/material/Unstable_Grid2'],
+    include: ['@emotion/react', '@emotion/styled'],
   },
 })

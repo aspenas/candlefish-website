@@ -122,7 +122,7 @@ const ThreatActivityChart: React.FC<ThreatActivityChartProps> = ({
         </div>
         <div className="flex items-center space-x-2">
           <div className="w-3 h-3 bg-critical-500 rounded-full animate-pulse"></div>
-          <span>High Activity (>10 events)</span>
+          <span>High Activity ({'>'}10 events)</span>
         </div>
       </div>
     </div>
