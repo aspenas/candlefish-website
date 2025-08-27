@@ -1,0 +1,2373 @@
+# Asset Management Microservice Schema - Federation v2
+extend schema @link(url: "https://specs.apollo.dev/federation/v2.0", import: ["@key", "@shareable", "@provides", "@external", "@requires", "@override", "@inaccessible", "@tag"])
+
+# Asset Entity - Primary in Asset Management Service
+type Asset @key(fields: "id") @key(fields: "organizationId name") @key(fields: "hostname organizationId") {
+  id: ID!
+  name: String!
+  displayName: String
+  description: String
+  assetType: AssetType!
+  organizationId: ID! @shareable
+  
+  # Classification and Criticality
+  criticality: AssetCriticality!
+  businessFunction: String
+  dataClassification: DataClassification!
+  regulatoryRequirements: [RegulatoryRequirement!]!
+  
+  # Environment and Platform
+  environment: Environment! @shareable
+  platform: Platform! @shareable
+  location: AssetLocation
+  datacenter: String
+  cloudProvider: CloudProvider
+  cloudRegion: String
+  
+  # Technical Information
+  hostname: String
+  fqdn: String
+  ipAddresses: [IPAddress!]!
+  macAddresses: [String!]!
+  ports: [NetworkPort!]! @external
+  operatingSystem: OperatingSystem
+  
+  # Asset Status and Health
+  status: AssetStatus!
+  healthStatus: HealthStatus! @shareable
+  lastHealthCheck: DateTime @external
+  healthMetrics: AssetHealthMetrics
+  uptime: Float # percentage
+  availability: Float # percentage
+  
+  # Security Posture
+  securityLevel: SecurityLevel! @shareable
+  riskScore: Float! @external # Calculated risk score
+  securityScore: Float! # Security posture score
+  complianceScore: Float! # Compliance score
+  vulnerabilityScore: Float! # Vulnerability exposure score
+  
+  # Asset Relationships
+  parent: Asset @provides(fields: "id")
+  parentId: ID
+  children: [Asset!]! @provides(fields: "id")
+  dependencies: [AssetDependency!]!
+  dependents: [AssetDependency!]!
+  
+  # External Relationships
+  vulnerabilities: VulnerabilityConnection @external
+  alerts: AlertConnection @external
+  incidents: IncidentConnection @external
+  events: SecurityEventConnection @external
+  complianceChecks: [ComplianceCheck!]! @external
+  
+  # Owner and Management
+  owner: User @external
+  ownerId: ID
+  technicalContacts: [User!]! @external
+  businessContacts: [User!]! @external
+  team: Team @external
+  teamId: ID
+  
+  # Configuration Management
+  configuration: AssetConfiguration @external
+  configurationItems: [ConfigurationItem!]!
+  baselines: [SecurityBaseline!]!
+  patches: [PatchInfo!]!
+  
+  # Asset Discovery and Inventory
+  discoverySource: String!
+  discoveryMethod: DiscoveryMethod!
+  discoveredAt: DateTime!
+  lastSeenAt: DateTime!
+  lastUpdatedAt: DateTime!
+  
+  # Asset Lifecycle
+  provisionedAt: DateTime
+  deployedAt: DateTime
+  retiredAt: DateTime
+  lifecycleStage: LifecycleStage!
+  maintenanceWindow: MaintenanceWindow
+  
+  # Software and Services
+  installedSoftware: [SoftwarePackage!]!
+  runningServices: [Service!]!
+  certificates: [Certificate!]!
+  licenses: [SoftwareLicense!]!
+  
+  # Monitoring and Observability
+  monitoringEnabled: Boolean!
+  monitoringAgents: [MonitoringAgent!]!
+  loggingEnabled: Boolean!
+  backupEnabled: Boolean!
+  backupStatus: BackupStatus
+  
+  # Network Information
+  networkSegment: String
+  vlan: String
+  subnet: String
+  firewallRules: [FirewallRule!]!
+  accessControls: [AccessControl!]!
+  
+  # Cloud-specific attributes
+  cloudTags: JSON
+  cloudMetadata: CloudMetadata
+  autoScaling: AutoScalingConfig
+  
+  # Container and Virtualization
+  containerInfo: ContainerInfo
+  virtualizationInfo: VirtualizationInfo
+  
+  # Asset Metrics and Analytics
+  metrics: AssetMetrics
+  performanceMetrics: [PerformanceMetric!]!
+  resourceUtilization: ResourceUtilization
+  
+  # Asset Documentation
+  documentation: [Document!]!
+  diagrams: [Diagram!]!
+  runbooks: [Runbook!]!
+  
+  # Cost and Business Information
+  costCenter: String
+  purchaseDate: DateTime
+  purchaseCost: Float
+  currency: String
+  depreciation: DepreciationInfo
+  
+  # Asset Tags and Labels
+  tags: [String!]! @shareable
+  labels: JSON
+  customFields: JSON
+  metadata: JSON @shareable
+  
+  # Audit Information
+  createdAt: DateTime! @shareable
+  updatedAt: DateTime! @shareable
+  createdBy: User @external
+  updatedBy: User @external
+  auditTrail: [AuditEntry!]! @external
+}
+
+enum AssetType {
+  # Infrastructure
+  SERVER
+  WORKSTATION
+  LAPTOP
+  MOBILE_DEVICE
+  TABLET
+  NETWORK_DEVICE
+  FIREWALL
+  LOAD_BALANCER
+  STORAGE_DEVICE
+  
+  # Cloud Resources
+  VIRTUAL_MACHINE
+  CONTAINER
+  CONTAINER_IMAGE
+  KUBERNETES_CLUSTER
+  KUBERNETES_NODE
+  KUBERNETES_POD
+  
+  # Applications and Services
+  WEB_APPLICATION
+  MOBILE_APPLICATION
+  DESKTOP_APPLICATION
+  API_SERVICE
+  DATABASE
+  MESSAGE_QUEUE
+  CACHE_SERVICE
+  
+  # Cloud Services
+  CLOUD_FUNCTION
+  CLOUD_STORAGE
+  CLOUD_DATABASE
+  CLOUD_CDN
+  CLOUD_DNS
+  
+  # Network Components
+  ROUTER
+  SWITCH
+  ACCESS_POINT
+  VPN_GATEWAY
+  PROXY_SERVER
+  
+  # Security Appliances
+  IDS_IPS
+  SECURITY_SCANNER
+  SIEM_COLLECTOR
+  ENDPOINT_PROTECTION
+  
+  # IoT and Embedded
+  IOT_DEVICE
+  EMBEDDED_SYSTEM
+  INDUSTRIAL_CONTROL
+  SMART_SENSOR
+  
+  # Other
+  WEBSITE
+  DOMAIN
+  SSL_CERTIFICATE
+  CODE_REPOSITORY
+  BUILD_PIPELINE
+}
+
+enum AssetCriticality {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+  MISSION_CRITICAL
+}
+
+enum DataClassification {
+  PUBLIC
+  INTERNAL
+  CONFIDENTIAL
+  RESTRICTED
+  TOP_SECRET
+}
+
+enum AssetStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+  MAINTENANCE
+  DECOMMISSIONED
+  RETIRED
+  UNKNOWN
+}
+
+enum LifecycleStage {
+  PLANNING
+  DEVELOPMENT
+  TESTING
+  STAGING
+  PRODUCTION
+  MAINTENANCE
+  RETIREMENT
+  DECOMMISSIONED
+}
+
+enum DiscoveryMethod {
+  NETWORK_SCAN
+  AGENT_BASED
+  CLOUD_API
+  MANUAL_ENTRY
+  IMPORT
+  VULNERABILITY_SCAN
+  ASSET_DISCOVERY_TOOL
+  CMDB_SYNC
+  DNS_ENUMERATION
+  CERTIFICATE_TRANSPARENCY
+}
+
+enum CloudProvider {
+  AWS
+  AZURE
+  GCP
+  ALIBABA_CLOUD
+  ORACLE_CLOUD
+  IBM_CLOUD
+  DIGITAL_OCEAN
+  LINODE
+  VULTR
+  HEROKU
+  NETLIFY
+  VERCEL
+  FLY_IO
+}
+
+# Asset Location and Physical Information
+type AssetLocation {
+  country: String!
+  region: String
+  city: String
+  facility: String
+  building: String
+  floor: String
+  room: String
+  rack: String
+  coordinates: GeoCoordinates
+}
+
+type GeoCoordinates {
+  latitude: Float!
+  longitude: Float!
+  accuracy: Float
+}
+
+# IP Address with enhanced metadata
+type IPAddress {
+  address: String!
+  version: IPVersion!
+  type: IPAddressType!
+  status: IPAddressStatus!
+  assignedAt: DateTime
+  source: String
+  dnsNames: [String!]!
+  geoLocation: GeoLocation @external
+  reputation: ThreatReputation @external
+  isPublic: Boolean!
+}
+
+enum IPVersion {
+  IPv4
+  IPv6
+}
+
+enum IPAddressType {
+  STATIC
+  DYNAMIC
+  RESERVED
+  LOOPBACK
+  MULTICAST
+  BROADCAST
+}
+
+enum IPAddressStatus {
+  ACTIVE
+  INACTIVE
+  RESERVED
+  DEPRECATED
+}
+
+# Operating System Information
+type OperatingSystem {
+  name: String!
+  version: String!
+  build: String
+  architecture: String!
+  kernel: String
+  patchLevel: String
+  supportStatus: SupportStatus!
+  eolDate: DateTime
+  lastPatched: DateTime
+  patchCompliance: Float # percentage
+}
+
+enum SupportStatus {
+  SUPPORTED
+  EXTENDED_SUPPORT
+  END_OF_LIFE
+  UNSUPPORTED
+  UNKNOWN
+}
+
+# Asset Health and Metrics
+type AssetHealthMetrics {
+  overallHealth: Float! # 0.0 to 1.0
+  cpuUsage: Float
+  memoryUsage: Float
+  diskUsage: Float
+  networkUtilization: Float
+  responseTime: Float
+  errorRate: Float
+  availability: Float
+  lastChecked: DateTime!
+  healthTrend: HealthTrend!
+}
+
+enum HealthTrend {
+  IMPROVING
+  STABLE
+  DEGRADING
+  CRITICAL
+  UNKNOWN
+}
+
+# Asset Dependencies
+type AssetDependency {
+  id: ID!
+  source: Asset! @external
+  target: Asset! @external
+  dependencyType: DependencyType!
+  relationship: DependencyRelationship!
+  criticality: DependencyCriticality!
+  description: String
+  established: DateTime!
+  verified: DateTime
+  status: DependencyStatus!
+}
+
+enum DependencyType {
+  NETWORK
+  APPLICATION
+  DATABASE
+  SERVICE
+  API
+  AUTHENTICATION
+  STORAGE
+  BACKUP
+  MONITORING
+  CONFIGURATION
+}
+
+enum DependencyRelationship {
+  DEPENDS_ON
+  SUPPORTS
+  CONNECTS_TO
+  AUTHENTICATES_WITH
+  STORES_DATA_IN
+  BACKS_UP_TO
+  MONITORS
+  CONFIGURED_BY
+}
+
+enum DependencyCriticality {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum DependencyStatus {
+  ACTIVE
+  INACTIVE
+  VERIFIED
+  UNVERIFIED
+  BROKEN
+}
+
+# Configuration Management
+type ConfigurationItem {
+  id: ID!
+  name: String!
+  type: ConfigurationType!
+  value: String!
+  source: ConfigurationSource!
+  category: String
+  description: String
+  isSecure: Boolean!
+  isEncrypted: Boolean!
+  lastModified: DateTime!
+  modifiedBy: String
+  compliance: ConfigurationCompliance!
+}
+
+enum ConfigurationType {
+  SYSTEM_SETTING
+  APPLICATION_CONFIG
+  NETWORK_CONFIG
+  SECURITY_POLICY
+  FIREWALL_RULE
+  ACCESS_CONTROL
+  ENVIRONMENT_VARIABLE
+  REGISTRY_KEY
+  FILE_PERMISSION
+  SERVICE_CONFIG
+}
+
+enum ConfigurationSource {
+  MANUAL
+  AUTOMATION
+  DEPLOYMENT
+  CONFIGURATION_MANAGEMENT
+  POLICY_ENGINE
+  DEFAULT
+  INHERITED
+}
+
+type ConfigurationCompliance {
+  compliant: Boolean!
+  violations: [ComplianceViolation!]! @external
+  lastChecked: DateTime!
+  baseline: String
+  deviations: [ConfigurationDeviation!]!
+}
+
+type ConfigurationDeviation {
+  item: String!
+  expected: String!
+  actual: String!
+  severity: Severity! @external
+  impact: DeviationImpact!
+}
+
+enum DeviationImpact {
+  INFORMATIONAL
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+# Security Baselines and Hardening
+type SecurityBaseline {
+  id: ID!
+  name: String!
+  version: String!
+  framework: String! # CIS, NIST, DISA STIG, etc.
+  controls: [BaselineControl!]!
+  compliance: Float! # percentage
+  lastAssessed: DateTime!
+  nextAssessment: DateTime
+  deviations: Int!
+  criticalFindings: Int!
+}
+
+type BaselineControl {
+  id: String!
+  title: String!
+  description: String!
+  severity: Severity! @external
+  category: String!
+  implementation: ControlImplementation!
+  compliance: ControlCompliance!
+  evidence: String
+  remediation: String
+  lastChecked: DateTime!
+}
+
+enum ControlImplementation {
+  IMPLEMENTED
+  PARTIALLY_IMPLEMENTED
+  NOT_IMPLEMENTED
+  NOT_APPLICABLE
+  UNKNOWN
+}
+
+type ControlCompliance {
+  status: ComplianceStatus! @external
+  score: Float # 0.0 to 1.0
+  findings: [ComplianceFinding!]!
+  lastAssessed: DateTime!
+  assessor: String
+}
+
+type ComplianceFinding {
+  id: ID!
+  severity: Severity! @external
+  description: String!
+  evidence: String
+  remediation: String
+  dueDate: DateTime
+  status: FindingStatus!
+}
+
+enum FindingStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  ACCEPTED_RISK
+  FALSE_POSITIVE
+}
+
+# Software and Patch Management
+type SoftwarePackage {
+  id: ID!
+  name: String!
+  vendor: String!
+  version: String!
+  category: SoftwareCategory!
+  installDate: DateTime
+  updateDate: DateTime
+  licenseType: LicenseType
+  supportStatus: SupportStatus!
+  vulnerabilities: [Vulnerability!]! @external
+  patchStatus: PatchStatus!
+  eolDate: DateTime
+  size: Int # bytes
+  installPath: String
+}
+
+enum SoftwareCategory {
+  OPERATING_SYSTEM
+  APPLICATION
+  SYSTEM_UTILITY
+  SECURITY_SOFTWARE
+  DEVELOPMENT_TOOL
+  DATABASE
+  WEB_SERVER
+  MIDDLEWARE
+  DRIVER
+  FIRMWARE
+  BROWSER
+  OFFICE_SUITE
+  ANTIVIRUS
+}
+
+enum LicenseType {
+  PROPRIETARY
+  OPEN_SOURCE
+  FREEWARE
+  SHAREWARE
+  TRIAL
+  ENTERPRISE
+  ACADEMIC
+  OEM
+}
+
+type PatchInfo {
+  id: ID!
+  patchId: String!
+  title: String!
+  description: String!
+  severity: Severity! @external
+  category: PatchCategory!
+  releaseDate: DateTime!
+  installDate: DateTime
+  status: PatchStatus!
+  kbArticle: String
+  vendor: String!
+  size: Int
+  requiresReboot: Boolean!
+  prerequisites: [String!]!
+  supersededBy: [String!]!
+}
+
+enum PatchCategory {
+  SECURITY_UPDATE
+  CRITICAL_UPDATE
+  IMPORTANT_UPDATE
+  MODERATE_UPDATE
+  LOW_UPDATE
+  FEATURE_UPDATE
+  SERVICE_PACK
+  HOTFIX
+  DEFINITION_UPDATE
+}
+
+enum PatchStatus {
+  NOT_APPLICABLE
+  MISSING
+  INSTALLED
+  PENDING_REBOOT
+  FAILED
+  SUPERSEDED
+  BLOCKED
+}
+
+# Services and Applications
+type Service {
+  id: ID!
+  name: String!
+  displayName: String
+  description: String
+  port: Int
+  protocol: String!
+  state: ServiceState!
+  startMode: ServiceStartMode!
+  processId: Int
+  user: String
+  version: String
+  vendor: String
+  installPath: String
+  configFiles: [String!]!
+  dependencies: [String!]!
+  vulnerabilities: [Vulnerability!]! @external
+  lastStarted: DateTime
+  uptime: Int # seconds
+}
+
+enum ServiceState {
+  RUNNING
+  STOPPED
+  STARTING
+  STOPPING
+  PAUSED
+  UNKNOWN
+}
+
+enum ServiceStartMode {
+  AUTOMATIC
+  MANUAL
+  DISABLED
+  DELAYED_START
+}
+
+# Certificates Management
+type Certificate {
+  id: ID!
+  commonName: String!
+  subjectAlternativeNames: [String!]!
+  issuer: String!
+  serialNumber: String!
+  fingerprint: String!
+  algorithm: String!
+  keySize: Int!
+  validFrom: DateTime!
+  validTo: DateTime!
+  daysUntilExpiry: Int!
+  status: CertificateStatus!
+  usage: [CertificateUsage!]!
+  location: CertificateLocation!
+  autoRenewal: Boolean!
+  vulnerabilities: [CertificateVulnerability!]!
+}
+
+enum CertificateStatus {
+  VALID
+  EXPIRED
+  EXPIRING_SOON
+  REVOKED
+  SELF_SIGNED
+  UNTRUSTED
+}
+
+enum CertificateUsage {
+  SERVER_AUTHENTICATION
+  CLIENT_AUTHENTICATION
+  EMAIL_PROTECTION
+  CODE_SIGNING
+  TIMESTAMPING
+  IPSEC_END_SYSTEM
+  IPSEC_TUNNEL
+  IPSEC_USER
+}
+
+type CertificateLocation {
+  store: String!
+  path: String
+  containerType: String
+  friendly_name: String
+}
+
+type CertificateVulnerability {
+  type: CertificateVulnerabilityType!
+  severity: Severity! @external
+  description: String!
+  impact: String!
+  remediation: String!
+}
+
+enum CertificateVulnerabilityType {
+  WEAK_SIGNATURE_ALGORITHM
+  SMALL_KEY_SIZE
+  WEAK_RANDOM_NUMBER
+  CERTIFICATE_TRANSPARENCY_MISSING
+  PINNING_BYPASSED
+  CHAIN_VALIDATION_ERROR
+}
+
+# Software Licensing
+type SoftwareLicense {
+  id: ID!
+  software: SoftwarePackage!
+  licenseKey: String!
+  licenseType: LicenseType!
+  purchaseDate: DateTime
+  expirationDate: DateTime
+  maxInstallations: Int
+  currentInstallations: Int!
+  vendor: String!
+  cost: Float
+  currency: String
+  maintenanceExpiry: DateTime
+  complianceStatus: LicenseComplianceStatus!
+}
+
+enum LicenseComplianceStatus {
+  COMPLIANT
+  OVER_DEPLOYED
+  UNDER_UTILIZED
+  EXPIRED
+  UNKNOWN
+}
+
+# Monitoring and Agents
+type MonitoringAgent {
+  id: ID!
+  name: String!
+  version: String!
+  type: AgentType!
+  status: AgentStatus!
+  lastHeartbeat: DateTime
+  configuration: JSON
+  metrics: [AgentMetric!]!
+  errors: [AgentError!]!
+  installedAt: DateTime!
+  updatedAt: DateTime
+}
+
+enum AgentType {
+  SECURITY_AGENT
+  MONITORING_AGENT
+  LOG_COLLECTOR
+  VULNERABILITY_SCANNER
+  COMPLIANCE_SCANNER
+  BACKUP_AGENT
+  ANTIVIRUS_AGENT
+  EDR_AGENT
+  NETWORK_MONITOR
+  PERFORMANCE_MONITOR
+}
+
+enum AgentStatus {
+  RUNNING
+  STOPPED
+  ERROR
+  UPDATING
+  INSTALLING
+  UNINSTALLING
+}
+
+type AgentMetric {
+  name: String!
+  value: Float!
+  unit: String
+  timestamp: DateTime!
+  status: MetricStatus!
+}
+
+enum MetricStatus {
+  NORMAL
+  WARNING
+  CRITICAL
+  UNKNOWN
+}
+
+type AgentError {
+  code: String!
+  message: String!
+  severity: Severity! @external
+  timestamp: DateTime!
+  resolved: Boolean!
+  resolution: String
+}
+
+# Backup Information
+type BackupStatus {
+  enabled: Boolean!
+  lastBackup: DateTime
+  nextBackup: DateTime
+  backupSize: Int # bytes
+  retentionPeriod: Int # days
+  backupType: BackupType!
+  destination: String
+  encryptionEnabled: Boolean!
+  compressionEnabled: Boolean!
+  successRate: Float # percentage
+  errors: [BackupError!]!
+}
+
+enum BackupType {
+  FULL
+  INCREMENTAL
+  DIFFERENTIAL
+  SNAPSHOT
+  CONTINUOUS
+}
+
+type BackupError {
+  timestamp: DateTime!
+  errorCode: String!
+  message: String!
+  resolved: Boolean!
+}
+
+# Network Security
+type FirewallRule {
+  id: ID!
+  name: String
+  enabled: Boolean!
+  direction: FirewallDirection!
+  action: FirewallAction!
+  protocol: String!
+  sourceAddress: String
+  sourcePort: String
+  destinationAddress: String
+  destinationPort: String
+  priority: Int!
+  description: String
+  lastModified: DateTime!
+  hitCount: Int
+}
+
+enum FirewallDirection {
+  INBOUND
+  OUTBOUND
+  BOTH
+}
+
+enum FirewallAction {
+  ALLOW
+  DENY
+  DROP
+  LOG
+}
+
+type AccessControl {
+  id: ID!
+  type: AccessControlType!
+  subject: String! # user, group, role, etc.
+  resource: String!
+  permission: String!
+  granted: Boolean!
+  source: String!
+  effective: DateTime
+  expires: DateTime
+  conditions: [AccessCondition!]!
+}
+
+enum AccessControlType {
+  USER
+  GROUP
+  ROLE
+  SERVICE_ACCOUNT
+  API_KEY
+  CERTIFICATE
+}
+
+type AccessCondition {
+  type: ConditionType!
+  field: String!
+  operator: String!
+  value: String!
+  description: String
+}
+
+enum ConditionType {
+  TIME_BASED
+  LOCATION_BASED
+  DEVICE_BASED
+  NETWORK_BASED
+  RISK_BASED
+  ATTRIBUTE_BASED
+}
+
+# Cloud-specific Information
+type CloudMetadata {
+  instanceId: String
+  instanceType: String
+  imageId: String
+  keyPair: String
+  securityGroups: [String!]!
+  subnet: String
+  vpc: String
+  availabilityZone: String
+  region: String!
+  account: String!
+  resourceTags: JSON
+  iamRole: String
+  spotInstance: Boolean
+  reservedInstance: Boolean
+}
+
+type AutoScalingConfig {
+  enabled: Boolean!
+  minInstances: Int!
+  maxInstances: Int!
+  desiredCapacity: Int!
+  currentCapacity: Int!
+  scalingPolicies: [ScalingPolicy!]!
+  cooldownPeriod: Int # seconds
+  healthCheckType: String
+  healthCheckGracePeriod: Int # seconds
+}
+
+type ScalingPolicy {
+  name: String!
+  type: ScalingType!
+  metricName: String!
+  threshold: Float!
+  comparisonOperator: String!
+  scalingAdjustment: Int!
+  cooldown: Int! # seconds
+}
+
+enum ScalingType {
+  SCALE_UP
+  SCALE_DOWN
+  TARGET_TRACKING
+  STEP_SCALING
+}
+
+# Container Information
+type ContainerInfo {
+  containerId: String!
+  imageId: String!
+  imageName: String!
+  imageTag: String!
+  registry: String
+  createdAt: DateTime!
+  startedAt: DateTime
+  status: ContainerStatus!
+  ports: [ContainerPort!]!
+  volumes: [ContainerVolume!]!
+  environmentVariables: JSON
+  labels: JSON
+  networkMode: String
+  restartPolicy: String
+  resourceLimits: ResourceLimits
+}
+
+enum ContainerStatus {
+  RUNNING
+  STOPPED
+  PAUSED
+  RESTARTING
+  REMOVING
+  DEAD
+  CREATED
+}
+
+type ContainerPort {
+  containerPort: Int!
+  hostPort: Int
+  protocol: String!
+  hostIp: String
+}
+
+type ContainerVolume {
+  source: String!
+  destination: String!
+  mode: VolumeMode!
+  type: VolumeType!
+}
+
+enum VolumeMode {
+  READ_WRITE
+  READ_ONLY
+}
+
+enum VolumeType {
+  BIND
+  VOLUME
+  TMPFS
+}
+
+type ResourceLimits {
+  cpuLimit: Float
+  memoryLimit: Int # bytes
+  diskLimit: Int # bytes
+  networkLimit: Int # bytes per second
+}
+
+# Virtualization Information
+type VirtualizationInfo {
+  hypervisor: String!
+  vmId: String!
+  vmName: String!
+  hostId: String
+  hostName: String
+  datastoreName: String
+  resourcePool: String
+  cluster: String
+  vCpus: Int!
+  memoryMB: Int!
+  diskGB: Int!
+  networkAdapters: [NetworkAdapter!]!
+  vmwareTools: VMwareToolsInfo
+  snapshots: [VMSnapshot!]!
+}
+
+type NetworkAdapter {
+  name: String!
+  macAddress: String!
+  connected: Boolean!
+  networkName: String
+  adapterType: String
+}
+
+type VMwareToolsInfo {
+  installed: Boolean!
+  version: String
+  status: VMwareToolsStatus!
+  lastHeartbeat: DateTime
+}
+
+enum VMwareToolsStatus {
+  RUNNING
+  NOT_RUNNING
+  NOT_INSTALLED
+  UNMANAGED
+  UNKNOWN
+}
+
+type VMSnapshot {
+  id: String!
+  name: String!
+  description: String
+  created: DateTime!
+  size: Int! # bytes
+  parent: String
+  current: Boolean!
+}
+
+# Asset Metrics and Performance
+type AssetMetrics {
+  performanceScore: Float! # 0.0 to 1.0
+  reliabilityScore: Float! # 0.0 to 1.0
+  securityScore: Float! # 0.0 to 1.0
+  complianceScore: Float! # 0.0 to 1.0
+  riskScore: Float! # 0.0 to 100.0
+  businessValue: Float! # 0.0 to 1.0
+  lastCalculated: DateTime!
+  trend: MetricTrend!
+}
+
+enum MetricTrend {
+  IMPROVING
+  STABLE
+  DEGRADING
+  VOLATILE
+}
+
+type PerformanceMetric {
+  name: String!
+  value: Float!
+  unit: String!
+  timestamp: DateTime!
+  threshold: MetricThreshold
+  status: MetricStatus!
+  source: String!
+}
+
+type MetricThreshold {
+  warning: Float
+  critical: Float
+  direction: ThresholdDirection!
+}
+
+enum ThresholdDirection {
+  ABOVE
+  BELOW
+}
+
+type ResourceUtilization {
+  cpu: UtilizationMetric!
+  memory: UtilizationMetric!
+  disk: UtilizationMetric!
+  network: NetworkUtilization!
+  lastUpdated: DateTime!
+}
+
+type UtilizationMetric {
+  current: Float! # percentage
+  average: Float! # percentage
+  peak: Float! # percentage
+  trend: UtilizationTrend!
+}
+
+type NetworkUtilization {
+  bytesIn: Int!
+  bytesOut: Int!
+  packetsIn: Int!
+  packetsOut: Int!
+  bandwidth: Int! # bits per second
+  utilization: Float! # percentage
+}
+
+enum UtilizationTrend {
+  INCREASING
+  DECREASING
+  STABLE
+  VOLATILE
+}
+
+# Asset Documentation
+type Document {
+  id: ID!
+  title: String!
+  type: DocumentType!
+  url: URL
+  content: String
+  version: String
+  author: User! @external
+  lastModified: DateTime!
+  tags: [String!]!
+}
+
+enum DocumentType {
+  USER_MANUAL
+  TECHNICAL_SPEC
+  CONFIGURATION_GUIDE
+  TROUBLESHOOTING_GUIDE
+  SECURITY_POLICY
+  COMPLIANCE_DOCUMENT
+  ARCHITECTURE_DIAGRAM
+  NETWORK_DIAGRAM
+  RUNBOOK
+  PROCEDURE
+}
+
+type Diagram {
+  id: ID!
+  name: String!
+  type: DiagramType!
+  url: URL!
+  thumbnail: URL
+  description: String
+  lastUpdated: DateTime!
+  createdBy: User! @external
+}
+
+enum DiagramType {
+  NETWORK_TOPOLOGY
+  SYSTEM_ARCHITECTURE
+  DATA_FLOW
+  SECURITY_ARCHITECTURE
+  INFRASTRUCTURE_DIAGRAM
+  APPLICATION_MAP
+  PROCESS_FLOW
+}
+
+type Runbook {
+  id: ID!
+  title: String!
+  description: String!
+  category: RunbookCategory!
+  steps: [RunbookStep!]!
+  triggers: [RunbookTrigger!]!
+  estimatedDuration: Int! # minutes
+  lastExecuted: DateTime
+  executionCount: Int!
+  successRate: Float! # percentage
+  version: String!
+  author: User! @external
+  tags: [String!]!
+}
+
+enum RunbookCategory {
+  INCIDENT_RESPONSE
+  MAINTENANCE
+  DEPLOYMENT
+  BACKUP_RECOVERY
+  SECURITY_PROCEDURE
+  TROUBLESHOOTING
+  MONITORING
+  COMPLIANCE
+}
+
+type RunbookStep {
+  order: Int!
+  title: String!
+  description: String!
+  type: RunbookStepType!
+  automated: Boolean!
+  estimatedDuration: Int # minutes
+  prerequisites: [String!]!
+  commands: [String!]!
+  expectedOutput: String
+  troubleshooting: String
+}
+
+enum RunbookStepType {
+  MANUAL_ACTION
+  AUTOMATED_SCRIPT
+  VERIFICATION
+  CHECKPOINT
+  NOTIFICATION
+  APPROVAL
+  ROLLBACK
+}
+
+type RunbookTrigger {
+  type: TriggerType!
+  condition: String!
+  threshold: Float
+  autoExecute: Boolean!
+}
+
+enum TriggerType {
+  ALERT_TRIGGERED
+  METRIC_THRESHOLD
+  TIME_BASED
+  EVENT_BASED
+  MANUAL
+  API_CALL
+}
+
+# Asset Financial Information
+type DepreciationInfo {
+  method: DepreciationMethod!
+  usefulLife: Int! # years
+  annualRate: Float! # percentage
+  currentValue: Float!
+  depreciatedValue: Float!
+  salvageValue: Float!
+}
+
+enum DepreciationMethod {
+  STRAIGHT_LINE
+  DECLINING_BALANCE
+  SUM_OF_YEARS_DIGITS
+  UNITS_OF_PRODUCTION
+}
+
+# Regulatory Requirements
+type RegulatoryRequirement {
+  framework: String! # GDPR, HIPAA, PCI-DSS, SOX, etc.
+  requirement: String!
+  mandatory: Boolean!
+  applicability: String!
+  controls: [String!]!
+  lastAssessed: DateTime
+  nextAssessment: DateTime
+  complianceStatus: ComplianceStatus! @external
+}
+
+# Maintenance Windows
+type MaintenanceWindow {
+  id: ID!
+  name: String!
+  description: String
+  startTime: DateTime!
+  endTime: DateTime!
+  recurring: Boolean!
+  frequency: MaintenanceFrequency
+  dayOfWeek: Int # 0-6
+  dayOfMonth: Int # 1-31
+  approved: Boolean!
+  approver: User @external
+  contacts: [User!]! @external
+  impactedServices: [String!]!
+}
+
+enum MaintenanceFrequency {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  ANNUALLY
+  CUSTOM
+}
+
+# Queries
+type Query {
+  # Asset queries with complex filtering and relationships
+  assets(
+    filter: AssetFilter
+    sort: AssetSort
+    first: Int
+    after: String
+    last: Int
+    before: String
+  ): AssetConnection @auth(requires: ANALYST) @organizationScope @complexity(value: 20)
+  
+  # Single asset with full context
+  asset(id: ID!): Asset @auth(requires: ANALYST) @organizationScope
+  
+  # Asset search with full-text capabilities
+  searchAssets(
+    query: String!
+    filter: AssetFilter
+    sort: AssetSort
+    first: Int
+    after: String
+  ): AssetSearchResult @auth(requires: ANALYST) @organizationScope @complexity(value: 50)
+  
+  # Asset discovery and inventory
+  discoveredAssets(
+    discoveryMethod: [DiscoveryMethod!]
+    lastDiscoveredAfter: DateTime
+    status: [AssetStatus!]
+  ): [Asset!]! @auth(requires: ANALYST) @organizationScope
+  
+  # Asset dependencies and relationships
+  assetDependencies(
+    assetId: ID!
+    depth: Int = 2
+    includeReverse: Boolean = true
+  ): AssetDependencyGraph @auth(requires: ANALYST) @organizationScope @complexity(value: 100)
+  
+  # Asset analytics and insights
+  assetAnalytics(
+    organizationId: ID!
+    timeRange: TimeRange!
+    filters: AssetFilter
+    groupBy: [AssetGroupBy!]
+  ): AssetAnalytics @auth(requires: ANALYST) @organizationScope @complexity(value: 200)
+  
+  # Asset risk assessment
+  assetRiskAssessment(
+    assetId: ID!
+    includeProjections: Boolean = true
+  ): AssetRiskAssessment @auth(requires: ANALYST) @organizationScope @complexity(value: 150)
+  
+  # Asset compliance reporting
+  assetCompliance(
+    organizationId: ID!
+    frameworks: [String!]
+    assetTypes: [AssetType!]
+  ): AssetComplianceReport @auth(requires: ANALYST) @organizationScope @complexity(value: 100)
+  
+  # Asset inventory reports
+  assetInventory(
+    organizationId: ID!
+    format: InventoryFormat = SUMMARY
+    includeMetrics: Boolean = true
+  ): AssetInventoryReport @auth(requires: ANALYST) @organizationScope @complexity(value: 50)
+  
+  # Software inventory across assets
+  softwareInventory(
+    organizationId: ID!
+    filter: SoftwareFilter
+    includeVulnerabilities: Boolean = true
+  ): [SoftwarePackage!]! @auth(requires: ANALYST) @organizationScope @complexity(value: 75)
+  
+  # Certificate inventory and monitoring
+  certificateInventory(
+    organizationId: ID!
+    expiringWithin: Int # days
+    includeExpired: Boolean = false
+  ): [Certificate!]! @auth(requires: ANALYST) @organizationScope
+  
+  # Asset health monitoring
+  assetHealthDashboard(
+    organizationId: ID!
+    criticality: [AssetCriticality!]
+  ): AssetHealthDashboard @auth(requires: ANALYST) @organizationScope @complexity(value: 100)
+  
+  # Asset configuration drift detection
+  configurationDrift(
+    assetIds: [ID!]
+    baselineId: ID
+    severity: [Severity!] @external
+  ): [ConfigurationDrift!]! @auth(requires: ANALYST) @organizationScope @complexity(value: 100)
+}
+
+# Mutations
+type Mutation {
+  # Asset lifecycle management
+  createAsset(input: CreateAssetInput!): CreateAssetResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  updateAsset(id: ID!, input: UpdateAssetInput!): UpdateAssetResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  deleteAsset(id: ID!, force: Boolean = false): DeleteAssetResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  retireAsset(id: ID!, reason: String!, retireDate: DateTime): RetireAssetResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  # Asset discovery and inventory
+  triggerAssetDiscovery(input: AssetDiscoveryInput!): AssetDiscoveryResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  importAssets(input: ImportAssetsInput!): ImportAssetsResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  mergeAssets(sourceId: ID!, targetId: ID!): MergeAssetsResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  # Asset relationships
+  createAssetDependency(input: CreateAssetDependencyInput!): CreateAssetDependencyResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  updateAssetDependency(id: ID!, input: UpdateAssetDependencyInput!): UpdateAssetDependencyResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  deleteAssetDependency(id: ID!): DeleteAssetDependencyResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  # Asset configuration
+  updateAssetConfiguration(assetId: ID!, configurations: [ConfigurationItemInput!]!): UpdateConfigurationResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  applySecurityBaseline(assetId: ID!, baselineId: ID!): ApplyBaselineResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  createConfigurationBaseline(assetId: ID!, name: String!, description: String): CreateBaselineResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  # Asset ownership and management
+  assignAssetOwner(assetId: ID!, ownerId: ID!): AssignOwnerResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  updateAssetTeam(assetId: ID!, teamId: ID!): UpdateTeamResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  addTechnicalContact(assetId: ID!, contactId: ID!): AddContactResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  removeTechnicalContact(assetId: ID!, contactId: ID!): RemoveContactResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  # Asset tagging and labeling
+  tagAssets(assetIds: [ID!]!, tags: [String!]!): TagAssetsResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  untagAssets(assetIds: [ID!]!, tags: [String!]!): UntagAssetsResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  updateAssetLabels(assetId: ID!, labels: JSON!): UpdateLabelsResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  # Asset monitoring
+  enableAssetMonitoring(assetId: ID!, agentTypes: [AgentType!]!): EnableMonitoringResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  disableAssetMonitoring(assetId: ID!, agentTypes: [AgentType!]!): DisableMonitoringResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  installMonitoringAgent(assetId: ID!, agentType: AgentType!, configuration: JSON): InstallAgentResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  # Maintenance and operations
+  scheduleMaintenanceWindow(assetId: ID!, input: MaintenanceWindowInput!): ScheduleMaintenanceResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  updateMaintenanceWindow(id: ID!, input: MaintenanceWindowInput!): UpdateMaintenanceResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  cancelMaintenanceWindow(id: ID!, reason: String!): CancelMaintenanceResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  # Software and patch management
+  updateSoftwareInventory(assetId: ID!): UpdateSoftwareInventoryResult! @auth(requires: ADMIN) @organizationScope
+  installPatch(assetId: ID!, patchId: ID!, scheduled: Boolean = false): InstallPatchResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  updateCertificate(assetId: ID!, certificateId: ID!, input: UpdateCertificateInput!): UpdateCertificateResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  # Bulk operations
+  bulkUpdateAssets(assetIds: [ID!]!, updates: BulkAssetUpdate!): BulkUpdateAssetsResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  bulkRetireAssets(assetIds: [ID!]!, reason: String!): BulkRetireAssetsResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  # Asset export
+  exportAssets(
+    filter: AssetFilter
+    format: ExportFormat! @external
+    includeRelationships: Boolean = false
+  ): ExportJob! @auth(requires: ANALYST) @organizationScope @rateLimit(max: 5, window: 3600)
+}
+
+# Input Types
+input AssetFilter {
+  assetTypes: [AssetType!]
+  environments: [Environment!] @external
+  platforms: [Platform!] @external
+  criticalities: [AssetCriticality!]
+  statuses: [AssetStatus!]
+  healthStatuses: [HealthStatus!] @external
+  securityLevels: [SecurityLevel!] @external
+  ownerIds: [ID!]
+  teamIds: [ID!]
+  locations: [String!]
+  tags: StringFilter @external
+  hasVulnerabilities: Boolean
+  hasAlerts: Boolean
+  hasIncidents: Boolean
+  riskScoreRange: FloatRangeFilter @external
+  lastSeenAfter: DateTime
+  discoveryMethods: [DiscoveryMethod!]
+  customFilters: JSON
+}
+
+input AssetSort {
+  field: AssetSortField!
+  direction: SortDirection! @external
+}
+
+enum AssetSortField {
+  NAME
+  CREATED_AT
+  UPDATED_AT
+  LAST_SEEN_AT
+  RISK_SCORE
+  SECURITY_SCORE
+  CRITICALITY
+  HEALTH_STATUS
+}
+
+enum AssetGroupBy {
+  ASSET_TYPE
+  ENVIRONMENT
+  PLATFORM
+  CRITICALITY
+  STATUS
+  OWNER
+  TEAM
+  LOCATION
+  DATE
+}
+
+input CreateAssetInput {
+  name: String!
+  displayName: String
+  description: String
+  assetType: AssetType!
+  environment: Environment! @external
+  platform: Platform! @external
+  criticality: AssetCriticality!
+  dataClassification: DataClassification!
+  hostname: String
+  ipAddresses: [String!]
+  location: AssetLocationInput
+  ownerId: ID
+  teamId: ID
+  tags: [String!]
+  metadata: JSON
+}
+
+input UpdateAssetInput {
+  name: String
+  displayName: String
+  description: String
+  criticality: AssetCriticality
+  dataClassification: DataClassification
+  status: AssetStatus
+  hostname: String
+  location: AssetLocationInput
+  ownerId: ID
+  teamId: ID
+  tags: [String!]
+  metadata: JSON
+}
+
+input AssetLocationInput {
+  country: String!
+  region: String
+  city: String
+  facility: String
+  building: String
+  floor: String
+  room: String
+  rack: String
+  coordinates: GeoCoordinatesInput
+}
+
+input GeoCoordinatesInput {
+  latitude: Float!
+  longitude: Float!
+  accuracy: Float
+}
+
+input AssetDiscoveryInput {
+  method: DiscoveryMethod!
+  targets: [String!]! # IP ranges, domains, etc.
+  credentials: [CredentialInput!]
+  options: DiscoveryOptions
+}
+
+input CredentialInput {
+  type: CredentialType!
+  username: String
+  password: String
+  keyPath: String
+  certificate: String
+}
+
+enum CredentialType {
+  USERNAME_PASSWORD
+  SSH_KEY
+  CERTIFICATE
+  API_KEY
+  TOKEN
+}
+
+input DiscoveryOptions {
+  portScan: Boolean
+  osDetection: Boolean
+  serviceDetection: Boolean
+  vulnerabilityScan: Boolean
+  includeDown: Boolean
+  timeout: Int # seconds
+}
+
+input ImportAssetsInput {
+  format: ImportFormat!
+  data: String! # CSV, JSON, XML data
+  mapping: JSON # Field mapping configuration
+  options: ImportOptions
+}
+
+enum ImportFormat {
+  CSV
+  JSON
+  XML
+  EXCEL
+  CMDB_EXPORT
+}
+
+input ImportOptions {
+  skipDuplicates: Boolean
+  updateExisting: Boolean
+  validateOnly: Boolean
+}
+
+input CreateAssetDependencyInput {
+  sourceAssetId: ID!
+  targetAssetId: ID!
+  dependencyType: DependencyType!
+  relationship: DependencyRelationship!
+  criticality: DependencyCriticality!
+  description: String
+}
+
+input UpdateAssetDependencyInput {
+  dependencyType: DependencyType
+  relationship: DependencyRelationship
+  criticality: DependencyCriticality
+  description: String
+  status: DependencyStatus
+}
+
+input ConfigurationItemInput {
+  name: String!
+  type: ConfigurationType!
+  value: String!
+  category: String
+  description: String
+}
+
+input BulkAssetUpdate {
+  criticality: AssetCriticality
+  status: AssetStatus
+  ownerId: ID
+  teamId: ID
+  tags: [String!]
+  environment: Environment @external
+  metadata: JSON
+}
+
+input MaintenanceWindowInput {
+  name: String!
+  description: String
+  startTime: DateTime!
+  endTime: DateTime!
+  recurring: Boolean = false
+  frequency: MaintenanceFrequency
+  contacts: [ID!]
+  impactedServices: [String!]
+}
+
+input UpdateCertificateInput {
+  autoRenewal: Boolean
+  location: CertificateLocationInput
+}
+
+input CertificateLocationInput {
+  store: String!
+  path: String
+  friendly_name: String
+}
+
+input SoftwareFilter {
+  name: String
+  vendor: String
+  category: [SoftwareCategory!]
+  hasVulnerabilities: Boolean
+  supportStatus: [SupportStatus!]
+  licenseType: [LicenseType!]
+}
+
+enum InventoryFormat {
+  SUMMARY
+  DETAILED
+  COMPLIANCE
+  SECURITY_FOCUSED
+}
+
+# Result Types and Connections
+type AssetConnection {
+  edges: [AssetEdge!]!
+  pageInfo: PageInfo! @external
+  totalCount: Int!
+  aggregations: AssetAggregations
+}
+
+type AssetEdge {
+  node: Asset!
+  cursor: String!
+}
+
+type AssetAggregations {
+  byType: [AssetTypeCount!]! @external
+  byCriticality: [CriticalityCount!]!
+  byStatus: [AssetStatusCount!]!
+  byEnvironment: [EnvironmentCount!]!
+  byPlatform: [PlatformCount!]!
+  byOwner: [OwnerCount!]!
+  totalRiskScore: Float!
+  averageRiskScore: Float!
+}
+
+type CriticalityCount {
+  criticality: AssetCriticality!
+  count: Int!
+  percentage: Float!
+}
+
+type AssetStatusCount {
+  status: AssetStatus!
+  count: Int!
+  percentage: Float!
+}
+
+type EnvironmentCount {
+  environment: Environment! @external
+  count: Int!
+  percentage: Float!
+}
+
+type PlatformCount {
+  platform: Platform! @external
+  count: Int!
+  percentage: Float!
+}
+
+type OwnerCount {
+  owner: User @external
+  count: Int!
+  averageRiskScore: Float!
+}
+
+type AssetSearchResult {
+  assets: AssetConnection!
+  suggestions: [String!]!
+  facets: AssetSearchFacets!
+  totalTime: Int!
+}
+
+type AssetSearchFacets {
+  assetTypes: [AssetTypeFacet!]!
+  criticalities: [CriticalityFacet!]!
+  environments: [EnvironmentFacet!]!
+  platforms: [PlatformFacet!]!
+  owners: [OwnerFacet!]!
+}
+
+type AssetTypeFacet {
+  assetType: AssetType!
+  count: Int!
+}
+
+type CriticalityFacet {
+  criticality: AssetCriticality!
+  count: Int!
+}
+
+type EnvironmentFacet {
+  environment: Environment! @external
+  count: Int!
+}
+
+type PlatformFacet {
+  platform: Platform! @external
+  count: Int!
+}
+
+type OwnerFacet {
+  owner: User! @external
+  count: Int!
+}
+
+type AssetDependencyGraph {
+  asset: Asset!
+  dependencies: [AssetDependencyNode!]!
+  dependents: [AssetDependencyNode!]!
+  depth: Int!
+  totalNodes: Int!
+  criticalPaths: [DependencyPath!]!
+}
+
+type AssetDependencyNode {
+  asset: Asset!
+  dependency: AssetDependency!
+  level: Int!
+  children: [AssetDependencyNode!]!
+}
+
+type DependencyPath {
+  assets: [Asset!]!
+  dependencies: [AssetDependency!]!
+  criticalityScore: Float!
+  riskScore: Float!
+}
+
+type AssetAnalytics {
+  organizationId: ID!
+  timeRange: TimeRange! @external
+  totalAssets: Int!
+  newAssets: Int!
+  retiredAssets: Int!
+  activeAssets: Int!
+  
+  # Distribution analytics
+  assetsByType: [AssetTypeCount!]! @external
+  assetsByCriticality: [CriticalityCount!]!
+  assetsByStatus: [AssetStatusCount!]!
+  assetsByEnvironment: [EnvironmentCount!]!
+  assetsByPlatform: [PlatformCount!]!
+  
+  # Risk and security analytics
+  riskDistribution: RiskDistribution!
+  securityPosture: SecurityPosture!
+  complianceOverview: ComplianceOverview!
+  
+  # Trends
+  assetGrowthTrend: [DataPoint!]! @external
+  riskTrend: [DataPoint!]! @external
+  healthTrend: [DataPoint!]! @external
+  
+  # Top lists
+  highestRiskAssets: [Asset!]!
+  mostCriticalAssets: [Asset!]!
+  unhealthiestAssets: [Asset!]!
+  
+  lastUpdated: DateTime!
+}
+
+type RiskDistribution {
+  low: Int!
+  medium: Int!
+  high: Int!
+  critical: Int!
+  averageScore: Float!
+  trend: TrendDirection! @external
+}
+
+type SecurityPosture {
+  secureAssets: Int!
+  vulnerableAssets: Int!
+  unprotectedAssets: Int!
+  averageSecurityScore: Float!
+  trend: TrendDirection! @external
+}
+
+type ComplianceOverview {
+  compliantAssets: Int!
+  nonCompliantAssets: Int!
+  partiallyCompliantAssets: Int!
+  averageComplianceScore: Float!
+  frameworks: [FrameworkCompliance!]!
+}
+
+type FrameworkCompliance {
+  framework: String!
+  compliantAssets: Int!
+  totalAssets: Int!
+  compliancePercentage: Float!
+}
+
+type AssetRiskAssessment {
+  asset: Asset!
+  currentRiskScore: Float!
+  riskFactors: [RiskFactor!]!
+  mitigationRecommendations: [MitigationRecommendation!]!
+  projectedRisk: ProjectedRisk
+  lastAssessed: DateTime!
+}
+
+type RiskFactor {
+  category: RiskCategory!
+  factor: String!
+  impact: Float! # 0.0 to 1.0
+  likelihood: Float! # 0.0 to 1.0
+  score: Float!
+  description: String!
+  evidence: [String!]!
+}
+
+enum RiskCategory {
+  VULNERABILITY
+  CONFIGURATION
+  ACCESS_CONTROL
+  MONITORING
+  COMPLIANCE
+  BUSINESS_IMPACT
+  THREAT_EXPOSURE
+  DATA_SENSITIVITY
+}
+
+type MitigationRecommendation {
+  priority: MitigationPriority!
+  action: String!
+  description: String!
+  estimatedEffort: String!
+  riskReduction: Float!
+  cost: MitigationCost!
+  timeframe: String!
+}
+
+enum MitigationPriority {
+  IMMEDIATE
+  HIGH
+  MEDIUM
+  LOW
+  FUTURE
+}
+
+enum MitigationCost {
+  FREE
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+type ProjectedRisk {
+  thirtyDays: Float!
+  sixtyDays: Float!
+  ninetyDays: Float!
+  oneYear: Float!
+  factors: [ProjectionFactor!]!
+}
+
+type ProjectionFactor {
+  factor: String!
+  impact: Float!
+  confidence: Float!
+  reasoning: String!
+}
+
+type AssetComplianceReport {
+  organizationId: ID!
+  frameworks: [FrameworkCompliance!]!
+  assetCompliance: [AssetComplianceStatus!]!
+  gaps: [ComplianceGap!]!
+  recommendations: [ComplianceRecommendation!]!
+  generatedAt: DateTime!
+}
+
+type AssetComplianceStatus {
+  asset: Asset!
+  overallScore: Float!
+  frameworkScores: [FrameworkScore!]!
+  violations: [ComplianceViolation!]! @external
+  lastAssessed: DateTime!
+}
+
+type FrameworkScore {
+  framework: String!
+  score: Float!
+  compliantControls: Int!
+  totalControls: Int!
+}
+
+type ComplianceGap {
+  framework: String!
+  control: String!
+  description: String!
+  severity: Severity! @external
+  affectedAssets: Int!
+  remediation: String!
+}
+
+type ComplianceRecommendation {
+  priority: RecommendationPriority!
+  title: String!
+  description: String!
+  affectedAssets: [Asset!]!
+  frameworks: [String!]!
+  implementation: String!
+  estimatedEffort: String!
+}
+
+enum RecommendationPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFORMATIONAL
+}
+
+type AssetInventoryReport {
+  organizationId: ID!
+  format: InventoryFormat!
+  summary: InventorySummary!
+  assets: [AssetInventoryItem!]!
+  softwareInventory: [SoftwareInventoryItem!]!
+  certificateInventory: [CertificateInventoryItem!]!
+  generatedAt: DateTime!
+}
+
+type InventorySummary {
+  totalAssets: Int!
+  assetsByType: [AssetTypeCount!]! @external
+  assetsByEnvironment: [EnvironmentCount!]!
+  assetsByCriticality: [CriticalityCount!]!
+  healthOverview: HealthOverview!
+  riskOverview: RiskOverview!
+}
+
+type HealthOverview {
+  healthy: Int!
+  warning: Int!
+  critical: Int!
+  unknown: Int!
+}
+
+type RiskOverview {
+  low: Int!
+  medium: Int!
+  high: Int!
+  critical: Int!
+}
+
+type AssetInventoryItem {
+  asset: Asset!
+  healthSummary: String!
+  riskSummary: String!
+  complianceSummary: String!
+  lastUpdated: DateTime!
+}
+
+type SoftwareInventoryItem {
+  software: SoftwarePackage!
+  installedOnAssets: Int!
+  vulnerabilityCount: Int!
+  licenseStatus: LicenseComplianceStatus!
+}
+
+type CertificateInventoryItem {
+  certificate: Certificate!
+  installedOnAssets: Int!
+  daysUntilExpiry: Int!
+  riskLevel: CertificateRiskLevel!
+}
+
+enum CertificateRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+type AssetHealthDashboard {
+  organizationId: ID!
+  overview: HealthOverview!
+  criticalAssets: [Asset!]!
+  unhealthyAssets: [Asset!]!
+  healthTrends: [DataPoint!]! @external
+  alertsByAsset: [AssetAlertCount!]!
+  performanceMetrics: [AssetPerformanceMetric!]!
+  lastUpdated: DateTime!
+}
+
+type AssetAlertCount {
+  asset: Asset!
+  alertCount: Int!
+  criticalAlerts: Int!
+  highAlerts: Int!
+}
+
+type AssetPerformanceMetric {
+  asset: Asset!
+  cpuUsage: Float
+  memoryUsage: Float
+  diskUsage: Float
+  networkUtilization: Float
+  responseTime: Float
+  availability: Float
+}
+
+type ConfigurationDrift {
+  asset: Asset!
+  baseline: SecurityBaseline!
+  driftScore: Float! # 0.0 to 1.0
+  deviations: [ConfigurationDeviation!]!
+  detectedAt: DateTime!
+  riskLevel: Severity! @external
+}
+
+# Mutation Result Types
+type CreateAssetResult {
+  success: Boolean!
+  asset: Asset
+  errors: [ValidationError!]! @external
+}
+
+type UpdateAssetResult {
+  success: Boolean!
+  asset: Asset
+  errors: [ValidationError!]! @external
+}
+
+type DeleteAssetResult {
+  success: Boolean!
+  message: String!
+}
+
+type RetireAssetResult {
+  success: Boolean!
+  asset: Asset
+  retiredAt: DateTime!
+  message: String!
+}
+
+type AssetDiscoveryResult {
+  success: Boolean!
+  jobId: ID!
+  discoveredAssets: Int!
+  newAssets: Int!
+  updatedAssets: Int!
+  errors: [DiscoveryError!]!
+}
+
+type DiscoveryError {
+  target: String!
+  error: String!
+  severity: Severity! @external
+}
+
+type ImportAssetsResult {
+  success: Boolean!
+  importedCount: Int!
+  updatedCount: Int!
+  skippedCount: Int!
+  errorCount: Int!
+  errors: [ImportError!]!
+}
+
+type ImportError {
+  row: Int!
+  field: String
+  error: String!
+  data: JSON
+}
+
+type MergeAssetsResult {
+  success: Boolean!
+  mergedAsset: Asset
+  message: String!
+}
+
+type CreateAssetDependencyResult {
+  success: Boolean!
+  dependency: AssetDependency
+  errors: [ValidationError!]! @external
+}
+
+type UpdateAssetDependencyResult {
+  success: Boolean!
+  dependency: AssetDependency
+  errors: [ValidationError!]! @external
+}
+
+type DeleteAssetDependencyResult {
+  success: Boolean!
+  message: String!
+}
+
+type UpdateConfigurationResult {
+  success: Boolean!
+  updatedConfigurations: [ConfigurationItem!]!
+  conflicts: [ConfigurationConflict!]!
+  errors: [ValidationError!]! @external
+}
+
+type ConfigurationConflict {
+  item: String!
+  currentValue: String!
+  newValue: String!
+  source: String!
+  recommendation: String!
+}
+
+type ApplyBaselineResult {
+  success: Boolean!
+  appliedControls: Int!
+  skippedControls: Int!
+  conflicts: Int!
+  compliance: Float!
+  errors: [BaselineError!]!
+}
+
+type BaselineError {
+  control: String!
+  error: String!
+  severity: Severity! @external
+}
+
+type CreateBaselineResult {
+  success: Boolean!
+  baseline: SecurityBaseline
+  capturedControls: Int!
+  errors: [ValidationError!]! @external
+}
+
+type AssignOwnerResult {
+  success: Boolean!
+  asset: Asset
+  previousOwner: User @external
+  message: String!
+}
+
+type UpdateTeamResult {
+  success: Boolean!
+  asset: Asset
+  previousTeam: Team
+  message: String!
+}
+
+type AddContactResult {
+  success: Boolean!
+  asset: Asset
+  message: String!
+}
+
+type RemoveContactResult {
+  success: Boolean!
+  asset: Asset
+  message: String!
+}
+
+type TagAssetsResult {
+  success: Boolean!
+  updatedAssets: Int!
+  addedTags: [String!]!
+  errors: [TaggingError!]!
+}
+
+type TaggingError {
+  assetId: ID!
+  error: String!
+}
+
+type UntagAssetsResult {
+  success: Boolean!
+  updatedAssets: Int!
+  removedTags: [String!]!
+  errors: [TaggingError!]!
+}
+
+type UpdateLabelsResult {
+  success: Boolean!
+  asset: Asset
+  addedLabels: [String!]!
+  removedLabels: [String!]!
+}
+
+type EnableMonitoringResult {
+  success: Boolean!
+  asset: Asset
+  enabledAgents: [AgentType!]!
+  message: String!
+}
+
+type DisableMonitoringResult {
+  success: Boolean!
+  asset: Asset
+  disabledAgents: [AgentType!]!
+  message: String!
+}
+
+type InstallAgentResult {
+  success: Boolean!
+  agent: MonitoringAgent
+  installationJobId: ID
+  message: String!
+  errors: [ValidationError!]! @external
+}
+
+type ScheduleMaintenanceResult {
+  success: Boolean!
+  maintenanceWindow: MaintenanceWindow
+  conflicts: [MaintenanceConflict!]!
+  errors: [ValidationError!]! @external
+}
+
+type MaintenanceConflict {
+  asset: Asset!
+  existingWindow: MaintenanceWindow!
+  overlap: TimeOverlap!
+}
+
+type TimeOverlap {
+  startTime: DateTime!
+  endTime: DateTime!
+  durationMinutes: Int!
+}
+
+type UpdateMaintenanceResult {
+  success: Boolean!
+  maintenanceWindow: MaintenanceWindow
+  errors: [ValidationError!]! @external
+}
+
+type CancelMaintenanceResult {
+  success: Boolean!
+  message: String!
+  notifiedContacts: Int!
+}
+
+type UpdateSoftwareInventoryResult {
+  success: Boolean!
+  discoveredSoftware: Int!
+  updatedSoftware: Int!
+  newVulnerabilities: Int!
+  lastScanned: DateTime!
+}
+
+type InstallPatchResult {
+  success: Boolean!
+  patch: PatchInfo
+  installJobId: ID
+  requiresReboot: Boolean!
+  scheduledFor: DateTime
+  message: String!
+}
+
+type UpdateCertificateResult {
+  success: Boolean!
+  certificate: Certificate
+  errors: [ValidationError!]! @external
+}
+
+type BulkUpdateAssetsResult {
+  success: Boolean!
+  updatedCount: Int!
+  failedCount: Int!
+  errors: [BulkUpdateError!]!
+}
+
+type BulkUpdateError {
+  assetId: ID!
+  error: String!
+  field: String
+}
+
+type BulkRetireAssetsResult {
+  success: Boolean!
+  retiredCount: Int!
+  failedCount: Int!
+  errors: [BulkUpdateError!]!
+}

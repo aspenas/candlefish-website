@@ -657,13 +657,588 @@ export class SeedDataHelper {
   }
 }
 
+// =============================================================================
+// MATURITY MAP TEST DATA FACTORIES
+// =============================================================================
+
+// Type definitions for maturity map test data
+export interface TestMaturityAssessment {
+  id?: string;
+  organizationId: string;
+  title: string;
+  description?: string;
+  status: 'draft' | 'in_progress' | 'completed' | 'archived';
+  maturityLevel: number;
+  dimensions: TestMaturityDimension[];
+  completionRate: number;
+  totalQuestions: number;
+  answeredQuestions: number;
+  createdBy: string;
+  assignedTo?: string[];
+  dueDate?: Date;
+  completedAt?: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface TestMaturityDimension {
+  id?: string;
+  assessmentId: string;
+  name: string;
+  description?: string;
+  weight: number;
+  score: number;
+  maxScore: number;
+  questions: TestMaturityQuestion[];
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface TestMaturityQuestion {
+  id?: string;
+  dimensionId: string;
+  text: string;
+  type: 'multiple_choice' | 'scale' | 'text' | 'boolean' | 'file_upload';
+  required: boolean;
+  options?: string[];
+  weight: number;
+  response?: TestMaturityResponse;
+  order: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface TestMaturityResponse {
+  id?: string;
+  questionId: string;
+  assessmentId: string;
+  value: string | number | boolean;
+  confidence: number;
+  comments?: string;
+  evidence?: TestDocumentUpload[];
+  respondedBy: string;
+  respondedAt?: Date;
+}
+
+export interface TestDocumentUpload {
+  id?: string;
+  assessmentId: string;
+  questionId?: string;
+  filename: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  url: string;
+  processedChunks?: number;
+  aiSummary?: string;
+  uploadedBy: string;
+  uploadedAt?: Date;
+}
+
+export interface TestMaturityOrganization {
+  id?: string;
+  name: string;
+  domain?: string;
+  industry: string;
+  size: 'startup' | 'small' | 'medium' | 'large' | 'enterprise';
+  description?: string;
+  settings: {
+    allowSelfAssessment: boolean;
+    requireEvidence: boolean;
+    enableCollaboration: boolean;
+    notificationPreferences: string[];
+  };
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+// Constants for realistic maturity map data
+const MATURITY_DIMENSIONS = [
+  { name: 'Strategy & Vision', description: 'Strategic alignment and vision clarity' },
+  { name: 'Leadership & Governance', description: 'Leadership effectiveness and governance structures' },
+  { name: 'Process Management', description: 'Process optimization and management practices' },
+  { name: 'Technology & Innovation', description: 'Technology adoption and innovation capabilities' },
+  { name: 'People & Culture', description: 'Human resources and organizational culture' },
+  { name: 'Customer Experience', description: 'Customer-centric approaches and experience management' },
+  { name: 'Data & Analytics', description: 'Data management and analytics capabilities' },
+  { name: 'Risk Management', description: 'Risk assessment and mitigation strategies' }
+];
+
+const INDUSTRIES = [
+  'Technology', 'Healthcare', 'Finance', 'Manufacturing', 'Retail',
+  'Education', 'Government', 'Non-profit', 'Consulting', 'Media'
+];
+
+const ORGANIZATION_SIZES = ['startup', 'small', 'medium', 'large', 'enterprise'] as const;
+
+const ASSESSMENT_STATUSES = ['draft', 'in_progress', 'completed', 'archived'] as const;
+
+const QUESTION_TYPES = ['multiple_choice', 'scale', 'text', 'boolean', 'file_upload'] as const;
+
+const SAMPLE_QUESTIONS = {
+  'Strategy & Vision': [
+    'How clearly defined is your organization\'s strategic vision?',
+    'To what extent are strategic objectives communicated across all levels?',
+    'How regularly is the strategic plan reviewed and updated?',
+    'How well does your organization align initiatives with strategic goals?'
+  ],
+  'Leadership & Governance': [
+    'How effective is leadership in driving organizational change?',
+    'To what extent is decision-making decentralized?',
+    'How well-defined are governance structures and processes?',
+    'How effectively does leadership communicate with stakeholders?'
+  ],
+  'Process Management': [
+    'How well-documented are your key business processes?',
+    'To what extent are processes regularly reviewed and optimized?',
+    'How standardized are processes across different departments?',
+    'How effectively does your organization measure process performance?'
+  ]
+};
+
+const MULTIPLE_CHOICE_OPTIONS = [
+  ['Not at all', 'Slightly', 'Moderately', 'Very much', 'Extremely'],
+  ['Never', 'Rarely', 'Sometimes', 'Often', 'Always'],
+  ['Poor', 'Fair', 'Good', 'Very Good', 'Excellent'],
+  ['Strongly Disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly Agree']
+];
+
+/**
+ * Maturity Assessment Factory
+ */
+export class MaturityAssessmentFactory {
+  static create(organizationId: string, overrides: Partial<TestMaturityAssessment> = {}): TestMaturityAssessment {
+    const title = faker.helpers.arrayElement([
+      'Q4 2024 Organizational Maturity Assessment',
+      'Digital Transformation Readiness Assessment',
+      'Process Optimization Assessment',
+      'Annual Strategic Review',
+      'Department-level Maturity Evaluation'
+    ]);
+
+    const totalQuestions = faker.number.int({ min: 20, max: 100 });
+    const answeredQuestions = faker.number.int({ min: 0, max: totalQuestions });
+    const completionRate = totalQuestions > 0 ? (answeredQuestions / totalQuestions) * 100 : 0;
+    
+    const status = faker.helpers.weightedArrayElement([
+      { weight: 20, value: 'draft' },
+      { weight: 40, value: 'in_progress' },
+      { weight: 30, value: 'completed' },
+      { weight: 10, value: 'archived' }
+    ]);
+
+    return {
+      id: faker.string.uuid(),
+      organizationId,
+      title,
+      description: faker.lorem.sentences(2),
+      status,
+      maturityLevel: faker.number.int({ min: 1, max: 5 }),
+      dimensions: [],
+      completionRate,
+      totalQuestions,
+      answeredQuestions,
+      createdBy: faker.string.uuid(),
+      assignedTo: faker.helpers.arrayElements(
+        Array.from({ length: 5 }, () => faker.string.uuid()),
+        { min: 1, max: 3 }
+      ),
+      dueDate: faker.date.future(),
+      completedAt: status === 'completed' ? faker.date.recent({ days: 30 }) : undefined,
+      createdAt: faker.date.past({ years: 1 }),
+      updatedAt: faker.date.recent({ days: 7 }),
+      ...overrides
+    };
+  }
+
+  static createMany(organizationId: string, count: number, overrides: Partial<TestMaturityAssessment> = {}): TestMaturityAssessment[] {
+    return Array.from({ length: count }, () => this.create(organizationId, overrides));
+  }
+
+  static createByStatus(organizationId: string, status: TestMaturityAssessment['status'], count: number = 1): TestMaturityAssessment[] {
+    return this.createMany(organizationId, count, { status });
+  }
+
+  static createWithDimensions(organizationId: string, dimensionCount: number = 5): TestMaturityAssessment {
+    const assessment = this.create(organizationId);
+    const dimensions = MaturityDimensionFactory.createMany(assessment.id!, dimensionCount);
+    
+    return {
+      ...assessment,
+      dimensions,
+      totalQuestions: dimensions.reduce((sum, dim) => sum + dim.questions.length, 0)
+    };
+  }
+}
+
+/**
+ * Maturity Dimension Factory
+ */
+export class MaturityDimensionFactory {
+  static create(assessmentId: string, overrides: Partial<TestMaturityDimension> = {}): TestMaturityDimension {
+    const dimension = faker.helpers.arrayElement(MATURITY_DIMENSIONS);
+    const maxScore = faker.number.int({ min: 20, max: 100 });
+    const score = faker.number.int({ min: 0, max: maxScore });
+
+    return {
+      id: faker.string.uuid(),
+      assessmentId,
+      name: dimension.name,
+      description: dimension.description,
+      weight: faker.number.float({ min: 0.1, max: 1.0, fractionDigits: 2 }),
+      score,
+      maxScore,
+      questions: [],
+      createdAt: faker.date.past({ months: 6 }),
+      updatedAt: faker.date.recent({ days: 14 }),
+      ...overrides
+    };
+  }
+
+  static createMany(assessmentId: string, count: number, overrides: Partial<TestMaturityDimension> = {}): TestMaturityDimension[] {
+    const selectedDimensions = faker.helpers.arrayElements(MATURITY_DIMENSIONS, count);
+    return selectedDimensions.map(dimension => this.create(assessmentId, { 
+      name: dimension.name, 
+      description: dimension.description,
+      ...overrides 
+    }));
+  }
+
+  static createWithQuestions(assessmentId: string, questionCount: number = 5): TestMaturityDimension {
+    const dimension = this.create(assessmentId);
+    const questions = MaturityQuestionFactory.createMany(dimension.id!, questionCount);
+    
+    return {
+      ...dimension,
+      questions,
+      maxScore: questions.reduce((sum, q) => sum + q.weight, 0)
+    };
+  }
+}
+
+/**
+ * Maturity Question Factory
+ */
+export class MaturityQuestionFactory {
+  static create(dimensionId: string, overrides: Partial<TestMaturityQuestion> = {}): TestMaturityQuestion {
+    const type = faker.helpers.arrayElement(QUESTION_TYPES);
+    const questionTexts = Object.values(SAMPLE_QUESTIONS).flat();
+    const text = faker.helpers.arrayElement(questionTexts);
+
+    const question: TestMaturityQuestion = {
+      id: faker.string.uuid(),
+      dimensionId,
+      text,
+      type,
+      required: faker.datatype.boolean({ probability: 0.7 }),
+      weight: faker.number.int({ min: 1, max: 10 }),
+      order: faker.number.int({ min: 1, max: 50 }),
+      createdAt: faker.date.past({ months: 3 }),
+      updatedAt: faker.date.recent({ days: 10 }),
+      ...overrides
+    };
+
+    // Add options for multiple choice questions
+    if (type === 'multiple_choice') {
+      question.options = faker.helpers.arrayElement(MULTIPLE_CHOICE_OPTIONS);
+    }
+
+    return question;
+  }
+
+  static createMany(dimensionId: string, count: number, overrides: Partial<TestMaturityQuestion> = {}): TestMaturityQuestion[] {
+    return Array.from({ length: count }, (_, index) => 
+      this.create(dimensionId, { order: index + 1, ...overrides })
+    );
+  }
+
+  static createByType(dimensionId: string, type: TestMaturityQuestion['type'], count: number = 1): TestMaturityQuestion[] {
+    return this.createMany(dimensionId, count, { type });
+  }
+
+  static createWithResponse(dimensionId: string, assessmentId: string): TestMaturityQuestion {
+    const question = this.create(dimensionId);
+    const response = MaturityResponseFactory.create(question.id!, assessmentId);
+    
+    return {
+      ...question,
+      response
+    };
+  }
+}
+
+/**
+ * Maturity Response Factory
+ */
+export class MaturityResponseFactory {
+  static create(questionId: string, assessmentId: string, overrides: Partial<TestMaturityResponse> = {}): TestMaturityResponse {
+    const value = faker.helpers.arrayElement([
+      faker.number.int({ min: 1, max: 5 }),
+      faker.datatype.boolean(),
+      faker.lorem.sentence(),
+      faker.helpers.arrayElement(['Poor', 'Fair', 'Good', 'Very Good', 'Excellent'])
+    ]);
+
+    return {
+      id: faker.string.uuid(),
+      questionId,
+      assessmentId,
+      value,
+      confidence: faker.number.int({ min: 1, max: 10 }),
+      comments: faker.helpers.maybe(() => faker.lorem.paragraph(), { probability: 0.6 }),
+      evidence: faker.helpers.maybe(() => 
+        DocumentUploadFactory.createMany(assessmentId, faker.number.int({ min: 1, max: 3 })), 
+        { probability: 0.3 }
+      ),
+      respondedBy: faker.string.uuid(),
+      respondedAt: faker.date.recent({ days: 30 }),
+      ...overrides
+    };
+  }
+
+  static createMany(questionId: string, assessmentId: string, count: number, overrides: Partial<TestMaturityResponse> = {}): TestMaturityResponse[] {
+    return Array.from({ length: count }, () => this.create(questionId, assessmentId, overrides));
+  }
+
+  static createHighConfidence(questionId: string, assessmentId: string): TestMaturityResponse {
+    return this.create(questionId, assessmentId, {
+      confidence: faker.number.int({ min: 8, max: 10 }),
+      comments: faker.lorem.paragraph()
+    });
+  }
+
+  static createWithEvidence(questionId: string, assessmentId: string): TestMaturityResponse {
+    return this.create(questionId, assessmentId, {
+      evidence: DocumentUploadFactory.createMany(assessmentId, faker.number.int({ min: 2, max: 5 }))
+    });
+  }
+}
+
+/**
+ * Document Upload Factory
+ */
+export class DocumentUploadFactory {
+  static create(assessmentId: string, overrides: Partial<TestDocumentUpload> = {}): TestDocumentUpload {
+    const extensions = ['pdf', 'docx', 'xlsx', 'pptx', 'txt', 'png', 'jpg'];
+    const extension = faker.helpers.arrayElement(extensions);
+    const filename = `${faker.system.fileName({ extensionCount: 0 })}.${extension}`;
+
+    const mimeTypes: Record<string, string> = {
+      pdf: 'application/pdf',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      txt: 'text/plain',
+      png: 'image/png',
+      jpg: 'image/jpeg'
+    };
+
+    return {
+      id: faker.string.uuid(),
+      assessmentId,
+      filename,
+      originalName: filename,
+      mimeType: mimeTypes[extension],
+      size: faker.number.int({ min: 1024, max: 50 * 1024 * 1024 }), // 1KB to 50MB
+      url: `https://storage.example.com/assessments/${assessmentId}/${faker.string.uuid()}.${extension}`,
+      processedChunks: faker.helpers.maybe(() => faker.number.int({ min: 1, max: 100 }), { probability: 0.7 }),
+      aiSummary: faker.helpers.maybe(() => faker.lorem.paragraph(), { probability: 0.5 }),
+      uploadedBy: faker.string.uuid(),
+      uploadedAt: faker.date.recent({ days: 14 }),
+      ...overrides
+    };
+  }
+
+  static createMany(assessmentId: string, count: number, overrides: Partial<TestDocumentUpload> = {}): TestDocumentUpload[] {
+    return Array.from({ length: count }, () => this.create(assessmentId, overrides));
+  }
+
+  static createByType(assessmentId: string, extension: string, count: number = 1): TestDocumentUpload[] {
+    return this.createMany(assessmentId, count, { 
+      filename: `${faker.system.fileName({ extensionCount: 0 })}.${extension}`
+    });
+  }
+
+  static createLargeFiles(assessmentId: string, count: number = 3): TestDocumentUpload[] {
+    return this.createMany(assessmentId, count, {
+      size: faker.number.int({ min: 10 * 1024 * 1024, max: 100 * 1024 * 1024 }) // 10MB to 100MB
+    });
+  }
+}
+
+/**
+ * Organization Factory
+ */
+export class MaturityOrganizationFactory {
+  static create(overrides: Partial<TestMaturityOrganization> = {}): TestMaturityOrganization {
+    const name = faker.company.name();
+    const domain = faker.internet.domainName();
+
+    return {
+      id: faker.string.uuid(),
+      name,
+      domain,
+      industry: faker.helpers.arrayElement(INDUSTRIES),
+      size: faker.helpers.arrayElement(ORGANIZATION_SIZES),
+      description: faker.company.catchPhrase(),
+      settings: {
+        allowSelfAssessment: faker.datatype.boolean({ probability: 0.8 }),
+        requireEvidence: faker.datatype.boolean({ probability: 0.6 }),
+        enableCollaboration: faker.datatype.boolean({ probability: 0.9 }),
+        notificationPreferences: faker.helpers.arrayElements([
+          'email', 'slack', 'teams', 'sms', 'push'
+        ], { min: 1, max: 3 })
+      },
+      createdAt: faker.date.past({ years: 2 }),
+      updatedAt: faker.date.recent({ days: 30 }),
+      ...overrides
+    };
+  }
+
+  static createMany(count: number, overrides: Partial<TestMaturityOrganization> = {}): TestMaturityOrganization[] {
+    return Array.from({ length: count }, () => this.create(overrides));
+  }
+
+  static createBySize(size: TestMaturityOrganization['size'], count: number = 1): TestMaturityOrganization[] {
+    return this.createMany(count, { size });
+  }
+
+  static createByIndustry(industry: string, count: number = 1): TestMaturityOrganization[] {
+    return this.createMany(count, { industry });
+  }
+}
+
+/**
+ * Complete Maturity Dataset Factory
+ */
+export class MaturityDatasetFactory {
+  static createComplete(options: {
+    organizationCount?: number;
+    assessmentsPerOrg?: number;
+    dimensionsPerAssessment?: number;
+    questionsPerDimension?: number;
+    responseRate?: number;
+    documentsPerAssessment?: number;
+  } = {}): {
+    organizations: TestMaturityOrganization[];
+    assessments: TestMaturityAssessment[];
+    dimensions: TestMaturityDimension[];
+    questions: TestMaturityQuestion[];
+    responses: TestMaturityResponse[];
+    documents: TestDocumentUpload[];
+  } {
+    const {
+      organizationCount = 3,
+      assessmentsPerOrg = 2,
+      dimensionsPerAssessment = 5,
+      questionsPerDimension = 8,
+      responseRate = 0.7,
+      documentsPerAssessment = 5
+    } = options;
+
+    // Create organizations
+    const organizations = MaturityOrganizationFactory.createMany(organizationCount);
+
+    // Create assessments for each organization
+    const assessments: TestMaturityAssessment[] = [];
+    organizations.forEach(org => {
+      const orgAssessments = MaturityAssessmentFactory.createMany(org.id!, assessmentsPerOrg);
+      assessments.push(...orgAssessments);
+    });
+
+    // Create dimensions for each assessment
+    const dimensions: TestMaturityDimension[] = [];
+    assessments.forEach(assessment => {
+      const assessmentDimensions = MaturityDimensionFactory.createMany(assessment.id!, dimensionsPerAssessment);
+      dimensions.push(...assessmentDimensions);
+    });
+
+    // Create questions for each dimension
+    const questions: TestMaturityQuestion[] = [];
+    dimensions.forEach(dimension => {
+      const dimensionQuestions = MaturityQuestionFactory.createMany(dimension.id!, questionsPerDimension);
+      questions.push(...dimensionQuestions);
+    });
+
+    // Create responses for questions based on response rate
+    const responses: TestMaturityResponse[] = [];
+    questions.forEach(question => {
+      if (Math.random() < responseRate) {
+        const response = MaturityResponseFactory.create(question.id!, question.dimensionId);
+        responses.push(response);
+      }
+    });
+
+    // Create documents for assessments
+    const documents: TestDocumentUpload[] = [];
+    assessments.forEach(assessment => {
+      if (Math.random() > 0.3) { // 70% of assessments have documents
+        const assessmentDocuments = DocumentUploadFactory.createMany(assessment.id!, documentsPerAssessment);
+        documents.push(...assessmentDocuments);
+      }
+    });
+
+    return {
+      organizations,
+      assessments,
+      dimensions,
+      questions,
+      responses,
+      documents
+    };
+  }
+
+  static createRealistic(): ReturnType<typeof MaturityDatasetFactory.createComplete> {
+    return this.createComplete({
+      organizationCount: 5,
+      assessmentsPerOrg: 3,
+      dimensionsPerAssessment: 6,
+      questionsPerDimension: 10,
+      responseRate: 0.75,
+      documentsPerAssessment: 8
+    });
+  }
+
+  static createLarge(): ReturnType<typeof MaturityDatasetFactory.createComplete> {
+    return this.createComplete({
+      organizationCount: 15,
+      assessmentsPerOrg: 8,
+      dimensionsPerAssessment: 8,
+      questionsPerDimension: 15,
+      responseRate: 0.6,
+      documentsPerAssessment: 12
+    });
+  }
+
+  static createMinimal(): ReturnType<typeof MaturityDatasetFactory.createComplete> {
+    return this.createComplete({
+      organizationCount: 1,
+      assessmentsPerOrg: 1,
+      dimensionsPerAssessment: 3,
+      questionsPerDimension: 5,
+      responseRate: 0.8,
+      documentsPerAssessment: 3
+    });
+  }
+}
+
+// =============================================================================
+// COMBINED TEST DATA SETS
+// =============================================================================
+
 // Export commonly used test data sets
 export const TestDataSets = {
+  // Inventory datasets
   small: () => InventoryDatasetFactory.createMinimal(),
   medium: () => InventoryDatasetFactory.createRealistic(),
   large: () => InventoryDatasetFactory.createLarge(),
 
-  // Specific scenarios
+  // Maturity map datasets
+  maturitySmall: () => MaturityDatasetFactory.createMinimal(),
+  maturityMedium: () => MaturityDatasetFactory.createRealistic(),
+  maturityLarge: () => MaturityDatasetFactory.createLarge(),
+
+  // Specific scenarios - Inventory
   highValueInventory: () => {
     const rooms = RoomFactory.createMany(3);
     const items = rooms.flatMap(room =>
@@ -681,5 +1256,32 @@ export const TestDataSets = {
       ...ItemFactory.createByDecision(room.id!, 'Unsure', 3),
     ]);
     return { rooms, items, images: [], activities: [], users: [] };
+  },
+
+  // Specific scenarios - Maturity Map
+  completedAssessments: () => {
+    const organizations = MaturityOrganizationFactory.createMany(2);
+    const assessments = organizations.flatMap(org =>
+      MaturityAssessmentFactory.createByStatus(org.id!, 'completed', 3)
+    );
+    return { organizations, assessments, dimensions: [], questions: [], responses: [], documents: [] };
+  },
+
+  highResponseRate: () => {
+    return MaturityDatasetFactory.createComplete({
+      organizationCount: 3,
+      assessmentsPerOrg: 2,
+      responseRate: 0.95,
+      documentsPerAssessment: 10
+    });
+  },
+
+  multiIndustryOrgs: () => {
+    const organizations = [
+      ...MaturityOrganizationFactory.createByIndustry('Technology', 2),
+      ...MaturityOrganizationFactory.createByIndustry('Healthcare', 2),
+      ...MaturityOrganizationFactory.createByIndustry('Finance', 2)
+    ];
+    return { organizations, assessments: [], dimensions: [], questions: [], responses: [], documents: [] };
   }
 };
