@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
+import AppMinimal from './AppMinimal';
 import './styles/globals.css';
 
 // Accessibility announcer for dynamic updates
@@ -33,9 +33,19 @@ const root = ReactDOM.createRoot(
 
 root.render(
   <React.StrictMode>
-    <App />
+    <AppMinimal />
   </React.StrictMode>
 );
+
+// Remove loading screen after React renders
+setTimeout(() => {
+  const loadingScreen = document.getElementById('loading-screen');
+  if (loadingScreen) {
+    loadingScreen.style.opacity = '0';
+    loadingScreen.style.transition = 'opacity 0.3s ease-out';
+    setTimeout(() => loadingScreen.remove(), 300);
+  }
+}, 100);
 
 // Declare global types
 declare global {

@@ -1,0 +1,646 @@
+# Comprehensive Threat Detection Queries
+
+# Core Security Event Query with CEF format support
+query GetSecurityEvents(
+  $filter: SecurityEventFilter
+  $pagination: PaginationInput
+  $sort: SecurityEventSort
+) {
+  securityEvents(filter: $filter, pagination: $pagination, sort: $sort) {
+    items {
+      id
+      timestamp
+      type
+      severity
+      title
+      description
+      source
+      sourceIP
+      destinationIP
+      sourcePort
+      destinationPort
+      protocol
+      cefVersion
+      cefFields {
+        version
+        deviceVendor
+        deviceProduct
+        deviceVersion
+        signatureID
+        name
+        severity
+        extension
+      }
+      assetId
+      asset {
+        id
+        name
+        type
+        environment
+        platform
+      }
+      userId
+      user {
+        id
+        name
+        email
+      }
+      metadata
+      status
+      tags
+      threatLevel
+      mitreAttackTactics {
+        tacticId
+        tacticName
+        techniques {
+          techniqueId
+          techniqueName
+          subTechniques {
+            subTechniqueId
+            subTechniqueName
+          }
+        }
+      }
+      indicators {
+        type
+        value
+        confidence
+        source
+        firstSeen
+        lastSeen
+      }
+      relatedEvents {
+        id
+        type
+        timestamp
+        severity
+      }
+      geoLocation {
+        country
+        region
+        city
+        latitude
+        longitude
+        organization
+        isp
+      }
+      riskScore
+      falsePositiveProbability
+    }
+    totalCount
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+  }
+}
+
+# MITRE ATT&CK Framework Query
+query GetMitreAttackFramework {
+  mitreAttackFramework {
+    tactics {
+      id
+      name
+      description
+      shortName
+      techniques {
+        id
+        name
+        description
+        platforms
+        dataSourcesRequired
+        defensesBypassed
+        detectionMethods
+        subTechniques {
+          id
+          name
+          description
+          platforms
+        }
+      }
+    }
+    matrices {
+      name
+      platforms
+      tactics
+    }
+  }
+}
+
+# Threat Intelligence Query
+query GetThreatIntelligence(
+  $filter: ThreatIntelligenceFilter
+  $pagination: PaginationInput
+) {
+  threatIntelligence(filter: $filter, pagination: $pagination) {
+    items {
+      id
+      type
+      value
+      confidence
+      severity
+      tags
+      source
+      firstSeen
+      lastSeen
+      description
+      context {
+        threatActor {
+          id
+          name
+          aliases
+          country
+          motivation
+          sophistication
+          targetSectors
+          ttps {
+            tacticId
+            techniqueId
+            description
+          }
+        }
+        campaign {
+          id
+          name
+          description
+          startDate
+          endDate
+          attribution
+        }
+        malwareFamily {
+          name
+          type
+          description
+          capabilities
+          variants
+        }
+      }
+      indicators {
+        type
+        pattern
+        labels
+        confidence
+        validFrom
+        validUntil
+      }
+      relationships {
+        relationshipType
+        targetId
+        targetType
+        description
+        confidence
+      }
+      killChainPhases {
+        killChainName
+        phaseName
+        phaseOrder
+      }
+    }
+    totalCount
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+    }
+  }
+}
+
+# IOC Similarity Search
+query SearchSimilarIOCs(
+  $ioc: String!
+  $threshold: Float
+  $limit: Int
+) {
+  searchSimilarIOCs(ioc: $ioc, threshold: $threshold, limit: $limit) {
+    ioc {
+      id
+      type
+      value
+      confidence
+      tags
+      source
+      firstSeen
+      lastSeen
+    }
+    similarity
+    matchType
+    explanation
+  }
+}
+
+# Complex Threat Hunting Query
+query ThreatHuntingSearch(
+  $huntingRule: ThreatHuntingRule!
+  $timeRange: TimeRangeInput!
+  $pagination: PaginationInput
+) {
+  threatHuntingSearch(
+    huntingRule: $huntingRule
+    timeRange: $timeRange
+    pagination: $pagination
+  ) {
+    results {
+      events {
+        id
+        timestamp
+        type
+        severity
+        description
+        source
+        metadata
+        riskScore
+      }
+      patterns {
+        patternName
+        matchCount
+        confidence
+        description
+        examples {
+          eventId
+          matchedFields
+          score
+        }
+      }
+      anomalies {
+        type
+        description
+        severity
+        confidence
+        affectedEntities
+        timeWindow
+      }
+    }
+    statistics {
+      totalEvents
+      uniqueSources
+      timeSpan
+      topSources {
+        source
+        count
+        percentage
+      }
+      severityDistribution {
+        severity
+        count
+        percentage
+      }
+    }
+    huntingMetrics {
+      executionTime
+      dataProcessed
+      falsePositiveRate
+      confidence
+    }
+  }
+}
+
+# Case Management Queries
+query GetSecurityCases(
+  $filter: SecurityCaseFilter
+  $pagination: PaginationInput
+  $sort: SecurityCaseSort
+) {
+  securityCases(filter: $filter, pagination: $pagination, sort: $sort) {
+    items {
+      id
+      title
+      description
+      status
+      priority
+      severity
+      assignedTo {
+        id
+        name
+        email
+        avatar
+      }
+      createdBy {
+        id
+        name
+        email
+      }
+      createdAt
+      updatedAt
+      dueDate
+      tags
+      category
+      subcategory
+      affectedAssets {
+        id
+        name
+        type
+      }
+      relatedEvents {
+        id
+        type
+        timestamp
+        severity
+      }
+      evidence {
+        id
+        name
+        type
+        size
+        hash
+        uploadedBy {
+          id
+          name
+        }
+        uploadedAt
+        metadata
+      }
+      timeline {
+        id
+        timestamp
+        action
+        description
+        userId
+        userName
+        attachments
+      }
+      playbooks {
+        id
+        name
+        version
+        status
+        progress
+        steps {
+          id
+          name
+          status
+          assignedTo
+          completedAt
+          notes
+        }
+      }
+      metrics {
+        timeToDetection
+        timeToContainment
+        timeToResolution
+        escalationCount
+        falsePositiveFlag
+      }
+      sla {
+        responseTime
+        resolutionTime
+        breached
+      }
+    }
+    totalCount
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+    }
+  }
+}
+
+# Playbook Management
+query GetSecurityPlaybooks(
+  $filter: PlaybookFilter
+  $pagination: PaginationInput
+) {
+  securityPlaybooks(filter: $filter, pagination: $pagination) {
+    items {
+      id
+      name
+      description
+      version
+      category
+      subcategory
+      triggerConditions {
+        eventTypes
+        severity
+        tags
+        customRules
+      }
+      steps {
+        id
+        order
+        name
+        description
+        type
+        automated
+        estimatedDuration
+        requiredPermissions
+        inputs {
+          name
+          type
+          required
+          defaultValue
+        }
+        outputs {
+          name
+          type
+          description
+        }
+        conditions {
+          field
+          operator
+          value
+        }
+        actions {
+          type
+          parameters
+        }
+      }
+      metrics {
+        executionCount
+        successRate
+        averageDuration
+        lastExecuted
+      }
+      approvalRequired
+      approvers {
+        id
+        name
+        email
+      }
+      tags
+      createdBy {
+        id
+        name
+      }
+      createdAt
+      updatedAt
+      isActive
+    }
+    totalCount
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+    }
+  }
+}
+
+# Real-time Security Metrics
+query GetSecurityMetrics(
+  $timeRange: TimeRangeInput!
+  $groupBy: MetricGroupBy
+) {
+  securityMetrics(timeRange: $timeRange, groupBy: $groupBy) {
+    overview {
+      totalEvents
+      criticalEvents
+      highEvents
+      threatsDetected
+      incidentsActive
+      falsePositiveRate
+      meanTimeToDetection
+      meanTimeToResponse
+      meanTimeToResolution
+    }
+    timeSeries {
+      timestamp
+      eventsCount
+      threatsCount
+      alertsTriggered
+      incidentsCreated
+      incidentsResolved
+      riskScore
+    }
+    topThreats {
+      type
+      count
+      severity
+      trend
+      affectedAssets
+    }
+    topSources {
+      source
+      eventCount
+      threatCount
+      riskScore
+      geoLocation {
+        country
+        region
+      }
+    }
+    attackVectors {
+      vector
+      count
+      percentage
+      mitreMapping {
+        tacticId
+        techniqueId
+      }
+    }
+    complianceStatus {
+      framework
+      score
+      criticalFindings
+      recommendations
+    }
+    systemHealth {
+      overall
+      components {
+        name
+        status
+        lastCheck
+        metrics {
+          cpu
+          memory
+          disk
+          network
+        }
+      }
+    }
+  }
+}
+
+# Global Threat Intelligence Feed
+query GetGlobalThreatFeed(
+  $sources: [String!]
+  $feedTypes: [ThreatFeedType!]
+  $pagination: PaginationInput
+) {
+  globalThreatFeed(
+    sources: $sources
+    feedTypes: $feedTypes
+    pagination: $pagination
+  ) {
+    items {
+      id
+      source
+      feedType
+      timestamp
+      title
+      description
+      severity
+      confidence
+      tags
+      indicators {
+        type
+        value
+        confidence
+      }
+      attribution {
+        actor
+        campaign
+        family
+      }
+      mitreMapping {
+        tacticId
+        techniqueId
+      }
+      affectedSectors
+      affectedRegions
+      recommendations
+      references {
+        url
+        title
+        type
+      }
+    }
+    totalCount
+    lastUpdated
+  }
+}
+
+# Risk Assessment Query
+query GetRiskAssessment(
+  $assetId: String
+  $timeRange: TimeRangeInput
+) {
+  riskAssessment(assetId: $assetId, timeRange: $timeRange) {
+    overallRisk {
+      score
+      level
+      trend
+      factors {
+        factor
+        weight
+        score
+        description
+      }
+    }
+    threatLandscape {
+      activeCampaigns
+      relevantThreatActors
+      applicableTTPs
+      industrySpecificThreats
+    }
+    vulnerabilityExposure {
+      criticalVulnerabilities
+      exploitableVulnerabilities
+      patchingStatus
+      exposureScore
+    }
+    controlEffectiveness {
+      detectionCoverage
+      preventionCoverage
+      responseCoverage
+      gaps {
+        area
+        severity
+        recommendation
+      }
+    }
+    businessImpact {
+      financialImpact
+      operationalImpact
+      reputationalImpact
+      complianceImpact
+    }
+  }
+}

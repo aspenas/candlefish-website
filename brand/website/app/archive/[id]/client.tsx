@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { ArchiveEntry } from '../data'
-import { shareEntry, downloadEntryPDF } from '../../../lib/archive-utils'
+import { shareEntry, downloadEntryPDF } from '@/lib/archive-utils'
 
 export default function ArchiveEntryClient({ entry }: { entry: ArchiveEntry | null }) {
   const router = useRouter()

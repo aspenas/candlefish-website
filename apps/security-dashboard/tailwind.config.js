@@ -8,6 +8,25 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Custom color utilities using CSS variables
+        foreground: {
+          DEFAULT: 'rgb(var(--color-foreground) / <alpha-value>)',
+        },
+        background: {
+          DEFAULT: 'rgb(var(--color-background) / <alpha-value>)',
+        },
+        primary: {
+          DEFAULT: 'rgb(var(--color-primary) / <alpha-value>)',
+        },
+        secondary: {
+          DEFAULT: 'rgb(var(--color-secondary) / <alpha-value>)',
+        },
+        accent: {
+          DEFAULT: 'rgb(var(--color-accent) / <alpha-value>)',
+        },
+        muted: {
+          DEFAULT: 'rgb(var(--color-muted) / <alpha-value>)',
+        },
         // Security Dashboard Color Palette - Dark Theme Optimized
         dark: {
           50: '#f8fafc',

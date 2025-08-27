@@ -3,10 +3,10 @@
 import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
-import workshopIndex from '../../workshop/index.json'
-import { WorkshopIndexEntry, ViewMode, ProjectStatus } from '../../lib/workshop/types'
-import { getStatusColor, formatDate } from '../../lib/workshop/utils'
-import { getPublicClientName } from '../../lib/workshop/privacy'
+import workshopIndex from '@/workshop/index.json'
+import { WorkshopIndexEntry, ViewMode, ProjectStatus } from '@/lib/workshop/types'
+import { getStatusColor, formatDate } from '@/lib/workshop/utils'
+import { getPublicClientName } from '@/lib/workshop/privacy'
 
 // View toggle component
 const ViewToggle = ({ mode, onChange }: { mode: ViewMode; onChange: (mode: ViewMode) => void }) => (
