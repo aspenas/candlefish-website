@@ -99,7 +99,9 @@ export default {
           elevated: '#1f2937',
           border: '#374151',
           muted: '#6b7280',
-        }
+        },
+        // Default border color
+        border: '#374151',
       },
       fontFamily: {
         sans: [
