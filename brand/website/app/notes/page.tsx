@@ -2,9 +2,9 @@
 
 import React, { useState, useMemo, useCallback, memo } from 'react'
 import Link from 'next/link'
-import { fieldNotes } from '../../data/notes/field-notes'
-import type { FieldNote } from '../../data/notes/types'
-import { ArtifactsStrip } from '../../components/ArtifactsStrip'
+import { fieldNotes } from '@/data/notes/field-notes'
+import type { FieldNote } from '@/data/notes/types'
+import { ArtifactsStrip } from '@/components/ArtifactsStrip'
 
 // Memoized sub-components for better performance
 const NotesHeader = memo(() => (

@@ -1,0 +1,825 @@
+# Core Federation Directives
+directive @key(fields: String!, resolvable: Boolean = true) on OBJECT | INTERFACE
+directive @requires(fields: String!) on FIELD_DEFINITION
+directive @provides(fields: String!) on FIELD_DEFINITION
+directive @external on OBJECT | FIELD_DEFINITION
+directive @extends on OBJECT | INTERFACE
+directive @shareable on FIELD_DEFINITION | OBJECT
+directive @inaccessible on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ARGUMENT_DEFINITION | SCALAR | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION
+directive @override(from: String!) on FIELD_DEFINITION
+directive @composeDirective(name: String!) repeatable on SCHEMA
+directive @interfaceObject on OBJECT
+
+# Custom Authorization Directives
+directive @auth(requires: UserRole = USER) on OBJECT | FIELD_DEFINITION
+directive @rateLimit(max: Int!, window: Int!) on FIELD_DEFINITION
+directive @complexity(value: Int!) on FIELD_DEFINITION
+directive @organizationScope on FIELD_DEFINITION
+directive @auditLog on FIELD_DEFINITION
+
+# Scalars
+scalar DateTime
+scalar JSON
+scalar Upload
+scalar EmailAddress
+scalar URL
+scalar UUID
+
+# Shared Enums
+enum UserRole {
+  VIEWER
+  ANALYST
+  INCIDENT_RESPONDER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum Environment {
+  DEVELOPMENT
+  STAGING
+  PRODUCTION
+  TEST
+}
+
+enum Platform {
+  AWS
+  AZURE
+  GCP
+  KUBERNETES
+  DOCKER
+  NETLIFY
+  VERCEL
+  FLY_IO
+  HEROKU
+  ON_PREMISE
+}
+
+# Pagination Types
+interface Node {
+  id: ID!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+interface Connection {
+  edges: [Edge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+interface Edge {
+  node: Node!
+  cursor: String!
+}
+
+# Filtering and Sorting
+input DateRangeFilter {
+  from: DateTime
+  to: DateTime
+}
+
+input StringFilter {
+  equals: String
+  contains: String
+  startsWith: String
+  endsWith: String
+  in: [String!]
+  notIn: [String!]
+}
+
+input IntFilter {
+  equals: Int
+  gte: Int
+  lte: Int
+  gt: Int
+  lt: Int
+  in: [Int!]
+  notIn: [Int!]
+}
+
+enum SortDirection {
+  ASC
+  DESC
+}
+
+# Core Security Entity Interfaces
+interface SecurityEntity {
+  id: ID!
+  organizationId: ID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  tags: [String!]!
+  metadata: JSON
+}
+
+interface Auditable {
+  createdBy: User
+  updatedBy: User
+  auditTrail: [AuditEntry!]!
+}
+
+interface Trackable {
+  status: String!
+  statusHistory: [StatusChange!]!
+}
+
+# Audit Types
+type AuditEntry implements Node {
+  id: ID!
+  action: String!
+  entityType: String!
+  entityId: ID!
+  userId: ID!
+  user: User
+  timestamp: DateTime!
+  changes: JSON
+  ipAddress: String
+  userAgent: String
+}
+
+type StatusChange {
+  from: String!
+  to: String!
+  changedAt: DateTime!
+  changedBy: User!
+  reason: String
+}
+
+# Core User Entity (Federated from Auth Service)
+type User implements Node @key(fields: "id") {
+  id: ID!
+  email: EmailAddress!
+  firstName: String!
+  lastName: String!
+  displayName: String!
+  role: UserRole!
+  permissions: [Permission!]!
+  isActive: Boolean!
+  lastLoginAt: DateTime
+  organizationId: ID!
+  avatar: URL
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  
+  # Extended fields from other services
+  assignedAlerts: AlertConnection @requires(fields: "id organizationId")
+  managedAssets: AssetConnection @requires(fields: "id organizationId")
+  createdIncidents: IncidentConnection @requires(fields: "id organizationId")
+}
+
+type Permission {
+  id: ID!
+  name: String!
+  resource: String!
+  action: String!
+  scope: String
+}
+
+# Organization Entity (Federated from Auth Service)
+type Organization implements Node @key(fields: "id") {
+  id: ID!
+  name: String!
+  domain: String!
+  settings: OrganizationSettings!
+  subscription: SubscriptionPlan!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type OrganizationSettings {
+  alertingEnabled: Boolean!
+  complianceMonitoring: Boolean!
+  threatIntelligenceEnabled: Boolean!
+  retentionPolicy: RetentionPolicy!
+  notificationSettings: NotificationSettings!
+}
+
+type RetentionPolicy {
+  events: Int! # days
+  alerts: Int! # days
+  incidents: Int! # days
+  vulnerabilities: Int! # days
+  auditLogs: Int! # days
+}
+
+type NotificationSettings {
+  email: Boolean!
+  slack: Boolean!
+  webhook: Boolean!
+  inApp: Boolean!
+  webhookUrl: URL
+  slackWebhookUrl: URL
+}
+
+enum SubscriptionPlan {
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+  CUSTOM
+}
+
+# Asset Entity (Federated from Asset Service)
+type Asset implements Node & SecurityEntity & Auditable @key(fields: "id") {
+  id: ID!
+  name: String!
+  assetType: AssetType!
+  environment: Environment!
+  platform: Platform!
+  organizationId: ID!
+  
+  # Security Information
+  securityLevel: SecurityLevel!
+  healthStatus: HealthStatus!
+  lastHealthCheck: DateTime
+  riskScore: Float!
+  
+  # Network Information
+  ipAddress: String
+  hostname: String
+  ports: [NetworkPort!]!
+  
+  # Relationships (External references)
+  vulnerabilities: VulnerabilityConnection @provides(fields: "id")
+  alerts: AlertConnection @provides(fields: "id")
+  incidents: IncidentConnection @provides(fields: "id")
+  complianceStatus: [ComplianceStatus!]! @provides(fields: "id organizationId")
+  
+  # Metadata
+  tags: [String!]!
+  configuration: AssetConfiguration
+  metadata: JSON
+  
+  # Audit fields
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  createdBy: User
+  updatedBy: User
+  auditTrail: [AuditEntry!]!
+}
+
+enum AssetType {
+  WEB_APPLICATION
+  API
+  DATABASE
+  SERVER
+  CONTAINER
+  NETWORK_DEVICE
+  CLOUD_RESOURCE
+  MOBILE_APPLICATION
+  IOT_DEVICE
+}
+
+enum SecurityLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum HealthStatus {
+  HEALTHY
+  WARNING
+  CRITICAL
+  UNKNOWN
+  OFFLINE
+}
+
+type NetworkPort {
+  number: Int!
+  protocol: String!
+  state: PortState!
+  service: String
+  version: String
+}
+
+enum PortState {
+  OPEN
+  CLOSED
+  FILTERED
+}
+
+type AssetConfiguration {
+  scanningEnabled: Boolean!
+  alertingEnabled: Boolean!
+  complianceMonitoring: Boolean!
+  backupEnabled: Boolean!
+  patchingEnabled: Boolean!
+}
+
+# Vulnerability Entity (Federated from Vulnerability Service)
+type Vulnerability implements Node & SecurityEntity & Trackable & Auditable @key(fields: "id") {
+  id: ID!
+  cveId: String
+  title: String!
+  description: String!
+  severity: Severity!
+  cvssScore: Float
+  cvssVector: String
+  organizationId: ID!
+  
+  # Status and Tracking
+  status: VulnerabilityStatus!
+  statusHistory: [StatusChange!]!
+  
+  # Relationships
+  asset: Asset! @external
+  affectedComponents: [String!]!
+  
+  # Remediation
+  remediation: Remediation
+  patchAvailable: Boolean!
+  exploitAvailable: Boolean!
+  
+  # References and Intelligence
+  references: [Reference!]!
+  threatIntelligence: ThreatIntelligence @provides(fields: "cveId")
+  
+  # Temporal Information
+  publishedAt: DateTime
+  discoveredAt: DateTime!
+  lastUpdated: DateTime!
+  
+  # Metadata
+  tags: [String!]!
+  metadata: JSON
+  
+  # Audit fields
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  createdBy: User
+  updatedBy: User
+  auditTrail: [AuditEntry!]!
+}
+
+enum VulnerabilityStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  ACCEPTED_RISK
+  FALSE_POSITIVE
+}
+
+type Remediation {
+  description: String!
+  steps: [String!]!
+  estimatedEffort: String!
+  priority: RemediationPriority!
+  resources: [Reference!]!
+  automationAvailable: Boolean!
+  patchInformation: PatchInformation
+}
+
+enum RemediationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+type PatchInformation {
+  available: Boolean!
+  version: String
+  releaseDate: DateTime
+  downloadUrl: URL
+  instructions: String
+}
+
+type Reference {
+  url: URL!
+  title: String!
+  type: ReferenceType!
+  publishedAt: DateTime
+}
+
+enum ReferenceType {
+  VENDOR_ADVISORY
+  CVE_DESCRIPTION
+  EXPLOIT_DB
+  SECURITY_BLOG
+  PATCH_NOTES
+  MITIGATION_GUIDE
+}
+
+# Alert Entity (Federated from Alert Service)
+type Alert implements Node & SecurityEntity & Trackable & Auditable @key(fields: "id") {
+  id: ID!
+  title: String!
+  description: String!
+  severity: Severity!
+  alertType: AlertType!
+  organizationId: ID!
+  
+  # Status and Assignment
+  status: AlertStatus!
+  statusHistory: [StatusChange!]!
+  assignedTo: User
+  escalationLevel: Int!
+  
+  # Source Information
+  source: String!
+  sourceSystem: String!
+  ruleId: String
+  
+  # Asset Relationship
+  asset: Asset @external
+  affectedAssets: [Asset!]! @external
+  
+  # Metrics
+  responseTime: Int # seconds
+  resolutionTime: Int # seconds
+  falsePositiveRate: Float
+  
+  # Evidence and Context
+  evidence: [Evidence!]!
+  relatedEvents: [SecurityEvent!]! @provides(fields: "id")
+  
+  # Temporal Information
+  firstTriggered: DateTime!
+  lastTriggered: DateTime!
+  acknowledgedAt: DateTime
+  resolvedAt: DateTime
+  
+  # Actions
+  actions: [AlertAction!]!
+  automationRules: [AutomationRule!]!
+  
+  # Metadata
+  tags: [String!]!
+  metadata: JSON
+  
+  # Audit fields
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  createdBy: User
+  updatedBy: User
+  auditTrail: [AuditEntry!]!
+}
+
+enum AlertType {
+  SECURITY_EVENT
+  VULNERABILITY
+  COMPLIANCE_VIOLATION
+  PERFORMANCE_DEGRADATION
+  AVAILABILITY_ISSUE
+  CONFIGURATION_DRIFT
+  THREAT_DETECTION
+  MALWARE_DETECTION
+}
+
+enum AlertStatus {
+  ACTIVE
+  ACKNOWLEDGED
+  INVESTIGATING
+  RESOLVED
+  SUPPRESSED
+  FALSE_POSITIVE
+}
+
+type Evidence {
+  id: ID!
+  type: EvidenceType!
+  content: String!
+  contentType: String!
+  fileName: String
+  fileUrl: URL
+  checksum: String
+  collectedAt: DateTime!
+  collectedBy: String!
+}
+
+enum EvidenceType {
+  LOG_ENTRY
+  SCREENSHOT
+  NETWORK_CAPTURE
+  MEMORY_DUMP
+  FILE_SAMPLE
+  CONFIGURATION_DUMP
+  API_RESPONSE
+}
+
+type AlertAction {
+  id: ID!
+  name: String!
+  description: String!
+  actionType: ActionType!
+  parameters: JSON
+  executedAt: DateTime
+  executedBy: User
+  result: ActionResult
+  automated: Boolean!
+}
+
+enum ActionType {
+  ISOLATE_ASSET
+  BLOCK_IP
+  DISABLE_USER
+  ROTATE_CREDENTIALS
+  NOTIFY_TEAM
+  CREATE_TICKET
+  RUN_SCAN
+  QUARANTINE_FILE
+}
+
+type ActionResult {
+  success: Boolean!
+  message: String
+  details: JSON
+  duration: Int # milliseconds
+}
+
+type AutomationRule {
+  id: ID!
+  name: String!
+  conditions: [RuleCondition!]!
+  actions: [ActionType!]!
+  enabled: Boolean!
+  executionCount: Int!
+  lastExecuted: DateTime
+}
+
+type RuleCondition {
+  field: String!
+  operator: ConditionOperator!
+  value: String!
+}
+
+enum ConditionOperator {
+  EQUALS
+  NOT_EQUALS
+  CONTAINS
+  NOT_CONTAINS
+  GREATER_THAN
+  LESS_THAN
+  MATCHES_REGEX
+}
+
+# Security Event Entity (Federated from Event Service)
+type SecurityEvent implements Node & SecurityEntity @key(fields: "id") {
+  id: ID!
+  eventType: SecurityEventType!
+  severity: Severity!
+  title: String!
+  description: String!
+  organizationId: ID!
+  
+  # Source Information
+  source: String!
+  sourceIp: String
+  sourceCountry: String
+  sourceCity: String
+  
+  # Target Information
+  targetAsset: Asset @external
+  targetUser: User @external
+  
+  # Event Classification
+  category: EventCategory!
+  subCategory: String
+  attackVector: AttackVector
+  
+  # MITRE ATT&CK Framework
+  mitreAttack: MitreAttackMapping
+  
+  # Threat Intelligence
+  indicators: [Indicator!]!
+  threatActors: [ThreatActor!]! @provides(fields: "indicators")
+  
+  # Event Data
+  payload: JSON!
+  normalizedPayload: JSON!
+  
+  # Temporal Information
+  timestamp: DateTime!
+  duration: Int # milliseconds
+  
+  # Relationships
+  relatedEvents: [SecurityEvent!]! @provides(fields: "id")
+  triggeredAlerts: [Alert!]! @provides(fields: "id")
+  
+  # Metadata
+  tags: [String!]!
+  metadata: JSON
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum SecurityEventType {
+  AUTHENTICATION_FAILURE
+  UNAUTHORIZED_ACCESS
+  PRIVILEGE_ESCALATION
+  MALWARE_DETECTED
+  SUSPICIOUS_NETWORK_ACTIVITY
+  DATA_EXFILTRATION
+  CONFIGURATION_CHANGE
+  VULNERABILITY_EXPLOITATION
+  COMPLIANCE_VIOLATION
+  ANOMALOUS_BEHAVIOR
+}
+
+enum EventCategory {
+  AUTHENTICATION
+  AUTHORIZATION
+  NETWORK
+  SYSTEM
+  APPLICATION
+  DATA
+  COMPLIANCE
+  THREAT
+}
+
+enum AttackVector {
+  NETWORK
+  ADJACENT_NETWORK
+  LOCAL
+  PHYSICAL
+  EMAIL
+  WEB_APPLICATION
+  SUPPLY_CHAIN
+}
+
+type MitreAttackMapping {
+  tacticIds: [String!]!
+  techniqueIds: [String!]!
+  subTechniqueIds: [String!]!
+  tactics: [MitreTactic!]!
+  techniques: [MitreTechnique!]!
+}
+
+type MitreTactic {
+  id: String!
+  name: String!
+  description: String!
+}
+
+type MitreTechnique {
+  id: String!
+  name: String!
+  description: String!
+  tactic: MitreTactic!
+  subTechniques: [MitreSubTechnique!]!
+}
+
+type MitreSubTechnique {
+  id: String!
+  name: String!
+  description: String!
+  parentTechnique: MitreTechnique!
+}
+
+# Connection Types
+type AssetConnection implements Connection {
+  edges: [AssetEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type AssetEdge implements Edge {
+  node: Asset!
+  cursor: String!
+}
+
+type VulnerabilityConnection implements Connection {
+  edges: [VulnerabilityEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+  aggregations: VulnerabilityAggregations
+}
+
+type VulnerabilityEdge implements Edge {
+  node: Vulnerability!
+  cursor: String!
+}
+
+type VulnerabilityAggregations {
+  bySeverity: [SeverityCount!]!
+  byStatus: [StatusCount!]!
+  byAssetType: [AssetTypeCount!]!
+  averageAge: Float! # days
+  oldestVulnerability: DateTime
+  newestVulnerability: DateTime
+}
+
+type AlertConnection implements Connection {
+  edges: [AlertEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+  aggregations: AlertAggregations
+}
+
+type AlertEdge implements Edge {
+  node: Alert!
+  cursor: String!
+}
+
+type AlertAggregations {
+  bySeverity: [SeverityCount!]!
+  byStatus: [StatusCount!]!
+  byType: [AlertTypeCount!]!
+  averageResponseTime: Float! # seconds
+  averageResolutionTime: Float! # seconds
+}
+
+type IncidentConnection implements Connection {
+  edges: [IncidentEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type IncidentEdge implements Edge {
+  node: Incident!
+  cursor: String!
+}
+
+# Aggregation Types
+type SeverityCount {
+  severity: Severity!
+  count: Int!
+}
+
+type StatusCount {
+  status: String!
+  count: Int!
+}
+
+type AssetTypeCount {
+  assetType: AssetType!
+  count: Int!
+}
+
+type AlertTypeCount {
+  alertType: AlertType!
+  count: Int!
+}
+
+# File Upload Support
+type File {
+  id: ID!
+  filename: String!
+  mimetype: String!
+  encoding: String!
+  url: URL!
+  size: Int!
+  uploadedAt: DateTime!
+  uploadedBy: User!
+}
+
+type FileUploadResult {
+  file: File!
+  success: Boolean!
+  message: String
+}
+
+# Error Types
+interface Error {
+  message: String!
+  code: String!
+  path: [String!]
+  extensions: JSON
+}
+
+type ValidationError implements Error {
+  message: String!
+  code: String!
+  path: [String!]
+  extensions: JSON
+  field: String!
+  rejectedValue: String
+}
+
+type AuthorizationError implements Error {
+  message: String!
+  code: String!
+  path: [String!]
+  extensions: JSON
+  requiredRole: UserRole
+  requiredPermissions: [String!]
+}
+
+type NotFoundError implements Error {
+  message: String!
+  code: String!
+  path: [String!]
+  extensions: JSON
+  entityType: String!
+  entityId: ID!
+}
+
+type RateLimitError implements Error {
+  message: String!
+  code: String!
+  path: [String!]
+  extensions: JSON
+  retryAfter: Int! # seconds
+}

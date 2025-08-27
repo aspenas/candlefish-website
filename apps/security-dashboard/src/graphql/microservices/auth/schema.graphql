@@ -1,0 +1,1018 @@
+# Auth Microservice Schema - Federation v2
+extend schema @link(url: "https://specs.apollo.dev/federation/v2.0", import: ["@key", "@shareable", "@provides", "@external", "@requires", "@override", "@inaccessible", "@tag"])
+
+# User Entity - Primary in Auth Service
+type User @key(fields: "id") @key(fields: "email organizationId") {
+  id: ID!
+  email: EmailAddress! @shareable
+  firstName: String!
+  lastName: String!
+  displayName: String!
+  role: UserRole!
+  permissions: [Permission!]!
+  isActive: Boolean!
+  isEmailVerified: Boolean!
+  isMfaEnabled: Boolean!
+  lastLoginAt: DateTime
+  lastLoginIp: String
+  loginAttempts: Int!
+  lockedUntil: DateTime
+  passwordChangedAt: DateTime
+  organizationId: ID! @shareable
+  avatar: URL
+  timezone: String
+  locale: String
+  preferences: UserPreferences!
+  sessions: [UserSession!]!
+  apiKeys: [ApiKey!]!
+  auditTrail: [AuthAuditEntry!]!
+  createdAt: DateTime! @shareable
+  updatedAt: DateTime! @shareable
+}
+
+type UserPreferences {
+  theme: Theme!
+  notifications: UserNotificationPreferences!
+  dashboard: DashboardPreferences!
+  language: String!
+  dateFormat: String!
+  timeFormat: String!
+}
+
+enum Theme {
+  LIGHT
+  DARK
+  AUTO
+}
+
+type UserNotificationPreferences {
+  email: Boolean!
+  inApp: Boolean!
+  critical: Boolean!
+  high: Boolean!
+  medium: Boolean!
+  low: Boolean!
+  quietHours: QuietHours
+}
+
+type QuietHours {
+  enabled: Boolean!
+  startTime: String! # HH:mm format
+  endTime: String! # HH:mm format
+  timezone: String!
+}
+
+type DashboardPreferences {
+  defaultView: String!
+  refreshInterval: Int! # seconds
+  autoRefresh: Boolean!
+  compactMode: Boolean!
+  showTutorials: Boolean!
+}
+
+type UserSession {
+  id: ID!
+  deviceInfo: DeviceInfo!
+  ipAddress: String!
+  location: Location
+  createdAt: DateTime!
+  lastActiveAt: DateTime!
+  expiresAt: DateTime!
+  isActive: Boolean!
+  userAgent: String!
+}
+
+type DeviceInfo {
+  browser: String
+  os: String
+  device: String
+  isMobile: Boolean!
+  isTablet: Boolean!
+  fingerprint: String!
+}
+
+type Location {
+  country: String!
+  region: String
+  city: String
+  latitude: Float
+  longitude: Float
+}
+
+type ApiKey {
+  id: ID!
+  name: String!
+  keyPreview: String! # First and last 4 characters
+  permissions: [Permission!]!
+  lastUsedAt: DateTime
+  usageCount: Int!
+  rateLimit: RateLimitConfig
+  expiresAt: DateTime
+  isActive: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type RateLimitConfig {
+  requests: Int!
+  windowSeconds: Int!
+  burstLimit: Int
+}
+
+type AuthAuditEntry {
+  id: ID!
+  action: AuthAction!
+  result: AuthResult!
+  ipAddress: String!
+  userAgent: String!
+  location: Location
+  riskScore: Float
+  mfaUsed: Boolean!
+  details: JSON
+  timestamp: DateTime!
+}
+
+enum AuthAction {
+  LOGIN_ATTEMPT
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  LOGOUT
+  PASSWORD_CHANGE
+  PASSWORD_RESET_REQUEST
+  PASSWORD_RESET_COMPLETE
+  MFA_SETUP
+  MFA_DISABLE
+  EMAIL_VERIFICATION
+  ACCOUNT_LOCKED
+  ACCOUNT_UNLOCKED
+  PERMISSION_CHANGED
+  ROLE_CHANGED
+  SESSION_CREATED
+  SESSION_TERMINATED
+  API_KEY_CREATED
+  API_KEY_REVOKED
+  SUSPICIOUS_ACTIVITY
+}
+
+enum AuthResult {
+  SUCCESS
+  FAILURE
+  BLOCKED
+  REQUIRES_MFA
+  REQUIRES_EMAIL_VERIFICATION
+  ACCOUNT_LOCKED
+  INSUFFICIENT_PERMISSIONS
+}
+
+# Organization Entity - Primary in Auth Service
+type Organization @key(fields: "id") @key(fields: "domain") {
+  id: ID!
+  name: String!
+  displayName: String!
+  domain: String! @shareable
+  subdomain: String
+  logoUrl: URL
+  website: URL
+  industry: String
+  companySize: CompanySize
+  settings: OrganizationSettings!
+  subscription: SubscriptionPlan! @shareable
+  subscriptionStatus: SubscriptionStatus!
+  billingInfo: BillingInfo
+  features: [Feature!]!
+  limits: OrganizationLimits!
+  ssoConfig: SSOConfiguration
+  securityPolicy: SecurityPolicy!
+  users: [User!]!
+  invitations: [UserInvitation!]!
+  auditSettings: AuditSettings!
+  createdAt: DateTime! @shareable
+  updatedAt: DateTime! @shareable
+}
+
+enum CompanySize {
+  STARTUP
+  SMALL
+  MEDIUM
+  LARGE
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIAL
+  EXPIRED
+  CANCELLED
+  SUSPENDED
+  PENDING_PAYMENT
+}
+
+type BillingInfo {
+  plan: SubscriptionPlan!
+  billingCycle: BillingCycle!
+  nextBillingDate: DateTime
+  amount: Float!
+  currency: String!
+  paymentMethod: PaymentMethod
+  invoices: [Invoice!]!
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+type PaymentMethod {
+  type: PaymentMethodType!
+  last4: String
+  brand: String
+  expiryMonth: Int
+  expiryYear: Int
+}
+
+enum PaymentMethodType {
+  CREDIT_CARD
+  DEBIT_CARD
+  BANK_TRANSFER
+  PAYPAL
+}
+
+type Invoice {
+  id: ID!
+  number: String!
+  amount: Float!
+  currency: String!
+  status: InvoiceStatus!
+  dueDate: DateTime!
+  paidDate: DateTime
+  downloadUrl: URL
+  createdAt: DateTime!
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+type Feature {
+  name: String!
+  enabled: Boolean!
+  limits: JSON
+  metadata: JSON
+}
+
+type OrganizationLimits {
+  maxUsers: Int!
+  maxAssets: Int!
+  maxAlerts: Int!
+  dataRetentionDays: Int!
+  apiCallsPerMonth: Int!
+  storageGB: Float!
+}
+
+type SSOConfiguration {
+  enabled: Boolean!
+  provider: SSOProvider!
+  domain: String!
+  entityId: String
+  ssoUrl: URL
+  x509Certificate: String
+  attributeMapping: AttributeMapping!
+  autoProvisioning: Boolean!
+  defaultRole: UserRole!
+}
+
+enum SSOProvider {
+  SAML
+  OIDC
+  GOOGLE
+  MICROSOFT
+  OKTA
+  AUTH0
+}
+
+type AttributeMapping {
+  email: String!
+  firstName: String!
+  lastName: String!
+  role: String
+  department: String
+  groups: String
+}
+
+type SecurityPolicy {
+  passwordPolicy: PasswordPolicy!
+  mfaRequired: Boolean!
+  mfaMethods: [MFAMethod!]!
+  sessionTimeoutMinutes: Int!
+  maxConcurrentSessions: Int!
+  ipWhitelist: [String!]!
+  suspiciousActivityDetection: Boolean!
+  accountLockoutPolicy: AccountLockoutPolicy!
+  auditLogRetentionDays: Int!
+}
+
+type PasswordPolicy {
+  minLength: Int!
+  requireUppercase: Boolean!
+  requireLowercase: Boolean!
+  requireNumbers: Boolean!
+  requireSymbols: Boolean!
+  preventReuse: Int! # number of previous passwords to check
+  maxAge: Int! # days before password expires
+  minAge: Int! # minimum days between password changes
+}
+
+enum MFAMethod {
+  TOTP
+  SMS
+  EMAIL
+  HARDWARE_TOKEN
+  PUSH_NOTIFICATION
+}
+
+type AccountLockoutPolicy {
+  enabled: Boolean!
+  maxAttempts: Int!
+  lockoutDurationMinutes: Int!
+  incrementalDelay: Boolean!
+  notifyOnLockout: Boolean!
+}
+
+type AuditSettings {
+  retentionDays: Int!
+  logLevel: AuditLogLevel!
+  includeIpAddress: Boolean!
+  includeUserAgent: Boolean!
+  includeLocation: Boolean!
+  alertOnSuspiciousActivity: Boolean!
+  exportEnabled: Boolean!
+  webhookUrl: URL
+}
+
+enum AuditLogLevel {
+  BASIC
+  DETAILED
+  VERBOSE
+}
+
+# Permission System
+type Permission @key(fields: "id") {
+  id: ID!
+  name: String!
+  displayName: String!
+  description: String!
+  resource: String!
+  action: String!
+  scope: PermissionScope!
+  category: PermissionCategory!
+  isSystemPermission: Boolean!
+  organizationId: ID
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum PermissionScope {
+  GLOBAL
+  ORGANIZATION
+  ASSET
+  USER
+}
+
+enum PermissionCategory {
+  ASSETS
+  VULNERABILITIES
+  ALERTS
+  INCIDENTS
+  COMPLIANCE
+  THREATS
+  USERS
+  SETTINGS
+  REPORTS
+  API_ACCESS
+}
+
+type Role @key(fields: "id") {
+  id: ID!
+  name: String!
+  displayName: String!
+  description: String!
+  permissions: [Permission!]!
+  isSystemRole: Boolean!
+  organizationId: ID
+  userCount: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+# User Invitations
+type UserInvitation @key(fields: "id") {
+  id: ID!
+  email: EmailAddress!
+  role: UserRole!
+  permissions: [Permission!]!
+  invitedBy: User!
+  organizationId: ID!
+  message: String
+  status: InvitationStatus!
+  token: String
+  expiresAt: DateTime!
+  acceptedAt: DateTime
+  rejectedAt: DateTime
+  remindersSent: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+# Queries
+type Query {
+  # Current user information
+  me: User @auth(requires: USER)
+  
+  # User management
+  user(id: ID!): User @auth(requires: ADMIN) @organizationScope
+  users(
+    filter: UserFilter
+    sort: UserSort
+    first: Int
+    after: String
+    last: Int
+    before: String
+  ): UserConnection @auth(requires: ADMIN) @organizationScope @rateLimit(max: 100, window: 60)
+  
+  # Organization management
+  organization(id: ID!): Organization @auth(requires: ADMIN)
+  myOrganization: Organization @auth(requires: USER)
+  
+  # Permission and role management
+  permissions: [Permission!]! @auth(requires: ADMIN)
+  roles: [Role!]! @auth(requires: ADMIN) @organizationScope
+  
+  # User invitations
+  invitations(
+    filter: InvitationFilter
+    sort: InvitationSort
+    first: Int
+    after: String
+  ): InvitationConnection @auth(requires: ADMIN) @organizationScope
+  
+  # Auth audit trail
+  authAuditTrail(
+    userId: ID
+    actions: [AuthAction!]
+    dateRange: DateRangeFilter
+    first: Int
+    after: String
+  ): AuthAuditConnection @auth(requires: ADMIN) @organizationScope @complexity(value: 50)
+  
+  # Session management
+  activeSessions: [UserSession!]! @auth(requires: USER)
+  allActiveSessions: [UserSession!]! @auth(requires: ADMIN) @organizationScope
+}
+
+# Mutations
+type Mutation {
+  # Authentication
+  login(input: LoginInput!): LoginResult! @rateLimit(max: 5, window: 60)
+  logout: LogoutResult! @auth(requires: USER)
+  refreshToken(refreshToken: String!): RefreshTokenResult! @rateLimit(max: 10, window: 60)
+  
+  # Password management
+  changePassword(input: ChangePasswordInput!): ChangePasswordResult! @auth(requires: USER) @auditLog
+  requestPasswordReset(email: EmailAddress!): RequestPasswordResetResult! @rateLimit(max: 3, window: 300)
+  resetPassword(input: ResetPasswordInput!): ResetPasswordResult! @rateLimit(max: 3, window: 300)
+  
+  # MFA management
+  setupMfa(input: SetupMfaInput!): SetupMfaResult! @auth(requires: USER) @auditLog
+  verifyMfa(input: VerifyMfaInput!): VerifyMfaResult! @auth(requires: USER)
+  disableMfa(input: DisableMfaInput!): DisableMfaResult! @auth(requires: USER) @auditLog
+  
+  # Profile management
+  updateProfile(input: UpdateProfileInput!): UpdateProfileResult! @auth(requires: USER)
+  updatePreferences(input: UpdatePreferencesInput!): UpdatePreferencesResult! @auth(requires: USER)
+  uploadAvatar(file: Upload!): UploadAvatarResult! @auth(requires: USER)
+  
+  # User management
+  createUser(input: CreateUserInput!): CreateUserResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  updateUser(id: ID!, input: UpdateUserInput!): UpdateUserResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  deactivateUser(id: ID!, reason: String): DeactivateUserResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  reactivateUser(id: ID!): ReactivateUserResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  deleteUser(id: ID!, transferDataTo: ID): DeleteUserResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  # Organization management
+  updateOrganization(input: UpdateOrganizationInput!): UpdateOrganizationResult! @auth(requires: ADMIN) @auditLog
+  updateSecurityPolicy(input: UpdateSecurityPolicyInput!): UpdateSecurityPolicyResult! @auth(requires: ADMIN) @auditLog
+  configureSso(input: ConfigureSsoInput!): ConfigureSsoResult! @auth(requires: ADMIN) @auditLog
+  
+  # Role and permission management
+  createRole(input: CreateRoleInput!): CreateRoleResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  updateRole(id: ID!, input: UpdateRoleInput!): UpdateRoleResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  deleteRole(id: ID!): DeleteRoleResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  # User invitations
+  inviteUser(input: InviteUserInput!): InviteUserResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  resendInvitation(id: ID!): ResendInvitationResult! @auth(requires: ADMIN) @organizationScope
+  cancelInvitation(id: ID!): CancelInvitationResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  acceptInvitation(token: String!): AcceptInvitationResult! @rateLimit(max: 5, window: 60)
+  rejectInvitation(token: String!): RejectInvitationResult! @rateLimit(max: 5, window: 60)
+  
+  # Session management
+  terminateSession(sessionId: ID!): TerminateSessionResult! @auth(requires: USER) @auditLog
+  terminateAllSessions: TerminateAllSessionsResult! @auth(requires: USER) @auditLog
+  
+  # API key management
+  createApiKey(input: CreateApiKeyInput!): CreateApiKeyResult! @auth(requires: USER) @auditLog
+  revokeApiKey(id: ID!): RevokeApiKeyResult! @auth(requires: USER) @auditLog
+  updateApiKey(id: ID!, input: UpdateApiKeyInput!): UpdateApiKeyResult! @auth(requires: USER) @auditLog
+}
+
+# Subscriptions
+type Subscription {
+  # Authentication events
+  authEvents(userId: ID): AuthEvent! @auth(requires: USER)
+  
+  # User status changes
+  userStatusChanged: UserStatusEvent! @auth(requires: ADMIN) @organizationScope
+  
+  # Organization changes
+  organizationUpdated: OrganizationEvent! @auth(requires: ADMIN)
+  
+  # Security policy changes
+  securityPolicyUpdated: SecurityPolicyEvent! @auth(requires: ADMIN)
+}
+
+# Input Types
+input LoginInput {
+  email: EmailAddress!
+  password: String!
+  mfaCode: String
+  rememberMe: Boolean = false
+  deviceFingerprint: String
+}
+
+input ChangePasswordInput {
+  currentPassword: String!
+  newPassword: String!
+}
+
+input ResetPasswordInput {
+  token: String!
+  newPassword: String!
+}
+
+input SetupMfaInput {
+  method: MFAMethod!
+  phoneNumber: String # Required for SMS
+  backupCodes: Boolean = true
+}
+
+input VerifyMfaInput {
+  code: String!
+  method: MFAMethod!
+}
+
+input DisableMfaInput {
+  password: String!
+  mfaCode: String!
+}
+
+input UpdateProfileInput {
+  firstName: String
+  lastName: String
+  timezone: String
+  locale: String
+}
+
+input UpdatePreferencesInput {
+  theme: Theme
+  notifications: UserNotificationPreferencesInput
+  dashboard: DashboardPreferencesInput
+  language: String
+  dateFormat: String
+  timeFormat: String
+}
+
+input UserNotificationPreferencesInput {
+  email: Boolean
+  inApp: Boolean
+  critical: Boolean
+  high: Boolean
+  medium: Boolean
+  low: Boolean
+  quietHours: QuietHoursInput
+}
+
+input QuietHoursInput {
+  enabled: Boolean!
+  startTime: String!
+  endTime: String!
+  timezone: String!
+}
+
+input DashboardPreferencesInput {
+  defaultView: String
+  refreshInterval: Int
+  autoRefresh: Boolean
+  compactMode: Boolean
+  showTutorials: Boolean
+}
+
+input CreateUserInput {
+  email: EmailAddress!
+  firstName: String!
+  lastName: String!
+  role: UserRole!
+  permissions: [ID!]
+  sendInvitation: Boolean = true
+  temporaryPassword: String
+}
+
+input UpdateUserInput {
+  firstName: String
+  lastName: String
+  role: UserRole
+  permissions: [ID!]
+  isActive: Boolean
+}
+
+input InviteUserInput {
+  email: EmailAddress!
+  role: UserRole!
+  permissions: [ID!]
+  message: String
+}
+
+input CreateApiKeyInput {
+  name: String!
+  permissions: [ID!]!
+  expiresAt: DateTime
+  rateLimit: RateLimitConfigInput
+}
+
+input UpdateApiKeyInput {
+  name: String
+  permissions: [ID!]
+  rateLimit: RateLimitConfigInput
+}
+
+input RateLimitConfigInput {
+  requests: Int!
+  windowSeconds: Int!
+  burstLimit: Int
+}
+
+# Filter and Sort Types
+input UserFilter {
+  search: String
+  role: [UserRole!]
+  isActive: Boolean
+  lastLoginAfter: DateTime
+  createdAfter: DateTime
+  createdBefore: DateTime
+}
+
+input UserSort {
+  field: UserSortField!
+  direction: SortDirection!
+}
+
+enum UserSortField {
+  CREATED_AT
+  UPDATED_AT
+  LAST_LOGIN_AT
+  EMAIL
+  FIRST_NAME
+  LAST_NAME
+}
+
+input InvitationFilter {
+  status: [InvitationStatus!]
+  role: [UserRole!]
+  invitedAfter: DateTime
+  expiresAfter: DateTime
+}
+
+input InvitationSort {
+  field: InvitationSortField!
+  direction: SortDirection!
+}
+
+enum InvitationSortField {
+  CREATED_AT
+  EXPIRES_AT
+  EMAIL
+}
+
+# Connection Types
+type UserConnection {
+  edges: [UserEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type UserEdge {
+  node: User!
+  cursor: String!
+}
+
+type InvitationConnection {
+  edges: [InvitationEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type InvitationEdge {
+  node: UserInvitation!
+  cursor: String!
+}
+
+type AuthAuditConnection {
+  edges: [AuthAuditEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type AuthAuditEdge {
+  node: AuthAuditEntry!
+  cursor: String!
+}
+
+# Result Types
+type LoginResult {
+  success: Boolean!
+  token: String
+  refreshToken: String
+  user: User
+  mfaRequired: Boolean!
+  errors: [Error!]!
+}
+
+type LogoutResult {
+  success: Boolean!
+  message: String!
+}
+
+type RefreshTokenResult {
+  success: Boolean!
+  token: String
+  refreshToken: String
+  errors: [Error!]!
+}
+
+type ChangePasswordResult {
+  success: Boolean!
+  message: String!
+  errors: [Error!]!
+}
+
+type RequestPasswordResetResult {
+  success: Boolean!
+  message: String!
+}
+
+type ResetPasswordResult {
+  success: Boolean!
+  message: String!
+  errors: [Error!]!
+}
+
+type SetupMfaResult {
+  success: Boolean!
+  qrCodeUrl: String
+  backupCodes: [String!]
+  secret: String
+  errors: [Error!]!
+}
+
+type VerifyMfaResult {
+  success: Boolean!
+  message: String!
+  errors: [Error!]!
+}
+
+type DisableMfaResult {
+  success: Boolean!
+  message: String!
+  errors: [Error!]!
+}
+
+type UpdateProfileResult {
+  success: Boolean!
+  user: User
+  errors: [Error!]!
+}
+
+type UpdatePreferencesResult {
+  success: Boolean!
+  user: User
+  errors: [Error!]!
+}
+
+type UploadAvatarResult {
+  success: Boolean!
+  avatarUrl: URL
+  errors: [Error!]!
+}
+
+type CreateUserResult {
+  success: Boolean!
+  user: User
+  invitation: UserInvitation
+  errors: [Error!]!
+}
+
+type UpdateUserResult {
+  success: Boolean!
+  user: User
+  errors: [Error!]!
+}
+
+type DeactivateUserResult {
+  success: Boolean!
+  user: User
+  message: String!
+}
+
+type ReactivateUserResult {
+  success: Boolean!
+  user: User
+  message: String!
+}
+
+type DeleteUserResult {
+  success: Boolean!
+  message: String!
+}
+
+type UpdateOrganizationResult {
+  success: Boolean!
+  organization: Organization
+  errors: [Error!]!
+}
+
+type UpdateSecurityPolicyResult {
+  success: Boolean!
+  organization: Organization
+  errors: [Error!]!
+}
+
+type ConfigureSsoResult {
+  success: Boolean!
+  organization: Organization
+  errors: [Error!]!
+}
+
+type CreateRoleResult {
+  success: Boolean!
+  role: Role
+  errors: [Error!]!
+}
+
+type UpdateRoleResult {
+  success: Boolean!
+  role: Role
+  errors: [Error!]!
+}
+
+type DeleteRoleResult {
+  success: Boolean!
+  message: String!
+}
+
+type InviteUserResult {
+  success: Boolean!
+  invitation: UserInvitation
+  errors: [Error!]!
+}
+
+type ResendInvitationResult {
+  success: Boolean!
+  invitation: UserInvitation
+  message: String!
+}
+
+type CancelInvitationResult {
+  success: Boolean!
+  message: String!
+}
+
+type AcceptInvitationResult {
+  success: Boolean!
+  user: User
+  loginToken: String
+  errors: [Error!]!
+}
+
+type RejectInvitationResult {
+  success: Boolean!
+  message: String!
+}
+
+type TerminateSessionResult {
+  success: Boolean!
+  message: String!
+}
+
+type TerminateAllSessionsResult {
+  success: Boolean!
+  terminatedSessions: Int!
+  message: String!
+}
+
+type CreateApiKeyResult {
+  success: Boolean!
+  apiKey: ApiKey
+  secretKey: String # Only returned on creation
+  errors: [Error!]!
+}
+
+type RevokeApiKeyResult {
+  success: Boolean!
+  message: String!
+}
+
+type UpdateApiKeyResult {
+  success: Boolean!
+  apiKey: ApiKey
+  errors: [Error!]!
+}
+
+# Subscription Event Types
+type AuthEvent {
+  type: AuthEventType!
+  userId: ID!
+  user: User
+  sessionId: ID
+  details: JSON
+  timestamp: DateTime!
+}
+
+enum AuthEventType {
+  LOGIN
+  LOGOUT
+  MFA_SETUP
+  MFA_DISABLED
+  PASSWORD_CHANGED
+  SUSPICIOUS_ACTIVITY_DETECTED
+  ACCOUNT_LOCKED
+  ACCOUNT_UNLOCKED
+}
+
+type UserStatusEvent {
+  type: UserStatusEventType!
+  user: User!
+  previousStatus: String
+  newStatus: String
+  changedBy: User
+  timestamp: DateTime!
+}
+
+enum UserStatusEventType {
+  ACTIVATED
+  DEACTIVATED
+  ROLE_CHANGED
+  PERMISSIONS_CHANGED
+  PROFILE_UPDATED
+}
+
+type OrganizationEvent {
+  type: OrganizationEventType!
+  organization: Organization!
+  changedBy: User!
+  changes: JSON
+  timestamp: DateTime!
+}
+
+enum OrganizationEventType {
+  SETTINGS_UPDATED
+  SUBSCRIPTION_CHANGED
+  SSO_CONFIGURED
+  BILLING_UPDATED
+}
+
+type SecurityPolicyEvent {
+  type: SecurityPolicyEventType!
+  organization: Organization!
+  changedBy: User!
+  previousPolicy: JSON
+  newPolicy: JSON
+  timestamp: DateTime!
+}
+
+enum SecurityPolicyEventType {
+  PASSWORD_POLICY_UPDATED
+  MFA_POLICY_UPDATED
+  SESSION_POLICY_UPDATED
+  AUDIT_POLICY_UPDATED
+}

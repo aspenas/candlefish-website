@@ -1,0 +1,488 @@
+# Real-time Threat Detection Subscriptions
+
+# Real-time security events stream
+subscription OnSecurityEventCreated(
+  $filter: SecurityEventFilter
+) {
+  onSecurityEventCreated(filter: $filter) {
+    id
+    timestamp
+    type
+    severity
+    title
+    description
+    source
+    sourceIP
+    destinationIP
+    sourcePort
+    destinationPort
+    protocol
+    cefFields {
+      version
+      deviceVendor
+      deviceProduct
+      deviceVersion
+      signatureID
+      name
+      severity
+      extension
+    }
+    assetId
+    asset {
+      id
+      name
+      type
+      environment
+    }
+    userId
+    user {
+      id
+      name
+      email
+    }
+    metadata
+    status
+    tags
+    threatLevel
+    mitreAttackTactics {
+      tacticId
+      tacticName
+      techniques {
+        techniqueId
+        techniqueName
+      }
+    }
+    indicators {
+      type
+      value
+      confidence
+      source
+    }
+    geoLocation {
+      country
+      region
+      city
+      latitude
+      longitude
+    }
+    riskScore
+  }
+}
+
+# Real-time threat intelligence updates
+subscription OnThreatIntelligenceUpdate(
+  $sources: [String!]
+  $severity: [Severity!]
+) {
+  onThreatIntelligenceUpdate(sources: $sources, severity: $severity) {
+    id
+    type
+    value
+    confidence
+    severity
+    tags
+    source
+    firstSeen
+    lastSeen
+    description
+    context {
+      threatActor {
+        name
+        aliases
+        country
+        sophistication
+      }
+      campaign {
+        name
+        description
+        attribution
+      }
+      malwareFamily {
+        name
+        type
+        capabilities
+      }
+    }
+    indicators {
+      type
+      pattern
+      confidence
+    }
+    killChainPhases {
+      killChainName
+      phaseName
+      phaseOrder
+    }
+  }
+}
+
+# Real-time case updates
+subscription OnSecurityCaseUpdate(
+  $caseIds: [String!]
+  $assignedToMe: Boolean
+) {
+  onSecurityCaseUpdate(caseIds: $caseIds, assignedToMe: $assignedToMe) {
+    id
+    title
+    description
+    status
+    priority
+    severity
+    assignedTo {
+      id
+      name
+      email
+    }
+    updatedAt
+    timeline {
+      id
+      timestamp
+      action
+      description
+      userId
+      userName
+    }
+    playbooks {
+      id
+      name
+      status
+      progress
+      steps {
+        id
+        name
+        status
+        completedAt
+      }
+    }
+    metrics {
+      timeToDetection
+      timeToContainment
+      timeToResolution
+    }
+  }
+}
+
+# Real-time alert notifications
+subscription OnAlertTriggered(
+  $severity: [Severity!]
+  $categories: [String!]
+) {
+  onAlertTriggered(severity: $severity, categories: $categories) {
+    id
+    title
+    description
+    severity
+    category
+    timestamp
+    source
+    metadata
+    affectedAssets {
+      id
+      name
+      type
+    }
+    recommendedActions
+    playbookSuggestions {
+      id
+      name
+      confidence
+      reason
+    }
+    riskScore
+    falsePositiveProbability
+  }
+}
+
+# Real-time system health updates
+subscription OnSystemHealthUpdate {
+  onSystemHealthUpdate {
+    timestamp
+    overall
+    components {
+      name
+      status
+      lastCheck
+      metrics {
+        cpu
+        memory
+        disk
+        network
+        responseTime
+      }
+      alerts {
+        level
+        message
+        timestamp
+      }
+    }
+    connectivity {
+      threatFeeds
+      externalAPIs
+      databases
+      messageQueues
+    }
+  }
+}
+
+# Real-time metrics stream
+subscription OnSecurityMetricsUpdate(
+  $metricsTypes: [MetricType!]
+) {
+  onSecurityMetricsUpdate(metricsTypes: $metricsTypes) {
+    timestamp
+    overview {
+      totalEvents
+      criticalEvents
+      highEvents
+      threatsDetected
+      incidentsActive
+      falsePositiveRate
+      meanTimeToDetection
+      meanTimeToResponse
+    }
+    realtimeStats {
+      eventsPerMinute
+      threatsPerHour
+      activeInvestigations
+      systemLoad
+      queueDepth
+    }
+    topThreats {
+      type
+      count
+      severity
+      trend
+    }
+    geoThreatActivity {
+      country
+      region
+      threatCount
+      severity
+      coordinates {
+        lat
+        lng
+      }
+    }
+  }
+}
+
+# Real-time investigation updates
+subscription OnInvestigationUpdate(
+  $investigationIds: [String!]
+) {
+  onInvestigationUpdate(investigationIds: $investigationIds) {
+    id
+    title
+    status
+    priority
+    findings {
+      id
+      type
+      description
+      evidence
+      confidence
+      timestamp
+    }
+    timeline {
+      timestamp
+      action
+      description
+      analyst {
+        id
+        name
+      }
+    }
+    relatedEntities {
+      type
+      value
+      relationship
+      confidence
+    }
+    riskAssessment {
+      currentScore
+      trend
+      factors {
+        factor
+        contribution
+      }
+    }
+  }
+}
+
+# Real-time playbook execution updates
+subscription OnPlaybookExecution(
+  $playbookIds: [String!]
+  $caseIds: [String!]
+) {
+  onPlaybookExecution(playbookIds: $playbookIds, caseIds: $caseIds) {
+    executionId
+    playbookId
+    playbookName
+    caseId
+    status
+    progress
+    currentStep {
+      id
+      name
+      status
+      startedAt
+      completedAt
+      result
+      error
+    }
+    metrics {
+      startTime
+      estimatedCompletion
+      actualDuration
+      stepsCompleted
+      stepsTotal
+    }
+    logs {
+      timestamp
+      level
+      message
+      step
+      details
+    }
+  }
+}
+
+# Real-time threat hunting results
+subscription OnThreatHuntingResult(
+  $huntId: String!
+) {
+  onThreatHuntingResult(huntId: $huntId) {
+    huntId
+    status
+    progress
+    currentPhase
+    results {
+      events {
+        id
+        timestamp
+        type
+        severity
+        source
+        riskScore
+      }
+      patterns {
+        patternName
+        matchCount
+        confidence
+        severity
+      }
+      anomalies {
+        type
+        description
+        severity
+        confidence
+        entities
+      }
+    }
+    statistics {
+      eventsProcessed
+      patternsFound
+      anomaliesDetected
+      falsePositives
+      truePositives
+    }
+    insights {
+      type
+      title
+      description
+      confidence
+      recommendations
+    }
+  }
+}
+
+# Real-time IOC enrichment
+subscription OnIOCEnrichment(
+  $iocTypes: [IOCType!]
+) {
+  onIOCEnrichment(iocTypes: $iocTypes) {
+    ioc {
+      type
+      value
+      hash
+    }
+    enrichment {
+      reputation {
+        score
+        classification
+        sources {
+          source
+          score
+          lastSeen
+        }
+      }
+      context {
+        threatActors
+        campaigns
+        malwareFamilies
+        geolocation {
+          country
+          region
+          organization
+          isp
+        }
+      }
+      relationships {
+        relatedIOCs {
+          type
+          value
+          relationship
+          confidence
+        }
+        campaigns {
+          name
+          confidence
+        }
+        threatActors {
+          name
+          confidence
+        }
+      }
+      timeline {
+        firstSeen
+        lastSeen
+        peakActivity
+        recentActivity
+      }
+    }
+    sources
+    confidence
+    timestamp
+  }
+}
+
+# Real-time compliance status updates
+subscription OnComplianceStatusUpdate(
+  $frameworks: [String!]
+) {
+  onComplianceStatusUpdate(frameworks: $frameworks) {
+    framework
+    timestamp
+    overallScore
+    status
+    changes {
+      requirement
+      previousStatus
+      currentStatus
+      impact
+      reason
+    }
+    criticalFindings {
+      requirement
+      finding
+      severity
+      recommendation
+    }
+    trending {
+      direction
+      change
+      period
+    }
+    nextAssessment
+  }
+}

@@ -2,10 +2,10 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react'
 import Link from 'next/link'
-import { instruments } from '../../lib/instruments/data'
-import { Instrument, InstrumentCategory, InstrumentStatus } from '../../lib/instruments/types'
-import InstrumentTelemetry from '../../components/instruments/InstrumentTelemetry'
-import { ArtifactsStrip } from '../../components/ArtifactsStrip'
+import { instruments } from '@/lib/instruments/data'
+import { Instrument, InstrumentCategory, InstrumentStatus } from '@/lib/instruments/types'
+import InstrumentTelemetry from '@/components/instruments/InstrumentTelemetry'
+import { ArtifactsStrip } from '@/components/ArtifactsStrip'
 
 // Status indicator with live pulse
 const StatusIndicator = ({ status }: { status: InstrumentStatus }) => {

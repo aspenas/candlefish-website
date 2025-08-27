@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Dashboard Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #0a0f1c;
+            color: #f8fafc;
+        }
+        .status {
+            padding: 20px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #052e16;
+            border: 2px solid #22c55e;
+            color: #86efac;
+        }
+        .error {
+            background: #450a0a;
+            border: 2px solid #ef4444;
+            color: #fca5a5;
+        }
+        .info {
+            background: #082f49;
+            border: 2px solid #0ea5e9;
+            color: #7dd3fc;
+        }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #374151;
+            border-radius: 8px;
+            background: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Security Dashboard Status Check</h1>
+    
+    <div id="connection-status" class="status info">
+        Checking connection to http://localhost:3002...
+    </div>
+    
+    <div id="api-status" class="status info">
+        Checking API endpoints...
+    </div>
+    
+    <h2>Dashboard Preview:</h2>
+    <iframe id="dashboard-frame" src="http://localhost:3002"></iframe>
+    
+    <script>
+        // Check if the dashboard is accessible
+        fetch('http://localhost:3002')
+            .then(response => {
+                const status = document.getElementById('connection-status');
+                if (response.ok) {
+                    status.className = 'status success';
+                    status.textContent = '✅ Dashboard is accessible at http://localhost:3002';
+                    
+                    // Check for JavaScript execution
+                    return response.text();
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            })
+            .then(html => {
+                // Check if the HTML contains the necessary scripts
+                const hasReact = html.includes('react');
+                const hasVite = html.includes('vite');
+                const hasMain = html.includes('main.tsx');
+                
+                const apiStatus = document.getElementById('api-status');
+                apiStatus.className = 'status info';
+                apiStatus.innerHTML = `
+                    <h3>Page Analysis:</h3>
+                    <ul>
+                        <li>Vite Dev Server: ${hasVite ? '✅ Active' : '❌ Not found'}</li>
+                        <li>React Application: ${hasReact ? '✅ Loaded' : '❌ Not loaded'}</li>
+                        <li>Main Entry Point: ${hasMain ? '✅ Found' : '❌ Missing'}</li>
+                    </ul>
+                    <p><strong>If the dashboard appears black, check the browser console for errors.</strong></p>
+                `;
+            })
+            .catch(error => {
+                const status = document.getElementById('connection-status');
+                status.className = 'status error';
+                status.textContent = `❌ Failed to connect: ${error.message}`;
+            });
+            
+        // Listen for messages from the iframe
+        window.addEventListener('message', (event) => {
+            if (event.origin === 'http://localhost:3002') {
+                console.log('Message from dashboard:', event.data);
+            }
+        });
+    </script>
+</body>
+</html>
