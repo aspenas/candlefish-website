@@ -50,7 +50,7 @@ env:
   # Version pinning for tools
   NODE_VERSION: '20.11.0'
   PYTHON_VERSION: '3.12.1'
-  PNPM_VERSION: '8.15.6'
+  PNPM_VERSION: '9.7.0'
   GO_VERSION: '1.22.0'
   RUST_VERSION: '1.75.0'
 
