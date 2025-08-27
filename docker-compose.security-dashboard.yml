@@ -1,0 +1,466 @@
+# Security Dashboard - Local Development Environment
+# Tier 1 Deployment ($0/month) - Docker Compose
+# Complete stack with all services for local development
+
+version: '3.8'
+
+networks:
+  security-dashboard:
+    driver: bridge
+    name: security-dashboard-network
+  
+volumes:
+  postgres_data:
+    name: security-dashboard-postgres
+  redis_data:
+    name: security-dashboard-redis
+  grafana_data:
+    name: security-dashboard-grafana
+  prometheus_data:
+    name: security-dashboard-prometheus
+  elasticsearch_data:
+    name: security-dashboard-elasticsearch
+
+services:
+  # ============================================================================
+  # DATABASE LAYER
+  # ============================================================================
+  
+  postgres:
+    image: timescale/timescaledb:2.12-pg16
+    container_name: security-dashboard-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: security_dashboard
+      POSTGRES_USER: dashboard_user
+      POSTGRES_PASSWORD: dev_password_2024
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./deployment/database/init-scripts:/docker-entrypoint-initdb.d
+      - ./deployment/database/security-dashboard-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - security-dashboard
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dashboard_user -d security_dashboard"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: >
+      postgres -c shared_preload_libraries='timescaledb'
+               -c max_connections=200
+               -c shared_buffers=256MB
+               -c effective_cache_size=1GB
+               -c work_mem=4MB
+               -c maintenance_work_mem=64MB
+               -c random_page_cost=1.1
+               -c temp_file_limit=2GB
+               -c log_min_duration_statement=1000
+               -c log_statement=mod
+               -c log_checkpoints=on
+               -c log_connections=on
+               -c log_disconnections=on
+               -c log_lock_waits=on
+               -c log_temp_files=0
+    labels:
+      - "traefik.enable=false"
+      - "com.candlefish.service=database"
+      - "com.candlefish.tier=data"
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: security-dashboard-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./deployment/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - security-dashboard
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    command: redis-server /usr/local/etc/redis/redis.conf
+    labels:
+      - "traefik.enable=false"
+      - "com.candlefish.service=cache"
+      - "com.candlefish.tier=data"
+
+  # ============================================================================
+  # APPLICATION LAYER
+  # ============================================================================
+  
+  backend-api:
+    build:
+      context: .
+      dockerfile: deployment/docker/Dockerfile.backend
+      target: runtime
+    container_name: security-dashboard-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: postgres://dashboard_user:dev_password_2024@postgres:5432/security_dashboard
+      REDIS_URL: redis://redis:6379
+      GRAPHQL_PLAYGROUND: "true"
+      GRAPHQL_INTROSPECTION: "true"
+      LOG_LEVEL: debug
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:5173,http://localhost:8080"
+      JWT_SECRET: dev_jwt_secret_key_2024_change_in_production
+      JWKS_URI: https://paintbox.fly.dev/.well-known/jwks.json
+      ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173,http://localhost:8080"
+      WEBSOCKET_ENABLED: "true"
+      METRICS_ENABLED: "true"
+      RATE_LIMIT_ENABLED: "true"
+    ports:
+      - "4000:4000"
+      - "4001:4001"  # WebSocket port
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - security-dashboard
+    volumes:
+      - ./deployment/logs:/app/logs
+      - ./deployment/config/backend-config.json:/app/config/config.json:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=PathPrefix(`/api`)"
+      - "traefik.http.services.backend.loadbalancer.server.port=4000"
+      - "com.candlefish.service=backend"
+      - "com.candlefish.tier=application"
+
+  graphql-gateway:
+    build:
+      context: .
+      dockerfile: deployment/docker/Dockerfile.graphql-gateway
+      target: runtime
+    container_name: security-dashboard-graphql
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      GRAPHQL_PLAYGROUND: "true"
+      GRAPHQL_INTROSPECTION: "true"
+      LOG_LEVEL: debug
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:5173,http://localhost:8080"
+      BACKEND_API_URL: http://backend-api:4000
+      WEBSOCKET_URL: ws://backend-api:4001
+      FEDERATION_ENABLED: "true"
+      METRICS_ENABLED: "true"
+    ports:
+      - "4100:4000"
+    depends_on:
+      - backend-api
+    networks:
+      - security-dashboard
+    volumes:
+      - ./graphql/schema.graphql:/app/schema.graphql:ro
+      - ./deployment/logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/graphql", "-d", "{\"query\":\"{ __typename }\"}"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.graphql.rule=PathPrefix(`/graphql`)"
+      - "traefik.http.services.graphql.loadbalancer.server.port=4000"
+      - "com.candlefish.service=graphql"
+      - "com.candlefish.tier=application"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: deployment/docker/Dockerfile.security-dashboard-frontend
+      target: runtime
+      args:
+        - BUILD_DATE=${BUILD_DATE:-$(date -u +'%Y-%m-%dT%H:%M:%SZ')}
+        - VCS_REF=${VCS_REF:-dev}
+        - VERSION=${VERSION:-dev}
+    container_name: security-dashboard-frontend
+    restart: unless-stopped
+    environment:
+      API_URL: http://localhost:8080/api
+      GRAPHQL_URL: http://localhost:8080/graphql
+      WS_URL: ws://localhost:8080/subscriptions
+      NODE_ENV: development
+    ports:
+      - "3000:8080"
+    depends_on:
+      - backend-api
+      - graphql-gateway
+    networks:
+      - security-dashboard
+    volumes:
+      - ./deployment/logs:/var/log/nginx
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
+      - "traefik.http.services.frontend.loadbalancer.server.port=8080"
+      - "com.candlefish.service=frontend"
+      - "com.candlefish.tier=presentation"
+
+  # ============================================================================
+  # API GATEWAY LAYER
+  # ============================================================================
+  
+  kong-gateway:
+    build:
+      context: .
+      dockerfile: deployment/docker/Dockerfile.kong-gateway
+      target: development
+    container_name: security-dashboard-kong
+    restart: unless-stopped
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /etc/kong/declarative-config.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_LOG_LEVEL: debug
+      KONG_PLUGINS: "bundled,cors,rate-limiting,request-transformer,response-transformer,jwt,oauth2,basic-auth"
+      KONG_ADMIN_LISTEN: "0.0.0.0:8001, 0.0.0.0:8444 ssl"
+      KONG_PROXY_LISTEN: "0.0.0.0:8000, 0.0.0.0:8443 ssl http2"
+      KONG_ADMIN_GUI_LISTEN: "0.0.0.0:8002"
+      KONG_ADMIN_GUI_URL: "http://localhost:8002"
+    ports:
+      - "8080:8000"    # HTTP proxy (redirects to HTTPS)
+      - "8443:8443"    # HTTPS proxy
+      - "8001:8001"    # Admin API (redirects to HTTPS)
+      - "8444:8444"    # Admin API HTTPS
+      - "8002:8002"    # Admin GUI (development only)
+    depends_on:
+      - backend-api
+      - graphql-gateway
+      - frontend
+    networks:
+      - security-dashboard
+    volumes:
+      - ./deployment/logs:/usr/local/kong/logs
+      - ./deployment/kong/declarative-config-dev.yml:/etc/kong/declarative-config.yml:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.kong.rule=HostRegexp(`{host:.+}`)"
+      - "traefik.http.services.kong.loadbalancer.server.port=8000"
+      - "com.candlefish.service=gateway"
+      - "com.candlefish.tier=gateway"
+
+  # ============================================================================
+  # MONITORING LAYER
+  # ============================================================================
+  
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: security-dashboard-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+      - ./deployment/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deployment/monitoring/alert-rules.yaml:/etc/prometheus/rules/alert-rules.yaml:ro
+    networks:
+      - security-dashboard
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+      - '--storage.tsdb.retention.size=10GB'
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=PathPrefix(`/prometheus`)"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+      - "com.candlefish.service=metrics"
+      - "com.candlefish.tier=monitoring"
+
+  grafana:
+    image: grafana/grafana:10.0.0
+    container_name: security-dashboard-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: dev_admin_password_2024
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_DOMAIN: localhost
+      GF_SERVER_ROOT_URL: "http://localhost:3001/"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_SECURITY_DISABLE_GRAVATAR: "true"
+      GF_SNAPSHOTS_EXTERNAL_ENABLED: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./deployment/monitoring/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./deployment/monitoring/dashboards:/etc/grafana/provisioning/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      - security-dashboard
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=PathPrefix(`/grafana`)"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+      - "com.candlefish.service=dashboards"
+      - "com.candlefish.tier=monitoring"
+
+  # ============================================================================
+  # LOGGING LAYER
+  # ============================================================================
+  
+  elasticsearch:
+    image: elasticsearch:8.8.0
+    container_name: security-dashboard-elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+      - xpack.monitoring.collection.enabled=true
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - security-dashboard
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "traefik.enable=false"
+      - "com.candlefish.service=search"
+      - "com.candlefish.tier=logging"
+
+  kibana:
+    image: kibana:8.8.0
+    container_name: security-dashboard-kibana
+    restart: unless-stopped
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      SERVER_NAME: security-dashboard-kibana
+      SERVER_HOST: "0.0.0.0"
+      XPACK_MONITORING_ENABLED: "true"
+      XPACK_MONITORING_COLLECTION_ENABLED: "true"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - security-dashboard
+    volumes:
+      - ./deployment/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.kibana.rule=PathPrefix(`/kibana`)"
+      - "traefik.http.services.kibana.loadbalancer.server.port=5601"
+      - "com.candlefish.service=logs"
+      - "com.candlefish.tier=logging"
+
+  # ============================================================================
+  # DEVELOPMENT UTILITIES
+  # ============================================================================
+  
+  maildev:
+    image: maildev/maildev:2.0.5
+    container_name: security-dashboard-maildev
+    restart: unless-stopped
+    ports:
+      - "1080:1080"  # Web interface
+      - "1025:1025"  # SMTP server
+    networks:
+      - security-dashboard
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.maildev.rule=PathPrefix(`/maildev`)"
+      - "traefik.http.services.maildev.loadbalancer.server.port=1080"
+      - "com.candlefish.service=mail"
+      - "com.candlefish.tier=development"
+
+  # Health check service
+  health-checker:
+    image: alpine:3.18
+    container_name: security-dashboard-health
+    restart: unless-stopped
+    networks:
+      - security-dashboard
+    volumes:
+      - ./scripts/health-check-local.sh:/usr/local/bin/health-check.sh:ro
+    command: >
+      sh -c "
+        apk add --no-cache curl &&
+        chmod +x /usr/local/bin/health-check.sh &&
+        while true; do
+          /usr/local/bin/health-check.sh
+          sleep 30
+        done
+      "
+    depends_on:
+      - postgres
+      - redis
+      - backend-api
+      - graphql-gateway
+      - frontend
+      - kong-gateway
+    labels:
+      - "com.candlefish.service=health"
+      - "com.candlefish.tier=monitoring"
+
+# ============================================================================
+# CONFIGURATION OVERRIDES FOR DIFFERENT ENVIRONMENTS
+# ============================================================================
+
+# To run specific configurations:
+# docker-compose -f docker-compose.security-dashboard.yml up                    # Full stack
+# docker-compose -f docker-compose.security-dashboard.yml up postgres redis    # Data layer only  
+# docker-compose -f docker-compose.security-dashboard.yml up backend-api       # API only
+# docker-compose -f docker-compose.security-dashboard.yml up frontend          # Frontend only
+
+# Environment-specific overrides:
+# docker-compose -f docker-compose.security-dashboard.yml -f docker-compose.dev.yml up     # Development
+# docker-compose -f docker-compose.security-dashboard.yml -f docker-compose.test.yml up    # Testing
+# docker-compose -f docker-compose.security-dashboard.yml -f docker-compose.staging.yml up # Staging

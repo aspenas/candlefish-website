@@ -1,3 +1,36 @@
+// API Response Types
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+  errors?: string[];
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+// Authentication Types
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  token: string;
+  refreshToken: string;
+  user: User;
+  expiresIn: number;
+}
+
+export interface RefreshTokenRequest {
+  refreshToken: string;
+}
+
 // Core Security Types
 export interface SecurityOverview {
   totalAssets: number;
@@ -5,10 +38,10 @@ export interface SecurityOverview {
   activeAlerts: number;
   complianceScore: number;
   threatLevel: ThreatLevel;
-  kongAdminApiVulnerability: KongVulnerabilityStatus;
   vulnerabilitiesBySeverity: VulnerabilitySeverityCount[];
   alertsByStatus: AlertStatusCount[];
   complianceBreakdown: ComplianceFramework[];
+  realTimeMetrics: DashboardMetrics;
 }
 
 export interface Asset {
@@ -378,11 +411,232 @@ export enum NotificationType {
   SYSTEM = 'SYSTEM',
 }
 
+// Security Events
+export interface SecurityEvent {
+  id: string;
+  type: SecurityEventType;
+  severity: Severity;
+  title: string;
+  description: string;
+  source: string;
+  timestamp: string;
+  assetId?: string;
+  userId?: string;
+  metadata: Record<string, any>;
+  status: SecurityEventStatus;
+  tags: string[];
+}
+
+export enum SecurityEventType {
+  AUTHENTICATION_FAILURE = 'AUTHENTICATION_FAILURE',
+  UNAUTHORIZED_ACCESS = 'UNAUTHORIZED_ACCESS',
+  MALWARE_DETECTED = 'MALWARE_DETECTED',
+  SUSPICIOUS_ACTIVITY = 'SUSPICIOUS_ACTIVITY',
+  DATA_EXFILTRATION = 'DATA_EXFILTRATION',
+  CONFIGURATION_CHANGE = 'CONFIGURATION_CHANGE',
+  VULNERABILITY_DISCOVERED = 'VULNERABILITY_DISCOVERED',
+  COMPLIANCE_VIOLATION = 'COMPLIANCE_VIOLATION'
+}
+
+export enum SecurityEventStatus {
+  NEW = 'NEW',
+  INVESTIGATING = 'INVESTIGATING',
+  RESOLVED = 'RESOLVED',
+  FALSE_POSITIVE = 'FALSE_POSITIVE'
+}
+
+// Threat Detection
+export interface Threat {
+  id: string;
+  name: string;
+  type: ThreatType;
+  severity: Severity;
+  status: ThreatStatus;
+  description: string;
+  detectedAt: string;
+  lastSeenAt: string;
+  affectedAssets: string[];
+  indicators: ThreatIndicator[];
+  mitigationSteps: string[];
+  source: string;
+}
+
+export enum ThreatType {
+  MALWARE = 'MALWARE',
+  PHISHING = 'PHISHING',
+  BRUTE_FORCE = 'BRUTE_FORCE',
+  DDoS = 'DDoS',
+  INSIDER_THREAT = 'INSIDER_THREAT',
+  APT = 'APT',
+  RANSOMWARE = 'RANSOMWARE'
+}
+
+export enum ThreatStatus {
+  ACTIVE = 'ACTIVE',
+  CONTAINED = 'CONTAINED',
+  MITIGATED = 'MITIGATED',
+  MONITORING = 'MONITORING'
+}
+
+export interface ThreatIndicator {
+  type: string;
+  value: string;
+  confidence: number;
+}
+
+// Incidents
+export interface Incident {
+  id: string;
+  title: string;
+  description: string;
+  severity: Severity;
+  status: IncidentStatus;
+  priority: IncidentPriority;
+  assignedTo?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt?: string;
+  affectedAssets: string[];
+  events: SecurityEvent[];
+  timeline: IncidentTimelineEntry[];
+  tags: string[];
+}
+
+export enum IncidentStatus {
+  OPEN = 'OPEN',
+  IN_PROGRESS = 'IN_PROGRESS',
+  RESOLVED = 'RESOLVED',
+  CLOSED = 'CLOSED'
+}
+
+export enum IncidentPriority {
+  LOW = 'LOW',
+  MEDIUM = 'MEDIUM',
+  HIGH = 'HIGH',
+  CRITICAL = 'CRITICAL'
+}
+
+export interface IncidentTimelineEntry {
+  id: string;
+  timestamp: string;
+  action: string;
+  description: string;
+  userId: string;
+  userName: string;
+}
+
+// Dashboard Metrics
+export interface DashboardMetrics {
+  eventsPerHour: MetricDataPoint[];
+  threatsDetected: number;
+  incidentsActive: number;
+  systemHealth: SystemHealthMetrics;
+  topThreats: ThreatSummary[];
+  recentActivity: ActivitySummary[];
+}
+
+export interface MetricDataPoint {
+  timestamp: string;
+  value: number;
+  label?: string;
+}
+
+export interface SystemHealthMetrics {
+  overall: number;
+  components: ComponentHealth[];
+}
+
+export interface ComponentHealth {
+  name: string;
+  status: HealthStatus;
+  lastCheck: string;
+}
+
+export interface ThreatSummary {
+  type: ThreatType;
+  count: number;
+  severity: Severity;
+}
+
+export interface ActivitySummary {
+  id: string;
+  type: string;
+  description: string;
+  timestamp: string;
+  severity: Severity;
+}
+
+// Filter Types for API endpoints
+export interface EventFilter {
+  type?: SecurityEventType[];
+  severity?: Severity[];
+  status?: SecurityEventStatus[];
+  dateFrom?: string;
+  dateTo?: string;
+  source?: string;
+  assetId?: string;
+}
+
+export interface ThreatFilter {
+  type?: ThreatType[];
+  severity?: Severity[];
+  status?: ThreatStatus[];
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export interface IncidentFilter {
+  status?: IncidentStatus[];
+  priority?: IncidentPriority[];
+  severity?: Severity[];
+  assignedTo?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+// User Management and RBAC
+export interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+  permissions: Permission[];
+  isActive: boolean;
+  lastLoginAt?: string;
+  createdAt: string;
+  avatar?: string;
+}
+
+export enum UserRole {
+  ADMIN = 'ADMIN',
+  ANALYST = 'ANALYST',
+  VIEWER = 'VIEWER',
+  INCIDENT_RESPONDER = 'INCIDENT_RESPONDER'
+}
+
+export interface Permission {
+  id: string;
+  name: string;
+  resource: string;
+  action: string;
+}
+
 // Real-time Updates
 export interface RealTimeUpdate {
-  type: string;
+  type: RealTimeUpdateType;
   payload: any;
   timestamp: string;
+}
+
+export enum RealTimeUpdateType {
+  NEW_EVENT = 'NEW_EVENT',
+  THREAT_DETECTED = 'THREAT_DETECTED',
+  INCIDENT_CREATED = 'INCIDENT_CREATED',
+  INCIDENT_UPDATED = 'INCIDENT_UPDATED',
+  METRICS_UPDATED = 'METRICS_UPDATED',
+  ALERT_TRIGGERED = 'ALERT_TRIGGERED'
 }
 
 export interface ConnectionStatus {

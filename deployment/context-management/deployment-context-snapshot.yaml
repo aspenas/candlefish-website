@@ -1,0 +1,303 @@
+# Security Dashboard Deployment Context Snapshot
+# Generated: August 27, 2025
+# Token Budget: Optimized for Claude Opus 4.1 (2M/400K)
+
+metadata:
+  version: "1.0"
+  timestamp: "2025-08-27T10:00:00Z"
+  environment: "production"
+  branch: "feature/proportion-by-design-20250825"
+  commit: "d192289c"
+
+# CORE CONTEXT (5K tokens)
+infrastructure:
+  aws:
+    account_id: "681214184463"
+    region: "us-east-1"
+    services:
+      - EKS: security-dashboard-eks
+      - RDS: security-dashboard-db
+      - ElastiCache: security-dashboard-redis
+      - ECR: security-dashboard-registry
+      - CloudFront: security-dashboard-cdn
+      - Secrets Manager: Active
+      - Route53: security.candlefish.ai
+
+  local_services:
+    redis:
+      container: security-redis
+      port: 6379
+      status: running
+      uptime: 10h
+    
+    prometheus:
+      container: security-prometheus
+      port: 9091
+      status: running
+      uptime: 10h
+      
+    grafana:
+      container: security-grafana
+      port: 3003
+      status: running
+      uptime: 10h
+      
+    postgres:
+      container: pkb-postgres-local
+      port: 5432
+      status: running
+      uptime: 12h
+
+# DEPLOYMENT CONFIGURATION (10K tokens)
+deployment:
+  strategy: blue-green
+  current_version: "latest"
+  previous_version: "v1.2.3"
+  
+  components:
+    frontend:
+      path: /apps/security-dashboard
+      dockerfile: /deployment/docker/Dockerfile.security-dashboard-frontend
+      image: 681214184463.dkr.ecr.us-east-1.amazonaws.com/security-dashboard-frontend:latest
+      replicas: 3
+      ports: [8080]
+      health_check: /health
+      
+    backend_api:
+      path: /apps/security-dashboard/backend
+      dockerfile: /deployment/docker/Dockerfile.backend-api
+      image: 681214184463.dkr.ecr.us-east-1.amazonaws.com/security-dashboard-backend:latest
+      replicas: 5
+      ports: [4000]
+      health_check: /api/health
+      
+    graphql_gateway:
+      path: /graphql
+      dockerfile: /deployment/docker/Dockerfile.graphql-gateway
+      image: 681214184463.dkr.ecr.us-east-1.amazonaws.com/graphql-gateway:latest
+      replicas: 3
+      ports: [4000]
+      health_check: /graphql?query={healthCheck{status}}
+      
+    kong_gateway:
+      path: /deployment/k8s/kong-gateway
+      dockerfile: /deployment/docker/Dockerfile.kong-gateway
+      image: kong:3.3-alpine
+      replicas: 2
+      ports: [8000, 8443, 8001]
+      
+    websocket_server:
+      path: /services/websocket
+      dockerfile: /deployment/docker/Dockerfile.websocket-service
+      image: 681214184463.dkr.ecr.us-east-1.amazonaws.com/websocket-service:latest
+      replicas: 3
+      ports: [3001]
+
+# QUICK DEPLOYMENT COMMANDS
+commands:
+  pre_deployment:
+    - name: "Verify AWS credentials"
+      command: "aws sts get-caller-identity"
+      
+    - name: "Update kubeconfig"
+      command: "aws eks update-kubeconfig --region us-east-1 --name security-dashboard-eks"
+      
+    - name: "Check cluster status"
+      command: "kubectl cluster-info"
+      
+  build:
+    - name: "Build frontend"
+      command: |
+        cd /apps/security-dashboard
+        docker build -f ../../deployment/docker/Dockerfile.security-dashboard-frontend \
+          -t security-dashboard-frontend:latest .
+          
+    - name: "Build backend"
+      command: |
+        cd /apps/security-dashboard/backend
+        docker build -f ../../../deployment/docker/Dockerfile.backend-api \
+          -t security-dashboard-backend:latest .
+          
+  push:
+    - name: "Login to ECR"
+      command: |
+        aws ecr get-login-password --region us-east-1 | \
+        docker login --username AWS --password-stdin \
+        681214184463.dkr.ecr.us-east-1.amazonaws.com
+        
+    - name: "Push images"
+      command: |
+        docker tag security-dashboard-frontend:latest \
+          681214184463.dkr.ecr.us-east-1.amazonaws.com/security-dashboard-frontend:latest
+        docker push 681214184463.dkr.ecr.us-east-1.amazonaws.com/security-dashboard-frontend:latest
+        
+  deploy:
+    - name: "Apply Kubernetes manifests"
+      command: |
+        kubectl apply -f deployment/k8s/security-dashboard/
+        
+    - name: "Start rollout"
+      command: |
+        kubectl argo rollouts promote security-dashboard-backend -n security-dashboard
+        kubectl argo rollouts promote security-dashboard-frontend -n security-dashboard
+        
+  validate:
+    - name: "Check pod status"
+      command: "kubectl get pods -n security-dashboard"
+      
+    - name: "Verify endpoints"
+      command: |
+        curl -k https://security.candlefish.ai/health
+        curl -k https://security.candlefish.ai/api/health
+        
+    - name: "Check metrics"
+      command: |
+        curl -s http://localhost:9091/api/v1/query?query=up
+
+# HEALTH CHECKS
+health_checks:
+  endpoints:
+    - url: "http://localhost:8080/health"
+      expected_status: 200
+      timeout: 5s
+      
+    - url: "http://localhost:4000/api/health"
+      expected_status: 200
+      timeout: 5s
+      
+    - url: "http://localhost:4000/graphql"
+      method: POST
+      body: '{"query":"query { healthCheck { status } }"}'
+      expected_response: '{"data":{"healthCheck":{"status":"healthy"}}}'
+      
+    - url: "http://localhost:3001/socket.io/"
+      expected_status: 200
+      
+  database:
+    command: "psql $DATABASE_URL -c 'SELECT 1'"
+    expected_output: "1"
+    
+  redis:
+    command: "redis-cli -h localhost -p 6379 ping"
+    expected_output: "PONG"
+
+# MONITORING QUERIES
+monitoring:
+  prometheus_queries:
+    error_rate: 'rate(http_requests_total{status=~"5.."}[5m])'
+    response_time_p95: 'histogram_quantile(0.95,rate(http_request_duration_seconds_bucket[5m]))'
+    request_rate: 'rate(http_requests_total[5m])'
+    active_connections: 'node_websocket_active_connections'
+    cpu_usage: 'rate(container_cpu_usage_seconds_total[5m])'
+    memory_usage: 'container_memory_usage_bytes'
+    
+  grafana_dashboards:
+    - id: "security-dashboard-overview"
+      url: "http://localhost:3003/d/security-overview"
+      
+    - id: "infrastructure-health"
+      url: "http://localhost:3003/d/infra-health"
+      
+    - id: "api-performance"
+      url: "http://localhost:3003/d/api-performance"
+
+# ROLLBACK CONFIGURATION
+rollback:
+  automated:
+    enabled: true
+    error_threshold: 5
+    latency_threshold: 1000
+    
+  manual_commands:
+    - name: "Undo last rollout"
+      command: "kubectl argo rollouts undo security-dashboard-backend -n security-dashboard"
+      
+    - name: "Emergency rollback"
+      command: "./scripts/deployment/rollback-procedures.sh emergency-rollback"
+      
+    - name: "Database rollback"
+      command: "kubectl run db-rollback --rm -i --restart=Never --image=postgres:15 -- psql $DATABASE_URL < /backup/latest.sql"
+
+# SECRETS REFERENCE (No values, only paths)
+secrets:
+  aws_secrets_manager:
+    database_url: "security-dashboard/database-url"
+    jwt_secret: "security-dashboard/jwt-secret"
+    api_keys: "security-dashboard/api-keys"
+    github_token: "github/token"
+    slack_webhook: "monitoring/slack-webhook"
+    
+  kubernetes:
+    namespace: "security-dashboard"
+    secrets:
+      - security-dashboard-secrets
+      - security-dashboard-tls
+      - docker-registry-auth
+      
+  environment_required:
+    - AWS_REGION
+    - AWS_ACCOUNT_ID
+    - CLUSTER_NAME
+    - NAMESPACE
+    - DOCKER_REGISTRY
+    - GITHUB_TOKEN
+
+# TROUBLESHOOTING
+common_issues:
+  pods_not_starting:
+    check:
+      - "kubectl describe pod <pod-name> -n security-dashboard"
+      - "kubectl logs <pod-name> -n security-dashboard"
+    common_causes:
+      - "Missing secrets or configmaps"
+      - "Image pull errors"
+      - "Resource constraints"
+      - "Database connection failures"
+      
+  high_latency:
+    check:
+      - "kubectl top pods -n security-dashboard"
+      - "Check database query performance"
+    solutions:
+      - "Scale up replicas"
+      - "Optimize database indexes"
+      - "Enable caching"
+      
+  authentication_failures:
+    check:
+      - "JWT secret configured correctly"
+      - "CORS settings"
+    solutions:
+      - "Rotate JWT secret"
+      - "Update CORS whitelist"
+
+# PERFORMANCE BASELINES
+performance:
+  targets:
+    response_time_p95: "< 500ms"
+    error_rate: "< 0.1%"
+    throughput: "> 1000 RPS"
+    concurrent_users: "> 1000"
+    
+  current_metrics:
+    response_time_p95: "~450ms"
+    error_rate: "0.05%"
+    throughput: "1200 RPS"
+    concurrent_users: "850"
+
+# EMERGENCY CONTACTS
+emergency:
+  on_call: "security-team@candlefish.ai"
+  escalation:
+    - level_1: "platform-team@candlefish.ai"
+    - level_2: "engineering-leadership@candlefish.ai"
+  slack_channel: "#security-incidents"
+  status_page: "https://status.candlefish.ai"
+
+# CONTEXT METADATA
+context:
+  total_tokens: 8500
+  compression_ratio: 0.85
+  last_updated: "2025-08-27T10:00:00Z"
+  next_update: "2025-08-27T11:00:00Z"
+  validity_duration: "1h"

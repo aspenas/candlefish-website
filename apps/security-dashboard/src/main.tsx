@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-// import App from './App';
-import App from './App.simple'; // Using simple version for preview
+import App from './App';
+import './styles/globals.css';
 
 // Accessibility announcer for dynamic updates
 window.announceToScreenReader = (message: string) => {
