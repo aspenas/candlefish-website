@@ -1,0 +1,592 @@
+openapi: 3.0.3
+info:
+  title: Candlefish AI Prompt Engineering API
+  version: 1.0.0
+  description: |
+    Comprehensive API for managing and executing AI prompts with advanced features.
+    
+    Key Features:
+    - Prompt template management
+    - Prompt execution with advanced configuration
+    - Metrics and performance tracking
+    - Template optimization
+    - Real-time WebSocket monitoring
+
+  contact:
+    name: Candlefish AI Support
+    email: support@candlefish.ai
+    url: https://candlefish.ai/support
+
+  x-logo:
+    url: https://candlefish.ai/logo.png
+    backgroundColor: "#FFFFFF"
+    altText: "Candlefish AI Logo"
+
+servers:
+  - url: https://api.candlefish.ai/v1
+    description: Production API
+  - url: https://staging-api.candlefish.ai/v1
+    description: Staging API
+  - url: http://localhost:3000/v1
+    description: Local Development
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    PromptTemplate:
+      type: object
+      required: [id, name, template]
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the prompt template
+          example: "code-review-v1"
+        name:
+          type: string
+          description: Human-readable name of the template
+          example: "Code Review Template"
+        version:
+          type: string
+          description: Version of the template
+          example: "1.0.0"
+        description:
+          type: string
+          description: Detailed description of the template's purpose
+        category:
+          type: string
+          enum:
+            - code-review
+            - test-generation
+            - documentation
+            - error-diagnosis
+            - security-analysis
+            - performance-optimization
+            - refactoring
+            - migration
+            - api-design
+            - architecture
+            - deployment
+            - monitoring
+            - incident-response
+        template:
+          type: string
+          description: The actual prompt template with variables
+        variables:
+          type: array
+          items:
+            $ref: '#/components/schemas/PromptVariable'
+        modelCompatibility:
+          type: array
+          items:
+            type: string
+            enum:
+              - anthropic
+              - openai
+              - together
+              - fireworks
+              - local
+              - custom
+
+    PromptVariable:
+      type: object
+      required: [name, type, required]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [string, number, boolean, object, array]
+        required:
+          type: boolean
+        description:
+          type: string
+        default:
+          description: Default value for the variable
+        validation:
+          $ref: '#/components/schemas/VariableValidation'
+
+    VariableValidation:
+      type: object
+      properties:
+        pattern:
+          type: string
+          description: Regex pattern for validation
+        minLength:
+          type: integer
+        maxLength:
+          type: integer
+        min:
+          type: number
+        max:
+          type: number
+        enum:
+          type: array
+          items:
+            type: string
+
+    PromptRequest:
+      type: object
+      required: [templateId, variables]
+      properties:
+        templateId:
+          type: string
+        variables:
+          type: object
+          additionalProperties: true
+        modelConfig:
+          $ref: '#/components/schemas/ModelConfig'
+        context:
+          $ref: '#/components/schemas/PromptContext'
+        options:
+          $ref: '#/components/schemas/PromptOptions'
+
+    ModelConfig:
+      type: object
+      properties:
+        provider:
+          type: string
+          enum: [anthropic, openai, together, fireworks, local, custom]
+        model:
+          type: string
+        maxTokens:
+          type: integer
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 1
+        topP:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    PromptContext:
+      type: object
+      properties:
+        workflowId:
+          type: string
+        githubContext:
+          $ref: '#/components/schemas/GitHubContext'
+        projectContext:
+          $ref: '#/components/schemas/ProjectContext'
+
+    GitHubContext:
+      type: object
+      properties:
+        repository:
+          type: string
+        branch:
+          type: string
+        commit:
+          type: string
+        pullRequest:
+          type: number
+
+    ProjectContext:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        language:
+          type: array
+          items:
+            type: string
+        framework:
+          type: array
+          items:
+            type: string
+
+    PromptOptions:
+      type: object
+      properties:
+        stream:
+          type: boolean
+        cache:
+          type: boolean
+        timeout:
+          type: integer
+        abTest:
+          type: boolean
+        evaluateQuality:
+          type: boolean
+        priority:
+          type: string
+          enum: [low, normal, high, critical]
+
+    PromptResponse:
+      type: object
+      required: [id, templateId, response]
+      properties:
+        id:
+          type: string
+        templateId:
+          type: string
+        response:
+          type: string
+        model:
+          type: string
+        provider:
+          type: string
+        tokensUsed:
+          $ref: '#/components/schemas/TokenUsage'
+        latency:
+          type: number
+        cost:
+          type: number
+        quality:
+          $ref: '#/components/schemas/QualityMetrics'
+
+    TokenUsage:
+      type: object
+      properties:
+        prompt:
+          type: integer
+        completion:
+          type: integer
+        total:
+          type: integer
+
+    QualityMetrics:
+      type: object
+      properties:
+        accuracy:
+          type: number
+        relevance:
+          type: number
+        coherence:
+          type: number
+
+    WebSocketMessage:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - execution_start
+            - execution_progress
+            - execution_complete
+            - execution_error
+            - metrics_update
+            - cache_update
+            - model_status
+            - heartbeat
+        id:
+          type: string
+        data:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+
+  parameters:
+    TemplateId:
+      name: templateId
+      in: path
+      required: true
+      schema:
+        type: string
+
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: Page number for paginated results
+
+    LimitParam:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      description: Number of items per page
+
+  responses:
+    Unauthorized:
+      description: Authentication is required
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Unauthorized"
+
+    BadRequest:
+      description: Invalid input parameters
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Invalid request parameters"
+
+paths:
+  /prompts/templates:
+    get:
+      summary: List prompt templates
+      description: Retrieve a list of available prompt templates
+      operationId: listTemplates
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  templates:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PromptTemplate'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+
+    post:
+      summary: Create a new prompt template
+      description: Create a new prompt template with detailed configuration
+      operationId: createTemplate
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromptTemplate'
+      responses:
+        '201':
+          description: Template successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptTemplate'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /prompts/templates/{templateId}:
+    get:
+      summary: Get a specific prompt template
+      description: Retrieve details of a specific prompt template
+      operationId: getTemplate
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TemplateId'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptTemplate'
+        '404':
+          description: Template not found
+
+    put:
+      summary: Update a prompt template
+      description: Update an existing prompt template
+      operationId: updateTemplate
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TemplateId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromptTemplate'
+      responses:
+        '200':
+          description: Template successfully updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptTemplate'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+    delete:
+      summary: Delete a prompt template
+      description: Permanently delete a prompt template
+      operationId: deleteTemplate
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TemplateId'
+      responses:
+        '204':
+          description: Template successfully deleted
+
+  /prompts/execute:
+    post:
+      summary: Execute a prompt
+      description: Execute a prompt using a specific template with dynamic variables
+      operationId: executePrompt
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromptRequest'
+      responses:
+        '200':
+          description: Successful prompt execution
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /prompts/optimize:
+    post:
+      summary: Optimize a prompt template
+      description: Analyze and suggest improvements for a prompt template
+      operationId: optimizePrompt
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromptTemplate'
+      responses:
+        '200':
+          description: Optimization results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  original:
+                    $ref: '#/components/schemas/PromptTemplate'
+                  optimized:
+                    $ref: '#/components/schemas/PromptTemplate'
+                  improvements:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                        description:
+                          type: string
+                        impact:
+                          type: string
+
+  /prompts/metrics:
+    get:
+      summary: Get prompt system metrics
+      description: Retrieve comprehensive metrics about prompt usage and performance
+      operationId: getPromptMetrics
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: timeRange
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month]
+      responses:
+        '200':
+          description: Successful metrics retrieval
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalRequests:
+                    type: integer
+                  totalTokens:
+                    type: integer
+                  averageLatency:
+                    type: number
+                  topTemplates:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        templateId:
+                          type: string
+                        usageCount:
+                          type: integer
+
+x-webhooks:
+  promptExecution:
+    post:
+      summary: Prompt Execution Webhook
+      description: Receive real-time notifications about prompt executions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromptResponse'
+      responses:
+        '200':
+          description: Webhook successfully processed
+
+x-websocket:
+  url: ws://api.candlefish.ai/v1/prompts/ws
+  events:
+    - type: execution_start
+      description: Triggered when a prompt execution begins
+    - type: execution_progress
+      description: Provides real-time progress updates during execution
+    - type: execution_complete
+      description: Sent when a prompt execution is finished
+    - type: execution_error
+      description: Indicates an error occurred during prompt execution
+    - type: metrics_update
+      description: Real-time system performance metrics
+    - type: heartbeat
+      description: Periodic connection health check
+
+tags:
+  - name: Templates
+    description: Operations for managing prompt templates
+  - name: Execution
+    description: Prompt execution and optimization
+  - name: Metrics
+    description: Tracking and analyzing prompt system performance
+  - name: WebSocket
+    description: Real-time monitoring and event streaming

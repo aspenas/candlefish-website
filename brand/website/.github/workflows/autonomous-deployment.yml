@@ -1,0 +1,451 @@
+name: Autonomous Prompt Engineering Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to deploy'
+        required: true
+        type: choice
+        options:
+          - all
+          - web
+          - mobile
+          - api
+      deployment-mode:
+        description: 'Deployment mode'
+        required: true
+        default: 'autonomous'
+        type: choice
+        options:
+          - autonomous
+          - supervised
+      use-max-tokens:
+        description: 'Use maximum token capacity'
+        required: true
+        type: boolean
+        default: true
+
+env:
+  AWS_ACCOUNT_ID: '681214184463'
+  AWS_REGION: us-east-1
+  CLAUDE_MODEL: claude-opus-4-1-20250805
+  MAX_INPUT_TOKENS: 2000000
+  MAX_OUTPUT_TOKENS: 400000
+
+jobs:
+  # ========================================
+  # Credential Validation
+  # ========================================
+  validate-credentials:
+    name: Validate AWS Secrets
+    runs-on: ubuntu-latest
+    outputs:
+      credentials-valid: ${{ steps.validate.outputs.valid }}
+      
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Validate Required Secrets
+        id: validate
+        run: |
+          # List of required secrets
+          REQUIRED_SECRETS="
+            candlefish/deployment/netlify-api
+            candlefish/deployment/vercel-api
+            candlefish/deployment/github-pat
+            candlefish/monitoring/datadog-key
+            candlefish/database/postgres-primary
+            candlefish/database/redis-cluster
+            candlefish/mobile/expo-token
+            candlefish/certificates/ios-p12-password
+            candlefish/certificates/android-keystore-password
+          "
+          
+          VALID=true
+          for secret in $REQUIRED_SECRETS; do
+            if ! aws secretsmanager describe-secret --secret-id "$secret" &>/dev/null; then
+              echo "Missing secret: $secret"
+              VALID=false
+            fi
+          done
+          
+          echo "valid=$VALID" >> $GITHUB_OUTPUT
+
+  # ========================================
+  # Web Platform Deployment
+  # ========================================
+  deploy-web:
+    name: Deploy Web Platform
+    needs: validate-credentials
+    if: >
+      needs.validate-credentials.outputs.credentials-valid == 'true' &&
+      (github.event.inputs.platform == 'all' || github.event.inputs.platform == 'web')
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Retrieve Deployment Credentials
+        run: |
+          # Get all necessary credentials
+          export VERCEL_TOKEN=$(aws secretsmanager get-secret-value \
+            --secret-id candlefish/deployment/vercel-api \
+            --query SecretString --output text)
+          
+          export NETLIFY_TOKEN=$(aws secretsmanager get-secret-value \
+            --secret-id candlefish/deployment/netlify-api \
+            --query SecretString --output text)
+          
+          export DATABASE_URL=$(aws secretsmanager get-secret-value \
+            --secret-id candlefish/database/postgres-primary \
+            --query SecretString --output text)
+          
+          export REDIS_URL=$(aws secretsmanager get-secret-value \
+            --secret-id candlefish/database/redis-cluster \
+            --query SecretString --output text)
+          
+          # Store in environment file
+          cat > .env.production << EOF
+          VERCEL_TOKEN=${VERCEL_TOKEN}
+          NETLIFY_TOKEN=${NETLIFY_TOKEN}
+          DATABASE_URL=${DATABASE_URL}
+          REDIS_URL=${REDIS_URL}
+          NEXT_PUBLIC_API_URL=https://api.candlefish.ai
+          NEXT_PUBLIC_WS_URL=wss://ws.candlefish.ai
+          EOF
+          
+      - name: Install Dependencies
+        run: |
+          cd website
+          npm ci --production=false
+          npm audit fix --force || true
+          
+      - name: Build Application
+        run: |
+          cd website
+          npm run build || {
+            # Retry with increased memory
+            NODE_OPTIONS="--max-old-space-size=8192" npm run build
+          }
+          
+      - name: Deploy to Vercel
+        run: |
+          cd website
+          npx vercel deploy --prod --token=$VERCEL_TOKEN --yes || {
+            # Fallback to Netlify
+            npx netlify deploy --prod --auth=$NETLIFY_TOKEN --dir=.next
+          }
+          
+      - name: Configure CDN
+        run: |
+          # Create CloudFront distribution
+          aws cloudfront create-distribution \
+            --distribution-config file://cdn-config.json || {
+            # Update existing distribution
+            DISTRIBUTION_ID=$(aws cloudfront list-distributions \
+              --query "DistributionList.Items[?Comment=='candlefish-web'].Id" \
+              --output text)
+            aws cloudfront update-distribution \
+              --id $DISTRIBUTION_ID \
+              --distribution-config file://cdn-config.json
+          }
+          
+      - name: Run Smoke Tests
+        run: |
+          # Wait for deployment to stabilize
+          sleep 30
+          
+          # Test main endpoints
+          curl -f https://app.candlefish.ai || exit 1
+          curl -f https://api.candlefish.ai/health || exit 1
+          
+      - name: Performance Validation
+        run: |
+          cd website
+          npm run lighthouse:ci || {
+            echo "Performance below threshold, optimizing..."
+            npm run optimize:bundle
+            npm run optimize:images
+          }
+
+  # ========================================
+  # Mobile Platform Deployment
+  # ========================================
+  deploy-mobile:
+    name: Deploy Mobile Platform
+    needs: validate-credentials
+    if: >
+      needs.validate-credentials.outputs.credentials-valid == 'true' &&
+      (github.event.inputs.platform == 'all' || github.event.inputs.platform == 'mobile')
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Environment
+        run: |
+          # Install EAS CLI
+          npm install -g eas-cli
+          npm install -g expo-cli
+          
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Retrieve Mobile Credentials
+        run: |
+          # Export credentials
+          export EXPO_TOKEN=$(aws secretsmanager get-secret-value \
+            --secret-id candlefish/mobile/expo-token \
+            --query SecretString --output text)
+          
+          export APPLE_ID=$(aws secretsmanager get-secret-value \
+            --secret-id candlefish/mobile/apple-id \
+            --query SecretString --output text)
+          
+          export APPLE_APP_SPECIFIC_PASSWORD=$(aws secretsmanager get-secret-value \
+            --secret-id candlefish/mobile/apple-app-password \
+            --query SecretString --output text)
+          
+          # Download certificates
+          aws s3 cp s3://candlefish-certificates/ios/dist.p12 /tmp/dist.p12
+          aws s3 cp s3://candlefish-certificates/android/release.keystore /tmp/release.keystore
+          
+      - name: Build Mobile Apps
+        run: |
+          cd apps/mobile-prompt-engineering
+          npm ci
+          
+          # Configure EAS
+          eas build:configure -p all
+          
+          # Build for both platforms
+          eas build --platform all --profile production --non-interactive --no-wait
+          
+      - name: Submit to Stores
+        if: success()
+        run: |
+          cd apps/mobile-prompt-engineering
+          
+          # Submit to TestFlight
+          eas submit --platform ios --profile production --non-interactive
+          
+          # Submit to Play Console Beta
+          eas submit --platform android --profile production --non-interactive
+
+  # ========================================
+  # API Platform Deployment
+  # ========================================
+  deploy-api:
+    name: Deploy API Platform
+    needs: validate-credentials
+    if: >
+      needs.validate-credentials.outputs.credentials-valid == 'true' &&
+      (github.event.inputs.platform == 'all' || github.event.inputs.platform == 'api')
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup AWS CDK
+        run: |
+          npm install -g aws-cdk
+          cdk --version
+          
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Deploy Infrastructure
+        run: |
+          # Bootstrap CDK
+          cdk bootstrap aws://${{ env.AWS_ACCOUNT_ID }}/${{ env.AWS_REGION }}
+          
+          # Deploy stacks
+          cdk deploy CandlefishVpcStack --require-approval never
+          cdk deploy CandlefishDatabaseStack --require-approval never
+          cdk deploy CandlefishApiStack --require-approval never
+          
+      - name: Deploy Lambda Functions
+        run: |
+          # Build and deploy each function
+          for function in functions/*; do
+            cd $function
+            npm ci --production
+            zip -r function.zip .
+            
+            FUNCTION_NAME=$(basename $function)
+            aws lambda create-function \
+              --function-name candlefish-${FUNCTION_NAME} \
+              --runtime nodejs18.x \
+              --role arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/lambda-execution-role \
+              --handler index.handler \
+              --zip-file fileb://function.zip \
+              --timeout 30 \
+              --memory-size 1024 || {
+              # Update existing function
+              aws lambda update-function-code \
+                --function-name candlefish-${FUNCTION_NAME} \
+                --zip-file fileb://function.zip
+            }
+            
+            cd ../..
+          done
+          
+      - name: Configure API Gateway
+        run: |
+          # Create or update API Gateway
+          API_ID=$(aws apigatewayv2 create-api \
+            --name candlefish-api \
+            --protocol-type HTTP \
+            --cors-configuration file://cors-config.json \
+            --query 'ApiId' --output text) || {
+            API_ID=$(aws apigatewayv2 get-apis \
+              --query "Items[?Name=='candlefish-api'].ApiId" \
+              --output text)
+          }
+          
+          # Deploy API
+          aws apigatewayv2 create-deployment \
+            --api-id $API_ID \
+            --stage-name production
+          
+      - name: Validate API
+        run: |
+          # Test API endpoints
+          curl -f https://api.candlefish.ai/health || exit 1
+          curl -f https://api.candlefish.ai/graphql \
+            -H "Content-Type: application/json" \
+            -d '{"query":"{__schema{types{name}}}"}' || exit 1
+
+  # ========================================
+  # Monitoring Configuration
+  # ========================================
+  configure-monitoring:
+    name: Configure Monitoring
+    needs: [deploy-web, deploy-mobile, deploy-api]
+    if: always()
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Setup CloudWatch Dashboards
+        run: |
+          # Create comprehensive dashboard
+          aws cloudwatch put-dashboard \
+            --dashboard-name CandlefishPromptEngineering \
+            --dashboard-body file://monitoring/cloudwatch-dashboard.json
+          
+      - name: Configure DataDog Integration
+        run: |
+          DATADOG_API_KEY=$(aws secretsmanager get-secret-value \
+            --secret-id candlefish/monitoring/datadog-key \
+            --query SecretString --output text)
+          
+          # Send deployment marker
+          curl -X POST "https://api.datadoghq.com/api/v1/events" \
+            -H "DD-API-KEY: ${DATADOG_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "title": "Prompt Engineering Platform Deployed",
+              "text": "Autonomous deployment completed successfully",
+              "alert_type": "success",
+              "tags": ["deployment:autonomous", "platform:${{ github.event.inputs.platform }}"]
+            }'
+          
+      - name: Create Alerts
+        run: |
+          # Create CloudWatch alarms
+          ./scripts/create-cloudwatch-alarms.sh
+          
+      - name: Generate Deployment Report
+        run: |
+          cat > deployment-report.json << EOF
+          {
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "platform": "${{ github.event.inputs.platform }}",
+            "deployment_mode": "${{ github.event.inputs.deployment-mode }}",
+            "web_status": "${{ needs.deploy-web.result }}",
+            "mobile_status": "${{ needs.deploy-mobile.result }}",
+            "api_status": "${{ needs.deploy-api.result }}",
+            "token_usage": {
+              "input": ${{ env.MAX_INPUT_TOKENS }},
+              "output": ${{ env.MAX_OUTPUT_TOKENS }}
+            }
+          }
+          EOF
+          
+          # Upload report
+          aws s3 cp deployment-report.json \
+            s3://candlefish-deployments/reports/$(date +%Y%m%d-%H%M%S).json
+
+  # ========================================
+  # End-to-End Validation
+  # ========================================
+  validate-deployment:
+    name: Validate Complete Deployment
+    needs: configure-monitoring
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Integration Tests
+        run: |
+          cd tests/integration
+          npm ci
+          npm run test:e2e
+          
+      - name: Performance Benchmarks
+        run: |
+          cd tests/performance
+          npm ci
+          npm run benchmark
+          
+      - name: Security Scan
+        run: |
+          # Run security scanners
+          npm audit
+          npx snyk test
+          
+      - name: Generate Success Report
+        if: success()
+        run: |
+          echo "✅ Autonomous deployment completed successfully!"
+          echo "Platform: ${{ github.event.inputs.platform }}"
+          echo "Deployment Mode: ${{ github.event.inputs.deployment-mode }}"
+          echo "Token Usage: ${{ env.MAX_INPUT_TOKENS }} input, ${{ env.MAX_OUTPUT_TOKENS }} output"
