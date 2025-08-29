@@ -46,14 +46,6 @@
   status = 301
   force = true
 
-# Handle client-side routing for Next.js
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-  conditions = {Role = ["admin"]}
-  force = false
-
 # Enable Netlify Functions (if needed in future)
 [functions]
   directory = "netlify/functions"

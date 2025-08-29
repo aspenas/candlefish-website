@@ -95,11 +95,11 @@ const Navigation: React.FC = () => {
               Workshop
             </Link>
             <Link
-              href="/maturity-map"
+              href="/assessment"
               role="menuitem"
-              aria-current={pathname === '/maturity-map' || pathname === '/assessment' ? 'page' : undefined}
+              aria-current={pathname === '/assessment' ? 'page' : undefined}
               className={`text-sm font-light transition-colors focus:outline-none focus:ring-2 focus:ring-[#3FD3C6] focus:ring-offset-2 focus:ring-offset-[#0D1B2A] rounded-sm px-2 py-1 ${
-                pathname === '/maturity-map' || pathname === '/assessment' ? 'text-[#3FD3C6]' : 'text-[#E0E1DD] hover:text-[#3FD3C6]'
+                pathname === '/assessment' ? 'text-[#3FD3C6]' : 'text-[#E0E1DD] hover:text-[#3FD3C6]'
               }`}
             >
               Assessment
@@ -199,7 +199,7 @@ const Navigation: React.FC = () => {
               Workshop
             </Link>
             <Link
-              href="/maturity-map"
+              href="/assessment"
               role="menuitem"
               className="block text-[#E0E1DD] hover:text-[#3FD3C6] transition-colors focus:outline-none focus:ring-2 focus:ring-[#3FD3C6] focus:ring-offset-2 focus:ring-offset-[#0D1B2A] rounded px-2 py-1"
               onClick={() => setMobileMenuOpen(false)}
