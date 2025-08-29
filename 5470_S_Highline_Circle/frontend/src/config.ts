@@ -1,6 +1,15 @@
-export const API_URL = (import.meta as any).env?.VITE_API_URL || 'https://inventory.highline.work/api/v1';
+// Production-first configuration with proper fallback
+const productionApiUrl = 'https://5470-inventory.fly.dev/api/v1';
+const developmentApiUrl = 'http://localhost:4050/api/v1';
 
-// Log API URL for debugging (will be removed in production)
-console.log('API URL configured as:', API_URL);
-console.log('Environment:', import.meta.env.MODE);
-console.log('All env vars:', import.meta.env);
+export const API_URL = import.meta.env.VITE_API_URL || 
+  (import.meta.env.MODE === 'development' ? developmentApiUrl : productionApiUrl);
+
+// Environment-specific configuration
+export const isDevelopment = import.meta.env.MODE === 'development';
+export const isProduction = import.meta.env.MODE === 'production';
+
+// Always log API configuration for debugging
+console.log('Environment Mode:', import.meta.env.MODE);
+console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
+console.log('Final API URL:', API_URL);

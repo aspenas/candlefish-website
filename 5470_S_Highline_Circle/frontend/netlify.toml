@@ -1,16 +1,17 @@
-# Netlify Configuration for Photo Capture System with Backend Proxy
-
+# Clean Netlify Configuration for Inventory System
 [build]
   command = "npm run build"
   publish = "dist"
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF"
 
 [build.environment]
   NODE_VERSION = "18"
-  VITE_API_URL = "https://inventory.highline.work/api/v1"
+  VITE_API_URL = "https://5470-inventory.fly.dev/api/v1"
+  SKIP_PLUGIN_LIGHTHOUSE = "true"
 
-# Security Headers
+# Security Headers for HTML
 [[headers]]
-  for = "/*"
+  for = "/*.html"
   [headers.values]
     X-Frame-Options = "SAMEORIGIN"
     X-Content-Type-Options = "nosniff"
@@ -18,28 +19,36 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(self), microphone=(self), geolocation=(self)"
     Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://inventory.highline.work https://5470-inventory.fly.dev wss://inventory.highline.work wss://5470-inventory.fly.dev"
+    Cache-Control = "public, max-age=3600"
 
-# Proxy API requests to Fly.io backend
+# Static Assets Caching
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Images Caching
+[[headers]]
+  for = "/*.{jpg,jpeg,png,gif,svg,webp}"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+# SPA Redirects
 [[redirects]]
-  from = "https://inventory.highline.work/api/*"
-  to = "https://5470-inventory.fly.dev/api/:splat"
+  from = "/login"
+  to = "/index.html"
   status = 200
-  force = true
-
+  
 [[redirects]]
-  from = "https://inventory.highline.work/ws"
-  to = "https://5470-inventory.fly.dev/ws"
+  from = "/register"
+  to = "/index.html"
   status = 200
-  force = true
 
-[[redirects]]
-  from = "https://inventory.highline.work/health"
-  to = "https://5470-inventory.fly.dev/health"
-  status = 200
-  force = true
-
-# SPA Redirects (must be last)
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Disable problematic plugins
+[build.processing]
+  skip_processing = false
