@@ -1,3 +1,5 @@
+import React from 'react';
+
 // Main Dashboard Component
 export { default as ThreatIntelligenceDashboard } from './ThreatIntelligenceDashboard';
 

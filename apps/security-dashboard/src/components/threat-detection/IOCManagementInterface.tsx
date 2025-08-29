@@ -399,27 +399,27 @@ export const IOCManagementInterface: React.FC<IOCManagementInterfaceProps> = ({
         } ${ioc.falsePositive ? 'opacity-60' : ''}`}
         onClick={() => setSelectedIOC(isSelected ? null : ioc)}
       >
-        <div className=\"flex items-start justify-between mb-3\">
-          <div className=\"flex items-center space-x-3\">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center space-x-3">
             <div className={`p-2 rounded-lg ${IOC_TYPE_COLORS[ioc.type]}`}>
               {typeof IconComponent === 'string' ? (
-                <span className=\"text-sm\">{IconComponent}</span>
+                <span className="text-sm">{IconComponent}</span>
               ) : (
-                <IconComponent className=\"w-4 h-4\" />
+                <IconComponent className="w-4 h-4" />
               )}
             </div>
             <div>
-              <Badge className={IOC_TYPE_COLORS[ioc.type]} variant=\"outline\">
+              <Badge className={IOC_TYPE_COLORS[ioc.type]} variant="outline">
                 {ioc.type}
               </Badge>
             </div>
           </div>
           
-          <div className=\"flex items-center space-x-2\">
-            <Badge className={TLP_COLORS[ioc.tlp]} variant=\"outline\" size=\"sm\">
+          <div className="flex items-center space-x-2">
+            <Badge className={TLP_COLORS[ioc.tlp]} variant="outline" size="sm">
               TLP:{ioc.tlp}
             </Badge>
-            <Badge className={STATUS_COLORS[ioc.status]} variant=\"outline\" size=\"sm\">
+            <Badge className={STATUS_COLORS[ioc.status]} variant="outline" size="sm">
               {ioc.status}
             </Badge>
             <div className={`text-xs font-bold px-2 py-1 rounded ${
@@ -433,36 +433,36 @@ export const IOCManagementInterface: React.FC<IOCManagementInterfaceProps> = ({
           </div>
         </div>
 
-        <div className=\"mb-3\">
-          <div className=\"flex items-center justify-between mb-1\">
-            <span className=\"font-mono text-sm text-white break-all\">{ioc.value}</span>
+        <div className="mb-3">
+          <div className="flex items-center justify-between mb-1">
+            <span className="font-mono text-sm text-white break-all">{ioc.value}</span>
             <Button
-              variant=\"ghost\"
-              size=\"sm\"
+              variant="ghost"
+              size="sm"
               onClick={(e) => {
                 e.stopPropagation();
                 handleCopyIOC(ioc.value);
               }}
-              className=\"p-1 h-6 w-6\"
+              className="p-1 h-6 w-6"
             >
-              <Copy className=\"w-3 h-3\" />
+              <Copy className="w-3 h-3" />
             </Button>
           </div>
-          <p className=\"text-xs text-gray-400\">{ioc.description}</p>
+          <p className="text-xs text-gray-400">{ioc.description}</p>
         </div>
 
-        <div className=\"flex items-center justify-between text-xs text-gray-400 mb-2\">
-          <div className=\"flex items-center space-x-4\">
+        <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
+          <div className="flex items-center space-x-4">
             <span>Confidence: {ioc.confidence}%</span>
             <span className={REPUTATION_COLORS[ioc.reputation.classification]}>
               {ioc.reputation.classification}
             </span>
             <span>Events: {ioc.relatedEvents.length}</span>
           </div>
-          <div className=\"flex items-center space-x-2\">
+          <div className="flex items-center space-x-2">
             {ioc.falsePositive && (
-              <Tooltip content=\"Marked as false positive\">
-                <AlertTriangle className=\"w-4 h-4 text-yellow-400\" />
+              <Tooltip content="Marked as false positive">
+                <AlertTriangle className="w-4 h-4 text-yellow-400" />
               </Tooltip>
             )}
             <span>{new Date(ioc.lastSeen).toLocaleDateString()}</span>
@@ -471,14 +471,14 @@ export const IOCManagementInterface: React.FC<IOCManagementInterfaceProps> = ({
 
         {/* Tags */}
         {ioc.tags.length > 0 && (
-          <div className=\"flex flex-wrap gap-1 mb-3\">
+          <div className="flex flex-wrap gap-1 mb-3">
             {ioc.tags.slice(0, 3).map((tag, idx) => (
-              <Badge key={idx} variant=\"outline\" className=\"text-xs\">
+              <Badge key={idx} variant="outline" className="text-xs">
                 {tag}
               </Badge>
             ))}
             {ioc.tags.length > 3 && (
-              <Badge variant=\"outline\" className=\"text-xs text-gray-400\">
+              <Badge variant="outline" className="text-xs text-gray-400">
                 +{ioc.tags.length - 3}
               </Badge>
             )}
@@ -487,13 +487,13 @@ export const IOCManagementInterface: React.FC<IOCManagementInterfaceProps> = ({
 
         {/* Enrichment Data */}
         {ioc.enrichment?.geoLocation && (
-          <div className=\"text-xs text-gray-400 space-y-1\">
-            <div className=\"flex items-center space-x-2\">
-              <Globe className=\"w-3 h-3\" />
+          <div className="text-xs text-gray-400 space-y-1">
+            <div className="flex items-center space-x-2">
+              <Globe className="w-3 h-3" />
               <span>{ioc.enrichment.geoLocation.country}, {ioc.enrichment.geoLocation.region}</span>
             </div>
             {ioc.enrichment.geoLocation.organization !== 'Unknown' && (
-              <div className=\"ml-5 text-xs text-gray-500\">
+              <div className="ml-5 text-xs text-gray-500">
                 {ioc.enrichment.geoLocation.organization} ({ioc.enrichment.geoLocation.isp})
               </div>
             )}
@@ -508,17 +508,17 @@ export const IOCManagementInterface: React.FC<IOCManagementInterfaceProps> = ({
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.3 }}
-              className=\"pt-4 mt-4 border-t border-gray-700 space-y-4\"
+              className="pt-4 mt-4 border-t border-gray-700 space-y-4"
             >
               {/* Related Events */}
               <div>
-                <h5 className=\"text-sm font-semibold text-white mb-2\">
+                <h5 className="text-sm font-semibold text-white mb-2">
                   Related Events ({ioc.relatedEvents.length})
                 </h5>
-                <div className=\"space-y-2 max-h-32 overflow-y-auto\">
+                <div className="space-y-2 max-h-32 overflow-y-auto">
                   {ioc.relatedEvents.slice(0, 5).map((event, idx) => (
-                    <div key={idx} className=\"flex items-center justify-between text-xs p-2 bg-gray-900 rounded\">
-                      <div className=\"flex items-center space-x-2\">
+                    <div key={idx} className="flex items-center justify-between text-xs p-2 bg-gray-900 rounded">
+                      <div className="flex items-center space-x-2">
                         <Badge 
                           className={
                             event.severity === 'CRITICAL' ? 'bg-red-500/20 text-red-400' :
@@ -526,13 +526,13 @@ export const IOCManagementInterface: React.FC<IOCManagementInterfaceProps> = ({
                             event.severity === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-400' :
                             'bg-blue-500/20 text-blue-400'
                           }
-                          variant=\"outline\"
+                          variant="outline"
                         >
                           {event.severity}
                         </Badge>
-                        <span className=\"text-gray-300\">{event.type}</span>
+                        <span className="text-gray-300">{event.type}</span>
                       </div>
-                      <span className=\"text-gray-400\">
+                      <span className="text-gray-400">
                         {new Date(event.timestamp).toLocaleDateString()}
                       </span>
                     </div>
@@ -542,19 +542,19 @@ export const IOCManagementInterface: React.FC<IOCManagementInterfaceProps> = ({
 
               {/* Reputation Sources */}
               <div>
-                <h5 className=\"text-sm font-semibold text-white mb-2\">Reputation Sources</h5>
-                <div className=\"space-y-1\">
+                <h5 className="text-sm font-semibold text-white mb-2">Reputation Sources</h5>
+                <div className="space-y-1">
                   {ioc.reputation.sources.map((source, idx) => (
-                    <div key={idx} className=\"flex items-center justify-between text-xs\">
-                      <span className=\"text-gray-300\">{source.name}</span>
-                      <div className=\"flex items-center space-x-2\">
-                        <div className=\"w-16 bg-gray-700 rounded-full h-2\">
+                    <div key={idx} className="flex items-center justify-between text-xs">
+                      <span className="text-gray-300">{source.name}</span>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-16 bg-gray-700 rounded-full h-2">
                           <div 
-                            className=\"bg-blue-500 h-2 rounded-full\" 
+                            className="bg-blue-500 h-2 rounded-full" 
                             style={{ width: `${source.score}%` }}
                           />
                         </div>
-                        <span className=\"text-gray-400\">{source.score}%</span>
+                        <span className="text-gray-400">{source.score}%</span>
                       </div>
                     </div>
                   ))}
@@ -562,33 +562,33 @@ export const IOCManagementInterface: React.FC<IOCManagementInterfaceProps> = ({
               </div>
 
               {/* Action Buttons */}
-              <div className=\"flex items-center space-x-2 pt-2\">
+              <div className="flex items-center space-x-2 pt-2">
                 <Button
-                  variant=\"outline\"
-                  size=\"sm\"
+                  variant="outline"
+                  size="sm"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleSimilaritySearch(ioc);
                   }}
                   disabled={!enableSimilaritySearch}
                 >
-                  <Search className=\"w-3 h-3 mr-1\" />
+                  <Search className="w-3 h-3 mr-1" />
                   Similar
                 </Button>
                 <Button
-                  variant=\"outline\"
-                  size=\"sm\"
+                  variant="outline"
+                  size="sm"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <ExternalLink className=\"w-3 h-3 mr-1\" />
+                  <ExternalLink className="w-3 h-3 mr-1" />
                   Lookup
                 </Button>
                 <Button
-                  variant=\"outline\"
-                  size=\"sm\"
+                  variant="outline"
+                  size="sm"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <Target className=\"w-3 h-3 mr-1\" />
+                  <Target className="w-3 h-3 mr-1" />
                   Hunt
                 </Button>
               </div>
@@ -601,49 +601,49 @@ export const IOCManagementInterface: React.FC<IOCManagementInterfaceProps> = ({
 
   return (
     <Card className={`${className}`}>
-      <div className=\"p-4 border-b border-gray-700\">
-        <div className=\"flex items-center justify-between mb-4\">
-          <h3 className=\"text-lg font-semibold text-white flex items-center\">
-            <Zap className=\"w-5 h-5 mr-2\" />
+      <div className="p-4 border-b border-gray-700">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white flex items-center">
+            <Zap className="w-5 h-5 mr-2" />
             IOC Management ({filteredIOCs.length})
           </h3>
-          <div className=\"flex items-center space-x-2\">
-            <Button variant=\"outline\" size=\"sm\">
-              <Upload className=\"w-4 h-4 mr-1\" />
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" size="sm">
+              <Upload className="w-4 h-4 mr-1" />
               Import
             </Button>
-            <Button variant=\"outline\" size=\"sm\">
-              <Download className=\"w-4 h-4 mr-1\" />
+            <Button variant="outline" size="sm">
+              <Download className="w-4 h-4 mr-1" />
               Export
             </Button>
-            <Button variant=\"outline\" size=\"sm\">
-              <Plus className=\"w-4 h-4 mr-1\" />
+            <Button variant="outline" size="sm">
+              <Plus className="w-4 h-4 mr-1" />
               Add IOC
             </Button>
           </div>
         </div>
 
         {/* Filters */}
-        <div className=\"space-y-3\">
-          <div className=\"relative\">
-            <Search className=\"absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400\" />
+        <div className="space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
-              placeholder=\"Search IOCs, values, tags...\"
+              placeholder="Search IOCs, values, tags..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className=\"pl-10\"
+              className="pl-10"
             />
           </div>
 
-          <div className=\"flex items-center justify-between\">
-            <div className=\"flex items-center space-x-4\">
-              <div className=\"flex items-center space-x-2\">
-                <Filter className=\"w-4 h-4 text-gray-400\" />
-                <span className=\"text-sm text-gray-300\">Type:</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Filter className="w-4 h-4 text-gray-400" />
+                <span className="text-sm text-gray-300">Type:</span>
                 {Object.keys(IOC_TYPE_COLORS).map((type) => (
                   <Badge
                     key={type}
-                    variant={filterType.includes(type as IOCType) ? \"default\" : \"outline\"}
+                    variant={filterType.includes(type as IOCType) ? "default" : "outline"}
                     className={`cursor-pointer text-xs ${
                       filterType.includes(type as IOCType) 
                         ? IOC_TYPE_COLORS[type as IOCType]
@@ -665,26 +665,26 @@ export const IOCManagementInterface: React.FC<IOCManagementInterfaceProps> = ({
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className=\"px-3 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm\"
+                className="px-3 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm"
               >
-                <option value=\"reputation\">Reputation Score</option>
-                <option value=\"confidence\">Confidence</option>
-                <option value=\"lastSeen\">Last Seen</option>
-                <option value=\"relatedEvents\">Related Events</option>
+                <option value="reputation">Reputation Score</option>
+                <option value="confidence">Confidence</option>
+                <option value="lastSeen">Last Seen</option>
+                <option value="relatedEvents">Related Events</option>
               </select>
             </div>
 
-            <div className=\"flex items-center space-x-2\">
+            <div className="flex items-center space-x-2">
               <Button
                 variant={viewMode === 'list' ? 'default' : 'outline'}
-                size=\"sm\"
+                size="sm"
                 onClick={() => setViewMode('list')}
               >
                 List
               </Button>
               <Button
                 variant={viewMode === 'grid' ? 'default' : 'outline'}
-                size=\"sm\"
+                size="sm"
                 onClick={() => setViewMode('grid')}
               >
                 Grid
@@ -694,7 +694,7 @@ export const IOCManagementInterface: React.FC<IOCManagementInterfaceProps> = ({
         </div>
       </div>
 
-      <div className=\"p-4 max-h-[600px] overflow-y-auto\">
+      <div className="p-4 max-h-[600px] overflow-y-auto">
         {filteredIOCs.length > 0 ? (
           <div className={`space-y-4 ${viewMode === 'grid' ? 'grid grid-cols-1 lg:grid-cols-2 gap-4' : ''}`}>
             {filteredIOCs.map((ioc, index) => (
@@ -702,10 +702,10 @@ export const IOCManagementInterface: React.FC<IOCManagementInterfaceProps> = ({
             ))}
           </div>
         ) : (
-          <div className=\"text-center py-12 text-gray-400\">
-            <Zap className=\"w-12 h-12 mx-auto mb-4 opacity-50\" />
+          <div className="text-center py-12 text-gray-400">
+            <Zap className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p>No IOCs found</p>
-            <p className=\"text-sm mt-2\">
+            <p className="text-sm mt-2">
               {searchTerm || filterType.length > 0 || filterStatus.length > 0
                 ? 'Adjust your filters to see results'
                 : 'IOCs will be extracted from security events'}

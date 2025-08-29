@@ -328,8 +328,8 @@ export const MITREAttackVisualization: React.FC<MITREAttackVisualizationProps> =
   if (mitreLoading) {
     return (
       <Card className={`p-6 ${className}`}>
-        <div className=\"flex items-center justify-center h-64\">
-          <div className=\"animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500\" />
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
         </div>
       </Card>
     );
@@ -337,30 +337,30 @@ export const MITREAttackVisualization: React.FC<MITREAttackVisualizationProps> =
 
   return (
     <Card className={`${className}`}>
-      <div className=\"p-4 border-b border-gray-700\">
-        <div className=\"flex items-center justify-between mb-4\">
-          <h3 className=\"text-lg font-semibold text-white flex items-center\">
-            <Target className=\"w-5 h-5 mr-2\" />
+      <div className="p-4 border-b border-gray-700">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white flex items-center">
+            <Target className="w-5 h-5 mr-2" />
             MITRE ATT&CK Framework
           </h3>
-          <div className=\"flex items-center space-x-2\">
+          <div className="flex items-center space-x-2">
             <Button
               variant={viewMode === 'matrix' ? 'default' : 'outline'}
-              size=\"sm\"
+              size="sm"
               onClick={() => setViewMode('matrix')}
             >
               Matrix
             </Button>
             <Button
               variant={viewMode === 'flow' ? 'default' : 'outline'}
-              size=\"sm\"
+              size="sm"
               onClick={() => setViewMode('flow')}
             >
               Flow
             </Button>
             <Button
               variant={viewMode === 'heatmap' ? 'default' : 'outline'}
-              size=\"sm\"
+              size="sm"
               onClick={() => setViewMode('heatmap')}
             >
               Heatmap
@@ -369,22 +369,22 @@ export const MITREAttackVisualization: React.FC<MITREAttackVisualizationProps> =
         </div>
         
         {/* Search and Filters */}
-        <div className=\"flex items-center space-x-4\">
-          <div className=\"flex-1 relative\">
-            <Search className=\"absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400\" />
+        <div className="flex items-center space-x-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
-              placeholder=\"Search tactics and techniques...\"
+              placeholder="Search tactics and techniques..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className=\"pl-10\"
+              className="pl-10"
             />
           </div>
-          <div className=\"flex items-center space-x-2\">
-            <Filter className=\"w-4 h-4 text-gray-400\" />
+          <div className="flex items-center space-x-2">
+            <Filter className="w-4 h-4 text-gray-400" />
             {Object.keys(SEVERITY_COLORS).map((severity) => (
               <Badge
                 key={severity}
-                variant={filterSeverity.includes(severity as Severity) ? \"default\" : \"outline\"}
+                variant={filterSeverity.includes(severity as Severity) ? "default" : "outline"}
                 className={`cursor-pointer text-xs ${
                   filterSeverity.includes(severity as Severity) 
                     ? `bg-${severity.toLowerCase()}-500/20 text-${severity.toLowerCase()}-400 border-${severity.toLowerCase()}-500/30`
@@ -405,15 +405,15 @@ export const MITREAttackVisualization: React.FC<MITREAttackVisualizationProps> =
         </div>
       </div>
 
-      <div className=\"p-4\">
+      <div className="p-4">
         {viewMode === 'flow' && (
-          <div className=\"mb-6\" ref={containerRef}>
-            <svg ref={svgRef} className=\"w-full\" />
+          <div className="mb-6" ref={containerRef}>
+            <svg ref={svgRef} className="w-full" />
           </div>
         )}
 
         {viewMode === 'matrix' && (
-          <div className=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4\">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {MITRE_TACTICS_ORDER.map((tacticId) => {
               const tactic = filteredTactics.find((t: MITRETactic) => 
                 t.id.toLowerCase().replace(/[^a-z0-9]/g, '-') === tacticId
@@ -444,12 +444,12 @@ export const MITREAttackVisualization: React.FC<MITREAttackVisualizationProps> =
                       : undefined
                   }}
                 >
-                  <div className=\"flex items-center justify-between mb-2\">
-                    <div className=\"flex items-center space-x-2\">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
                       {isExpanded ? (
-                        <ChevronDown className=\"w-4 h-4 text-gray-400\" />
+                        <ChevronDown className="w-4 h-4 text-gray-400" />
                       ) : (
-                        <ChevronRight className=\"w-4 h-4 text-gray-400\" />
+                        <ChevronRight className="w-4 h-4 text-gray-400" />
                       )}
                       <Badge 
                         className={`text-xs ${
@@ -457,31 +457,31 @@ export const MITREAttackVisualization: React.FC<MITREAttackVisualizationProps> =
                             ? `bg-${severity.toLowerCase()}-500/20 text-${severity.toLowerCase()}-400 border-${severity.toLowerCase()}-500/30`
                             : 'bg-gray-500/20 text-gray-400 border-gray-500/30'
                         }`}
-                        variant=\"outline\"
+                        variant="outline"
                       >
                         {stats ? stats.eventCount : 0}
                       </Badge>
                     </div>
                     {tactic && (
                       <Tooltip content={tactic.description}>
-                        <Info className=\"w-4 h-4 text-gray-400 hover:text-gray-300\" />
+                        <Info className="w-4 h-4 text-gray-400 hover:text-gray-300" />
                       </Tooltip>
                     )}
                   </div>
                   
-                  <h4 className=\"font-medium text-white mb-1 capitalize\">
+                  <h4 className="font-medium text-white mb-1 capitalize">
                     {(tactic?.name || tacticId).replace(/-/g, ' ')}
                   </h4>
                   
                   {stats && stats.eventCount > 0 && (
-                    <div className=\"text-xs text-gray-400 space-y-1\">
-                      <div className=\"flex justify-between\">
+                    <div className="text-xs text-gray-400 space-y-1">
+                      <div className="flex justify-between">
                         <span>Critical:</span>
-                        <span className=\"text-red-400\">{stats.severityBreakdown.CRITICAL}</span>
+                        <span className="text-red-400">{stats.severityBreakdown.CRITICAL}</span>
                       </div>
-                      <div className=\"flex justify-between\">
+                      <div className="flex justify-between">
                         <span>High:</span>
-                        <span className=\"text-orange-400\">{stats.severityBreakdown.HIGH}</span>
+                        <span className="text-orange-400">{stats.severityBreakdown.HIGH}</span>
                       </div>
                     </div>
                   )}
@@ -493,14 +493,14 @@ export const MITREAttackVisualization: React.FC<MITREAttackVisualizationProps> =
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.2 }}
-                        className=\"mt-4 pt-4 border-t border-gray-700 space-y-2\"
+                        className="mt-4 pt-4 border-t border-gray-700 space-y-2"
                       >
                         {stats?.techniques.slice(0, 3).map((technique) => (
                           <div 
                             key={technique.techniqueId}
-                            className=\"flex items-center justify-between text-xs\"
+                            className="flex items-center justify-between text-xs"
                           >
-                            <span className=\"text-gray-300 truncate\">
+                            <span className="text-gray-300 truncate">
                               {technique.techniqueName}
                             </span>
                             <Badge
@@ -510,7 +510,7 @@ export const MITREAttackVisualization: React.FC<MITREAttackVisualizationProps> =
                                 technique.severity === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-400' :
                                 'bg-blue-500/20 text-blue-400'
                               }`}
-                              variant=\"outline\"
+                              variant="outline"
                             >
                               {technique.eventCount}
                             </Badge>
@@ -518,7 +518,7 @@ export const MITREAttackVisualization: React.FC<MITREAttackVisualizationProps> =
                         ))}
                         
                         {stats && stats.techniques.length > 3 && (
-                          <div className=\"text-xs text-gray-400 text-center pt-2\">
+                          <div className="text-xs text-gray-400 text-center pt-2">
                             +{stats.techniques.length - 3} more techniques
                           </div>
                         )}
@@ -532,7 +532,7 @@ export const MITREAttackVisualization: React.FC<MITREAttackVisualizationProps> =
         )}
 
         {viewMode === 'heatmap' && (
-          <div className=\"grid grid-cols-6 gap-1\">
+          <div className="grid grid-cols-6 gap-1">
             {MITRE_TACTICS_ORDER.map((tacticId) => {
               const stats = tacticStats[tacticId];
               const intensity = getTacticIntensity(tacticId);
@@ -552,10 +552,10 @@ export const MITREAttackVisualization: React.FC<MITREAttackVisualizationProps> =
                   }}
                   onClick={() => handleTacticClick(tacticId)}
                 >
-                  <div className=\"text-xs font-medium text-white mb-1\">
+                  <div className="text-xs font-medium text-white mb-1">
                     {stats ? stats.eventCount : 0}
                   </div>
-                  <div className=\"text-xs text-white/80 leading-tight\">
+                  <div className="text-xs text-white/80 leading-tight">
                     {tacticId.replace(/-/g, ' ').replace(/\\b\\w/g, l => l.toUpperCase())}
                   </div>
                 </div>
@@ -565,10 +565,10 @@ export const MITREAttackVisualization: React.FC<MITREAttackVisualizationProps> =
         )}
 
         {Object.keys(tacticStats).length === 0 && (
-          <div className=\"text-center py-12 text-gray-400\">
-            <Target className=\"w-12 h-12 mx-auto mb-4 opacity-50\" />
+          <div className="text-center py-12 text-gray-400">
+            <Target className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p>No MITRE ATT&CK data available for current events</p>
-            <p className=\"text-sm mt-2\">Events with MITRE mapping will appear here</p>
+            <p className="text-sm mt-2">Events with MITRE mapping will appear here</p>
           </div>
         )}
       </div>

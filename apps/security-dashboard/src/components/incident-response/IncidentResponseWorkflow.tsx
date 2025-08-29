@@ -289,84 +289,84 @@ export const IncidentResponseWorkflow: React.FC<IncidentResponseWorkflowProps> =
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Header */}
-      <div className=\"flex items-center justify-between\">
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className=\"text-2xl font-bold text-white flex items-center\">
-            <AlertCircle className=\"w-6 h-6 mr-2\" />
+          <h2 className="text-2xl font-bold text-white flex items-center">
+            <AlertCircle className="w-6 h-6 mr-2" />
             Incident Response
           </h2>
-          <p className=\"text-gray-400 text-sm mt-1\">
+          <p className="text-gray-400 text-sm mt-1">
             Comprehensive incident response and case management
           </p>
         </div>
 
-        <div className=\"flex items-center space-x-4\">
-          <Button variant=\"outline\" size=\"sm\">
-            <Plus className=\"w-4 h-4 mr-1\" />
+        <div className="flex items-center space-x-4">
+          <Button variant="outline" size="sm">
+            <Plus className="w-4 h-4 mr-1" />
             New Case
           </Button>
-          <Button size=\"sm\">
-            <Play className=\"w-4 h-4 mr-1\" />
+          <Button size="sm">
+            <Play className="w-4 h-4 mr-1" />
             Run Playbook
           </Button>
         </div>
       </div>
 
       {/* Key Metrics */}
-      <div className=\"grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4\">
-        <Card className=\"p-4\">
-          <div className=\"flex items-center justify-between mb-2\">
-            <span className=\"text-sm text-gray-400\">Total Cases</span>
-            <FileText className=\"w-4 h-4 text-blue-400\" />
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-400">Total Cases</span>
+            <FileText className="w-4 h-4 text-blue-400" />
           </div>
-          <div className=\"text-2xl font-bold text-white\">{stats.totalCases}</div>
+          <div className="text-2xl font-bold text-white">{stats.totalCases}</div>
         </Card>
 
-        <Card className=\"p-4\">
-          <div className=\"flex items-center justify-between mb-2\">
-            <span className=\"text-sm text-gray-400\">Open Cases</span>
-            <AlertCircle className=\"w-4 h-4 text-orange-400\" />
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-400">Open Cases</span>
+            <AlertCircle className="w-4 h-4 text-orange-400" />
           </div>
-          <div className=\"text-2xl font-bold text-white\">{stats.openCases}</div>
+          <div className="text-2xl font-bold text-white">{stats.openCases}</div>
         </Card>
 
-        <Card className=\"p-4\">
-          <div className=\"flex items-center justify-between mb-2\">
-            <span className=\"text-sm text-gray-400\">In Progress</span>
-            <Clock className=\"w-4 h-4 text-blue-400\" />
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-400">In Progress</span>
+            <Clock className="w-4 h-4 text-blue-400" />
           </div>
-          <div className=\"text-2xl font-bold text-white\">{stats.inProgressCases}</div>
+          <div className="text-2xl font-bold text-white">{stats.inProgressCases}</div>
         </Card>
 
-        <Card className=\"p-4\">
-          <div className=\"flex items-center justify-between mb-2\">
-            <span className=\"text-sm text-gray-400\">Critical</span>
-            <XCircle className=\"w-4 h-4 text-red-400\" />
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-400">Critical</span>
+            <XCircle className="w-4 h-4 text-red-400" />
           </div>
-          <div className=\"text-2xl font-bold text-white\">{stats.criticalCases}</div>
+          <div className="text-2xl font-bold text-white">{stats.criticalCases}</div>
         </Card>
 
-        <Card className=\"p-4\">
-          <div className=\"flex items-center justify-between mb-2\">
-            <span className=\"text-sm text-gray-400\">Avg Response</span>
-            <Clock className=\"w-4 h-4 text-green-400\" />
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-400">Avg Response</span>
+            <Clock className="w-4 h-4 text-green-400" />
           </div>
-          <div className=\"text-2xl font-bold text-white\">
+          <div className="text-2xl font-bold text-white">
             {stats.avgResponseTime.toFixed(0)}m
           </div>
         </Card>
 
-        <Card className=\"p-4\">
-          <div className=\"flex items-center justify-between mb-2\">
-            <span className=\"text-sm text-gray-400\">SLA Breached</span>
-            <AlertCircle className=\"w-4 h-4 text-red-400\" />
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-400">SLA Breached</span>
+            <AlertCircle className="w-4 h-4 text-red-400" />
           </div>
-          <div className=\"text-2xl font-bold text-white\">{stats.breachedSLA}</div>
+          <div className="text-2xl font-bold text-white">{stats.breachedSLA}</div>
         </Card>
       </div>
 
       {/* Navigation */}
-      <div className=\"flex items-center space-x-1 bg-gray-800 rounded-lg p-1 overflow-x-auto\">
+      <div className="flex items-center space-x-1 bg-gray-800 rounded-lg p-1 overflow-x-auto">
         {[
           { key: 'overview', label: 'Overview', icon: FileText },
           { key: 'cases', label: 'Case Management', icon: AlertCircle },
@@ -378,25 +378,25 @@ export const IncidentResponseWorkflow: React.FC<IncidentResponseWorkflowProps> =
           <Button
             key={key}
             variant={activeView === key ? 'default' : 'ghost'}
-            size=\"sm\"
+            size="sm"
             onClick={() => setActiveView(key as any)}
-            className=\"flex items-center space-x-2 whitespace-nowrap\"
+            className="flex items-center space-x-2 whitespace-nowrap"
           >
-            <Icon className=\"w-4 h-4\" />
+            <Icon className="w-4 h-4" />
             <span>{label}</span>
           </Button>
         ))}
       </div>
 
       {/* Content */}
-      <div className=\"space-y-6\">
+      <div className="space-y-6">
         {activeView === 'overview' && (
-          <div className=\"grid grid-cols-1 lg:grid-cols-3 gap-6\">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Recent Cases */}
-            <Card className=\"p-6 lg:col-span-2\">
-              <h3 className=\"text-lg font-semibold text-white mb-6\">Recent Cases</h3>
+            <Card className="p-6 lg:col-span-2">
+              <h3 className="text-lg font-semibold text-white mb-6">Recent Cases</h3>
               
-              <div className=\"space-y-4\">
+              <div className="space-y-4">
                 {securityCases.slice(0, 5).map((securityCase, index) => (
                   <motion.div
                     key={securityCase.id}
@@ -410,53 +410,53 @@ export const IncidentResponseWorkflow: React.FC<IncidentResponseWorkflowProps> =
                     }`}
                     onClick={() => setSelectedCase(securityCase)}
                   >
-                    <div className=\"flex items-start justify-between mb-3\">
-                      <div className=\"flex items-center space-x-3\">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center space-x-3">
                         <Badge 
                           className={PRIORITY_COLORS[securityCase.priority]}
-                          variant=\"outline\"
+                          variant="outline"
                         >
                           {securityCase.priority}
                         </Badge>
                         <Badge 
                           className={STATUS_COLORS[securityCase.status]}
-                          variant=\"outline\"
+                          variant="outline"
                         >
                           {securityCase.status.replace('_', ' ')}
                         </Badge>
                       </div>
                       
-                      <div className=\"text-xs text-gray-400\">
+                      <div className="text-xs text-gray-400">
                         {new Date(securityCase.createdAt).toLocaleDateString()}
                       </div>
                     </div>
 
-                    <h4 className=\"font-semibold text-white mb-2\">{securityCase.title}</h4>
-                    <p className=\"text-sm text-gray-300 mb-3\">{securityCase.description}</p>
+                    <h4 className="font-semibold text-white mb-2">{securityCase.title}</h4>
+                    <p className="text-sm text-gray-300 mb-3">{securityCase.description}</p>
 
-                    <div className=\"flex items-center justify-between text-sm\">
-                      <div className=\"flex items-center space-x-4 text-gray-400\">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center space-x-4 text-gray-400">
                         {securityCase.assignedTo && (
-                          <div className=\"flex items-center space-x-1\">
-                            <Users className=\"w-4 h-4\" />
+                          <div className="flex items-center space-x-1">
+                            <Users className="w-4 h-4" />
                             <span>{securityCase.assignedTo.name}</span>
                           </div>
                         )}
-                        <div className=\"flex items-center space-x-1\">
-                          <Clock className=\"w-4 h-4\" />
+                        <div className="flex items-center space-x-1">
+                          <Clock className="w-4 h-4" />
                           <span>{securityCase.relatedEvents.length} events</span>
                         </div>
                       </div>
                       
                       {securityCase.playbooks.length > 0 && (
-                        <div className=\"flex items-center space-x-2\">
-                          <div className=\"flex items-center space-x-1 text-gray-400\">
-                            <Play className=\"w-4 h-4\" />
+                        <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-1 text-gray-400">
+                            <Play className="w-4 h-4" />
                             <span>{securityCase.playbooks[0].progress}%</span>
                           </div>
-                          <div className=\"w-16 bg-gray-700 rounded-full h-2\">
+                          <div className="w-16 bg-gray-700 rounded-full h-2">
                             <div 
-                              className=\"bg-blue-500 h-2 rounded-full transition-all duration-300\"
+                              className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                               style={{ width: `${securityCase.playbooks[0].progress}%` }}
                             />
                           </div>
@@ -469,10 +469,10 @@ export const IncidentResponseWorkflow: React.FC<IncidentResponseWorkflowProps> =
             </Card>
 
             {/* Active Playbooks */}
-            <Card className=\"p-6\">
-              <h3 className=\"text-lg font-semibold text-white mb-6\">Active Playbooks</h3>
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold text-white mb-6">Active Playbooks</h3>
               
-              <div className=\"space-y-4\">
+              <div className="space-y-4">
                 {securityCases
                   .filter(c => c.playbooks.some(p => p.status === 'RUNNING'))
                   .slice(0, 4)
@@ -486,31 +486,31 @@ export const IncidentResponseWorkflow: React.FC<IncidentResponseWorkflowProps> =
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.3, delay: index * 0.1 }}
-                        className=\"p-3 bg-gray-800 rounded-lg border border-gray-700\"
+                        className="p-3 bg-gray-800 rounded-lg border border-gray-700"
                       >
-                        <div className=\"flex items-center justify-between mb-2\">
-                          <span className=\"font-medium text-white text-sm\">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-white text-sm">
                             {activePlaybook.name}
                           </span>
-                          <Badge variant=\"outline\" className=\"text-xs\">
+                          <Badge variant="outline" className="text-xs">
                             {activePlaybook.status}
                           </Badge>
                         </div>
                         
-                        <div className=\"text-xs text-gray-400 mb-2\">{securityCase.title}</div>
+                        <div className="text-xs text-gray-400 mb-2">{securityCase.title}</div>
                         
-                        <div className=\"flex items-center justify-between\">
-                          <span className=\"text-xs text-gray-400\">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-400">
                             Step: {activePlaybook.steps.findIndex(s => s.status === 'RUNNING') + 1}/{activePlaybook.steps.length}
                           </span>
-                          <span className=\"text-xs text-white font-medium\">
+                          <span className="text-xs text-white font-medium">
                             {activePlaybook.progress}%
                           </span>
                         </div>
                         
-                        <div className=\"w-full bg-gray-700 rounded-full h-1 mt-2\">
+                        <div className="w-full bg-gray-700 rounded-full h-1 mt-2">
                           <div 
-                            className=\"bg-blue-500 h-1 rounded-full transition-all duration-300\"
+                            className="bg-blue-500 h-1 rounded-full transition-all duration-300"
                             style={{ width: `${activePlaybook.progress}%` }}
                           />
                         </div>

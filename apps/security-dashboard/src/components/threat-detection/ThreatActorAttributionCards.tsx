@@ -291,46 +291,46 @@ export const ThreatActorAttributionCards: React.FC<ThreatActorAttributionCardsPr
 
   return (
     <Card className={`${className}`}>
-      <div className=\"p-4 border-b border-gray-700\">
-        <div className=\"flex items-center justify-between mb-4\">
-          <h3 className=\"text-lg font-semibold text-white flex items-center\">
-            <Shield className=\"w-5 h-5 mr-2\" />
+      <div className="p-4 border-b border-gray-700">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white flex items-center">
+            <Shield className="w-5 h-5 mr-2" />
             Threat Actor Attribution ({filteredActors.length})
           </h3>
-          <div className=\"flex items-center space-x-2\">
+          <div className="flex items-center space-x-2">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className=\"px-3 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm\"
+              className="px-3 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm"
             >
-              <option value=\"riskScore\">Risk Score</option>
-              <option value=\"eventCount\">Event Count</option>
-              <option value=\"confidence\">Confidence</option>
-              <option value=\"lastSeen\">Last Seen</option>
+              <option value="riskScore">Risk Score</option>
+              <option value="eventCount">Event Count</option>
+              <option value="confidence">Confidence</option>
+              <option value="lastSeen">Last Seen</option>
             </select>
           </div>
         </div>
 
         {/* Filters */}
-        <div className=\"space-y-3\">
-          <div className=\"relative\">
-            <Search className=\"absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400\" />
+        <div className="space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
-              placeholder=\"Search threat actors...\"
+              placeholder="Search threat actors..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className=\"pl-10\"
+              className="pl-10"
             />
           </div>
 
-          <div className=\"flex items-center space-x-4\">
-            <div className=\"flex items-center space-x-2\">
-              <Filter className=\"w-4 h-4 text-gray-400\" />
-              <span className=\"text-sm text-gray-300\">Sophistication:</span>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <Filter className="w-4 h-4 text-gray-400" />
+              <span className="text-sm text-gray-300">Sophistication:</span>
               {Object.keys(SOPHISTICATION_COLORS).map((level) => (
                 <Badge
                   key={level}
-                  variant={filterSophistication.includes(level) ? \"default\" : \"outline\"}
+                  variant={filterSophistication.includes(level) ? "default" : "outline"}
                   className={`cursor-pointer text-xs ${
                     filterSophistication.includes(level) 
                       ? SOPHISTICATION_COLORS[level as keyof typeof SOPHISTICATION_COLORS]
@@ -349,13 +349,13 @@ export const ThreatActorAttributionCards: React.FC<ThreatActorAttributionCardsPr
               ))}
             </div>
 
-            <div className=\"flex items-center space-x-2\">
-              <span className=\"text-sm text-gray-300\">Motivation:</span>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-300">Motivation:</span>
               {uniqueMotivations.map((motivation) => (
                 <Badge
                   key={motivation}
-                  variant={filterMotivation.includes(motivation) ? \"default\" : \"outline\"}
-                  className=\"cursor-pointer text-xs\"
+                  variant={filterMotivation.includes(motivation) ? "default" : "outline"}
+                  className="cursor-pointer text-xs"
                   onClick={() => {
                     setFilterMotivation(prev => 
                       prev.includes(motivation)
@@ -372,9 +372,9 @@ export const ThreatActorAttributionCards: React.FC<ThreatActorAttributionCardsPr
         </div>
       </div>
 
-      <div className=\"p-4 max-h-[600px] overflow-y-auto\">
+      <div className="p-4 max-h-[600px] overflow-y-auto">
         {filteredActors.length > 0 ? (
-          <div className=\"space-y-4\">
+          <div className="space-y-4">
             {filteredActors.map((actor, index) => (
               <motion.div
                 key={actor.id}
@@ -388,33 +388,33 @@ export const ThreatActorAttributionCards: React.FC<ThreatActorAttributionCardsPr
                 }`}
                 onClick={() => setSelectedActor(selectedActor?.id === actor.id ? null : actor)}
               >
-                <div className=\"flex items-start justify-between mb-3\">
-                  <div className=\"flex items-center space-x-3\">
-                    <Avatar className=\"w-10 h-10 bg-gradient-to-br from-red-500 to-orange-600\">
-                      <span className=\"text-white font-bold text-sm\">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center space-x-3">
+                    <Avatar className="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-600">
+                      <span className="text-white font-bold text-sm">
                         {actor.name.split(' ').map(word => word[0]).join('')}
                       </span>
                     </Avatar>
                     <div>
-                      <div className=\"flex items-center space-x-2 mb-1\">
-                        <h4 className=\"font-semibold text-white\">{actor.name}</h4>
-                        <span className=\"text-lg\">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <h4 className="font-semibold text-white">{actor.name}</h4>
+                        <span className="text-lg">
                           {COUNTRY_FLAGS[actor.country as keyof typeof COUNTRY_FLAGS] || '🏴‍☠️'}
                         </span>
                       </div>
                       {actor.aliases.length > 0 && (
-                        <p className=\"text-xs text-gray-400\">
+                        <p className="text-xs text-gray-400">
                           aka: {actor.aliases.join(', ')}
                         </p>
                       )}
                     </div>
                   </div>
                   
-                  <div className=\"text-right space-y-1\">
-                    <div className=\"flex items-center space-x-2\">
+                  <div className="text-right space-y-1">
+                    <div className="flex items-center space-x-2">
                       <Badge 
                         className={SOPHISTICATION_COLORS[actor.sophistication]}
-                        variant=\"outline\"
+                        variant="outline"
                       >
                         {actor.sophistication}
                       </Badge>
@@ -427,48 +427,48 @@ export const ThreatActorAttributionCards: React.FC<ThreatActorAttributionCardsPr
                         {actor.riskScore}
                       </div>
                     </div>
-                    <div className=\"flex items-center space-x-1 text-xs text-gray-400\">
+                    <div className="flex items-center space-x-1 text-xs text-gray-400">
                       {actor.trend > 0 ? (
-                        <TrendingUp className=\"w-3 h-3 text-red-400\" />
+                        <TrendingUp className="w-3 h-3 text-red-400" />
                       ) : (
-                        <TrendingUp className=\"w-3 h-3 text-green-400 rotate-180\" />
+                        <TrendingUp className="w-3 h-3 text-green-400 rotate-180" />
                       )}
                       <span>{Math.abs(actor.trend).toFixed(1)}%</span>
                     </div>
                   </div>
                 </div>
 
-                <div className=\"grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3\">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3">
                   <div>
-                    <span className=\"text-gray-400\">Events:</span>
-                    <span className=\"ml-1 text-white font-medium\">{actor.eventCount}</span>
+                    <span className="text-gray-400">Events:</span>
+                    <span className="ml-1 text-white font-medium">{actor.eventCount}</span>
                   </div>
                   <div>
-                    <span className=\"text-gray-400\">Confidence:</span>
-                    <span className=\"ml-1 text-white font-medium\">{actor.confidence}%</span>
+                    <span className="text-gray-400">Confidence:</span>
+                    <span className="ml-1 text-white font-medium">{actor.confidence}%</span>
                   </div>
-                  <div className=\"flex items-center space-x-1\">
-                    <span className=\"text-gray-400\">Motivation:</span>
-                    <span className=\"text-white font-medium\">
+                  <div className="flex items-center space-x-1">
+                    <span className="text-gray-400">Motivation:</span>
+                    <span className="text-white font-medium">
                       {MOTIVATION_ICONS[actor.motivation as keyof typeof MOTIVATION_ICONS]} 
                       {actor.motivation}
                     </span>
                   </div>
                   <div>
-                    <span className=\"text-gray-400\">Sectors:</span>
-                    <span className=\"ml-1 text-white font-medium\">{actor.targetSectors[0]}</span>
+                    <span className="text-gray-400">Sectors:</span>
+                    <span className="ml-1 text-white font-medium">{actor.targetSectors[0]}</span>
                   </div>
                 </div>
 
                 {/* Severity Breakdown */}
-                <div className=\"mb-3\">
-                  <div className=\"flex items-center justify-between text-xs text-gray-400 mb-1\">
+                <div className="mb-3">
+                  <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
                     <span>Event Severity</span>
                     <span>Total: {actor.eventCount}</span>
                   </div>
-                  <div className=\"grid grid-cols-4 gap-1\">
+                  <div className="grid grid-cols-4 gap-1">
                     {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as Severity[]).map((severity) => (
-                      <div key={severity} className=\"text-center\">
+                      <div key={severity} className="text-center">
                         <div className={`h-2 rounded ${
                           severity === 'CRITICAL' ? 'bg-red-500' :
                           severity === 'HIGH' ? 'bg-orange-500' :
@@ -498,23 +498,23 @@ export const ThreatActorAttributionCards: React.FC<ThreatActorAttributionCardsPr
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
                       transition={{ duration: 0.3 }}
-                      className=\"pt-4 border-t border-gray-700 space-y-4\"
+                      className="pt-4 border-t border-gray-700 space-y-4"
                     >
                       {/* Campaigns */}
                       {actor.campaigns.length > 0 && (
                         <div>
-                          <h5 className=\"text-sm font-semibold text-white mb-2\">Active Campaigns</h5>
-                          <div className=\"space-y-2\">
+                          <h5 className="text-sm font-semibold text-white mb-2">Active Campaigns</h5>
+                          <div className="space-y-2">
                             {actor.campaigns.map((campaign) => (
-                              <div key={campaign.id} className=\"p-3 bg-gray-900 rounded border border-gray-700\">
-                                <div className=\"flex items-center justify-between mb-1\">
-                                  <span className=\"font-medium text-white\">{campaign.name}</span>
-                                  <Badge variant=\"outline\" className=\"text-xs\">
+                              <div key={campaign.id} className="p-3 bg-gray-900 rounded border border-gray-700">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="font-medium text-white">{campaign.name}</span>
+                                  <Badge variant="outline" className="text-xs">
                                     Active
                                   </Badge>
                                 </div>
-                                <p className=\"text-xs text-gray-400 mb-2\">{campaign.description}</p>
-                                <div className=\"text-xs text-gray-500\">
+                                <p className="text-xs text-gray-400 mb-2">{campaign.description}</p>
+                                <div className="text-xs text-gray-500">
                                   Started: {new Date(campaign.startDate).toLocaleDateString()}
                                 </div>
                               </div>
@@ -526,21 +526,21 @@ export const ThreatActorAttributionCards: React.FC<ThreatActorAttributionCardsPr
                       {/* TTPs */}
                       {actor.ttps.length > 0 && (
                         <div>
-                          <h5 className=\"text-sm font-semibold text-white mb-2\">
+                          <h5 className="text-sm font-semibold text-white mb-2">
                             Tactics, Techniques & Procedures
                           </h5>
-                          <div className=\"flex flex-wrap gap-2\">
+                          <div className="flex flex-wrap gap-2">
                             {actor.ttps.slice(0, 5).map((ttp, index) => (
                               <Badge 
                                 key={index} 
-                                variant=\"outline\" 
-                                className=\"text-xs bg-purple-500/10 text-purple-400 border-purple-500/30\"
+                                variant="outline" 
+                                className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30"
                               >
                                 {ttp.description}
                               </Badge>
                             ))}
                             {actor.ttps.length > 5 && (
-                              <Badge variant=\"outline\" className=\"text-xs text-gray-400\">
+                              <Badge variant="outline" className="text-xs text-gray-400">
                                 +{actor.ttps.length - 5} more
                               </Badge>
                             )}
@@ -551,19 +551,19 @@ export const ThreatActorAttributionCards: React.FC<ThreatActorAttributionCardsPr
                       {/* Indicators */}
                       {actor.indicators.length > 0 && (
                         <div>
-                          <h5 className=\"text-sm font-semibold text-white mb-2\">
-                            <Zap className=\"w-4 h-4 inline mr-1\" />
+                          <h5 className="text-sm font-semibold text-white mb-2">
+                            <Zap className="w-4 h-4 inline mr-1" />
                             Key Indicators
                           </h5>
-                          <div className=\"space-y-1\">
+                          <div className="space-y-1">
                             {actor.indicators.slice(0, 3).map((indicator, index) => (
-                              <div key={index} className=\"flex items-center justify-between text-xs\">
-                                <span className=\"text-gray-300 font-mono\">{indicator.value}</span>
-                                <div className=\"flex items-center space-x-2\">
-                                  <Badge variant=\"outline\" className=\"text-xs\">
+                              <div key={index} className="flex items-center justify-between text-xs">
+                                <span className="text-gray-300 font-mono">{indicator.value}</span>
+                                <div className="flex items-center space-x-2">
+                                  <Badge variant="outline" className="text-xs">
                                     {indicator.type}
                                   </Badge>
-                                  <span className=\"text-gray-400\">{indicator.confidence}%</span>
+                                  <span className="text-gray-400">{indicator.confidence}%</span>
                                 </div>
                               </div>
                             ))}
@@ -577,10 +577,10 @@ export const ThreatActorAttributionCards: React.FC<ThreatActorAttributionCardsPr
             ))}
           </div>
         ) : (
-          <div className=\"text-center py-12 text-gray-400\">
-            <Shield className=\"w-12 h-12 mx-auto mb-4 opacity-50\" />
+          <div className="text-center py-12 text-gray-400">
+            <Shield className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p>No threat actors identified</p>
-            <p className=\"text-sm mt-2\">
+            <p className="text-sm mt-2">
               {searchTerm || filterSophistication.length > 0 || filterMotivation.length > 0
                 ? 'Adjust your filters to see results'
                 : 'Threat actors will appear as events are analyzed'}

@@ -377,16 +377,16 @@ export const ComplianceDashboards: React.FC<ComplianceDashboardsProps> = ({
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Framework Selection */}
-      <div className=\"flex items-center space-x-4 overflow-x-auto\">
+      <div className="flex items-center space-x-4 overflow-x-auto">
         {frameworks.map(framework => (
           <Button
             key={framework.id}
             variant={selectedFramework === framework.id ? 'default' : 'outline'}
-            size=\"sm\"
+            size="sm"
             onClick={() => setSelectedFramework(framework.id)}
-            className=\"flex items-center space-x-2 whitespace-nowrap\"
+            className="flex items-center space-x-2 whitespace-nowrap"
           >
-            <Shield className=\"w-4 h-4\" />
+            <Shield className="w-4 h-4" />
             <span>{framework.name}</span>
             <Badge 
               className={`ml-2 text-xs ${STATUS_COLORS[framework.status].bg} ${STATUS_COLORS[framework.status].text} ${STATUS_COLORS[framework.status].border}`}
@@ -398,81 +398,81 @@ export const ComplianceDashboards: React.FC<ComplianceDashboardsProps> = ({
       </div>
 
       {/* Compliance Overview */}
-      <div className=\"grid grid-cols-1 md:grid-cols-4 gap-4\">
-        <Card className=\"p-4\">
-          <div className=\"flex items-center justify-between mb-2\">
-            <span className=\"text-sm text-gray-400\">Overall Compliance</span>
-            <CheckCircle className=\"w-4 h-4 text-green-400\" />
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-400">Overall Compliance</span>
+            <CheckCircle className="w-4 h-4 text-green-400" />
           </div>
-          <div className=\"text-2xl font-bold text-white\">
+          <div className="text-2xl font-bold text-white">
             {complianceStats.complianceRate.toFixed(1)}%
           </div>
-          <div className=\"text-xs text-gray-400\">
+          <div className="text-xs text-gray-400">
             {complianceStats.compliantRequirements} of {complianceStats.totalRequirements} requirements
           </div>
         </Card>
 
-        <Card className=\"p-4\">
-          <div className=\"flex items-center justify-between mb-2\">
-            <span className=\"text-sm text-gray-400\">Active Frameworks</span>
-            <FileText className=\"w-4 h-4 text-blue-400\" />
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-400">Active Frameworks</span>
+            <FileText className="w-4 h-4 text-blue-400" />
           </div>
-          <div className=\"text-2xl font-bold text-white\">{frameworks.length}</div>
-          <div className=\"text-xs text-gray-400\">compliance frameworks</div>
+          <div className="text-2xl font-bold text-white">{frameworks.length}</div>
+          <div className="text-xs text-gray-400">compliance frameworks</div>
         </Card>
 
-        <Card className=\"p-4\">
-          <div className=\"flex items-center justify-between mb-2\">
-            <span className=\"text-sm text-gray-400\">Critical Findings</span>
-            <AlertTriangle className=\"w-4 h-4 text-red-400\" />
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-400">Critical Findings</span>
+            <AlertTriangle className="w-4 h-4 text-red-400" />
           </div>
-          <div className=\"text-2xl font-bold text-white\">
+          <div className="text-2xl font-bold text-white">
             {frameworks.reduce((sum, f) => sum + f.criticalFindings, 0)}
           </div>
-          <div className=\"text-xs text-gray-400\">require attention</div>
+          <div className="text-xs text-gray-400">require attention</div>
         </Card>
 
-        <Card className=\"p-4\">
-          <div className=\"flex items-center justify-between mb-2\">
-            <span className=\"text-sm text-gray-400\">Next Assessment</span>
-            <FileText className=\"w-4 h-4 text-orange-400\" />
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-400">Next Assessment</span>
+            <FileText className="w-4 h-4 text-orange-400" />
           </div>
-          <div className=\"text-2xl font-bold text-white\">
+          <div className="text-2xl font-bold text-white">
             {Math.min(...frameworks.map(f => 
               Math.ceil((new Date(f.nextAssessment).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
             ))}
           </div>
-          <div className=\"text-xs text-gray-400\">days</div>
+          <div className="text-xs text-gray-400">days</div>
         </Card>
       </div>
 
       {selectedFrameworkData && (
-        <div className=\"grid grid-cols-1 lg:grid-cols-3 gap-6\">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Framework Details */}
-          <Card className=\"p-6 lg:col-span-2\">
-            <div className=\"flex items-center justify-between mb-6\">
+          <Card className="p-6 lg:col-span-2">
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className=\"text-lg font-semibold text-white flex items-center\">
-                  <Shield className=\"w-5 h-5 mr-2\" />
+                <h3 className="text-lg font-semibold text-white flex items-center">
+                  <Shield className="w-5 h-5 mr-2" />
                   {selectedFrameworkData.name}
                 </h3>
-                <p className=\"text-sm text-gray-400 mt-1\">
+                <p className="text-sm text-gray-400 mt-1">
                   {selectedFrameworkData.description} • Version {selectedFrameworkData.version}
                 </p>
               </div>
               
-              <div className=\"flex items-center space-x-4\">
-                <div className=\"text-right\">
-                  <div className=\"text-2xl font-bold text-white\">
+              <div className="flex items-center space-x-4">
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-white">
                     {selectedFrameworkData.overallScore.toFixed(0)}%
                   </div>
                   <div className={`text-xs flex items-center ${
                     selectedFrameworkData.trend > 0 ? 'text-green-400' : 'text-red-400'
                   }`}>
                     {selectedFrameworkData.trend > 0 ? (
-                      <TrendingUp className=\"w-3 h-3 mr-1\" />
+                      <TrendingUp className="w-3 h-3 mr-1" />
                     ) : (
-                      <TrendingDown className=\"w-3 h-3 mr-1\" />
+                      <TrendingDown className="w-3 h-3 mr-1" />
                     )}
                     {Math.abs(selectedFrameworkData.trend).toFixed(1)}%
                   </div>
@@ -486,23 +486,23 @@ export const ComplianceDashboards: React.FC<ComplianceDashboardsProps> = ({
             </div>
 
             {/* Progress Bar */}
-            <div className=\"mb-6\">
-              <div className=\"flex justify-between items-center mb-2\">
-                <span className=\"text-sm text-gray-400\">Compliance Progress</span>
-                <span className=\"text-sm text-white font-medium\">
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-gray-400">Compliance Progress</span>
+                <span className="text-sm text-white font-medium">
                   {selectedFrameworkData.requirements.filter(r => r.status === 'COMPLIANT').length} / {selectedFrameworkData.requirements.length}
                 </span>
               </div>
               <Progress 
                 value={selectedFrameworkData.overallScore} 
                 max={100} 
-                className=\"h-3\"
+                className="h-3"
               />
             </div>
 
             {/* Requirements List */}
-            <div className=\"space-y-3\">
-              <h4 className=\"font-medium text-white mb-4\">Requirements ({selectedFrameworkData.requirements.length})</h4>
+            <div className="space-y-3">
+              <h4 className="font-medium text-white mb-4">Requirements ({selectedFrameworkData.requirements.length})</h4>
               {selectedFrameworkData.requirements.map((requirement, index) => {
                 const StatusIcon = STATUS_ICONS[requirement.status];
                 return (
@@ -511,62 +511,62 @@ export const ComplianceDashboards: React.FC<ComplianceDashboardsProps> = ({
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className=\"p-4 bg-gray-800 rounded-lg border border-gray-700\"
+                    className="p-4 bg-gray-800 rounded-lg border border-gray-700"
                   >
-                    <div className=\"flex items-start justify-between mb-2\">
-                      <div className=\"flex items-center space-x-3\">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center space-x-3">
                         <StatusIcon className={`w-5 h-5 ${STATUS_COLORS[requirement.status].text}`} />
                         <div>
-                          <h5 className=\"font-medium text-white\">{requirement.title}</h5>
-                          <p className=\"text-sm text-gray-400\">{requirement.description}</p>
+                          <h5 className="font-medium text-white">{requirement.title}</h5>
+                          <p className="text-sm text-gray-400">{requirement.description}</p>
                         </div>
                       </div>
                       
-                      <div className=\"text-right\">
-                        <div className=\"text-lg font-bold text-white\">{requirement.score}%</div>
-                        <Badge variant=\"outline\" className=\"text-xs mt-1\">
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-white">{requirement.score}%</div>
+                        <Badge variant="outline" className="text-xs mt-1">
                           {requirement.category}
                         </Badge>
                       </div>
                     </div>
                     
                     {/* Progress bar for individual requirement */}
-                    <div className=\"mb-3\">
-                      <Progress value={requirement.score} max={100} className=\"h-2\" />
+                    <div className="mb-3">
+                      <Progress value={requirement.score} max={100} className="h-2" />
                     </div>
                     
-                    <div className=\"grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-gray-400\">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-gray-400">
                       <div>
-                        <span className=\"font-medium\">Owner:</span>
-                        <span className=\"ml-1 text-gray-300\">{requirement.owner}</span>
+                        <span className="font-medium">Owner:</span>
+                        <span className="ml-1 text-gray-300">{requirement.owner}</span>
                       </div>
                       <div>
-                        <span className=\"font-medium\">Last Review:</span>
-                        <span className=\"ml-1 text-gray-300\">
+                        <span className="font-medium">Last Review:</span>
+                        <span className="ml-1 text-gray-300">
                           {new Date(requirement.lastReviewed).toLocaleDateString()}
                         </span>
                       </div>
                       <div>
-                        <span className=\"font-medium\">Related Events:</span>
-                        <span className=\"ml-1 text-gray-300\">{requirement.relatedEvents.length}</span>
+                        <span className="font-medium">Related Events:</span>
+                        <span className="ml-1 text-gray-300">{requirement.relatedEvents.length}</span>
                       </div>
                     </div>
                     
                     {/* Gaps and Recommendations */}
                     {(requirement.gaps.length > 0 || requirement.recommendations.length > 0) && (
-                      <div className=\"mt-3 pt-3 border-t border-gray-700\">
+                      <div className="mt-3 pt-3 border-t border-gray-700">
                         {requirement.gaps.length > 0 && (
-                          <div className=\"mb-2\">
-                            <span className=\"text-xs font-medium text-red-400\">Gaps:</span>
-                            <div className=\"text-xs text-gray-300 mt-1\">
+                          <div className="mb-2">
+                            <span className="text-xs font-medium text-red-400">Gaps:</span>
+                            <div className="text-xs text-gray-300 mt-1">
                               {requirement.gaps[0]}
                             </div>
                           </div>
                         )}
                         {requirement.recommendations.length > 0 && (
                           <div>
-                            <span className=\"text-xs font-medium text-blue-400\">Recommendation:</span>
-                            <div className=\"text-xs text-gray-300 mt-1\">
+                            <span className="text-xs font-medium text-blue-400">Recommendation:</span>
+                            <div className="text-xs text-gray-300 mt-1">
                               {requirement.recommendations[0]}
                             </div>
                           </div>
@@ -580,22 +580,22 @@ export const ComplianceDashboards: React.FC<ComplianceDashboardsProps> = ({
           </Card>
 
           {/* Compliance Status Distribution */}
-          <Card className=\"p-6\">
-            <h3 className=\"text-lg font-semibold text-white mb-6\">
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold text-white mb-6">
               Status Distribution
             </h3>
             
-            <div className=\"h-64 mb-6\">
-              <ResponsiveContainer width=\"100%\" height=\"100%\">
+            <div className="h-64 mb-6">
+              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={complianceStats.statusDistribution}
-                    cx=\"50%\"
-                    cy=\"50%\"
+                    cx="50%"
+                    cy="50%"
                     innerRadius={40}
                     outerRadius={80}
                     paddingAngle={5}
-                    dataKey=\"count\"
+                    dataKey="count"
                   >
                     {complianceStats.statusDistribution.map((entry, index) => (
                       <Cell 
@@ -609,10 +609,10 @@ export const ComplianceDashboards: React.FC<ComplianceDashboardsProps> = ({
                       if (payload && payload[0]) {
                         const data = payload[0].payload;
                         return (
-                          <div className=\"bg-gray-800 border border-gray-700 rounded-lg p-3 shadow-lg\">
-                            <p className=\"text-white font-medium\">{data.status.replace('_', ' ')}</p>
-                            <p className=\"text-gray-300\">{data.count} requirements</p>
-                            <p className=\"text-gray-400 text-sm\">{data.percentage.toFixed(1)}%</p>
+                          <div className="bg-gray-800 border border-gray-700 rounded-lg p-3 shadow-lg">
+                            <p className="text-white font-medium">{data.status.replace('_', ' ')}</p>
+                            <p className="text-gray-300">{data.count} requirements</p>
+                            <p className="text-gray-400 text-sm">{data.percentage.toFixed(1)}%</p>
                           </div>
                         );
                       }
@@ -623,21 +623,21 @@ export const ComplianceDashboards: React.FC<ComplianceDashboardsProps> = ({
               </ResponsiveContainer>
             </div>
 
-            <div className=\"space-y-3\">
+            <div className="space-y-3">
               {complianceStats.statusDistribution.map((item) => {
                 const status = item.status as keyof typeof STATUS_COLORS;
                 const StatusIcon = STATUS_ICONS[status];
                 return (
-                  <div key={item.status} className=\"flex items-center justify-between\">
-                    <div className=\"flex items-center space-x-2\">
+                  <div key={item.status} className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
                       <StatusIcon className={`w-4 h-4 ${STATUS_COLORS[status]?.text || 'text-gray-400'}`} />
-                      <span className=\"text-sm text-gray-300\">
+                      <span className="text-sm text-gray-300">
                         {item.status.replace('_', ' ')}
                       </span>
                     </div>
-                    <div className=\"flex items-center space-x-2\">
-                      <span className=\"text-sm text-white font-medium\">{item.count}</span>
-                      <span className=\"text-xs text-gray-400\">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-white font-medium">{item.count}</span>
+                      <span className="text-xs text-gray-400">
                         ({item.percentage.toFixed(1)}%)
                       </span>
                     </div>
@@ -647,20 +647,20 @@ export const ComplianceDashboards: React.FC<ComplianceDashboardsProps> = ({
             </div>
 
             {/* Framework Summary */}
-            <div className=\"mt-6 pt-6 border-t border-gray-700\">
-              <h4 className=\"font-medium text-white mb-4\">All Frameworks</h4>
-              <div className=\"space-y-3\">
+            <div className="mt-6 pt-6 border-t border-gray-700">
+              <h4 className="font-medium text-white mb-4">All Frameworks</h4>
+              <div className="space-y-3">
                 {frameworks.map((framework) => (
-                  <div key={framework.id} className=\"flex items-center justify-between\">
+                  <div key={framework.id} className="flex items-center justify-between">
                     <div>
-                      <div className=\"text-sm font-medium text-white\">{framework.name}</div>
-                      <div className=\"text-xs text-gray-400\">{framework.requirements.length} requirements</div>
+                      <div className="text-sm font-medium text-white">{framework.name}</div>
+                      <div className="text-xs text-gray-400">{framework.requirements.length} requirements</div>
                     </div>
-                    <div className=\"text-right\">
-                      <div className=\"text-sm font-bold text-white\">{framework.overallScore.toFixed(0)}%</div>
+                    <div className="text-right">
+                      <div className="text-sm font-bold text-white">{framework.overallScore.toFixed(0)}%</div>
                       <Badge 
                         className={`text-xs ${STATUS_COLORS[framework.status].bg} ${STATUS_COLORS[framework.status].text} ${STATUS_COLORS[framework.status].border}`}
-                        variant=\"outline\"
+                        variant="outline"
                       >
                         {framework.status.replace('_', ' ')}
                       </Badge>

@@ -360,13 +360,13 @@ const calculateTemporalCorrelation = (events1: SecurityEvent[], events2: Securit
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className=\"bg-gray-800 border border-gray-700 rounded-lg p-3 shadow-lg\">
-        <p className=\"text-gray-300 text-sm mb-2\">
+      <div className="bg-gray-800 border border-gray-700 rounded-lg p-3 shadow-lg">
+        <p className="text-gray-300 text-sm mb-2">
           {format(new Date(label), 'MMM dd, HH:mm')}
         </p>
         {payload.map((entry: any, index: number) => (
-          <p key={index} className=\"text-sm\" style={{ color: entry.color }}>
-            {entry.name}: <span className=\"font-bold\">{entry.value}</span>
+          <p key={index} className="text-sm" style={{ color: entry.color }}>
+            {entry.name}: <span className="font-bold">{entry.value}</span>
           </p>
         ))}
       </div>
@@ -404,18 +404,18 @@ export const SecurityAnalyticsDashboard: React.FC<SecurityAnalyticsDashboardProp
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Header */}
-      <div className=\"flex items-center justify-between\">
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className=\"text-2xl font-bold text-white flex items-center\">
-            <BarChart3 className=\"w-6 h-6 mr-2\" />
+          <h2 className="text-2xl font-bold text-white flex items-center">
+            <BarChart3 className="w-6 h-6 mr-2" />
             Security Analytics
           </h2>
-          <p className=\"text-gray-400 text-sm mt-1\">
+          <p className="text-gray-400 text-sm mt-1">
             Advanced threat analysis and pattern detection
           </p>
         </div>
         
-        <div className=\"flex items-center space-x-4\">
+        <div className="flex items-center space-x-4">
           <Select value={timeRange} onChange={(e) => setTimeRange(e.target.value)}>
             {TIME_RANGES.map(range => (
               <option key={range.value} value={range.value}>
@@ -424,19 +424,19 @@ export const SecurityAnalyticsDashboard: React.FC<SecurityAnalyticsDashboardProp
             ))}
           </Select>
           
-          <Button variant=\"outline\" size=\"sm\">
-            <Download className=\"w-4 h-4 mr-1\" />
+          <Button variant="outline" size="sm">
+            <Download className="w-4 h-4 mr-1" />
             Export
           </Button>
           
-          <Button variant=\"outline\" size=\"sm\">
-            <Maximize2 className=\"w-4 h-4\" />
+          <Button variant="outline" size="sm">
+            <Maximize2 className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
       {/* Navigation Tabs */}
-      <div className=\"flex items-center space-x-1 bg-gray-800 rounded-lg p-1\">
+      <div className="flex items-center space-x-1 bg-gray-800 rounded-lg p-1">
         {[
           { key: 'trends', label: 'Event Trends', icon: TrendingUp },
           { key: 'patterns', label: 'Attack Patterns', icon: Target },
@@ -447,78 +447,78 @@ export const SecurityAnalyticsDashboard: React.FC<SecurityAnalyticsDashboardProp
           <Button
             key={key}
             variant={activeView === key ? 'default' : 'ghost'}
-            size=\"sm\"
+            size="sm"
             onClick={() => setActiveView(key as any)}
-            className=\"flex items-center space-x-2\"
+            className="flex items-center space-x-2"
           >
-            <Icon className=\"w-4 h-4\" />
+            <Icon className="w-4 h-4" />
             <span>{label}</span>
           </Button>
         ))}
       </div>
 
       {/* Content */}
-      <div className=\"space-y-6\">
+      <div className="space-y-6">
         {activeView === 'trends' && (
-          <div className=\"grid grid-cols-1 lg:grid-cols-2 gap-6\">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Event Trends Chart */}
-            <Card className=\"p-6 lg:col-span-2\">
-              <div className=\"flex items-center justify-between mb-6\">
-                <h3 className=\"text-lg font-semibold text-white\">Security Event Trends</h3>
-                <div className=\"flex items-center space-x-4 text-sm\">
-                  <div className=\"flex items-center space-x-2\">
-                    <div className=\"w-3 h-3 bg-blue-500 rounded-full\" />
-                    <span className=\"text-gray-300\">Total Events</span>
+            <Card className="p-6 lg:col-span-2">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-white">Security Event Trends</h3>
+                <div className="flex items-center space-x-4 text-sm">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full" />
+                    <span className="text-gray-300">Total Events</span>
                   </div>
-                  <div className=\"flex items-center space-x-2\">
-                    <div className=\"w-3 h-3 bg-red-500 rounded-full\" />
-                    <span className=\"text-gray-300\">Threats</span>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-red-500 rounded-full" />
+                    <span className="text-gray-300">Threats</span>
                   </div>
-                  <div className=\"flex items-center space-x-2\">
-                    <div className=\"w-3 h-3 bg-orange-500 rounded-full\" />
-                    <span className=\"text-gray-300\">Alerts</span>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-orange-500 rounded-full" />
+                    <span className="text-gray-300">Alerts</span>
                   </div>
                 </div>
               </div>
               
-              <div className=\"h-80\">
-                <ResponsiveContainer width=\"100%\" height=\"100%\">
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={analyticsData.eventTrends}>
-                    <CartesianGrid strokeDasharray=\"3 3\" stroke=\"#374151\" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                     <XAxis 
-                      dataKey=\"timestamp\" 
-                      stroke=\"#9CA3AF\"
+                      dataKey="timestamp" 
+                      stroke="#9CA3AF"
                       fontSize={12}
                       tickFormatter={(value) => format(new Date(value), 'MMM dd HH:mm')}
                     />
-                    <YAxis stroke=\"#9CA3AF\" fontSize={12} />
+                    <YAxis stroke="#9CA3AF" fontSize={12} />
                     <Tooltip content={<CustomTooltip />} />
                     <Area
-                      type=\"monotone\"
-                      dataKey=\"events\"
-                      stackId=\"1\"
-                      stroke=\"#3B82F6\"
-                      fill=\"#3B82F6\"
+                      type="monotone"
+                      dataKey="events"
+                      stackId="1"
+                      stroke="#3B82F6"
+                      fill="#3B82F6"
                       fillOpacity={0.3}
-                      name=\"Events\"
+                      name="Events"
                     />
                     <Area
-                      type=\"monotone\"
-                      dataKey=\"threats\"
-                      stackId=\"2\"
-                      stroke=\"#EF4444\"
-                      fill=\"#EF4444\"
+                      type="monotone"
+                      dataKey="threats"
+                      stackId="2"
+                      stroke="#EF4444"
+                      fill="#EF4444"
                       fillOpacity={0.3}
-                      name=\"Threats\"
+                      name="Threats"
                     />
                     <Area
-                      type=\"monotone\"
-                      dataKey=\"alerts\"
-                      stackId=\"3\"
-                      stroke=\"#F97316\"
-                      fill=\"#F97316\"
+                      type="monotone"
+                      dataKey="alerts"
+                      stackId="3"
+                      stroke="#F97316"
+                      fill="#F97316"
                       fillOpacity={0.3}
-                      name=\"Alerts\"
+                      name="Alerts"
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -526,19 +526,19 @@ export const SecurityAnalyticsDashboard: React.FC<SecurityAnalyticsDashboardProp
             </Card>
 
             {/* Severity Distribution */}
-            <Card className=\"p-6\">
-              <h3 className=\"text-lg font-semibold text-white mb-6\">Severity Distribution</h3>
-              <div className=\"h-64\">
-                <ResponsiveContainer width=\"100%\" height=\"100%\">
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold text-white mb-6">Severity Distribution</h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={analyticsData.severityDistribution}
-                      cx=\"50%\"
-                      cy=\"50%\"
+                      cx="50%"
+                      cy="50%"
                       innerRadius={40}
                       outerRadius={80}
                       paddingAngle={5}
-                      dataKey=\"count\"
+                      dataKey="count"
                     >
                       {analyticsData.severityDistribution.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={SEVERITY_COLORS[entry.severity]} />
@@ -549,10 +549,10 @@ export const SecurityAnalyticsDashboard: React.FC<SecurityAnalyticsDashboardProp
                         if (payload && payload[0]) {
                           const data = payload[0].payload;
                           return (
-                            <div className=\"bg-gray-800 border border-gray-700 rounded-lg p-3 shadow-lg\">
-                              <p className=\"text-white font-medium\">{data.severity}</p>
-                              <p className=\"text-gray-300\">{data.count} events</p>
-                              <p className=\"text-gray-400 text-sm\">{data.percentage.toFixed(1)}%</p>
+                            <div className="bg-gray-800 border border-gray-700 rounded-lg p-3 shadow-lg">
+                              <p className="text-white font-medium">{data.severity}</p>
+                              <p className="text-gray-300">{data.count} events</p>
+                              <p className="text-gray-400 text-sm">{data.percentage.toFixed(1)}%</p>
                             </div>
                           );
                         }
@@ -563,19 +563,19 @@ export const SecurityAnalyticsDashboard: React.FC<SecurityAnalyticsDashboardProp
                 </ResponsiveContainer>
               </div>
               
-              <div className=\"mt-4 space-y-2\">
+              <div className="mt-4 space-y-2">
                 {analyticsData.severityDistribution.map((item) => (
-                  <div key={item.severity} className=\"flex items-center justify-between text-sm\">
-                    <div className=\"flex items-center space-x-2\">
+                  <div key={item.severity} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center space-x-2">
                       <div 
-                        className=\"w-3 h-3 rounded-full\" 
+                        className="w-3 h-3 rounded-full" 
                         style={{ backgroundColor: SEVERITY_COLORS[item.severity] }}
                       />
-                      <span className=\"text-gray-300\">{item.severity}</span>
+                      <span className="text-gray-300">{item.severity}</span>
                     </div>
-                    <div className=\"flex items-center space-x-2\">
-                      <span className=\"text-white font-medium\">{item.count}</span>
-                      <span className=\"text-gray-400\">({item.percentage.toFixed(1)}%)</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-white font-medium">{item.count}</span>
+                      <span className="text-gray-400">({item.percentage.toFixed(1)}%)</span>
                     </div>
                   </div>
                 ))}
@@ -583,35 +583,35 @@ export const SecurityAnalyticsDashboard: React.FC<SecurityAnalyticsDashboardProp
             </Card>
 
             {/* Temporal Patterns */}
-            <Card className=\"p-6\">
-              <h3 className=\"text-lg font-semibold text-white mb-6\">
-                <Clock className=\"w-5 h-5 inline mr-2\" />
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold text-white mb-6">
+                <Clock className="w-5 h-5 inline mr-2" />
                 Temporal Activity Patterns
               </h3>
-              <div className=\"h-64\">
-                <ResponsiveContainer width=\"100%\" height=\"100%\">
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={analyticsData.temporalPatterns}>
-                    <CartesianGrid strokeDasharray=\"3 3\" stroke=\"#374151\" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                     <XAxis 
-                      dataKey=\"hour\" 
-                      stroke=\"#9CA3AF\"
+                      dataKey="hour" 
+                      stroke="#9CA3AF"
                       fontSize={12}
                       tickFormatter={(value) => `${value}:00`}
                     />
-                    <YAxis stroke=\"#9CA3AF\" fontSize={12} />
+                    <YAxis stroke="#9CA3AF" fontSize={12} />
                     <Tooltip
                       content={({ active, payload, label }) => {
                         if (active && payload && payload.length) {
                           const data = payload[0].payload;
                           return (
-                            <div className=\"bg-gray-800 border border-gray-700 rounded-lg p-3 shadow-lg\">
-                              <p className=\"text-gray-300 text-sm mb-1\">
+                            <div className="bg-gray-800 border border-gray-700 rounded-lg p-3 shadow-lg">
+                              <p className="text-gray-300 text-sm mb-1">
                                 Hour: {label}:00
                               </p>
-                              <p className=\"text-white\">
-                                Events: <span className=\"font-bold\">{data.eventCount}</span>
+                              <p className="text-white">
+                                Events: <span className="font-bold">{data.eventCount}</span>
                               </p>
-                              <p className=\"text-gray-400 text-sm\">
+                              <p className="text-gray-400 text-sm">
                                 Dominant: {data.severity}
                               </p>
                             </div>
@@ -621,9 +621,9 @@ export const SecurityAnalyticsDashboard: React.FC<SecurityAnalyticsDashboardProp
                       }}
                     />
                     <Bar 
-                      dataKey=\"eventCount\" 
+                      dataKey="eventCount" 
                       fill={(entry: any) => SEVERITY_COLORS[entry.severity] || '#3B82F6'}
-                      name=\"Event Count\"
+                      name="Event Count"
                     />
                   </BarChart>
                 </ResponsiveContainer>
@@ -637,43 +637,43 @@ export const SecurityAnalyticsDashboard: React.FC<SecurityAnalyticsDashboardProp
         )}
 
         {activeView === 'correlations' && (
-          <div className=\"grid grid-cols-1 lg:grid-cols-2 gap-6\">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Event Source Analysis */}
-            <Card className=\"p-6 lg:col-span-2\">
-              <h3 className=\"text-lg font-semibold text-white mb-6\">Event Source Analysis</h3>
-              <div className=\"h-80\">
-                <ResponsiveContainer width=\"100%\" height=\"100%\">
+            <Card className="p-6 lg:col-span-2">
+              <h3 className="text-lg font-semibold text-white mb-6">Event Source Analysis</h3>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
                   <ScatterChart data={analyticsData.sourceAnalysis}>
-                    <CartesianGrid strokeDasharray=\"3 3\" stroke=\"#374151\" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                     <XAxis 
-                      dataKey=\"eventCount\" 
-                      stroke=\"#9CA3AF\"
+                      dataKey="eventCount" 
+                      stroke="#9CA3AF"
                       fontSize={12}
-                      name=\"Event Count\"
+                      name="Event Count"
                     />
                     <YAxis 
-                      dataKey=\"riskScore\" 
-                      stroke=\"#9CA3AF\"
+                      dataKey="riskScore" 
+                      stroke="#9CA3AF"
                       fontSize={12}
-                      name=\"Risk Score\"
+                      name="Risk Score"
                     />
                     <Tooltip
                       content={({ active, payload }) => {
                         if (active && payload && payload.length) {
                           const data = payload[0].payload;
                           return (
-                            <div className=\"bg-gray-800 border border-gray-700 rounded-lg p-3 shadow-lg\">
-                              <p className=\"text-white font-medium mb-2\">{data.source}</p>
-                              <p className=\"text-gray-300 text-sm\">Events: {data.eventCount}</p>
-                              <p className=\"text-gray-300 text-sm\">Risk Score: {data.riskScore.toFixed(1)}</p>
-                              <p className=\"text-gray-300 text-sm\">Geography: {data.geography}</p>
+                            <div className="bg-gray-800 border border-gray-700 rounded-lg p-3 shadow-lg">
+                              <p className="text-white font-medium mb-2">{data.source}</p>
+                              <p className="text-gray-300 text-sm">Events: {data.eventCount}</p>
+                              <p className="text-gray-300 text-sm">Risk Score: {data.riskScore.toFixed(1)}</p>
+                              <p className="text-gray-300 text-sm">Geography: {data.geography}</p>
                             </div>
                           );
                         }
                         return null;
                       }}
                     />
-                    <Scatter dataKey=\"riskScore\" fill=\"#3B82F6\" />
+                    <Scatter dataKey="riskScore" fill="#3B82F6" />
                   </ScatterChart>
                 </ResponsiveContainer>
               </div>

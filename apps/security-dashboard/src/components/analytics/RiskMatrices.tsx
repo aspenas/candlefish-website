@@ -159,48 +159,48 @@ export const RiskMatrices: React.FC<RiskMatricesProps> = ({
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Risk Summary Cards */}
-      <div className=\"grid grid-cols-1 md:grid-cols-4 gap-4\">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {Object.entries(RISK_LEVELS).map(([level, config]) => {
           const count = riskAssessments.filter(r => getRiskLevel(r.riskScore) === level).length;
           return (
-            <Card key={level} className=\"p-4\">
-              <div className=\"flex items-center justify-between mb-2\">
+            <Card key={level} className="p-4">
+              <div className="flex items-center justify-between mb-2">
                 <span className={`text-sm font-medium ${config.textColor}`}>{level} RISK</span>
                 <div className={`w-3 h-3 rounded-full ${config.color}`} />
               </div>
-              <div className=\"text-2xl font-bold text-white\">{count}</div>
-              <div className=\"text-xs text-gray-400\">items</div>
+              <div className="text-2xl font-bold text-white">{count}</div>
+              <div className="text-xs text-gray-400">items</div>
             </Card>
           );
         })}
       </div>
 
-      <div className=\"grid grid-cols-1 lg:grid-cols-3 gap-6\">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Risk Matrix */}
-        <Card className=\"p-6 lg:col-span-2\">
-          <div className=\"flex items-center justify-between mb-6\">
-            <h3 className=\"text-lg font-semibold text-white flex items-center\">
-              <AlertTriangle className=\"w-5 h-5 mr-2\" />
+        <Card className="p-6 lg:col-span-2">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-white flex items-center">
+              <AlertTriangle className="w-5 h-5 mr-2" />
               Risk Matrix
             </h3>
-            <div className=\"text-sm text-gray-400\">
+            <div className="text-sm text-gray-400">
               Probability vs Impact Analysis
             </div>
           </div>
 
-          <div className=\"relative\">
+          <div className="relative">
             {/* Y-axis label (Impact) */}
-            <div className=\"absolute -left-12 top-1/2 transform -translate-y-1/2 -rotate-90 text-sm text-gray-400 font-medium\">
+            <div className="absolute -left-12 top-1/2 transform -translate-y-1/2 -rotate-90 text-sm text-gray-400 font-medium">
               IMPACT
             </div>
             
             {/* X-axis label (Probability) */}
-            <div className=\"text-center mt-4 mb-4 text-sm text-gray-400 font-medium\">
+            <div className="text-center mt-4 mb-4 text-sm text-gray-400 font-medium">
               PROBABILITY
             </div>
 
             {/* Matrix Grid */}
-            <div className=\"grid grid-cols-5 gap-1 mb-4\">
+            <div className="grid grid-cols-5 gap-1 mb-4">
               {riskMatrix.map((row, rowIndex) =>
                 row.map((cell, colIndex) => {
                   const probability = (colIndex + 1) * 20;
@@ -226,7 +226,7 @@ export const RiskMatrices: React.FC<RiskMatricesProps> = ({
             </div>
 
             {/* Axis labels */}
-            <div className=\"flex justify-between text-xs text-gray-400 mb-2\">
+            <div className="flex justify-between text-xs text-gray-400 mb-2">
               <span>Low</span>
               <span>Medium</span>
               <span>High</span>
@@ -234,7 +234,7 @@ export const RiskMatrices: React.FC<RiskMatricesProps> = ({
               <span>Extreme</span>
             </div>
             
-            <div className=\"absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-gray-400\">
+            <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-gray-400">
               <span>Extreme</span>
               <span>Very High</span>
               <span>High</span>
@@ -245,13 +245,13 @@ export const RiskMatrices: React.FC<RiskMatricesProps> = ({
         </Card>
 
         {/* Top Risks */}
-        <Card className=\"p-6\">
-          <h3 className=\"text-lg font-semibold text-white mb-6 flex items-center\">
-            <Target className=\"w-5 h-5 mr-2\" />
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-white mb-6 flex items-center">
+            <Target className="w-5 h-5 mr-2" />
             Top Risks
           </h3>
           
-          <div className=\"space-y-4\">
+          <div className="space-y-4">
             {riskAssessments.slice(0, 8).map((risk, index) => {
               const level = getRiskLevel(risk.riskScore);
               return (
@@ -260,42 +260,42 @@ export const RiskMatrices: React.FC<RiskMatricesProps> = ({
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.3, delay: index * 0.1 }}
-                  className=\"p-3 bg-gray-800 rounded-lg border border-gray-700\"
+                  className="p-3 bg-gray-800 rounded-lg border border-gray-700"
                 >
-                  <div className=\"flex items-center justify-between mb-2\">
-                    <h4 className=\"font-medium text-white text-sm\">{risk.name}</h4>
-                    <div className=\"flex items-center space-x-2\">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium text-white text-sm">{risk.name}</h4>
+                    <div className="flex items-center space-x-2">
                       <Badge 
                         className={`text-xs ${RISK_LEVELS[level].textColor} ${RISK_LEVELS[level].color} bg-opacity-20`}
-                        variant=\"outline\"
+                        variant="outline"
                       >
                         {level}
                       </Badge>
                       {risk.trend > 0 && (
-                        <TrendingUp className=\"w-4 h-4 text-red-400\" />
+                        <TrendingUp className="w-4 h-4 text-red-400" />
                       )}
                     </div>
                   </div>
                   
-                  <div className=\"grid grid-cols-2 gap-4 text-xs text-gray-400 mb-2\">
+                  <div className="grid grid-cols-2 gap-4 text-xs text-gray-400 mb-2">
                     <div>
                       <span>Probability:</span>
-                      <span className=\"ml-1 text-white font-medium\">{risk.probability.toFixed(1)}%</span>
+                      <span className="ml-1 text-white font-medium">{risk.probability.toFixed(1)}%</span>
                     </div>
                     <div>
                       <span>Impact:</span>
-                      <span className=\"ml-1 text-white font-medium\">{risk.impact.toFixed(1)}%</span>
+                      <span className="ml-1 text-white font-medium">{risk.impact.toFixed(1)}%</span>
                     </div>
                   </div>
                   
-                  <div className=\"text-xs text-gray-400 mb-2\">
+                  <div className="text-xs text-gray-400 mb-2">
                     <span>Risk Score:</span>
-                    <span className=\"ml-1 text-white font-bold\">{risk.riskScore.toFixed(1)}</span>
-                    <span className=\"ml-2\">Events: {risk.events.length}</span>
+                    <span className="ml-1 text-white font-bold">{risk.riskScore.toFixed(1)}</span>
+                    <span className="ml-2">Events: {risk.events.length}</span>
                   </div>
                   
                   {/* Risk Score Bar */}
-                  <div className=\"w-full bg-gray-700 rounded-full h-2 mb-2\">
+                  <div className="w-full bg-gray-700 rounded-full h-2 mb-2">
                     <div 
                       className={`h-2 rounded-full ${RISK_LEVELS[level].color}`}
                       style={{ width: `${risk.riskScore}%` }}
@@ -304,9 +304,9 @@ export const RiskMatrices: React.FC<RiskMatricesProps> = ({
                   
                   {/* Top Mitigation */}
                   {risk.mitigations.length > 0 && (
-                    <div className=\"text-xs text-gray-400\">
-                      <span className=\"font-medium\">Key Mitigation:</span>
-                      <span className=\"ml-1 text-gray-300\">{risk.mitigations[0]}</span>
+                    <div className="text-xs text-gray-400">
+                      <span className="font-medium">Key Mitigation:</span>
+                      <span className="ml-1 text-gray-300">{risk.mitigations[0]}</span>
                     </div>
                   )}
                 </motion.div>
@@ -317,70 +317,70 @@ export const RiskMatrices: React.FC<RiskMatricesProps> = ({
       </div>
 
       {/* Risk Trends */}
-      <Card className=\"p-6\">
-        <h3 className=\"text-lg font-semibold text-white mb-6 flex items-center\">
-          <TrendingUp className=\"w-5 h-5 mr-2\" />
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold text-white mb-6 flex items-center">
+          <TrendingUp className="w-5 h-5 mr-2" />
           Risk Trends & Mitigation Status
         </h3>
         
-        <div className=\"overflow-x-auto\">
-          <table className=\"w-full text-sm\">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
             <thead>
-              <tr className=\"border-b border-gray-700\">
-                <th className=\"text-left py-3 px-4 text-gray-400\">Risk</th>
-                <th className=\"text-left py-3 px-4 text-gray-400\">Category</th>
-                <th className=\"text-left py-3 px-4 text-gray-400\">Score</th>
-                <th className=\"text-left py-3 px-4 text-gray-400\">Trend</th>
-                <th className=\"text-left py-3 px-4 text-gray-400\">Events</th>
-                <th className=\"text-left py-3 px-4 text-gray-400\">Mitigations</th>
+              <tr className="border-b border-gray-700">
+                <th className="text-left py-3 px-4 text-gray-400">Risk</th>
+                <th className="text-left py-3 px-4 text-gray-400">Category</th>
+                <th className="text-left py-3 px-4 text-gray-400">Score</th>
+                <th className="text-left py-3 px-4 text-gray-400">Trend</th>
+                <th className="text-left py-3 px-4 text-gray-400">Events</th>
+                <th className="text-left py-3 px-4 text-gray-400">Mitigations</th>
               </tr>
             </thead>
             <tbody>
               {riskAssessments.slice(0, 10).map((risk) => {
                 const level = getRiskLevel(risk.riskScore);
                 return (
-                  <tr key={risk.id} className=\"border-b border-gray-800 hover:bg-gray-800/50\">
-                    <td className=\"py-3 px-4\">
-                      <div className=\"font-medium text-white\">{risk.name}</div>
+                  <tr key={risk.id} className="border-b border-gray-800 hover:bg-gray-800/50">
+                    <td className="py-3 px-4">
+                      <div className="font-medium text-white">{risk.name}</div>
                     </td>
-                    <td className=\"py-3 px-4\">
-                      <Badge variant=\"outline\" className=\"text-xs\">
+                    <td className="py-3 px-4">
+                      <Badge variant="outline" className="text-xs">
                         {risk.category}
                       </Badge>
                     </td>
-                    <td className=\"py-3 px-4\">
-                      <div className=\"flex items-center space-x-2\">
+                    <td className="py-3 px-4">
+                      <div className="flex items-center space-x-2">
                         <span className={`font-bold ${RISK_LEVELS[level].textColor}`}>
                           {risk.riskScore.toFixed(1)}
                         </span>
                         <Badge 
                           className={`text-xs ${RISK_LEVELS[level].textColor} ${RISK_LEVELS[level].color} bg-opacity-20`}
-                          variant=\"outline\"
+                          variant="outline"
                         >
                           {level}
                         </Badge>
                       </div>
                     </td>
-                    <td className=\"py-3 px-4\">
+                    <td className="py-3 px-4">
                       <div className={`flex items-center space-x-1 ${
                         risk.trend > 0 ? 'text-red-400' : 'text-green-400'
                       }`}>
                         <TrendingUp className={`w-4 h-4 ${risk.trend < 0 ? 'rotate-180' : ''}`} />
-                        <span className=\"text-xs font-medium\">{Math.abs(risk.trend)}%</span>
+                        <span className="text-xs font-medium">{Math.abs(risk.trend)}%</span>
                       </div>
                     </td>
-                    <td className=\"py-3 px-4 text-white font-medium\">
+                    <td className="py-3 px-4 text-white font-medium">
                       {risk.events.length}
                     </td>
-                    <td className=\"py-3 px-4\">
-                      <div className=\"flex flex-wrap gap-1\">
+                    <td className="py-3 px-4">
+                      <div className="flex flex-wrap gap-1">
                         {risk.mitigations.slice(0, 2).map((mitigation, idx) => (
-                          <Badge key={idx} variant=\"outline\" className=\"text-xs\">
+                          <Badge key={idx} variant="outline" className="text-xs">
                             {mitigation}
                           </Badge>
                         ))}
                         {risk.mitigations.length > 2 && (
-                          <Badge variant=\"outline\" className=\"text-xs text-gray-400\">
+                          <Badge variant="outline" className="text-xs text-gray-400">
                             +{risk.mitigations.length - 2}
                           </Badge>
                         )}

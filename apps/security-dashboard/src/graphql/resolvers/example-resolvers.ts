@@ -323,7 +323,7 @@ export const securityEventResolvers = {
       }
 
       // Sanitize search query to prevent injection
-      const sanitizedQuery = args.query.replace(/[<>\"'%;()&+]/g, '');
+      const sanitizedQuery = args.query.replace(/[<>"'%;()&+]/g, '');
       
       if (sanitizedQuery !== args.query) {
         throw new UserInputError('Search query contains invalid characters');

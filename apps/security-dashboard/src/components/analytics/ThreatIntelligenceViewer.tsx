@@ -253,36 +253,36 @@ export const ThreatIntelligenceViewer: React.FC<ThreatIntelligenceViewerProps> =
 
   return (
     <Card className={`${className}`}>
-      <div className=\"p-4 border-b border-gray-700\">
-        <div className=\"flex items-center justify-between mb-4\">
-          <h3 className=\"text-lg font-semibold text-white flex items-center\">
-            <Shield className=\"w-5 h-5 mr-2\" />
+      <div className="p-4 border-b border-gray-700">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white flex items-center">
+            <Shield className="w-5 h-5 mr-2" />
             Threat Intelligence Feed
           </h3>
-          <Badge variant=\"outline\" className=\"text-xs\">
+          <Badge variant="outline" className="text-xs">
             {filteredIntelligence.length} items
           </Badge>
         </div>
 
         {/* Filters */}
-        <div className=\"grid grid-cols-1 md:grid-cols-3 gap-4\">
-          <div className=\"relative\">
-            <Search className=\"absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400\" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
-              placeholder=\"Search intelligence...\"
+              placeholder="Search intelligence..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className=\"pl-10\"
+              className="pl-10"
             />
           </div>
 
-          <div className=\"flex items-center space-x-2\">
-            <Filter className=\"w-4 h-4 text-gray-400\" />
-            <div className=\"flex space-x-1\">
+          <div className="flex items-center space-x-2">
+            <Filter className="w-4 h-4 text-gray-400" />
+            <div className="flex space-x-1">
               {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const).map((severity) => (
                 <Badge
                   key={severity}
-                  variant={filterSeverity.includes(severity) ? \"default\" : \"outline\"}
+                  variant={filterSeverity.includes(severity) ? "default" : "outline"}
                   className={`cursor-pointer text-xs ${
                     filterSeverity.includes(severity) 
                       ? SEVERITY_COLORS[severity]
@@ -305,9 +305,9 @@ export const ThreatIntelligenceViewer: React.FC<ThreatIntelligenceViewerProps> =
           <select
             value={filterSource}
             onChange={(e) => setFilterSource(e.target.value)}
-            className=\"px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm\"
+            className="px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm"
           >
-            <option value=\"all\">All Sources</option>
+            <option value="all">All Sources</option>
             {sources.map(source => (
               <option key={source} value={source}>{source}</option>
             ))}
@@ -315,9 +315,9 @@ export const ThreatIntelligenceViewer: React.FC<ThreatIntelligenceViewerProps> =
         </div>
       </div>
 
-      <div className=\"max-h-96 overflow-y-auto\">
+      <div className="max-h-96 overflow-y-auto">
         {filteredIntelligence.length > 0 ? (
-          <div className=\"space-y-4 p-4\">
+          <div className="space-y-4 p-4">
             {filteredIntelligence.map((item, index) => (
               <motion.div
                 key={item.id}
@@ -331,11 +331,11 @@ export const ThreatIntelligenceViewer: React.FC<ThreatIntelligenceViewerProps> =
                 }`}
                 onClick={() => setSelectedItem(selectedItem?.id === item.id ? null : item)}
               >
-                <div className=\"flex items-start justify-between mb-3\">
-                  <div className=\"flex items-center space-x-3\">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center space-x-3">
                     <Badge 
                       className={SEVERITY_COLORS[item.severity]}
-                      variant=\"outline\"
+                      variant="outline"
                     >
                       {item.severity}
                     </Badge>
@@ -348,24 +348,24 @@ export const ThreatIntelligenceViewer: React.FC<ThreatIntelligenceViewerProps> =
                     </div>
                   </div>
                   
-                  <div className=\"text-right text-xs text-gray-400\">
+                  <div className="text-right text-xs text-gray-400">
                     <div>{item.source}</div>
                     <div>{new Date(item.timestamp).toLocaleDateString()}</div>
                   </div>
                 </div>
 
-                <h4 className=\"font-semibold text-white mb-2\">{item.title}</h4>
-                <p className=\"text-sm text-gray-300 mb-3\">{item.description}</p>
+                <h4 className="font-semibold text-white mb-2">{item.title}</h4>
+                <p className="text-sm text-gray-300 mb-3">{item.description}</p>
 
                 {/* Tags */}
-                <div className=\"flex flex-wrap gap-1 mb-3\">
+                <div className="flex flex-wrap gap-1 mb-3">
                   {item.tags.slice(0, 4).map((tag) => (
-                    <Badge key={tag} variant=\"outline\" className=\"text-xs\">
+                    <Badge key={tag} variant="outline" className="text-xs">
                       {tag}
                     </Badge>
                   ))}
                   {item.tags.length > 4 && (
-                    <Badge variant=\"outline\" className=\"text-xs text-gray-400\">
+                    <Badge variant="outline" className="text-xs text-gray-400">
                       +{item.tags.length - 4}
                     </Badge>
                   )}
@@ -373,7 +373,7 @@ export const ThreatIntelligenceViewer: React.FC<ThreatIntelligenceViewerProps> =
 
                 {/* Attribution */}
                 {item.attribution.actor && (
-                  <div className=\"text-xs text-gray-400 mb-2\">
+                  <div className="text-xs text-gray-400 mb-2">
                     <strong>Attribution:</strong> {item.attribution.actor}
                     {item.attribution.campaign && ` • ${item.attribution.campaign}`}
                   </div>
@@ -381,8 +381,8 @@ export const ThreatIntelligenceViewer: React.FC<ThreatIntelligenceViewerProps> =
 
                 {/* Affected Regions */}
                 {item.affectedRegions.length > 0 && (
-                  <div className=\"flex items-center text-xs text-gray-400\">
-                    <MapPin className=\"w-3 h-3 mr-1\" />
+                  <div className="flex items-center text-xs text-gray-400">
+                    <MapPin className="w-3 h-3 mr-1" />
                     <span>{item.affectedRegions.slice(0, 3).join(', ')}</span>
                     {item.affectedRegions.length > 3 && (
                       <span> +{item.affectedRegions.length - 3} more</span>
@@ -396,22 +396,22 @@ export const ThreatIntelligenceViewer: React.FC<ThreatIntelligenceViewerProps> =
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     transition={{ duration: 0.3 }}
-                    className=\"pt-4 mt-4 border-t border-gray-700 space-y-4\"
+                    className="pt-4 mt-4 border-t border-gray-700 space-y-4"
                   >
                     {/* Indicators */}
                     {item.indicators.length > 0 && (
                       <div>
-                        <h5 className=\"text-sm font-semibold text-white mb-2\">
+                        <h5 className="text-sm font-semibold text-white mb-2">
                           Indicators of Compromise
                         </h5>
-                        <div className=\"space-y-2\">
+                        <div className="space-y-2">
                           {item.indicators.slice(0, 5).map((indicator, idx) => (
-                            <div key={idx} className=\"flex items-center justify-between text-xs p-2 bg-gray-900 rounded\">
-                              <div className=\"flex items-center space-x-2\">
-                                <Badge variant=\"outline\" className=\"text-xs\">{indicator.type}</Badge>
-                                <span className=\"font-mono text-gray-300\">{indicator.value}</span>
+                            <div key={idx} className="flex items-center justify-between text-xs p-2 bg-gray-900 rounded">
+                              <div className="flex items-center space-x-2">
+                                <Badge variant="outline" className="text-xs">{indicator.type}</Badge>
+                                <span className="font-mono text-gray-300">{indicator.value}</span>
                               </div>
-                              <span className=\"text-gray-400\">{indicator.confidence}%</span>
+                              <span className="text-gray-400">{indicator.confidence}%</span>
                             </div>
                           ))}
                         </div>
@@ -421,12 +421,12 @@ export const ThreatIntelligenceViewer: React.FC<ThreatIntelligenceViewerProps> =
                     {/* MITRE Mapping */}
                     {item.mitreMapping.length > 0 && (
                       <div>
-                        <h5 className=\"text-sm font-semibold text-white mb-2\">
+                        <h5 className="text-sm font-semibold text-white mb-2">
                           MITRE ATT&CK Mapping
                         </h5>
-                        <div className=\"flex flex-wrap gap-2\">
+                        <div className="flex flex-wrap gap-2">
                           {item.mitreMapping.map((mapping, idx) => (
-                            <Badge key={idx} variant=\"outline\" className=\"text-xs\">
+                            <Badge key={idx} variant="outline" className="text-xs">
                               {mapping.techniqueId}
                             </Badge>
                           ))}
@@ -437,20 +437,20 @@ export const ThreatIntelligenceViewer: React.FC<ThreatIntelligenceViewerProps> =
                     {/* References */}
                     {item.references.length > 0 && (
                       <div>
-                        <h5 className=\"text-sm font-semibold text-white mb-2\">References</h5>
-                        <div className=\"space-y-1\">
+                        <h5 className="text-sm font-semibold text-white mb-2">References</h5>
+                        <div className="space-y-1">
                           {item.references.map((ref, idx) => (
-                            <div key={idx} className=\"flex items-center space-x-2 text-xs\">
-                              <ExternalLink className=\"w-3 h-3 text-gray-400\" />
+                            <div key={idx} className="flex items-center space-x-2 text-xs">
+                              <ExternalLink className="w-3 h-3 text-gray-400" />
                               <a 
                                 href={ref.url} 
-                                className=\"text-blue-400 hover:text-blue-300 underline\"
-                                target=\"_blank\"
-                                rel=\"noopener noreferrer\"
+                                className="text-blue-400 hover:text-blue-300 underline"
+                                target="_blank"
+                                rel="noopener noreferrer"
                               >
                                 {ref.title}
                               </a>
-                              <Badge variant=\"outline\" className=\"text-xs\">{ref.type}</Badge>
+                              <Badge variant="outline" className="text-xs">{ref.type}</Badge>
                             </div>
                           ))}
                         </div>
@@ -460,10 +460,10 @@ export const ThreatIntelligenceViewer: React.FC<ThreatIntelligenceViewerProps> =
                     {/* Affected Sectors */}
                     {item.affectedSectors.length > 0 && (
                       <div>
-                        <h5 className=\"text-sm font-semibold text-white mb-2\">Affected Sectors</h5>
-                        <div className=\"flex flex-wrap gap-1\">
+                        <h5 className="text-sm font-semibold text-white mb-2">Affected Sectors</h5>
+                        <div className="flex flex-wrap gap-1">
                           {item.affectedSectors.map((sector) => (
-                            <Badge key={sector} variant=\"outline\" className=\"text-xs\">
+                            <Badge key={sector} variant="outline" className="text-xs">
                               {sector}
                             </Badge>
                           ))}
@@ -476,10 +476,10 @@ export const ThreatIntelligenceViewer: React.FC<ThreatIntelligenceViewerProps> =
             ))}
           </div>
         ) : (
-          <div className=\"text-center py-12 text-gray-400\">
-            <Shield className=\"w-12 h-12 mx-auto mb-4 opacity-50\" />
+          <div className="text-center py-12 text-gray-400">
+            <Shield className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p>No threat intelligence available</p>
-            <p className=\"text-sm mt-2\">
+            <p className="text-sm mt-2">
               {searchTerm || filterSeverity.length > 0 || filterSource !== 'all'
                 ? 'Adjust your filters to see results'
                 : 'Intelligence will appear as threats are analyzed'}

@@ -1,5 +1,6 @@
 import { MockedProvider } from '@apollo/client/testing';
 import { ReactElement } from 'react';
+import { vi } from 'vitest';
 
 // Mock Apollo Client for testing
 export const mockApolloClient = {
