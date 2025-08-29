@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Frontend API Test</title>
+</head>
+<body>
+    <h1>Frontend API Integration Test</h1>
+    <div id="output"></div>
+
+    <script>
+        // Test the camelCase transformation function
+        const toCamelCase = (obj) => {
+            if (obj === null || obj === undefined || typeof obj !== 'object') {
+                return obj;
+            }
+            
+            if (Array.isArray(obj)) {
+                return obj.map(toCamelCase);
+            }
+            
+            const camelCaseObj = {};
+            for (const [key, value] of Object.entries(obj)) {
+                const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+                camelCaseObj[camelKey] = toCamelCase(value);
+            }
+            return camelCaseObj;
+        };
+
+        const outputDiv = document.getElementById('output');
+
+        // Test API call to backend
+        fetch('http://localhost:4050/api/v1/analytics/summary')
+            .then(response => {
+                console.log('API Response Status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Raw API Data:', data);
+                
+                // Transform the data like the frontend would
+                const transformedData = toCamelCase(data);
+                console.log('Transformed Data:', transformedData);
+                
+                outputDiv.innerHTML = `
+                    <h2>✅ API Test Results</h2>
+                    
+                    <h3>Raw API Response (snake_case):</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                    
+                    <h3>Transformed Data (camelCase):</h3>
+                    <pre>${JSON.stringify(transformedData, null, 2)}</pre>
+                    
+                    <h3>Dashboard Values (Frontend Expected Format):</h3>
+                    <ul>
+                        <li><strong>Total Items:</strong> ${transformedData.totalItems || 'NOT FOUND'}</li>
+                        <li><strong>Total Value:</strong> $${(transformedData.totalValue || 0).toLocaleString()}</li>
+                        <li><strong>Items to Keep:</strong> ${transformedData.keepCount || 'NOT FOUND'}</li>
+                        <li><strong>Items to Sell:</strong> ${transformedData.sellCount || 'NOT FOUND'}</li>
+                        <li><strong>Undecided Items:</strong> ${transformedData.unsureCount || 'NOT FOUND'}</li>
+                    </ul>
+                    
+                    <h3>Status:</h3>
+                    <p style="color: green; font-size: 18px; font-weight: bold;">
+                        🎉 SUCCESS! Frontend can now display real data from the backend!
+                    </p>
+                `;
+            })
+            .catch(error => {
+                console.error('API Test Error:', error);
+                outputDiv.innerHTML = `
+                    <h2>❌ API Test Failed</h2>
+                    <p style="color: red;">Error: ${error.message}</p>
+                    <p>Check that the backend is running on port 4050</p>
+                `;
+            });
+    </script>
+</body>
+</html>

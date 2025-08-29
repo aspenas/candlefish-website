@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Connectivity Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .info { background-color: #cce7ff; border-color: #b0d4f1; color: #004085; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        pre { white-space: pre-wrap; max-height: 200px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>API Connectivity Test</h1>
+    <p>Testing connection to backend API at: <strong>https://5470-inventory.fly.dev</strong></p>
+    
+    <button onclick="testHealthCheck()">Test Health Check</button>
+    <button onclick="testItemsAPI()">Test Items API</button>
+    <button onclick="testRoomsAPI()">Test Rooms API</button>
+    <button onclick="clearResults()">Clear Results</button>
+    
+    <div id="results"></div>
+
+    <script>
+        function addResult(type, title, content) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `<h3>${title}</h3><pre>${content}</pre>`;
+            results.appendChild(div);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        async function testHealthCheck() {
+            try {
+                addResult('info', 'Health Check - Starting', 'Testing https://5470-inventory.fly.dev/health');
+                
+                const response = await fetch('https://5470-inventory.fly.dev/health', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addResult('success', 'Health Check - Success', JSON.stringify(data, null, 2));
+                } else {
+                    addResult('error', 'Health Check - Failed', `Status: ${response.status}\nResponse: ${JSON.stringify(data, null, 2)}`);
+                }
+            } catch (error) {
+                addResult('error', 'Health Check - Network Error', error.message);
+            }
+        }
+
+        async function testItemsAPI() {
+            try {
+                addResult('info', 'Items API - Starting', 'Testing https://5470-inventory.fly.dev/api/v1/items');
+                
+                const response = await fetch('https://5470-inventory.fly.dev/api/v1/items', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const itemCount = data.items ? data.items.length : 0;
+                    const totalValue = data.items ? data.items.reduce((sum, item) => sum + (item.purchase_price || 0), 0) : 0;
+                    
+                    addResult('success', 'Items API - Success', 
+                        `Items Found: ${itemCount}\nTotal Value: $${totalValue.toFixed(2)}\n\nFirst 3 items:\n${JSON.stringify(data.items?.slice(0, 3), null, 2)}`
+                    );
+                } else {
+                    addResult('error', 'Items API - Failed', `Status: ${response.status}\nResponse: ${JSON.stringify(data, null, 2)}`);
+                }
+            } catch (error) {
+                addResult('error', 'Items API - Network Error', error.message);
+            }
+        }
+
+        async function testRoomsAPI() {
+            try {
+                addResult('info', 'Rooms API - Starting', 'Testing https://5470-inventory.fly.dev/api/v1/rooms');
+                
+                const response = await fetch('https://5470-inventory.fly.dev/api/v1/rooms', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const roomCount = data.rooms ? data.rooms.length : 0;
+                    
+                    addResult('success', 'Rooms API - Success', 
+                        `Rooms Found: ${roomCount}\n\nRooms:\n${JSON.stringify(data.rooms, null, 2)}`
+                    );
+                } else {
+                    addResult('error', 'Rooms API - Failed', `Status: ${response.status}\nResponse: ${JSON.stringify(data, null, 2)}`);
+                }
+            } catch (error) {
+                addResult('error', 'Rooms API - Network Error', error.message);
+            }
+        }
+
+        // Auto-run tests on page load
+        window.onload = function() {
+            addResult('info', 'Page Loaded', 'Ready to test API connectivity. Click buttons above to run tests.');
+            
+            // Show environment info
+            addResult('info', 'Environment Info', 
+                `User Agent: ${navigator.userAgent}\n` +
+                `Location: ${window.location.href}\n` +
+                `Time: ${new Date().toISOString()}`
+            );
+        };
+    </script>
+</body>
+</html>

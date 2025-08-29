@@ -17,10 +17,13 @@ import CategoryDistribution from '../components/CategoryDistribution';
 import RecentActivity from '../components/RecentActivity';
 
 export default function Dashboard() {
-  const { data: summary, isLoading } = useQuery({
+  const { data: summaryResponse, isLoading } = useQuery({
     queryKey: ['summary'],
     queryFn: api.getSummary,
   });
+  
+  // Extract the actual data from axios response
+  const summary = summaryResponse?.data || summaryResponse;
 
   if (isLoading) {
     return (

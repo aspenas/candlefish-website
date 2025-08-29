@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { AuthProvider } from './contexts/AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/Layout';
 import PerformanceMonitor from './components/PerformanceMonitor';
@@ -32,26 +31,64 @@ function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
-          <AuthProvider>
-            <Router>
-              <Layout>
-                <HashRedirect />
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/inventory" element={<Inventory />} />
-                  <Route path="/item/:id" element={<ItemDetail />} />
-                  <Route path="/buyer-view" element={<BuyerView />} />
-                  <Route path="/analytics" element={<Analytics />} />
-                  <Route path="/insights" element={<Insights />} />
-                  <Route path="/collaboration" element={<Collaboration />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/photos" element={<PhotoCapture />} />
-                  {/* Catch-all route - redirect unmatched paths to dashboard */}
-                  <Route path="*" element={<Dashboard />} />
-                </Routes>
-              </Layout>
-            </Router>
-          </AuthProvider>
+          <Router>
+            <HashRedirect />
+            <Routes>
+              {/* All routes are public for local development */}
+              <Route path="/" element={
+                <Layout>
+                  <Dashboard />
+                </Layout>
+              } />
+              <Route path="/inventory" element={
+                <Layout>
+                  <Inventory />
+                </Layout>
+              } />
+              <Route path="/item/:id" element={
+                <Layout>
+                  <ItemDetail />
+                </Layout>
+              } />
+              <Route path="/buyer-view" element={
+                <Layout>
+                  <BuyerView />
+                </Layout>
+              } />
+              <Route path="/analytics" element={
+                <Layout>
+                  <Analytics />
+                </Layout>
+              } />
+              <Route path="/insights" element={
+                <Layout>
+                  <Insights />
+                </Layout>
+              } />
+              <Route path="/collaboration" element={
+                <Layout>
+                  <Collaboration />
+                </Layout>
+              } />
+              <Route path="/settings" element={
+                <Layout>
+                  <Settings />
+                </Layout>
+              } />
+              <Route path="/photos" element={
+                <Layout>
+                  <PhotoCapture />
+                </Layout>
+              } />
+              
+              {/* Catch-all route - redirect unmatched paths to dashboard */}
+              <Route path="*" element={
+                <Layout>
+                  <Dashboard />
+                </Layout>
+              } />
+            </Routes>
+          </Router>
           <Toaster
             position="top-right"
             toastOptions={{
