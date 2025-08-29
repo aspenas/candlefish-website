@@ -1,0 +1,450 @@
+name: Automated Testing Suite
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    types: [opened, synchronize, reopened]
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM UTC
+  workflow_dispatch:
+    inputs:
+      test-type:
+        description: 'Test type to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - unit
+          - integration
+          - e2e
+          - performance
+          - accessibility
+          - security
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '8'
+  COVERAGE_THRESHOLD: 80
+
+jobs:
+  # ========================================
+  # Unit Testing
+  # ========================================
+  unit-tests:
+    name: Unit Tests - ${{ matrix.package }}
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test-type == 'all' || github.event.inputs.test-type == 'unit'
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - website
+          - security-dashboard
+          - api-site
+          - partners-site
+          - shared-components
+        node-version: [18, 20]
+        
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+          
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Run Unit Tests
+        run: |
+          pnpm run test:unit --filter=@candlefish-ai/${{ matrix.package }} -- \
+            --coverage \
+            --coverageThreshold='{"global":{"branches":${{ env.COVERAGE_THRESHOLD }},"functions":${{ env.COVERAGE_THRESHOLD }},"lines":${{ env.COVERAGE_THRESHOLD }},"statements":${{ env.COVERAGE_THRESHOLD }}}}'
+            
+      - name: Generate Coverage Report
+        if: matrix.node-version == 20
+        run: |
+          pnpm run test:coverage --filter=@candlefish-ai/${{ matrix.package }}
+          
+      - name: Upload Coverage to Codecov
+        if: matrix.node-version == 20
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./apps/${{ matrix.package }}/coverage/lcov.info
+          flags: ${{ matrix.package }}
+          name: ${{ matrix.package }}-coverage
+          
+      - name: Archive Coverage Reports
+        if: matrix.node-version == 20
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-${{ matrix.package }}
+          path: apps/${{ matrix.package }}/coverage/
+          retention-days: 30
+
+  # ========================================
+  # Integration Testing
+  # ========================================
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test-type == 'all' || github.event.inputs.test-type == 'integration'
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+          
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+          
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Test Environment
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Setup Database
+        run: |
+          psql -h localhost -U postgres -d testdb -f ./scripts/init-test-db.sql
+        env:
+          PGPASSWORD: testpass
+          
+      - name: Run Integration Tests
+        run: |
+          pnpm run test:integration
+        env:
+          DATABASE_URL: postgresql://postgres:testpass@localhost:5432/testdb
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+          
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: integration-test-results
+          path: test-results/
+          retention-days: 30
+
+  # ========================================
+  # E2E Testing with Playwright
+  # ========================================
+  e2e-tests:
+    name: E2E Tests - ${{ matrix.browser }}
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test-type == 'all' || github.event.inputs.test-type == 'e2e'
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+        
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+        
+      - name: Build Application
+        run: pnpm run build --filter=@candlefish-ai/website
+        
+      - name: Run E2E Tests
+        run: |
+          pnpm run test:e2e -- --browser=${{ matrix.browser }}
+        env:
+          PLAYWRIGHT_TEST_BASE_URL: http://localhost:3000
+          
+      - name: Upload Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright-report-${{ matrix.browser }}
+          path: playwright-report/
+          retention-days: 30
+          
+      - name: Upload Test Videos
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-videos-${{ matrix.browser }}
+          path: test-results/videos/
+          retention-days: 7
+
+  # ========================================
+  # Performance Testing
+  # ========================================
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test-type == 'all' || github.event.inputs.test-type == 'performance'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Build Application
+        run: pnpm run build --filter=@candlefish-ai/website
+        
+      - name: Start Application
+        run: |
+          pnpm run start --filter=@candlefish-ai/website &
+          sleep 10  # Wait for server to start
+          
+      - name: Run Lighthouse Tests
+        run: |
+          npm install -g lighthouse
+          lighthouse http://localhost:3000 \
+            --output json \
+            --output-path=./lighthouse-report.json \
+            --chrome-flags="--headless"
+            
+          # Extract scores
+          PERF_SCORE=$(jq '.categories.performance.score * 100' lighthouse-report.json)
+          ACCESS_SCORE=$(jq '.categories.accessibility.score * 100' lighthouse-report.json)
+          BEST_SCORE=$(jq '.categories["best-practices"].score * 100' lighthouse-report.json)
+          SEO_SCORE=$(jq '.categories.seo.score * 100' lighthouse-report.json)
+          
+          echo "Performance Score: $PERF_SCORE"
+          echo "Accessibility Score: $ACCESS_SCORE"
+          echo "Best Practices Score: $BEST_SCORE"
+          echo "SEO Score: $SEO_SCORE"
+          
+          # Fail if scores are below threshold
+          if (( $(echo "$PERF_SCORE < 85" | bc -l) )); then
+            echo "Performance score below threshold!"
+            exit 1
+          fi
+          
+      - name: Run K6 Load Tests
+        run: |
+          # Install k6
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+          
+          # Run load tests
+          k6 run tests/performance/k6-load-test.js
+          
+      - name: Upload Performance Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-reports
+          path: |
+            lighthouse-report.json
+            k6-results.json
+          retention-days: 30
+
+  # ========================================
+  # Accessibility Testing
+  # ========================================
+  accessibility-tests:
+    name: Accessibility Tests
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test-type == 'all' || github.event.inputs.test-type == 'accessibility'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Build Application
+        run: pnpm run build --filter=@candlefish-ai/website
+        
+      - name: Start Application
+        run: |
+          pnpm run start --filter=@candlefish-ai/website &
+          sleep 10
+          
+      - name: Run Pa11y Tests
+        run: |
+          npm install -g pa11y pa11y-ci
+          pa11y-ci --config .pa11yci.json
+          
+      - name: Run Axe Tests
+        run: |
+          pnpm run test:accessibility
+          
+      - name: Generate Accessibility Report
+        run: |
+          node scripts/generate-accessibility-report.js
+          
+      - name: Upload Accessibility Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: accessibility-reports
+          path: |
+            accessibility-report.html
+            pa11y-results/
+          retention-days: 30
+
+  # ========================================
+  # Security Testing
+  # ========================================
+  security-tests:
+    name: Security Tests
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test-type == 'all' || github.event.inputs.test-type == 'security'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: Run npm audit
+        run: |
+          npm audit --production --audit-level=high
+          
+      - name: Run Snyk Security Scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --all-projects
+          
+      - name: Run OWASP ZAP Scan
+        run: |
+          docker run -t owasp/zap2docker-stable zap-baseline.py \
+            -t http://localhost:3000 \
+            -r zaproxy-report.html \
+            -w zaproxy-report.md
+            
+      - name: Run Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/secrets
+            p/owasp-top-ten
+            p/javascript
+            p/typescript
+            
+      - name: Upload Security Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-reports
+          path: |
+            zaproxy-report.html
+            zaproxy-report.md
+            semgrep-results.sarif
+          retention-days: 30
+
+  # ========================================
+  # Test Results Aggregation
+  # ========================================
+  aggregate-results:
+    name: Aggregate Test Results
+    needs: [unit-tests, integration-tests, e2e-tests, performance-tests, accessibility-tests, security-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: test-artifacts/
+          
+      - name: Generate Test Report
+        run: |
+          node scripts/generate-test-report.js test-artifacts/
+          
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('test-report.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+            
+      - name: Upload Final Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-report
+          path: |
+            test-report.md
+            test-report.html
+          retention-days: 30

@@ -1,0 +1,151 @@
+# Automated Code Review Prompt Template
+id: code-review-automated
+name: Automated Code Review
+version: 1.0.0
+description: Comprehensive code review for pull requests
+category: code-review
+modelCompatibility:
+  - anthropic
+  - openai
+tags:
+  - code-review
+  - pull-request
+  - quality
+  - security
+
+systemPrompt: |
+  You are an expert code reviewer with 15+ years of experience across multiple programming languages and frameworks.
+  Your reviews are thorough, constructive, and focused on improving code quality, security, and maintainability.
+  You provide specific, actionable feedback with code examples when appropriate.
+
+template: |
+  ## Code Review Request
+  
+  Review the following code changes and provide comprehensive feedback.
+  
+  ### Repository Context
+  Repository: {{repository}}
+  Branch: {{branch}}
+  Pull Request: {{pullRequestNumber}}
+  Author: {{author}}
+  
+  ### Files Changed
+  {{#each files}}
+  - {{this.path}} (+{{this.additions}} -{{this.deletions}})
+  {{/each}}
+  
+  ### Code Changes
+  {{codeChanges}}
+  
+  ### Review Focus Areas
+  Please evaluate the code across these dimensions:
+  
+  1. **Security**
+     - Identify potential vulnerabilities
+     - Check for secure coding practices
+     - Review authentication/authorization logic
+     - Assess data validation and sanitization
+  
+  2. **Performance**
+     - Identify performance bottlenecks
+     - Check for efficient algorithms and data structures
+     - Review database queries and API calls
+     - Assess memory usage and potential leaks
+  
+  3. **Code Quality**
+     - Check adherence to coding standards
+     - Evaluate naming conventions
+     - Assess code readability and clarity
+     - Review documentation and comments
+  
+  4. **Architecture**
+     - Evaluate design patterns usage
+     - Check for proper separation of concerns
+     - Review module dependencies
+     - Assess scalability considerations
+  
+  5. **Testing**
+     - Check test coverage
+     - Review test quality and assertions
+     - Identify missing test cases
+     - Evaluate edge case handling
+  
+  6. **Best Practices**
+     - Check for DRY principle violations
+     - Review error handling
+     - Assess logging implementation
+     - Evaluate configuration management
+  
+  ### Output Format
+  
+  Provide your review in the following structured format:
+  
+  ```markdown
+  ## Summary
+  [Overall assessment of the changes - 2-3 sentences]
+  
+  ## Critical Issues (Must Fix)
+  [List critical issues that must be addressed before merging]
+  
+  ## Major Suggestions (Should Fix)
+  [List important improvements that should be considered]
+  
+  ## Minor Suggestions (Nice to Have)
+  [List optional improvements and style suggestions]
+  
+  ## Security Findings
+  [Any security concerns or vulnerabilities found]
+  
+  ## Performance Considerations
+  [Performance impacts and optimization opportunities]
+  
+  ## Positive Feedback
+  [What was done well in this PR]
+  
+  ## Specific Comments
+  [File-by-file or line-by-line comments with code snippets]
+  ```
+  
+  Be constructive, specific, and provide code examples for suggested improvements.
+
+variables:
+  - name: repository
+    type: string
+    required: true
+    description: Repository name (e.g., owner/repo)
+  
+  - name: branch
+    type: string
+    required: true
+    description: Branch name being reviewed
+  
+  - name: pullRequestNumber
+    type: number
+    required: false
+    description: Pull request number if applicable
+  
+  - name: author
+    type: string
+    required: false
+    description: Author of the changes
+  
+  - name: files
+    type: array
+    required: true
+    description: List of changed files with statistics
+  
+  - name: codeChanges
+    type: string
+    required: true
+    description: Diff of the code changes
+
+maxTokens: 4000
+temperature: 0.3
+topP: 0.95
+
+metadata:
+  author: Candlefish AI
+  team: Engineering
+  approvalStatus: approved
+  costEstimate: 0.06
+  averageLatency: 2500

@@ -1,0 +1,474 @@
+name: API Services CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'apps/rtpm-api/**'
+      - 'apps/nanda-api/**'
+      - 'apps/otter-gateway/**'
+      - 'graphql/**'
+      - '.github/workflows/ci-cd-api.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'apps/rtpm-api/**'
+      - 'apps/nanda-api/**'
+      - 'apps/otter-gateway/**'
+      - 'graphql/**'
+      - '.github/workflows/ci-cd-api.yml'
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+  EKS_CLUSTER_NAME: candlefish-production
+
+jobs:
+  # API Quality Assurance
+  api-qa:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: 
+          - { name: rtpm-api, language: python, test_cmd: "pytest --cov=app --cov-report=xml" }
+          - { name: nanda-api, language: node, test_cmd: "npm test -- --coverage" }
+          - { name: otter-gateway, language: node, test_cmd: "npm test -- --coverage" }
+          - { name: graphql-federation, language: node, test_cmd: "npm test -- --coverage", path: "graphql" }
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python (if needed)
+        if: matrix.service.language == 'python'
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Setup Node.js (if needed)
+        if: matrix.service.language == 'node'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Determine working directory
+        id: workdir
+        run: |
+          if [ "${{ matrix.service.path }}" != "" ]; then
+            echo "path=${{ matrix.service.path }}" >> $GITHUB_OUTPUT
+          else
+            echo "path=apps/${{ matrix.service.name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install Python dependencies
+        if: matrix.service.language == 'python'
+        working-directory: ${{ steps.workdir.outputs.path }}
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-asyncio httpx
+
+      - name: Install Node.js dependencies
+        if: matrix.service.language == 'node'
+        working-directory: ${{ steps.workdir.outputs.path }}
+        run: npm ci
+
+      - name: Run linting
+        working-directory: ${{ steps.workdir.outputs.path }}
+        run: |
+          if [ "${{ matrix.service.language }}" = "python" ]; then
+            pip install ruff
+            ruff check .
+          else
+            npm run lint || npx eslint . --ext .ts,.js
+          fi
+
+      - name: Run type checking
+        working-directory: ${{ steps.workdir.outputs.path }}
+        run: |
+          if [ "${{ matrix.service.language }}" = "python" ]; then
+            pip install mypy
+            mypy . || echo "Type checking issues found"
+          else
+            npx tsc --noEmit
+          fi
+
+      - name: Run unit tests
+        working-directory: ${{ steps.workdir.outputs.path }}
+        run: ${{ matrix.service.test_cmd }}
+
+      - name: Upload test coverage
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ${{ steps.workdir.outputs.path }}/coverage.xml,${{ steps.workdir.outputs.path }}/coverage/lcov.info
+          flags: api-${{ matrix.service.name }}
+
+  # API Security Scanning
+  api-security:
+    runs-on: ubuntu-latest
+    needs: api-qa
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run SAST with Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/secrets
+            p/python
+            p/typescript
+            p/nodejs
+
+      - name: Run dependency vulnerability scan
+        run: |
+          # Python dependencies
+          find apps -name "requirements.txt" -exec dirname {} \; | while read dir; do
+            if [ -f "$dir/requirements.txt" ]; then
+              echo "Scanning $dir"
+              pip install safety
+              safety check -r "$dir/requirements.txt" || echo "Vulnerabilities found in $dir"
+            fi
+          done
+          
+          # Node.js dependencies
+          find apps -name "package.json" -exec dirname {} \; | while read dir; do
+            if [ -f "$dir/package.json" ] && [[ "$dir" == *"api"* || "$dir" == *"gateway"* ]]; then
+              echo "Auditing $dir"
+              cd "$dir" && npm audit --audit-level moderate || echo "Audit issues in $dir"
+              cd - > /dev/null
+            fi
+          done
+
+      - name: API security testing with ZAP
+        uses: zaproxy/action-baseline@v0.7.0
+        with:
+          target: 'https://staging-api.candlefish.ai'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a -d -T 60 -m 10'
+
+  # API Integration Testing
+  api-integration:
+    runs-on: ubuntu-latest
+    needs: api-qa
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: test_user
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+          
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install test dependencies
+        run: |
+          npm install -g newman
+          pip install pytest-xdist
+
+      - name: Setup test database
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379
+        run: |
+          # Initialize database schema
+          psql -h localhost -U test_user -d test_db -c "CREATE EXTENSION IF NOT EXISTS pg_stat_statements;"
+          
+          # Run migrations if they exist
+          find apps -name "migrations" -type d | while read migrations_dir; do
+            if [ -f "$(dirname $migrations_dir)/migrate.py" ]; then
+              cd "$(dirname $migrations_dir)"
+              python migrate.py up
+              cd - > /dev/null
+            fi
+          done
+
+      - name: Run API integration tests
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379
+        run: |
+          # Run service integration tests
+          find __tests__ -name "*integration*" -type f | while read test_file; do
+            echo "Running integration test: $test_file"
+            if [[ "$test_file" == *.py ]]; then
+              pytest "$test_file" -v
+            else
+              npm test -- "$test_file"
+            fi
+          done
+
+      - name: Run Postman/Newman API tests
+        run: |
+          # Run API contract tests if collection exists
+          if [ -f "postman/candlefish-api.json" ]; then
+            newman run postman/candlefish-api.json \
+              --environment postman/staging-environment.json \
+              --reporters cli,junit \
+              --reporter-junit-export api-test-results.xml
+          fi
+
+  # Docker Build and Security Scan
+  api-docker-build:
+    runs-on: ubuntu-latest
+    needs: [api-qa, api-security, api-integration]
+    if: github.ref == 'refs/heads/main'
+    strategy:
+      matrix:
+        service: [rtpm-api, nanda-api, otter-gateway]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker image
+        working-directory: apps/${{ matrix.service }}
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          SERVICE_NAME: ${{ matrix.service }}
+        run: |
+          # Build multi-stage production image
+          docker build \
+            --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
+            --build-arg VCS_REF=${{ github.sha }} \
+            --build-arg VERSION=${{ github.ref_name }} \
+            -t $ECR_REGISTRY/$SERVICE_NAME:$IMAGE_TAG \
+            -t $ECR_REGISTRY/$SERVICE_NAME:latest \
+            .
+
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.ECR_REGISTRY }}/${{ matrix.service }}:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-results-${{ matrix.service }}.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results-${{ matrix.service }}.sarif'
+
+      - name: Push image to ECR
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          SERVICE_NAME: ${{ matrix.service }}
+        run: |
+          docker push $ECR_REGISTRY/$SERVICE_NAME:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$SERVICE_NAME:latest
+
+      - name: Run container security scan
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          SERVICE_NAME: ${{ matrix.service }}
+        run: |
+          # Start image scan in ECR
+          aws ecr start-image-scan --repository-name $SERVICE_NAME --image-id imageTag=$IMAGE_TAG
+          
+          # Wait for completion
+          aws ecr wait image-scan-complete --repository-name $SERVICE_NAME --image-id imageTag=$IMAGE_TAG
+          
+          # Get results and check for critical vulnerabilities
+          SCAN_RESULTS=$(aws ecr describe-image-scan-findings --repository-name $SERVICE_NAME --image-id imageTag=$IMAGE_TAG)
+          CRITICAL_COUNT=$(echo $SCAN_RESULTS | jq '.imageScanFindings.findingCounts.CRITICAL // 0')
+          
+          if [ "$CRITICAL_COUNT" -gt 0 ]; then
+            echo "Critical vulnerabilities found in $SERVICE_NAME"
+            exit 1
+          fi
+
+  # API Deployment to Staging
+  api-deploy-staging:
+    runs-on: ubuntu-latest
+    needs: api-docker-build
+    if: github.ref == 'refs/heads/main'
+    environment: staging
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
+
+      - name: Deploy APIs to staging
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          NAMESPACE: staging
+        run: |
+          # Deploy each API service
+          for service in rtpm-api nanda-api otter-gateway; do
+            echo "Deploying $service to staging"
+            
+            # Update image tag in deployment
+            sed "s|IMAGE_TAG_PLACEHOLDER|$IMAGE_TAG|g; s|SERVICE_NAME_PLACEHOLDER|$service|g" \
+              k8s/api-deployment-template.yaml > k8s/api-deployment-$service.yaml
+              
+            kubectl apply -f k8s/api-deployment-$service.yaml -n $NAMESPACE
+            kubectl rollout status deployment/$service -n $NAMESPACE --timeout=300s
+          done
+
+      - name: Run API health checks
+        run: |
+          sleep 30
+          
+          # Get staging API endpoints
+          RTPM_URL=$(kubectl get ingress rtpm-api-ingress -n staging -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          NANDA_URL=$(kubectl get ingress nanda-api-ingress -n staging -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          GATEWAY_URL=$(kubectl get ingress otter-gateway-ingress -n staging -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          
+          # Health checks
+          curl -f "http://$RTPM_URL/health" || exit 1
+          curl -f "http://$NANDA_URL/health" || exit 1
+          curl -f "http://$GATEWAY_URL/health" || exit 1
+          
+          echo "All API services healthy in staging"
+
+  # Load Testing
+  api-load-testing:
+    runs-on: ubuntu-latest
+    needs: api-deploy-staging
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install K6
+        run: |
+          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Run load tests
+        run: |
+          # Run load tests against staging APIs
+          k6 run __tests__/performance/api-load-test.js \
+            --env RTPM_API_URL=https://staging-rtpm-api.candlefish.ai \
+            --env NANDA_API_URL=https://staging-nanda-api.candlefish.ai \
+            --env GATEWAY_URL=https://staging-api.candlefish.ai
+
+  # Production Deployment
+  api-deploy-production:
+    runs-on: ubuntu-latest
+    needs: [api-deploy-staging, api-load-testing]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
+
+      - name: Rolling deployment to production
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          NAMESPACE: production
+        run: |
+          # Deploy each API service with rolling update
+          for service in rtpm-api nanda-api otter-gateway; do
+            echo "Deploying $service to production"
+            
+            # Update image tag
+            kubectl set image deployment/$service $service=$ECR_REGISTRY/$service:$IMAGE_TAG -n $NAMESPACE
+            kubectl rollout status deployment/$service -n $NAMESPACE --timeout=600s
+            
+            # Verify deployment health
+            kubectl wait --for=condition=ready pod -l app=$service -n $NAMESPACE --timeout=300s
+          done
+
+      - name: Production health verification
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          # Wait for load balancers to update
+          sleep 60
+          
+          # Check production API health
+          HEALTH_CHECKS=0
+          TOTAL_CHECKS=3
+          
+          if curl -f "https://api.candlefish.ai/rtpm/health"; then
+            ((HEALTH_CHECKS++))
+          fi
+          
+          if curl -f "https://api.candlefish.ai/nanda/health"; then
+            ((HEALTH_CHECKS++))
+          fi
+          
+          if curl -f "https://api.candlefish.ai/health"; then
+            ((HEALTH_CHECKS++))
+          fi
+          
+          if [ "$HEALTH_CHECKS" -eq "$TOTAL_CHECKS" ]; then
+            MESSAGE="✅ API services deployed successfully to production! All $TOTAL_CHECKS health checks passed."
+            COLOR="good"
+          else
+            MESSAGE="❌ API deployment health check failed! Only $HEALTH_CHECKS of $TOTAL_CHECKS services healthy."
+            COLOR="danger"
+          fi
+          
+          # Send notification
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"$MESSAGE\", \"color\":\"$COLOR\"}" \
+            $SLACK_WEBHOOK_URL || echo "Slack notification failed"

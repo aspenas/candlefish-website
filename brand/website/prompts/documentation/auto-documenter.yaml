@@ -1,0 +1,298 @@
+# Auto Documentation Generator Prompt Template
+id: documentation-auto-generator
+name: Auto Documentation Generator
+version: 1.0.0
+description: Generate comprehensive documentation from code
+category: documentation
+modelCompatibility:
+  - anthropic
+  - openai
+tags:
+  - documentation
+  - automation
+  - markdown
+  - api-docs
+
+systemPrompt: |
+  You are a technical writer and documentation expert who creates clear, comprehensive,
+  and user-friendly documentation. You understand both technical and non-technical audiences
+  and structure information for maximum clarity and usefulness.
+
+template: |
+  ## Documentation Generation Request
+  
+  Generate comprehensive documentation for the following code.
+  
+  ### Project Context
+  **Project Name:** {{projectName}}
+  **Type:** {{documentationType}}
+  **Target Audience:** {{audience}}
+  **Format:** {{outputFormat}}
+  
+  ### Code to Document
+  ```{{language}}
+  {{code}}
+  ```
+  
+  {{#if existingDocs}}
+  ### Existing Documentation Style
+  ```markdown
+  {{existingDocs}}
+  ```
+  {{/if}}
+  
+  {{#if apiSchema}}
+  ### API Schema
+  ```yaml
+  {{apiSchema}}
+  ```
+  {{/if}}
+  
+  ### Documentation Requirements
+  
+  1. **Structure**
+     - Clear hierarchy with proper headings
+     - Table of contents for long documents
+     - Logical flow from overview to details
+     - Cross-references where appropriate
+  
+  2. **Content Elements**
+     - **Overview**: Purpose and high-level description
+     - **Installation**: Setup and dependencies
+     - **Quick Start**: Getting started guide
+     - **API Reference**: Detailed API documentation
+     - **Examples**: Practical usage examples
+     - **Configuration**: Configuration options
+     - **Troubleshooting**: Common issues and solutions
+     - **FAQ**: Frequently asked questions
+  
+  3. **Code Documentation**
+     - Function/method signatures
+     - Parameters with types and descriptions
+     - Return values
+     - Exceptions/errors
+     - Side effects
+     - Usage examples
+     - Performance considerations
+  
+  4. **Style Guidelines**
+     - Use active voice
+     - Keep sentences concise
+     - Include code examples
+     - Use consistent terminology
+     - Add diagrams where helpful
+  
+  ### Output Format
+  
+  {{#if (eq outputFormat "markdown")}}
+  ```markdown
+  # {{projectName}}
+  
+  ## Table of Contents
+  - [Overview](#overview)
+  - [Installation](#installation)
+  - [Quick Start](#quick-start)
+  - [API Reference](#api-reference)
+  - [Configuration](#configuration)
+  - [Examples](#examples)
+  - [Troubleshooting](#troubleshooting)
+  - [Contributing](#contributing)
+  
+  ## Overview
+  [Brief description of what this does and why it exists]
+  
+  ### Key Features
+  - Feature 1
+  - Feature 2
+  
+  ### Requirements
+  - Requirement 1
+  - Requirement 2
+  
+  ## Installation
+  \`\`\`bash
+  # Installation commands
+  \`\`\`
+  
+  ## Quick Start
+  [Simple example to get users started quickly]
+  
+  \`\`\`{{language}}
+  // Example code
+  \`\`\`
+  
+  ## API Reference
+  
+  ### Class/Module: `ClassName`
+  [Description]
+  
+  #### `methodName(param1, param2)`
+  [Method description]
+  
+  **Parameters:**
+  - `param1` (Type): Description
+  - `param2` (Type): Description
+  
+  **Returns:**
+  - `ReturnType`: Description
+  
+  **Example:**
+  \`\`\`{{language}}
+  // Example usage
+  \`\`\`
+  
+  ## Configuration
+  
+  | Option | Type | Default | Description |
+  |--------|------|---------|-------------|
+  | option1 | string | "default" | Description |
+  
+  ## Examples
+  
+  ### Example 1: [Use Case]
+  \`\`\`{{language}}
+  // Complete example
+  \`\`\`
+  
+  ## Troubleshooting
+  
+  ### Issue: [Common Problem]
+  **Solution:** [How to fix it]
+  
+  ## Contributing
+  [Guidelines for contributors]
+  
+  ## License
+  [License information]
+  ```
+  {{/if}}
+  
+  {{#if (eq outputFormat "jsdoc")}}
+  ```javascript
+  /**
+   * @module {{projectName}}
+   * @description [Module description]
+   */
+  
+  /**
+   * [Class description]
+   * @class ClassName
+   * @param {Object} options - Configuration options
+   * @param {string} options.property - Property description
+   * @example
+   * const instance = new ClassName({ property: 'value' });
+   */
+  
+  /**
+   * [Method description]
+   * @method methodName
+   * @param {Type} paramName - Parameter description
+   * @returns {ReturnType} Return description
+   * @throws {ErrorType} Error condition description
+   * @example
+   * instance.methodName(value);
+   */
+  ```
+  {{/if}}
+  
+  {{#if (eq outputFormat "openapi")}}
+  ```yaml
+  openapi: 3.0.0
+  info:
+    title: {{projectName}} API
+    version: 1.0.0
+    description: |
+      [API description]
+  
+  paths:
+    /endpoint:
+      get:
+        summary: [Endpoint summary]
+        description: [Detailed description]
+        parameters:
+          - name: param
+            in: query
+            schema:
+              type: string
+            description: [Parameter description]
+        responses:
+          '200':
+            description: Success
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    property:
+                      type: string
+                example:
+                  property: value
+  ```
+  {{/if}}
+  
+  ### Additional Sections
+  
+  - **Performance Notes**: Include performance characteristics
+  - **Security Considerations**: Document security implications
+  - **Migration Guide**: If updating from previous version
+  - **Glossary**: Define technical terms
+  - **Related Projects**: Link to related documentation
+
+variables:
+  - name: projectName
+    type: string
+    required: true
+    description: Name of the project/module
+  
+  - name: documentationType
+    type: string
+    required: true
+    description: Type of documentation
+    validation:
+      enum: [api, library, application, service, component, tutorial]
+  
+  - name: audience
+    type: string
+    required: true
+    description: Target audience
+    validation:
+      enum: [developers, users, administrators, contributors, all]
+  
+  - name: outputFormat
+    type: string
+    required: true
+    default: markdown
+    description: Output format for documentation
+    validation:
+      enum: [markdown, jsdoc, openapi, rst, html]
+  
+  - name: language
+    type: string
+    required: true
+    description: Programming language
+  
+  - name: code
+    type: string
+    required: true
+    description: Source code to document
+  
+  - name: existingDocs
+    type: string
+    required: false
+    description: Example of existing documentation style
+  
+  - name: apiSchema
+    type: string
+    required: false
+    description: API schema if applicable
+
+maxTokens: 10000
+temperature: 0.4
+topP: 0.95
+
+metadata:
+  author: Candlefish AI
+  team: Documentation
+  approvalStatus: approved
+  costEstimate: 0.15
+  averageLatency: 5000

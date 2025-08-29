@@ -1,0 +1,431 @@
+name: Multi-Environment Deployment
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'release/*'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+      deployment-strategy:
+        description: 'Deployment strategy'
+        required: true
+        default: 'rolling'
+        type: choice
+        options:
+          - rolling
+          - blue-green
+          - canary
+      rollback:
+        description: 'Rollback to previous version'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ACCOUNT_ID: '681214184463'
+  KUBECTL_VERSION: '1.28.0'
+  HELM_VERSION: '3.12.0'
+  TERRAFORM_VERSION: '1.6.0'
+
+jobs:
+  # ========================================
+  # Deployment Preparation
+  # ========================================
+  prepare-deployment:
+    name: Prepare Deployment
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.determine-env.outputs.environment }}
+      version: ${{ steps.version.outputs.version }}
+      deployment-id: ${{ steps.deployment-id.outputs.id }}
+      
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Determine Environment
+        id: determine-env
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          else
+            echo "environment=development" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Generate Version
+        id: version
+        run: |
+          VERSION="${{ github.sha }}"
+          if [ "${{ github.ref_type }}" == "tag" ]; then
+            VERSION="${{ github.ref_name }}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+      - name: Generate Deployment ID
+        id: deployment-id
+        run: |
+          DEPLOYMENT_ID="deploy-$(date +%Y%m%d-%H%M%S)-${{ github.run_number }}"
+          echo "id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
+
+  # ========================================
+  # Development Environment
+  # ========================================
+  deploy-development:
+    name: Deploy to Development
+    needs: prepare-deployment
+    if: needs.prepare-deployment.outputs.environment == 'development'
+    runs-on: ubuntu-latest
+    environment:
+      name: development
+      url: https://dev.candlefish.ai
+      
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Deployment Tools
+        run: |
+          # Install kubectl
+          curl -LO "https://dl.k8s.io/release/v${{ env.KUBECTL_VERSION }}/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+          
+          # Install Helm
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.DEV_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.DEV_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Deploy to EKS
+        run: |
+          # Update kubeconfig
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name candlefish-dev-cluster
+          
+          # Deploy using Helm
+          helm upgrade --install candlefish-dev ./helm/candlefish \
+            --namespace development \
+            --create-namespace \
+            --set image.tag=${{ needs.prepare-deployment.outputs.version }} \
+            --set environment=development \
+            --values ./helm/values/development.yaml \
+            --wait \
+            --timeout 10m
+            
+      - name: Verify Deployment
+        run: |
+          kubectl rollout status deployment/candlefish-website -n development
+          kubectl get pods -n development
+          
+      - name: Run Smoke Tests
+        run: |
+          npm install -g newman
+          newman run tests/postman/dev-smoke-tests.json \
+            --environment tests/postman/dev-env.json
+
+  # ========================================
+  # Staging Environment
+  # ========================================
+  deploy-staging:
+    name: Deploy to Staging
+    needs: prepare-deployment
+    if: needs.prepare-deployment.outputs.environment == 'staging'
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://staging.candlefish.ai
+      
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.STAGING_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.STAGING_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Build and Push Docker Images
+        run: |
+          # Login to ECR
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
+            docker login --username AWS --password-stdin \
+            ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+            
+          # Build and push images
+          docker build -t candlefish-website:${{ needs.prepare-deployment.outputs.version }} .
+          docker tag candlefish-website:${{ needs.prepare-deployment.outputs.version }} \
+            ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/candlefish-website:${{ needs.prepare-deployment.outputs.version }}
+          docker push ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/candlefish-website:${{ needs.prepare-deployment.outputs.version }}
+          
+      - name: Deploy with Terraform
+        run: |
+          cd terraform/environments/staging
+          terraform init
+          terraform plan -var="image_tag=${{ needs.prepare-deployment.outputs.version }}"
+          terraform apply -auto-approve -var="image_tag=${{ needs.prepare-deployment.outputs.version }}"
+          
+      - name: Update Database Migrations
+        run: |
+          # Run database migrations
+          kubectl exec -it deploy/migration-job -n staging -- npm run migrate:up
+          
+      - name: Warm Up Cache
+        run: |
+          # Warm up CDN and application caches
+          curl -X POST https://staging-api.candlefish.ai/cache/warm \
+            -H "Authorization: Bearer ${{ secrets.STAGING_API_KEY }}"
+            
+      - name: Run Integration Tests
+        run: |
+          npm run test:integration -- --url=https://staging.candlefish.ai
+
+  # ========================================
+  # Production Environment
+  # ========================================
+  deploy-production:
+    name: Deploy to Production
+    needs: prepare-deployment
+    if: needs.prepare-deployment.outputs.environment == 'production'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://candlefish.ai
+      
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.PROD_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.PROD_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Pre-deployment Backup
+        run: |
+          # Backup database
+          ./scripts/backup-database.sh production
+          
+          # Backup current deployment
+          ./scripts/backup-deployment.sh production
+          
+      - name: Blue-Green Deployment Setup
+        id: blue-green
+        run: |
+          # Determine current active environment
+          CURRENT=$(aws elbv2 describe-target-groups \
+            --names candlefish-prod-tg \
+            --query "TargetGroups[0].Tags[?Key=='Environment'].Value" \
+            --output text)
+            
+          if [ "$CURRENT" == "blue" ]; then
+            echo "target=green" >> $GITHUB_OUTPUT
+            echo "current=blue" >> $GITHUB_OUTPUT
+          else
+            echo "target=blue" >> $GITHUB_OUTPUT
+            echo "current=green" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Deploy to Inactive Environment
+        run: |
+          # Deploy to inactive environment
+          helm upgrade --install candlefish-${{ steps.blue-green.outputs.target }} \
+            ./helm/candlefish \
+            --namespace production-${{ steps.blue-green.outputs.target }} \
+            --create-namespace \
+            --set image.tag=${{ needs.prepare-deployment.outputs.version }} \
+            --set environment=production \
+            --set deployment.color=${{ steps.blue-green.outputs.target }} \
+            --values ./helm/values/production.yaml \
+            --wait \
+            --timeout 15m
+            
+      - name: Run Canary Tests
+        if: github.event.inputs.deployment-strategy == 'canary'
+        run: |
+          # Route 10% traffic to new version
+          ./scripts/canary-deploy.sh \
+            --target ${{ steps.blue-green.outputs.target }} \
+            --percentage 10
+            
+          # Monitor for 5 minutes
+          sleep 300
+          
+          # Check error rates
+          ERROR_RATE=$(./scripts/check-error-rate.sh ${{ steps.blue-green.outputs.target }})
+          if (( $(echo "$ERROR_RATE > 1" | bc -l) )); then
+            echo "High error rate detected: $ERROR_RATE%"
+            exit 1
+          fi
+          
+          # Gradually increase traffic
+          for PERCENTAGE in 25 50 75 100; do
+            ./scripts/canary-deploy.sh \
+              --target ${{ steps.blue-green.outputs.target }} \
+              --percentage $PERCENTAGE
+            sleep 180
+          done
+          
+      - name: Switch Traffic
+        if: github.event.inputs.deployment-strategy != 'canary'
+        run: |
+          # Switch all traffic to new environment
+          aws elbv2 modify-listener-rule \
+            --rule-arn ${{ secrets.PROD_ALB_RULE_ARN }} \
+            --actions Type=forward,TargetGroupArn=${{ secrets[format('PROD_TG_{0}_ARN', steps.blue-green.outputs.target)] }}
+            
+      - name: Health Check
+        run: |
+          # Wait for health checks
+          sleep 30
+          
+          # Verify deployment
+          ./scripts/health-check.sh production
+          
+      - name: Performance Validation
+        run: |
+          # Run performance tests
+          npm run test:performance -- --url=https://candlefish.ai
+          
+          # Check against baseline
+          ./scripts/check-performance-regression.sh
+          
+      - name: Cleanup Old Environment
+        if: success()
+        run: |
+          # Wait 10 minutes before cleanup
+          sleep 600
+          
+          # Delete old deployment
+          kubectl delete namespace production-${{ steps.blue-green.outputs.current }} --ignore-not-found
+
+  # ========================================
+  # Rollback Mechanism
+  # ========================================
+  rollback:
+    name: Rollback Deployment
+    needs: prepare-deployment
+    if: github.event.inputs.rollback == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Get Previous Version
+        id: previous
+        run: |
+          # Get previous successful deployment
+          PREVIOUS=$(aws ssm get-parameter \
+            --name "/candlefish/${{ github.event.inputs.environment }}/previous-version" \
+            --query "Parameter.Value" \
+            --output text)
+          echo "version=$PREVIOUS" >> $GITHUB_OUTPUT
+          
+      - name: Rollback Deployment
+        run: |
+          ./scripts/rollback.sh \
+            --environment ${{ github.event.inputs.environment }} \
+            --version ${{ steps.previous.outputs.version }}
+            
+      - name: Verify Rollback
+        run: |
+          ./scripts/health-check.sh ${{ github.event.inputs.environment }}
+          
+      - name: Notify Team
+        if: always()
+        run: |
+          curl -X POST ${{ secrets.SLACK_WEBHOOK }} \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "text": "🔄 Rollback ${{ job.status }} for ${{ github.event.inputs.environment }}",
+              "attachments": [{
+                "color": "${{ job.status == 'success' && 'good' || 'danger' }}",
+                "fields": [
+                  {"title": "Environment", "value": "${{ github.event.inputs.environment }}", "short": true},
+                  {"title": "Version", "value": "${{ steps.previous.outputs.version }}", "short": true}
+                ]
+              }]
+            }'
+
+  # ========================================
+  # Post-Deployment Monitoring
+  # ========================================
+  post-deployment:
+    name: Post-Deployment Monitoring
+    needs: [deploy-development, deploy-staging, deploy-production]
+    if: always()
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Monitoring
+        run: |
+          # Install monitoring tools
+          npm install -g @datadog/datadog-ci
+          
+      - name: Create Deployment Marker
+        run: |
+          # Send deployment event to monitoring
+          datadog-ci deployment-marker create \
+            --api-key ${{ secrets.DATADOG_API_KEY }} \
+            --app-key ${{ secrets.DATADOG_APP_KEY }} \
+            --service candlefish-website \
+            --env ${{ needs.prepare-deployment.outputs.environment }} \
+            --version ${{ needs.prepare-deployment.outputs.version }}
+            
+      - name: Monitor Error Rates
+        run: |
+          # Monitor for 15 minutes
+          ./scripts/monitor-deployment.sh \
+            --environment ${{ needs.prepare-deployment.outputs.environment }} \
+            --duration 900 \
+            --threshold 1
+            
+      - name: Generate Deployment Report
+        run: |
+          ./scripts/generate-deployment-report.sh \
+            --deployment-id ${{ needs.prepare-deployment.outputs.deployment-id }} \
+            --environment ${{ needs.prepare-deployment.outputs.environment }} \
+            --version ${{ needs.prepare-deployment.outputs.version }}
+            
+      - name: Update Deployment History
+        run: |
+          # Store deployment info
+          aws ssm put-parameter \
+            --name "/candlefish/${{ needs.prepare-deployment.outputs.environment }}/current-version" \
+            --value "${{ needs.prepare-deployment.outputs.version }}" \
+            --overwrite
+            
+      - name: Upload Deployment Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: deployment-${{ needs.prepare-deployment.outputs.deployment-id }}
+          path: |
+            deployment-report.html
+            deployment-metrics.json
+          retention-days: 90

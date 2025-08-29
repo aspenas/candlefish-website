@@ -1,0 +1,856 @@
+# Input Types for Threat Intelligence GraphQL Schema
+
+# Threat Intelligence Inputs
+input ThreatIntelligenceFilter {
+  threatTypes: [ThreatType!]
+  severities: [Severity!] @external
+  confidence: [ThreatConfidence!]
+  categories: [ThreatCategory!]
+  sectors: [IndustrySector!]
+  regions: [String!]
+  threatActorIds: [ID!]
+  campaignIds: [ID!]
+  dateRange: DateRangeFilter @external
+  sources: [String!]
+  tags: StringFilter @external
+  isActive: Boolean
+  customFilters: JSON
+}
+
+input ThreatIntelligenceSort {
+  field: ThreatIntelligenceSortField!
+  direction: SortDirection! @external
+}
+
+enum ThreatIntelligenceSortField {
+  CREATED_AT
+  UPDATED_AT
+  FIRST_SEEN
+  LAST_SEEN
+  SEVERITY
+  CONFIDENCE
+  THREAT_TYPE
+  TITLE
+  RELEVANCE
+}
+
+input CreateThreatIntelligenceInput {
+  title: String!
+  description: String!
+  threatType: ThreatType!
+  severity: Severity! @external
+  confidence: ThreatConfidence!
+  reliability: ThreatReliability!
+  category: ThreatCategory!
+  subCategory: String
+  killChainPhases: [KillChainPhase!]!
+  targetedSectors: [IndustrySector!]!
+  targetedRegions: [String!]!
+  sources: [CreateThreatSourceInput!]!
+  indicators: [CreateIndicatorInput!]
+  iocs: [CreateIOCInput!]
+  mitigations: [ID!] # Reference existing mitigations
+  tags: [String!]
+  metadata: JSON
+}
+
+input UpdateThreatIntelligenceInput {
+  title: String
+  description: String
+  severity: Severity @external
+  confidence: ThreatConfidence
+  reliability: ThreatReliability
+  category: ThreatCategory
+  subCategory: String
+  killChainPhases: [KillChainPhase!]
+  targetedSectors: [IndustrySector!]
+  targetedRegions: [String!]
+  tags: [String!]
+  metadata: JSON
+}
+
+# IOC Inputs
+input IOCFilter {
+  types: [IOCType!]
+  categories: [IOCCategory!]
+  confidence: [ThreatConfidence!]
+  severity: [Severity!] @external
+  threatActorIds: [ID!]
+  campaignIds: [ID!]
+  malwareFamilyIds: [ID!]
+  feedIds: [ID!]
+  dateRange: DateRangeFilter @external
+  isActive: Boolean
+  isWhitelisted: Boolean
+  reputation: [ThreatReputation!] @external
+  sources: [String!]
+  tags: StringFilter @external
+  customFilters: JSON
+}
+
+input IOCSort {
+  field: IOCSortField!
+  direction: SortDirection! @external
+}
+
+enum IOCSortField {
+  CREATED_AT
+  UPDATED_AT
+  FIRST_SEEN
+  LAST_SEEN
+  TYPE
+  CONFIDENCE
+  SEVERITY
+  REPUTATION_SCORE
+  MATCH_COUNT
+  VALUE
+}
+
+input CreateIOCInput {
+  type: IOCType!
+  value: String!
+  category: IOCCategory!
+  confidence: ThreatConfidence!
+  severity: Severity! @external
+  description: String
+  context: [IOCContextInput!]
+  killChainPhase: KillChainPhase!
+  expiresAt: DateTime
+  sources: [String!]!
+  threatActorIds: [ID!]
+  campaignIds: [ID!]
+  malwareFamilyIds: [ID!]
+  tags: [String!]
+  metadata: JSON
+}
+
+input UpdateIOCInput {
+  confidence: ThreatConfidence
+  severity: Severity @external
+  description: String
+  context: [IOCContextInput!]
+  expiresAt: DateTime
+  isActive: Boolean
+  tags: [String!]
+  metadata: JSON
+}
+
+input IOCContextInput {
+  contextType: IOCContextType!
+  value: String!
+  description: String
+  confidence: Float!
+}
+
+input BulkImportIOCsInput {
+  source: String!
+  format: ImportFormat!
+  data: String! # JSON, CSV, or XML data
+  feedId: ID
+  defaultConfidence: ThreatConfidence = MEDIUM
+  defaultSeverity: Severity = MEDIUM @external
+  tags: [String!]
+  dryRun: Boolean = false
+}
+
+enum ImportFormat {
+  JSON
+  CSV
+  XML
+  STIX
+  MISP
+  YARA
+  IOC
+}
+
+# Threat Actor Inputs
+input ThreatActorFilter {
+  actorTypes: [ThreatActorType!]
+  sophistication: [ThreatSophistication!]
+  motivations: [ThreatMotivation!]
+  countries: [String!]
+  sectors: [IndustrySector!]
+  isActive: Boolean
+  dateRange: DateRangeFilter @external
+  tags: StringFilter @external
+}
+
+input ThreatActorSort {
+  field: ThreatActorSortField!
+  direction: SortDirection! @external
+}
+
+enum ThreatActorSortField {
+  NAME
+  FIRST_SEEN
+  LAST_SEEN
+  SOPHISTICATION
+  ACTIVITY_LEVEL
+  CREATED_AT
+}
+
+input CreateThreatActorInput {
+  name: String!
+  aliases: [String!]
+  description: String!
+  actorType: ThreatActorType!
+  sophistication: ThreatSophistication!
+  motivations: [ThreatMotivation!]!
+  countries: [String!]
+  organizations: [String!]
+  capabilities: [ThreatCapability!]!
+  targetedSectors: [IndustrySector!]!
+  targetedRegions: [String!]!
+  victimology: VictimologyInput!
+  attribution: ThreatAttributionInput
+  tags: [String!]
+  metadata: JSON
+}
+
+input UpdateThreatActorInput {
+  name: String
+  aliases: [String!]
+  description: String
+  actorType: ThreatActorType
+  sophistication: ThreatSophistication
+  motivations: [ThreatMotivation!]
+  countries: [String!]
+  organizations: [String!]
+  capabilities: [ThreatCapability!]
+  targetedSectors: [IndustrySector!]
+  targetedRegions: [String!]
+  isActive: Boolean
+  tags: [String!]
+  metadata: JSON
+}
+
+input VictimologyInput {
+  primaryTargets: [String!]!
+  secondaryTargets: [String!]
+  targetingCriteria: [String!]!
+  opportunistic: Boolean!
+  targeted: Boolean!
+}
+
+input ThreatAttributionInput {
+  confidence: AttributionConfidence! @external
+  country: String
+  region: String
+  organization: String
+  sector: String
+  motivations: [ThreatMotivation!]!
+  capabilities: [ThreatCapability!]!
+  reasoning: String!
+  alternativeHypotheses: [String!]
+  sources: [String!]!
+}
+
+# Campaign Inputs
+input ThreatCampaignFilter {
+  statuses: [CampaignStatus!]
+  threatActorIds: [ID!]
+  sectors: [IndustrySector!]
+  countries: [String!]
+  dateRange: DateRangeFilter @external
+  isActive: Boolean
+  tags: StringFilter @external
+}
+
+input ThreatCampaignSort {
+  field: ThreatCampaignSortField!
+  direction: SortDirection! @external
+}
+
+enum ThreatCampaignSortField {
+  NAME
+  START_DATE
+  END_DATE
+  STATUS
+  IMPACT_SCORE
+  VICTIM_COUNT
+  CREATED_AT
+}
+
+input CreateThreatCampaignInput {
+  name: String!
+  aliases: [String!]
+  description: String!
+  status: CampaignStatus!
+  confidence: ThreatConfidence!
+  startDate: DateTime!
+  endDate: DateTime
+  threatActorIds: [ID!]!
+  objectives: [String!]!
+  targets: [String!]!
+  targetedSectors: [IndustrySector!]!
+  targetedCountries: [String!]!
+  impact: CampaignImpactInput!
+  victimCount: Int
+  estimatedLoss: Float
+  attribution: ThreatAttributionInput
+  tags: [String!]
+  metadata: JSON
+}
+
+input UpdateThreatCampaignInput {
+  name: String
+  aliases: [String!]
+  description: String
+  status: CampaignStatus
+  confidence: ThreatConfidence
+  endDate: DateTime
+  isActive: Boolean
+  objectives: [String!]
+  targets: [String!]
+  targetedSectors: [IndustrySector!]
+  targetedCountries: [String!]
+  impact: CampaignImpactInput
+  victimCount: Int
+  estimatedLoss: Float
+  tags: [String!]
+  metadata: JSON
+}
+
+input CampaignImpactInput {
+  scope: ImpactScope!
+  severity: Severity! @external
+  financialImpact: Float
+  reputationalImpact: ReputationImpact!
+  operationalImpact: OperationalImpact!
+}
+
+# Malware Family Inputs
+input MalwareFamilyFilter {
+  types: [MalwareType!]
+  categories: [MalwareCategory!]
+  platforms: [String!]
+  threatActorIds: [ID!]
+  campaignIds: [ID!]
+  isActive: Boolean
+  dateRange: DateRangeFilter @external
+  tags: StringFilter @external
+}
+
+input MalwareFamilySort {
+  field: MalwareFamilySortField!
+  direction: SortDirection! @external
+}
+
+enum MalwareFamilySortField {
+  NAME
+  TYPE
+  FIRST_SEEN
+  LAST_SEEN
+  COMPLEXITY
+  VARIANT_COUNT
+  CREATED_AT
+}
+
+# Threat Feed Inputs
+input ThreatFeedFilter {
+  feedTypes: [ThreatFeedType!]
+  formats: [FeedFormat!]
+  statuses: [FeedStatus!]
+  isActive: Boolean
+  providerTypes: [ProviderType!]
+  qualityScoreRange: FloatRangeFilter @external
+  tags: StringFilter @external
+}
+
+input ThreatFeedSort {
+  field: ThreatFeedSortField!
+  direction: SortDirection! @external
+}
+
+enum ThreatFeedSortField {
+  NAME
+  QUALITY_SCORE
+  LAST_UPDATE
+  TOTAL_INDICATORS
+  STATUS
+  CREATED_AT
+}
+
+input CreateThreatFeedInput {
+  name: String!
+  description: String!
+  url: URL!
+  feedType: ThreatFeedType!
+  format: FeedFormat!
+  frequency: UpdateFrequency!
+  provider: ThreatFeedProviderInput!
+  license: FeedLicenseInput!
+  cost: FeedCostInput
+  processingRules: [FeedProcessingRuleInput!]
+  enrichmentEnabled: Boolean = true
+  deduplicationEnabled: Boolean = true
+  tags: [String!]
+  metadata: JSON
+}
+
+input UpdateThreatFeedInput {
+  name: String
+  description: String
+  url: URL
+  frequency: UpdateFrequency
+  isActive: Boolean
+  processingRules: [FeedProcessingRuleInput!]
+  enrichmentEnabled: Boolean
+  deduplicationEnabled: Boolean
+  tags: [String!]
+  metadata: JSON
+}
+
+input ThreatFeedProviderInput {
+  name: String!
+  type: ProviderType!
+  website: URL
+  contact: ContactInfoInput
+}
+
+input ContactInfoInput {
+  email: EmailAddress @external
+  phone: String
+  address: String
+  supportUrl: URL
+}
+
+input FeedLicenseInput {
+  type: LicenseType!
+  terms: String!
+  restrictions: [String!]
+  attribution: Boolean!
+  sharing: SharingPermission!
+}
+
+input FeedCostInput {
+  model: PricingModel!
+  amount: Float
+  currency: String!
+  billingPeriod: BillingPeriod!
+}
+
+input FeedProcessingRuleInput {
+  name: String!
+  condition: String!
+  action: ProcessingAction!
+  parameters: JSON
+  enabled: Boolean = true
+  order: Int!
+}
+
+# Correlation Inputs
+input ThreatCorrelationFilter {
+  correlationTypes: [CorrelationType!]
+  statuses: [CorrelationStatus!]
+  isActive: Boolean
+  confidenceRange: FloatRangeFilter @external
+  tags: StringFilter @external
+}
+
+input CreateThreatCorrelationInput {
+  name: String!
+  description: String!
+  correlationType: CorrelationType!
+  threshold: Float!
+  timeWindow: Int!
+  rules: [CorrelationRuleInput!]!
+  logic: CorrelationLogic!
+  tags: [String!]
+  metadata: JSON
+}
+
+input UpdateThreatCorrelationInput {
+  name: String
+  description: String
+  threshold: Float
+  timeWindow: Int
+  rules: [CorrelationRuleInput!]
+  logic: CorrelationLogic
+  isActive: Boolean
+  tags: [String!]
+  metadata: JSON
+}
+
+input CorrelationRuleInput {
+  field: String!
+  operator: CorrelationOperator!
+  value: String!
+  weight: Float!
+  isRequired: Boolean = false
+}
+
+# Report Inputs
+input ThreatReportFilter {
+  reportTypes: [ReportType!]
+  classifications: [ReportClassification!]
+  confidenceLevels: [ThreatConfidence!]
+  authorOrganizations: [String!]
+  dateRange: DateRangeFilter @external
+  tags: StringFilter @external
+}
+
+input ThreatReportSort {
+  field: ThreatReportSortField!
+  direction: SortDirection! @external
+}
+
+enum ThreatReportSortField {
+  TITLE
+  PUBLISHED_AT
+  QUALITY_SCORE
+  CONFIDENCE_LEVEL
+  RELEVANCE
+  CREATED_AT
+}
+
+input CreateThreatReportInput {
+  title: String!
+  summary: String!
+  content: String!
+  reportType: ReportType!
+  classification: ReportClassification!
+  sensitivity: SensitivityLevel!
+  dissemination: DisseminationLevel!
+  threatIds: [ID!]
+  indicatorIds: [ID!]
+  iocIds: [ID!]
+  keyFindings: [String!]!
+  recommendations: [String!]!
+  implications: [String!]!
+  author: String!
+  organization: String
+  validUntil: DateTime
+  confidenceLevel: ThreatConfidence!
+  audience: [String!]!
+  tags: [String!]
+  metadata: JSON
+}
+
+input UpdateThreatReportInput {
+  title: String
+  summary: String
+  content: String
+  keyFindings: [String!]
+  recommendations: [String!]
+  implications: [String!]
+  validUntil: DateTime
+  confidenceLevel: ThreatConfidence
+  audience: [String!]
+  tags: [String!]
+  metadata: JSON
+}
+
+# Tool Inputs
+input ThreatToolFilter {
+  toolTypes: [ThreatToolType!]
+  categories: [ToolCategory!]
+  platforms: [String!]
+  threatActorIds: [ID!]
+  campaignIds: [ID!]
+  availability: [ToolAvailability!]
+  tags: StringFilter @external
+}
+
+# Mitigation Inputs
+input ThreatMitigationFilter {
+  mitigationTypes: [MitigationType!]
+  effectiveness: [MitigationEffectiveness!]
+  difficulty: [ImplementationDifficulty!]
+  techniques: [String!] # MITRE technique IDs
+  tags: StringFilter @external
+}
+
+input OrganizationContext {
+  sector: IndustrySector!
+  size: OrganizationSize!
+  budget: BudgetRange!
+  riskTolerance: RiskTolerance!
+  complianceRequirements: [String!]
+  existingControls: [String!]
+}
+
+enum OrganizationSize {
+  SMALL
+  MEDIUM
+  LARGE
+  ENTERPRISE
+}
+
+enum BudgetRange {
+  LOW
+  MEDIUM
+  HIGH
+  UNLIMITED
+}
+
+enum RiskTolerance {
+  VERY_LOW
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+input MitigationContext {
+  organizationContext: OrganizationContext!
+  threatContext: String!
+  urgency: MitigationUrgency!
+  resourceConstraints: [String!]
+}
+
+enum MitigationUrgency {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum MitigationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+# Analytics Inputs
+input ThreatAnalyticsFilter {
+  threatTypes: [ThreatType!]
+  sectors: [IndustrySector!]
+  regions: [String!]
+  threatActorIds: [ID!]
+  campaignIds: [ID!]
+  confidenceThreshold: ThreatConfidence
+  severityThreshold: Severity @external
+}
+
+# Attribution Inputs
+input SubmitAttributionInput {
+  threatId: ID!
+  attribution: ThreatAttributionInput!
+  evidence: [AttributionEvidenceInput!]!
+  confidence: AttributionConfidence! @external
+  reasoning: String!
+  sources: [String!]!
+}
+
+input AttributionEvidenceInput {
+  type: EvidenceType! @external
+  description: String!
+  confidence: Float!
+  source: String!
+  data: JSON
+}
+
+# Common Inputs
+input CreateThreatSourceInput {
+  name: String!
+  type: SourceType!
+  url: URL
+  description: String!
+  category: SourceCategory!
+  reliability: ThreatReliability!
+  credibility: SourceCredibility!
+}
+
+input CreateIndicatorInput {
+  type: String!
+  value: String!
+  description: String
+  confidence: ThreatConfidence!
+  context: JSON
+}
+
+input FloatRangeFilter @external {
+  min: Float
+  max: Float
+}
+
+input TimeRange @external {
+  start: DateTime!
+  end: DateTime!
+}
+
+# Shared scalars and directives
+scalar DateTime @external
+scalar JSON @external
+scalar URL @external
+scalar EmailAddress @external
+
+# External types that are defined in other services
+interface Node @external {
+  id: ID!
+}
+
+interface SecurityEntity @external {
+  id: ID!
+  organizationId: ID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  tags: [String!]!
+  metadata: JSON
+}
+
+interface Auditable @external {
+  createdBy: User
+  updatedBy: User
+  auditTrail: [AuditEntry!]!
+}
+
+type User @external {
+  id: ID!
+}
+
+type AuditEntry @external {
+  id: ID!
+}
+
+enum Severity @external {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum UserRole @external {
+  VIEWER
+  ANALYST
+  INCIDENT_RESPONDER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum SortDirection @external {
+  ASC
+  DESC
+}
+
+type Asset @external {
+  id: ID!
+}
+
+type Alert @external {
+  id: ID!
+}
+
+type Incident @external {
+  id: ID!
+}
+
+type SecurityEvent @external {
+  id: ID!
+}
+
+type MitreTechnique @external {
+  id: String!
+}
+
+enum DetectionMethod @external {
+  SIGNATURE_BASED
+  BEHAVIORAL_ANALYSIS
+  STATISTICAL_ANALYSIS
+  MACHINE_LEARNING
+  THREAT_INTELLIGENCE
+}
+
+enum ThreatReputation @external {
+  CLEAN
+  SUSPICIOUS
+  MALICIOUS
+  UNKNOWN
+}
+
+type GeoLocation @external {
+  country: String!
+}
+
+type Reference @external {
+  url: URL!
+  title: String!
+}
+
+type Evidence @external {
+  id: ID!
+}
+
+enum EvidenceType @external {
+  LOG_ENTRY
+  SCREENSHOT
+  NETWORK_CAPTURE
+  MEMORY_DUMP
+  FILE_SAMPLE
+}
+
+enum AttributionConfidence @external {
+  LOW
+  MEDIUM
+  HIGH
+  CONFIRMED
+}
+
+enum HealthStatus @external {
+  HEALTHY
+  WARNING
+  CRITICAL
+  UNKNOWN
+  OFFLINE
+}
+
+type SuppressionRule @external {
+  id: ID!
+}
+
+type ComplianceFramework @external {
+  id: ID!
+}
+
+enum ComparisonOperator @external {
+  EQUALS
+  NOT_EQUALS
+  GREATER_THAN
+  LESS_THAN
+  CONTAINS
+}
+
+enum ExportFormat @external {
+  JSON
+  CSV
+  XML
+  PDF
+}
+
+enum CompressionType @external {
+  GZIP
+  ZIP
+  NONE
+}
+
+type ExportJob @external {
+  id: ID!
+}
+
+input DateRangeFilter @external {
+  from: DateTime
+  to: DateTime
+}
+
+input StringFilter @external {
+  equals: String
+  contains: String
+  startsWith: String
+  endsWith: String
+  in: [String!]
+  notIn: [String!]
+}
+
+# Federation directives for external access
+directive @auth(requires: UserRole = ANALYST) on FIELD_DEFINITION
+directive @organizationScope on FIELD_DEFINITION
+directive @complexity(value: Int!) on FIELD_DEFINITION
+directive @rateLimit(max: Int!, window: Int!) on FIELD_DEFINITION
+directive @auditLog on FIELD_DEFINITION
+directive @external on OBJECT | FIELD_DEFINITION
+directive @requires(fields: String!) on FIELD_DEFINITION
+directive @provides(fields: String!) on FIELD_DEFINITION
+directive @key(fields: String!, resolvable: Boolean = true) on OBJECT | INTERFACE
+directive @shareable on FIELD_DEFINITION | OBJECT

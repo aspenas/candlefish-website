@@ -1,249 +1,228 @@
 -- Security Dashboard Database Schema
--- PostgreSQL with TimescaleDB extension for time-series data
+-- Version: 1.0.0
+-- Date: 2025-08-29
 
--- Enable required extensions
+-- Enable TimescaleDB extension (if using TimescaleDB image)
+CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+
+-- Enable UUID generation
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "timescaledb";
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- Organizations and Users
-CREATE TABLE organizations (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(255) NOT NULL,
-    slug VARCHAR(100) UNIQUE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- ============================================================================
+-- USER MANAGEMENT
+-- ============================================================================
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    organization_id UUID REFERENCES organizations(id),
     email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
-    role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'security_analyst', 'viewer')),
-    mfa_enabled BOOLEAN DEFAULT FALSE,
-    mfa_secret TEXT,
-    last_login TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    username VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'guest', 'analyst')),
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    is_active BOOLEAN DEFAULT true,
+    mfa_enabled BOOLEAN DEFAULT false,
+    mfa_secret VARCHAR(255),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    last_login TIMESTAMPTZ
 );
 
--- Asset Management
-CREATE TABLE asset_types (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(100) NOT NULL,
-    category VARCHAR(50) NOT NULL -- 'infrastructure', 'application', 'service'
-);
+-- Insert default users (Tyler & Patrick as admins, Aaron & James as guests)
+INSERT INTO users (email, username, password_hash, role, first_name, last_name)
+VALUES 
+    ('tyler@candlefish.ai', 'tyler', '$2a$10$DUMMY_HASH', 'admin', 'Tyler', 'Admin'),
+    ('patrick@candlefish.ai', 'patrick', '$2a$10$DUMMY_HASH', 'admin', 'Patrick', 'Smith'),
+    ('aaron@candlefish.ai', 'aaron', '$2a$10$DUMMY_HASH', 'guest', 'Aaron', 'Guest'),
+    ('james@candlefish.ai', 'james', '$2a$10$DUMMY_HASH', 'guest', 'James', 'Guest')
+ON CONFLICT (email) DO NOTHING;
 
-CREATE TABLE assets (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    organization_id UUID REFERENCES organizations(id),
-    asset_type_id UUID REFERENCES asset_types(id),
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    environment VARCHAR(50) NOT NULL, -- 'production', 'staging', 'development'
-    platform VARCHAR(50) NOT NULL, -- 'kong', 'netlify', 'vercel', 'fly', 'k8s', 'aws'
-    endpoint_url TEXT,
-    metadata JSONB, -- Platform-specific configuration
-    tags TEXT[],
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- ============================================================================
+-- SECURITY EVENTS (Time-series table)
+-- ============================================================================
 
--- Security Events (Time-series table)
-CREATE TABLE security_events (
+CREATE TABLE IF NOT EXISTS security_events (
     id UUID DEFAULT uuid_generate_v4(),
-    organization_id UUID REFERENCES organizations(id),
-    asset_id UUID REFERENCES assets(id),
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     event_type VARCHAR(100) NOT NULL,
-    severity VARCHAR(20) NOT NULL CHECK (severity IN ('critical', 'high', 'medium', 'low', 'info')),
-    title VARCHAR(500) NOT NULL,
+    severity VARCHAR(20) CHECK (severity IN ('critical', 'high', 'medium', 'low', 'info')),
+    source_ip INET,
+    destination_ip INET,
+    source_port INTEGER,
+    destination_port INTEGER,
+    protocol VARCHAR(20),
+    action VARCHAR(50),
+    user_id UUID REFERENCES users(id),
     description TEXT,
-    source VARCHAR(100) NOT NULL, -- 'kong_monitor', 'github_scanner', 'aws_config', etc.
     raw_data JSONB,
-    resolved BOOLEAN DEFAULT FALSE,
-    resolved_by UUID REFERENCES users(id),
-    resolved_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    tags TEXT[],
+    PRIMARY KEY (id, timestamp)
 );
 
--- Convert to hypertable for time-series optimization
-SELECT create_hypertable('security_events', 'created_at');
+-- Convert to TimescaleDB hypertable for time-series optimization
+SELECT create_hypertable('security_events', 'timestamp', if_not_exists => TRUE);
 
--- Vulnerability Management
-CREATE TABLE vulnerabilities (
+-- ============================================================================
+-- INCIDENTS
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS incidents (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    organization_id UUID REFERENCES organizations(id),
-    asset_id UUID REFERENCES assets(id),
-    cve_id VARCHAR(20),
-    cvss_score DECIMAL(3,1),
-    severity VARCHAR(20) NOT NULL,
-    title VARCHAR(500) NOT NULL,
+    incident_number VARCHAR(50) UNIQUE NOT NULL,
+    title VARCHAR(255) NOT NULL,
     description TEXT,
-    affected_component VARCHAR(255),
-    fix_available BOOLEAN DEFAULT FALSE,
-    fix_version VARCHAR(100),
-    status VARCHAR(50) DEFAULT 'open', -- 'open', 'in_progress', 'fixed', 'accepted_risk'
-    first_detected TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    last_seen TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Compliance Tracking
-CREATE TABLE compliance_frameworks (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(100) NOT NULL,
-    version VARCHAR(20),
-    description TEXT
-);
-
-CREATE TABLE compliance_controls (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    framework_id UUID REFERENCES compliance_frameworks(id),
-    control_id VARCHAR(50) NOT NULL,
-    title VARCHAR(500) NOT NULL,
-    description TEXT,
-    category VARCHAR(100)
-);
-
-CREATE TABLE compliance_assessments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    organization_id UUID REFERENCES organizations(id),
-    asset_id UUID REFERENCES assets(id),
-    control_id UUID REFERENCES compliance_controls(id),
-    status VARCHAR(50) NOT NULL, -- 'compliant', 'non_compliant', 'not_applicable', 'in_progress'
-    evidence TEXT,
-    assessed_by UUID REFERENCES users(id),
-    assessed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    next_assessment TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Alert Rules and Configurations
-CREATE TABLE alert_rules (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    organization_id UUID REFERENCES organizations(id),
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    condition JSONB NOT NULL, -- Rule definition in JSON format
-    severity VARCHAR(20) NOT NULL,
-    enabled BOOLEAN DEFAULT TRUE,
-    notification_channels UUID[],
+    status VARCHAR(50) DEFAULT 'open' CHECK (status IN ('open', 'investigating', 'resolved', 'closed')),
+    priority VARCHAR(20) CHECK (priority IN ('critical', 'high', 'medium', 'low')),
+    assigned_to UUID REFERENCES users(id),
     created_by UUID REFERENCES users(id),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    resolved_at TIMESTAMPTZ,
+    tags TEXT[],
+    metadata JSONB
 );
 
-CREATE TABLE alert_instances (
-    id UUID DEFAULT uuid_generate_v4(),
-    rule_id UUID REFERENCES alert_rules(id),
-    organization_id UUID REFERENCES organizations(id),
-    asset_id UUID REFERENCES assets(id),
-    severity VARCHAR(20) NOT NULL,
-    title VARCHAR(500) NOT NULL,
-    message TEXT,
-    status VARCHAR(50) DEFAULT 'open', -- 'open', 'acknowledged', 'resolved', 'suppressed'
-    acknowledged_by UUID REFERENCES users(id),
-    acknowledged_at TIMESTAMP WITH TIME ZONE,
-    resolved_by UUID REFERENCES users(id),
-    resolved_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- ============================================================================
+-- ALERTS
+-- ============================================================================
 
--- Convert to hypertable
-SELECT create_hypertable('alert_instances', 'created_at');
-
--- Secret Management Tracking
-CREATE TABLE secret_inventories (
+CREATE TABLE IF NOT EXISTS alerts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    organization_id UUID REFERENCES organizations(id),
-    secret_name VARCHAR(255) NOT NULL,
-    secret_type VARCHAR(100) NOT NULL, -- 'api_key', 'database_password', 'certificate', etc.
-    storage_location VARCHAR(100) NOT NULL, -- 'aws_secrets_manager', 'kubernetes_secret', etc.
-    environment VARCHAR(50) NOT NULL,
-    expires_at TIMESTAMP WITH TIME ZONE,
-    last_rotated TIMESTAMP WITH TIME ZONE,
-    rotation_frequency_days INTEGER,
-    auto_rotation_enabled BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    alert_type VARCHAR(100) NOT NULL,
+    severity VARCHAR(20) CHECK (severity IN ('critical', 'high', 'medium', 'low', 'info')),
+    status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'acknowledged', 'resolved', 'false_positive')),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    source VARCHAR(100),
+    triggered_at TIMESTAMPTZ DEFAULT NOW(),
+    acknowledged_at TIMESTAMPTZ,
+    acknowledged_by UUID REFERENCES users(id),
+    resolved_at TIMESTAMPTZ,
+    resolved_by UUID REFERENCES users(id),
+    incident_id UUID REFERENCES incidents(id),
+    metadata JSONB
 );
 
--- Kong Gateway Monitoring
-CREATE TABLE kong_services_snapshot (
+-- ============================================================================
+-- THREAT INTELLIGENCE
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS threat_indicators (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    indicator_type VARCHAR(50) CHECK (indicator_type IN ('ip', 'domain', 'hash', 'email', 'url')),
+    indicator_value VARCHAR(500) NOT NULL,
+    threat_type VARCHAR(100),
+    confidence_score DECIMAL(3,2) CHECK (confidence_score >= 0 AND confidence_score <= 1),
+    source VARCHAR(100),
+    first_seen TIMESTAMPTZ DEFAULT NOW(),
+    last_seen TIMESTAMPTZ DEFAULT NOW(),
+    is_active BOOLEAN DEFAULT true,
+    tags TEXT[],
+    metadata JSONB,
+    UNIQUE(indicator_type, indicator_value)
+);
+
+-- ============================================================================
+-- COMPLIANCE
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS compliance_checks (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    framework VARCHAR(50) CHECK (framework IN ('SOC2', 'GDPR', 'ISO27001', 'PCI-DSS', 'HIPAA')),
+    control_id VARCHAR(100) NOT NULL,
+    control_name VARCHAR(255),
+    status VARCHAR(50) CHECK (status IN ('compliant', 'non-compliant', 'partial', 'not-applicable')),
+    last_checked TIMESTAMPTZ DEFAULT NOW(),
+    evidence JSONB,
+    notes TEXT,
+    UNIQUE(framework, control_id)
+);
+
+-- ============================================================================
+-- AUDIT LOGS
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS audit_logs (
     id UUID DEFAULT uuid_generate_v4(),
-    organization_id UUID REFERENCES organizations(id),
-    kong_service_id VARCHAR(255) NOT NULL,
-    name VARCHAR(255),
-    protocol VARCHAR(10),
-    host VARCHAR(255),
-    port INTEGER,
-    path VARCHAR(1000),
-    https_redirect_status_code INTEGER,
-    tls_verify BOOLEAN,
-    snapshot_time TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    user_id UUID REFERENCES users(id),
+    action VARCHAR(100) NOT NULL,
+    resource_type VARCHAR(100),
+    resource_id VARCHAR(255),
+    ip_address INET,
+    user_agent TEXT,
+    status VARCHAR(50),
+    details JSONB,
+    PRIMARY KEY (id, timestamp)
 );
 
-SELECT create_hypertable('kong_services_snapshot', 'snapshot_time');
+-- Convert to TimescaleDB hypertable
+SELECT create_hypertable('audit_logs', 'timestamp', if_not_exists => TRUE);
 
-CREATE TABLE kong_routes_snapshot (
-    id UUID DEFAULT uuid_generate_v4(),
-    organization_id UUID REFERENCES organizations(id),
-    kong_route_id VARCHAR(255) NOT NULL,
-    kong_service_id VARCHAR(255),
-    protocols TEXT[],
-    methods TEXT[],
-    hosts TEXT[],
-    paths TEXT[],
-    https_redirect_status_code INTEGER,
-    preserve_host BOOLEAN,
-    snapshot_time TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- ============================================================================
+-- INDEXES
+-- ============================================================================
 
-SELECT create_hypertable('kong_routes_snapshot', 'snapshot_time');
+-- Security Events indexes
+CREATE INDEX idx_security_events_severity ON security_events(severity);
+CREATE INDEX idx_security_events_event_type ON security_events(event_type);
+CREATE INDEX idx_security_events_source_ip ON security_events(source_ip);
+CREATE INDEX idx_security_events_tags ON security_events USING GIN(tags);
 
--- Metrics and Performance Data (Time-series)
-CREATE TABLE performance_metrics (
-    id UUID DEFAULT uuid_generate_v4(),
-    organization_id UUID REFERENCES organizations(id),
-    asset_id UUID REFERENCES assets(id),
-    metric_name VARCHAR(100) NOT NULL,
-    metric_value DOUBLE PRECISION NOT NULL,
-    metric_unit VARCHAR(50),
-    tags JSONB,
-    recorded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- Incidents indexes
+CREATE INDEX idx_incidents_status ON incidents(status);
+CREATE INDEX idx_incidents_priority ON incidents(priority);
+CREATE INDEX idx_incidents_assigned ON incidents(assigned_to);
 
-SELECT create_hypertable('performance_metrics', 'recorded_at');
+-- Alerts indexes
+CREATE INDEX idx_alerts_status ON alerts(status);
+CREATE INDEX idx_alerts_severity ON alerts(severity);
+CREATE INDEX idx_alerts_triggered ON alerts(triggered_at DESC);
 
--- Indexes for performance
-CREATE INDEX idx_security_events_org_severity ON security_events(organization_id, severity, created_at DESC);
-CREATE INDEX idx_security_events_asset ON security_events(asset_id, created_at DESC);
-CREATE INDEX idx_security_events_type ON security_events(event_type, created_at DESC);
+-- Threat indicators indexes
+CREATE INDEX idx_threat_indicators_type ON threat_indicators(indicator_type);
+CREATE INDEX idx_threat_indicators_active ON threat_indicators(is_active);
 
-CREATE INDEX idx_vulnerabilities_org_severity ON vulnerabilities(organization_id, severity, status);
-CREATE INDEX idx_vulnerabilities_asset ON vulnerabilities(asset_id, status);
-CREATE INDEX idx_vulnerabilities_cve ON vulnerabilities(cve_id);
+-- Audit logs indexes
+CREATE INDEX idx_audit_logs_user ON audit_logs(user_id);
+CREATE INDEX idx_audit_logs_action ON audit_logs(action);
 
-CREATE INDEX idx_alert_instances_org_status ON alert_instances(organization_id, status, created_at DESC);
-CREATE INDEX idx_alert_instances_rule ON alert_instances(rule_id, created_at DESC);
+-- ============================================================================
+-- VIEWS
+-- ============================================================================
 
-CREATE INDEX idx_assets_org_platform ON assets(organization_id, platform, environment);
-CREATE INDEX idx_assets_tags ON assets USING gin(tags);
+-- Active alerts summary
+CREATE OR REPLACE VIEW active_alerts_summary AS
+SELECT 
+    severity,
+    COUNT(*) as count,
+    MAX(triggered_at) as latest
+FROM alerts
+WHERE status = 'active'
+GROUP BY severity;
 
-CREATE INDEX idx_performance_metrics_asset_name ON performance_metrics(asset_id, metric_name, recorded_at DESC);
+-- Incident statistics
+CREATE OR REPLACE VIEW incident_stats AS
+SELECT 
+    status,
+    priority,
+    COUNT(*) as count,
+    AVG(EXTRACT(epoch FROM (COALESCE(resolved_at, NOW()) - created_at))/3600)::numeric(10,2) as avg_resolution_hours
+FROM incidents
+GROUP BY status, priority;
 
--- Insert initial data
-INSERT INTO compliance_frameworks (name, version, description) VALUES
-('OWASP ASVS', '4.0.3', 'OWASP Application Security Verification Standard'),
-('PCI-DSS', '4.0', 'Payment Card Industry Data Security Standard'),
-('SOC 2', 'Type II', 'Service Organization Control 2'),
-('ISO 27001', '2013', 'Information Security Management System');
+-- User activity summary
+CREATE OR REPLACE VIEW user_activity AS
+SELECT 
+    u.username,
+    u.role,
+    COUNT(DISTINCT al.id) as total_actions,
+    MAX(al.timestamp) as last_activity
+FROM users u
+LEFT JOIN audit_logs al ON u.id = al.user_id
+GROUP BY u.id, u.username, u.role;
 
-INSERT INTO asset_types (name, category) VALUES
-('API Gateway', 'infrastructure'),
-('Web Application', 'application'),
-('Database', 'infrastructure'),
-('Kubernetes Cluster', 'infrastructure'),
-('CI/CD Pipeline', 'service'),
-('CDN', 'infrastructure');
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO dashboard_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO dashboard_user;
+
+\echo 'Security Dashboard schema created successfully!'

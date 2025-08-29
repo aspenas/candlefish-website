@@ -1,0 +1,521 @@
+# Candlefish CLOS - Caddy Reverse Proxy Configuration
+# Auto-HTTPS enabled for production domains, HTTP for local development
+
+# Global options
+{
+	admin 0.0.0.0:2019
+	log default {
+		output file /var/log/caddy/access.log
+		level INFO
+		format json
+	}
+	
+	# Rate limiting
+	order rate_limit before basicauth
+	
+	# Security headers
+	header {
+		# Security headers
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		
+		# Remove server info
+		-Server
+		-X-Powered-By
+	}
+}
+
+# Security Dashboard - Frontend
+security.local, localhost:3100 {
+	reverse_proxy security-dashboard-frontend:3100 {
+		health_uri /health
+		health_interval 30s
+		health_timeout 10s
+		
+		# Load balancing (for future scaling)
+		lb_policy round_robin
+		
+		# Headers
+		header_up Host {upstream_hostport}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+	
+	# Security headers specific to React apps
+	header {
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:;"
+	}
+	
+	# Compression
+	encode gzip zstd
+	
+	# Rate limiting
+	rate_limit {
+		zone static_assets {
+			key {remote_host}
+			events 1000
+			window 1m
+		}
+	}
+	
+	# Static assets caching
+	@static {
+		path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
+	}
+	header @static Cache-Control "max-age=31536000, public, immutable"
+	
+	# Logging
+	log {
+		output file /var/log/caddy/security-frontend.log
+		format json
+	}
+}
+
+# Security Dashboard - API
+api.security.local, localhost:4100 {
+	reverse_proxy security-dashboard-api:4100 {
+		health_uri /health
+		health_interval 30s
+		health_timeout 10s
+		
+		# Timeouts
+		timeout 30s
+		
+		# Headers for API
+		header_up Host {upstream_hostport}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+	
+	# API specific headers
+	header {
+		Content-Security-Policy "default-src 'none'; frame-ancestors 'none';"
+		X-Content-Type-Options "nosniff"
+	}
+	
+	# Rate limiting for API
+	rate_limit {
+		zone api {
+			key {remote_host}
+			events 100
+			window 1m
+		}
+	}
+	
+	# CORS handling
+	@cors_preflight method OPTIONS
+	respond @cors_preflight 200 {
+		Access-Control-Allow-Origin "https://security.local"
+		Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+		Access-Control-Allow-Headers "Authorization, Content-Type, X-Requested-With"
+		Access-Control-Max-Age "86400"
+	}
+	
+	header {
+		Access-Control-Allow-Origin "https://security.local"
+		Access-Control-Allow-Credentials "true"
+	}
+	
+	# Compression for JSON responses
+	encode gzip zstd
+	
+	# Logging
+	log {
+		output file /var/log/caddy/security-api.log
+		format json
+	}
+}
+
+# PKB (Personal Knowledge Base) - UI
+pkb.local, localhost:8501 {
+	reverse_proxy pkb-ui:8501 {
+		health_uri /_stcore/health
+		health_interval 30s
+		health_timeout 15s
+		
+		# Streamlit specific settings
+		header_up Host {upstream_hostport}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up Connection "Upgrade"
+		header_up Upgrade "websocket"
+	}
+	
+	# Streamlit WebSocket support
+	@websockets {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	
+	# Security headers for Streamlit
+	header {
+		Content-Security-Policy "default-src 'self' 'unsafe-inline' 'unsafe-eval'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' ws: wss:;"
+	}
+	
+	# No caching for dynamic content
+	header Cache-Control "no-cache, no-store, must-revalidate"
+	
+	# Rate limiting
+	rate_limit {
+		zone pkb {
+			key {remote_host}
+			events 200
+			window 1m
+		}
+	}
+	
+	# Logging
+	log {
+		output file /var/log/caddy/pkb.log
+		format json
+	}
+}
+
+# PKB API
+api.pkb.local, localhost:8787 {
+	reverse_proxy pkb-api:8787 {
+		health_uri /health
+		health_interval 30s
+		health_timeout 15s
+		
+		# Longer timeout for file uploads
+		timeout 5m
+		
+		# Headers
+		header_up Host {upstream_hostport}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+	
+	# Large file upload support
+	request_body {
+		max_size 100MB
+	}
+	
+	# API rate limiting
+	rate_limit {
+		zone pkb_api {
+			key {remote_host}
+			events 50
+			window 1m
+		}
+	}
+	
+	# CORS
+	@cors_preflight method OPTIONS
+	respond @cors_preflight 200 {
+		Access-Control-Allow-Origin "https://pkb.local"
+		Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+		Access-Control-Allow-Headers "Authorization, Content-Type, X-Requested-With"
+		Access-Control-Max-Age "86400"
+	}
+	
+	header {
+		Access-Control-Allow-Origin "https://pkb.local"
+		Access-Control-Allow-Credentials "true"
+	}
+	
+	# Compression
+	encode gzip zstd
+	
+	# Logging
+	log {
+		output file /var/log/caddy/pkb-api.log
+		format json
+	}
+}
+
+# Candlefish Main Application
+candlefish.local, localhost:3000 {
+	reverse_proxy candlefish-web:3000 {
+		health_uri /api/health
+		health_interval 30s
+		health_timeout 10s
+		
+		# Next.js specific
+		header_up Host {upstream_hostport}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+	
+	# Next.js security headers
+	header {
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:;"
+	}
+	
+	# Static asset optimization
+	@static {
+		path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
+	}
+	header @static Cache-Control "max-age=31536000, public, immutable"
+	
+	# Next.js _next static files
+	@next_static {
+		path /_next/static/*
+	}
+	header @next_static Cache-Control "max-age=31536000, public, immutable"
+	
+	# Rate limiting
+	rate_limit {
+		zone candlefish {
+			key {remote_host}
+			events 500
+			window 1m
+		}
+	}
+	
+	# Compression
+	encode gzip zstd
+	
+	# Logging
+	log {
+		output file /var/log/caddy/candlefish.log
+		format json
+	}
+}
+
+# Candlefish API
+api.candlefish.local, localhost:4000 {
+	reverse_proxy candlefish-api:4000 {
+		health_uri /health
+		health_interval 30s
+		health_timeout 10s
+		
+		# Headers
+		header_up Host {upstream_hostport}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+	
+	# Rate limiting
+	rate_limit {
+		zone candlefish_api {
+			key {remote_host}
+			events 100
+			window 1m
+		}
+	}
+	
+	# CORS
+	@cors_preflight method OPTIONS
+	respond @cors_preflight 200 {
+		Access-Control-Allow-Origin "https://candlefish.local"
+		Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+		Access-Control-Allow-Headers "Authorization, Content-Type, X-Requested-With"
+		Access-Control-Max-Age "86400"
+	}
+	
+	header {
+		Access-Control-Allow-Origin "https://candlefish.local"
+		Access-Control-Allow-Credentials "true"
+	}
+	
+	# Compression
+	encode gzip zstd
+	
+	# Logging
+	log {
+		output file /var/log/caddy/candlefish-api.log
+		format json
+	}
+}
+
+# Grafana - Monitoring Dashboard
+grafana.local, localhost:3001 {
+	reverse_proxy clos-grafana:3000 {
+		health_uri /api/health
+		health_interval 30s
+		health_timeout 10s
+		
+		# Grafana specific headers
+		header_up Host {upstream_hostport}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+	
+	# WebSocket support for live dashboards
+	@websockets {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	
+	# Rate limiting
+	rate_limit {
+		zone grafana {
+			key {remote_host}
+			events 200
+			window 1m
+		}
+	}
+	
+	# Compression
+	encode gzip zstd
+	
+	# Logging
+	log {
+		output file /var/log/caddy/grafana.log
+		format json
+	}
+}
+
+# Prometheus - Metrics
+prometheus.local, localhost:9090 {
+	reverse_proxy clos-prometheus:9090 {
+		health_uri /-/healthy
+		health_interval 30s
+		health_timeout 10s
+	}
+	
+	# Basic auth for security
+	basicauth {
+		admin {env.PROMETHEUS_ADMIN_PASSWORD}
+	}
+	
+	# Rate limiting
+	rate_limit {
+		zone prometheus {
+			key {remote_host}
+			events 50
+			window 1m
+		}
+	}
+	
+	# Logging
+	log {
+		output file /var/log/caddy/prometheus.log
+		format json
+	}
+}
+
+# Jaeger - Distributed Tracing
+jaeger.local, localhost:16686 {
+	reverse_proxy clos-jaeger:16686
+	
+	# Rate limiting
+	rate_limit {
+		zone jaeger {
+			key {remote_host}
+			events 100
+			window 1m
+		}
+	}
+	
+	# Logging
+	log {
+		output file /var/log/caddy/jaeger.log
+		format json
+	}
+}
+
+# MinIO Console (PKB File Storage)
+minio.local, localhost:9002 {
+	reverse_proxy pkb-minio:9001 {
+		health_uri /minio/health/live
+		health_interval 60s
+		health_timeout 15s
+	}
+	
+	# Rate limiting
+	rate_limit {
+		zone minio {
+			key {remote_host}
+			events 100
+			window 1m
+		}
+	}
+	
+	# Logging
+	log {
+		output file /var/log/caddy/minio.log
+		format json
+	}
+}
+
+# RabbitMQ Management UI
+rabbitmq.local, localhost:15672 {
+	reverse_proxy clos-rabbitmq:15672
+	
+	# Basic auth (RabbitMQ has its own auth)
+	rate_limit {
+		zone rabbitmq {
+			key {remote_host}
+			events 50
+			window 1m
+		}
+	}
+	
+	# Logging
+	log {
+		output file /var/log/caddy/rabbitmq.log
+		format json
+	}
+}
+
+# Consul UI
+consul.local, localhost:8500 {
+	reverse_proxy clos-consul:8500 {
+		health_uri /v1/status/leader
+		health_interval 30s
+		health_timeout 10s
+	}
+	
+	# Rate limiting
+	rate_limit {
+		zone consul {
+			key {remote_host}
+			events 100
+			window 1m
+		}
+	}
+	
+	# Logging
+	log {
+		output file /var/log/caddy/consul.log
+		format json
+	}
+}
+
+# Health Check Endpoint
+health.local, localhost:8888 {
+	respond /health `{"status": "healthy", "timestamp": "{time.now.unix}", "services": ["security-dashboard", "pkb", "candlefish", "monitoring"]}`
+	
+	# Additional health endpoints
+	handle /health/detailed {
+		reverse_proxy clos-healthcheck:8888 {
+			health_uri /health
+			health_interval 30s
+			health_timeout 5s
+		}
+	}
+	
+	# System metrics endpoint
+	handle /metrics {
+		reverse_proxy clos-node-exporter:9100 {
+			health_uri /metrics
+			health_interval 30s
+			health_timeout 5s
+		}
+	}
+}
+
+# Catch-all for undefined routes
+localhost {
+	respond 404 {
+		body `{"error": "Service not found", "available_services": ["security.local", "pkb.local", "candlefish.local", "grafana.local"]}`
+	}
+}
+
+# Error handling
+handle_errors {
+	respond "{err.status_code} {err.status_text}"
+}

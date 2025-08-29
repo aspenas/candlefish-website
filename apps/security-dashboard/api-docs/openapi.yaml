@@ -1,0 +1,402 @@
+openapi: 3.0.3
+info:
+  title: Security Dashboard API
+  version: '1.0.0'
+  description: |
+    # Security Dashboard API
+
+    ## Overview
+    The Security Dashboard API provides comprehensive security monitoring, threat detection, 
+    and management capabilities for organizations. It supports multiple authentication methods, 
+    real-time event streaming, and granular access control.
+
+    ## Authentication
+    The API supports multiple authentication mechanisms:
+    - JWT Authentication
+    - OAuth2 
+    - API Keys
+    - Multi-Factor Authentication (MFA)
+
+    ## Base URL
+    `https://api.security-dashboard.io/v1`
+
+  contact:
+    name: Security Dashboard Support
+    email: support@security-dashboard.io
+    url: https://security-dashboard.io/support
+  termsOfService: https://security-dashboard.io/terms
+  x-logo:
+    url: 'https://security-dashboard.io/logo.png'
+
+servers:
+  - url: 'https://api.security-dashboard.io/v1'
+    description: Production Server
+  - url: 'https://staging-api.security-dashboard.io/v1'
+    description: Staging Server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT Token for authentication. Obtain via login endpoint.
+        Include in Authorization header as: `Bearer [token]`
+
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        Organization API Key for machine-to-machine authentication.
+        Must be created and managed through the dashboard.
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique user identifier
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+          enum: 
+            - VIEWER
+            - ANALYST
+            - INCIDENT_RESPONDER
+            - ADMIN
+            - SUPER_ADMIN
+        permissions:
+          type: array
+          items:
+            type: string
+        isActive:
+          type: boolean
+
+    Asset:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        assetType:
+          type: string
+          enum:
+            - WEB_APPLICATION
+            - API
+            - DATABASE
+            - SERVER
+            - CONTAINER
+            - NETWORK_DEVICE
+            - CLOUD_RESOURCE
+            - MOBILE_APPLICATION
+            - IOT_DEVICE
+        securityLevel:
+          type: string
+          enum:
+            - LOW
+            - MEDIUM
+            - HIGH
+            - CRITICAL
+        riskScore:
+          type: number
+          format: float
+
+    Alert:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        severity:
+          type: string
+          enum:
+            - LOW
+            - MEDIUM
+            - HIGH
+            - CRITICAL
+        status:
+          type: string
+          enum:
+            - ACTIVE
+            - ACKNOWLEDGED
+            - INVESTIGATING
+            - RESOLVED
+            - SUPPRESSED
+            - FALSE_POSITIVE
+
+    Vulnerability:
+      type: object
+      properties:
+        id:
+          type: string
+        cveId:
+          type: string
+        title:
+          type: string
+        severity:
+          type: string
+          enum:
+            - LOW
+            - MEDIUM
+            - HIGH
+            - CRITICAL
+        status:
+          type: string
+          enum:
+            - OPEN
+            - IN_PROGRESS
+            - RESOLVED
+            - ACCEPTED_RISK
+            - FALSE_POSITIVE
+
+  responses:
+    Unauthorized:
+      description: Authentication credentials were missing or incorrect
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                type: string
+                example: UNAUTHORIZED
+              message:
+                type: string
+                example: Invalid or expired authentication token
+
+    RateLimitExceeded:
+      description: Rate limit exceeded for this endpoint
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                type: string
+                example: RATE_LIMIT_EXCEEDED
+              retryAfter:
+                type: integer
+                description: Seconds until the next request can be made
+
+paths:
+  /auth/login:
+    post:
+      summary: User Login
+      description: |
+        Authenticate a user with email and password.
+        Supports Multi-Factor Authentication (MFA).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                mfaCode:
+                  type: string
+                  description: Optional MFA code if enabled
+      responses:
+        '200':
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  refreshToken:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+  /assets:
+    get:
+      summary: List Organization Assets
+      description: Retrieve paginated list of organization's assets
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+        - name: filter
+          in: query
+          description: JSON-encoded filter object
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful assets retrieval
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Asset'
+                  totalCount:
+                    type: integer
+                  pageInfo:
+                    type: object
+                    properties:
+                      currentPage:
+                        type: integer
+                      totalPages:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+  /alerts:
+    get:
+      summary: List Organization Alerts
+      description: Retrieve paginated list of organization's security alerts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+        - name: severity
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - LOW
+                - MEDIUM
+                - HIGH
+                - CRITICAL
+      responses:
+        '200':
+          description: Successful alerts retrieval
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  alerts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Alert'
+                  totalCount:
+                    type: integer
+                  pageInfo:
+                    type: object
+                    properties:
+                      currentPage:
+                        type: integer
+                      totalPages:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+  /vulnerabilities:
+    get:
+      summary: List Organization Vulnerabilities
+      description: Retrieve paginated list of organization's security vulnerabilities
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+        - name: severity
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - LOW
+                - MEDIUM
+                - HIGH
+                - CRITICAL
+      responses:
+        '200':
+          description: Successful vulnerabilities retrieval
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  vulnerabilities:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Vulnerability'
+                  totalCount:
+                    type: integer
+                  pageInfo:
+                    type: object
+                    properties:
+                      currentPage:
+                        type: integer
+                      totalPages:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+tags:
+  - name: Authentication
+    description: User authentication and authorization
+  - name: Assets
+    description: Asset management and discovery
+  - name: Alerts
+    description: Security alerts and threat detection
+  - name: Vulnerabilities
+    description: Vulnerability management and tracking

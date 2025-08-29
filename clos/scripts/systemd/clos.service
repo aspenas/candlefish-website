@@ -1,0 +1,76 @@
+[Unit]
+Description=Candlefish CLOS (Container Life-cycle Operations System)
+Documentation=https://github.com/candlefish-ai/clos
+After=docker.service network-online.target
+Wants=network-online.target
+BindsTo=docker.service
+Requires=docker.service
+
+[Service]
+Type=notify
+User=candlefish
+Group=docker
+WorkingDirectory=/opt/candlefish/clos
+Environment=CLOS_CONFIG_PATH=/opt/candlefish/clos/.clos/config.yaml
+Environment=CLOS_LOG_LEVEL=info
+Environment=DOCKER_COMPOSE_PROFILES=core,monitoring
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+
+# Service management commands
+ExecStartPre=/usr/bin/docker --version
+ExecStartPre=/usr/local/bin/docker-compose --version
+ExecStartPre=-/usr/local/bin/docker-compose -f deployment/docker-compose.base.yml down
+ExecStartPre=/usr/local/bin/docker-compose -f deployment/docker-compose.base.yml pull --quiet
+
+# Start core infrastructure first
+ExecStart=/usr/local/bin/docker-compose \
+    -f deployment/docker-compose.base.yml \
+    -f deployment/services/monitoring.yml \
+    up --remove-orphans --no-recreate
+
+# Health check
+ExecStartPost=/bin/bash -c 'for i in {1..30}; do curl -f http://localhost:80/health && break || sleep 10; done'
+
+# Stop services gracefully
+ExecStop=/usr/local/bin/docker-compose \
+    -f deployment/docker-compose.base.yml \
+    -f deployment/services/monitoring.yml \
+    -f deployment/services/security-dashboard.yml \
+    -f deployment/services/pkb.yml \
+    -f deployment/services/candlefish.yml \
+    down --timeout 60
+
+# Reload configuration
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Service behavior
+Restart=on-failure
+RestartSec=30
+StartLimitInterval=300
+StartLimitBurst=5
+TimeoutStartSec=300
+TimeoutStopSec=120
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Security
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/candlefish/clos /var/lib/docker /var/run/docker.sock
+PrivateDevices=false
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=clos
+
+# Send systemd notification when ready
+NotifyAccess=main
+
+[Install]
+WantedBy=multi-user.target
+Alias=candlefish-clos.service

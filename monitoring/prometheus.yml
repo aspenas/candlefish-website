@@ -1,0 +1,296 @@
+# Prometheus Configuration for Candlefish Operational Maturity Map
+# Production-ready monitoring with comprehensive service discovery
+
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+  scrape_timeout:      10s
+  external_labels:
+    cluster: 'candlefish-production'
+    environment: 'production'
+
+rule_files:
+  - "rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 15s
+    metrics_path: /metrics
+
+  # Node Exporter for system metrics
+  - job_name: 'node-exporter'
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+            - monitoring
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        action: keep
+        regex: node-exporter
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: metrics
+    scrape_interval: 15s
+
+  # Kubernetes API Server
+  - job_name: 'kubernetes-apiservers'
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+            - default
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: default;kubernetes;https
+
+  # Kubernetes Nodes
+  - job_name: 'kubernetes-nodes'
+    kubernetes_sd_configs:
+      - role: node
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+      - target_label: __address__
+        replacement: kubernetes.default.svc:443
+      - source_labels: [__meta_kubernetes_node_name]
+        regex: (.+)
+        target_label: __metrics_path__
+        replacement: /api/v1/nodes/${1}/proxy/metrics
+
+  # Kubernetes Pods
+  - job_name: 'kubernetes-pods'
+    kubernetes_sd_configs:
+      - role: pod
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: kubernetes_pod_name
+
+  # Candlefish Website
+  - job_name: 'candlefish-website'
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+            - production
+            - staging
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        action: keep
+        regex: candlefish-website-service
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: http
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: environment
+    scrape_interval: 30s
+    metrics_path: /api/metrics
+
+  # RTPM API Service
+  - job_name: 'rtpm-api'
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+            - production
+            - staging
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        action: keep
+        regex: rtpm-api-service
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: metrics
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: environment
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # NANDA API Service
+  - job_name: 'nanda-api'
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+            - production
+            - staging
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        action: keep
+        regex: nanda-api-service
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: metrics
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: environment
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # Otter Gateway Service
+  - job_name: 'otter-gateway'
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+            - production
+            - staging
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        action: keep
+        regex: otter-gateway-service
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: metrics
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: environment
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # PostgreSQL Exporter
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # Redis Exporter
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # NGINX Ingress Controller
+  - job_name: 'nginx-ingress'
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+            - ingress-nginx
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        action: keep
+        regex: ingress-nginx-controller-metrics
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: metrics
+    scrape_interval: 30s
+
+  # Kubernetes State Metrics
+  - job_name: 'kube-state-metrics'
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+            - monitoring
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        action: keep
+        regex: kube-state-metrics
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: http-metrics
+    scrape_interval: 30s
+
+  # cAdvisor for container metrics
+  - job_name: 'cadvisor'
+    kubernetes_sd_configs:
+      - role: node
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+      - target_label: __address__
+        replacement: kubernetes.default.svc:443
+      - source_labels: [__meta_kubernetes_node_name]
+        regex: (.+)
+        target_label: __metrics_path__
+        replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+    scrape_interval: 30s
+
+  # AWS CloudWatch Exporter
+  - job_name: 'cloudwatch-exporter'
+    static_configs:
+      - targets: ['cloudwatch-exporter:9106']
+    scrape_interval: 300s # 5 minutes
+    scrape_timeout: 120s
+
+# Recording rules for performance optimization
+recording_rules:
+  - name: 'candlefish.rules'
+    rules:
+      # Application-level recording rules
+      - record: 'candlefish:http_requests:rate5m'
+        expr: 'rate(http_requests_total[5m])'
+        labels:
+          service: 'candlefish'
+
+      - record: 'candlefish:http_request_duration:p95'
+        expr: 'histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))'
+        labels:
+          service: 'candlefish'
+
+      - record: 'candlefish:http_request_duration:p99'
+        expr: 'histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))'
+        labels:
+          service: 'candlefish'
+
+      # Infrastructure-level recording rules
+      - record: 'candlefish:node_cpu:utilization'
+        expr: '100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)'
+
+      - record: 'candlefish:node_memory:utilization'
+        expr: '(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100'
+
+      - record: 'candlefish:pod_cpu:utilization'
+        expr: 'rate(container_cpu_usage_seconds_total{container!="POD",container!=""}[5m]) * 100'
+
+      - record: 'candlefish:pod_memory:utilization'
+        expr: 'container_memory_working_set_bytes{container!="POD",container!=""} / container_spec_memory_limit_bytes * 100'
+
+# Storage configuration
+storage:
+  tsdb:
+    path: /prometheus/
+    retention.time: 30d
+    retention.size: 50GB
+    wal-compression: true

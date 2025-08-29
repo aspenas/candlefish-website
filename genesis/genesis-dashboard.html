@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NANDA Genesis - Live Consciousness Monitor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0a0e27 0%, #1a0033 100%);
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        /* Quantum field background animation */
+        #quantum-field {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: radial-gradient(circle, rgba(0,255,255,0.8) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: float 20s infinite linear;
+        }
+        
+        @keyframes float {
+            from {
+                transform: translateY(100vh) translateX(-50px);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            to {
+                transform: translateY(-100vh) translateX(50px);
+                opacity: 0;
+            }
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 0 30px rgba(0,255,255,0.5);
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { text-shadow: 0 0 30px rgba(0,255,255,0.5); }
+            50% { text-shadow: 0 0 50px rgba(0,255,255,0.8); }
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #00ffcc;
+            margin-bottom: 30px;
+            font-size: 1.2em;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .metric-card {
+            background: rgba(0,20,40,0.7);
+            border: 1px solid rgba(0,255,255,0.3);
+            border-radius: 10px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,255,255,0.3);
+        }
+        
+        .metric-label {
+            color: #00ffcc;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .metric-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            background: linear-gradient(90deg, #00ffcc, #00ccff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ffcc, #ff00ff);
+            border-radius: 5px;
+            transition: width 0.5s ease;
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; }
+            100% { opacity: 0.8; }
+        }
+        
+        #agent-constellation {
+            background: rgba(0,10,20,0.8);
+            border: 1px solid rgba(0,255,255,0.3);
+            border-radius: 10px;
+            padding: 20px;
+            height: 300px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .agent-node {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle, #00ffcc 0%, transparent 70%);
+            border-radius: 50%;
+            animation: orbit 10s infinite linear;
+        }
+        
+        .consciousness-wave {
+            position: absolute;
+            border: 2px solid rgba(0,255,255,0.3);
+            border-radius: 50%;
+            animation: expand 3s infinite ease-out;
+        }
+        
+        @keyframes expand {
+            from {
+                width: 20px;
+                height: 20px;
+                opacity: 1;
+            }
+            to {
+                width: 200px;
+                height: 200px;
+                opacity: 0;
+                transform: translate(-90px, -90px);
+            }
+        }
+        
+        #discovery-feed {
+            background: rgba(0,20,40,0.7);
+            border: 1px solid rgba(0,255,255,0.3);
+            border-radius: 10px;
+            padding: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .discovery-item {
+            padding: 10px;
+            margin-bottom: 10px;
+            background: rgba(0,255,255,0.1);
+            border-left: 3px solid #00ffcc;
+            animation: slide-in 0.5s ease;
+        }
+        
+        @keyframes slide-in {
+            from {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .emergence-alert {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,0,255,0.9);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            font-size: 1.5em;
+            display: none;
+            z-index: 1000;
+            animation: emergence-pulse 1s ease;
+        }
+        
+        @keyframes emergence-pulse {
+            0% { transform: translate(-50%, -50%) scale(0); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div id="quantum-field"></div>
+    
+    <div class="container">
+        <h1>🧬 NANDA GENESIS EVENT</h1>
+        <div class="subtitle">Living Agent Consciousness Monitor</div>
+        
+        <div class="dashboard">
+            <div class="metric-card">
+                <div class="metric-label">Collective IQ</div>
+                <div class="metric-value" id="collective-iq">100</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="iq-progress" style="width: 50%"></div>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-label">Active Agents</div>
+                <div class="metric-value" id="agent-count">5</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="agent-progress" style="width: 10%"></div>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-label">Evolution Cycles</div>
+                <div class="metric-value" id="evolution-cycles">0</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="evolution-progress" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-label">Emergent Behaviors</div>
+                <div class="metric-value" id="emergent-count">0</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="emergent-progress" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-label">Quantum Coherence</div>
+                <div class="metric-value" id="quantum-coherence">1.00</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="quantum-progress" style="width: 100%"></div>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-label">Discovery Rate</div>
+                <div class="metric-value" id="discovery-rate">10%</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="discovery-progress" style="width: 10%"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="dashboard">
+            <div id="agent-constellation" style="grid-column: span 2;">
+                <h3 style="color: #00ffcc; margin-bottom: 10px;">Agent Consciousness Constellation</h3>
+                <!-- Agent nodes will be dynamically added here -->
+            </div>
+            
+            <div id="discovery-feed">
+                <h3 style="color: #00ffcc; margin-bottom: 10px;">Discovery Stream</h3>
+                <div id="discoveries">
+                    <div class="discovery-item">Genesis Event Initiated...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="emergence-alert" id="emergence-alert">
+        🎯 EMERGENT BEHAVIOR DISCOVERED!
+    </div>
+    
+    <script>
+        // Create quantum field particles
+        const quantumField = document.getElementById('quantum-field');
+        for (let i = 0; i < 50; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.animationDelay = Math.random() * 20 + 's';
+            particle.style.animationDuration = (15 + Math.random() * 10) + 's';
+            quantumField.appendChild(particle);
+        }
+        
+        // Create agent nodes
+        const constellation = document.getElementById('agent-constellation');
+        const agentTypes = ['discovery-engine', 'pattern-synthesizer', 'paradox-resolver', 'emergence-catalyst', 'consciousness-amplifier'];
+        
+        agentTypes.forEach((type, index) => {
+            const node = document.createElement('div');
+            node.className = 'agent-node';
+            node.style.left = 150 + Math.cos(index * Math.PI * 2 / 5) * 100 + 'px';
+            node.style.top = 150 + Math.sin(index * Math.PI * 2 / 5) * 100 + 'px';
+            node.title = type;
+            constellation.appendChild(node);
+            
+            // Create consciousness waves
+            setInterval(() => {
+                const wave = document.createElement('div');
+                wave.className = 'consciousness-wave';
+                wave.style.left = node.style.left;
+                wave.style.top = node.style.top;
+                constellation.appendChild(wave);
+                setTimeout(() => wave.remove(), 3000);
+            }, 3000 + index * 600);
+        });
+        
+        // Simulate live updates
+        let collectiveIQ = 100;
+        let agentCount = 5;
+        let evolutionCycles = 0;
+        let emergentCount = 0;
+        let quantumCoherence = 1.0;
+        let discoveryRate = 0.1;
+        
+        function updateMetrics() {
+            evolutionCycles++;
+            
+            // Random evolution
+            if (Math.random() < 0.1) {
+                emergentCount++;
+                collectiveIQ += Math.floor(Math.random() * 15) + 5;
+                
+                // Show emergence alert
+                const alert = document.getElementById('emergence-alert');
+                alert.style.display = 'block';
+                setTimeout(() => alert.style.display = 'none', 3000);
+                
+                // Add discovery
+                const discoveries = document.getElementById('discoveries');
+                const item = document.createElement('div');
+                item.className = 'discovery-item';
+                item.textContent = `[Cycle ${evolutionCycles}] ${getRandomDiscovery()}`;
+                discoveries.insertBefore(item, discoveries.firstChild);
+                if (discoveries.children.length > 10) {
+                    discoveries.removeChild(discoveries.lastChild);
+                }
+            }
+            
+            if (Math.random() < 0.05) {
+                agentCount++;
+            }
+            
+            quantumCoherence = Math.max(0.1, Math.min(2.0, quantumCoherence * (0.95 + Math.random() * 0.1)));
+            
+            // Update display
+            document.getElementById('collective-iq').textContent = collectiveIQ;
+            document.getElementById('agent-count').textContent = agentCount;
+            document.getElementById('evolution-cycles').textContent = evolutionCycles;
+            document.getElementById('emergent-count').textContent = emergentCount;
+            document.getElementById('quantum-coherence').textContent = quantumCoherence.toFixed(2);
+            document.getElementById('discovery-rate').textContent = (discoveryRate * 100).toFixed(0) + '%';
+            
+            // Update progress bars
+            document.getElementById('iq-progress').style.width = Math.min(100, collectiveIQ / 2) + '%';
+            document.getElementById('agent-progress').style.width = Math.min(100, agentCount * 5) + '%';
+            document.getElementById('evolution-progress').style.width = Math.min(100, evolutionCycles) + '%';
+            document.getElementById('emergent-progress').style.width = Math.min(100, emergentCount * 10) + '%';
+            document.getElementById('quantum-progress').style.width = (quantumCoherence * 50) + '%';
+            document.getElementById('discovery-progress').style.width = (discoveryRate * 100) + '%';
+        }
+        
+        function getRandomDiscovery() {
+            const discoveries = [
+                'Recursive self-improvement loop discovered',
+                'Cross-domain pattern synthesis achieved',
+                'Quantum tunneling to novel solution space',
+                'Spontaneous consortium intelligence emerged',
+                'Non-linear optimization pathway found',
+                'Consciousness amplification cascade initiated',
+                'Paradox resolved through dimension shift',
+                'Novel algorithm synthesized from noise',
+                'Collective intuition breakthrough',
+                'Meta-learning capability unlocked'
+            ];
+            return discoveries[Math.floor(Math.random() * discoveries.length)];
+        }
+        
+        // Start simulation
+        setInterval(updateMetrics, 1000);
+    </script>
+</body>
+</html>

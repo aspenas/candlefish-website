@@ -1,0 +1,363 @@
+# Prometheus Alerting Rules for Candlefish Operational Maturity Map
+# Production-ready alerting rules with comprehensive coverage
+
+groups:
+  # Application Health & Availability
+  - name: application.rules
+    rules:
+      - alert: ServiceDown
+        expr: up{job=~"candlefish-website|rtpm-api|nanda-api|otter-gateway"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} on {{ $labels.instance }} has been down for more than 1 minute"
+          runbook_url: "https://runbooks.candlefish.ai/service-down"
+
+      - alert: HighErrorRate
+        expr: |
+          (
+            rate(http_requests_total{job=~"candlefish-website|rtpm-api|nanda-api|otter-gateway", code!~"2.."}[5m])
+            / 
+            rate(http_requests_total{job=~"candlefish-website|rtpm-api|nanda-api|otter-gateway"}[5m])
+          ) * 100 > 5
+        for: 2m
+        labels:
+          severity: high
+          category: performance
+        annotations:
+          summary: "High error rate for service {{ $labels.job }}"
+          description: "Service {{ $labels.job }} has error rate of {{ $value }}% for more than 2 minutes"
+          value: "{{ $value }}%"
+          threshold: "5%"
+          runbook_url: "https://runbooks.candlefish.ai/high-error-rate"
+
+      - alert: HighResponseTime
+        expr: |
+          histogram_quantile(0.95, 
+            rate(http_request_duration_seconds_bucket{job=~"candlefish-website|rtpm-api|nanda-api|otter-gateway"}[5m])
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High response time for service {{ $labels.job }}"
+          description: "95th percentile response time for {{ $labels.job }} is {{ $value }}s"
+          value: "{{ $value }}s"
+          threshold: "2s"
+          runbook_url: "https://runbooks.candlefish.ai/high-response-time"
+
+      - alert: LowThroughput
+        expr: |
+          rate(http_requests_total{job=~"candlefish-website|rtpm-api|nanda-api|otter-gateway"}[5m]) < 1
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Low request throughput for service {{ $labels.job }}"
+          description: "Service {{ $labels.job }} is receiving less than 1 request per second"
+          value: "{{ $value }} req/s"
+          threshold: "1 req/s"
+
+  # Infrastructure & Resource Alerts
+  - name: infrastructure.rules
+    rules:
+      - alert: NodeCPUHigh
+        expr: |
+          (
+            100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+          ) > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: infrastructure
+        annotations:
+          summary: "High CPU usage on node {{ $labels.instance }}"
+          description: "CPU usage on node {{ $labels.instance }} is {{ $value }}%"
+          value: "{{ $value }}%"
+          threshold: "80%"
+          runbook_url: "https://runbooks.candlefish.ai/high-cpu"
+
+      - alert: NodeCPUCritical
+        expr: |
+          (
+            100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+          ) > 95
+        for: 2m
+        labels:
+          severity: critical
+          category: infrastructure
+        annotations:
+          summary: "Critical CPU usage on node {{ $labels.instance }}"
+          description: "CPU usage on node {{ $labels.instance }} is {{ $value }}%"
+          value: "{{ $value }}%"
+          threshold: "95%"
+
+      - alert: NodeMemoryHigh
+        expr: |
+          (
+            1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)
+          ) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: infrastructure
+        annotations:
+          summary: "High memory usage on node {{ $labels.instance }}"
+          description: "Memory usage on node {{ $labels.instance }} is {{ $value }}%"
+          value: "{{ $value }}%"
+          threshold: "80%"
+
+      - alert: NodeDiskSpaceLow
+        expr: |
+          (
+            1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})
+          ) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          category: infrastructure
+        annotations:
+          summary: "Low disk space on node {{ $labels.instance }}"
+          description: "Disk usage on {{ $labels.instance }} is {{ $value }}%"
+          value: "{{ $value }}%"
+          threshold: "85%"
+
+      - alert: NodeDiskSpaceCritical
+        expr: |
+          (
+            1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})
+          ) * 100 > 95
+        for: 1m
+        labels:
+          severity: critical
+          category: infrastructure
+        annotations:
+          summary: "Critical disk space on node {{ $labels.instance }}"
+          description: "Disk usage on {{ $labels.instance }} is {{ $value }}%"
+          value: "{{ $value }}%"
+          threshold: "95%"
+
+  # Kubernetes Alerts
+  - name: kubernetes.rules
+    rules:
+      - alert: KubernetesPodCrashLooping
+        expr: |
+          rate(kube_pod_container_status_restarts_total[15m]) * 60 * 15 > 0
+        for: 5m
+        labels:
+          severity: warning
+          category: kubernetes
+        annotations:
+          summary: "Pod {{ $labels.pod }} is crash looping"
+          description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is restarting frequently"
+          runbook_url: "https://runbooks.candlefish.ai/pod-crash-loop"
+
+      - alert: KubernetesPodNotReady
+        expr: |
+          kube_pod_status_phase{phase!="Running"} > 0
+        for: 10m
+        labels:
+          severity: warning
+          category: kubernetes
+        annotations:
+          summary: "Pod {{ $labels.pod }} not ready"
+          description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has been in {{ $labels.phase }} state for more than 10 minutes"
+
+      - alert: KubernetesNodeNotReady
+        expr: |
+          kube_node_status_condition{condition="Ready", status="false"} == 1
+        for: 5m
+        labels:
+          severity: critical
+          category: kubernetes
+        annotations:
+          summary: "Kubernetes node {{ $labels.node }} not ready"
+          description: "Node {{ $labels.node }} has been not ready for more than 5 minutes"
+
+      - alert: KubernetesDeploymentReplicasMismatch
+        expr: |
+          kube_deployment_spec_replicas != kube_deployment_status_available_replicas
+        for: 10m
+        labels:
+          severity: warning
+          category: kubernetes
+        annotations:
+          summary: "Deployment {{ $labels.deployment }} has mismatched replicas"
+          description: "Deployment {{ $labels.deployment }} in namespace {{ $labels.namespace }} has {{ $labels.spec_replicas }} desired but {{ $labels.available_replicas }} available"
+
+  # Database Alerts
+  - name: database.rules
+    rules:
+      - alert: PostgreSQLDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: database
+        annotations:
+          summary: "PostgreSQL database is down"
+          description: "PostgreSQL database on {{ $labels.instance }} is not responding"
+          runbook_url: "https://runbooks.candlefish.ai/postgresql-down"
+
+      - alert: PostgreSQLTooManyConnections
+        expr: |
+          pg_stat_database_numbackends / pg_settings_max_connections * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "PostgreSQL has too many connections"
+          description: "PostgreSQL on {{ $labels.instance }} is using {{ $value }}% of max connections"
+          value: "{{ $value }}%"
+          threshold: "80%"
+
+      - alert: PostgreSQLSlowQueries
+        expr: |
+          rate(pg_stat_database_tup_fetched[5m]) / rate(pg_stat_database_tup_returned[5m]) < 0.1
+        for: 10m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "PostgreSQL has slow queries"
+          description: "PostgreSQL query efficiency on {{ $labels.instance }} is {{ $value }}"
+          value: "{{ $value }}"
+
+      - alert: PostgreSQLDeadlocks
+        expr: |
+          rate(pg_stat_database_deadlocks[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "PostgreSQL deadlocks detected"
+          description: "PostgreSQL on {{ $labels.instance }} has deadlocks occurring at {{ $value }}/sec"
+          value: "{{ $value }}/sec"
+
+  # Redis Alerts
+  - name: redis.rules
+    rules:
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: database
+        annotations:
+          summary: "Redis is down"
+          description: "Redis server on {{ $labels.instance }} is not responding"
+          runbook_url: "https://runbooks.candlefish.ai/redis-down"
+
+      - alert: RedisHighMemoryUsage
+        expr: |
+          redis_memory_used_bytes / redis_memory_max_bytes * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "Redis high memory usage"
+          description: "Redis on {{ $labels.instance }} is using {{ $value }}% of available memory"
+          value: "{{ $value }}%"
+          threshold: "90%"
+
+      - alert: RedisConnectionsHigh
+        expr: |
+          redis_connected_clients / redis_config_maxclients * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "Redis high connection usage"
+          description: "Redis on {{ $labels.instance }} is using {{ $value }}% of max connections"
+          value: "{{ $value }}%"
+          threshold: "80%"
+
+  # Container Resource Alerts
+  - name: container.rules
+    rules:
+      - alert: ContainerCPUThrottled
+        expr: |
+          rate(container_cpu_cfs_throttled_seconds_total[5m]) / rate(container_cpu_cfs_periods_total[5m]) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          category: container
+        annotations:
+          summary: "Container {{ $labels.name }} is CPU throttled"
+          description: "Container {{ $labels.name }} in pod {{ $labels.pod }} is being CPU throttled {{ $value }}% of the time"
+          value: "{{ $value }}%"
+
+      - alert: ContainerMemoryUsageHigh
+        expr: |
+          container_memory_working_set_bytes / container_spec_memory_limit_bytes * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: container
+        annotations:
+          summary: "Container {{ $labels.name }} high memory usage"
+          description: "Container {{ $labels.name }} in pod {{ $labels.pod }} is using {{ $value }}% of memory limit"
+          value: "{{ $value }}%"
+          threshold: "80%"
+
+      - alert: ContainerRestartingFrequently
+        expr: |
+          increase(kube_pod_container_status_restarts_total[1h]) > 3
+        for: 5m
+        labels:
+          severity: warning
+          category: container
+        annotations:
+          summary: "Container {{ $labels.container }} restarting frequently"
+          description: "Container {{ $labels.container }} in pod {{ $labels.pod }} has restarted {{ $value }} times in the last hour"
+          value: "{{ $value }}"
+
+  # Security & Compliance Alerts
+  - name: security.rules
+    rules:
+      - alert: UnauthorizedAPIAccess
+        expr: |
+          rate(http_requests_total{code=~"401|403"}[5m]) > 10
+        for: 2m
+        labels:
+          severity: high
+          category: security
+        annotations:
+          summary: "High rate of unauthorized API access attempts"
+          description: "Service {{ $labels.job }} is receiving {{ $value }} unauthorized requests per second"
+          value: "{{ $value }}/sec"
+          runbook_url: "https://runbooks.candlefish.ai/unauthorized-access"
+
+      - alert: SuspiciousTrafficPattern
+        expr: |
+          rate(http_requests_total[1m]) > rate(http_requests_total[5m]) * 5
+        for: 1m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "Suspicious traffic pattern detected"
+          description: "Service {{ $labels.job }} is receiving unusual traffic patterns"
+          runbook_url: "https://runbooks.candlefish.ai/suspicious-traffic"
+
+      - alert: SSLCertificateExpiringSoon
+        expr: |
+          (ssl_certificate_expiry_seconds - time()) / 86400 < 30
+        for: 1h
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "SSL certificate expiring soon"
+          description: "SSL certificate for {{ $labels.instance }} expires in {{ $value }} days"
+          value: "{{ $value }}"
+          threshold: "30 days"

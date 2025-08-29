@@ -1,0 +1,81 @@
+version: '3.8'
+
+# Essential services only - PostgreSQL, Redis, Caddy
+
+networks:
+  clos-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
+
+services:
+  # Primary PostgreSQL for shared use
+  postgres:
+    image: postgres:15-alpine
+    container_name: clos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-candlefish}
+      POSTGRES_DB: ${POSTGRES_DB:-candlefish}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-candlefish_dev_2024}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - clos-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U candlefish -d candlefish"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Primary Redis for shared caching/queuing
+  redis:
+    image: redis:7-alpine
+    container_name: clos-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - clos-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
+
+  # Reverse Proxy for local domains
+  caddy:
+    image: caddy:2-alpine
+    container_name: clos-caddy
+    restart: unless-stopped
+    volumes:
+      - ./caddy/Caddyfile.simple:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "80:80"
+      - "443:443"
+      - "2019:2019"
+    networks:
+      - clos-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:2019/config/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

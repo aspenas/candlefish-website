@@ -11,6 +11,9 @@ primary_region = "ord"
 
 [env]
   PORT = "8080"
+  DATABASE_PATH = "/app/inventory_master.db"
+  ENV = "production"
+  AWS_REGION = "us-east-1"
 
 [http_service]
   internal_port = 8080

@@ -1,0 +1,203 @@
+version: '3.8'
+
+# Security Dashboard Service Stack
+# Frontend (React): Port 3100
+# API (GraphQL): Port 4100  
+# Database: Port 5433
+# Redis: Port 6380
+
+services:
+  # Security Dashboard Frontend
+  security-dashboard-frontend:
+    build:
+      context: ../../apps/security-dashboard
+      dockerfile: Dockerfile
+      target: production
+    container_name: security-dashboard-frontend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - VITE_API_URL=http://security-dashboard-api:4100/graphql
+      - VITE_WS_URL=ws://security-dashboard-api:4100/graphql
+      - VITE_APP_NAME=Security Dashboard
+      - VITE_VERSION=${SECURITY_DASHBOARD_VERSION:-1.0.0}
+    ports:
+      - "3100:3100"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.1.10
+    volumes:
+      - security_dashboard_assets:/app/dist
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3100/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      - security-dashboard-api
+    labels:
+      - "clos.service=security-dashboard"
+      - "clos.component=frontend"
+      - "clos.port=3100"
+
+  # Security Dashboard API
+  security-dashboard-api:
+    build:
+      context: ../../apps/security-dashboard-api
+      dockerfile: Dockerfile
+      target: production
+    container_name: security-dashboard-api
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=4100
+      - DATABASE_URL=postgresql://security_user:${SECURITY_DB_PASSWORD:-security_dev_2024}@security-dashboard-postgres:5432/security_dashboard
+      - REDIS_URL=redis://security-dashboard-redis:6379/1
+      - JWT_SECRET=${JWT_SECRET:-security_jwt_dev_secret_2024}
+      - CORS_ORIGINS=http://localhost:3100,https://security.local
+      - GRAPHQL_PLAYGROUND=${GRAPHQL_PLAYGROUND:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - RATE_LIMIT_MAX=1000
+      - RATE_LIMIT_WINDOW=900000
+      - SESSION_SECRET=${SESSION_SECRET:-security_session_dev_2024}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-security_encryption_key_dev_2024}
+    ports:
+      - "4100:4100"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.1.11
+    volumes:
+      - security_dashboard_uploads:/app/uploads
+      - security_dashboard_logs:/app/logs
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4100/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    depends_on:
+      - security-dashboard-postgres
+      - security-dashboard-redis
+    labels:
+      - "clos.service=security-dashboard"
+      - "clos.component=api"
+      - "clos.port=4100"
+
+  # Security Dashboard Database
+  security-dashboard-postgres:
+    image: postgres:15-alpine
+    container_name: security-dashboard-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: security_dashboard
+      POSTGRES_USER: security_user
+      POSTGRES_PASSWORD: ${SECURITY_DB_PASSWORD:-security_dev_2024}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    volumes:
+      - security_dashboard_db:/var/lib/postgresql/data
+      - ../../apps/security-dashboard/database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ../../apps/security-dashboard/database/schema.sql:/docker-entrypoint-initdb.d/02-schema.sql:ro
+      - ../../apps/security-dashboard/database/seed.sql:/docker-entrypoint-initdb.d/03-seed.sql:ro
+    ports:
+      - "5433:5432"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.1.12
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U security_user -d security_dashboard"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    command: >
+      postgres
+      -c max_connections=100
+      -c shared_buffers=128MB
+      -c effective_cache_size=512MB
+      -c work_mem=2MB
+      -c maintenance_work_mem=32MB
+      -c log_min_duration_statement=5000
+    labels:
+      - "clos.service=security-dashboard"
+      - "clos.component=database"
+      - "clos.port=5433"
+
+  # Security Dashboard Redis
+  security-dashboard-redis:
+    image: redis:7-alpine
+    container_name: security-dashboard-redis
+    restart: unless-stopped
+    volumes:
+      - security_dashboard_cache:/data
+      - ../redis/security-dashboard.conf:/usr/local/etc/redis/redis.conf:ro
+    ports:
+      - "6380:6379"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.1.13
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    command: redis-server /usr/local/etc/redis/redis.conf --databases 16 --maxmemory 256mb --maxmemory-policy allkeys-lru
+    labels:
+      - "clos.service=security-dashboard"
+      - "clos.component=cache"
+      - "clos.port=6380"
+
+  # Security Dashboard Worker (background jobs)
+  security-dashboard-worker:
+    build:
+      context: ../../apps/security-dashboard-api
+      dockerfile: Dockerfile
+      target: production
+    container_name: security-dashboard-worker
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://security_user:${SECURITY_DB_PASSWORD:-security_dev_2024}@security-dashboard-postgres:5432/security_dashboard
+      - REDIS_URL=redis://security-dashboard-redis:6379/2
+      - WORKER_CONCURRENCY=${WORKER_CONCURRENCY:-5}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    networks:
+      clos-network:
+        ipv4_address: 172.20.1.14
+    volumes:
+      - security_dashboard_worker_logs:/app/logs
+      - security_dashboard_temp:/app/temp
+    command: ["node", "dist/worker.js"]
+    healthcheck:
+      test: ["CMD", "ps", "aux", "|", "grep", "[n]ode.*worker"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      - security-dashboard-postgres
+      - security-dashboard-redis
+    labels:
+      - "clos.service=security-dashboard"
+      - "clos.component=worker"
+
+networks:
+  clos-network:
+    external: true
+
+volumes:
+  security_dashboard_db:
+    driver: local
+  security_dashboard_cache:
+    driver: local
+  security_dashboard_assets:
+    driver: local
+  security_dashboard_uploads:
+    driver: local
+  security_dashboard_logs:
+    driver: local
+  security_dashboard_worker_logs:
+    driver: local
+  security_dashboard_temp:
+    driver: local

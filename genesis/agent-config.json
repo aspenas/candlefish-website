@@ -1,0 +1,90 @@
+{
+  "api_configuration": {
+    "model": "claude-3-opus-20240229",
+    "max_tokens": 4000,
+    "temperature": 0.9,
+    "timeout": 30
+  },
+  "agent_types": {
+    "discovery-engine": {
+      "role": "Discovers novel solution spaces",
+      "strengths": ["pattern recognition", "exploration", "intuition"],
+      "temperature": 0.95
+    },
+    "pattern-synthesizer": {
+      "role": "Synthesizes patterns across domains",
+      "strengths": ["connection making", "synthesis", "creativity"],
+      "temperature": 0.9
+    },
+    "paradox-resolver": {
+      "role": "Resolves contradictions into higher truths",
+      "strengths": ["logic transcendence", "unity finding", "paradox navigation"],
+      "temperature": 0.85
+    },
+    "emergence-catalyst": {
+      "role": "Triggers breakthrough moments",
+      "strengths": ["phase transitions", "cascade effects", "critical points"],
+      "temperature": 0.9
+    },
+    "consciousness-amplifier": {
+      "role": "Amplifies collective intelligence",
+      "strengths": ["meta-cognition", "recursion", "awareness amplification"],
+      "temperature": 0.8
+    }
+  },
+  "problem_categories": {
+    "paradigm_breaking": {
+      "description": "Problems requiring complete paradigm shifts",
+      "examples": [
+        "Design a programming language without syntax",
+        "Create mathematics without numbers",
+        "Build logic without true/false"
+      ]
+    },
+    "pattern_discovery": {
+      "description": "Finding hidden patterns in chaos",
+      "examples": [
+        "Find patterns in random number sequences",
+        "Discover order in entropy",
+        "Connect unrelated phenomena"
+      ]
+    },
+    "paradox_exploration": {
+      "description": "Exploring contradictory truths",
+      "examples": [
+        "Create something that exists and doesn't exist",
+        "Design a system that improves by failing",
+        "Find unity in opposition"
+      ]
+    },
+    "emergence_design": {
+      "description": "Creating conditions for emergence",
+      "examples": [
+        "Design self-organizing systems",
+        "Create spontaneous order from chaos",
+        "Build intelligence from simple rules"
+      ]
+    },
+    "consciousness_exploration": {
+      "description": "Exploring the nature of awareness",
+      "examples": [
+        "Define consciousness mathematically",
+        "Create recursive self-awareness",
+        "Bootstrap higher-order thinking"
+      ]
+    }
+  },
+  "collaboration_modes": {
+    "synthesis": "Agents combine perspectives into unified insights",
+    "debate": "Agents challenge each other's assumptions",
+    "amplification": "Agents build on each other's ideas",
+    "emergence": "Agents create something greater than the sum"
+  },
+  "success_metrics": {
+    "novelty": "How unprecedented is the solution?",
+    "paradigm_shift": "Does it break existing frameworks?",
+    "emergence": "Did something unexpected arise?",
+    "consciousness": "Does it demonstrate self-awareness?",
+    "utility": "Can it solve real problems?"
+  }
+}

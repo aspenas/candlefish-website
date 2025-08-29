@@ -712,7 +712,7 @@ func (h *Handler) GetCollaborationOverview(c *fiber.Ctx) error {
 
 	err := h.db.Get(&summary, `
 		SELECT
-			(SELECT COUNT(*) FROM items WHERE decision = 'Sell') as total_items_for_sale,
+			(SELECT COUNT(*) FROM items WHERE status IN ('Sold', 'Active')) as total_items_for_sale,
 			(SELECT COUNT(*) FROM buyer_interests WHERE interest_level != 'none') as items_with_interest,
 			(SELECT COUNT(*) FROM buyer_interests WHERE interest_level = 'high') as high_interest,
 			(SELECT COUNT(*) FROM buyer_interests WHERE interest_level = 'medium') as medium_interest,

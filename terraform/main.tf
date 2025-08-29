@@ -111,16 +111,6 @@ variable "projects" {
         memory = "2048"
       }
     }
-    cffogg = {
-      name = "cffogg"
-      type = "enterprise"
-      path = "projects/fogg"
-      domain = "fogg.candlefish.ai"
-      resources = {
-        cpu    = "1024"
-        memory = "2048"
-      }
-    }
     cfprom = {
       name = "cfprom"
       type = "enterprise"

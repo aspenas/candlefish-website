@@ -1,0 +1,1513 @@
+# Connection Types, Result Types, and Subscription Types for Threat Intelligence
+
+# Connection Types
+type ThreatIntelligenceConnection implements Connection @external {
+  edges: [ThreatIntelligenceEdge!]!
+  pageInfo: PageInfo! @external
+  totalCount: Int!
+  aggregations: ThreatIntelligenceAggregations
+}
+
+type ThreatIntelligenceEdge implements Edge @external {
+  node: ThreatIntelligence!
+  cursor: String!
+}
+
+type ThreatIntelligenceAggregations {
+  byThreatType: [ThreatTypeCount!]!
+  bySeverity: [SeverityCount!]! @external
+  byConfidence: [ConfidenceCount!]!
+  byCategory: [CategoryCount!]!
+  bySector: [SectorCount!]!
+  byRegion: [RegionCount!]!
+  averageConfidence: Float!
+  totalIndicators: Int!
+  activeThreatActors: Int!
+  activeCampaigns: Int!
+}
+
+type ThreatTypeCount {
+  threatType: ThreatType!
+  count: Int!
+  percentage: Float!
+  trend: TrendDirection!
+}
+
+type ConfidenceCount {
+  confidence: ThreatConfidence!
+  count: Int!
+  percentage: Float!
+}
+
+type CategoryCount {
+  category: ThreatCategory!
+  count: Int!
+  percentage: Float!
+}
+
+type SectorCount {
+  sector: IndustrySector!
+  count: Int!
+  percentage: Float!
+  riskLevel: Float!
+}
+
+type RegionCount {
+  region: String!
+  count: Int!
+  percentage: Float!
+  threatLevel: Float!
+}
+
+enum TrendDirection {
+  INCREASING
+  DECREASING
+  STABLE
+  VOLATILE
+}
+
+# IOC Connections
+type IOCConnection implements Connection @external {
+  edges: [IOCEdge!]!
+  pageInfo: PageInfo! @external
+  totalCount: Int!
+  aggregations: IOCAggregations
+}
+
+type IOCEdge implements Edge @external {
+  node: IOC!
+  cursor: String!
+}
+
+type IOCAggregations {
+  byType: [IOCTypeCount!]!
+  byCategory: [IOCCategoryCount!]!
+  byConfidence: [ConfidenceCount!]!
+  bySeverity: [SeverityCount!]! @external
+  byReputation: [ReputationCount!]!
+  totalMatches: Int!
+  averageConfidence: Float!
+  activeIndicators: Int!
+  expiredIndicators: Int!
+}
+
+type IOCTypeCount {
+  iocType: IOCType!
+  count: Int!
+  percentage: Float!
+  averageConfidence: Float!
+}
+
+type IOCCategoryCount {
+  category: IOCCategory!
+  count: Int!
+  percentage: Float!
+}
+
+type ReputationCount {
+  reputation: ThreatReputation! @external
+  count: Int!
+  percentage: Float!
+}
+
+# Threat Actor Connections
+type ThreatActorConnection implements Connection @external {
+  edges: [ThreatActorEdge!]!
+  pageInfo: PageInfo! @external
+  totalCount: Int!
+  aggregations: ThreatActorAggregations
+}
+
+type ThreatActorEdge implements Edge @external {
+  node: ThreatActor!
+  cursor: String!
+}
+
+type ThreatActorAggregations {
+  byType: [ThreatActorTypeCount!]!
+  bySophistication: [SophisticationCount!]!
+  byMotivation: [MotivationCount!]!
+  byRegion: [RegionCount!]!
+  activeCampaigns: Int!
+  totalIndicators: Int!
+}
+
+type ThreatActorTypeCount {
+  actorType: ThreatActorType!
+  count: Int!
+  percentage: Float!
+}
+
+type SophisticationCount {
+  sophistication: ThreatSophistication!
+  count: Int!
+  percentage: Float!
+}
+
+type MotivationCount {
+  motivation: ThreatMotivation!
+  count: Int!
+  percentage: Float!
+}
+
+# Campaign Connections
+type ThreatCampaignConnection implements Connection @external {
+  edges: [ThreatCampaignEdge!]!
+  pageInfo: PageInfo! @external
+  totalCount: Int!
+  aggregations: ThreatCampaignAggregations
+}
+
+type ThreatCampaignEdge implements Edge @external {
+  node: ThreatCampaign!
+  cursor: String!
+}
+
+type ThreatCampaignAggregations {
+  byStatus: [CampaignStatusCount!]!
+  bySector: [SectorCount!]!
+  byRegion: [RegionCount!]!
+  totalVictims: Int!
+  estimatedLoss: Float!
+  activeCampaigns: Int!
+}
+
+type CampaignStatusCount {
+  status: CampaignStatus!
+  count: Int!
+  percentage: Float!
+}
+
+# Malware Family Connections
+type MalwareFamilyConnection implements Connection @external {
+  edges: [MalwareFamilyEdge!]!
+  pageInfo: PageInfo! @external
+  totalCount: Int!
+  aggregations: MalwareFamilyAggregations
+}
+
+type MalwareFamilyEdge implements Edge @external {
+  node: MalwareFamily!
+  cursor: String!
+}
+
+type MalwareFamilyAggregations {
+  byType: [MalwareTypeCount!]!
+  byCategory: [MalwareCategoryCount!]!
+  byPlatform: [PlatformCount!]!
+  totalVariants: Int!
+  activeVariants: Int!
+}
+
+type MalwareTypeCount {
+  malwareType: MalwareType!
+  count: Int!
+  percentage: Float!
+}
+
+type MalwareCategoryCount {
+  category: MalwareCategory!
+  count: Int!
+  percentage: Float!
+}
+
+type PlatformCount {
+  platform: String!
+  count: Int!
+  percentage: Float!
+}
+
+# Feed Connections
+type ThreatFeedConnection implements Connection @external {
+  edges: [ThreatFeedEdge!]!
+  pageInfo: PageInfo! @external
+  totalCount: Int!
+  aggregations: ThreatFeedAggregations
+}
+
+type ThreatFeedEdge implements Edge @external {
+  node: ThreatFeed!
+  cursor: String!
+}
+
+type ThreatFeedAggregations {
+  byType: [FeedTypeCount!]!
+  byStatus: [FeedStatusCount!]!
+  byFormat: [FeedFormatCount!]!
+  totalIndicators: Int!
+  averageQuality: Float!
+  activeFeeds: Int!
+}
+
+type FeedTypeCount {
+  feedType: ThreatFeedType!
+  count: Int!
+  percentage: Float!
+}
+
+type FeedStatusCount {
+  status: FeedStatus!
+  count: Int!
+  percentage: Float!
+}
+
+type FeedFormatCount {
+  format: FeedFormat!
+  count: Int!
+  percentage: Float!
+}
+
+# Correlation Connections
+type ThreatCorrelationConnection implements Connection @external {
+  edges: [ThreatCorrelationEdge!]!
+  pageInfo: PageInfo! @external
+  totalCount: Int!
+  aggregations: ThreatCorrelationAggregations
+}
+
+type ThreatCorrelationEdge implements Edge @external {
+  node: ThreatCorrelation!
+  cursor: String!
+}
+
+type ThreatCorrelationAggregations {
+  byType: [CorrelationTypeCount!]!
+  byStatus: [CorrelationStatusCount!]!
+  totalMatches: Int!
+  averageConfidence: Float!
+  activeCorrelations: Int!
+}
+
+type CorrelationTypeCount {
+  correlationType: CorrelationType!
+  count: Int!
+  percentage: Float!
+}
+
+type CorrelationStatusCount {
+  status: CorrelationStatus!
+  count: Int!
+  percentage: Float!
+}
+
+# Report Connections
+type ThreatReportConnection implements Connection @external {
+  edges: [ThreatReportEdge!]!
+  pageInfo: PageInfo! @external
+  totalCount: Int!
+  aggregations: ThreatReportAggregations
+}
+
+type ThreatReportEdge implements Edge @external {
+  node: ThreatReport!
+  cursor: String!
+}
+
+type ThreatReportAggregations {
+  byType: [ReportTypeCount!]!
+  byClassification: [ClassificationCount!]!
+  byConfidence: [ConfidenceCount!]!
+  totalReports: Int!
+  averageQuality: Float!
+}
+
+type ReportTypeCount {
+  reportType: ReportType!
+  count: Int!
+  percentage: Float!
+}
+
+type ClassificationCount {
+  classification: ReportClassification!
+  count: Int!
+  percentage: Float!
+}
+
+# Tool Connections
+type ThreatToolConnection implements Connection @external {
+  edges: [ThreatToolEdge!]!
+  pageInfo: PageInfo! @external
+  totalCount: Int!
+  aggregations: ThreatToolAggregations
+}
+
+type ThreatToolEdge implements Edge @external {
+  node: ThreatTool!
+  cursor: String!
+}
+
+type ThreatToolAggregations {
+  byType: [ThreatToolTypeCount!]!
+  byCategory: [ToolCategoryCount!]!
+  byAvailability: [AvailabilityCount!]!
+  totalTools: Int!
+}
+
+type ThreatToolTypeCount {
+  toolType: ThreatToolType!
+  count: Int!
+  percentage: Float!
+}
+
+type ToolCategoryCount {
+  category: ToolCategory!
+  count: Int!
+  percentage: Float!
+}
+
+type AvailabilityCount {
+  availability: ToolAvailability!
+  count: Int!
+  percentage: Float!
+}
+
+# Mitigation Connections
+type ThreatMitigationConnection implements Connection @external {
+  edges: [ThreatMitigationEdge!]!
+  pageInfo: PageInfo! @external
+  totalCount: Int!
+  aggregations: ThreatMitigationAggregations
+}
+
+type ThreatMitigationEdge implements Edge @external {
+  node: ThreatMitigation!
+  cursor: String!
+}
+
+type ThreatMitigationAggregations {
+  byType: [MitigationTypeCount!]!
+  byEffectiveness: [EffectivenessCount!]!
+  byDifficulty: [DifficultyCount!]!
+  totalMitigations: Int!
+  averageEffectiveness: Float!
+}
+
+type MitigationTypeCount {
+  mitigationType: MitigationType!
+  count: Int!
+  percentage: Float!
+}
+
+type EffectivenessCount {
+  effectiveness: MitigationEffectiveness!
+  count: Int!
+  percentage: Float!
+}
+
+type DifficultyCount {
+  difficulty: ImplementationDifficulty!
+  count: Int!
+  percentage: Float!
+}
+
+# Search Results
+type ThreatSearchResult {
+  threats: ThreatIntelligenceConnection!
+  suggestions: [String!]!
+  facets: ThreatSearchFacets!
+  totalTime: Int! # milliseconds
+  searchId: String!
+}
+
+type ThreatSearchFacets {
+  threatTypes: [ThreatTypeFacet!]!
+  severities: [SeverityFacet!]! @external
+  categories: [CategoryFacet!]!
+  actors: [ThreatActorFacet!]!
+  campaigns: [CampaignFacet!]!
+  sectors: [SectorFacet!]!
+  regions: [RegionFacet!]!
+}
+
+type ThreatTypeFacet {
+  threatType: ThreatType!
+  count: Int!
+}
+
+type CategoryFacet {
+  category: ThreatCategory!
+  count: Int!
+}
+
+type ThreatActorFacet {
+  actor: ThreatActor!
+  count: Int!
+}
+
+type CampaignFacet {
+  campaign: ThreatCampaign!
+  count: Int!
+}
+
+type SectorFacet {
+  sector: IndustrySector!
+  count: Int!
+}
+
+type RegionFacet {
+  region: String!
+  count: Int!
+}
+
+type IOCSearchResult {
+  iocs: IOCConnection!
+  suggestions: [String!]!
+  facets: IOCSearchFacets!
+  totalTime: Int!
+  searchId: String!
+}
+
+type IOCSearchFacets {
+  types: [IOCTypeFacet!]!
+  categories: [IOCCategoryFacet!]!
+  confidence: [ConfidenceFacet!]!
+  reputation: [ReputationFacet!]!
+  feeds: [FeedFacet!]!
+}
+
+type IOCTypeFacet {
+  iocType: IOCType!
+  count: Int!
+}
+
+type IOCCategoryFacet {
+  category: IOCCategory!
+  count: Int!
+}
+
+type ConfidenceFacet {
+  confidence: ThreatConfidence!
+  count: Int!
+}
+
+type ReputationFacet {
+  reputation: ThreatReputation! @external
+  count: Int!
+}
+
+type FeedFacet {
+  feed: ThreatFeed!
+  count: Int!
+}
+
+# Analytics and Dashboards
+type ThreatIntelligenceDashboard {
+  overview: ThreatOverview!
+  recentThreats: [ThreatIntelligence!]!
+  criticalIOCs: [IOC!]!
+  activeCampaigns: [ThreatCampaign!]!
+  emergingActors: [ThreatActor!]!
+  trends: ThreatTrends!
+  intelligence: ThreatIntelligenceMetrics!
+  correlations: [CorrelationMatch!]!
+}
+
+type ThreatOverview {
+  totalThreats: Int!
+  newThreats: Int!
+  activeIOCs: Int!
+  newIOCs: Int!
+  activeCampaigns: Int!
+  emergingActors: Int!
+  criticalAlerts: Int!
+  feedHealth: Float!
+}
+
+type ThreatTrends {
+  threatVolume: [DataPoint!]! @external
+  severityDistribution: [SeverityTrendPoint!]! @external
+  actorActivity: [DataPoint!]! @external
+  campaignActivity: [DataPoint!]! @external
+  iocMatches: [DataPoint!]! @external
+  feedUpdates: [DataPoint!]! @external
+}
+
+type ThreatIntelligenceMetrics {
+  totalIndicators: Int!
+  confidenceDistribution: [ConfidenceCount!]!
+  sourceReliability: [SourceReliabilityCount!]!
+  feedPerformance: [FeedPerformanceMetric!]!
+  correlationEffectiveness: Float!
+  averageProcessingTime: Float!
+}
+
+type SourceReliabilityCount {
+  reliability: ThreatReliability!
+  count: Int!
+  percentage: Float!
+}
+
+type FeedPerformanceMetric {
+  feed: ThreatFeed!
+  qualityScore: Float!
+  updateFrequency: Float!
+  errorRate: Float!
+  indicatorCount: Int!
+}
+
+type ThreatAnalytics {
+  organizationId: ID!
+  timeRange: TimeRange! @external
+  threatDistribution: ThreatDistributionAnalytics!
+  actorAnalysis: ThreatActorAnalytics!
+  campaignAnalysis: CampaignAnalytics!
+  indicatorAnalysis: IndicatorAnalytics!
+  geographicAnalysis: GeographicThreatAnalysis!
+  sectorAnalysis: SectorThreatAnalysis!
+  trends: ThreatAnalyticsTrends!
+  predictions: ThreatPredictions!
+  lastUpdated: DateTime!
+}
+
+type ThreatDistributionAnalytics {
+  byType: [ThreatTypeCount!]!
+  bySeverity: [SeverityCount!]! @external
+  byConfidence: [ConfidenceCount!]!
+  byCategory: [CategoryCount!]!
+  evolution: [ThreatEvolutionPoint!]!
+}
+
+type ThreatEvolutionPoint {
+  timestamp: DateTime!
+  threatType: ThreatType!
+  count: Int!
+  severity: Float!
+}
+
+type ThreatActorAnalytics {
+  topActors: [TopThreatActor!]!
+  activityTrends: [ActorActivityTrend!]!
+  attributionConfidence: Float!
+  newActors: Int!
+  sophisticationTrend: Float!
+}
+
+type TopThreatActor {
+  actor: ThreatActor!
+  activityScore: Float!
+  threatCount: Int!
+  campaignCount: Int!
+  indicatorCount: Int!
+  trend: Float!
+}
+
+type ActorActivityTrend {
+  actor: ThreatActor!
+  timeline: [DataPoint!]! @external
+  peakActivity: DateTime!
+  activityLevel: Float!
+}
+
+type CampaignAnalytics {
+  activeCampaigns: Int!
+  newCampaigns: Int!
+  campaignDuration: [CampaignDurationAnalysis!]!
+  impactAnalysis: [CampaignImpactAnalysis!]!
+  targetAnalysis: CampaignTargetAnalysis!
+}
+
+type CampaignDurationAnalysis {
+  campaign: ThreatCampaign!
+  duration: Int! # days
+  intensity: Float!
+  victimCount: Int
+}
+
+type CampaignImpactAnalysis {
+  campaign: ThreatCampaign!
+  impact: CampaignImpact!
+  affectedSectors: [IndustrySector!]!
+  affectedRegions: [String!]!
+}
+
+type CampaignTargetAnalysis {
+  primaryTargets: [TargetProfile!]!
+  targetingPatterns: [TargetingPattern!]!
+  sectorPreferences: [SectorCount!]!
+  geographicFocus: [RegionCount!]!
+}
+
+type TargetProfile {
+  sector: IndustrySector!
+  organizationType: String!
+  characteristics: [String!]!
+  frequency: Int!
+  successRate: Float!
+}
+
+type TargetingPattern {
+  pattern: String!
+  frequency: Int!
+  campaigns: [ThreatCampaign!]!
+  effectiveness: Float!
+}
+
+type IndicatorAnalytics {
+  totalIndicators: Int!
+  newIndicators: Int!
+  activeIndicators: Int!
+  indicatorTypes: [IOCTypeCount!]!
+  matchRates: [IndicatorMatchRate!]!
+  qualityMetrics: IndicatorQualityMetrics!
+}
+
+type IndicatorMatchRate {
+  indicatorType: IOCType!
+  totalMatches: Int!
+  uniqueMatches: Int!
+  falsePositiveRate: Float!
+  confidence: Float!
+}
+
+type IndicatorQualityMetrics {
+  averageConfidence: Float!
+  sourceDiversity: Int!
+  ageDistribution: [IndicatorAgeCount!]!
+  enrichmentCoverage: Float!
+}
+
+type IndicatorAgeCount {
+  ageRange: String!
+  count: Int!
+  percentage: Float!
+}
+
+type GeographicThreatAnalysis {
+  threatsByRegion: [RegionThreatCount!]!
+  attackOrigins: [AttackOriginCount!]!
+  targetDistribution: [TargetRegionCount!]!
+  migrationPatterns: [ThreatMigrationPattern!]!
+}
+
+type RegionThreatCount {
+  region: String!
+  country: String!
+  threatCount: Int!
+  severityScore: Float!
+  primaryThreats: [ThreatType!]!
+}
+
+type AttackOriginCount {
+  country: String!
+  attackCount: Int!
+  primaryActors: [ThreatActor!]!
+  techniques: [String!]! # MITRE technique IDs
+}
+
+type TargetRegionCount {
+  region: String!
+  victimCount: Int!
+  sectors: [IndustrySector!]!
+  impactScore: Float!
+}
+
+type ThreatMigrationPattern {
+  fromRegion: String!
+  toRegion: String!
+  threatTypes: [ThreatType!]!
+  frequency: Int!
+  timeline: [DataPoint!]! @external
+}
+
+type SectorThreatAnalysis {
+  sectorRiskProfile: [SectorRiskProfile!]!
+  threatsBySector: [SectorThreatCount!]!
+  attackVectors: [SectorAttackVector!]!
+  mitigationGaps: [SectorMitigationGap!]!
+}
+
+type SectorRiskProfile {
+  sector: IndustrySector!
+  riskScore: Float!
+  threatCount: Int!
+  vulnerabilityScore: Float!
+  incidentRate: Float!
+  primaryThreats: [ThreatType!]!
+}
+
+type SectorThreatCount {
+  sector: IndustrySector!
+  threatCount: Int!
+  criticalThreats: Int!
+  emergingThreats: Int!
+  trend: Float!
+}
+
+type SectorAttackVector {
+  sector: IndustrySector!
+  vector: AttackVector! @external
+  frequency: Int!
+  successRate: Float!
+  averageImpact: Float!
+}
+
+type SectorMitigationGap {
+  sector: IndustrySector!
+  threatType: ThreatType!
+  gapDescription: String!
+  riskLevel: Float!
+  recommendedMitigations: [ThreatMitigation!]!
+}
+
+type ThreatAnalyticsTrends {
+  volumeTrend: [DataPoint!]! @external
+  severityTrend: [DataPoint!]! @external
+  confidenceTrend: [DataPoint!]! @external
+  diversityTrend: [DataPoint!]! @external
+  velocityTrend: [DataPoint!]! @external
+}
+
+type ThreatPredictions {
+  emergingThreats: [EmergingThreatPrediction!]!
+  actorBehaviorPredictions: [ActorBehaviorPrediction!]!
+  campaignPredictions: [CampaignPrediction!]!
+  sectorRiskPredictions: [SectorRiskPrediction!]!
+  confidenceInterval: Float!
+  modelAccuracy: Float!
+}
+
+type EmergingThreatPrediction {
+  threatType: ThreatType!
+  probability: Float!
+  timeframe: String!
+  indicators: [String!]!
+  confidence: Float!
+}
+
+type ActorBehaviorPrediction {
+  actor: ThreatActor!
+  predictedActivity: String!
+  probability: Float!
+  timeframe: String!
+  confidence: Float!
+}
+
+type CampaignPrediction {
+  campaign: ThreatCampaign!
+  predictedEvolution: String!
+  targetPrediction: [IndustrySector!]!
+  probability: Float!
+  timeframe: String!
+}
+
+type SectorRiskPrediction {
+  sector: IndustrySector!
+  predictedRiskLevel: Float!
+  primaryThreats: [ThreatType!]!
+  timeframe: String!
+  confidence: Float!
+}
+
+# Threat Landscape
+type ThreatLandscape {
+  overview: ThreatLandscapeOverview!
+  actors: [ThreatActor!]!
+  campaigns: [ThreatCampaign!]!
+  techniques: [TechniqueThreatMapping!]!
+  geography: GeographicThreatDistribution!
+  timeline: [ThreatTimelineEvent!]!
+  recommendations: [ThreatLandscapeRecommendation!]!
+}
+
+type ThreatLandscapeOverview {
+  totalThreats: Int!
+  activeCampaigns: Int!
+  riskLevel: Float!
+  primaryThreats: [ThreatType!]!
+  emergingThreats: [ThreatType!]!
+  threatVelocity: Float!
+}
+
+type TechniqueThreatMapping {
+  technique: MitreTechnique! @external
+  threatCount: Int!
+  actors: [ThreatActor!]!
+  campaigns: [ThreatCampaign!]!
+  prevalence: Float!
+}
+
+type GeographicThreatDistribution {
+  regions: [RegionThreatData!]!
+  hotspots: [ThreatHotspot!]!
+  migrationPatterns: [ThreatMigrationPattern!]!
+}
+
+type RegionThreatData {
+  region: String!
+  threatLevel: Float!
+  threatCount: Int!
+  primaryActors: [ThreatActor!]!
+  activeCampaigns: [ThreatCampaign!]!
+}
+
+type ThreatHotspot {
+  location: String!
+  intensity: Float!
+  primaryThreats: [ThreatType!]!
+  timeRange: TimeRange! @external
+}
+
+type ThreatTimelineEvent {
+  timestamp: DateTime!
+  eventType: ThreatEventType!
+  description: String!
+  actors: [ThreatActor!]!
+  campaigns: [ThreatCampaign!]!
+  impact: ThreatEventImpact!
+}
+
+enum ThreatEventType {
+  CAMPAIGN_LAUNCH
+  ACTOR_EMERGENCE
+  TECHNIQUE_EVOLUTION
+  TOOL_RELEASE
+  VULNERABILITY_EXPLOITATION
+  MITIGATION_DEPLOYMENT
+  ATTRIBUTION_UPDATE
+}
+
+type ThreatEventImpact {
+  scope: ImpactScope!
+  severity: Severity! @external
+  affectedSectors: [IndustrySector!]!
+  estimatedImpact: String!
+}
+
+type ThreatLandscapeRecommendation {
+  type: RecommendationType!
+  priority: RecommendationPriority!
+  title: String!
+  description: String!
+  applicableSectors: [IndustrySector!]!
+  timeframe: String!
+  resources: [String!]!
+  mitigations: [ThreatMitigation!]!
+}
+
+enum RecommendationType {
+  DEFENSIVE
+  INTELLIGENCE_GATHERING
+  CAPABILITY_BUILDING
+  AWARENESS
+  POLICY
+  TECHNOLOGY
+}
+
+enum RecommendationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+# Attribution Results
+type AttributionResult {
+  threatActor: ThreatActor!
+  confidence: AttributionConfidence! @external
+  score: Float!
+  evidence: [AttributionEvidence!]! @external
+  reasoning: String!
+  alternatives: [AlternativeAttribution!]!
+}
+
+type AlternativeAttribution {
+  threatActor: ThreatActor!
+  confidence: AttributionConfidence! @external
+  score: Float!
+  reasoning: String!
+}
+
+# Result Types for Mutations
+type CreateThreatIntelligenceResult {
+  success: Boolean!
+  threat: ThreatIntelligence
+  errors: [ValidationError!]! @external
+  message: String!
+}
+
+type UpdateThreatIntelligenceResult {
+  success: Boolean!
+  threat: ThreatIntelligence
+  errors: [ValidationError!]! @external
+  message: String!
+}
+
+type DeleteThreatIntelligenceResult {
+  success: Boolean!
+  message: String!
+}
+
+type CreateIOCResult {
+  success: Boolean!
+  ioc: IOC
+  errors: [ValidationError!]! @external
+  message: String!
+}
+
+type UpdateIOCResult {
+  success: Boolean!
+  ioc: IOC
+  errors: [ValidationError!]! @external
+  message: String!
+}
+
+type DeleteIOCResult {
+  success: Boolean!
+  message: String!
+}
+
+type WhitelistIOCResult {
+  success: Boolean!
+  ioc: IOC
+  suppressionRule: SuppressionRule @external
+  message: String!
+}
+
+type RemoveIOCWhitelistResult {
+  success: Boolean!
+  ioc: IOC
+  message: String!
+}
+
+type BulkImportIOCsResult {
+  success: Boolean!
+  importedCount: Int!
+  skippedCount: Int!
+  errorCount: Int!
+  errors: [BulkImportError!]!
+  summary: ImportSummary!
+  message: String!
+}
+
+type BulkImportError {
+  line: Int
+  indicator: String!
+  error: String!
+}
+
+type ImportSummary {
+  totalProcessed: Int!
+  newIndicators: Int!
+  updatedIndicators: Int!
+  duplicates: Int!
+  byType: [IOCTypeCount!]!
+  byConfidence: [ConfidenceCount!]!
+}
+
+type CreateThreatActorResult {
+  success: Boolean!
+  actor: ThreatActor
+  errors: [ValidationError!]! @external
+  message: String!
+}
+
+type UpdateThreatActorResult {
+  success: Boolean!
+  actor: ThreatActor
+  errors: [ValidationError!]! @external
+  message: String!
+}
+
+type CreateThreatCampaignResult {
+  success: Boolean!
+  campaign: ThreatCampaign
+  errors: [ValidationError!]! @external
+  message: String!
+}
+
+type UpdateThreatCampaignResult {
+  success: Boolean!
+  campaign: ThreatCampaign
+  errors: [ValidationError!]! @external
+  message: String!
+}
+
+type CreateThreatFeedResult {
+  success: Boolean!
+  feed: ThreatFeed
+  errors: [ValidationError!]! @external
+  message: String!
+}
+
+type UpdateThreatFeedResult {
+  success: Boolean!
+  feed: ThreatFeed
+  errors: [ValidationError!]! @external
+  message: String!
+}
+
+type DeleteThreatFeedResult {
+  success: Boolean!
+  message: String!
+}
+
+type TestThreatFeedResult {
+  success: Boolean!
+  connectionTest: FeedConnectionTest!
+  sampleData: FeedSampleData
+  message: String!
+}
+
+type FeedConnectionTest {
+  reachable: Boolean!
+  responseTime: Int! # milliseconds
+  httpStatus: Int
+  contentType: String
+  error: String
+}
+
+type FeedSampleData {
+  format: FeedFormat!
+  indicatorCount: Int!
+  sampleIndicators: [String!]!
+  metadata: JSON
+}
+
+type SyncThreatFeedResult {
+  success: Boolean!
+  syncStats: FeedSyncStats!
+  message: String!
+}
+
+type FeedSyncStats {
+  startTime: DateTime!
+  endTime: DateTime!
+  duration: Int! # milliseconds
+  processedIndicators: Int!
+  newIndicators: Int!
+  updatedIndicators: Int!
+  skippedIndicators: Int!
+  errorCount: Int!
+  errors: [FeedSyncError!]!
+}
+
+type FeedSyncError {
+  indicator: String!
+  error: String!
+  line: Int
+}
+
+type CreateThreatCorrelationResult {
+  success: Boolean!
+  correlation: ThreatCorrelation
+  errors: [ValidationError!]! @external
+  message: String!
+}
+
+type UpdateThreatCorrelationResult {
+  success: Boolean!
+  correlation: ThreatCorrelation
+  errors: [ValidationError!]! @external
+  message: String!
+}
+
+type DeleteThreatCorrelationResult {
+  success: Boolean!
+  message: String!
+}
+
+type EnrichIndicatorsResult {
+  success: Boolean!
+  enrichedCount: Int!
+  enrichments: [IndicatorEnrichment!]!
+  errors: [EnrichmentError!]!
+  message: String!
+}
+
+type IndicatorEnrichment {
+  indicator: String!
+  enrichment: IOCEnrichment!
+  sources: [String!]!
+}
+
+type EnrichmentError {
+  indicator: String!
+  error: String!
+  source: String
+}
+
+type CreateThreatReportResult {
+  success: Boolean!
+  report: ThreatReport
+  errors: [ValidationError!]! @external
+  message: String!
+}
+
+type UpdateThreatReportResult {
+  success: Boolean!
+  report: ThreatReport
+  errors: [ValidationError!]! @external
+  message: String!
+}
+
+type PublishThreatReportResult {
+  success: Boolean!
+  report: ThreatReport
+  distributionResults: [DistributionResult!]!
+  message: String!
+}
+
+type DistributionResult {
+  recipient: String!
+  method: String!
+  success: Boolean!
+  timestamp: DateTime!
+  error: String
+}
+
+type SubmitAttributionResult {
+  success: Boolean!
+  attribution: ThreatAttribution
+  confidence: AttributionConfidence! @external
+  errors: [ValidationError!]! @external
+  message: String!
+}
+
+type RecommendMitigationsResult {
+  success: Boolean!
+  recommendations: [MitigationRecommendation!]!
+  totalRecommendations: Int!
+  message: String!
+}
+
+type MitigationRecommendation {
+  mitigation: ThreatMitigation!
+  relevanceScore: Float!
+  effectiveness: MitigationEffectiveness!
+  priority: RecommendationPriority!
+  reasoning: String!
+  resources: [String!]!
+  timeline: String!
+}
+
+type ImplementMitigationResult {
+  success: Boolean!
+  implementationPlan: MitigationImplementationPlan!
+  estimatedCompletion: DateTime!
+  message: String!
+}
+
+type MitigationImplementationPlan {
+  mitigation: ThreatMitigation!
+  assets: [Asset!]! @external
+  phases: [ImplementationPhase!]!
+  resources: [ResourceRequirement!]!
+  timeline: MitigationTimeline!
+  risks: [ImplementationRisk!]!
+}
+
+type ImplementationPhase {
+  name: String!
+  description: String!
+  duration: Int! # days
+  dependencies: [String!]!
+  deliverables: [String!]!
+  resources: [String!]!
+}
+
+type ResourceRequirement {
+  type: ResourceType!
+  description: String!
+  quantity: Int!
+  cost: Float
+  timeline: String!
+}
+
+enum ResourceType {
+  PERSONNEL
+  TECHNOLOGY
+  BUDGET
+  TIME
+  EXPERTISE
+}
+
+type ImplementationRisk {
+  description: String!
+  probability: Float!
+  impact: Float!
+  mitigation: String!
+}
+
+# Subscription Event Types
+type ThreatIntelligenceUpdate {
+  type: ThreatUpdateType!
+  threat: ThreatIntelligence!
+  previousValues: JSON
+  changedFields: [String!]!
+  timestamp: DateTime!
+  source: String!
+}
+
+enum ThreatUpdateType {
+  CREATED
+  UPDATED
+  DELETED
+  CONFIDENCE_CHANGED
+  SEVERITY_CHANGED
+  ATTRIBUTION_UPDATED
+  INDICATORS_ADDED
+  MITIGATIONS_UPDATED
+}
+
+type IOCMatchNotification {
+  ioc: IOC!
+  match: IOCMatch!
+  alert: Alert @external
+  asset: Asset @external
+  priority: NotificationPriority! @external
+  timestamp: DateTime!
+  context: IOCMatchContext!
+}
+
+type NewIOCNotification {
+  ioc: IOC!
+  source: ThreatFeed!
+  priority: NotificationPriority! @external
+  matchingFilters: [String!]!
+  timestamp: DateTime!
+}
+
+type ThreatFeedUpdate {
+  type: FeedUpdateType!
+  feed: ThreatFeed!
+  stats: FeedUpdateStats
+  timestamp: DateTime!
+  message: String!
+}
+
+enum FeedUpdateType {
+  SYNC_STARTED
+  SYNC_COMPLETED
+  SYNC_FAILED
+  STATUS_CHANGED
+  HEALTH_CHANGED
+  ERROR_OCCURRED
+}
+
+type FeedUpdateStats {
+  newIndicators: Int!
+  updatedIndicators: Int!
+  totalProcessed: Int!
+  errors: Int!
+  duration: Int! # milliseconds
+}
+
+type CorrelationMatchNotification {
+  correlation: ThreatCorrelation!
+  match: CorrelationMatch!
+  confidence: Float!
+  priority: NotificationPriority! @external
+  timestamp: DateTime!
+  affectedAssets: [Asset!]! @external
+}
+
+type AttributionUpdate {
+  type: AttributionUpdateType!
+  threat: ThreatIntelligence!
+  attribution: ThreatAttribution
+  confidence: AttributionConfidence! @external
+  timestamp: DateTime!
+  evidence: [AttributionEvidence!]! @external
+}
+
+enum AttributionUpdateType {
+  NEW_ATTRIBUTION
+  ATTRIBUTION_UPDATED
+  CONFIDENCE_CHANGED
+  EVIDENCE_ADDED
+  ALTERNATIVE_PROPOSED
+}
+
+type ThreatActorActivityUpdate {
+  type: ActorActivityType!
+  actor: ThreatActor!
+  activity: ActorActivity!
+  timestamp: DateTime!
+  significance: Float!
+}
+
+enum ActorActivityType {
+  NEW_CAMPAIGN
+  TECHNIQUE_UPDATE
+  TARGET_CHANGE
+  TOOL_ADOPTION
+  CAPABILITY_EVOLUTION
+  ATTRIBUTION_CHANGE
+}
+
+type ActorActivity {
+  description: String!
+  indicators: [Indicator!]!
+  campaigns: [ThreatCampaign!]!
+  techniques: [MitreTechnique!]! @external
+  confidence: ThreatConfidence!
+}
+
+type ThreatCampaignUpdate {
+  type: CampaignUpdateType!
+  campaign: ThreatCampaign!
+  changes: CampaignChanges!
+  timestamp: DateTime!
+  impact: CampaignUpdateImpact!
+}
+
+enum CampaignUpdateType {
+  STATUS_CHANGED
+  TARGETS_UPDATED
+  ATTRIBUTION_CHANGED
+  INDICATORS_ADDED
+  IMPACT_ASSESSED
+  CAMPAIGN_ENDED
+}
+
+type CampaignChanges {
+  previousValues: JSON
+  newValues: JSON
+  changedFields: [String!]!
+  significance: Float!
+}
+
+type CampaignUpdateImpact {
+  affectedSectors: [IndustrySector!]!
+  affectedRegions: [String!]!
+  riskLevelChange: Float!
+  recommendedActions: [String!]!
+}
+
+type ThreatLandscapeUpdate {
+  type: LandscapeUpdateType!
+  changes: LandscapeChanges!
+  timestamp: DateTime!
+  affectedSectors: [IndustrySector!]!
+  affectedRegions: [String!]!
+  significance: Float!
+}
+
+enum LandscapeUpdateType {
+  EMERGING_THREAT
+  THREAT_EVOLUTION
+  ACTOR_EMERGENCE
+  CAMPAIGN_SHIFT
+  TECHNIQUE_TREND
+  GEOGRAPHIC_SHIFT
+  SECTOR_TARGETING
+}
+
+type LandscapeChanges {
+  summary: String!
+  newThreats: [ThreatIntelligence!]!
+  updatedActors: [ThreatActor!]!
+  activeCampaigns: [ThreatCampaign!]!
+  emergingTechniques: [MitreTechnique!]! @external
+  riskChanges: [RiskLevelChange!]!
+}
+
+type RiskLevelChange {
+  entity: String! # sector, region, etc.
+  previousRisk: Float!
+  newRisk: Float!
+  change: Float!
+  reasons: [String!]!
+}
+
+# External interfaces for federation
+interface Connection @external {
+  edges: [Edge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+interface Edge @external {
+  node: Node!
+  cursor: String!
+}
+
+interface Node @external {
+  id: ID!
+}
+
+type PageInfo @external {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+type DataPoint @external {
+  timestamp: DateTime!
+  value: Float!
+}
+
+type SeverityTrendPoint @external {
+  timestamp: DateTime!
+  low: Int!
+  medium: Int!
+  high: Int!
+  critical: Int!
+}
+
+type SeverityCount @external {
+  severity: Severity!
+  count: Int!
+}
+
+type SeverityFacet @external {
+  severity: Severity!
+  count: Int!
+}
+
+type ValidationError @external {
+  message: String!
+  field: String!
+  code: String!
+}
+
+enum AttackVector @external {
+  NETWORK
+  ADJACENT_NETWORK
+  LOCAL
+  PHYSICAL
+  EMAIL
+  WEB_APPLICATION
+  SUPPLY_CHAIN
+}
+
+enum NotificationPriority @external {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+# Indicator type that connects IOCs to other entities
+type Indicator implements Node @key(fields: "id") {
+  id: ID!
+  type: String!
+  value: String!
+  description: String
+  confidence: ThreatConfidence!
+  context: JSON
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  
+  # Relationships
+  ioc: IOC @provides(fields: "id")
+  threats: [ThreatIntelligence!]! @provides(fields: "id")
+  actors: [ThreatActor!]! @provides(fields: "id")
+  campaigns: [ThreatCampaign!]! @provides(fields: "id")
+  alerts: [Alert!]! @external
+  events: [SecurityEvent!]! @external
+}
+
+# Source and SourceCount types needed for external references
+type TopSource @external {
+  source: String!
+  count: Int!
+  percentage: Float!
+}
+
+type SourceCount @external {
+  source: String!
+  count: Int!
+  percentage: Float!
+}

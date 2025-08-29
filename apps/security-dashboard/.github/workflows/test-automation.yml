@@ -1,0 +1,565 @@
+name: Security Dashboard - Test Automation Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run nightly comprehensive tests
+    - cron: '0 2 * * *'
+
+env:
+  NODE_VERSION: '18.x'
+  PYTHON_VERSION: '3.11'
+  K6_VERSION: '0.47.0'
+  
+jobs:
+  # Code Quality and Static Analysis
+  code-quality:
+    name: Code Quality & Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: TypeScript compilation
+        run: npm run type-check
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Security audit
+        run: npm audit --audit-level high
+
+      - name: License compliance
+        run: npm run license-check
+
+  # Unit Testing
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test-suite: [frontend, backend, mobile]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup test database
+        run: |
+          docker run -d \
+            --name test-postgres \
+            -e POSTGRES_PASSWORD=testpass \
+            -e POSTGRES_DB=security_test \
+            -p 5432:5432 \
+            postgres:15
+
+      - name: Run unit tests - ${{ matrix.test-suite }}
+        run: |
+          case "${{ matrix.test-suite }}" in
+            "frontend")
+              npm run test:unit:frontend
+              ;;
+            "backend")
+              npm run test:unit:backend
+              ;;
+            "mobile")
+              cd mobile && npm run test
+              ;;
+          esac
+
+      - name: Generate coverage report
+        run: npm run coverage:${{ matrix.test-suite }}
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: coverage-${{ matrix.test-suite }}.xml
+          flags: ${{ matrix.test-suite }}
+          name: ${{ matrix.test-suite }}-coverage
+
+      - name: Store coverage artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-${{ matrix.test-suite }}
+          path: coverage/
+
+  # Integration Testing
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [unit-tests]
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: security_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+      neo4j:
+        image: neo4j:5
+        env:
+          NEO4J_AUTH: neo4j/testpass
+        ports:
+          - 7474:7474
+          - 7687:7687
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup test data
+        run: |
+          npm run db:migrate:test
+          npm run db:seed:test
+
+      - name: Start application services
+        run: |
+          npm run start:test &
+          sleep 30
+
+      - name: Run GraphQL integration tests
+        run: npm run test:integration:graphql
+
+      - name: Run WebSocket integration tests
+        run: npm run test:integration:websocket
+
+      - name: Run database integration tests
+        run: npm run test:integration:database
+
+      - name: Test external API integrations
+        run: npm run test:integration:external
+
+      - name: Cleanup test data
+        run: npm run db:cleanup:test
+
+  # End-to-End Testing
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [integration-tests]
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit]
+        device: [desktop, mobile]
+        exclude:
+          - browser: webkit
+            device: mobile # Skip webkit mobile (Safari mobile handled separately)
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps
+
+      - name: Setup test environment
+        run: |
+          docker-compose -f docker-compose.test.yml up -d
+          npm run wait-for-services
+
+      - name: Run Cypress E2E tests
+        run: npm run test:e2e:cypress
+        env:
+          CYPRESS_BROWSER: ${{ matrix.browser }}
+          CYPRESS_VIEWPORT: ${{ matrix.device }}
+
+      - name: Run Playwright E2E tests
+        run: npm run test:e2e:playwright -- --project=${{ matrix.browser }}
+        env:
+          PLAYWRIGHT_DEVICE: ${{ matrix.device }}
+
+      - name: Upload E2E test artifacts
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: e2e-${{ matrix.browser }}-${{ matrix.device }}-artifacts
+          path: |
+            cypress/videos/
+            cypress/screenshots/
+            test-results/
+            playwright-report/
+
+      - name: Teardown test environment
+        run: docker-compose -f docker-compose.test.yml down
+
+  # Visual Regression Testing
+  visual-regression:
+    name: Visual Regression Tests
+    runs-on: ubuntu-latest
+    needs: [e2e-tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Setup test environment
+        run: |
+          docker-compose -f docker-compose.test.yml up -d
+          npm run wait-for-services
+
+      - name: Run visual regression tests
+        run: npm run test:visual
+
+      - name: Upload visual diff artifacts
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: visual-diffs
+          path: test-results/
+
+  # Performance Testing
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: [integration-tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup k6
+        run: |
+          curl -s https://github.com/grafana/k6/releases/download/v${{ env.K6_VERSION }}/k6-v${{ env.K6_VERSION }}-linux-amd64.tar.gz | tar xvz --strip-components 1
+
+      - name: Setup test environment
+        run: |
+          docker-compose -f docker-compose.test.yml up -d
+          sleep 60 # Wait for services to be ready
+
+      - name: Run load tests
+        run: ./k6 run --out json=load-test-results.json tests/performance/k6/security-dashboard-load-test.js
+        env:
+          BASE_URL: http://localhost:3005
+          API_URL: http://localhost:4000/graphql
+
+      - name: Run stress tests
+        run: ./k6 run --out json=stress-test-results.json tests/performance/k6/stress-test.js
+
+      - name: Generate performance report
+        run: |
+          npm run performance:report
+          npm run performance:analyze
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-results
+          path: |
+            load-test-results.json
+            stress-test-results.json
+            performance-report.html
+
+      - name: Performance regression check
+        run: npm run performance:compare
+
+  # Security Testing
+  security-tests:
+    name: Security Tests
+    runs-on: ubuntu-latest
+    needs: [integration-tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup k6
+        run: |
+          curl -s https://github.com/grafana/k6/releases/download/v${{ env.K6_VERSION }}/k6-v${{ env.K6_VERSION }}-linux-amd64.tar.gz | tar xvz --strip-components 1
+
+      - name: Setup test environment
+        run: |
+          docker-compose -f docker-compose.test.yml up -d
+          sleep 60
+
+      - name: Run OWASP ZAP baseline scan
+        run: |
+          docker run -v $(pwd):/zap/wrk/:rw \
+            -t owasp/zap2docker-stable \
+            zap-baseline.py \
+            -t http://host.docker.internal:3005 \
+            -g gen.conf \
+            -r zap-report.html
+
+      - name: Run security penetration tests
+        run: ./k6 run tests/security/penetration-tests.js
+        env:
+          BASE_URL: http://localhost:3005
+          API_URL: http://localhost:4000/graphql
+
+      - name: Run dependency vulnerability scan
+        run: |
+          npm audit --audit-level moderate
+          npm run security:scan
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-reports
+          path: |
+            zap-report.html
+            security-scan-results.json
+
+      - name: Security gate check
+        run: npm run security:gate-check
+
+  # Accessibility Testing
+  accessibility-tests:
+    name: Accessibility Tests
+    runs-on: ubuntu-latest
+    needs: [e2e-tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup test environment
+        run: |
+          docker-compose -f docker-compose.test.yml up -d
+          npm run wait-for-services
+
+      - name: Run axe accessibility tests
+        run: npm run test:accessibility
+
+      - name: Generate accessibility report
+        run: npm run accessibility:report
+
+      - name: Upload accessibility results
+        uses: actions/upload-artifact@v3
+        with:
+          name: accessibility-report
+          path: accessibility-report.html
+
+  # Mobile Testing
+  mobile-tests:
+    name: Mobile App Tests
+    runs-on: macos-latest
+    needs: [unit-tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd mobile && npm ci
+
+      - name: Setup iOS Simulator
+        run: |
+          xcrun simctl create "iPhone 14" "iPhone 14" "iOS16.0"
+          xcrun simctl boot "iPhone 14"
+
+      - name: Setup Android Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          script: echo "Android emulator started"
+
+      - name: Run mobile unit tests
+        run: cd mobile && npm test
+
+      - name: Run Detox E2E tests (iOS)
+        run: |
+          cd mobile
+          npx detox build --configuration ios.sim.debug
+          npx detox test --configuration ios.sim.debug
+
+      - name: Run Detox E2E tests (Android)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          script: |
+            cd mobile
+            npx detox build --configuration android.emu.debug
+            npx detox test --configuration android.emu.debug
+
+  # Test Results Aggregation
+  test-results:
+    name: Aggregate Test Results
+    runs-on: ubuntu-latest
+    needs: [
+      code-quality,
+      unit-tests,
+      integration-tests,
+      e2e-tests,
+      visual-regression,
+      performance-tests,
+      security-tests,
+      accessibility-tests,
+      mobile-tests
+    ]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Generate comprehensive test report
+        run: |
+          npm run test:report:generate
+          npm run test:report:publish
+
+      - name: Upload comprehensive report
+        uses: actions/upload-artifact@v3
+        with:
+          name: comprehensive-test-report
+          path: test-report.html
+
+      - name: Notify Slack on failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Update test badges
+        run: npm run badges:update
+
+  # Deployment Gate
+  deployment-gate:
+    name: Deployment Quality Gate
+    runs-on: ubuntu-latest
+    needs: [test-results]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download test results
+        uses: actions/download-artifact@v3
+        with:
+          name: comprehensive-test-report
+
+      - name: Quality gate check
+        run: |
+          npm run quality-gate:check \
+            --coverage-threshold=80 \
+            --performance-threshold=2000 \
+            --security-score-min=9.0 \
+            --accessibility-score-min=95
+
+      - name: Approve deployment
+        if: success()
+        run: echo "All quality gates passed. Ready for deployment."
+
+      - name: Block deployment
+        if: failure()
+        run: |
+          echo "Quality gates failed. Deployment blocked."
+          exit 1
+
+# Workflow artifacts retention
+  cleanup:
+    name: Cleanup Artifacts
+    runs-on: ubuntu-latest
+    needs: [deployment-gate]
+    if: always()
+    steps:
+      - name: Clean up old artifacts
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId,
+            });
+            
+            // Keep artifacts for 30 days for main branch, 7 days for others
+            const retentionDays = context.ref === 'refs/heads/main' ? 30 : 7;
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+            
+            for (const artifact of artifacts.data.artifacts) {
+              const createdDate = new Date(artifact.created_at);
+              if (createdDate < cutoffDate) {
+                await github.rest.actions.deleteArtifact({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  artifact_id: artifact.id,
+                });
+              }
+            }

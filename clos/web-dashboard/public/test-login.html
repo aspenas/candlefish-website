@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login Debug Test</title>
+    <style>
+        body { font-family: Arial; margin: 40px; }
+        .success { color: green; }
+        .error { color: red; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Login Debug Test</h1>
+    
+    <h2>Test 1: Direct API Call</h2>
+    <button onclick="testDirectAPI()">Test Direct API</button>
+    <div id="api-result"></div>
+    
+    <h2>Test 2: Form Submission</h2>
+    <form id="test-form">
+        <input type="text" id="username" placeholder="Username" value="patrick">
+        <input type="password" id="password" placeholder="Password" value="admin_password">
+        <button type="submit">Submit Form</button>
+    </form>
+    <div id="form-result"></div>
+    
+    <h2>Test 3: Fetch with Credentials</h2>
+    <button onclick="testFetchWithCredentials()">Test Fetch with Credentials</button>
+    <div id="fetch-result"></div>
+    
+    <h2>Console Log</h2>
+    <pre id="console-log"></pre>
+
+    <script>
+        function log(message) {
+            const logElem = document.getElementById('console-log');
+            logElem.textContent += new Date().toISOString() + ' - ' + message + '\n';
+            console.log(message);
+        }
+
+        async function testDirectAPI() {
+            log('Starting Direct API test...');
+            const resultDiv = document.getElementById('api-result');
+            
+            try {
+                const response = await fetch('http://localhost:3501/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: 'patrick',
+                        password: 'admin_password'
+                    }),
+                });
+
+                log('Response status: ' + response.status);
+                const data = await response.json();
+                log('Response data: ' + JSON.stringify(data, null, 2));
+                
+                if (data.success) {
+                    resultDiv.innerHTML = '<span class="success">✓ Login successful!</span>';
+                    resultDiv.innerHTML += '<pre>' + JSON.stringify(data.data, null, 2) + '</pre>';
+                    
+                    // Test storing tokens
+                    localStorage.setItem('accessToken', data.data.accessToken);
+                    localStorage.setItem('refreshToken', data.data.refreshToken);
+                    log('Tokens stored in localStorage');
+                } else {
+                    resultDiv.innerHTML = '<span class="error">✗ Login failed: ' + data.message + '</span>';
+                }
+            } catch (error) {
+                log('Error: ' + error.message);
+                resultDiv.innerHTML = '<span class="error">✗ Error: ' + error.message + '</span>';
+            }
+        }
+
+        async function testFetchWithCredentials() {
+            log('Starting Fetch with Credentials test...');
+            const resultDiv = document.getElementById('fetch-result');
+            
+            try {
+                const response = await fetch('http://localhost:3501/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',  // Include cookies
+                    body: JSON.stringify({
+                        username: 'patrick',
+                        password: 'admin_password'
+                    }),
+                });
+
+                log('Response status: ' + response.status);
+                const data = await response.json();
+                log('Response data: ' + JSON.stringify(data, null, 2));
+                
+                if (data.success) {
+                    resultDiv.innerHTML = '<span class="success">✓ Login with credentials successful!</span>';
+                    
+                    // Try to redirect
+                    log('Attempting redirect to dashboard...');
+                    setTimeout(() => {
+                        window.location.href = 'http://localhost:3500/';
+                    }, 2000);
+                } else {
+                    resultDiv.innerHTML = '<span class="error">✗ Login failed: ' + data.message + '</span>';
+                }
+            } catch (error) {
+                log('Error: ' + error.message);
+                resultDiv.innerHTML = '<span class="error">✗ Error: ' + error.message + '</span>';
+            }
+        }
+
+        document.getElementById('test-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            log('Form submission test...');
+            
+            const resultDiv = document.getElementById('form-result');
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch('http://localhost:3501/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ username, password }),
+                });
+
+                const data = await response.json();
+                log('Form response: ' + JSON.stringify(data, null, 2));
+                
+                if (data.success) {
+                    resultDiv.innerHTML = '<span class="success">✓ Form login successful!</span>';
+                    localStorage.setItem('accessToken', data.data.accessToken);
+                    localStorage.setItem('refreshToken', data.data.refreshToken);
+                } else {
+                    resultDiv.innerHTML = '<span class="error">✗ Form login failed</span>';
+                }
+            } catch (error) {
+                log('Form error: ' + error.message);
+                resultDiv.innerHTML = '<span class="error">✗ Error: ' + error.message + '</span>';
+            }
+        });
+    </script>
+</body>
+</html>

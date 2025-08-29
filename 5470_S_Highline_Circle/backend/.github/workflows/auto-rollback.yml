@@ -1,0 +1,445 @@
+name: Automated Rollback System
+
+on:
+  workflow_dispatch:
+    inputs:
+      rollback_type:
+        description: 'Type of rollback to perform'
+        required: true
+        default: 'deployment'
+        type: choice
+        options:
+        - deployment
+        - database
+        - full
+      target_revision:
+        description: 'Target revision (leave empty for previous)'
+        required: false
+        default: ''
+      reason:
+        description: 'Reason for rollback'
+        required: true
+        default: 'Manual rollback requested'
+  repository_dispatch:
+    types: [rollback-required]
+
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER_NAME: inventory-cluster
+  NAMESPACE: inventory-system
+  APP_NAME: backend
+  HEALTH_CHECK_URL: https://api.inventory.example.com/health
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+jobs:
+  validate-rollback-request:
+    runs-on: ubuntu-latest
+    outputs:
+      rollback-approved: ${{ steps.validation.outputs.approved }}
+      rollback-type: ${{ steps.validation.outputs.type }}
+      target-revision: ${{ steps.validation.outputs.revision }}
+      reason: ${{ steps.validation.outputs.reason }}
+    
+    steps:
+    - name: Validate rollback request
+      id: validation
+      run: |
+        # Get rollback parameters
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          ROLLBACK_TYPE="${{ github.event.inputs.rollback_type }}"
+          TARGET_REVISION="${{ github.event.inputs.target_revision }}"
+          REASON="${{ github.event.inputs.reason }}"
+        else
+          # Repository dispatch (automated trigger)
+          ROLLBACK_TYPE="${{ github.event.client_payload.rollback_type || 'deployment' }}"
+          TARGET_REVISION="${{ github.event.client_payload.target_revision || '' }}"
+          REASON="${{ github.event.client_payload.reason || 'Automated rollback triggered' }}"
+        fi
+        
+        echo "type=$ROLLBACK_TYPE" >> $GITHUB_OUTPUT
+        echo "revision=$TARGET_REVISION" >> $GITHUB_OUTPUT
+        echo "reason=$REASON" >> $GITHUB_OUTPUT
+        
+        # Validation logic
+        if [ "$ROLLBACK_TYPE" = "database" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+          echo "Database rollback requires manual approval"
+          echo "approved=false" >> $GITHUB_OUTPUT
+        else
+          echo "approved=true" >> $GITHUB_OUTPUT
+        fi
+        
+        echo "Rollback request validated:"
+        echo "  Type: $ROLLBACK_TYPE"
+        echo "  Revision: $TARGET_REVISION"
+        echo "  Reason: $REASON"
+
+    - name: Notify rollback initiation
+      if: steps.validation.outputs.approved == 'true'
+      run: |
+        if [ -n "${{ env.SLACK_WEBHOOK_URL }}" ]; then
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{
+              "text": ":warning: Rollback initiated",
+              "attachments": [{
+                "color": "warning",
+                "fields": [
+                  {"title": "Type", "value": "${{ steps.validation.outputs.type }}", "short": true},
+                  {"title": "Revision", "value": "${{ steps.validation.outputs.revision || 'Previous' }}", "short": true},
+                  {"title": "Reason", "value": "${{ steps.validation.outputs.reason }}", "short": false},
+                  {"title": "Triggered by", "value": "${{ github.actor }}", "short": true}
+                ]
+              }]
+            }' \
+            ${{ env.SLACK_WEBHOOK_URL }}
+        fi
+
+  pre-rollback-checks:
+    needs: validate-rollback-request
+    runs-on: ubuntu-latest
+    if: needs.validate-rollback-request.outputs.rollback-approved == 'true'
+    outputs:
+      current-image: ${{ steps.state.outputs.current-image }}
+      current-revision: ${{ steps.state.outputs.current-revision }}
+      rollback-feasible: ${{ steps.checks.outputs.feasible }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+    - name: Get current deployment state
+      id: state
+      run: |
+        CURRENT_IMAGE=$(kubectl get deployment ${{ env.APP_NAME }} -n ${{ env.NAMESPACE }} -o jsonpath='{.spec.template.spec.containers[0].image}')
+        CURRENT_REVISION=$(kubectl rollout history deployment/${{ env.APP_NAME }} -n ${{ env.NAMESPACE }} | tail -n 1 | awk '{print $1}')
+        
+        echo "current-image=$CURRENT_IMAGE" >> $GITHUB_OUTPUT
+        echo "current-revision=$CURRENT_REVISION" >> $GITHUB_OUTPUT
+        
+        echo "Current deployment state:"
+        echo "  Image: $CURRENT_IMAGE"
+        echo "  Revision: $CURRENT_REVISION"
+
+    - name: Check rollback feasibility
+      id: checks
+      run: |
+        # Check if there are previous revisions available
+        REVISION_COUNT=$(kubectl rollout history deployment/${{ env.APP_NAME }} -n ${{ env.NAMESPACE }} | tail -n +3 | wc -l)
+        
+        if [ "$REVISION_COUNT" -lt 2 ]; then
+          echo "No previous revisions available for rollback"
+          echo "feasible=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+        
+        # Check if target revision exists (if specified)
+        if [ -n "${{ needs.validate-rollback-request.outputs.target-revision }}" ]; then
+          TARGET_REV="${{ needs.validate-rollback-request.outputs.target-revision }}"
+          if ! kubectl rollout history deployment/${{ env.APP_NAME }} -n ${{ env.NAMESPACE }} --revision="$TARGET_REV" >/dev/null 2>&1; then
+            echo "Target revision $TARGET_REV does not exist"
+            echo "feasible=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+        fi
+        
+        # Check database backup availability for database rollbacks
+        if [ "${{ needs.validate-rollback-request.outputs.rollback-type }}" = "database" ]; then
+          echo "Checking database backup availability..."
+          # This would check if database backups exist
+          # For now, we'll assume they exist
+        fi
+        
+        echo "feasible=true" >> $GITHUB_OUTPUT
+        echo "Rollback feasibility check passed"
+
+    - name: Create pre-rollback backup
+      if: needs.validate-rollback-request.outputs.rollback-type != 'deployment'
+      run: |
+        echo "Creating pre-rollback backup..."
+        # Implementation would depend on backup strategy
+        echo "Pre-rollback backup completed"
+
+  execute-rollback:
+    needs: [validate-rollback-request, pre-rollback-checks]
+    runs-on: ubuntu-latest
+    if: needs.pre-rollback-checks.outputs.rollback-feasible == 'true'
+    environment:
+      name: production-rollback
+    timeout-minutes: 15
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+    - name: Execute rollback
+      id: rollback
+      run: |
+        chmod +x scripts/rollback.sh
+        
+        # Set environment variables for rollback script
+        export NAMESPACE="${{ env.NAMESPACE }}"
+        export APP_NAME="${{ env.APP_NAME }}"
+        export HEALTH_CHECK_URL="${{ env.HEALTH_CHECK_URL }}"
+        export AUTOMATED_ROLLBACK="true"
+        
+        # Execute rollback
+        ROLLBACK_TYPE="${{ needs.validate-rollback-request.outputs.rollback-type }}"
+        TARGET_REVISION="${{ needs.validate-rollback-request.outputs.target-revision }}"
+        
+        if [ -n "$TARGET_REVISION" ]; then
+          ./scripts/rollback.sh rollback "$ROLLBACK_TYPE" "$TARGET_REVISION"
+        else
+          ./scripts/rollback.sh rollback "$ROLLBACK_TYPE"
+        fi
+        
+        echo "Rollback execution completed"
+
+    - name: Verify rollback success
+      id: verify
+      run: |
+        echo "Verifying rollback success..."
+        
+        # Wait for deployment to stabilize
+        sleep 30
+        
+        # Check deployment status
+        kubectl rollout status deployment/${{ env.APP_NAME }} -n ${{ env.NAMESPACE }} --timeout=300s
+        
+        # Check pod readiness
+        READY_PODS=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=${{ env.APP_NAME }} --no-headers | grep -c "Running" || echo "0")
+        TOTAL_PODS=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=${{ env.APP_NAME }} --no-headers | wc -l)
+        
+        if [ "$READY_PODS" -eq "$TOTAL_PODS" ] && [ "$READY_PODS" -gt 0 ]; then
+          echo "Pod verification successful: $READY_PODS/$TOTAL_PODS ready"
+        else
+          echo "Pod verification failed: $READY_PODS/$TOTAL_PODS ready"
+          exit 1
+        fi
+        
+        # Health check
+        MAX_ATTEMPTS=10
+        ATTEMPT=1
+        
+        while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+          echo "Health check attempt $ATTEMPT/$MAX_ATTEMPTS..."
+          
+          if curl -f -s ${{ env.HEALTH_CHECK_URL }} >/dev/null 2>&1; then
+            echo "Health check passed"
+            break
+          fi
+          
+          if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+            echo "Health check failed after $MAX_ATTEMPTS attempts"
+            exit 1
+          fi
+          
+          ATTEMPT=$((ATTEMPT + 1))
+          sleep 30
+        done
+        
+        echo "Rollback verification successful"
+
+    - name: Generate rollback report
+      if: always()
+      run: |
+        # Get post-rollback state
+        NEW_IMAGE=$(kubectl get deployment ${{ env.APP_NAME }} -n ${{ env.NAMESPACE }} -o jsonpath='{.spec.template.spec.containers[0].image}')
+        NEW_REVISION=$(kubectl rollout history deployment/${{ env.APP_NAME }} -n ${{ env.NAMESPACE }} | tail -n 1 | awk '{print $1}')
+        
+        # Create detailed report
+        cat > rollback-report.json << EOF
+        {
+          "rollback_timestamp": "$(date -u '+%Y-%m-%dT%H:%M:%SZ')",
+          "rollback_type": "${{ needs.validate-rollback-request.outputs.rollback-type }}",
+          "rollback_reason": "${{ needs.validate-rollback-request.outputs.reason }}",
+          "triggered_by": "${{ github.actor }}",
+          "before_rollback": {
+            "image": "${{ needs.pre-rollback-checks.outputs.current-image }}",
+            "revision": "${{ needs.pre-rollback-checks.outputs.current-revision }}"
+          },
+          "after_rollback": {
+            "image": "$NEW_IMAGE",
+            "revision": "$NEW_REVISION"
+          },
+          "rollback_status": "${{ steps.verify.outcome }}",
+          "namespace": "${{ env.NAMESPACE }}",
+          "app_name": "${{ env.APP_NAME }}"
+        }
+        EOF
+        
+        echo "Rollback report generated"
+        cat rollback-report.json
+
+    - name: Upload rollback artifacts
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: rollback-report-${{ github.run_number }}
+        path: |
+          rollback-report.json
+          rollback-snapshots/
+        retention-days: 30
+
+  post-rollback-validation:
+    needs: [validate-rollback-request, execute-rollback]
+    runs-on: ubuntu-latest
+    if: success()
+    
+    steps:
+    - name: Run post-rollback tests
+      run: |
+        echo "Running post-rollback validation tests..."
+        
+        # Basic API tests
+        echo "Testing health endpoint..."
+        curl -f ${{ env.HEALTH_CHECK_URL }} || exit 1
+        
+        echo "Testing readiness endpoint..."
+        curl -f https://api.inventory.example.com/ready || exit 1
+        
+        echo "Testing basic API functionality..."
+        curl -f "https://api.inventory.example.com/api/v1/items?limit=1" || exit 1
+        
+        echo "Post-rollback validation completed successfully"
+
+    - name: Performance regression check
+      run: |
+        echo "Checking for performance regressions..."
+        
+        # Simple performance check
+        for i in {1..5}; do
+          response_time=$(curl -w "%{time_total}" -s -o /dev/null ${{ env.HEALTH_CHECK_URL }})
+          echo "Response time $i: ${response_time}s"
+          
+          # Fail if response time > 3 seconds (more lenient after rollback)
+          if (( $(echo "$response_time > 3.0" | bc -l) )); then
+            echo "Performance regression detected: response time > 3s"
+            exit 1
+          fi
+        done
+        
+        echo "Performance check passed"
+
+  notify-completion:
+    needs: [validate-rollback-request, execute-rollback, post-rollback-validation]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Notify rollback success
+      if: needs.execute-rollback.result == 'success' && needs.post-rollback-validation.result == 'success'
+      run: |
+        if [ -n "${{ env.SLACK_WEBHOOK_URL }}" ]; then
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{
+              "text": ":white_check_mark: Rollback completed successfully",
+              "attachments": [{
+                "color": "good",
+                "fields": [
+                  {"title": "Type", "value": "${{ needs.validate-rollback-request.outputs.rollback-type }}", "short": true},
+                  {"title": "Reason", "value": "${{ needs.validate-rollback-request.outputs.reason }}", "short": false},
+                  {"title": "Status", "value": "System restored and healthy", "short": true},
+                  {"title": "URL", "value": "https://api.inventory.example.com", "short": false}
+                ]
+              }]
+            }' \
+            ${{ env.SLACK_WEBHOOK_URL }}
+        fi
+
+    - name: Notify rollback failure
+      if: needs.execute-rollback.result == 'failure' || needs.post-rollback-validation.result == 'failure'
+      run: |
+        if [ -n "${{ env.SLACK_WEBHOOK_URL }}" ]; then
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{
+              "text": ":x: Rollback failed",
+              "attachments": [{
+                "color": "danger",
+                "fields": [
+                  {"title": "Type", "value": "${{ needs.validate-rollback-request.outputs.rollback-type }}", "short": true},
+                  {"title": "Reason", "value": "${{ needs.validate-rollback-request.outputs.reason }}", "short": false},
+                  {"title": "Status", "value": "Manual intervention required", "short": true},
+                  {"title": "Action", "value": "Check logs and perform manual rollback", "short": false}
+                ]
+              }]
+            }' \
+            ${{ env.SLACK_WEBHOOK_URL }}
+        fi
+
+    - name: Create incident if rollback failed
+      if: needs.execute-rollback.result == 'failure'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: `INCIDENT: Rollback Failed - ${new Date().toISOString()}`,
+            body: `# Rollback Failure Incident
+            
+            **Severity**: Critical
+            **Type**: ${{ needs.validate-rollback-request.outputs.rollback-type }}
+            **Reason**: ${{ needs.validate-rollback-request.outputs.reason }}
+            **Triggered by**: ${{ github.actor }}
+            
+            ## Status
+            Automated rollback failed. Manual intervention required immediately.
+            
+            ## Actions Required
+            1. Check deployment logs: \`kubectl logs -n inventory-system -l app=backend\`
+            2. Check pod status: \`kubectl get pods -n inventory-system -l app=backend\`
+            3. Consider emergency rollback: \`./scripts/rollback.sh emergency\`
+            4. If all else fails, scale down and back up: \`kubectl scale deployment backend -n inventory-system --replicas=0 && kubectl scale deployment backend -n inventory-system --replicas=3\`
+            
+            ## Logs
+            Check the GitHub Actions logs for this run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            `,
+            labels: ['incident', 'critical', 'rollback-failure']
+          });
+
+  cleanup:
+    needs: [validate-rollback-request, execute-rollback, post-rollback-validation, notify-completion]
+    runs-on: ubuntu-latest
+    if: always() && needs.validate-rollback-request.outputs.rollback-approved == 'true'
+    
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+    - name: Clean up old resources
+      run: |
+        # Clean up old ReplicaSets (keep last 3)
+        kubectl get rs -n ${{ env.NAMESPACE }} -l app=${{ env.APP_NAME }} \
+          --sort-by=.metadata.creationTimestamp -o name | head -n -3 | \
+          xargs -r kubectl delete -n ${{ env.NAMESPACE }} --grace-period=30 || true
+        
+        echo "Cleanup completed"

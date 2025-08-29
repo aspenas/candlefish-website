@@ -1,0 +1,253 @@
+---
+# NANDA Agent Manifest - Autonomous Service Orchestration
+# Generated for production deployment
+
+agents:
+  # Core Decision-Making Agent
+  orchestrator:
+    name: nanda-orchestrator
+    type: decision-maker
+    priority: critical
+    capabilities:
+      - service_lifecycle_management
+      - resource_allocation
+      - conflict_resolution
+      - auto_scaling
+      - health_monitoring
+    config:
+      port: 5100
+      decision_threshold: 0.75
+      autonomous_mode: true
+      learning_enabled: true
+    dependencies:
+      - postgres
+      - redis
+
+  # Service Discovery Agent
+  discovery:
+    name: nanda-discovery
+    type: monitor
+    priority: high
+    capabilities:
+      - service_registration
+      - health_checking
+      - port_scanning
+      - dependency_mapping
+    config:
+      port: 5101
+      scan_interval: 30s
+      health_check_timeout: 10s
+    
+  # Resource Optimizer Agent
+  optimizer:
+    name: nanda-optimizer
+    type: analyzer
+    priority: medium
+    capabilities:
+      - performance_analysis
+      - resource_optimization
+      - cost_reduction
+      - predictive_scaling
+    config:
+      port: 5102
+      optimization_interval: 5m
+      metrics_retention: 7d
+
+  # Security Guardian Agent
+  guardian:
+    name: nanda-guardian
+    type: security
+    priority: critical
+    capabilities:
+      - threat_detection
+      - access_control
+      - audit_logging
+      - compliance_monitoring
+    config:
+      port: 5103
+      scan_frequency: continuous
+      alert_threshold: high
+
+  # Auto-Healer Agent
+  healer:
+    name: nanda-healer
+    type: maintenance
+    priority: high
+    capabilities:
+      - fault_detection
+      - automatic_recovery
+      - rollback_management
+      - dependency_healing
+    config:
+      port: 5104
+      healing_strategy: progressive
+      max_retry_attempts: 3
+
+  # Learning Agent
+  learner:
+    name: nanda-learner
+    type: ml
+    priority: medium
+    capabilities:
+      - pattern_recognition
+      - anomaly_detection
+      - prediction_modeling
+      - optimization_learning
+    config:
+      port: 5105
+      model_update_frequency: 1h
+      training_data_retention: 30d
+
+# Service Registry
+services:
+  # Core Infrastructure
+  postgres:
+    type: database
+    port: 5432
+    schemas:
+      - clos_core
+      - nanda_agents
+      - service_registry
+      - audit_logs
+      - metrics
+      - paintbox
+      - promoteros
+      - temporal
+
+  redis:
+    type: cache
+    port: 6379
+    databases:
+      0: sessions
+      1: cache
+      2: pubsub
+      3: agent_state
+      4: service_locks
+
+  # API Gateway
+  gateway:
+    type: proxy
+    port: 4000
+    routes:
+      /auth: clos-auth
+      /api: clos-api
+      /graphql: graphql-federation
+      /nanda: nanda-api
+      /paintbox: paintbox-api
+      /promoteros: promoteros-api
+
+  # Authentication Services
+  clos-auth:
+    type: auth
+    port: 3501
+    jwt_enabled: true
+    sso_enabled: true
+    service_auth: true
+
+  # Application Services
+  clos-dashboard:
+    type: frontend
+    port: 3500
+    framework: nextjs
+    
+  nanda-dashboard:
+    type: frontend
+    port: 3600
+    framework: react
+
+  paintbox-frontend:
+    type: frontend
+    port: 3700
+    framework: nextjs
+
+  paintbox-api:
+    type: backend
+    port: 4100
+    framework: nodejs
+    database: postgres/paintbox
+
+  promoteros-api:
+    type: backend
+    port: 4200
+    framework: nodejs
+    database: postgres/promoteros
+
+  graphql-federation:
+    type: api
+    port: 4300
+    subgraphs:
+      - users
+      - services
+      - metrics
+      - paintbox
+      - promoteros
+
+  temporal-worker:
+    type: workflow
+    port: 7233
+    namespace: candlefish
+    database: postgres/temporal
+
+# Decision Rules
+decision_rules:
+  - name: auto_scale
+    trigger: cpu_usage > 80%
+    action: scale_up
+    cooldown: 5m
+    
+  - name: failover
+    trigger: health_check_failed
+    action: restart_with_fallback
+    max_attempts: 3
+    
+  - name: optimize_resources
+    trigger: idle_time > 30m
+    action: scale_down
+    min_instances: 1
+
+  - name: security_lockdown
+    trigger: threat_detected
+    action: isolate_and_alert
+    severity: critical
+
+# Autonomous Actions
+autonomous_actions:
+  enabled: true
+  require_confirmation: false
+  allowed_actions:
+    - service_restart
+    - port_reassignment
+    - scale_up
+    - scale_down
+    - health_check
+    - log_rotation
+    - backup_creation
+    - cache_clear
+    - dependency_update
+  restricted_actions:
+    - database_migration
+    - production_deployment
+    - security_policy_change
+    - data_deletion
+
+# Monitoring Configuration
+monitoring:
+  prometheus:
+    port: 9090
+    scrape_interval: 15s
+    
+  grafana:
+    port: 9091
+    dashboards:
+      - system_overview
+      - agent_performance
+      - service_health
+      - security_metrics
+
+# Deployment Strategy
+deployment:
+  strategy: blue_green
+  health_check_required: true
+  rollback_on_failure: true
+  canary_percentage: 10
+  production_approval: automatic

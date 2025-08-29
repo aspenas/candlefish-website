@@ -1,0 +1,508 @@
+# Neo4j Deployment for Security Dashboard
+# Graph database for security relationships, threat correlation, and attack path analysis
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: neo4j
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: neo4j
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: graph-database
+    app.kubernetes.io/version: "5.14"
+spec:
+  serviceName: neo4j-headless
+  replicas: 3
+  podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: neo4j
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: neo4j
+        app.kubernetes.io/part-of: security-dashboard
+        app.kubernetes.io/component: graph-database
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "2004"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 7474
+        runAsGroup: 7474
+        fsGroup: 7474
+      initContainers:
+      - name: init-plugins
+        image: neo4j:5.14-enterprise
+        imagePullPolicy: IfNotPresent
+        command: ["/bin/bash"]
+        args:
+        - -c
+        - |
+          # Download and install security plugins
+          wget -O /plugins/apoc-5.14.0-core.jar https://github.com/neo4j-contrib/neo4j-apoc-procedures/releases/download/5.14.0/apoc-5.14.0-core.jar
+          wget -O /plugins/graph-data-science-2.5.7.jar https://graphdatascience.ninja/neo4j-graph-data-science-2.5.7.jar
+          chown -R 7474:7474 /plugins
+        volumeMounts:
+        - name: neo4j-plugins
+          mountPath: /plugins
+        securityContext:
+          runAsUser: 0
+      containers:
+      - name: neo4j
+        image: neo4j:5.14-enterprise
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 7474
+          protocol: TCP
+        - name: bolt
+          containerPort: 7687
+          protocol: TCP
+        - name: cluster
+          containerPort: 5000
+          protocol: TCP
+        - name: tx
+          containerPort: 6000
+          protocol: TCP
+        - name: raft
+          containerPort: 7000
+          protocol: TCP
+        - name: metrics
+          containerPort: 2004
+          protocol: TCP
+        env:
+        # Authentication
+        - name: NEO4J_AUTH
+          value: "neo4j/$(NEO4J_PASSWORD)"
+        - name: NEO4J_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: security-dashboard-secrets
+              key: neo4j-password
+        
+        # Clustering configuration
+        - name: NEO4J_ACCEPT_LICENSE_AGREEMENT
+          value: "yes"
+        - name: NEO4J_dbms_mode
+          value: "CORE"
+        - name: NEO4J_causal__clustering_expected__core__cluster__size
+          value: "3"
+        - name: NEO4J_causal__clustering_initial__discovery__members
+          value: "neo4j-0.neo4j-headless.security-dashboard.svc.cluster.local:5000,neo4j-1.neo4j-headless.security-dashboard.svc.cluster.local:5000,neo4j-2.neo4j-headless.security-dashboard.svc.cluster.local:5000"
+        - name: NEO4J_dbms_connector_bolt_advertised__address
+          value: "$(hostname -f):7687"
+        - name: NEO4J_dbms_connector_http_advertised__address
+          value: "$(hostname -f):7474"
+        
+        # Memory and performance tuning
+        - name: NEO4J_dbms_memory_heap_initial__size
+          value: "1G"
+        - name: NEO4J_dbms_memory_heap_max__size
+          value: "2G"
+        - name: NEO4J_dbms_memory_pagecache_size
+          value: "1G"
+        
+        # Security settings
+        - name: NEO4J_dbms_security_procedures_unrestricted
+          value: "gds.*,apoc.*"
+        - name: NEO4J_dbms_security_procedures_allowlist
+          value: "gds.*,apoc.*"
+        
+        # Plugin configuration
+        - name: NEO4J_dbms_unmanaged__extension__classes
+          value: "com.neo4j.gds=/gds"
+        
+        # Metrics configuration
+        - name: NEO4J_metrics_enabled
+          value: "true"
+        - name: NEO4J_metrics_prometheus_enabled
+          value: "true"
+        - name: NEO4J_metrics_prometheus_endpoint
+          value: "0.0.0.0:2004"
+        
+        # Logging
+        - name: NEO4J_dbms_logs_debug_level
+          value: "INFO"
+        - name: NEO4J_dbms_logs_query_enabled
+          value: "INFO"
+        - name: NEO4J_dbms_logs_query_threshold
+          value: "1s"
+        
+        resources:
+          requests:
+            memory: "3Gi"
+            cpu: "500m"
+            ephemeral-storage: "1Gi"
+          limits:
+            memory: "6Gi"
+            cpu: "2000m"
+            ephemeral-storage: "5Gi"
+        
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /db/data/
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        startupProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 30
+        
+        volumeMounts:
+        - name: neo4j-data
+          mountPath: /data
+        - name: neo4j-logs
+          mountPath: /logs
+        - name: neo4j-plugins
+          mountPath: /var/lib/neo4j/plugins
+        - name: neo4j-import
+          mountPath: /var/lib/neo4j/import
+        - name: neo4j-config
+          mountPath: /var/lib/neo4j/conf/neo4j.conf
+          subPath: neo4j.conf
+        
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+      
+      volumes:
+      - name: neo4j-plugins
+        emptyDir:
+          sizeLimit: 1Gi
+      - name: neo4j-import
+        emptyDir:
+          sizeLimit: 5Gi
+      - name: neo4j-config
+        configMap:
+          name: neo4j-config
+      
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - neo4j
+              topologyKey: kubernetes.io/hostname
+  
+  volumeClaimTemplates:
+  - metadata:
+      name: neo4j-data
+      labels:
+        app.kubernetes.io/name: neo4j
+        app.kubernetes.io/component: graph-database
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: gp3-encrypted
+      resources:
+        requests:
+          storage: 50Gi
+  - metadata:
+      name: neo4j-logs
+      labels:
+        app.kubernetes.io/name: neo4j
+        app.kubernetes.io/component: graph-database
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: gp3-encrypted
+      resources:
+        requests:
+          storage: 10Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: neo4j
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: neo4j
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: graph-database
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "2004"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 7474
+    targetPort: http
+    protocol: TCP
+  - name: bolt
+    port: 7687
+    targetPort: bolt
+    protocol: TCP
+  - name: metrics
+    port: 2004
+    targetPort: metrics
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: neo4j
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: neo4j-headless
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: neo4j
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: graph-database
+spec:
+  clusterIP: None
+  ports:
+  - name: http
+    port: 7474
+    targetPort: http
+    protocol: TCP
+  - name: bolt
+    port: 7687
+    targetPort: bolt
+    protocol: TCP
+  - name: cluster
+    port: 5000
+    targetPort: cluster
+    protocol: TCP
+  - name: tx
+    port: 6000
+    targetPort: tx
+    protocol: TCP
+  - name: raft
+    port: 7000
+    targetPort: raft
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: neo4j
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: neo4j-config
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: neo4j
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: graph-database
+data:
+  neo4j.conf: |
+    # Network configuration
+    server.default_listen_address=0.0.0.0
+    server.default_advertised_address=$(hostname -f)
+    server.bolt.enabled=true
+    server.bolt.listen_address=0.0.0.0:7687
+    server.http.enabled=true
+    server.http.listen_address=0.0.0.0:7474
+    
+    # Clustering
+    dbms.mode=CORE
+    causal_clustering.minimum_core_cluster_size_at_formation=3
+    causal_clustering.minimum_core_cluster_size_at_runtime=3
+    causal_clustering.initial_discovery_members=neo4j-0.neo4j-headless.security-dashboard.svc.cluster.local:5000,neo4j-1.neo4j-headless.security-dashboard.svc.cluster.local:5000,neo4j-2.neo4j-headless.security-dashboard.svc.cluster.local:5000
+    causal_clustering.discovery_listen_address=0.0.0.0:5000
+    causal_clustering.transaction_listen_address=0.0.0.0:6000
+    causal_clustering.raft_listen_address=0.0.0.0:7000
+    
+    # Memory settings
+    server.memory.heap.initial_size=1G
+    server.memory.heap.max_size=2G
+    server.memory.pagecache.size=1G
+    
+    # Security
+    dbms.security.procedures.unrestricted=gds.*,apoc.*
+    dbms.security.procedures.allowlist=gds.*,apoc.*
+    
+    # Query performance
+    cypher.default_language_version=5
+    cypher.forbid_exhaustive_shortestpath=true
+    cypher.forbid_shortestpath_common_nodes=true
+    
+    # Logging
+    server.logs.debug.level=INFO
+    server.logs.query.enabled=INFO
+    server.logs.query.threshold=1s
+    server.logs.query.parameter_logging_enabled=true
+    
+    # Metrics
+    server.metrics.enabled=true
+    server.metrics.prometheus.enabled=true
+    server.metrics.prometheus.endpoint=0.0.0.0:2004
+    server.metrics.filter=*
+    
+    # Transaction settings
+    dbms.transaction.timeout=60s
+    dbms.lock.acquisition.timeout=60s
+    
+    # Connection settings
+    server.bolt.thread_pool_min_size=5
+    server.bolt.thread_pool_max_size=400
+    server.bolt.connection_keep_alive=60s
+
+---
+# Security Graph Data Initialization Job
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: neo4j-init-security-graph
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: neo4j-init
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: initialization
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: neo4j-init
+        app.kubernetes.io/part-of: security-dashboard
+        app.kubernetes.io/component: initialization
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: neo4j-init
+        image: neo4j:5.14-enterprise
+        imagePullPolicy: IfNotPresent
+        command: ["/bin/bash"]
+        args:
+        - -c
+        - |
+          # Wait for Neo4j to be ready
+          until cypher-shell -a bolt://neo4j:7687 -u neo4j -p "$NEO4J_PASSWORD" "RETURN 1"; do
+            echo "Waiting for Neo4j to be ready..."
+            sleep 10
+          done
+          
+          # Initialize security graph schema
+          cypher-shell -a bolt://neo4j:7687 -u neo4j -p "$NEO4J_PASSWORD" << 'EOF'
+          
+          // Create constraints for unique identifiers
+          CREATE CONSTRAINT user_id_unique IF NOT EXISTS FOR (u:User) REQUIRE u.id IS UNIQUE;
+          CREATE CONSTRAINT asset_id_unique IF NOT EXISTS FOR (a:Asset) REQUIRE a.id IS UNIQUE;
+          CREATE CONSTRAINT threat_id_unique IF NOT EXISTS FOR (t:Threat) REQUIRE t.id IS UNIQUE;
+          CREATE CONSTRAINT vulnerability_id_unique IF NOT EXISTS FOR (v:Vulnerability) REQUIRE v.id IS UNIQUE;
+          CREATE CONSTRAINT event_id_unique IF NOT EXISTS FOR (e:SecurityEvent) REQUIRE e.id IS UNIQUE;
+          
+          // Create indexes for performance
+          CREATE INDEX user_name_index IF NOT EXISTS FOR (u:User) ON (u.name);
+          CREATE INDEX asset_ip_index IF NOT EXISTS FOR (a:Asset) ON (a.ip_address);
+          CREATE INDEX threat_type_index IF NOT EXISTS FOR (t:Threat) ON (t.threat_type);
+          CREATE INDEX event_timestamp_index IF NOT EXISTS FOR (e:SecurityEvent) ON (e.timestamp);
+          CREATE INDEX vulnerability_severity_index IF NOT EXISTS FOR (v:Vulnerability) ON (v.severity);
+          
+          // Create sample security graph structure
+          
+          // Users
+          MERGE (admin:User {id: 'admin', name: 'System Administrator', role: 'admin', risk_score: 10})
+          MERGE (analyst:User {id: 'analyst', name: 'Security Analyst', role: 'analyst', risk_score: 20})
+          MERGE (user1:User {id: 'user1', name: 'John Doe', role: 'user', risk_score: 30})
+          
+          // Assets
+          MERGE (web_server:Asset {id: 'web-01', name: 'Web Server', type: 'server', ip_address: '10.0.1.10', criticality: 'high'})
+          MERGE (db_server:Asset {id: 'db-01', name: 'Database Server', type: 'database', ip_address: '10.0.1.20', criticality: 'critical'})
+          MERGE (workstation:Asset {id: 'ws-01', name: 'Admin Workstation', type: 'workstation', ip_address: '10.0.2.10', criticality: 'medium'})
+          
+          // Threats
+          MERGE (apt:Threat {id: 'apt-001', name: 'APT29', threat_type: 'advanced_persistent_threat', severity: 'high'})
+          MERGE (malware:Threat {id: 'mal-001', name: 'TrickBot', threat_type: 'malware', severity: 'medium'})
+          
+          // Vulnerabilities
+          MERGE (cve1:Vulnerability {id: 'CVE-2023-0001', name: 'SQL Injection', severity: 'high', cvss_score: 8.5})
+          MERGE (cve2:Vulnerability {id: 'CVE-2023-0002', name: 'Remote Code Execution', severity: 'critical', cvss_score: 9.8})
+          
+          // Security Events
+          MERGE (event1:SecurityEvent {id: 'evt-001', type: 'login_failure', timestamp: datetime(), severity: 'medium'})
+          MERGE (event2:SecurityEvent {id: 'evt-002', type: 'privilege_escalation', timestamp: datetime(), severity: 'high'})
+          
+          // Relationships for attack path analysis
+          
+          // User access relationships
+          MERGE (admin)-[:MANAGES]->(web_server)
+          MERGE (admin)-[:MANAGES]->(db_server)
+          MERGE (analyst)-[:MONITORS]->(web_server)
+          MERGE (analyst)-[:MONITORS]->(db_server)
+          MERGE (user1)-[:ACCESSES]->(workstation)
+          
+          // Asset relationships
+          MERGE (web_server)-[:CONNECTS_TO]->(db_server)
+          MERGE (workstation)-[:CONNECTS_TO]->(web_server)
+          
+          // Threat relationships
+          MERGE (apt)-[:TARGETS]->(db_server)
+          MERGE (malware)-[:INFECTS]->(workstation)
+          
+          // Vulnerability relationships
+          MERGE (web_server)-[:HAS_VULNERABILITY]->(cve1)
+          MERGE (db_server)-[:HAS_VULNERABILITY]->(cve2)
+          
+          // Event relationships
+          MERGE (event1)-[:ORIGINATED_FROM]->(workstation)
+          MERGE (event1)-[:INVOLVED_USER]->(user1)
+          MERGE (event2)-[:ORIGINATED_FROM]->(web_server)
+          MERGE (event2)-[:INVOLVED_USER]->(admin)
+          
+          // Attack path relationships
+          MERGE (malware)-[:EXPLOITS]->(cve1)
+          MERGE (apt)-[:EXPLOITS]->(cve2)
+          
+          // Risk propagation relationships
+          MERGE (cve1)-[:INCREASES_RISK]->(web_server)
+          MERGE (cve2)-[:INCREASES_RISK]->(db_server)
+          
+          EOF
+          
+          echo "Security graph initialization completed successfully"
+        env:
+        - name: NEO4J_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: security-dashboard-secrets
+              key: neo4j-password
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "200m"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 7474
+        runAsGroup: 7474

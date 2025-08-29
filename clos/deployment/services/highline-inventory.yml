@@ -1,0 +1,171 @@
+version: '3.8'
+
+# 5470 S Highline Circle Inventory System Service Stack
+# Frontend: Port 3050 (Candlefish Frontend range: 3000-3099)
+# API Backend: Port 4050 (API range: 4000-4999)  
+# Database: Port 5450 (Core services range: 5000-5999)
+# Redis: Port 6350 (Support services)
+
+services:
+  # Highline Inventory Frontend
+  highline-inventory-frontend:
+    build:
+      context: ../../../5470_S_Highline_Circle/frontend
+      dockerfile: Dockerfile
+      target: production
+    container_name: highline-inventory-frontend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3050
+      - VITE_API_URL=http://highline-inventory-api:4050
+      - VITE_WS_URL=ws://highline-inventory-api:4050
+      - VITE_APP_NAME=Highline Inventory System
+      - VITE_PUBLIC_VERSION=${HIGHLINE_VERSION:-1.0.0}
+    ports:
+      - "3050:3050"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.3.50
+    volumes:
+      - highline_frontend_cache:/app/dist
+      - highline_frontend_modules:/app/node_modules
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3050"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    depends_on:
+      - highline-inventory-api
+    labels:
+      - "clos.service=highline-inventory"
+      - "clos.component=frontend"
+      - "clos.port=3050"
+      - "clos.project=5470_S_Highline_Circle"
+      - "clos.group=candlefish-frontend"
+
+  # Highline Inventory API Backend  
+  highline-inventory-api:
+    build:
+      context: ../../../5470_S_Highline_Circle/backend
+      dockerfile: Dockerfile.api
+      target: production
+    container_name: highline-inventory-api
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=4050
+      - HOST=0.0.0.0
+      - DATABASE_PATH=/data/inventory.db
+      - REDIS_URL=redis://highline-inventory-redis:6379/0
+      - JWT_SECRET=${HIGHLINE_JWT_SECRET:-highline_jwt_dev_secret_2024}
+      - SESSION_SECRET=${HIGHLINE_SESSION_SECRET:-highline_session_dev_2024}
+      - CORS_ORIGINS=http://localhost:3050,https://highline.local
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - RATE_LIMIT_MAX=1000
+      - RATE_LIMIT_WINDOW=900000
+      - FILE_UPLOAD_MAX_SIZE=25MB
+      - BACKUP_ENABLED=true
+      - BACKUP_PATH=/backups
+      - BACKUP_SCHEDULE="0 2 * * *"
+    ports:
+      - "4050:4050"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.3.51
+    volumes:
+      - highline_api_data:/data
+      - highline_api_uploads:/app/uploads
+      - highline_api_logs:/app/logs
+      - highline_api_backups:/backups
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4050/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    depends_on:
+      - highline-inventory-redis
+    labels:
+      - "clos.service=highline-inventory"
+      - "clos.component=api"
+      - "clos.port=4050"
+      - "clos.project=5470_S_Highline_Circle"
+      - "clos.group=api"
+
+  # Highline Inventory Redis Cache
+  highline-inventory-redis:
+    image: redis:7-alpine
+    container_name: highline-inventory-redis
+    restart: unless-stopped
+    volumes:
+      - highline_redis_data:/data
+      - ../redis/highline-inventory.conf:/usr/local/etc/redis/redis.conf:ro
+    ports:
+      - "6350:6379"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.3.52
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    command: redis-server /usr/local/etc/redis/redis.conf --databases 4 --maxmemory 256mb --maxmemory-policy allkeys-lru
+    labels:
+      - "clos.service=highline-inventory"
+      - "clos.component=cache"
+      - "clos.port=6350"
+      - "clos.project=5470_S_Highline_Circle"
+      - "clos.group=support"
+
+  # Highline Inventory Backup Service
+  highline-inventory-backup:
+    build:
+      context: ../../../5470_S_Highline_Circle/backend
+      dockerfile: ../Dockerfile.backup
+      target: backup
+    container_name: highline-inventory-backup
+    restart: unless-stopped
+    environment:
+      - DATABASE_PATH=/data/inventory.db
+      - BACKUP_PATH=/backups
+      - BACKUP_RETENTION_DAYS=30
+      - BACKUP_SCHEDULE="0 2 * * *"
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - S3_BACKUP_BUCKET=${S3_BACKUP_BUCKET:-highline-inventory-backups}
+    networks:
+      clos-network:
+        ipv4_address: 172.20.3.53
+    volumes:
+      - highline_api_data:/data:ro
+      - highline_api_backups:/backups
+    labels:
+      - "clos.service=highline-inventory"
+      - "clos.component=backup"
+      - "clos.project=5470_S_Highline_Circle"
+      - "clos.group=support"
+
+networks:
+  clos-network:
+    external: true
+
+volumes:
+  highline_frontend_cache:
+    driver: local
+  highline_frontend_modules:
+    driver: local
+  highline_api_data:
+    driver: local
+  highline_api_uploads:
+    driver: local
+  highline_api_logs:
+    driver: local
+  highline_api_backups:
+    driver: local
+  highline_redis_data:
+    driver: local

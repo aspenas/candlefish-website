@@ -1,0 +1,476 @@
+{
+  "Comment": "Security Dashboard CDN Configuration",
+  "CallerReference": "security-dashboard-cdn-2025",
+  "Aliases": {
+    "Quantity": 2,
+    "Items": [
+      "security.candlefish.ai",
+      "cdn.security.candlefish.ai"
+    ]
+  },
+  "DefaultRootObject": "index.html",
+  "Origins": {
+    "Quantity": 3,
+    "Items": [
+      {
+        "Id": "security-dashboard-alb",
+        "DomainName": "alb.security.candlefish.ai",
+        "CustomOriginConfig": {
+          "HTTPPort": 80,
+          "HTTPSPort": 443,
+          "OriginProtocolPolicy": "https-only",
+          "OriginSslProtocols": {
+            "Quantity": 3,
+            "Items": ["TLSv1.2", "TLSv1.3"]
+          },
+          "OriginReadTimeout": 30,
+          "OriginKeepaliveTimeout": 5
+        },
+        "ConnectionAttempts": 3,
+        "ConnectionTimeout": 10,
+        "OriginShield": {
+          "Enabled": true,
+          "OriginShieldRegion": "us-east-1"
+        }
+      },
+      {
+        "Id": "security-dashboard-s3-static",
+        "DomainName": "security-dashboard-static.s3.amazonaws.com",
+        "S3OriginConfig": {
+          "OriginAccessIdentity": "origin-access-identity/cloudfront/E127EXAMPLE51Z"
+        }
+      },
+      {
+        "Id": "security-dashboard-api",
+        "DomainName": "api.security.candlefish.ai",
+        "CustomOriginConfig": {
+          "HTTPPort": 80,
+          "HTTPSPort": 443,
+          "OriginProtocolPolicy": "https-only",
+          "OriginSslProtocols": {
+            "Quantity": 2,
+            "Items": ["TLSv1.2", "TLSv1.3"]
+          },
+          "OriginReadTimeout": 60,
+          "OriginKeepaliveTimeout": 5
+        }
+      }
+    ]
+  },
+  "OriginGroups": {
+    "Quantity": 1,
+    "Items": [
+      {
+        "Id": "security-dashboard-failover-group",
+        "FailoverCriteria": {
+          "StatusCodes": {
+            "Quantity": 5,
+            "Items": [500, 502, 503, 504, 404]
+          }
+        },
+        "Members": {
+          "Quantity": 2,
+          "Items": [
+            {
+              "OriginId": "security-dashboard-alb"
+            },
+            {
+              "OriginId": "security-dashboard-s3-static"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "DefaultCacheBehavior": {
+    "TargetOriginId": "security-dashboard-failover-group",
+    "TrustedSigners": {
+      "Enabled": false,
+      "Quantity": 0
+    },
+    "TrustedKeyGroups": {
+      "Enabled": false,
+      "Quantity": 0
+    },
+    "ViewerProtocolPolicy": "redirect-to-https",
+    "AllowedMethods": {
+      "Quantity": 7,
+      "Items": ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"],
+      "CachedMethods": {
+        "Quantity": 2,
+        "Items": ["GET", "HEAD"]
+      }
+    },
+    "SmoothStreaming": false,
+    "Compress": true,
+    "LambdaFunctionAssociations": {
+      "Quantity": 2,
+      "Items": [
+        {
+          "LambdaFunctionARN": "arn:aws:lambda:us-east-1:681214184463:function:security-dashboard-edge-auth:1",
+          "EventType": "viewer-request",
+          "IncludeBody": false
+        },
+        {
+          "LambdaFunctionARN": "arn:aws:lambda:us-east-1:681214184463:function:security-dashboard-edge-headers:1",
+          "EventType": "origin-response",
+          "IncludeBody": false
+        }
+      ]
+    },
+    "FunctionAssociations": {
+      "Quantity": 0
+    },
+    "FieldLevelEncryptionId": "",
+    "ForwardedValues": {
+      "QueryString": true,
+      "Cookies": {
+        "Forward": "whitelist",
+        "WhitelistedNames": {
+          "Quantity": 3,
+          "Items": ["session", "auth-token", "csrf-token"]
+        }
+      },
+      "Headers": {
+        "Quantity": 6,
+        "Items": [
+          "Accept",
+          "Accept-Language",
+          "Authorization",
+          "CloudFront-Viewer-Country",
+          "Origin",
+          "Referer"
+        ]
+      },
+      "QueryStringCacheKeys": {
+        "Quantity": 0
+      }
+    },
+    "MinTTL": 0,
+    "DefaultTTL": 86400,
+    "MaxTTL": 31536000,
+    "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+    "OriginRequestPolicyId": "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf",
+    "ResponseHeadersPolicyId": "67f0e5b0-6b6e-4e74-8b3f-8a6a0c96c8f9"
+  },
+  "CacheBehaviors": {
+    "Quantity": 4,
+    "Items": [
+      {
+        "PathPattern": "/api/*",
+        "TargetOriginId": "security-dashboard-api",
+        "TrustedSigners": {
+          "Enabled": false,
+          "Quantity": 0
+        },
+        "TrustedKeyGroups": {
+          "Enabled": false,
+          "Quantity": 0
+        },
+        "ViewerProtocolPolicy": "https-only",
+        "AllowedMethods": {
+          "Quantity": 7,
+          "Items": ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"],
+          "CachedMethods": {
+            "Quantity": 2,
+            "Items": ["GET", "HEAD"]
+          }
+        },
+        "SmoothStreaming": false,
+        "Compress": true,
+        "ForwardedValues": {
+          "QueryString": true,
+          "Cookies": {
+            "Forward": "all"
+          },
+          "Headers": {
+            "Quantity": 1,
+            "Items": ["*"]
+          }
+        },
+        "MinTTL": 0,
+        "DefaultTTL": 0,
+        "MaxTTL": 0
+      },
+      {
+        "PathPattern": "/static/*",
+        "TargetOriginId": "security-dashboard-s3-static",
+        "TrustedSigners": {
+          "Enabled": false,
+          "Quantity": 0
+        },
+        "ViewerProtocolPolicy": "https-only",
+        "AllowedMethods": {
+          "Quantity": 2,
+          "Items": ["GET", "HEAD"],
+          "CachedMethods": {
+            "Quantity": 2,
+            "Items": ["GET", "HEAD"]
+          }
+        },
+        "SmoothStreaming": false,
+        "Compress": true,
+        "ForwardedValues": {
+          "QueryString": false,
+          "Cookies": {
+            "Forward": "none"
+          }
+        },
+        "MinTTL": 86400,
+        "DefaultTTL": 604800,
+        "MaxTTL": 31536000
+      },
+      {
+        "PathPattern": "*.js",
+        "TargetOriginId": "security-dashboard-s3-static",
+        "ViewerProtocolPolicy": "https-only",
+        "Compress": true,
+        "ForwardedValues": {
+          "QueryString": true,
+          "Cookies": {
+            "Forward": "none"
+          }
+        },
+        "MinTTL": 86400,
+        "DefaultTTL": 604800,
+        "MaxTTL": 31536000
+      },
+      {
+        "PathPattern": "*.css",
+        "TargetOriginId": "security-dashboard-s3-static",
+        "ViewerProtocolPolicy": "https-only",
+        "Compress": true,
+        "ForwardedValues": {
+          "QueryString": true,
+          "Cookies": {
+            "Forward": "none"
+          }
+        },
+        "MinTTL": 86400,
+        "DefaultTTL": 604800,
+        "MaxTTL": 31536000
+      }
+    ]
+  },
+  "CustomErrorResponses": {
+    "Quantity": 4,
+    "Items": [
+      {
+        "ErrorCode": 403,
+        "ResponsePagePath": "/error/403.html",
+        "ResponseCode": "403",
+        "ErrorCachingMinTTL": 10
+      },
+      {
+        "ErrorCode": 404,
+        "ResponsePagePath": "/error/404.html",
+        "ResponseCode": "404",
+        "ErrorCachingMinTTL": 10
+      },
+      {
+        "ErrorCode": 500,
+        "ResponsePagePath": "/error/500.html",
+        "ResponseCode": "500",
+        "ErrorCachingMinTTL": 5
+      },
+      {
+        "ErrorCode": 502,
+        "ErrorCachingMinTTL": 0
+      }
+    ]
+  },
+  "Comment": "Security Dashboard CDN - Optimized for Performance",
+  "Logging": {
+    "Enabled": true,
+    "IncludeCookies": true,
+    "Bucket": "security-dashboard-cdn-logs.s3.amazonaws.com",
+    "Prefix": "cloudfront/"
+  },
+  "PriceClass": "PriceClass_All",
+  "Enabled": true,
+  "ViewerCertificate": {
+    "ACMCertificateArn": "arn:aws:acm:us-east-1:681214184463:certificate/12345678-1234-1234-1234-123456789abc",
+    "SSLSupportMethod": "sni-only",
+    "MinimumProtocolVersion": "TLSv1.2_2021",
+    "Certificate": "arn:aws:acm:us-east-1:681214184463:certificate/12345678-1234-1234-1234-123456789abc",
+    "CertificateSource": "acm"
+  },
+  "Restrictions": {
+    "GeoRestriction": {
+      "RestrictionType": "none",
+      "Quantity": 0
+    }
+  },
+  "WebACLId": "arn:aws:wafv2:us-east-1:681214184463:global/webacl/security-dashboard-waf/12345678",
+  "HttpVersion": "http2and3",
+  "IsIPV6Enabled": true,
+  "ContinuousDeploymentPolicyId": "",
+  "Staging": false,
+  "CustomHeaders": {
+    "Quantity": 2,
+    "Items": [
+      {
+        "HeaderName": "X-Origin-Verify",
+        "HeaderValue": "${ORIGIN_VERIFY_SECRET}"
+      },
+      {
+        "HeaderName": "X-CDN-Origin",
+        "HeaderValue": "CloudFront"
+      }
+    ]
+  },
+  "ResponseHeadersPolicy": {
+    "ResponseHeadersPolicyConfig": {
+      "Comment": "Security Dashboard Response Headers",
+      "Name": "security-dashboard-headers",
+      "CorsConfig": {
+        "AccessControlAllowOrigins": {
+          "Quantity": 2,
+          "Items": [
+            "https://security.candlefish.ai",
+            "https://dashboard.candlefish.ai"
+          ]
+        },
+        "AccessControlAllowHeaders": {
+          "Quantity": 1,
+          "Items": ["*"]
+        },
+        "AccessControlAllowMethods": {
+          "Quantity": 7,
+          "Items": ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+        },
+        "AccessControlAllowCredentials": true,
+        "AccessControlMaxAgeSec": 86400,
+        "OriginOverride": false
+      },
+      "SecurityHeadersConfig": {
+        "XSSProtection": {
+          "Override": false,
+          "Protection": true,
+          "ModeBlock": true
+        },
+        "FrameOptions": {
+          "Override": false,
+          "FrameOption": "DENY"
+        },
+        "ReferrerPolicy": {
+          "Override": false,
+          "ReferrerPolicy": "strict-origin-when-cross-origin"
+        },
+        "ContentTypeOptions": {
+          "Override": false
+        },
+        "StrictTransportSecurity": {
+          "Override": false,
+          "IncludeSubdomains": true,
+          "Preload": true,
+          "AccessControlMaxAgeSec": 63072000
+        },
+        "ContentSecurityPolicy": {
+          "Override": false,
+          "ContentSecurityPolicy": "default-src 'self' https://api.candlefish.ai; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://api.candlefish.ai wss://ws.candlefish.ai; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+        }
+      },
+      "CustomHeadersConfig": {
+        "Quantity": 3,
+        "Items": [
+          {
+            "Header": "X-Content-Type-Options",
+            "Value": "nosniff",
+            "Override": false
+          },
+          {
+            "Header": "X-Frame-Options",
+            "Value": "DENY",
+            "Override": false
+          },
+          {
+            "Header": "Permissions-Policy",
+            "Value": "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+            "Override": false
+          }
+        ]
+      },
+      "ServerTimingHeadersConfig": {
+        "Enabled": true,
+        "SamplingRate": 0.001
+      },
+      "RemoveHeadersConfig": {
+        "Quantity": 3,
+        "Items": [
+          {
+            "Header": "X-Powered-By"
+          },
+          {
+            "Header": "Server"
+          },
+          {
+            "Header": "X-AspNet-Version"
+          }
+        ]
+      }
+    }
+  },
+  "CachePolicy": {
+    "CachePolicyConfig": {
+      "Comment": "Security Dashboard Cache Policy",
+      "Name": "security-dashboard-cache",
+      "DefaultTTL": 86400,
+      "MaxTTL": 31536000,
+      "MinTTL": 0,
+      "ParametersInCacheKeyAndForwardedToOrigin": {
+        "EnableAcceptEncodingGzip": true,
+        "EnableAcceptEncodingBrotli": true,
+        "QueryStringsConfig": {
+          "QueryStringBehavior": "whitelist",
+          "QueryStrings": {
+            "Quantity": 5,
+            "Items": ["v", "t", "filter", "sort", "page"]
+          }
+        },
+        "HeadersConfig": {
+          "HeaderBehavior": "whitelist",
+          "Headers": {
+            "Quantity": 3,
+            "Items": ["Accept", "Accept-Language", "Authorization"]
+          }
+        },
+        "CookiesConfig": {
+          "CookieBehavior": "whitelist",
+          "Cookies": {
+            "Quantity": 2,
+            "Items": ["session", "preferences"]
+          }
+        }
+      }
+    }
+  },
+  "OriginRequestPolicy": {
+    "OriginRequestPolicyConfig": {
+      "Comment": "Security Dashboard Origin Request Policy",
+      "Name": "security-dashboard-origin",
+      "HeadersConfig": {
+        "HeaderBehavior": "whitelist",
+        "Headers": {
+          "Quantity": 8,
+          "Items": [
+            "Accept",
+            "Accept-Language",
+            "Accept-Encoding",
+            "Authorization",
+            "Origin",
+            "Referer",
+            "CloudFront-Viewer-Country",
+            "CloudFront-Is-Mobile-Viewer"
+          ]
+        }
+      },
+      "CookiesConfig": {
+        "CookieBehavior": "all"
+      },
+      "QueryStringsConfig": {
+        "QueryStringBehavior": "all"
+      }
+    }
+  }
+}

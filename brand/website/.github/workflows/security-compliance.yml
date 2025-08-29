@@ -1,0 +1,398 @@
+name: Security & Compliance Automation
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    types: [opened, synchronize]
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly security scan
+  workflow_dispatch:
+    inputs:
+      scan-type:
+        description: 'Type of security scan'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - dependencies
+          - containers
+          - code
+          - infrastructure
+          - compliance
+
+env:
+  SEVERITY_THRESHOLD: HIGH
+  AWS_REGION: us-east-1
+
+jobs:
+  # ========================================
+  # Dependency Security Scanning
+  # ========================================
+  dependency-scan:
+    name: Dependency Security Scan
+    runs-on: ubuntu-latest
+    if: github.event.inputs.scan-type == 'full' || github.event.inputs.scan-type == 'dependencies'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run npm audit
+        run: |
+          # Generate audit report
+          npm audit --json > npm-audit-report.json || true
+          
+          # Check for critical vulnerabilities
+          CRITICAL=$(jq '.metadata.vulnerabilities.critical' npm-audit-report.json)
+          HIGH=$(jq '.metadata.vulnerabilities.high' npm-audit-report.json)
+          
+          echo "Critical vulnerabilities: $CRITICAL"
+          echo "High vulnerabilities: $HIGH"
+          
+          if [ "$CRITICAL" -gt 0 ]; then
+            echo "Critical vulnerabilities found!"
+            exit 1
+          fi
+          
+      - name: Run Snyk Security Test
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=${{ env.SEVERITY_THRESHOLD }}
+          
+      - name: OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'candlefish-ai'
+          path: '.'
+          format: 'ALL'
+          args: >
+            --enableRetired
+            --enableExperimental
+            --nvdApiKey ${{ secrets.NVD_API_KEY }}
+            
+      - name: License Compliance Check
+        run: |
+          npx license-checker --production --onlyAllow 'MIT;Apache-2.0;BSD-3-Clause;BSD-2-Clause;ISC' \
+            --excludePackages 'candlefish-ai/*' > license-report.txt
+            
+      - name: Upload Security Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-security-reports
+          path: |
+            npm-audit-report.json
+            dependency-check-report.html
+            license-report.txt
+          retention-days: 30
+
+  # ========================================
+  # Container Security Scanning
+  # ========================================
+  container-scan:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    if: github.event.inputs.scan-type == 'full' || github.event.inputs.scan-type == 'containers'
+    strategy:
+      matrix:
+        dockerfile:
+          - apps/website/Dockerfile
+          - apps/security-dashboard/Dockerfile
+          - apps/api-site/Dockerfile
+          
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build Docker Image
+        run: |
+          docker build -t test-image:${{ github.sha }} \
+            -f ${{ matrix.dockerfile }} \
+            $(dirname ${{ matrix.dockerfile }})
+            
+      - name: Run Trivy Container Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: test-image:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-container-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          
+      - name: Run Grype Scan
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+          grype test-image:${{ github.sha }} -o json > grype-results.json
+          
+      - name: Run Syft SBOM Generation
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          syft test-image:${{ github.sha }} -o spdx-json > sbom.spdx.json
+          
+      - name: Upload Container Security Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: container-security-reports-${{ strategy.job-index }}
+          path: |
+            trivy-container-results.sarif
+            grype-results.json
+            sbom.spdx.json
+          retention-days: 30
+
+  # ========================================
+  # Code Security Analysis
+  # ========================================
+  code-security:
+    name: Code Security Analysis
+    runs-on: ubuntu-latest
+    if: github.event.inputs.scan-type == 'full' || github.event.inputs.scan-type == 'code'
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
+          
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: javascript, typescript
+          queries: security-and-quality
+          
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v2
+        
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+        with:
+          category: "/language:javascript"
+          
+      - name: Run Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/secrets
+            p/owasp-top-ten
+            p/javascript
+            p/typescript
+            p/react
+            p/nextjs
+            
+      - name: GitLeaks Secret Scanning
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: TruffleHog Secret Scanning
+        run: |
+          docker run --rm -v "$PWD:/pwd" \
+            trufflesecurity/trufflehog:latest \
+            filesystem /pwd \
+            --json > trufflehog-results.json
+            
+      - name: Bearer Security Analysis
+        run: |
+          curl -sfL https://raw.githubusercontent.com/Bearer/bearer/main/contrib/install.sh | sh
+          ./bin/bearer scan . --format json > bearer-results.json
+          
+      - name: Upload Code Security Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: code-security-reports
+          path: |
+            semgrep-results.sarif
+            trufflehog-results.json
+            bearer-results.json
+          retention-days: 30
+
+  # ========================================
+  # Infrastructure Security
+  # ========================================
+  infrastructure-security:
+    name: Infrastructure Security Scan
+    runs-on: ubuntu-latest
+    if: github.event.inputs.scan-type == 'full' || github.event.inputs.scan-type == 'infrastructure'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Terraform Security Scan
+        run: |
+          # Install tfsec
+          curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
+          
+          # Run tfsec
+          tfsec terraform/ --format json > tfsec-results.json
+          
+      - name: Checkov Infrastructure Scan
+        run: |
+          pip install checkov
+          checkov -d . --output json > checkov-results.json
+          
+      - name: Kubernetes Security Scan
+        run: |
+          # Install kubesec
+          curl -sSX GET https://api.github.com/repos/controlplaneio/kubesec/releases/latest | \
+            grep browser_download_url | grep linux | cut -d '"' -f 4 | \
+            wget -qi - && tar xzf kubesec*.tar.gz && mv kubesec /usr/local/bin/
+            
+          # Scan Kubernetes manifests
+          find k8s/ -name "*.yaml" -o -name "*.yml" | while read file; do
+            kubesec scan "$file" >> kubesec-results.json
+          done
+          
+      - name: Cloud Security Posture
+        run: |
+          # Install Prowler
+          pip install prowler
+          
+          # Run AWS security assessment
+          prowler aws --output-formats json --output-filename prowler-report
+          
+      - name: Upload Infrastructure Security Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: infrastructure-security-reports
+          path: |
+            tfsec-results.json
+            checkov-results.json
+            kubesec-results.json
+            prowler-report.json
+          retention-days: 30
+
+  # ========================================
+  # Compliance Checks
+  # ========================================
+  compliance-checks:
+    name: Compliance Verification
+    runs-on: ubuntu-latest
+    if: github.event.inputs.scan-type == 'full' || github.event.inputs.scan-type == 'compliance'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: GDPR Compliance Check
+        run: |
+          # Check for PII handling
+          grep -r -E "(email|phone|ssn|credit_card|password)" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" > pii-scan.txt || true
+          
+          # Check for proper encryption
+          grep -r -E "(encrypt|decrypt|hash|bcrypt|argon2)" --include="*.ts" --include="*.tsx" > encryption-scan.txt
+          
+          # Check for data retention policies
+          grep -r -E "(retention|delete|purge|expire)" --include="*.ts" --include="*.tsx" > retention-scan.txt
+          
+      - name: SOC 2 Compliance Check
+        run: |
+          # Check for audit logging
+          grep -r -E "(audit|log|track)" --include="*.ts" --include="*.tsx" > audit-scan.txt
+          
+          # Check for access controls
+          grep -r -E "(authorize|permission|role|rbac)" --include="*.ts" --include="*.tsx" > access-control-scan.txt
+          
+      - name: HIPAA Compliance Check
+        run: |
+          # Check for PHI handling
+          grep -r -E "(patient|medical|health|diagnosis)" --include="*.ts" --include="*.tsx" > phi-scan.txt || true
+          
+          # Check for encryption at rest
+          grep -r -E "(encryption_at_rest|encrypted_storage)" --include="*.ts" --include="*.tsx" > encryption-at-rest-scan.txt
+          
+      - name: PCI DSS Compliance Check
+        run: |
+          # Check for credit card handling
+          grep -r -E "(card_number|cvv|expiry)" --include="*.ts" --include="*.tsx" > pci-scan.txt || true
+          
+          # Check for tokenization
+          grep -r -E "(tokenize|token|stripe|payment)" --include="*.ts" --include="*.tsx" > tokenization-scan.txt
+          
+      - name: Generate Compliance Report
+        run: |
+          node scripts/generate-compliance-report.js
+          
+      - name: Upload Compliance Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: compliance-reports
+          path: |
+            compliance-report.html
+            compliance-report.json
+            *-scan.txt
+          retention-days: 30
+
+  # ========================================
+  # Security Policy Enforcement
+  # ========================================
+  security-policy:
+    name: Security Policy Enforcement
+    runs-on: ubuntu-latest
+    needs: [dependency-scan, container-scan, code-security, infrastructure-security, compliance-checks]
+    if: always()
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download All Security Reports
+        uses: actions/download-artifact@v3
+        with:
+          path: security-reports/
+          
+      - name: Analyze Security Posture
+        run: |
+          # Aggregate all security findings
+          node scripts/analyze-security-posture.js security-reports/
+          
+      - name: Generate Security Dashboard
+        run: |
+          # Create security dashboard HTML
+          node scripts/generate-security-dashboard.js security-reports/ > security-dashboard.html
+          
+      - name: Check Security Gates
+        run: |
+          # Enforce security policies
+          node scripts/check-security-gates.js security-reports/
+          
+      - name: Create Security Issue
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('security-report.md', 'utf8');
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🔒 Security Alert: Vulnerabilities Detected',
+              body: report,
+              labels: ['security', 'critical'],
+              assignees: ['security-team']
+            });
+            
+      - name: Notify Security Team
+        if: failure()
+        run: |
+          curl -X POST ${{ secrets.SLACK_SECURITY_WEBHOOK }} \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "text": "⚠️ Security vulnerabilities detected!",
+              "attachments": [{
+                "color": "danger",
+                "fields": [
+                  {"title": "Repository", "value": "${{ github.repository }}", "short": true},
+                  {"title": "Branch", "value": "${{ github.ref }}", "short": true},
+                  {"title": "Commit", "value": "${{ github.sha }}", "short": true},
+                  {"title": "Action", "value": "Review security dashboard for details", "short": false}
+                ]
+              }]
+            }'
+            
+      - name: Upload Security Dashboard
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-dashboard
+          path: |
+            security-dashboard.html
+            security-report.md
+            security-posture.json
+          retention-days: 90

@@ -1,0 +1,248 @@
+# CLOS Port Allocation Configuration
+# Complete mapping of all localhost services
+
+port_ranges:
+  # Core Infrastructure (2000-2999)
+  caddy:
+    range: 2019
+    services:
+      - name: clos-caddy
+        port: 2019
+        description: Caddy Admin API
+
+  # Frontend Applications (3000-3999)
+  frontend:
+    range: 3000-3999
+    services:
+      - name: candlefish-web
+        port: 3000
+        description: Main Candlefish web application
+      - name: grafana-monitoring
+        port: 3001
+        description: Grafana monitoring dashboard
+      - name: pkb-frontend
+        port: 3002
+        description: Personal Knowledge Base UI
+      - name: security-grafana
+        port: 3003
+        description: Security dashboard Grafana
+      - name: temporal-ui
+        port: 3004
+        description: Temporal workflow UI
+      - name: security-dashboard
+        port: 3100
+        description: Security dashboard frontend
+      - name: pkb-dashboard
+        port: 3200
+        description: PKB dashboard
+      - name: agent-dashboard
+        port: 3333
+        description: Agent management dashboard
+      - name: clos-dashboard
+        port: 3500
+        description: CLOS web dashboard (current)
+
+  # Backend APIs (4000-4999)
+  backend:
+    range: 4000-4999
+    services:
+      - name: candlefish-api
+        port: 4000
+        description: Main Candlefish API
+      - name: workflow-api
+        port: 4040
+        description: Workflow management API
+      - name: security-api
+        port: 4100
+        description: Security dashboard API
+      - name: pkb-api
+        port: 4200
+        description: PKB API service
+
+  # AI/ML Services (5000-5999)
+  ai_services:
+    range: 5000-5999
+    services:
+      - name: mlflow
+        port: 5000
+        description: MLflow tracking server
+      - name: mlflow-artifacts
+        port: 5001
+        description: MLflow artifacts server
+
+  # Databases (5432-5500, 6379-6400)
+  databases:
+    postgres:
+      range: 5432-5439
+      services:
+        - name: clos-postgres
+          port: 5432
+          description: Main PostgreSQL database
+        - name: candlefish-postgres
+          port: 5433
+          description: Candlefish database
+        - name: security-postgres
+          port: 5434
+          description: Security dashboard database
+        - name: pkb-postgres
+          port: 5435
+          description: PKB database
+    
+    redis:
+      range: 6379-6389
+      services:
+        - name: clos-redis
+          port: 6379
+          description: Main Redis cache
+        - name: candlefish-redis
+          port: 6380
+          description: Candlefish Redis
+        - name: security-redis
+          port: 6381
+          description: Security Redis
+        - name: pkb-redis
+          port: 6382
+          description: PKB Redis
+
+  # Control & Management (7000-7999)
+  control:
+    range: 7000-7999
+    services:
+      - name: control-center
+        port: 7000
+        description: AFS3 fileserver/Control Center
+      - name: temporal-frontend
+        port: 7233
+        description: Temporal frontend service
+      - name: goose-ai
+        port: 7768
+        description: Goose AI service
+
+  # Agent Services (8000-8999)
+  agents:
+    range: 8000-8999
+    services:
+      - name: agent-registry
+        port: 8087
+        description: Agent registry service
+      - name: paintbox-agent
+        port: 8088
+        description: Paintbox deployment agent
+      - name: crown-trophy-agent
+        port: 8089
+        description: Crown Trophy agent
+      - name: temporal-agent
+        port: 8090
+        description: Temporal workflow agent
+      - name: clark-county-agent
+        port: 8091
+        description: Clark County scraper agent
+      - name: temporal-worker
+        port: 8233
+        description: Temporal worker service
+      - name: pkb-streamlit
+        port: 8501
+        description: PKB Streamlit UI
+      - name: pkb-api-service
+        port: 8787
+        description: PKB API service
+
+  # Monitoring & Metrics (9000-9999)
+  monitoring:
+    range: 9000-9999
+    services:
+      - name: prometheus-main
+        port: 9090
+        description: Main Prometheus server
+      - name: security-prometheus
+        port: 9091
+        description: Security Prometheus
+      - name: dashboard-prometheus
+        port: 9092
+        description: Dashboard Prometheus (security-dashboard)
+
+  # LLM & AI Services (11000-11999)
+  llm_services:
+    range: 11000-11999
+    services:
+      - name: ollama
+        port: 11434
+        description: Ollama local LLM service
+
+  # Web Proxy & CDN (80, 443)
+  web:
+    services:
+      - name: caddy-http
+        port: 80
+        description: HTTP reverse proxy
+      - name: caddy-https
+        port: 443
+        description: HTTPS reverse proxy
+
+# Service Groups for orchestration
+service_groups:
+  core:
+    - clos-postgres
+    - clos-redis
+    - clos-caddy
+  
+  candlefish:
+    - candlefish-web
+    - candlefish-api
+    - candlefish-postgres
+    - candlefish-redis
+  
+  security:
+    - security-dashboard
+    - security-api
+    - security-postgres
+    - security-redis
+    - security-prometheus
+    - security-grafana
+  
+  pkb:
+    - pkb-frontend
+    - pkb-streamlit
+    - pkb-api-service
+    - pkb-postgres
+    - pkb-redis
+  
+  agents:
+    - agent-registry
+    - paintbox-agent
+    - crown-trophy-agent
+    - temporal-agent
+    - clark-county-agent
+  
+  monitoring:
+    - prometheus-main
+    - security-prometheus
+    - dashboard-prometheus
+    - grafana-monitoring
+  
+  temporal:
+    - temporal-frontend
+    - temporal-ui
+    - temporal-worker
+    - temporal-agent
+  
+  ai:
+    - ollama
+    - goose-ai
+    - mlflow
+    - mlflow-artifacts
+
+# Local domain mappings
+domains:
+  security.local: 3100
+  pkb.local: 8501
+  candlefish.local: 3000
+  grafana.local: 3001
+  prometheus.local: 9090
+  dashboard.local: 3500
+  temporal.local: 3004
+  agents.local: 3333
+  api.security.local: 4100
+  api.pkb.local: 8787
+  api.candlefish.local: 4000
+  mlflow.local: 5000

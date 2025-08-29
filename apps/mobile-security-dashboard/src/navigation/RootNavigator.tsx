@@ -13,26 +13,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthNavigator from './AuthNavigator';
 import MainTabNavigator from './MainTabNavigator';
 
-// Screens
-import AlertDetailsScreen from '@/screens/alerts/AlertDetailsScreen';
-import VulnerabilityDetailsScreen from '@/screens/vulnerabilities/VulnerabilityDetailsScreen';
-import AssetDetailsScreen from '@/screens/assets/AssetDetailsScreen';
-import IncidentDetailsScreen from '@/screens/incidents/IncidentDetailsScreen';
-import AcknowledgeAlertScreen from '@/screens/actions/AcknowledgeAlertScreen';
-import ResolveAlertScreen from '@/screens/actions/ResolveAlertScreen';
-import EscalateIncidentScreen from '@/screens/actions/EscalateIncidentScreen';
-import KongSecurityFixScreen from '@/screens/kong/KongSecurityFixScreen';
-import SettingsScreen from '@/screens/settings/SettingsScreen';
-import ProfileScreen from '@/screens/profile/ProfileScreen';
-import NotificationSettingsScreen from '@/screens/settings/NotificationSettingsScreen';
-import SearchResultsScreen from '@/screens/search/SearchResultsScreen';
-import FilterScreen from '@/screens/filters/FilterScreen';
+// Main Screens
+import LoginScreen from '@/screens/Login';
+import DashboardScreen from '@/screens/Dashboard';
+import AlertsScreen from '@/screens/Alerts';
+import IncidentsScreen from '@/screens/Incidents';
+import AnalyticsScreen from '@/screens/Analytics';
+import SettingsScreen from '@/screens/Settings';
 
 // Services
-import { useAuthService } from '@/services/auth';
-import { useNotificationService } from '@/services/notifications';
-import { useAnalytics } from '@/services/analytics';
-import { useOfflineSync } from '@/services/offline';
+import { biometricService } from '@/services/biometric';
+import { notificationService } from '@/services/notifications';
+import { crashReporting } from '@/services/crashReporting';
 
 // Types
 import { RootStackParamList } from './types';

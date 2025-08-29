@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Dashboard - Candlefish AI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .metric-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .metric-label {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .metric-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .critical { color: #dc3545; }
+        .high { color: #fd7e14; }
+        .medium { color: #ffc107; }
+        .low { color: #28a745; }
+        .info { color: #17a2b8; }
+        
+        .data-section {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        h2 {
+            color: #333;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .severity-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .severity-critical {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .severity-high {
+            background: #fd7e14;
+            color: white;
+        }
+        
+        .severity-medium {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .severity-low {
+            background: #28a745;
+            color: white;
+        }
+        
+        .severity-info {
+            background: #17a2b8;
+            color: white;
+        }
+        
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status-active {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .status-acknowledged {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .status-resolved {
+            background: #28a745;
+            color: white;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .error {
+            background: #dc3545;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            float: right;
+            transition: background 0.3s;
+        }
+        
+        .refresh-btn:hover {
+            background: #5a67d8;
+        }
+        
+        .compliance-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .compliance-card {
+            padding: 15px;
+            border-radius: 8px;
+            background: #f8f9fa;
+            border-left: 4px solid;
+        }
+        
+        .compliance-soc2 { border-color: #667eea; }
+        .compliance-gdpr { border-color: #fd7e14; }
+        .compliance-iso27001 { border-color: #28a745; }
+        .compliance-pci-dss { border-color: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>
+                🛡️ Security Dashboard
+                <button class="refresh-btn" onclick="fetchDashboardData()">🔄 Refresh</button>
+            </h1>
+        </header>
+        
+        <div id="error-container"></div>
+        
+        <div class="dashboard" id="metrics">
+            <div class="metric-card">
+                <div class="metric-label">Total Events</div>
+                <div class="metric-value" id="totalEvents">-</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Critical Alerts</div>
+                <div class="metric-value critical" id="criticalAlerts">-</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Open Incidents</div>
+                <div class="metric-value high" id="openIncidents">-</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Active Threats</div>
+                <div class="metric-value medium" id="activeThreats">-</div>
+            </div>
+        </div>
+        
+        <div class="data-section">
+            <h2>📊 Recent Security Events</h2>
+            <div id="events-container">
+                <div class="loading">Loading events...</div>
+            </div>
+        </div>
+        
+        <div class="data-section">
+            <h2>🚨 Active Alerts</h2>
+            <div id="alerts-container">
+                <div class="loading">Loading alerts...</div>
+            </div>
+        </div>
+        
+        <div class="data-section">
+            <h2>📋 Open Incidents</h2>
+            <div id="incidents-container">
+                <div class="loading">Loading incidents...</div>
+            </div>
+        </div>
+        
+        <div class="data-section">
+            <h2>✅ Compliance Status</h2>
+            <div id="compliance-container">
+                <div class="loading">Loading compliance data...</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = 'http://localhost:4001';
+        
+        async function fetchDashboardData() {
+            try {
+                // Clear error
+                document.getElementById('error-container').innerHTML = '';
+                
+                // Fetch dashboard overview
+                const response = await fetch(`${API_URL}/api/dashboard/overview`);
+                if (!response.ok) throw new Error('Failed to fetch dashboard data');
+                
+                const data = await response.json();
+                
+                // Update metrics
+                document.getElementById('totalEvents').textContent = data.overview.totalEvents;
+                document.getElementById('criticalAlerts').textContent = data.overview.criticalAlerts;
+                document.getElementById('openIncidents').textContent = data.overview.openIncidents;
+                document.getElementById('activeThreats').textContent = data.overview.activeThreats;
+                
+                // Update recent events
+                renderEvents(data.recentEvents);
+                
+                // Fetch and render alerts
+                fetchAlerts();
+                
+                // Fetch and render incidents
+                fetchIncidents();
+                
+                // Render compliance
+                renderCompliance(data.complianceStatus);
+                
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error);
+                document.getElementById('error-container').innerHTML = 
+                    `<div class="error">Error: ${error.message}. Make sure the backend API is running on port 4001.</div>`;
+            }
+        }
+        
+        function renderEvents(events) {
+            const container = document.getElementById('events-container');
+            if (events.length === 0) {
+                container.innerHTML = '<p>No recent events</p>';
+                return;
+            }
+            
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Event Type</th>
+                            <th>Severity</th>
+                            <th>Source IP</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            events.forEach(event => {
+                const time = new Date(event.timestamp).toLocaleString();
+                html += `
+                    <tr>
+                        <td>${time}</td>
+                        <td>${event.event_type}</td>
+                        <td><span class="severity-badge severity-${event.severity}">${event.severity}</span></td>
+                        <td>${event.source_ip || '-'}</td>
+                        <td>${event.description || '-'}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        
+        async function fetchAlerts() {
+            try {
+                const response = await fetch(`${API_URL}/api/alerts`);
+                const alerts = await response.json();
+                renderAlerts(alerts);
+            } catch (error) {
+                console.error('Error fetching alerts:', error);
+            }
+        }
+        
+        function renderAlerts(alerts) {
+            const container = document.getElementById('alerts-container');
+            if (alerts.length === 0) {
+                container.innerHTML = '<p>No active alerts</p>';
+                return;
+            }
+            
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Alert Type</th>
+                            <th>Severity</th>
+                            <th>Title</th>
+                            <th>Status</th>
+                            <th>Triggered</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            alerts.forEach(alert => {
+                const time = new Date(alert.triggered_at).toLocaleString();
+                html += `
+                    <tr>
+                        <td>${alert.alert_type}</td>
+                        <td><span class="severity-badge severity-${alert.severity}">${alert.severity}</span></td>
+                        <td>${alert.title}</td>
+                        <td><span class="status-badge status-${alert.status}">${alert.status}</span></td>
+                        <td>${time}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        
+        async function fetchIncidents() {
+            try {
+                const response = await fetch(`${API_URL}/api/incidents`);
+                const incidents = await response.json();
+                renderIncidents(incidents);
+            } catch (error) {
+                console.error('Error fetching incidents:', error);
+            }
+        }
+        
+        function renderIncidents(incidents) {
+            const container = document.getElementById('incidents-container');
+            const openIncidents = incidents.filter(i => i.status === 'open' || i.status === 'investigating');
+            
+            if (openIncidents.length === 0) {
+                container.innerHTML = '<p>No open incidents</p>';
+                return;
+            }
+            
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Incident #</th>
+                            <th>Title</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                            <th>Assigned To</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            openIncidents.forEach(incident => {
+                html += `
+                    <tr>
+                        <td>${incident.incident_number}</td>
+                        <td>${incident.title}</td>
+                        <td><span class="severity-badge severity-${incident.priority}">${incident.priority}</span></td>
+                        <td>${incident.status}</td>
+                        <td>${incident.assigned_to_name || 'Unassigned'}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        
+        function renderCompliance(compliance) {
+            const container = document.getElementById('compliance-container');
+            if (compliance.length === 0) {
+                container.innerHTML = '<p>No compliance data available</p>';
+                return;
+            }
+            
+            let html = '<div class="compliance-grid">';
+            
+            compliance.forEach(item => {
+                const total = parseInt(item.compliant) + parseInt(item.non_compliant) + parseInt(item.partial);
+                const percentage = total > 0 ? Math.round((parseInt(item.compliant) / total) * 100) : 0;
+                
+                html += `
+                    <div class="compliance-card compliance-${item.framework.toLowerCase()}">
+                        <h3>${item.framework}</h3>
+                        <div style="font-size: 24px; font-weight: bold; margin: 10px 0;">${percentage}%</div>
+                        <div style="font-size: 12px; color: #666;">
+                            ✅ ${item.compliant} Compliant<br>
+                            ⚠️ ${item.partial} Partial<br>
+                            ❌ ${item.non_compliant} Non-compliant
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        
+        // Initial load
+        fetchDashboardData();
+        
+        // Auto-refresh every 30 seconds
+        setInterval(fetchDashboardData, 30000);
+    </script>
+</body>
+</html>

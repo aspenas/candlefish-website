@@ -1,0 +1,263 @@
+version: '3.8'
+
+# Candlefish Core Service Stack  
+# Web Frontend: Port 3000
+# API Backend: Port 4000
+
+services:
+  # Candlefish Web Frontend
+  candlefish-web:
+    build:
+      context: ../../apps/candlefish-web
+      dockerfile: Dockerfile
+      target: production
+    container_name: candlefish-web
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - NEXT_PUBLIC_API_URL=http://candlefish-api:4000
+      - NEXT_PUBLIC_WS_URL=ws://candlefish-api:4000
+      - NEXT_PUBLIC_APP_NAME=Candlefish
+      - NEXT_PUBLIC_VERSION=${CANDLEFISH_VERSION:-1.0.0}
+      - NEXT_PUBLIC_ENVIRONMENT=production
+      - NEXT_TELEMETRY_DISABLED=1
+    ports:
+      - "3000:3000"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.3.10
+    volumes:
+      - candlefish_web_cache:/app/.next/cache
+      - candlefish_web_static:/app/public
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    depends_on:
+      - candlefish-api
+    labels:
+      - "clos.service=candlefish"
+      - "clos.component=web"
+      - "clos.port=3000"
+
+  # Candlefish API Backend
+  candlefish-api:
+    build:
+      context: ../../apps/candlefish-api
+      dockerfile: Dockerfile
+      target: production
+    container_name: candlefish-api
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - HOST=0.0.0.0
+      - DATABASE_URL=postgresql://candlefish_user:${CANDLEFISH_DB_PASSWORD:-candlefish_dev_2024}@candlefish-postgres:5432/candlefish
+      - REDIS_URL=redis://candlefish-redis:6379/0
+      - JWT_SECRET=${CANDLEFISH_JWT_SECRET:-candlefish_jwt_dev_secret_2024}
+      - SESSION_SECRET=${CANDLEFISH_SESSION_SECRET:-candlefish_session_dev_2024}
+      - CORS_ORIGINS=http://localhost:3000,https://candlefish.local
+      - GRAPHQL_PLAYGROUND=${GRAPHQL_PLAYGROUND:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - RATE_LIMIT_MAX=5000
+      - RATE_LIMIT_WINDOW=900000
+      - FILE_UPLOAD_MAX_SIZE=10MB
+      - EMAIL_SERVICE_API_KEY=${EMAIL_SERVICE_API_KEY}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-candlefish-assets}
+    ports:
+      - "4000:4000"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.3.11
+    volumes:
+      - candlefish_api_uploads:/app/uploads
+      - candlefish_api_logs:/app/logs
+      - candlefish_api_temp:/app/temp
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    depends_on:
+      - candlefish-postgres
+      - candlefish-redis
+    labels:
+      - "clos.service=candlefish"
+      - "clos.component=api"
+      - "clos.port=4000"
+
+  # Candlefish Database
+  candlefish-postgres:
+    image: postgres:15-alpine
+    container_name: candlefish-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: candlefish
+      POSTGRES_USER: candlefish_user
+      POSTGRES_PASSWORD: ${CANDLEFISH_DB_PASSWORD:-candlefish_dev_2024}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    volumes:
+      - candlefish_db:/var/lib/postgresql/data
+      - ../../apps/candlefish/database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ../../apps/candlefish/database/schema.sql:/docker-entrypoint-initdb.d/02-schema.sql:ro
+      - ../../apps/candlefish/database/migrations:/docker-entrypoint-initdb.d/migrations:ro
+    ports:
+      - "5435:5432"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.3.12
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U candlefish_user -d candlefish"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    command: >
+      postgres
+      -c max_connections=300
+      -c shared_buffers=512MB
+      -c effective_cache_size=2GB
+      -c work_mem=8MB
+      -c maintenance_work_mem=128MB
+      -c log_min_duration_statement=1000
+      -c log_statement=mod
+      -c log_checkpoints=on
+      -c log_connections=on
+      -c log_disconnections=on
+    labels:
+      - "clos.service=candlefish"
+      - "clos.component=database"
+      - "clos.port=5435"
+
+  # Candlefish Redis
+  candlefish-redis:
+    image: redis:7-alpine
+    container_name: candlefish-redis
+    restart: unless-stopped
+    volumes:
+      - candlefish_cache:/data
+      - ../redis/candlefish.conf:/usr/local/etc/redis/redis.conf:ro
+    ports:
+      - "6381:6379"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.3.13
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    command: redis-server /usr/local/etc/redis/redis.conf --databases 16 --maxmemory 1gb --maxmemory-policy allkeys-lru
+    labels:
+      - "clos.service=candlefish"
+      - "clos.component=cache"
+      - "clos.port=6381"
+
+  # Candlefish Background Worker
+  candlefish-worker:
+    build:
+      context: ../../apps/candlefish-api
+      dockerfile: Dockerfile
+      target: production
+    container_name: candlefish-worker
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://candlefish_user:${CANDLEFISH_DB_PASSWORD:-candlefish_dev_2024}@candlefish-postgres:5432/candlefish
+      - REDIS_URL=redis://candlefish-redis:6379/1
+      - WORKER_CONCURRENCY=${CANDLEFISH_WORKER_CONCURRENCY:-8}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - EMAIL_SERVICE_API_KEY=${EMAIL_SERVICE_API_KEY}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-candlefish-assets}
+    networks:
+      clos-network:
+        ipv4_address: 172.20.3.14
+    volumes:
+      - candlefish_worker_logs:/app/logs
+      - candlefish_worker_temp:/app/temp
+      - candlefish_api_uploads:/app/uploads
+    command: ["node", "dist/worker.js"]
+    healthcheck:
+      test: ["CMD", "ps", "aux", "|", "grep", "[n]ode.*worker"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      - candlefish-postgres
+      - candlefish-redis
+    labels:
+      - "clos.service=candlefish"
+      - "clos.component=worker"
+
+  # Candlefish Job Scheduler
+  candlefish-scheduler:
+    build:
+      context: ../../apps/candlefish-api
+      dockerfile: Dockerfile
+      target: production
+    container_name: candlefish-scheduler
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://candlefish_user:${CANDLEFISH_DB_PASSWORD:-candlefish_dev_2024}@candlefish-postgres:5432/candlefish
+      - REDIS_URL=redis://candlefish-redis:6379/2
+      - SCHEDULER_TIMEZONE=${SCHEDULER_TIMEZONE:-America/New_York}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    networks:
+      clos-network:
+        ipv4_address: 172.20.3.15
+    volumes:
+      - candlefish_scheduler_logs:/app/logs
+    command: ["node", "dist/scheduler.js"]
+    healthcheck:
+      test: ["CMD", "ps", "aux", "|", "grep", "[n]ode.*scheduler"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      - candlefish-postgres
+      - candlefish-redis
+    labels:
+      - "clos.service=candlefish"
+      - "clos.component=scheduler"
+
+networks:
+  clos-network:
+    external: true
+
+volumes:
+  candlefish_db:
+    driver: local
+  candlefish_cache:
+    driver: local
+  candlefish_web_cache:
+    driver: local
+  candlefish_web_static:
+    driver: local
+  candlefish_api_uploads:
+    driver: local
+  candlefish_api_logs:
+    driver: local
+  candlefish_api_temp:
+    driver: local
+  candlefish_worker_logs:
+    driver: local
+  candlefish_worker_temp:
+    driver: local
+  candlefish_scheduler_logs:
+    driver: local

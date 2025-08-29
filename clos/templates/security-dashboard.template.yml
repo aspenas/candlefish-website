@@ -1,0 +1,68 @@
+version: '3.8'
+services:
+  security-dashboard-api:
+    image: security-dashboard-api:latest
+    build:
+      context: ../../apps/security-dashboard
+      dockerfile: Dockerfile.api
+    ports:
+      - "3100:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - DATABASE_URL=postgresql://postgres:password@security-db:5432/security_dashboard
+    depends_on:
+      - security-db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - clos-network
+
+  security-dashboard-frontend:
+    image: security-dashboard-frontend:latest
+    build:
+      context: ../../apps/security-dashboard
+      dockerfile: Dockerfile
+    ports:
+      - "3101:80"
+    environment:
+      - REACT_APP_API_URL=http://localhost:3100
+    depends_on:
+      - security-dashboard-api
+    networks:
+      - clos-network
+
+  security-db:
+    image: postgres:15
+    ports:
+      - "3102:5432"
+    environment:
+      - POSTGRES_DB=security_dashboard
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - security_db_data:/var/lib/postgresql/data
+      - ../../security-dashboard-enhanced-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    networks:
+      - clos-network
+
+  redis-security:
+    image: redis:7-alpine
+    ports:
+      - "3103:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - security_redis_data:/data
+    networks:
+      - clos-network
+
+volumes:
+  security_db_data:
+  security_redis_data:
+
+networks:
+  clos-network:
+    external: true

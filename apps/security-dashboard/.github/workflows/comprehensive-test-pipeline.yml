@@ -1,0 +1,834 @@
+name: Comprehensive Test Pipeline
+
+on:
+  push:
+    branches: [main, develop, 'feature/*']
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run comprehensive tests nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Test suite to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - unit
+          - integration
+          - e2e
+          - performance
+          - security
+          - mobile
+      environment:
+        description: 'Environment to test against'
+        required: false
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  NODE_VERSION: '18.x'
+  PYTHON_VERSION: '3.11'
+  GO_VERSION: '1.21'
+  JAVA_VERSION: '11'
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      should-run-performance: ${{ steps.check-conditions.outputs.performance }}
+      should-run-security: ${{ steps.check-conditions.outputs.security }}
+      should-run-mobile: ${{ steps.check-conditions.outputs.mobile }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check test conditions
+        id: check-conditions
+        run: |
+          # Determine which test suites to run based on changed files and inputs
+          if [[ "${{ github.event_name }}" == "schedule" ]] || [[ "${{ github.event.inputs.test_suite }}" == "all" ]]; then
+            echo "performance=true" >> $GITHUB_OUTPUT
+            echo "security=true" >> $GITHUB_OUTPUT  
+            echo "mobile=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event.inputs.test_suite }}" == "performance" ]]; then
+            echo "performance=true" >> $GITHUB_OUTPUT
+            echo "security=false" >> $GITHUB_OUTPUT
+            echo "mobile=false" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event.inputs.test_suite }}" == "security" ]]; then
+            echo "performance=false" >> $GITHUB_OUTPUT
+            echo "security=true" >> $GITHUB_OUTPUT
+            echo "mobile=false" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event.inputs.test_suite }}" == "mobile" ]]; then
+            echo "performance=false" >> $GITHUB_OUTPUT
+            echo "security=false" >> $GITHUB_OUTPUT
+            echo "mobile=true" >> $GITHUB_OUTPUT
+          else
+            # Check changed files
+            CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} || echo "")
+            
+            if echo "$CHANGED_FILES" | grep -E "(tests/performance|k6)" > /dev/null; then
+              echo "performance=true" >> $GITHUB_OUTPUT
+            else
+              echo "performance=false" >> $GITHUB_OUTPUT
+            fi
+            
+            if echo "$CHANGED_FILES" | grep -E "(tests/security|auth|login)" > /dev/null; then
+              echo "security=true" >> $GITHUB_OUTPUT
+            else
+              echo "security=false" >> $GITHUB_OUTPUT
+            fi
+            
+            if echo "$CHANGED_FILES" | grep -E "(mobile/|react-native)" > /dev/null; then
+              echo "mobile=true" >> $GITHUB_OUTPUT
+            else
+              echo "mobile=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Set test matrix
+        id: set-matrix
+        run: |
+          echo 'matrix<<EOF' >> $GITHUB_OUTPUT
+          echo '{
+            "test-type": ["unit", "integration"],
+            "platform": ["web", "api"],
+            "browser": ["chrome", "firefox"],
+            "os": ["ubuntu-latest", "windows-latest", "macos-latest"]
+          }' >> $GITHUB_OUTPUT
+          echo 'EOF' >> $GITHUB_OUTPUT
+
+  # Quality Gates and Linting
+  quality-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: |
+          npm run lint
+          npm run lint:fix -- --dry-run
+
+      - name: Type checking
+        run: npm run type-check
+
+      - name: Check code formatting
+        run: npm run format:check
+
+      - name: License compliance check
+        run: npm run license-check
+
+      - name: Security audit
+        run: npm audit --audit-level high
+
+      - name: Bundle analysis
+        run: npm run build:analyze
+
+      - name: Upload lint results
+        if: always()
+        uses: github/super-linter@v4
+        env:
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Unit Tests
+  unit-tests:
+    runs-on: ${{ matrix.os }}
+    needs: setup
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node-version: ['16.x', '18.x', '20.x']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests with coverage
+        run: |
+          npm run test:unit -- --coverage --reporter=verbose
+          npm run test:unit:frontend
+          npm run test:unit:backend
+
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '18.x'
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/lcov.info
+          flags: unit
+          name: unit-tests
+          fail_ci_if_error: true
+
+      - name: Store coverage reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-unit-${{ matrix.os }}-${{ matrix.node-version }}
+          path: coverage/
+
+  # Frontend Component Tests
+  frontend-tests:
+    runs-on: ubuntu-latest
+    needs: setup
+    strategy:
+      matrix:
+        browser: [chrome, firefox, edge]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup browser - ${{ matrix.browser }}
+        if: matrix.browser == 'chrome'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
+      - name: Run component tests
+        run: |
+          npm run test:coverage
+          npm run test:accessibility
+
+      - name: Run visual regression tests
+        run: npm run test:visual
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend-test-results-${{ matrix.browser }}
+          path: |
+            test-results/
+            coverage/
+            screenshots/
+
+  # Backend API Tests
+  backend-tests:
+    runs-on: ubuntu-latest
+    needs: setup
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: security_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup test database
+        run: |
+          npm run db:migrate:test
+          npm run db:seed:test
+        env:
+          DATABASE_URL: postgresql://postgres:testpassword@localhost:5432/security_test
+          REDIS_URL: redis://localhost:6379
+
+      - name: Run GraphQL resolver tests
+        run: |
+          npm run test:unit:backend
+          npm run test:integration:database
+        env:
+          DATABASE_URL: postgresql://postgres:testpassword@localhost:5432/security_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-secret-key
+          NODE_ENV: test
+
+      - name: Run API integration tests
+        run: npm run test:integration:api
+        env:
+          DATABASE_URL: postgresql://postgres:testpassword@localhost:5432/security_test
+          REDIS_URL: redis://localhost:6379
+
+      - name: Upload API test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: backend-test-results
+          path: |
+            test-results/
+            coverage/
+
+  # Mobile Tests
+  mobile-tests:
+    if: needs.setup.outputs.should-run-mobile == 'true'
+    runs-on: macos-latest
+    needs: setup
+    strategy:
+      matrix:
+        platform: [ios, android]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Java for Android
+        if: matrix.platform == 'android'
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        if: matrix.platform == 'android'
+        uses: android-actions/setup-android@v2
+
+      - name: Install mobile dependencies
+        working-directory: ./mobile
+        run: npm ci
+
+      - name: Setup iOS Simulator
+        if: matrix.platform == 'ios'
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcrun simctl list devicetypes
+
+      - name: Setup Android Emulator
+        if: matrix.platform == 'android'
+        run: |
+          echo "y" | $ANDROID_HOME/tools/bin/sdkmanager --install "system-images;android-30;google_apis;x86_64"
+          echo "no" | $ANDROID_HOME/tools/bin/avdmanager create avd -n test -k "system-images;android-30;google_apis;x86_64"
+
+      - name: Run mobile unit tests
+        working-directory: ./mobile
+        run: npm run test:coverage
+
+      - name: Build mobile app for testing
+        working-directory: ./mobile
+        run: |
+          if [ "${{ matrix.platform }}" == "ios" ]; then
+            npm run build:ios:simulator
+          else
+            npm run build:android:debug
+          fi
+
+      - name: Run E2E tests
+        working-directory: ./mobile
+        run: |
+          if [ "${{ matrix.platform }}" == "ios" ]; then
+            npm run test:e2e:ios
+          else
+            npm run test:e2e:android
+          fi
+
+      - name: Upload mobile test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: mobile-test-results-${{ matrix.platform }}
+          path: |
+            mobile/test-results/
+            mobile/coverage/
+            mobile/screenshots/
+
+  # E2E Tests
+  e2e-tests:
+    runs-on: ubuntu-latest
+    needs: [quality-gates, unit-tests]
+    strategy:
+      matrix:
+        browser: [chrome, firefox]
+        scenario: [smoke, critical-path, full-regression]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup test environment
+        run: |
+          docker-compose -f docker-compose.test.yml up -d
+          npm run wait-for-services
+
+      - name: Run Cypress E2E tests
+        run: |
+          if [ "${{ matrix.scenario }}" == "smoke" ]; then
+            npm run test:e2e:cypress:headless -- --spec "cypress/e2e/smoke/**"
+          elif [ "${{ matrix.scenario }}" == "critical-path" ]; then
+            npm run test:e2e:cypress:headless -- --spec "cypress/e2e/critical/**"
+          else
+            npm run test:e2e:cypress:headless
+          fi
+        env:
+          CYPRESS_BASE_URL: http://localhost:3000
+          CYPRESS_API_URL: http://localhost:4000
+
+      - name: Run Playwright E2E tests
+        run: |
+          if [ "${{ matrix.scenario }}" == "smoke" ]; then
+            npm run test:e2e:playwright -- --grep "smoke"
+          elif [ "${{ matrix.scenario }}" == "critical-path" ]; then
+            npm run test:e2e:playwright -- --grep "critical"
+          else
+            npm run test:e2e:playwright
+          fi
+
+      - name: Upload E2E test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: e2e-results-${{ matrix.browser }}-${{ matrix.scenario }}
+          path: |
+            test-results/
+            playwright-report/
+            cypress/videos/
+            cypress/screenshots/
+
+      - name: Cleanup test environment
+        if: always()
+        run: docker-compose -f docker-compose.test.yml down
+
+  # Integration Tests
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: [unit-tests, backend-tests]
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: security_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup test services
+        run: |
+          npm run db:migrate:test
+          npm run db:seed:test
+          docker-compose -f docker-compose.test.yml up -d kafka elasticsearch
+        env:
+          DATABASE_URL: postgresql://postgres:testpassword@localhost:5432/security_test
+
+      - name: Run cross-platform integration tests
+        run: npm run test:integration
+        env:
+          DATABASE_URL: postgresql://postgres:testpassword@localhost:5432/security_test
+          REDIS_URL: redis://localhost:6379
+          KAFKA_BROKERS: localhost:9092
+          ELASTICSEARCH_URL: http://localhost:9200
+
+      - name: Run WebSocket integration tests
+        run: npm run test:integration:websocket
+
+      - name: Run external API integration tests
+        run: npm run test:integration:external
+
+      - name: Upload integration test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: integration-test-results
+          path: |
+            test-results/
+            coverage/
+
+  # Performance Tests
+  performance-tests:
+    if: needs.setup.outputs.should-run-performance == 'true'
+    runs-on: ubuntu-latest
+    needs: [integration-tests]
+    strategy:
+      matrix:
+        test-type: [load, stress, spike, volume, soak]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup K6
+        run: |
+          curl https://github.com/grafana/k6/releases/download/v0.46.0/k6-v0.46.0-linux-amd64.tar.gz -L | tar xvz --strip-components 1
+          sudo cp k6 /usr/local/bin/
+
+      - name: Setup test environment
+        run: |
+          docker-compose -f docker-compose.test.yml up -d
+          sleep 30
+
+      - name: Run performance tests - ${{ matrix.test-type }}
+        run: |
+          case "${{ matrix.test-type }}" in
+            load)
+              k6 run --tag testtype=load tests/performance/k6/comprehensive-load-test.js
+              ;;
+            stress)
+              k6 run --tag testtype=stress tests/performance/k6/comprehensive-load-test.js
+              ;;
+            spike)
+              k6 run --tag testtype=spike tests/performance/k6/comprehensive-load-test.js
+              ;;
+            volume)
+              k6 run --tag testtype=volume tests/performance/k6/comprehensive-load-test.js
+              ;;
+            soak)
+              k6 run --tag testtype=soak tests/performance/k6/comprehensive-load-test.js
+              ;;
+          esac
+        env:
+          BASE_URL: http://localhost:3000
+          API_URL: http://localhost:4000/graphql
+
+      - name: Generate performance report
+        run: npm run performance:report
+
+      - name: Upload performance results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-results-${{ matrix.test-type }}
+          path: |
+            performance-results/
+            k6-results/
+
+      - name: Performance regression check
+        run: npm run performance:compare
+
+  # Security Tests
+  security-tests:
+    if: needs.setup.outputs.should-run-security == 'true'
+    runs-on: ubuntu-latest
+    needs: [integration-tests]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup K6
+        run: |
+          curl https://github.com/grafana/k6/releases/download/v0.46.0/k6-v0.46.0-linux-amd64.tar.gz -L | tar xvz --strip-components 1
+          sudo cp k6 /usr/local/bin/
+
+      - name: Setup test environment
+        run: |
+          docker-compose -f docker-compose.test.yml up -d
+          sleep 30
+
+      - name: Run security penetration tests
+        run: |
+          k6 run tests/security/penetration-tests.js
+          npm run security:scan
+        env:
+          BASE_URL: http://localhost:3000
+          API_URL: http://localhost:4000/graphql
+          NODE_ENV: test
+
+      - name: Run OWASP ZAP security scan
+        uses: zaproxy/action-full-scan@v0.7.0
+        with:
+          target: 'http://localhost:3000'
+          fail_action: true
+          cmd_options: '-a'
+
+      - name: Upload security test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-test-results
+          path: |
+            security-results/
+            zap-results/
+
+      - name: Security quality gate
+        run: |
+          if [ -f security-results/summary.json ]; then
+            VULNERABILITY_RATE=$(cat security-results/summary.json | jq '.metrics.security_vulnerabilities.rate')
+            if (( $(echo "$VULNERABILITY_RATE > 0.01" | bc -l) )); then
+              echo "Security quality gate failed: vulnerability rate $VULNERABILITY_RATE exceeds threshold 0.01"
+              exit 1
+            fi
+          fi
+
+  # Accessibility Tests
+  accessibility-tests:
+    runs-on: ubuntu-latest
+    needs: [e2e-tests]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup test environment
+        run: |
+          docker-compose -f docker-compose.test.yml up -d
+          npm run wait-for-services
+
+      - name: Run accessibility tests
+        run: npm run test:accessibility
+
+      - name: Generate accessibility report
+        run: npm run accessibility:report
+
+      - name: Upload accessibility results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: accessibility-results
+          path: |
+            accessibility-report/
+            axe-results/
+
+  # Coverage Merge and Quality Gates
+  coverage-merge:
+    runs-on: ubuntu-latest
+    needs: [unit-tests, frontend-tests, backend-tests, integration-tests]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download all coverage reports
+        uses: actions/download-artifact@v3
+        with:
+          path: coverage-artifacts/
+
+      - name: Merge coverage reports
+        run: |
+          npm run coverage:merge
+          npm run coverage:report
+
+      - name: Upload merged coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/merged/lcov.info
+          flags: merged
+          name: merged-coverage
+          fail_ci_if_error: false
+
+      - name: Coverage quality gate
+        run: |
+          COVERAGE=$(npm run coverage:check | tail -n 1)
+          echo "Total coverage: $COVERAGE%"
+          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+            echo "Coverage quality gate failed: $COVERAGE% < 80%"
+            exit 1
+          fi
+
+      - name: Update coverage badges
+        run: npm run badges:update
+
+      - name: Upload final coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: merged-coverage-report
+          path: coverage/
+
+  # Test Results Summary
+  test-summary:
+    runs-on: ubuntu-latest
+    needs: [quality-gates, unit-tests, frontend-tests, backend-tests, e2e-tests, integration-tests, performance-tests, security-tests, accessibility-tests, mobile-tests, coverage-merge]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download all test artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: all-test-results/
+
+      - name: Generate comprehensive test report
+        run: npm run reports:generate
+
+      - name: Create test summary
+        run: |
+          echo "# 🧪 Comprehensive Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Execution Status" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Quality Gates: ${{ needs.quality-gates.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Unit Tests: ${{ needs.unit-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Frontend Tests: ${{ needs.frontend-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Backend Tests: ${{ needs.backend-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ E2E Tests: ${{ needs.e2e-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Integration Tests: ${{ needs.integration-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Performance Tests: ${{ needs.performance-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Security Tests: ${{ needs.security-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Accessibility Tests: ${{ needs.accessibility-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Mobile Tests: ${{ needs.mobile-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Coverage Merge: ${{ needs.coverage-merge.result }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Quality gate check
+        run: npm run quality-gate:check
+
+      - name: Upload comprehensive test report
+        uses: actions/upload-artifact@v3
+        with:
+          name: comprehensive-test-report
+          path: |
+            test-reports/
+            coverage-report/
+            performance-report/
+            security-report/
+            accessibility-report/
+
+      - name: Notify on failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          channel: '#security-alerts'
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify on success
+        if: success()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          channel: '#security-dashboard'
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Deploy to staging if all tests pass
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: [test-summary]
+    if: github.ref == 'refs/heads/develop' && success()
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to staging
+        run: |
+          echo "Deploying to staging environment..."
+          # Deployment logic would go here
+
+      - name: Run smoke tests on staging
+        run: |
+          npm run test:e2e:cypress:headless -- --spec "cypress/e2e/smoke/**"
+        env:
+          CYPRESS_BASE_URL: https://staging.security-dashboard.com
+
+  # Production deployment
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: [test-summary, deploy-staging]
+    if: github.ref == 'refs/heads/main' && success()
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to production
+        run: |
+          echo "Deploying to production environment..."
+          # Production deployment logic would go here
+
+      - name: Run production smoke tests
+        run: |
+          npm run test:e2e:cypress:headless -- --spec "cypress/e2e/smoke/**"
+        env:
+          CYPRESS_BASE_URL: https://security-dashboard.com

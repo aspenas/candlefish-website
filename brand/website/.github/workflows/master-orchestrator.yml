@@ -1,0 +1,498 @@
+name: Master Orchestrator - CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop, 'feature/**']
+  pull_request:
+    branches: [main, develop]
+  release:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '8'
+  AWS_REGION: us-east-1
+  AWS_ACCOUNT_ID: '681214184463'
+  MONOREPO_ROOT: '/Users/patricksmith/candlefish-ai'
+  
+jobs:
+  # ========================================
+  # Stage 1: Initialization & Analysis
+  # ========================================
+  initialize:
+    name: Initialize Pipeline
+    runs-on: ubuntu-latest
+    outputs:
+      affected-apps: ${{ steps.analyze.outputs.affected-apps }}
+      deployment-needed: ${{ steps.analyze.outputs.deployment-needed }}
+      security-scan-needed: ${{ steps.analyze.outputs.security-scan-needed }}
+      cache-key: ${{ steps.cache-key.outputs.key }}
+      
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Analyze Changes
+        id: analyze
+        run: |
+          # Detect affected applications
+          AFFECTED_APPS=$(git diff --name-only HEAD^ HEAD | grep -E '^apps/' | cut -d'/' -f2 | sort -u | tr '\n' ',' | sed 's/,$//')
+          echo "affected-apps=${AFFECTED_APPS:-all}" >> $GITHUB_OUTPUT
+          
+          # Check if deployment is needed
+          if git diff --name-only HEAD^ HEAD | grep -qE '\.(ts|tsx|js|jsx|json|yml|yaml)$'; then
+            echo "deployment-needed=true" >> $GITHUB_OUTPUT
+          else
+            echo "deployment-needed=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Check if security scan is needed
+          if git diff --name-only HEAD^ HEAD | grep -qE '(package\.json|requirements\.txt|go\.mod|Dockerfile)'; then
+            echo "security-scan-needed=true" >> $GITHUB_OUTPUT
+          else
+            echo "security-scan-needed=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Generate Cache Key
+        id: cache-key
+        run: |
+          echo "key=node-${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}" >> $GITHUB_OUTPUT
+
+  # ========================================
+  # Stage 2: Code Quality & Security
+  # ========================================
+  code-quality:
+    name: Code Quality Analysis
+    needs: initialize
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        check: [lint, typecheck, format]
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          
+      - name: Restore Dependencies Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.pnpm-store
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ needs.initialize.outputs.cache-key }}
+          restore-keys: |
+            node-${{ runner.os }}-pnpm-
+            
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Run ${{ matrix.check }}
+        run: |
+          case "${{ matrix.check }}" in
+            lint)
+              pnpm run lint --filter=./apps/*
+              ;;
+            typecheck)
+              pnpm run typecheck --filter=./apps/*
+              ;;
+            format)
+              pnpm run format:check --filter=./apps/*
+              ;;
+          esac
+
+  security-scan:
+    name: Security Scanning
+    needs: initialize
+    if: needs.initialize.outputs.security-scan-needed == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Trivy Security Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          
+      - name: Upload Security Results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+          
+      - name: Run OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'candlefish-ai'
+          path: '.'
+          format: 'ALL'
+          args: >
+            --enableRetired
+            --enableExperimental
+            
+      - name: Run GitLeaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ========================================
+  # Stage 3: Testing Suite
+  # ========================================
+  test-suite:
+    name: Test Suite - ${{ matrix.test-type }}
+    needs: [initialize, code-quality]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        test-type: [unit, integration, e2e, security]
+        
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Test Environment
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          
+      - name: Restore Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.pnpm-store
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ needs.initialize.outputs.cache-key }}
+          
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Setup Test Database
+        if: matrix.test-type == 'integration' || matrix.test-type == 'e2e'
+        run: |
+          docker run -d \
+            --name test-postgres \
+            -e POSTGRES_PASSWORD=testpass \
+            -e POSTGRES_DB=testdb \
+            -p 5432:5432 \
+            postgres:15-alpine
+            
+          # Wait for database
+          sleep 10
+          
+      - name: Run ${{ matrix.test-type }} Tests
+        run: |
+          case "${{ matrix.test-type }}" in
+            unit)
+              pnpm run test:unit --coverage
+              ;;
+            integration)
+              pnpm run test:integration
+              ;;
+            e2e)
+              npx playwright install --with-deps
+              pnpm run test:e2e
+              ;;
+            security)
+              pnpm run test:security
+              ;;
+          esac
+        env:
+          DATABASE_URL: postgresql://postgres:testpass@localhost:5432/testdb
+          
+      - name: Upload Coverage
+        if: matrix.test-type == 'unit'
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          flags: unittests
+          
+      - name: Upload Test Results
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results-${{ matrix.test-type }}
+          path: |
+            coverage/
+            playwright-report/
+            test-results/
+
+  # ========================================
+  # Stage 4: Build & Package
+  # ========================================
+  build:
+    name: Build Applications
+    needs: [initialize, test-suite]
+    if: needs.initialize.outputs.deployment-needed == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [website, security-dashboard, api-site, partners-site]
+        
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Build Environment
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          
+      - name: Restore Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.pnpm-store
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ needs.initialize.outputs.cache-key }}
+          
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Build ${{ matrix.app }}
+        run: |
+          pnpm run build --filter=@candlefish-ai/${{ matrix.app }}
+        env:
+          NODE_ENV: production
+          NEXT_PUBLIC_API_URL: ${{ secrets.API_URL }}
+          
+      - name: Create Docker Image
+        run: |
+          docker build \
+            --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
+            --build-arg VCS_REF=${GITHUB_SHA::8} \
+            --build-arg VERSION=${GITHUB_REF#refs/tags/} \
+            -t candlefish/${{ matrix.app }}:${{ github.sha }} \
+            -t candlefish/${{ matrix.app }}:latest \
+            -f apps/${{ matrix.app }}/Dockerfile \
+            apps/${{ matrix.app }}
+            
+      - name: Scan Docker Image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: candlefish/${{ matrix.app }}:${{ github.sha }}
+          format: 'sarif'
+          output: 'docker-scan-${{ matrix.app }}.sarif'
+          
+      - name: Configure AWS Credentials
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Push to ECR
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        run: |
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
+            docker login --username AWS --password-stdin ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+            
+          docker tag candlefish/${{ matrix.app }}:${{ github.sha }} \
+            ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/candlefish/${{ matrix.app }}:${{ github.sha }}
+            
+          docker push ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/candlefish/${{ matrix.app }}:${{ github.sha }}
+          
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-${{ matrix.app }}
+          path: |
+            apps/${{ matrix.app }}/.next/
+            apps/${{ matrix.app }}/dist/
+            apps/${{ matrix.app }}/build/
+          retention-days: 7
+
+  # ========================================
+  # Stage 5: Deployment
+  # ========================================
+  deploy-staging:
+    name: Deploy to Staging
+    needs: [build]
+    if: github.ref == 'refs/heads/develop' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://staging.candlefish.ai
+      
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Deploy to Staging
+        run: |
+          # Deploy using AWS CDK or Terraform
+          cd infrastructure/staging
+          npm install -g aws-cdk
+          cdk deploy --require-approval never
+          
+      - name: Run Smoke Tests
+        run: |
+          npm install -g newman
+          newman run tests/postman/staging-smoke-tests.json \
+            --environment tests/postman/staging-env.json
+            
+      - name: Notify Slack
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: 'Staging deployment ${{ job.status }}'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  deploy-production:
+    name: Deploy to Production
+    needs: [deploy-staging]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://candlefish.ai
+      
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Blue-Green Deployment
+        run: |
+          # Implementation of blue-green deployment
+          ./scripts/blue-green-deploy.sh production
+          
+      - name: Health Check
+        run: |
+          ./scripts/production-health-check.sh
+          
+      - name: Performance Monitoring
+        run: |
+          npm install -g lighthouse
+          lighthouse https://candlefish.ai \
+            --output json \
+            --output-path=./lighthouse-report.json
+            
+          # Check performance score
+          SCORE=$(jq '.categories.performance.score * 100' lighthouse-report.json)
+          if (( $(echo "$SCORE < 85" | bc -l) )); then
+            echo "Performance degradation detected!"
+            exit 1
+          fi
+          
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Release v${{ github.run_number }}
+          draft: false
+          prerelease: false
+
+  # ========================================
+  # Stage 6: Post-Deployment
+  # ========================================
+  post-deployment:
+    name: Post-Deployment Verification
+    needs: [deploy-production]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run E2E Tests on Production
+        run: |
+          npx playwright install --with-deps
+          PROD_URL=https://candlefish.ai npx playwright test --config=playwright.prod.config.ts
+          
+      - name: Security Scan Production
+        run: |
+          npm install -g @zaproxy/cli
+          zaproxy-cli quick-scan --self-contained \
+            --start-url https://candlefish.ai \
+            --report zaproxy-report.html
+            
+      - name: Update Documentation
+        run: |
+          # Generate API docs
+          npm run docs:generate
+          
+          # Update changelog
+          npm run changelog:generate
+          
+          # Commit changes
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add docs/ CHANGELOG.md
+          git commit -m "chore: update documentation [skip ci]"
+          git push
+          
+      - name: Notify Team
+        run: |
+          curl -X POST ${{ secrets.SLACK_WEBHOOK }} \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "text": "🚀 Production deployment successful!",
+              "attachments": [{
+                "color": "good",
+                "fields": [
+                  {"title": "Version", "value": "${{ github.sha }}", "short": true},
+                  {"title": "Deployed by", "value": "${{ github.actor }}", "short": true},
+                  {"title": "Environment", "value": "Production", "short": true},
+                  {"title": "URL", "value": "https://candlefish.ai", "short": true}
+                ]
+              }]
+            }'

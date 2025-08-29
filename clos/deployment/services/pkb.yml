@@ -1,0 +1,295 @@
+version: '3.8'
+
+# PKB (Personal Knowledge Base) Service Stack
+# UI (Streamlit): Port 8501
+# API (FastAPI): Port 8787
+# Database: Port 5434
+
+services:
+  # PKB Streamlit UI
+  pkb-ui:
+    build:
+      context: ../../apps/pkb
+      dockerfile: Dockerfile.streamlit
+      target: production
+    container_name: pkb-ui
+    restart: unless-stopped
+    environment:
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - STREAMLIT_SERVER_HEADLESS=true
+      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+      - PKB_API_URL=http://pkb-api:8787
+      - PKB_API_KEY=${PKB_API_KEY:-pkb_dev_key_2024}
+      - PKB_ENVIRONMENT=production
+      - PKB_LOG_LEVEL=${LOG_LEVEL:-info}
+    ports:
+      - "8501:8501"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.2.10
+    volumes:
+      - pkb_streamlit_data:/app/data
+      - pkb_streamlit_cache:/app/.streamlit
+      - pkb_uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    depends_on:
+      - pkb-api
+    labels:
+      - "clos.service=pkb"
+      - "clos.component=ui"
+      - "clos.port=8501"
+
+  # PKB FastAPI Backend
+  pkb-api:
+    build:
+      context: ../../apps/pkb
+      dockerfile: Dockerfile.api
+      target: production
+    container_name: pkb-api
+    restart: unless-stopped
+    environment:
+      - ENVIRONMENT=production
+      - PORT=8787
+      - HOST=0.0.0.0
+      - DATABASE_URL=postgresql://pkb_user:${PKB_DB_PASSWORD:-pkb_dev_2024}@pkb-postgres:5432/pkb
+      - REDIS_URL=redis://pkb-redis:6379/0
+      - JWT_SECRET_KEY=${PKB_JWT_SECRET:-pkb_jwt_dev_secret_2024}
+      - SECRET_KEY=${PKB_SECRET_KEY:-pkb_secret_key_dev_2024}
+      - API_KEY=${PKB_API_KEY:-pkb_dev_key_2024}
+      - CORS_ORIGINS=http://localhost:8501,https://pkb.local
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - WORKER_PROCESSES=${PKB_WORKER_PROCESSES:-4}
+      - MAX_REQUEST_SIZE=50MB
+      - REQUEST_TIMEOUT=300
+      - UPLOAD_MAX_SIZE=100MB
+      - ALLOWED_EXTENSIONS=pdf,txt,md,docx,xlsx,csv,json,yaml,yml
+      - ELASTICSEARCH_URL=${ELASTICSEARCH_URL:-http://pkb-elasticsearch:9200}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-pkb-minio:9000}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-pkb_minio_access}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-pkb_minio_secret_2024}
+    ports:
+      - "8787:8787"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.2.11
+    volumes:
+      - pkb_api_data:/app/data
+      - pkb_api_logs:/app/logs
+      - pkb_uploads:/app/uploads
+      - pkb_exports:/app/exports
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8787/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    depends_on:
+      - pkb-postgres
+      - pkb-redis
+      - pkb-elasticsearch
+      - pkb-minio
+    labels:
+      - "clos.service=pkb"
+      - "clos.component=api"
+      - "clos.port=8787"
+
+  # PKB Database
+  pkb-postgres:
+    image: postgres:15-alpine
+    container_name: pkb-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pkb
+      POSTGRES_USER: pkb_user
+      POSTGRES_PASSWORD: ${PKB_DB_PASSWORD:-pkb_dev_2024}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    volumes:
+      - pkb_db:/var/lib/postgresql/data
+      - ../../apps/pkb/database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ../../apps/pkb/database/schema.sql:/docker-entrypoint-initdb.d/02-schema.sql:ro
+    ports:
+      - "5434:5432"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.2.12
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pkb_user -d pkb"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    command: >
+      postgres
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c work_mem=4MB
+      -c maintenance_work_mem=64MB
+      -c log_min_duration_statement=1000
+    labels:
+      - "clos.service=pkb"
+      - "clos.component=database"
+      - "clos.port=5434"
+
+  # PKB Redis Cache
+  pkb-redis:
+    image: redis:7-alpine
+    container_name: pkb-redis
+    restart: unless-stopped
+    volumes:
+      - pkb_cache:/data
+      - ../redis/pkb.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      clos-network:
+        ipv4_address: 172.20.2.13
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    command: redis-server /usr/local/etc/redis/redis.conf --databases 16 --maxmemory 512mb --maxmemory-policy allkeys-lru
+    labels:
+      - "clos.service=pkb"
+      - "clos.component=cache"
+
+  # PKB Elasticsearch (for full-text search)
+  pkb-elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.0
+    container_name: pkb-elasticsearch
+    restart: unless-stopped
+    environment:
+      - node.name=pkb-elasticsearch
+      - cluster.name=pkb-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - ELASTIC_PASSWORD=${PKB_ELASTICSEARCH_PASSWORD:-pkb_elastic_dev_2024}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - pkb_elasticsearch:/usr/share/elasticsearch/data
+    ports:
+      - "9201:9200"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.2.14
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "clos.service=pkb"
+      - "clos.component=search"
+      - "clos.port=9201"
+
+  # PKB MinIO (for file storage)
+  pkb-minio:
+    image: minio/minio:latest
+    container_name: pkb-minio
+    restart: unless-stopped
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-pkb_minio_access}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-pkb_minio_secret_2024}
+      - MINIO_BROWSER_REDIRECT_URL=http://localhost:9002
+    volumes:
+      - pkb_minio:/data
+    ports:
+      - "9000:9000"
+      - "9002:9001"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.2.15
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "clos.service=pkb"
+      - "clos.component=storage"
+      - "clos.port=9000"
+
+  # PKB Background Worker
+  pkb-worker:
+    build:
+      context: ../../apps/pkb
+      dockerfile: Dockerfile.worker
+      target: production
+    container_name: pkb-worker
+    restart: unless-stopped
+    environment:
+      - ENVIRONMENT=production
+      - DATABASE_URL=postgresql://pkb_user:${PKB_DB_PASSWORD:-pkb_dev_2024}@pkb-postgres:5432/pkb
+      - REDIS_URL=redis://pkb-redis:6379/1
+      - ELASTICSEARCH_URL=http://pkb-elasticsearch:9200
+      - MINIO_ENDPOINT=pkb-minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-pkb_minio_access}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-pkb_minio_secret_2024}
+      - WORKER_CONCURRENCY=${PKB_WORKER_CONCURRENCY:-4}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    networks:
+      clos-network:
+        ipv4_address: 172.20.2.16
+    volumes:
+      - pkb_worker_logs:/app/logs
+      - pkb_worker_temp:/app/temp
+      - pkb_uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "ps", "aux", "|", "grep", "[p]ython.*worker"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      - pkb-postgres
+      - pkb-redis
+      - pkb-elasticsearch
+      - pkb-minio
+    labels:
+      - "clos.service=pkb"
+      - "clos.component=worker"
+
+networks:
+  clos-network:
+    external: true
+
+volumes:
+  pkb_db:
+    driver: local
+  pkb_cache:
+    driver: local
+  pkb_streamlit_data:
+    driver: local
+  pkb_streamlit_cache:
+    driver: local
+  pkb_api_data:
+    driver: local
+  pkb_api_logs:
+    driver: local
+  pkb_uploads:
+    driver: local
+  pkb_exports:
+    driver: local
+  pkb_elasticsearch:
+    driver: local
+  pkb_minio:
+    driver: local
+  pkb_worker_logs:
+    driver: local
+  pkb_worker_temp:
+    driver: local

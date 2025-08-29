@@ -1,0 +1,356 @@
+# Neo4j Deployment for Security Dashboard
+# Graph database for threat intelligence and relationship mapping
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: neo4j
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: neo4j
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: graph-database
+    app.kubernetes.io/version: "5.12"
+spec:
+  serviceName: neo4j
+  replicas: 1
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: neo4j
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: neo4j
+        app.kubernetes.io/part-of: security-dashboard
+        app.kubernetes.io/component: graph-database
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "2004"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: security-dashboard-neo4j
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 7474
+        runAsGroup: 7474
+        fsGroup: 7474
+      initContainers:
+      - name: init-permissions
+        image: busybox:1.35
+        command: ['sh', '-c', 'chown -R 7474:7474 /data /logs /import /metrics']
+        volumeMounts:
+        - name: neo4j-data
+          mountPath: /data
+        - name: neo4j-logs
+          mountPath: /logs
+        - name: neo4j-import
+          mountPath: /import
+        - name: neo4j-metrics
+          mountPath: /metrics
+        securityContext:
+          runAsUser: 0
+      containers:
+      - name: neo4j
+        image: neo4j:5.12-community
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 7474
+          protocol: TCP
+        - name: bolt
+          containerPort: 7687
+          protocol: TCP
+        - name: metrics
+          containerPort: 2004
+          protocol: TCP
+        env:
+        - name: NEO4J_AUTH
+          valueFrom:
+            secretKeyRef:
+              name: neo4j-credentials
+              key: neo4j-auth
+        - name: NEO4J_ACCEPT_LICENSE_AGREEMENT
+          value: "yes"
+        - name: NEO4J_dbms_security_procedures_unrestricted
+          value: "gds.*,apoc.*"
+        - name: NEO4J_dbms_security_procedures_allowlist
+          value: "gds.*,apoc.*"
+        - name: NEO4J_dbms_memory_heap_initial__size
+          value: "1G"
+        - name: NEO4J_dbms_memory_heap_max__size
+          value: "2G"
+        - name: NEO4J_dbms_memory_pagecache_size
+          value: "1G"
+        - name: NEO4J_dbms_default__listen__address
+          value: "0.0.0.0"
+        - name: NEO4J_dbms_connector_bolt_listen__address
+          value: "0.0.0.0:7687"
+        - name: NEO4J_dbms_connector_http_listen__address
+          value: "0.0.0.0:7474"
+        - name: NEO4J_dbms_logs_debug_level
+          value: "INFO"
+        - name: NEO4J_dbms_tx__log_rotation_retention__policy
+          value: "7 days"
+        - name: NEO4J_dbms_checkpoint_interval_time
+          value: "15m"
+        - name: NEO4J_dbms_checkpoint_interval_tx
+          value: "100000"
+        - name: NEO4J_metrics_enabled
+          value: "true"
+        - name: NEO4J_metrics_prometheus_enabled
+          value: "true"
+        - name: NEO4J_metrics_prometheus_endpoint
+          value: "0.0.0.0:2004"
+        - name: NEO4J_dbms_security_auth__enabled
+          value: "true"
+        - name: NEO4J_dbms_allow__upgrade
+          value: "true"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "500m"
+          limits:
+            memory: "4Gi"
+            cpu: "2"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
+        volumeMounts:
+        - name: neo4j-data
+          mountPath: /data
+        - name: neo4j-logs
+          mountPath: /logs
+        - name: neo4j-import
+          mountPath: /var/lib/neo4j/import
+        - name: neo4j-metrics
+          mountPath: /var/lib/neo4j/metrics
+        - name: neo4j-plugins
+          mountPath: /plugins
+          readOnly: true
+        - name: neo4j-config
+          mountPath: /var/lib/neo4j/conf
+          readOnly: true
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: neo4j-logs
+        emptyDir:
+          sizeLimit: 5Gi
+      - name: neo4j-import
+        emptyDir:
+          sizeLimit: 1Gi
+      - name: neo4j-metrics
+        emptyDir:
+          sizeLimit: 1Gi
+      - name: neo4j-plugins
+        emptyDir:
+          sizeLimit: 500Mi
+      - name: neo4j-config
+        configMap:
+          name: neo4j-config
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - neo4j
+              topologyKey: "kubernetes.io/hostname"
+  volumeClaimTemplates:
+  - metadata:
+      name: neo4j-data
+      labels:
+        app.kubernetes.io/name: neo4j
+        app.kubernetes.io/part-of: security-dashboard
+        app.kubernetes.io/component: graph-database
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: "gp3-encrypted"
+      resources:
+        requests:
+          storage: 50Gi
+
+---
+# Neo4j Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: neo4j
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: neo4j
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: graph-database
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "2004"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 7474
+    targetPort: http
+    protocol: TCP
+  - name: bolt
+    port: 7687
+    targetPort: bolt
+    protocol: TCP
+  - name: metrics
+    port: 2004
+    targetPort: metrics
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: neo4j
+
+---
+# Neo4j Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: security-dashboard-neo4j
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: neo4j
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: graph-database
+automountServiceAccountToken: false
+
+---
+# Neo4j Configuration ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: neo4j-config
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: neo4j
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: graph-database
+data:
+  neo4j.conf: |
+    # Neo4j Configuration for Security Dashboard
+    
+    # Network
+    dbms.default_listen_address=0.0.0.0
+    dbms.connector.bolt.enabled=true
+    dbms.connector.bolt.listen_address=0.0.0.0:7687
+    dbms.connector.http.enabled=true
+    dbms.connector.http.listen_address=0.0.0.0:7474
+    
+    # Security
+    dbms.security.auth_enabled=true
+    dbms.security.procedures.unrestricted=gds.*,apoc.*
+    dbms.security.procedures.allowlist=gds.*,apoc.*
+    
+    # Memory Settings
+    dbms.memory.heap.initial_size=1G
+    dbms.memory.heap.max_size=2G
+    dbms.memory.pagecache.size=1G
+    
+    # Transaction Log
+    dbms.tx_log.rotation.retention_policy=7 days
+    dbms.tx_log.rotation.size=250M
+    
+    # Checkpointing
+    dbms.checkpoint.interval.time=15m
+    dbms.checkpoint.interval.tx=100000
+    
+    # Query Cache
+    dbms.query_cache_size=1000
+    
+    # Performance
+    dbms.index_sampling.background_enabled=true
+    dbms.index_sampling.sample_size_limit=1000000
+    
+    # Logging
+    dbms.logs.debug.level=INFO
+    dbms.logs.gc.enabled=true
+    dbms.logs.query.enabled=false
+    dbms.logs.query.threshold=0
+    
+    # Metrics
+    metrics.enabled=true
+    metrics.prometheus.enabled=true
+    metrics.prometheus.endpoint=0.0.0.0:2004
+    metrics.filter=*
+    
+    # Plugins
+    dbms.unmanaged_extension_classes=n10s.endpoint=/rdf
+    
+    # Performance Tuning
+    dbms.relationship_grouping_threshold=100
+    dbms.query.cache_size=1000
+    dbms.query.cache_hit_log_enabled=false
+    
+    # Browser Configuration
+    browser.credential_timeout=0
+    browser.retain_connection_credentials=true
+    browser.retain_editor_history=true
+    
+    # File Upload
+    dbms.directories.import=/var/lib/neo4j/import
+    dbms.security.allow_csv_import_from_file_urls=true
+    
+    # JVM Settings
+    dbms.jvm.additional=-XX:+UseG1GC
+    dbms.jvm.additional=-XX:+UnlockExperimentalVMOptions
+    dbms.jvm.additional=-XX:+TrustFinalNonStaticFields
+    dbms.jvm.additional=-XX:+DisableExplicitGC
+    dbms.jvm.additional=-Djdk.tls.ephemeralDHKeySize=2048
+    dbms.jvm.additional=-Djdk.tls.rejectClientInitiatedRenegotiation=true
+
+---
+# Neo4j Credentials Secret (template - populate with actual values)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: neo4j-credentials
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: neo4j
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: graph-database
+type: Opaque
+data:
+  # This should be base64 encoded: "neo4j/<password>"
+  # neo4j-auth: <base64-encoded-auth-string>
+  neo4j-auth: ""

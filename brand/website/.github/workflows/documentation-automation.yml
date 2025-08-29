@@ -1,0 +1,435 @@
+name: Documentation Automation
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'src/**/*.ts'
+      - 'src/**/*.tsx'
+      - 'apps/**/*.ts'
+      - 'apps/**/*.tsx'
+      - 'packages/**/*.ts'
+      - 'packages/**/*.tsx'
+      - 'README.md'
+      - 'docs/**'
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+    inputs:
+      doc-type:
+        description: 'Type of documentation to generate'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - api
+          - components
+          - architecture
+          - deployment
+          - changelog
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '8'
+
+jobs:
+  # ========================================
+  # API Documentation
+  # ========================================
+  api-documentation:
+    name: Generate API Documentation
+    runs-on: ubuntu-latest
+    if: github.event.inputs.doc-type == 'all' || github.event.inputs.doc-type == 'api'
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better documentation
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Generate TypeDoc Documentation
+        run: |
+          npx typedoc \
+            --entryPoints "src/index.ts" \
+            --entryPointStrategy expand \
+            --out docs/api \
+            --theme default \
+            --includeVersion \
+            --excludePrivate \
+            --excludeProtected \
+            --excludeInternal \
+            --readme README.md \
+            --plugin typedoc-plugin-markdown \
+            --plugin typedoc-plugin-mermaid
+            
+      - name: Generate OpenAPI Specification
+        run: |
+          # Generate OpenAPI from TypeScript
+          npx @airtasker/spot generate \
+            --contract src/api/contract.ts \
+            --language openapi3 \
+            --generator docs/openapi.json
+            
+          # Generate HTML documentation from OpenAPI
+          npx @redocly/openapi-cli build-docs \
+            docs/openapi.json \
+            -o docs/api-reference.html
+            
+      - name: Generate GraphQL Documentation
+        run: |
+          # Generate GraphQL schema documentation
+          npx graphql-markdown \
+            --schema ./src/graphql/schema.graphql \
+            --output ./docs/graphql.md
+            
+          # Generate GraphQL Voyager visualization
+          npx graphql-voyager-cli \
+            --schema ./src/graphql/schema.graphql \
+            --output ./docs/graphql-voyager.html
+            
+      - name: Upload API Documentation
+        uses: actions/upload-artifact@v3
+        with:
+          name: api-documentation
+          path: |
+            docs/api/
+            docs/openapi.json
+            docs/api-reference.html
+            docs/graphql.md
+            docs/graphql-voyager.html
+          retention-days: 30
+
+  # ========================================
+  # Component Documentation
+  # ========================================
+  component-documentation:
+    name: Generate Component Documentation
+    runs-on: ubuntu-latest
+    if: github.event.inputs.doc-type == 'all' || github.event.inputs.doc-type == 'components'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Generate Storybook Documentation
+        run: |
+          # Build Storybook
+          pnpm run build-storybook -- -o docs/storybook
+          
+          # Generate Storybook docs in markdown
+          npx storybook-to-markdown \
+            --input .storybook \
+            --output docs/components.md
+            
+      - name: Generate React Component Documentation
+        run: |
+          # Use react-docgen for component documentation
+          npx react-docgen src/components --pretty -o docs/components.json
+          
+          # Convert to markdown
+          node scripts/generate-component-docs.js \
+            docs/components.json > docs/components-reference.md
+            
+      - name: Generate Design System Documentation
+        run: |
+          # Extract design tokens
+          node scripts/extract-design-tokens.js > docs/design-tokens.json
+          
+          # Generate design system documentation
+          node scripts/generate-design-docs.js \
+            docs/design-tokens.json > docs/design-system.md
+            
+      - name: Upload Component Documentation
+        uses: actions/upload-artifact@v3
+        with:
+          name: component-documentation
+          path: |
+            docs/storybook/
+            docs/components.md
+            docs/components-reference.md
+            docs/design-system.md
+            docs/design-tokens.json
+          retention-days: 30
+
+  # ========================================
+  # Architecture Documentation
+  # ========================================
+  architecture-documentation:
+    name: Generate Architecture Documentation
+    runs-on: ubuntu-latest
+    if: github.event.inputs.doc-type == 'all' || github.event.inputs.doc-type == 'architecture'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: Install Dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          npm install -g @mermaid-js/mermaid-cli
+          npm install -g @structurizr/cli
+          
+      - name: Generate Architecture Diagrams
+        run: |
+          # Generate Mermaid diagrams
+          for file in docs/architecture/*.mmd; do
+            mmdc -i "$file" -o "${file%.mmd}.svg" -t dark -b transparent
+            mmdc -i "$file" -o "${file%.mmd}.png"
+          done
+          
+      - name: Generate C4 Model Documentation
+        run: |
+          # Generate C4 diagrams using Structurizr
+          structurizr-cli export \
+            -workspace docs/architecture/workspace.dsl \
+            -format mermaid \
+            -output docs/architecture/c4-diagrams
+            
+      - name: Generate Dependency Graphs
+        run: |
+          # Generate dependency graph
+          npx madge --circular --extensions ts,tsx \
+            --image docs/architecture/dependency-graph.svg src/
+            
+          # Generate module dependency tree
+          npx dependency-cruiser src \
+            --output-type dot | dot -T svg > docs/architecture/module-dependencies.svg
+            
+      - name: Generate Database Schema Documentation
+        run: |
+          # Extract database schema
+          node scripts/extract-db-schema.js > docs/architecture/database-schema.md
+          
+          # Generate ERD diagram
+          npx prisma-erd-generator \
+            --input prisma/schema.prisma \
+            --output docs/architecture/erd.svg
+            
+      - name: Upload Architecture Documentation
+        uses: actions/upload-artifact@v3
+        with:
+          name: architecture-documentation
+          path: |
+            docs/architecture/*.svg
+            docs/architecture/*.png
+            docs/architecture/*.md
+            docs/architecture/c4-diagrams/
+          retention-days: 30
+
+  # ========================================
+  # Deployment Documentation
+  # ========================================
+  deployment-documentation:
+    name: Generate Deployment Documentation
+    runs-on: ubuntu-latest
+    if: github.event.inputs.doc-type == 'all' || github.event.inputs.doc-type == 'deployment'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Generate Infrastructure Documentation
+        run: |
+          # Document Terraform infrastructure
+          cd terraform/
+          terraform-docs markdown . > ../docs/deployment/infrastructure.md
+          
+          # Generate Kubernetes documentation
+          cd ../k8s/
+          for file in *.yaml; do
+            echo "## $file" >> ../docs/deployment/kubernetes.md
+            echo '```yaml' >> ../docs/deployment/kubernetes.md
+            cat "$file" >> ../docs/deployment/kubernetes.md
+            echo '```' >> ../docs/deployment/kubernetes.md
+          done
+          
+      - name: Generate Docker Documentation
+        run: |
+          # Document Dockerfiles
+          for dockerfile in $(find . -name "Dockerfile*"); do
+            echo "## $dockerfile" >> docs/deployment/docker.md
+            docker run --rm -i hadolint/hadolint < "$dockerfile" >> docs/deployment/docker-lint.md || true
+          done
+          
+      - name: Generate CI/CD Documentation
+        run: |
+          # Document GitHub Actions workflows
+          node scripts/document-workflows.js \
+            .github/workflows/ > docs/deployment/ci-cd.md
+            
+      - name: Upload Deployment Documentation
+        uses: actions/upload-artifact@v3
+        with:
+          name: deployment-documentation
+          path: |
+            docs/deployment/
+          retention-days: 30
+
+  # ========================================
+  # Changelog Generation
+  # ========================================
+  changelog-generation:
+    name: Generate Changelog
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.event.inputs.doc-type == 'changelog'
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Generate Changelog
+        run: |
+          npx conventional-changelog-cli \
+            -p angular \
+            -i CHANGELOG.md \
+            -s \
+            -r 0
+            
+      - name: Generate Release Notes
+        run: |
+          # Get latest tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          
+          # Generate release notes
+          npx auto-changelog \
+            --starting-version "$LATEST_TAG" \
+            --ending-version HEAD \
+            --output RELEASE_NOTES.md
+            
+      - name: Commit Changelog
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add CHANGELOG.md RELEASE_NOTES.md
+          git commit -m "docs: update changelog [skip ci]" || true
+          git push || true
+
+  # ========================================
+  # Documentation Site Deployment
+  # ========================================
+  deploy-docs:
+    name: Deploy Documentation Site
+    needs: [api-documentation, component-documentation, architecture-documentation, deployment-documentation]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download All Documentation
+        uses: actions/download-artifact@v3
+        with:
+          path: docs-artifacts/
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: Build Documentation Site
+        run: |
+          # Install documentation site generator
+          npm install -g @docusaurus/init
+          
+          # Copy documentation artifacts
+          cp -r docs-artifacts/* docs/
+          
+          # Build documentation site
+          cd docs-site/
+          npm install
+          npm run build
+          
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs-site/build
+          cname: docs.candlefish.ai
+          
+      - name: Deploy to Netlify
+        uses: nwtgck/actions-netlify@v2.0
+        with:
+          publish-dir: './docs-site/build'
+          production-branch: main
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Deploy documentation from GitHub Actions"
+          enable-pull-request-comment: true
+          enable-commit-comment: true
+          overwrites-pull-request-comment: true
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_DOCS_SITE_ID }}
+          
+      - name: Update Documentation Index
+        run: |
+          # Generate documentation index
+          node scripts/generate-docs-index.js docs/ > docs/index.md
+          
+          # Update README with documentation links
+          node scripts/update-readme-docs.js
+
+  # ========================================
+  # Documentation Quality Check
+  # ========================================
+  docs-quality:
+    name: Documentation Quality Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check Markdown Quality
+        run: |
+          # Install markdown linter
+          npm install -g markdownlint-cli
+          
+          # Lint markdown files
+          markdownlint '**/*.md' --ignore node_modules
+          
+      - name: Check for Broken Links
+        run: |
+          # Install link checker
+          npm install -g markdown-link-check
+          
+          # Check for broken links
+          find . -name "*.md" -not -path "./node_modules/*" | \
+            xargs -I {} markdown-link-check {}
+            
+      - name: Check Documentation Coverage
+        run: |
+          # Check if all public functions are documented
+          node scripts/check-doc-coverage.js
+          
+      - name: Spell Check
+        uses: streetsidesoftware/cspell-action@v2
+        with:
+          config: .cspell.json
+          files: |
+            **/*.md
+            **/*.ts
+            **/*.tsx
+          strict: false

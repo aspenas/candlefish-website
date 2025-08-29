@@ -2,8 +2,8 @@ FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies
-RUN apk add --no-cache git ca-certificates
+# Install dependencies including build tools for SQLite
+RUN apk add --no-cache git ca-certificates gcc musl-dev sqlite-dev
 
 # Copy go mod files
 COPY go.mod go.sum ./
@@ -12,8 +12,8 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o main main.go
+# Build the application with CGO enabled for SQLite support
+RUN CGO_ENABLED=1 GOOS=linux go build -a -ldflags '-linkmode external -extldflags "-static"' -o main main.go
 
 # Final stage
 FROM alpine:latest
@@ -28,6 +28,10 @@ COPY --from=builder /app/main ./bin/main
 # Copy database files
 COPY schema.sql ./schema.sql
 COPY migrate.sh ./migrate
+COPY inventory_master.db ./inventory_master.db
+
+# Ensure database has proper permissions
+RUN chmod 666 inventory_master.db
 
 # Copy data import scripts and files
 COPY scripts/setup-production-db.py ./scripts/setup-production-db.py

@@ -1,0 +1,116 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: inventory-ingress
+  namespace: inventory-system
+  labels:
+    app: inventory-system
+  annotations:
+    # AWS Load Balancer Controller
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:ACCOUNT:certificate/CERT-ID
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    
+    # Security headers
+    alb.ingress.kubernetes.io/actions.ssl-redirect: |
+      {
+        "type": "redirect",
+        "redirectConfig": {
+          "protocol": "HTTPS",
+          "port": "443",
+          "statusCode": "HTTP_301"
+        }
+      }
+    
+    # Health check configuration
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: '30'
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: '5'
+    alb.ingress.kubernetes.io/healthy-threshold-count: '2'
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: '3'
+    
+    # Rate limiting (optional with AWS WAF)
+    alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:us-east-1:ACCOUNT:regional/webacl/inventory-waf/WAF-ID
+spec:
+  rules:
+  - host: api.inventory.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ssl-redirect
+            port:
+              name: use-annotation
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: backend-service
+            port:
+              number: 8080
+  - host: inventory.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ssl-redirect
+            port:
+              name: use-annotation
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-service
+            port:
+              number: 80
+  tls:
+  - hosts:
+    - inventory.example.com
+    - api.inventory.example.com
+---
+# Internal ingress for WebSocket connections
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: websocket-ingress
+  namespace: inventory-system
+  labels:
+    app: websocket
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:ACCOUNT:certificate/CERT-ID
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    
+    # WebSocket specific configuration
+    alb.ingress.kubernetes.io/backend-protocol-version: HTTP/1.1
+    alb.ingress.kubernetes.io/connection-idle-timeout: '3600'
+    
+    # Sticky sessions for WebSocket
+    alb.ingress.kubernetes.io/target-group-attributes: |
+      stickiness.enabled=true,
+      stickiness.lb_cookie.duration_seconds=86400
+spec:
+  rules:
+  - host: ws.inventory.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: websocket-service
+            port:
+              number: 8081
+  tls:
+  - hosts:
+    - ws.inventory.example.com

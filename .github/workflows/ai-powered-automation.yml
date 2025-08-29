@@ -1,0 +1,753 @@
+name: AI-Powered Automation
+# Intelligent automation using prompt engineering system
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Automation task to perform'
+        required: true
+        type: choice
+        options:
+          - code-review
+          - generate-tests
+          - update-documentation
+          - security-scan
+          - performance-analysis
+          - error-diagnosis
+          - refactor-suggestions
+      target:
+        description: 'Target (PR number, branch, or file path)'
+        required: true
+        type: string
+      model:
+        description: 'AI model to use'
+        required: false
+        default: 'claude-opus-4-1-20250805'
+        type: choice
+        options:
+          - claude-opus-4-1-20250805
+          - claude-3-5-sonnet
+          - gpt-4o
+          - gpt-4-turbo
+      options:
+        description: 'Additional options (JSON)'
+        required: false
+        type: string
+        default: '{}'
+
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - '**.ts'
+      - '**.tsx'
+      - '**.js'
+      - '**.jsx'
+      - '**.py'
+
+  workflow_run:
+    workflows: ["Candlefish Orchestrator (Secure)"]
+    types: [completed]
+
+  schedule:
+    # Daily security and documentation updates
+    - cron: '0 2 * * *'
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  checks: write
+  security-events: write
+
+env:
+  NODE_VERSION: '20.11.0'
+  PROMPT_ENGINE_VERSION: '1.0.0'
+  MAX_TOKENS: 8000
+  TEMPERATURE: 0.3
+
+jobs:
+  # ============================================
+  # Stage 1: Context Collection
+  # ============================================
+  collect-context:
+    name: 📊 Collect Context
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      context: ${{ steps.context.outputs.data }}
+      task_type: ${{ steps.determine.outputs.task }}
+      cache_key: ${{ steps.cache.outputs.key }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine task type
+        id: determine
+        run: |
+          # Auto-determine task if not specified
+          TASK="${{ github.event.inputs.task }}"
+          
+          if [[ -z "$TASK" ]]; then
+            if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+              TASK="code-review"
+            elif [[ "${{ github.event_name }}" == "push" ]]; then
+              TASK="update-documentation"
+            elif [[ "${{ github.event_name }}" == "schedule" ]]; then
+              TASK="security-scan"
+            else
+              TASK="code-review"
+            fi
+          fi
+          
+          echo "task=$TASK" >> $GITHUB_OUTPUT
+          echo "Task determined: $TASK"
+
+      - name: Collect GitHub context
+        id: context
+        run: |
+          # Collect comprehensive context
+          CONTEXT=$(cat <<EOF
+          {
+            "repository": "${{ github.repository }}",
+            "branch": "${{ github.ref_name }}",
+            "commit": "${{ github.sha }}",
+            "actor": "${{ github.actor }}",
+            "event": "${{ github.event_name }}",
+            "workflow": "${{ github.workflow }}",
+            "run_id": "${{ github.run_id }}",
+            "pull_request": "${{ github.event.pull_request.number }}",
+            "base_branch": "${{ github.event.pull_request.base.ref }}",
+            "head_branch": "${{ github.event.pull_request.head.ref }}",
+            "changed_files": []
+          }
+          EOF
+          )
+          
+          # Get changed files
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            CHANGED_FILES=$(git diff --name-status ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} | jq -Rs '.')
+          else
+            CHANGED_FILES=$(git diff --name-status HEAD~1..HEAD | jq -Rs '.')
+          fi
+          
+          # Add to context
+          CONTEXT=$(echo "$CONTEXT" | jq --argjson files "$CHANGED_FILES" '.changed_files = $files')
+          
+          # Output context
+          echo "data=$(echo $CONTEXT | jq -c)" >> $GITHUB_OUTPUT
+
+      - name: Generate cache key
+        id: cache
+        run: |
+          KEY="${{ github.event_name }}-${{ github.sha }}-${{ steps.determine.outputs.task }}"
+          echo "key=$KEY" >> $GITHUB_OUTPUT
+
+  # ============================================
+  # Stage 2: AI Code Review
+  # ============================================
+  ai-code-review:
+    name: 🤖 AI Code Review
+    needs: collect-context
+    if: needs.collect-context.outputs.task_type == 'code-review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: brand/website/package-lock.json
+
+      - name: Install dependencies
+        working-directory: brand/website
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Get diff
+        id: diff
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git diff ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} > diff.patch
+          else
+            git diff HEAD~1..HEAD > diff.patch
+          fi
+          
+          # Limit diff size
+          head -c 50000 diff.patch > limited_diff.patch
+          
+          # Base64 encode for passing to Node
+          DIFF_CONTENT=$(base64 -w 0 limited_diff.patch)
+          echo "content=$DIFF_CONTENT" >> $GITHUB_OUTPUT
+
+      - name: Run AI code review
+        working-directory: brand/website
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_CONTEXT: ${{ needs.collect-context.outputs.context }}
+          DIFF_CONTENT: ${{ steps.diff.outputs.content }}
+          MODEL: ${{ github.event.inputs.model || 'claude-opus-4-1-20250805' }}
+        run: |
+          node -e "
+          const { PromptManager } = require('./lib/prompt-engineering');
+          const fs = require('fs');
+          
+          async function runReview() {
+            const manager = new PromptManager();
+            const context = JSON.parse(process.env.GITHUB_CONTEXT);
+            const diff = Buffer.from(process.env.DIFF_CONTENT, 'base64').toString();
+            
+            const response = await manager.execute({
+              templateId: 'code-review-automated',
+              variables: {
+                repository: context.repository,
+                branch: context.branch,
+                pullRequestNumber: context.pull_request,
+                author: context.actor,
+                files: [],
+                codeChanges: diff
+              },
+              modelConfig: {
+                model: process.env.MODEL
+              },
+              options: {
+                cache: true,
+                trackMetrics: true
+              }
+            });
+            
+            // Save review
+            fs.writeFileSync('review.md', response.response);
+            
+            // Output metrics
+            console.log('Tokens used:', response.tokensUsed.total);
+            console.log('Cost: $', response.cost.toFixed(4));
+            console.log('Latency:', response.latency, 'ms');
+          }
+          
+          runReview().catch(console.error);
+          "
+
+      - name: Post review as PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const review = fs.readFileSync('brand/website/review.md', 'utf8');
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: `## 🤖 AI Code Review\n\n${review}\n\n---\n*Generated by AI-Powered Automation workflow*`
+            });
+
+  # ============================================
+  # Stage 3: Test Generation
+  # ============================================
+  ai-test-generation:
+    name: 🧪 AI Test Generation
+    needs: collect-context
+    if: needs.collect-context.outputs.task_type == 'generate-tests'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: brand/website/package-lock.json
+
+      - name: Install dependencies
+        working-directory: brand/website
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Identify files needing tests
+        id: files
+        run: |
+          # Find TypeScript/JavaScript files without corresponding tests
+          FILES_TO_TEST=$(find brand/website -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" | 
+            grep -v node_modules | 
+            grep -v __tests__ | 
+            grep -v .test. | 
+            grep -v .spec. | 
+            head -10 | 
+            jq -Rs 'split("\n") | map(select(. != ""))')
+          
+          echo "files=$FILES_TO_TEST" >> $GITHUB_OUTPUT
+
+      - name: Generate tests for each file
+        working-directory: brand/website
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          FILES: ${{ steps.files.outputs.files }}
+          MODEL: ${{ github.event.inputs.model || 'claude-opus-4-1-20250805' }}
+        run: |
+          node -e "
+          const { PromptManager } = require('./lib/prompt-engineering');
+          const fs = require('fs');
+          const path = require('path');
+          
+          async function generateTests() {
+            const manager = new PromptManager();
+            const files = JSON.parse(process.env.FILES);
+            
+            for (const file of files) {
+              if (!fs.existsSync(file)) continue;
+              
+              const code = fs.readFileSync(file, 'utf8');
+              const ext = path.extname(file);
+              const language = ext === '.py' ? 'python' : 'typescript';
+              
+              const response = await manager.execute({
+                templateId: 'test-generation-unit',
+                variables: {
+                  filePath: file,
+                  code: code,
+                  language: language,
+                  framework: 'jest',
+                  testFramework: 'jest',
+                  coverageTarget: 80
+                },
+                modelConfig: {
+                  model: process.env.MODEL
+                }
+              });
+              
+              // Save generated test
+              const testFile = file.replace(/\.(ts|tsx|js|jsx)$/, '.test.$1');
+              fs.writeFileSync(testFile, response.response);
+              console.log('Generated test for:', file);
+            }
+          }
+          
+          generateTests().catch(console.error);
+          "
+
+      - name: Run generated tests
+        working-directory: brand/website
+        continue-on-error: true
+        run: npm test -- --passWithNoTests
+
+      - name: Commit generated tests
+        if: success()
+        run: |
+          git config --global user.name "AI Test Generator"
+          git config --global user.email "ai@candlefish.ai"
+          git add -A
+          git diff --staged --quiet || git commit -m "feat: Add AI-generated tests
+
+          Generated by AI-Powered Automation workflow
+          Model: ${{ github.event.inputs.model || 'claude-opus-4-1-20250805' }}"
+          
+          # Create PR if on main/develop
+          if [[ "${{ github.ref_name }}" == "main" ]] || [[ "${{ github.ref_name }}" == "develop" ]]; then
+            BRANCH="ai-tests-$(date +%Y%m%d-%H%M%S)"
+            git checkout -b $BRANCH
+            git push origin $BRANCH
+            
+            gh pr create \
+              --title "🧪 AI-Generated Tests" \
+              --body "This PR contains automatically generated tests using AI.
+              
+              ## Generated Tests
+              - Model: ${{ github.event.inputs.model || 'claude-opus-4-1-20250805' }}
+              - Files tested: See changes
+              
+              Please review the generated tests before merging." \
+              --base ${{ github.ref_name }}
+          fi
+
+  # ============================================
+  # Stage 4: Security Analysis
+  # ============================================
+  ai-security-scan:
+    name: 🔒 AI Security Analysis
+    needs: collect-context
+    if: |
+      needs.collect-context.outputs.task_type == 'security-scan' ||
+      github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: brand/website/package-lock.json
+
+      - name: Install dependencies
+        working-directory: brand/website
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Collect security context
+        id: security
+        run: |
+          # Get package dependencies
+          DEPS=$(cat brand/website/package.json | jq -c)
+          echo "dependencies=$DEPS" >> $GITHUB_OUTPUT
+          
+          # Get environment variables (sanitized)
+          ENV_VARS=$(env | grep -E '^(NODE_|NPM_|CI_)' | jq -Rs)
+          echo "env_vars=$ENV_VARS" >> $GITHUB_OUTPUT
+
+      - name: Run AI security analysis
+        working-directory: brand/website
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MODEL: ${{ github.event.inputs.model || 'claude-opus-4-1-20250805' }}
+          DEPS: ${{ steps.security.outputs.dependencies }}
+          TARGET: ${{ github.event.inputs.target || '.' }}
+        run: |
+          node -e "
+          const { PromptManager } = require('./lib/prompt-engineering');
+          const fs = require('fs');
+          const path = require('path');
+          
+          async function securityScan() {
+            const manager = new PromptManager();
+            const target = process.env.TARGET;
+            
+            // Read target code
+            let code = '';
+            if (fs.statSync(target).isDirectory()) {
+              // Scan multiple files
+              const files = fs.readdirSync(target)
+                .filter(f => /\.(ts|tsx|js|jsx)$/.test(f))
+                .slice(0, 10);
+              
+              for (const file of files) {
+                code += fs.readFileSync(path.join(target, file), 'utf8') + '\n\n';
+              }
+            } else {
+              code = fs.readFileSync(target, 'utf8');
+            }
+            
+            const response = await manager.execute({
+              templateId: 'security-vulnerability-scanner',
+              variables: {
+                applicationType: 'web',
+                environment: 'production',
+                language: 'typescript',
+                framework: 'nextjs',
+                authMethod: 'jwt',
+                code: code,
+                dependencies: process.env.DEPS,
+                complianceStandards: ['OWASP', 'PCI-DSS']
+              },
+              modelConfig: {
+                model: process.env.MODEL,
+                maxTokens: 10000
+              }
+            });
+            
+            // Save report
+            fs.writeFileSync('security-report.yaml', response.response);
+            
+            // Parse and check for critical issues
+            const report = require('js-yaml').load(response.response);
+            if (report.securityReport.summary.riskLevel === 'Critical') {
+              console.error('CRITICAL security issues found!');
+              process.exit(1);
+            }
+          }
+          
+          securityScan().catch(console.error);
+          "
+
+      - name: Upload security report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: brand/website/security-report.yaml
+          retention-days: 30
+
+      - name: Create security issue if critical
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Critical Security Issues Detected',
+              body: `AI security analysis has detected critical vulnerabilities.
+              
+              **Workflow Run:** [#${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+              **Report:** See artifacts for detailed security report
+              
+              Immediate action required.`,
+              labels: ['security', 'critical', 'ai-detected']
+            });
+
+  # ============================================
+  # Stage 5: Documentation Generation
+  # ============================================
+  ai-documentation:
+    name: 📚 AI Documentation Generation
+    needs: collect-context
+    if: needs.collect-context.outputs.task_type == 'update-documentation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: brand/website/package-lock.json
+
+      - name: Install dependencies
+        working-directory: brand/website
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Generate documentation
+        working-directory: brand/website
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MODEL: ${{ github.event.inputs.model || 'claude-opus-4-1-20250805' }}
+          TARGET: ${{ github.event.inputs.target || 'lib/prompt-engineering' }}
+        run: |
+          node -e "
+          const { PromptManager } = require('./lib/prompt-engineering');
+          const fs = require('fs');
+          const path = require('path');
+          
+          async function generateDocs() {
+            const manager = new PromptManager();
+            const target = process.env.TARGET;
+            
+            // Read target code
+            let code = '';
+            if (fs.existsSync(target) && fs.statSync(target).isDirectory()) {
+              const files = fs.readdirSync(target)
+                .filter(f => /\.(ts|tsx|js|jsx)$/.test(f));
+              
+              for (const file of files) {
+                const content = fs.readFileSync(path.join(target, file), 'utf8');
+                code += \`// File: \${file}\n\${content}\n\n\`;
+              }
+            } else if (fs.existsSync(target)) {
+              code = fs.readFileSync(target, 'utf8');
+            }
+            
+            const response = await manager.execute({
+              templateId: 'documentation-auto-generator',
+              variables: {
+                projectName: path.basename(target),
+                documentationType: 'library',
+                audience: 'developers',
+                outputFormat: 'markdown',
+                language: 'typescript',
+                code: code
+              },
+              modelConfig: {
+                model: process.env.MODEL,
+                maxTokens: 12000
+              }
+            });
+            
+            // Save documentation
+            const docPath = path.join(path.dirname(target), 'README.md');
+            fs.writeFileSync(docPath, response.response);
+            console.log('Documentation generated:', docPath);
+          }
+          
+          generateDocs().catch(console.error);
+          "
+
+      - name: Commit documentation
+        run: |
+          git config --global user.name "AI Documentation Bot"
+          git config --global user.email "ai-docs@candlefish.ai"
+          git add -A
+          git diff --staged --quiet || git commit -m "docs: Update AI-generated documentation
+
+          Generated by AI-Powered Automation workflow
+          Model: ${{ github.event.inputs.model || 'claude-opus-4-1-20250805' }}"
+          
+          # Push if not a PR
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            git push
+          fi
+
+  # ============================================
+  # Stage 6: Performance Analysis
+  # ============================================
+  ai-performance-analysis:
+    name: ⚡ AI Performance Analysis
+    needs: collect-context
+    if: needs.collect-context.outputs.task_type == 'performance-analysis'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Run performance profiling
+        working-directory: brand/website
+        run: |
+          npm ci --prefer-offline --no-audit
+          npm run build
+          
+          # Collect performance metrics
+          npx lighthouse https://localhost:3000 \
+            --output=json \
+            --output-path=./lighthouse-report.json \
+            --chrome-flags="--headless" || true
+
+      - name: Analyze with AI
+        working-directory: brand/website
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MODEL: ${{ github.event.inputs.model || 'claude-opus-4-1-20250805' }}
+        run: |
+          node -e "
+          const { PromptManager } = require('./lib/prompt-engineering');
+          const fs = require('fs');
+          
+          async function analyzePerformance() {
+            const manager = new PromptManager();
+            let metrics = {};
+            
+            try {
+              metrics = JSON.parse(fs.readFileSync('lighthouse-report.json', 'utf8'));
+            } catch (e) {
+              console.log('No lighthouse report found');
+            }
+            
+            const response = await manager.execute({
+              templateId: 'performance-optimization',
+              variables: {
+                metrics: JSON.stringify(metrics, null, 2),
+                target: process.env.TARGET || 'website'
+              },
+              modelConfig: {
+                model: process.env.MODEL
+              }
+            });
+            
+            fs.writeFileSync('performance-analysis.md', response.response);
+          }
+          
+          analyzePerformance().catch(console.error);
+          "
+
+      - name: Upload performance report
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-analysis
+          path: |
+            brand/website/lighthouse-report.json
+            brand/website/performance-analysis.md
+          retention-days: 30
+
+  # ============================================
+  # Stage 7: Metrics and Reporting
+  # ============================================
+  collect-metrics:
+    name: 📈 Collect AI Metrics
+    needs: [
+      ai-code-review,
+      ai-test-generation,
+      ai-security-scan,
+      ai-documentation,
+      ai-performance-analysis
+    ]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Collect workflow metrics
+        run: |
+          cat <<EOF > ai-metrics.json
+          {
+            "workflow_run": "${{ github.run_id }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "jobs": {
+              "code_review": "${{ needs.ai-code-review.result }}",
+              "test_generation": "${{ needs.ai-test-generation.result }}",
+              "security_scan": "${{ needs.ai-security-scan.result }}",
+              "documentation": "${{ needs.ai-documentation.result }}",
+              "performance": "${{ needs.ai-performance-analysis.result }}"
+            },
+            "model_used": "${{ github.event.inputs.model || 'claude-opus-4-1-20250805' }}",
+            "repository": "${{ github.repository }}",
+            "branch": "${{ github.ref_name }}",
+            "actor": "${{ github.actor }}"
+          }
+          EOF
+
+      - name: Send metrics to monitoring
+        continue-on-error: true
+        run: |
+          # Send to monitoring system (example)
+          curl -X POST https://metrics.candlefish.ai/api/ai-automation \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.METRICS_API_KEY }}" \
+            -d @ai-metrics.json || true
+
+      - name: Create summary
+        run: |
+          cat <<EOF >> $GITHUB_STEP_SUMMARY
+          # AI-Powered Automation Summary
+          
+          ## Execution Results
+          | Task | Status |
+          |------|--------|
+          | Code Review | ${{ needs.ai-code-review.result }} |
+          | Test Generation | ${{ needs.ai-test-generation.result }} |
+          | Security Scan | ${{ needs.ai-security-scan.result }} |
+          | Documentation | ${{ needs.ai-documentation.result }} |
+          | Performance | ${{ needs.ai-performance-analysis.result }} |
+          
+          ## Configuration
+          - **Model:** ${{ github.event.inputs.model || 'claude-opus-4-1-20250805' }}
+          - **Workflow Run:** [#${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          - **Triggered by:** ${{ github.actor }}
+          
+          ## Next Steps
+          - Review generated artifacts in the workflow run
+          - Check any created PRs or issues
+          - Monitor AI metrics dashboard for trends
+          EOF

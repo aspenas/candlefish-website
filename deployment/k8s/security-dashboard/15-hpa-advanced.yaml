@@ -1,0 +1,400 @@
+# Advanced Horizontal Pod Autoscaler Configuration
+# Multi-metric scaling with custom metrics and predictive scaling
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: security-dashboard-backend-hpa
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard-backend
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: autoscaling
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: security-dashboard-backend
+  minReplicas: 3
+  maxReplicas: 50
+  metrics:
+  # CPU-based scaling
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  
+  # Memory-based scaling
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  
+  # Custom metrics scaling based on request rate
+  - type: Pods
+    pods:
+      metric:
+        name: http_requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "30"
+  
+  # External metrics scaling based on queue depth
+  - type: External
+    external:
+      metric:
+        name: security_event_queue_depth
+        selector:
+          matchLabels:
+            queue: "security-events"
+      target:
+        type: Value
+        value: "100"
+  
+  # Scaling behavior configuration
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+      - type: Pods
+        value: 2
+        periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 30
+      - type: Pods
+        value: 4
+        periodSeconds: 30
+      selectPolicy: Max
+
+---
+# Horizontal Pod Autoscaler for Frontend
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: security-dashboard-frontend-hpa
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard-frontend
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: autoscaling
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: security-dashboard-frontend
+  minReplicas: 2
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 20
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 30
+
+---
+# Horizontal Pod Autoscaler for WebSocket Service
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: websocket-service-hpa
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: websocket-service
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: autoscaling
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: websocket-service
+  minReplicas: 2
+  maxReplicas: 15
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 60
+  - type: Pods
+    pods:
+      metric:
+        name: websocket_connections_active
+      target:
+        type: AverageValue
+        averageValue: "500"
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 600  # Longer stabilization for WebSocket
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 120
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+      - type: Pods
+        value: 3
+        periodSeconds: 30
+
+---
+# Vertical Pod Autoscaler for Database Workloads
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: postgresql-timescale-vpa
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: postgresql-timescale
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: autoscaling
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: postgresql-timescale
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+    - containerName: postgresql
+      minAllowed:
+        cpu: 500m
+        memory: 1Gi
+      maxAllowed:
+        cpu: 4
+        memory: 8Gi
+      controlledResources: ["cpu", "memory"]
+      controlledValues: RequestsAndLimits
+
+---
+# Vertical Pod Autoscaler for Redis
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: redis-cluster-vpa
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: redis-cluster
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: autoscaling
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: redis-cluster
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+    - containerName: redis
+      minAllowed:
+        cpu: 250m
+        memory: 512Mi
+      maxAllowed:
+        cpu: 2
+        memory: 4Gi
+      controlledResources: ["cpu", "memory"]
+
+---
+# Cluster Autoscaler Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-autoscaler-status
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: cluster-autoscaler-config
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: autoscaling
+data:
+  nodes.max: "100"
+  nodes.min: "3"
+  scale-down-delay-after-add: "10m"
+  scale-down-delay-after-delete: "10s"
+  scale-down-delay-after-failure: "3m"
+  scale-down-unneeded-time: "10m"
+  scale-down-utilization-threshold: "0.5"
+  skip-nodes-with-local-storage: "false"
+  skip-nodes-with-system-pods: "false"
+
+---
+# Pod Disruption Budget for High Availability
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: security-dashboard-backend-pdb
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard-backend
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: availability
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: security-dashboard-backend
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: security-dashboard-frontend-pdb
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard-frontend
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: availability
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: security-dashboard-frontend
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: postgresql-timescale-pdb
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: postgresql-timescale
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: availability
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgresql-timescale
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: redis-cluster-pdb
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: redis-cluster
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: availability
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: redis-cluster
+
+---
+# KEDA ScaledObject for event-driven autoscaling
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: security-event-processor-scaler
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-event-processor
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: event-driven-scaling
+spec:
+  scaleTargetRef:
+    name: security-dashboard-backend
+  pollingInterval: 15
+  cooldownPeriod: 300
+  idleReplicaCount: 2
+  minReplicaCount: 2
+  maxReplicaCount: 50
+  triggers:
+  # Scale based on Redis queue depth
+  - type: redis
+    metadata:
+      address: redis.security-dashboard.svc.cluster.local:6379
+      listName: security_events
+      listLength: "10"
+      passwordFromEnv: REDIS_PASSWORD
+  # Scale based on Prometheus metrics
+  - type: prometheus
+    metadata:
+      serverAddress: http://prometheus.monitoring.svc.cluster.local:9090
+      metricName: security_event_processing_lag
+      threshold: "30"
+      query: avg(security_event_processing_lag_seconds{namespace="security-dashboard"})
+  # Scale based on PostgreSQL connection count
+  - type: postgresql
+    metadata:
+      connection: postgresql://security_user:password@postgresql-timescale.security-dashboard.svc.cluster.local:5432/security_dashboard
+      query: SELECT COUNT(*) FROM pg_stat_activity WHERE state = 'active'
+      targetQueryValue: "20"
+
+---
+# Custom Resource for Predictive Autoscaling
+apiVersion: autoscaling.candlefish.ai/v1
+kind: PredictiveAutoscaler
+metadata:
+  name: security-dashboard-predictive
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: predictive-scaling
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: security-dashboard-backend
+  prediction:
+    algorithm: "linear-regression"
+    lookbackWindow: "7d"
+    predictionWindow: "30m"
+    metrics:
+    - name: "cpu_utilization"
+      weight: 0.4
+    - name: "memory_utilization"
+      weight: 0.3
+    - name: "request_rate"
+      weight: 0.3
+  scaling:
+    minReplicas: 3
+    maxReplicas: 50
+    targetUtilization: 70
+    scaleUpCooldown: "2m"
+    scaleDownCooldown: "5m"
+  schedule:
+  # Scheduled scaling for known high-traffic periods
+  - name: "business-hours"
+    cron: "0 9 * * 1-5"  # 9 AM Monday-Friday
+    minReplicas: 10
+    duration: "9h"
+  - name: "maintenance-window"
+    cron: "0 2 * * 0"    # 2 AM Sunday
+    minReplicas: 2
+    duration: "2h"

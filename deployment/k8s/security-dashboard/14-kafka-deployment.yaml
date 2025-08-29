@@ -1,0 +1,850 @@
+# Apache Kafka Deployment for Security Dashboard
+# Event streaming platform for real-time security event processing
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kafka-system
+  labels:
+    name: kafka-system
+    tier: infrastructure
+
+---
+# Zookeeper for Kafka coordination
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zookeeper
+  namespace: kafka-system
+  labels:
+    app.kubernetes.io/name: zookeeper
+    app.kubernetes.io/part-of: kafka-cluster
+    app.kubernetes.io/component: coordination
+spec:
+  serviceName: zookeeper-headless
+  replicas: 3
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zookeeper
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: zookeeper
+        app.kubernetes.io/part-of: kafka-cluster
+        app.kubernetes.io/component: coordination
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: zookeeper
+        image: confluentinc/cp-zookeeper:7.5.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: client
+          containerPort: 2181
+          protocol: TCP
+        - name: follower
+          containerPort: 2888
+          protocol: TCP
+        - name: election
+          containerPort: 3888
+          protocol: TCP
+        env:
+        - name: ZOOKEEPER_CLIENT_PORT
+          value: "2181"
+        - name: ZOOKEEPER_TICK_TIME
+          value: "2000"
+        - name: ZOOKEEPER_INIT_LIMIT
+          value: "5"
+        - name: ZOOKEEPER_SYNC_LIMIT
+          value: "2"
+        - name: ZOOKEEPER_SERVERS
+          value: "zookeeper-0.zookeeper-headless.kafka-system.svc.cluster.local:2888:3888;zookeeper-1.zookeeper-headless.kafka-system.svc.cluster.local:2888:3888;zookeeper-2.zookeeper-headless.kafka-system.svc.cluster.local:2888:3888"
+        - name: ZOOKEEPER_SERVER_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: ZOOKEEPER_DATA_DIR
+          value: /var/lib/zookeeper/data
+        - name: ZOOKEEPER_DATA_LOG_DIR
+          value: /var/lib/zookeeper/log
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "100m"
+            ephemeral-storage: "1Gi"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+            ephemeral-storage: "5Gi"
+        livenessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - "echo ruok | nc localhost 2181 | grep imok"
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - "echo ruok | nc localhost 2181 | grep imok"
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        volumeMounts:
+        - name: zookeeper-data
+          mountPath: /var/lib/zookeeper/data
+        - name: zookeeper-log
+          mountPath: /var/lib/zookeeper/log
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - zookeeper
+              topologyKey: kubernetes.io/hostname
+  volumeClaimTemplates:
+  - metadata:
+      name: zookeeper-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: gp3-encrypted
+      resources:
+        requests:
+          storage: 10Gi
+  - metadata:
+      name: zookeeper-log
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: gp3-encrypted
+      resources:
+        requests:
+          storage: 5Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper
+  namespace: kafka-system
+  labels:
+    app.kubernetes.io/name: zookeeper
+    app.kubernetes.io/part-of: kafka-cluster
+    app.kubernetes.io/component: coordination
+spec:
+  type: ClusterIP
+  ports:
+  - name: client
+    port: 2181
+    targetPort: client
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: zookeeper
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper-headless
+  namespace: kafka-system
+  labels:
+    app.kubernetes.io/name: zookeeper
+    app.kubernetes.io/part-of: kafka-cluster
+    app.kubernetes.io/component: coordination
+spec:
+  clusterIP: None
+  ports:
+  - name: client
+    port: 2181
+    targetPort: client
+    protocol: TCP
+  - name: follower
+    port: 2888
+    targetPort: follower
+    protocol: TCP
+  - name: election
+    port: 3888
+    targetPort: election
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: zookeeper
+
+---
+# Kafka Brokers
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka
+  namespace: kafka-system
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/part-of: kafka-cluster
+    app.kubernetes.io/component: broker
+spec:
+  serviceName: kafka-headless
+  replicas: 3
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      partition: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kafka
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kafka
+        app.kubernetes.io/part-of: kafka-cluster
+        app.kubernetes.io/component: broker
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "7071"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: kafka
+        image: confluentinc/cp-kafka:7.5.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: internal
+          containerPort: 9092
+          protocol: TCP
+        - name: external
+          containerPort: 9094
+          protocol: TCP
+        - name: jmx
+          containerPort: 7071
+          protocol: TCP
+        env:
+        # Broker identification
+        - name: KAFKA_BROKER_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: KAFKA_BROKER_RACK
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['topology.kubernetes.io/zone']
+        
+        # Zookeeper connection
+        - name: KAFKA_ZOOKEEPER_CONNECT
+          value: "zookeeper:2181"
+        - name: KAFKA_ZOOKEEPER_CONNECTION_TIMEOUT_MS
+          value: "6000"
+        
+        # Listeners and advertised listeners
+        - name: KAFKA_LISTENERS
+          value: "INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094"
+        - name: KAFKA_ADVERTISED_LISTENERS
+          value: "INTERNAL://$(hostname -f):9092,EXTERNAL://$(hostname -f):9094"
+        - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+          value: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
+        - name: KAFKA_INTER_BROKER_LISTENER_NAME
+          value: "INTERNAL"
+        
+        # Topic defaults
+        - name: KAFKA_DEFAULT_REPLICATION_FACTOR
+          value: "3"
+        - name: KAFKA_MIN_INSYNC_REPLICAS
+          value: "2"
+        - name: KAFKA_NUM_PARTITIONS
+          value: "8"
+        - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+          value: "3"
+        - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+          value: "3"
+        - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+          value: "2"
+        
+        # Performance tuning
+        - name: KAFKA_NUM_NETWORK_THREADS
+          value: "8"
+        - name: KAFKA_NUM_IO_THREADS
+          value: "16"
+        - name: KAFKA_SOCKET_SEND_BUFFER_BYTES
+          value: "102400"
+        - name: KAFKA_SOCKET_RECEIVE_BUFFER_BYTES
+          value: "102400"
+        - name: KAFKA_SOCKET_REQUEST_MAX_BYTES
+          value: "104857600"
+        
+        # Log settings
+        - name: KAFKA_LOG_DIRS
+          value: "/var/lib/kafka/data"
+        - name: KAFKA_LOG_RETENTION_HOURS
+          value: "168"
+        - name: KAFKA_LOG_RETENTION_BYTES
+          value: "1073741824"
+        - name: KAFKA_LOG_SEGMENT_BYTES
+          value: "1073741824"
+        - name: KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS
+          value: "300000"
+        - name: KAFKA_LOG_CLEANUP_POLICY
+          value: "delete"
+        
+        # Compression and batching
+        - name: KAFKA_COMPRESSION_TYPE
+          value: "snappy"
+        - name: KAFKA_BATCH_SIZE
+          value: "16384"
+        - name: KAFKA_LINGER_MS
+          value: "5"
+        
+        # Memory settings
+        - name: KAFKA_HEAP_OPTS
+          value: "-Xmx2G -Xms2G"
+        - name: KAFKA_JVM_PERFORMANCE_OPTS
+          value: "-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent -Djava.awt.headless=true"
+        
+        # JMX and monitoring
+        - name: KAFKA_JMX_HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: KAFKA_JMX_PORT
+          value: "7071"
+        - name: KAFKA_JMX_OPTS
+          value: "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=$(KAFKA_JMX_HOSTNAME) -Dcom.sun.management.jmxremote.rmi.port=7071"
+        
+        # Security
+        - name: KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND
+          value: "true"
+        - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+          value: "false"
+        
+        resources:
+          requests:
+            memory: "3Gi"
+            cpu: "500m"
+            ephemeral-storage: "1Gi"
+          limits:
+            memory: "6Gi"
+            cpu: "2000m"
+            ephemeral-storage: "10Gi"
+        
+        livenessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - "kafka-broker-api-versions --bootstrap-server localhost:9092"
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        
+        readinessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - "kafka-broker-api-versions --bootstrap-server localhost:9092"
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        startupProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - "kafka-broker-api-versions --bootstrap-server localhost:9092"
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 30
+        
+        volumeMounts:
+        - name: kafka-data
+          mountPath: /var/lib/kafka/data
+        - name: kafka-logs
+          mountPath: /var/lib/kafka/logs
+        
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+      
+      # JMX Exporter for Prometheus monitoring
+      - name: jmx-exporter
+        image: bitnami/jmx-exporter:0.19.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: metrics
+          containerPort: 8080
+          protocol: TCP
+        env:
+        - name: JMX_EXPORTER_CONFIG_FILE
+          value: "/etc/jmx-exporter/config.yml"
+        - name: JMX_EXPORTER_PORT
+          value: "8080"
+        - name: JMX_TARGET_HOST
+          value: "localhost"
+        - name: JMX_TARGET_PORT
+          value: "7071"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "100m"
+        volumeMounts:
+        - name: jmx-config
+          mountPath: /etc/jmx-exporter
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+      
+      volumes:
+      - name: jmx-config
+        configMap:
+          name: kafka-jmx-config
+      
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - kafka
+              topologyKey: kubernetes.io/hostname
+  
+  volumeClaimTemplates:
+  - metadata:
+      name: kafka-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: gp3-encrypted
+      resources:
+        requests:
+          storage: 100Gi
+  - metadata:
+      name: kafka-logs
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: gp3-encrypted
+      resources:
+        requests:
+          storage: 10Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: kafka-system
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/part-of: kafka-cluster
+    app.kubernetes.io/component: broker
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+  - name: internal
+    port: 9092
+    targetPort: internal
+    protocol: TCP
+  - name: external
+    port: 9094
+    targetPort: external
+    protocol: TCP
+  - name: jmx
+    port: 7071
+    targetPort: jmx
+    protocol: TCP
+  - name: metrics
+    port: 8080
+    targetPort: metrics
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: kafka
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-headless
+  namespace: kafka-system
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/part-of: kafka-cluster
+    app.kubernetes.io/component: broker
+spec:
+  clusterIP: None
+  ports:
+  - name: internal
+    port: 9092
+    targetPort: internal
+    protocol: TCP
+  - name: external
+    port: 9094
+    targetPort: external
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: kafka
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-jmx-config
+  namespace: kafka-system
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/part-of: kafka-cluster
+    app.kubernetes.io/component: monitoring
+data:
+  config.yml: |
+    rules:
+    # Kafka broker metrics
+    - pattern: kafka.server<type=(.+), name=(.+)><>Value
+      name: kafka_server_$1_$2
+      type: GAUGE
+      
+    # Kafka network metrics
+    - pattern: kafka.network<type=(.+), name=(.+)><>Value
+      name: kafka_network_$1_$2
+      type: GAUGE
+      
+    # Kafka log metrics
+    - pattern: kafka.log<type=(.+), name=(.+)><>Value
+      name: kafka_log_$1_$2
+      type: GAUGE
+      
+    # Controller metrics
+    - pattern: kafka.controller<type=(.+), name=(.+)><>Value
+      name: kafka_controller_$1_$2
+      type: GAUGE
+      
+    # Topic metrics
+    - pattern: kafka.server<type=BrokerTopicMetrics, name=(.+), topic=(.+)><>OneMinuteRate
+      name: kafka_server_brokertopicmetrics_$1_rate
+      type: GAUGE
+      labels:
+        topic: "$2"
+
+---
+# Kafka Topic Creation Job for Security Events
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-topics-init
+  namespace: kafka-system
+  labels:
+    app.kubernetes.io/name: kafka-topics-init
+    app.kubernetes.io/part-of: kafka-cluster
+    app.kubernetes.io/component: initialization
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kafka-topics-init
+        app.kubernetes.io/part-of: kafka-cluster
+        app.kubernetes.io/component: initialization
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: kafka-topics-init
+        image: confluentinc/cp-kafka:7.5.0
+        imagePullPolicy: IfNotPresent
+        command: ["/bin/bash"]
+        args:
+        - -c
+        - |
+          # Wait for Kafka to be ready
+          until kafka-broker-api-versions --bootstrap-server kafka:9092; do
+            echo "Waiting for Kafka to be ready..."
+            sleep 10
+          done
+          
+          echo "Creating Kafka topics for security dashboard..."
+          
+          # Security Events Topic - High throughput, short retention
+          kafka-topics --bootstrap-server kafka:9092 \
+            --create --if-not-exists \
+            --topic security-events \
+            --partitions 12 \
+            --replication-factor 3 \
+            --config min.insync.replicas=2 \
+            --config retention.ms=604800000 \
+            --config compression.type=snappy \
+            --config cleanup.policy=delete
+          
+          # Security Alerts Topic - Lower throughput, longer retention
+          kafka-topics --bootstrap-server kafka:9092 \
+            --create --if-not-exists \
+            --topic security-alerts \
+            --partitions 6 \
+            --replication-factor 3 \
+            --config min.insync.replicas=2 \
+            --config retention.ms=2592000000 \
+            --config compression.type=snappy \
+            --config cleanup.policy=delete
+          
+          # Threat Intelligence Topic - Moderate throughput
+          kafka-topics --bootstrap-server kafka:9092 \
+            --create --if-not-exists \
+            --topic threat-intelligence \
+            --partitions 8 \
+            --replication-factor 3 \
+            --config min.insync.replicas=2 \
+            --config retention.ms=7776000000 \
+            --config compression.type=snappy \
+            --config cleanup.policy=delete
+          
+          # User Activities Topic - High throughput, compliance retention
+          kafka-topics --bootstrap-server kafka:9092 \
+            --create --if-not-exists \
+            --topic user-activities \
+            --partitions 16 \
+            --replication-factor 3 \
+            --config min.insync.replicas=2 \
+            --config retention.ms=15552000000 \
+            --config compression.type=snappy \
+            --config cleanup.policy=delete
+          
+          # Audit Logs Topic - Compliance, long retention
+          kafka-topics --bootstrap-server kafka:9092 \
+            --create --if-not-exists \
+            --topic audit-logs \
+            --partitions 4 \
+            --replication-factor 3 \
+            --config min.insync.replicas=2 \
+            --config retention.ms=31536000000 \
+            --config compression.type=snappy \
+            --config cleanup.policy=delete
+          
+          # Metrics Topic - High volume, short retention
+          kafka-topics --bootstrap-server kafka:9092 \
+            --create --if-not-exists \
+            --topic security-metrics \
+            --partitions 20 \
+            --replication-factor 3 \
+            --config min.insync.replicas=2 \
+            --config retention.ms=259200000 \
+            --config compression.type=snappy \
+            --config cleanup.policy=delete
+          
+          # Real-time Dashboard Topic - Ultra-short retention
+          kafka-topics --bootstrap-server kafka:9092 \
+            --create --if-not-exists \
+            --topic dashboard-updates \
+            --partitions 8 \
+            --replication-factor 3 \
+            --config min.insync.replicas=2 \
+            --config retention.ms=86400000 \
+            --config compression.type=snappy \
+            --config cleanup.policy=delete
+          
+          echo "Kafka topics created successfully!"
+          
+          # List all topics to verify
+          kafka-topics --bootstrap-server kafka:9092 --list
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "200m"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+
+---
+# Kafka Connect for External System Integration
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-connect
+  namespace: kafka-system
+  labels:
+    app.kubernetes.io/name: kafka-connect
+    app.kubernetes.io/part-of: kafka-cluster
+    app.kubernetes.io/component: connector
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kafka-connect
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kafka-connect
+        app.kubernetes.io/part-of: kafka-cluster
+        app.kubernetes.io/component: connector
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8083"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: kafka-connect
+        image: confluentinc/cp-kafka-connect:7.5.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8083
+          protocol: TCP
+        env:
+        - name: CONNECT_BOOTSTRAP_SERVERS
+          value: "kafka:9092"
+        - name: CONNECT_REST_ADVERTISED_HOST_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: CONNECT_REST_PORT
+          value: "8083"
+        - name: CONNECT_GROUP_ID
+          value: "security-dashboard-connect-cluster"
+        - name: CONNECT_CONFIG_STORAGE_TOPIC
+          value: "_connect-configs"
+        - name: CONNECT_OFFSET_STORAGE_TOPIC
+          value: "_connect-offsets"
+        - name: CONNECT_STATUS_STORAGE_TOPIC
+          value: "_connect-status"
+        - name: CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR
+          value: "3"
+        - name: CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR
+          value: "3"
+        - name: CONNECT_STATUS_STORAGE_REPLICATION_FACTOR
+          value: "3"
+        - name: CONNECT_KEY_CONVERTER
+          value: "org.apache.kafka.connect.json.JsonConverter"
+        - name: CONNECT_VALUE_CONVERTER
+          value: "org.apache.kafka.connect.json.JsonConverter"
+        - name: CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE
+          value: "false"
+        - name: CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE
+          value: "false"
+        - name: CONNECT_INTERNAL_KEY_CONVERTER
+          value: "org.apache.kafka.connect.json.JsonConverter"
+        - name: CONNECT_INTERNAL_VALUE_CONVERTER
+          value: "org.apache.kafka.connect.json.JsonConverter"
+        - name: CONNECT_INTERNAL_KEY_CONVERTER_SCHEMAS_ENABLE
+          value: "false"
+        - name: CONNECT_INTERNAL_VALUE_CONVERTER_SCHEMAS_ENABLE
+          value: "false"
+        - name: CONNECT_PLUGIN_PATH
+          value: "/usr/share/java,/usr/share/confluent-hub-components"
+        - name: CONNECT_LOG4J_LOGGERS
+          value: "org.apache.kafka.connect.runtime.rest=WARN,org.reflections=ERROR"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /connectors
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - kafka-connect
+              topologyKey: kubernetes.io/hostname
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-connect
+  namespace: kafka-system
+  labels:
+    app.kubernetes.io/name: kafka-connect
+    app.kubernetes.io/part-of: kafka-cluster
+    app.kubernetes.io/component: connector
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8083
+    targetPort: http
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: kafka-connect

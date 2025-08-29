@@ -1,0 +1,91 @@
+scalar DateTime
+
+enum UserRole {
+  ADMIN
+  GUEST
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+type User {
+  id: ID!
+  email: String!
+  role: UserRole!
+}
+
+type Incident {
+  id: ID!
+  type: String!
+  severity: IncidentSeverity!
+  status: IncidentStatus!
+  createdAt: DateTime!
+  resolvedAt: DateTime
+  details: String
+}
+
+type Alert {
+  id: ID!
+  type: String!
+  severity: AlertSeverity!
+  acknowledged: Boolean!
+  timestamp: DateTime!
+}
+
+type DashboardOverview {
+  totalIncidents: Int!
+  activeAlerts: Int!
+  complianceScore: Float!
+}
+
+type AuthPayload {
+  token: String!
+  user: User!
+}
+
+type Query {
+  securityOverview: DashboardOverview!
+  incidents(
+    status: IncidentStatus
+    severity: IncidentSeverity
+  ): [Incident!]!
+  alerts(
+    acknowledged: Boolean
+    severity: AlertSeverity
+  ): [Alert!]!
+}
+
+type Mutation {
+  login(email: String!, password: String!): AuthPayload!
+  createIncident(
+    type: String!
+    severity: IncidentSeverity!
+    details: String
+  ): Incident!
+  updateAlert(
+    id: ID!
+    acknowledged: Boolean
+  ): Alert!
+}
+
+type Subscription {
+  liveAlerts: Alert!
+  securityIncidents: Incident!
+}
