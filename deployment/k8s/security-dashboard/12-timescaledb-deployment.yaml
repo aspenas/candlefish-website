@@ -1,0 +1,509 @@
+# TimescaleDB Deployment for Security Dashboard
+# High-performance time-series database for security metrics and logs
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: timescaledb
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: timescaledb
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: database
+    app.kubernetes.io/version: "15-2.12"
+spec:
+  serviceName: timescaledb-headless
+  replicas: 3
+  podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: timescaledb
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: timescaledb
+        app.kubernetes.io/part-of: security-dashboard
+        app.kubernetes.io/component: database
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9187"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        fsGroupChangePolicy: "Always"
+      containers:
+      - name: timescaledb
+        image: timescale/timescaledb:2.12.1-pg15
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: postgres
+          containerPort: 5432
+          protocol: TCP
+        env:
+        - name: POSTGRES_DB
+          value: security_dashboard
+        - name: POSTGRES_USER
+          value: security_user
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: security-dashboard-secrets
+              key: timescaledb-password
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        - name: POSTGRES_INITDB_ARGS
+          value: "--auth-host=scram-sha-256"
+        # TimescaleDB Configuration
+        - name: TIMESCALEDB_TELEMETRY
+          value: "off"
+        - name: TS_TUNE_MEMORY
+          value: "2GB"
+        - name: TS_TUNE_NUM_CPUS
+          value: "2"
+        # Performance tuning
+        - name: POSTGRES_SHARED_BUFFERS
+          value: "512MB"
+        - name: POSTGRES_EFFECTIVE_CACHE_SIZE
+          value: "1536MB"
+        - name: POSTGRES_MAINTENANCE_WORK_MEM
+          value: "128MB"
+        - name: POSTGRES_CHECKPOINT_COMPLETION_TARGET
+          value: "0.9"
+        - name: POSTGRES_WAL_BUFFERS
+          value: "16MB"
+        - name: POSTGRES_DEFAULT_STATISTICS_TARGET
+          value: "100"
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "500m"
+            ephemeral-storage: "1Gi"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+            ephemeral-storage: "5Gi"
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" -h 127.0.0.1 -p 5432
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" -h 127.0.0.1 -p 5432
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        startupProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" -h 127.0.0.1 -p 5432
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        - name: postgres-config
+          mountPath: /etc/postgresql/postgresql.conf
+          subPath: postgresql.conf
+        - name: init-scripts
+          mountPath: /docker-entrypoint-initdb.d
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+      
+      - name: postgres-exporter
+        image: prometheuscommunity/postgres-exporter:v0.15.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: metrics
+          containerPort: 9187
+          protocol: TCP
+        env:
+        - name: DATA_SOURCE_NAME
+          value: "postgresql://security_user:$(POSTGRES_PASSWORD)@localhost:5432/security_dashboard?sslmode=disable"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: security-dashboard-secrets
+              key: timescaledb-password
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+      
+      volumes:
+      - name: postgres-config
+        configMap:
+          name: timescaledb-config
+      - name: init-scripts
+        configMap:
+          name: timescaledb-init-scripts
+      
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - timescaledb
+              topologyKey: kubernetes.io/hostname
+  
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+      labels:
+        app.kubernetes.io/name: timescaledb
+        app.kubernetes.io/component: database
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: gp3-encrypted
+      resources:
+        requests:
+          storage: 100Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: timescaledb
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: timescaledb
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: database
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9187"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+  - name: postgres
+    port: 5432
+    targetPort: postgres
+    protocol: TCP
+  - name: metrics
+    port: 9187
+    targetPort: metrics
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: timescaledb
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: timescaledb-headless
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: timescaledb
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: database
+spec:
+  clusterIP: None
+  ports:
+  - name: postgres
+    port: 5432
+    targetPort: postgres
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: timescaledb
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: timescaledb-config
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: timescaledb
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: database
+data:
+  postgresql.conf: |
+    # TimescaleDB optimized configuration
+    listen_addresses = '*'
+    port = 5432
+    max_connections = 200
+    
+    # Memory settings
+    shared_buffers = 512MB
+    effective_cache_size = 1536MB
+    maintenance_work_mem = 128MB
+    work_mem = 4MB
+    
+    # WAL settings
+    wal_level = replica
+    max_wal_size = 2GB
+    min_wal_size = 512MB
+    wal_buffers = 16MB
+    checkpoint_completion_target = 0.9
+    
+    # Query tuning
+    default_statistics_target = 100
+    random_page_cost = 1.1
+    effective_io_concurrency = 200
+    
+    # Logging
+    log_destination = 'stderr'
+    logging_collector = on
+    log_directory = 'log'
+    log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log'
+    log_rotation_age = 1d
+    log_rotation_size = 100MB
+    log_min_duration_statement = 1000
+    log_checkpoints = on
+    log_connections = on
+    log_disconnections = on
+    log_lock_waits = on
+    log_temp_files = 0
+    
+    # TimescaleDB specific
+    timescaledb.max_background_workers = 8
+    timescaledb.telemetry_level = off
+    
+    # Security
+    ssl = off
+    password_encryption = scram-sha-256
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: timescaledb-init-scripts
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: timescaledb
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: database
+data:
+  01-init-timescaledb.sql: |
+    -- Initialize TimescaleDB extension
+    CREATE EXTENSION IF NOT EXISTS timescaledb;
+    
+    -- Create security_events hypertable
+    CREATE TABLE IF NOT EXISTS security_events (
+      id SERIAL PRIMARY KEY,
+      timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      event_type VARCHAR(100) NOT NULL,
+      severity VARCHAR(20) NOT NULL,
+      source_ip INET,
+      destination_ip INET,
+      user_id VARCHAR(100),
+      session_id VARCHAR(100),
+      event_data JSONB,
+      raw_log TEXT,
+      processed BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    
+    -- Convert to hypertable
+    SELECT create_hypertable('security_events', 'timestamp', if_not_exists => TRUE);
+    
+    -- Create security_metrics hypertable
+    CREATE TABLE IF NOT EXISTS security_metrics (
+      timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      metric_name VARCHAR(100) NOT NULL,
+      metric_value DOUBLE PRECISION NOT NULL,
+      labels JSONB,
+      source VARCHAR(100)
+    );
+    
+    -- Convert to hypertable
+    SELECT create_hypertable('security_metrics', 'timestamp', if_not_exists => TRUE);
+    
+    -- Create threat_intelligence hypertable
+    CREATE TABLE IF NOT EXISTS threat_intelligence (
+      id SERIAL PRIMARY KEY,
+      timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      ioc_type VARCHAR(50) NOT NULL,
+      ioc_value TEXT NOT NULL,
+      threat_type VARCHAR(100),
+      confidence_score DOUBLE PRECISION,
+      source VARCHAR(100),
+      metadata JSONB,
+      expiry_date TIMESTAMPTZ
+    );
+    
+    -- Convert to hypertable
+    SELECT create_hypertable('threat_intelligence', 'timestamp', if_not_exists => TRUE);
+    
+    -- Create user_activities table
+    CREATE TABLE IF NOT EXISTS user_activities (
+      id SERIAL PRIMARY KEY,
+      timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      user_id VARCHAR(100) NOT NULL,
+      activity_type VARCHAR(100) NOT NULL,
+      resource VARCHAR(200),
+      ip_address INET,
+      user_agent TEXT,
+      success BOOLEAN,
+      risk_score DOUBLE PRECISION,
+      details JSONB
+    );
+    
+    -- Convert to hypertable
+    SELECT create_hypertable('user_activities', 'timestamp', if_not_exists => TRUE);
+    
+    -- Create indexes for better query performance
+    CREATE INDEX IF NOT EXISTS idx_security_events_type_time 
+      ON security_events (event_type, timestamp DESC);
+    CREATE INDEX IF NOT EXISTS idx_security_events_severity_time 
+      ON security_events (severity, timestamp DESC);
+    CREATE INDEX IF NOT EXISTS idx_security_events_source_ip 
+      ON security_events (source_ip, timestamp DESC);
+    
+    CREATE INDEX IF NOT EXISTS idx_security_metrics_name_time 
+      ON security_metrics (metric_name, timestamp DESC);
+    
+    CREATE INDEX IF NOT EXISTS idx_threat_intelligence_type_value 
+      ON threat_intelligence (ioc_type, ioc_value);
+    CREATE INDEX IF NOT EXISTS idx_threat_intelligence_expiry 
+      ON threat_intelligence (expiry_date);
+    
+    CREATE INDEX IF NOT EXISTS idx_user_activities_user_time 
+      ON user_activities (user_id, timestamp DESC);
+    CREATE INDEX IF NOT EXISTS idx_user_activities_type_time 
+      ON user_activities (activity_type, timestamp DESC);
+    
+    -- Create data retention policies
+    SELECT add_retention_policy('security_events', INTERVAL '90 days', if_not_exists => true);
+    SELECT add_retention_policy('security_metrics', INTERVAL '30 days', if_not_exists => true);
+    SELECT add_retention_policy('user_activities', INTERVAL '180 days', if_not_exists => true);
+    
+    -- Create continuous aggregates for real-time dashboards
+    CREATE MATERIALIZED VIEW IF NOT EXISTS security_events_hourly
+    WITH (timescaledb.continuous) AS
+    SELECT 
+      time_bucket('1 hour', timestamp) AS hour,
+      event_type,
+      severity,
+      count(*) as event_count,
+      count(DISTINCT source_ip) as unique_sources
+    FROM security_events
+    GROUP BY hour, event_type, severity;
+    
+    -- Add refresh policy for continuous aggregates
+    SELECT add_continuous_aggregate_policy('security_events_hourly',
+      start_offset => INTERVAL '2 hours',
+      end_offset => INTERVAL '1 hour',
+      schedule_interval => INTERVAL '1 hour',
+      if_not_exists => true);
+
+  02-create-functions.sql: |
+    -- Function to calculate risk scores
+    CREATE OR REPLACE FUNCTION calculate_risk_score(
+      event_type VARCHAR(100),
+      severity VARCHAR(20),
+      source_ip INET,
+      user_id VARCHAR(100)
+    ) RETURNS DOUBLE PRECISION AS $$
+    DECLARE
+      risk_score DOUBLE PRECISION := 0;
+    BEGIN
+      -- Base score by severity
+      CASE severity
+        WHEN 'critical' THEN risk_score := 100;
+        WHEN 'high' THEN risk_score := 80;
+        WHEN 'medium' THEN risk_score := 50;
+        WHEN 'low' THEN risk_score := 20;
+        ELSE risk_score := 10;
+      END CASE;
+      
+      -- Adjust for event type
+      IF event_type LIKE '%login_failure%' THEN
+        risk_score := risk_score * 1.2;
+      ELSIF event_type LIKE '%privilege_escalation%' THEN
+        risk_score := risk_score * 1.5;
+      ELSIF event_type LIKE '%data_exfiltration%' THEN
+        risk_score := risk_score * 2.0;
+      END IF;
+      
+      -- Check if IP is in threat intelligence
+      IF EXISTS (
+        SELECT 1 FROM threat_intelligence 
+        WHERE ioc_type = 'ip' 
+        AND ioc_value = source_ip::TEXT 
+        AND expiry_date > NOW()
+      ) THEN
+        risk_score := risk_score * 1.8;
+      END IF;
+      
+      RETURN LEAST(risk_score, 100);
+    END;
+    $$ LANGUAGE plpgsql;
+    
+    -- Function to detect anomalies
+    CREATE OR REPLACE FUNCTION detect_anomalies()
+    RETURNS TABLE(anomaly_type TEXT, details JSONB, risk_score DOUBLE PRECISION) AS $$
+    BEGIN
+      -- Return suspicious login patterns
+      RETURN QUERY
+      SELECT 
+        'suspicious_login_pattern' as anomaly_type,
+        json_build_object(
+          'user_id', ua.user_id,
+          'login_count', COUNT(*),
+          'unique_ips', COUNT(DISTINCT ua.ip_address),
+          'time_window', '1 hour'
+        ) as details,
+        75.0 as risk_score
+      FROM user_activities ua
+      WHERE ua.activity_type = 'login'
+        AND ua.timestamp > NOW() - INTERVAL '1 hour'
+        AND ua.success = true
+      GROUP BY ua.user_id
+      HAVING COUNT(*) > 10 OR COUNT(DISTINCT ua.ip_address) > 3;
+      
+      -- Return data access anomalies
+      RETURN QUERY
+      SELECT 
+        'unusual_data_access' as anomaly_type,
+        json_build_object(
+          'user_id', ua.user_id,
+          'access_count', COUNT(*),
+          'resources_accessed', COUNT(DISTINCT ua.resource),
+          'time_window', '1 hour'
+        ) as details,
+        60.0 as risk_score
+      FROM user_activities ua
+      WHERE ua.activity_type LIKE '%data_access%'
+        AND ua.timestamp > NOW() - INTERVAL '1 hour'
+      GROUP BY ua.user_id
+      HAVING COUNT(*) > 100 OR COUNT(DISTINCT ua.resource) > 20;
+    END;
+    $$ LANGUAGE plpgsql;

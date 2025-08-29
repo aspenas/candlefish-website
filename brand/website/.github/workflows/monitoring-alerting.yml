@@ -1,0 +1,441 @@
+name: Monitoring & Alerting Automation
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # Every 5 minutes for critical monitoring
+    - cron: '0 * * * *'    # Hourly for performance checks
+    - cron: '0 0 * * *'    # Daily for comprehensive health checks
+  workflow_dispatch:
+    inputs:
+      monitor-type:
+        description: 'Type of monitoring to perform'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - health
+          - performance
+          - security
+          - availability
+          - logs
+
+env:
+  ALERT_THRESHOLD_RESPONSE_TIME: 1000  # ms
+  ALERT_THRESHOLD_ERROR_RATE: 1        # percentage
+  ALERT_THRESHOLD_CPU: 80              # percentage
+  ALERT_THRESHOLD_MEMORY: 85           # percentage
+  ENVIRONMENTS: 'production,staging'
+
+jobs:
+  # ========================================
+  # Health Monitoring
+  # ========================================
+  health-monitoring:
+    name: Health Check Monitoring
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '*/5 * * * *' || github.event.inputs.monitor-type == 'health'
+    strategy:
+      matrix:
+        environment: [production, staging]
+        
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+          
+      - name: Health Check - API
+        id: api-health
+        run: |
+          ENDPOINT="https://${{ matrix.environment == 'production' && 'api.candlefish.ai' || 'staging-api.candlefish.ai' }}/health"
+          
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$ENDPOINT")
+          RESPONSE_TIME=$(curl -s -o /dev/null -w "%{time_total}" "$ENDPOINT")
+          
+          echo "status=$RESPONSE" >> $GITHUB_OUTPUT
+          echo "response_time=$RESPONSE_TIME" >> $GITHUB_OUTPUT
+          
+          if [ "$RESPONSE" != "200" ]; then
+            echo "❌ API health check failed: HTTP $RESPONSE"
+            exit 1
+          fi
+          
+      - name: Health Check - Database
+        run: |
+          # Check database connectivity
+          aws rds describe-db-instances \
+            --db-instance-identifier candlefish-${{ matrix.environment }} \
+            --query "DBInstances[0].DBInstanceStatus" \
+            --output text
+            
+      - name: Health Check - Cache
+        run: |
+          # Check Redis cache
+          aws elasticache describe-cache-clusters \
+            --cache-cluster-id candlefish-${{ matrix.environment }}-cache \
+            --query "CacheClusters[0].CacheClusterStatus" \
+            --output text
+            
+      - name: Health Check - Message Queue
+        run: |
+          # Check SQS queues
+          for queue in $(aws sqs list-queues --queue-name-prefix candlefish-${{ matrix.environment }} --query "QueueUrls[]" --output text); do
+            MESSAGES=$(aws sqs get-queue-attributes --queue-url "$queue" --attribute-names ApproximateNumberOfMessages --query "Attributes.ApproximateNumberOfMessages" --output text)
+            if [ "$MESSAGES" -gt 1000 ]; then
+              echo "⚠️ Queue backlog detected: $MESSAGES messages in $queue"
+            fi
+          done
+          
+      - name: Send Health Alert
+        if: failure()
+        run: |
+          curl -X POST ${{ secrets.SLACK_ALERTS_WEBHOOK }} \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "text": "🚨 Health Check Failed - ${{ matrix.environment }}",
+              "attachments": [{
+                "color": "danger",
+                "fields": [
+                  {"title": "Environment", "value": "${{ matrix.environment }}", "short": true},
+                  {"title": "Check Type", "value": "Health", "short": true},
+                  {"title": "Timestamp", "value": "'$(date -u +"%Y-%m-%d %H:%M:%S UTC")'", "short": true}
+                ]
+              }]
+            }'
+
+  # ========================================
+  # Performance Monitoring
+  # ========================================
+  performance-monitoring:
+    name: Performance Monitoring
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 * * * *' || github.event.inputs.monitor-type == 'performance'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Monitoring Tools
+        run: |
+          # Install monitoring tools
+          npm install -g lighthouse
+          npm install -g @sitespeed.io/sitespeed.io
+          
+      - name: Run Lighthouse Performance Test
+        run: |
+          lighthouse https://candlefish.ai \
+            --output json \
+            --output-path=./lighthouse-report.json \
+            --chrome-flags="--headless" \
+            --only-categories=performance
+            
+          PERF_SCORE=$(jq '.categories.performance.score * 100' lighthouse-report.json)
+          echo "Performance Score: $PERF_SCORE"
+          
+          if (( $(echo "$PERF_SCORE < 85" | bc -l) )); then
+            echo "⚠️ Performance degradation detected: $PERF_SCORE"
+          fi
+          
+      - name: Run Load Testing
+        run: |
+          # Quick load test using Apache Bench
+          ab -n 1000 -c 10 https://candlefish.ai/ > load-test-results.txt
+          
+          # Extract metrics
+          REQUESTS_PER_SEC=$(grep "Requests per second" load-test-results.txt | awk '{print $4}')
+          TIME_PER_REQUEST=$(grep "Time per request" load-test-results.txt | head -1 | awk '{print $4}')
+          
+          echo "Requests per second: $REQUESTS_PER_SEC"
+          echo "Time per request: $TIME_PER_REQUEST ms"
+          
+      - name: Monitor Application Metrics
+        run: |
+          # Get CloudWatch metrics
+          aws cloudwatch get-metric-statistics \
+            --namespace AWS/ECS \
+            --metric-name CPUUtilization \
+            --dimensions Name=ServiceName,Value=candlefish-production \
+            --start-time $(date -u -d '1 hour ago' '+%Y-%m-%dT%H:%M:%S') \
+            --end-time $(date -u '+%Y-%m-%dT%H:%M:%S') \
+            --period 300 \
+            --statistics Average \
+            --output json > cpu-metrics.json
+            
+          AVG_CPU=$(jq '.Datapoints | map(.Average) | add/length' cpu-metrics.json)
+          echo "Average CPU: $AVG_CPU%"
+          
+          if (( $(echo "$AVG_CPU > ${{ env.ALERT_THRESHOLD_CPU }}" | bc -l) )); then
+            echo "⚠️ High CPU usage: $AVG_CPU%"
+          fi
+          
+      - name: Create Performance Report
+        run: |
+          node scripts/generate-performance-report.js \
+            --lighthouse lighthouse-report.json \
+            --load load-test-results.txt \
+            --metrics cpu-metrics.json \
+            --output performance-report.html
+            
+      - name: Upload Performance Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-reports-${{ github.run_number }}
+          path: |
+            lighthouse-report.json
+            load-test-results.txt
+            performance-report.html
+          retention-days: 30
+
+  # ========================================
+  # Security Monitoring
+  # ========================================
+  security-monitoring:
+    name: Security Monitoring
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 0 * * *' || github.event.inputs.monitor-type == 'security'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Monitor SSL Certificates
+        run: |
+          # Check SSL certificate expiration
+          DOMAINS="candlefish.ai api.candlefish.ai staging.candlefish.ai"
+          
+          for domain in $DOMAINS; do
+            EXPIRY=$(echo | openssl s_client -connect "$domain:443" -servername "$domain" 2>/dev/null | \
+                     openssl x509 -noout -enddate | cut -d= -f2)
+            EXPIRY_EPOCH=$(date -d "$EXPIRY" +%s)
+            NOW_EPOCH=$(date +%s)
+            DAYS_LEFT=$(( ($EXPIRY_EPOCH - $NOW_EPOCH) / 86400 ))
+            
+            echo "$domain certificate expires in $DAYS_LEFT days"
+            
+            if [ "$DAYS_LEFT" -lt 30 ]; then
+              echo "⚠️ SSL certificate expiring soon for $domain"
+            fi
+          done
+          
+      - name: Monitor Security Groups
+        run: |
+          # Check for overly permissive security groups
+          aws ec2 describe-security-groups \
+            --filters "Name=ip-permission.from-port,Values=0" \
+                     "Name=ip-permission.to-port,Values=65535" \
+                     "Name=ip-permission.cidr,Values=0.0.0.0/0" \
+            --query "SecurityGroups[].GroupId" \
+            --output text > open-security-groups.txt
+            
+          if [ -s open-security-groups.txt ]; then
+            echo "⚠️ Found security groups with unrestricted access:"
+            cat open-security-groups.txt
+          fi
+          
+      - name: Monitor Failed Login Attempts
+        run: |
+          # Query CloudWatch Logs for failed login attempts
+          aws logs filter-log-events \
+            --log-group-name /aws/lambda/auth-service \
+            --start-time $(date -u -d '1 hour ago' +%s)000 \
+            --filter-pattern "FAILED_LOGIN" \
+            --query "events | length(@)" \
+            --output text > failed-logins.txt
+            
+          FAILED_COUNT=$(cat failed-logins.txt)
+          if [ "$FAILED_COUNT" -gt 100 ]; then
+            echo "⚠️ High number of failed login attempts: $FAILED_COUNT"
+          fi
+          
+      - name: Scan for Exposed Secrets
+        run: |
+          # Check for exposed secrets in public repositories
+          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/secret-scanning/alerts" \
+            > secret-alerts.json
+            
+          ALERT_COUNT=$(jq '. | length' secret-alerts.json)
+          if [ "$ALERT_COUNT" -gt 0 ]; then
+            echo "🚨 Found $ALERT_COUNT exposed secrets!"
+          fi
+
+  # ========================================
+  # Availability Monitoring
+  # ========================================
+  availability-monitoring:
+    name: Availability Monitoring
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '*/5 * * * *' || github.event.inputs.monitor-type == 'availability'
+    strategy:
+      matrix:
+        region: [us-east-1, us-west-2, eu-west-1, ap-southeast-1]
+        
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Multi-Region Health Check
+        run: |
+          # Test from multiple regions
+          ENDPOINT="https://candlefish.ai"
+          
+          # Simulate different region checks
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$ENDPOINT")
+          
+          if [ "$RESPONSE" != "200" ]; then
+            echo "❌ Site unavailable from ${{ matrix.region }}: HTTP $RESPONSE"
+            exit 1
+          fi
+          
+          echo "✅ Site available from ${{ matrix.region }}"
+          
+      - name: DNS Resolution Check
+        run: |
+          # Check DNS resolution
+          nslookup candlefish.ai 8.8.8.8
+          nslookup candlefish.ai 1.1.1.1
+          
+      - name: CDN Status Check
+        run: |
+          # Check CloudFlare CDN status
+          curl -X GET "https://api.cloudflare.com/client/v4/zones/${{ secrets.CLOUDFLARE_ZONE_ID }}/analytics/dashboard" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            > cdn-status.json
+            
+      - name: Create Uptime Report
+        run: |
+          # Calculate uptime percentage
+          aws cloudwatch get-metric-statistics \
+            --namespace AWS/Route53 \
+            --metric-name HealthCheckStatus \
+            --dimensions Name=HealthCheckId,Value=${{ secrets.ROUTE53_HEALTH_CHECK_ID }} \
+            --start-time $(date -u -d '24 hours ago' '+%Y-%m-%dT%H:%M:%S') \
+            --end-time $(date -u '+%Y-%m-%dT%H:%M:%S') \
+            --period 3600 \
+            --statistics Average \
+            --output json > uptime-data.json
+            
+          node scripts/calculate-uptime.js uptime-data.json
+
+  # ========================================
+  # Log Analysis
+  # ========================================
+  log-analysis:
+    name: Log Analysis & Alerting
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 * * * *' || github.event.inputs.monitor-type == 'logs'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Analyze Error Logs
+        run: |
+          # Query CloudWatch Logs for errors
+          aws logs filter-log-events \
+            --log-group-name /aws/ecs/candlefish-production \
+            --start-time $(date -u -d '1 hour ago' +%s)000 \
+            --filter-pattern "ERROR" \
+            --query "events[].message" \
+            --output text > error-logs.txt
+            
+          ERROR_COUNT=$(wc -l < error-logs.txt)
+          echo "Found $ERROR_COUNT errors in the last hour"
+          
+          if [ "$ERROR_COUNT" -gt 100 ]; then
+            echo "⚠️ High error rate detected"
+            
+            # Analyze error patterns
+            sort error-logs.txt | uniq -c | sort -rn | head -10 > top-errors.txt
+            echo "Top errors:"
+            cat top-errors.txt
+          fi
+          
+      - name: Analyze Access Patterns
+        run: |
+          # Analyze access logs for suspicious patterns
+          aws s3 cp s3://candlefish-logs/access-logs/latest.gz - | \
+            gunzip | \
+            awk '{print $1}' | \
+            sort | uniq -c | sort -rn | head -20 > top-ips.txt
+            
+          echo "Top accessing IPs:"
+          cat top-ips.txt
+          
+      - name: Generate Log Report
+        run: |
+          node scripts/generate-log-report.js \
+            --errors error-logs.txt \
+            --access top-ips.txt \
+            --output log-report.html
+
+  # ========================================
+  # Alert Aggregation
+  # ========================================
+  alert-aggregation:
+    name: Alert Aggregation & Escalation
+    needs: [health-monitoring, performance-monitoring, security-monitoring, availability-monitoring, log-analysis]
+    if: always()
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Aggregate Alerts
+        run: |
+          # Collect all monitoring results
+          node scripts/aggregate-alerts.js \
+            --health "${{ needs.health-monitoring.result }}" \
+            --performance "${{ needs.performance-monitoring.result }}" \
+            --security "${{ needs.security-monitoring.result }}" \
+            --availability "${{ needs.availability-monitoring.result }}" \
+            --logs "${{ needs.log-analysis.result }}" \
+            > alert-summary.json
+            
+      - name: Determine Alert Severity
+        id: severity
+        run: |
+          CRITICAL_COUNT=$(jq '.critical | length' alert-summary.json)
+          WARNING_COUNT=$(jq '.warning | length' alert-summary.json)
+          
+          if [ "$CRITICAL_COUNT" -gt 0 ]; then
+            echo "severity=critical" >> $GITHUB_OUTPUT
+          elif [ "$WARNING_COUNT" -gt 0 ]; then
+            echo "severity=warning" >> $GITHUB_OUTPUT
+          else
+            echo "severity=info" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Send PagerDuty Alert
+        if: steps.severity.outputs.severity == 'critical'
+        run: |
+          curl -X POST https://events.pagerduty.com/v2/enqueue \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "routing_key": "${{ secrets.PAGERDUTY_ROUTING_KEY }}",
+              "event_action": "trigger",
+              "payload": {
+                "summary": "Critical monitoring alert",
+                "severity": "critical",
+                "source": "GitHub Actions Monitoring",
+                "custom_details": '"$(cat alert-summary.json)"'
+              }
+            }'
+            
+      - name: Create Monitoring Dashboard
+        run: |
+          # Generate monitoring dashboard
+          node scripts/generate-monitoring-dashboard.js \
+            --alerts alert-summary.json \
+            --output monitoring-dashboard.html
+            
+      - name: Upload Monitoring Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: monitoring-reports-${{ github.run_number }}
+          path: |
+            alert-summary.json
+            monitoring-dashboard.html
+          retention-days: 30

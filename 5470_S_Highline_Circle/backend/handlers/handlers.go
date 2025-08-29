@@ -85,6 +85,7 @@ func (h *Handler) GetRooms(c *fiber.Ctx) error {
 		       COALESCE(SUM(i.purchase_price), 0) as total_value
 		FROM rooms r
 		LEFT JOIN items i ON r.id = i.room_id
+		WHERE i.status = 'Active'
 		GROUP BY r.id, r.name, r.floor
 		ORDER BY r.floor, r.name
 	`
@@ -154,57 +155,44 @@ func (h *Handler) GetItems(c *fiber.Ctx) error {
 	// Build base query with enhanced fields and filtering support
 	baseQuery := `
 		SELECT
-			i.id, i.name, i.category, i.decision,
-			i.purchase_price, i.is_fixture, i.source,
-			i.invoice_ref, i.designer_invoice_price,
+			i.id, i.uuid, i.name, c.name as category, i.status,
+			i.purchase_price, i.estimated_value, i.brand,
 			i.purchase_date, i.created_at,
 			r.name as room_name, r.floor,
-			(SELECT COUNT(*) FROM item_images WHERE item_id = i.id) as image_count
+			0 as image_count
 		FROM items i
-		JOIN rooms r ON i.room_id = r.id
-		WHERE 1=1
+		LEFT JOIN rooms r ON i.room_id = r.id
+		LEFT JOIN categories c ON i.category_id = c.id
+		WHERE i.status = 'Active'
 	`
 
 	args := []interface{}{}
-	argIndex := 0
 
 	// Apply filters
 	// Date range filters
 	if dateFrom := c.Query("date_from"); dateFrom != "" {
-		argIndex++
-		baseQuery += fmt.Sprintf(" AND i.purchase_date >= $%d", argIndex)
+		baseQuery += " AND i.purchase_date >= ?"
 		args = append(args, dateFrom)
 	}
 
 	if dateTo := c.Query("date_to"); dateTo != "" {
-		argIndex++
-		baseQuery += fmt.Sprintf(" AND i.purchase_date <= $%d", argIndex)
+		baseQuery += " AND i.purchase_date <= ?"
 		args = append(args, dateTo)
 	}
 
-	// Images filter
-	if hasImages := c.Query("has_images"); hasImages != "" {
-		if hasImages == "true" {
-			baseQuery += " AND (SELECT COUNT(*) FROM item_images WHERE item_id = i.id) > 0"
-		} else if hasImages == "false" {
-			baseQuery += " AND (SELECT COUNT(*) FROM item_images WHERE item_id = i.id) = 0"
-		}
-	}
-
-	// Sources filter
-	if sources := c.Query("sources"); sources != "" {
-		sourceList := strings.Split(sources, ",")
-		if len(sourceList) > 0 {
+	// Brand filter
+	if brands := c.Query("brands"); brands != "" {
+		brandList := strings.Split(brands, ",")
+		if len(brandList) > 0 {
 			placeholders := []string{}
-			for _, source := range sourceList {
-				if source != "" {
-					argIndex++
-					placeholders = append(placeholders, fmt.Sprintf("$%d", argIndex))
-					args = append(args, strings.TrimSpace(source))
+			for _, brand := range brandList {
+				if brand != "" {
+					placeholders = append(placeholders, "?")
+					args = append(args, strings.TrimSpace(brand))
 				}
 			}
 			if len(placeholders) > 0 {
-				baseQuery += fmt.Sprintf(" AND i.source IN (%s)", strings.Join(placeholders, ","))
+				baseQuery += fmt.Sprintf(" AND i.brand IN (%s)", strings.Join(placeholders, ","))
 			}
 		}
 	}
@@ -216,11 +204,11 @@ func (h *Handler) GetItems(c *fiber.Ctx) error {
 	// Validate sort column
 	allowedSortColumns := map[string]string{
 		"name":          "i.name",
-		"category":      "i.category",
+		"category":      "c.name",
 		"room":          "r.name",
 		"price":         "i.purchase_price",
 		"purchase_date": "i.purchase_date",
-		"decision":      "i.decision",
+		"status":        "i.status",
 		"created_at":    "i.created_at",
 	}
 
@@ -575,7 +563,6 @@ func (h *Handler) FilterItems(c *fiber.Ctx) error {
 	`
 
 	args := []interface{}{}
-	argIndex := 0
 
 	// Category filter
 	if categories := c.Query("categories"); categories != "" {
@@ -584,31 +571,37 @@ func (h *Handler) FilterItems(c *fiber.Ctx) error {
 			placeholders := []string{}
 			for _, cat := range catList {
 				if cat != "" {
-					argIndex++
-					placeholders = append(placeholders, fmt.Sprintf("$%d", argIndex))
+					placeholders = append(placeholders, "?")
 					args = append(args, strings.TrimSpace(cat))
 				}
 			}
 			if len(placeholders) > 0 {
-				baseQuery += fmt.Sprintf(" AND i.category IN (%s)", strings.Join(placeholders, ","))
+				baseQuery += fmt.Sprintf(" AND c.name IN (%s)", strings.Join(placeholders, ","))
 			}
 		}
 	}
 
-	// Decision filter
+	// Status filter (mapped from decision)
 	if decisions := c.Query("decisions"); decisions != "" {
 		decList := strings.Split(decisions, ",")
 		if len(decList) > 0 {
 			placeholders := []string{}
 			for _, dec := range decList {
 				if dec != "" {
-					argIndex++
-					placeholders = append(placeholders, fmt.Sprintf("$%d", argIndex))
-					args = append(args, strings.TrimSpace(dec))
+					placeholders = append(placeholders, "?")
+					// Map decisions to status
+					switch strings.TrimSpace(dec) {
+					case "Sold":
+						args = append(args, "Sold")
+					case "Donated":
+						args = append(args, "Donated")
+					default:
+						args = append(args, "Active")
+					}
 				}
 			}
 			if len(placeholders) > 0 {
-				baseQuery += fmt.Sprintf(" AND i.decision IN (%s)", strings.Join(placeholders, ","))
+				baseQuery += fmt.Sprintf(" AND i.status IN (%s)", strings.Join(placeholders, ","))
 			}
 		}
 	}
@@ -620,8 +613,7 @@ func (h *Handler) FilterItems(c *fiber.Ctx) error {
 			placeholders := []string{}
 			for _, room := range roomList {
 				if room != "" {
-					argIndex++
-					placeholders = append(placeholders, fmt.Sprintf("$%d", argIndex))
+					placeholders = append(placeholders, "?")
 					args = append(args, strings.TrimSpace(room))
 				}
 			}
@@ -634,39 +626,28 @@ func (h *Handler) FilterItems(c *fiber.Ctx) error {
 	// Price range filters
 	if minValue := c.Query("minValue"); minValue != "" {
 		if val, err := strconv.ParseFloat(minValue, 64); err == nil {
-			argIndex++
-			baseQuery += fmt.Sprintf(" AND i.purchase_price >= $%d", argIndex)
+			baseQuery += " AND i.purchase_price >= ?"
 			args = append(args, val)
 		}
 	}
 
 	if maxValue := c.Query("maxValue"); maxValue != "" {
 		if val, err := strconv.ParseFloat(maxValue, 64); err == nil {
-			argIndex++
-			baseQuery += fmt.Sprintf(" AND i.purchase_price <= $%d", argIndex)
+			baseQuery += " AND i.purchase_price <= ?"
 			args = append(args, val)
 		}
 	}
 
-	// Fixture filter
-	if fixture := c.Query("isFixture"); fixture != "" {
-		if val, err := strconv.ParseBool(fixture); err == nil {
-			argIndex++
-			baseQuery += fmt.Sprintf(" AND i.is_fixture = $%d", argIndex)
-			args = append(args, val)
-		}
-	}
+	// Skip fixture filter since it's not in new schema
 
 	// Date range filters
 	if dateFrom := c.Query("date_from"); dateFrom != "" {
-		argIndex++
-		baseQuery += fmt.Sprintf(" AND i.purchase_date >= $%d", argIndex)
+		baseQuery += " AND i.purchase_date >= ?"
 		args = append(args, dateFrom)
 	}
 
 	if dateTo := c.Query("date_to"); dateTo != "" {
-		argIndex++
-		baseQuery += fmt.Sprintf(" AND i.purchase_date <= $%d", argIndex)
+		baseQuery += " AND i.purchase_date <= ?"
 		args = append(args, dateTo)
 	}
 
@@ -679,20 +660,19 @@ func (h *Handler) FilterItems(c *fiber.Ctx) error {
 		}
 	}
 
-	// Sources filter
+	// Brand filter (replacing sources)
 	if sources := c.Query("sources"); sources != "" {
 		sourceList := strings.Split(sources, ",")
 		if len(sourceList) > 0 {
 			placeholders := []string{}
 			for _, source := range sourceList {
 				if source != "" {
-					argIndex++
-					placeholders = append(placeholders, fmt.Sprintf("$%d", argIndex))
+					placeholders = append(placeholders, "?")
 					args = append(args, strings.TrimSpace(source))
 				}
 			}
 			if len(placeholders) > 0 {
-				baseQuery += fmt.Sprintf(" AND i.source IN (%s)", strings.Join(placeholders, ","))
+				baseQuery += fmt.Sprintf(" AND i.brand IN (%s)", strings.Join(placeholders, ","))
 			}
 		}
 	}
@@ -704,11 +684,11 @@ func (h *Handler) FilterItems(c *fiber.Ctx) error {
 	// Validate sort column
 	allowedSortColumns := map[string]string{
 		"name":          "i.name",
-		"category":      "i.category",
+		"category":      "c.name",
 		"room":          "r.name",
 		"price":         "i.purchase_price",
 		"purchase_date": "i.purchase_date",
-		"decision":      "i.decision",
+		"status":        "i.status",
 		"created_at":    "i.created_at",
 	}
 
@@ -824,27 +804,32 @@ func (h *Handler) GetSummary(c *fiber.Ctx) error {
 		UnsureCount int     `db:"unsure_count"`
 	}
 
-	err := h.db.Get(&stats, `
+	query := `
 		SELECT
 			COUNT(*) as total_items,
-			COALESCE(SUM(purchase_price), 0) as total_value,
+			COALESCE(SUM(asking_price), 0) as total_value,
 			COUNT(*) FILTER (WHERE decision = 'Sell') as sell_count,
 			COUNT(*) FILTER (WHERE decision = 'Keep') as keep_count,
 			COUNT(*) FILTER (WHERE decision = 'Unsure') as unsure_count
 		FROM items
-	`)
+	`
+	fmt.Printf("DEBUG: Executing query: %s\n", query)
+	err := h.db.Get(&stats, query)
 	if err != nil {
+		fmt.Printf("DEBUG: Query error: %v\n", err)
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
+	fmt.Printf("DEBUG: Query results - TotalItems: %d, TotalValue: %f, KeepCount: %d, SellCount: %d, UnsureCount: %d\n", 
+		stats.TotalItems, stats.TotalValue, stats.KeepCount, stats.SellCount, stats.UnsureCount)
 
 	// Get room values
 	roomValues := []fiber.Map{}
 	rows, err := h.db.Query(`
-		SELECT r.name, COALESCE(SUM(i.purchase_price), 0) as value
+		SELECT r.name, COALESCE(SUM(i.asking_price), 0) as value
 		FROM rooms r
 		LEFT JOIN items i ON r.id = i.room_id
 		GROUP BY r.id, r.name
-		HAVING SUM(i.purchase_price) > 0
+		HAVING SUM(i.asking_price) > 0
 		ORDER BY value DESC
 		LIMIT 10
 	`)
@@ -911,11 +896,12 @@ func (h *Handler) GetRoomAnalytics(c *fiber.Ctx) error {
 			COUNT(i.id) as item_count,
 			COALESCE(SUM(i.purchase_price), 0) as total_value,
 			COALESCE(AVG(i.purchase_price), 0) as avg_value,
-			SUM(CASE WHEN i.decision = 'Keep' THEN 1 ELSE 0 END) as keep_count,
-			SUM(CASE WHEN i.decision = 'Sell' THEN 1 ELSE 0 END) as sell_count,
-			SUM(CASE WHEN i.decision = 'Unsure' THEN 1 ELSE 0 END) as unsure_count
+			SUM(CASE WHEN i.status = 'Active' THEN 1 ELSE 0 END) as keep_count,
+			SUM(CASE WHEN i.status IN ('Sold') THEN 1 ELSE 0 END) as sell_count,
+			SUM(CASE WHEN i.status NOT IN ('Sold', 'Donated', 'Disposed') THEN 1 ELSE 0 END) as unsure_count
 		FROM rooms r
 		LEFT JOIN items i ON r.id = i.room_id
+		WHERE i.status = 'Active' OR i.id IS NULL
 		GROUP BY r.name, r.floor
 		ORDER BY total_value DESC
 	`
@@ -967,17 +953,19 @@ func (h *Handler) GetCategoryAnalytics(c *fiber.Ctx) error {
 
 	query := `
 		SELECT
-			i.category::text as category,
+			COALESCE(c.name, 'Uncategorized') as category,
 			COUNT(i.id) as item_count,
 			COALESCE(SUM(i.purchase_price), 0) as total_value,
 			COALESCE(AVG(i.purchase_price), 0) as avg_value,
 			COALESCE(MIN(i.purchase_price), 0) as min_value,
 			COALESCE(MAX(i.purchase_price), 0) as max_value,
-			SUM(CASE WHEN i.decision = 'Keep' THEN 1 ELSE 0 END) as keep_count,
-			SUM(CASE WHEN i.decision = 'Sell' THEN 1 ELSE 0 END) as sell_count,
-			SUM(CASE WHEN i.decision = 'Unsure' THEN 1 ELSE 0 END) as unsure_count
+			SUM(CASE WHEN i.status = 'Active' THEN 1 ELSE 0 END) as keep_count,
+			SUM(CASE WHEN i.status IN ('Sold') THEN 1 ELSE 0 END) as sell_count,
+			SUM(CASE WHEN i.status NOT IN ('Sold', 'Donated', 'Disposed') THEN 1 ELSE 0 END) as unsure_count
 		FROM items i
-		GROUP BY i.category
+		LEFT JOIN categories c ON i.category_id = c.id
+		WHERE i.status = 'Active'
+		GROUP BY c.name
 		ORDER BY total_value DESC
 	`
 

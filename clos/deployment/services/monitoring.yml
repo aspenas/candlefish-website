@@ -1,0 +1,296 @@
+version: '3.8'
+
+# Monitoring & Observability Stack
+# Prometheus: Port 9090
+# Grafana: Port 3001
+# AlertManager: Port 9093
+# Node Exporter: Port 9100
+
+services:
+  # Prometheus - Metrics Collection
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: clos-prometheus
+    restart: unless-stopped
+    user: "1000:1000"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--query.max-concurrency=20'
+      - '--query.timeout=2m'
+    volumes:
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.4.10
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "clos.service=monitoring"
+      - "clos.component=metrics"
+      - "clos.port=9090"
+
+  # Grafana - Visualization & Dashboards
+  grafana:
+    image: grafana/grafana:10.1.0
+    container_name: clos-grafana
+    restart: unless-stopped
+    user: "1000:1000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-candlefish_grafana_2024}
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-worldmap-panel,grafana-clock-panel
+      - GF_SERVER_ROOT_URL=http://grafana.local
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+      - GF_LOG_LEVEL=warn
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3001:3000"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.4.11
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      - prometheus
+    labels:
+      - "clos.service=monitoring"
+      - "clos.component=visualization"
+      - "clos.port=3001"
+
+  # AlertManager - Alert Management
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: clos-alertmanager
+    restart: unless-stopped
+    user: "1000:1000"
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://alertmanager.local'
+      - '--cluster.advertise-address=0.0.0.0:9093'
+    volumes:
+      - ../monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    ports:
+      - "9093:9093"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.4.12
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    labels:
+      - "clos.service=monitoring"
+      - "clos.component=alerting"
+      - "clos.port=9093"
+
+  # Node Exporter - System Metrics
+  node-exporter:
+    image: prom/node-exporter:v1.6.1
+    container_name: clos-node-exporter
+    restart: unless-stopped
+    user: "1000:1000"
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+      - '--collector.netclass.ignored-devices=^(veth|docker|lo).*$$'
+      - '--collector.processes'
+      - '--collector.systemd'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    ports:
+      - "9100:9100"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.4.13
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9100/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "clos.service=monitoring"
+      - "clos.component=system-metrics"
+      - "clos.port=9100"
+
+  # cAdvisor - Container Metrics
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.0
+    container_name: clos-cadvisor
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /cgroup:/cgroup:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "8080:8080"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.4.14
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "clos.service=monitoring"
+      - "clos.component=container-metrics"
+      - "clos.port=8080"
+
+  # Loki - Log Aggregation
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: clos-loki
+    restart: unless-stopped
+    user: "1000:1000"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ../monitoring/loki/loki.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.4.15
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3100/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "clos.service=monitoring"
+      - "clos.component=logs"
+      - "clos.port=3100"
+
+  # Promtail - Log Collection
+  promtail:
+    image: grafana/promtail:2.9.0
+    container_name: clos-promtail
+    restart: unless-stopped
+    user: "1000:1000"
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ../monitoring/promtail/promtail.yml:/etc/promtail/config.yml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      clos-network:
+        ipv4_address: 172.20.4.16
+    depends_on:
+      - loki
+    labels:
+      - "clos.service=monitoring"
+      - "clos.component=log-collection"
+
+  # Tempo - Distributed Tracing
+  tempo:
+    image: grafana/tempo:2.2.0
+    container_name: clos-tempo
+    restart: unless-stopped
+    user: "1000:1000"
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ../monitoring/tempo/tempo.yml:/etc/tempo.yaml:ro
+      - tempo_data:/tmp/tempo
+    ports:
+      - "3200:3200"   # Tempo HTTP
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "9411:9411"   # Zipkin
+    networks:
+      clos-network:
+        ipv4_address: 172.20.4.17
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3200/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "clos.service=monitoring"
+      - "clos.component=tracing"
+      - "clos.port=3200"
+
+  # Uptime Kuma - Service Monitoring
+  uptime-kuma:
+    image: louislam/uptime-kuma:1.23.0
+    container_name: clos-uptime-kuma
+    restart: unless-stopped
+    volumes:
+      - uptime_kuma_data:/app/data
+    ports:
+      - "3001:3001"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.4.18
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "clos.service=monitoring"
+      - "clos.component=uptime"
+      - "clos.port=3001"
+
+networks:
+  clos-network:
+    external: true
+
+volumes:
+  prometheus_data:
+    external: true
+  grafana_data:
+    external: true
+  alertmanager_data:
+    driver: local
+  loki_data:
+    driver: local
+  tempo_data:
+    driver: local
+  uptime_kuma_data:
+    driver: local

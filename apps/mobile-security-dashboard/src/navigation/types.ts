@@ -33,11 +33,11 @@ export type RootStackParamList = {
 };
 
 export type MainTabParamList = {
-  Overview: undefined;
+  Dashboard: undefined;
   Alerts: undefined;
-  Vulnerabilities: undefined;
-  Assets: undefined;
   Incidents: undefined;
+  Analytics: undefined;
+  Settings: undefined;
 };
 
 export type AuthStackParamList = {

@@ -4,14 +4,20 @@ import (
 	"log"
 	"os"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/swagger"
 	"github.com/gofiber/websocket/v2"
+	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
+	"github.com/patricksmith/highline-inventory/auth"
 	"github.com/patricksmith/highline-inventory/handlers"
+	"github.com/patricksmith/highline-inventory/middleware"
 	"github.com/patricksmith/highline-inventory/database"
 )
 
@@ -30,8 +36,40 @@ func main() {
 	if db != nil {
 		defer db.Close()
 		log.Println("Connected to database successfully")
+		
+		// Run auth migrations
+		if err := database.RunAuthMigrations(db.DB); err != nil {
+			log.Printf("Failed to run auth migrations: %v", err)
+		}
 	} else {
 		log.Println("Using mock data mode")
+	}
+
+	// Initialize Redis client (optional)
+	var redisClient *redis.Client
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL != "" {
+		opt, err := redis.ParseURL(redisURL)
+		if err == nil {
+			redisClient = redis.NewClient(opt)
+		}
+	}
+
+	// Initialize auth components
+	jwtManager, err := auth.NewJWTManager()
+	if err != nil {
+		log.Fatal("Failed to initialize JWT manager:", err)
+	}
+
+	blacklist := auth.NewTokenBlacklist(redisClient)
+	csrfSecret := getCSRFSecret()
+	csrfManager := auth.NewCSRFManager(csrfSecret)
+	rateLimiter := auth.NewRateLimiter(redisClient)
+
+	// Initialize auth handler only if database is available
+	var authHandler *handlers.AuthHandler
+	if db != nil {
+		authHandler = handlers.NewAuthHandler(db.DB, jwtManager, blacklist, csrfManager, rateLimiter)
 	}
 
 	// Create Fiber app
@@ -52,7 +90,7 @@ func main() {
 	app.Use(recover.New())
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "https://inventory.highline.work,http://localhost:3000,https://5470-inventory.netlify.app",
+		AllowOrigins:     "https://inventory.highline.work,http://localhost:3000,http://localhost:3050,https://5470-inventory.netlify.app",
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, X-Requested-With",
 		AllowMethods:     "GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS",
 		AllowCredentials: true,
@@ -72,6 +110,56 @@ func main() {
 	// API routes
 	api := app.Group("/api/v1")
 
+	// Auth routes (public) - only if auth handler is available
+	if authHandler != nil {
+		authGroup := api.Group("/auth")
+		authGroup.Use(middleware.RateLimitAuth(rateLimiter)) // Apply rate limiting to auth endpoints
+		authGroup.Post("/login", authHandler.Login)
+		authGroup.Post("/register", authHandler.Register)
+		authGroup.Post("/refresh", middleware.RefreshTokenMiddleware(jwtManager, blacklist), authHandler.RefreshToken)
+		
+		// Protected auth routes
+		authGroup.Post("/logout", middleware.JWTAuth(middleware.AuthConfig{
+			JWTManager:  jwtManager,
+			Blacklist:   blacklist,
+			CSRFManager: csrfManager,
+			SkipCSRF:    false,
+		}), authHandler.Logout)
+		
+		authGroup.Get("/profile", middleware.JWTAuth(middleware.AuthConfig{
+			JWTManager:  jwtManager,
+			Blacklist:   blacklist,
+			CSRFManager: csrfManager,
+			SkipCSRF:    true, // GET request doesn't need CSRF
+		}), authHandler.GetProfile)
+	}
+
+	// JWKS endpoint for public key (useful for external services)
+	api.Get("/.well-known/jwks.json", func(c *fiber.Ctx) error {
+		publicKeyPEM, err := jwtManager.GetPublicKeyPEM()
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to get public key",
+			})
+		}
+		return c.JSON(fiber.Map{
+			"keys": []fiber.Map{{
+				"kty": "RSA",
+				"use": "sig",
+				"alg": "RS256",
+				"n":   publicKeyPEM,
+			}},
+		})
+	})
+
+	// Health check for API group
+	api.Get("/health", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"status": "healthy",
+			"service": "highline-inventory-api",
+		})
+	})
+
 	// Initialize handlers
 	h := handlers.New(db)
 	
@@ -79,30 +167,105 @@ func main() {
 	photoHandler := handlers.NewPhotoHandler(h)
 	h.PhotoHandler = photoHandler
 
-	// Room routes
-	api.Get("/rooms", h.GetRooms)
-	api.Get("/rooms/:id", h.GetRoom)
-	api.Post("/rooms", h.CreateRoom)
-	api.Put("/rooms/:id", h.UpdateRoom)
-	api.Delete("/rooms/:id", h.DeleteRoom)
+	// Apply JWT middleware to all protected routes
+	protectedConfig := middleware.AuthConfig{
+		JWTManager:  jwtManager,
+		Blacklist:   blacklist,
+		CSRFManager: csrfManager,
+		SkipCSRF:    false,
+	}
 
-	// Item routes
-	api.Get("/items", h.GetItems)
-	api.Get("/items/:id", h.GetItem)
-	api.Post("/items", h.CreateItem)
-	api.Put("/items/:id", h.UpdateItem)
-	api.Delete("/items/:id", h.DeleteItem)
-	api.Post("/items/bulk", h.BulkUpdateItems)
+	// Check if NO_AUTH is set for local development
+	noAuth := os.Getenv("NO_AUTH") == "true"
 
-	// Search and filter
-	api.Get("/search", h.SearchItems)
-	api.Get("/filter", h.FilterItems)
+	// Room routes - using simple handlers for existing schema
+	if noAuth {
+		// No authentication for local development
+		api.Get("/rooms", h.GetSimpleRooms)
+		api.Get("/rooms/:id", h.GetRoom)
+		api.Post("/rooms", h.CreateRoom)
+		api.Put("/rooms/:id", h.UpdateRoom)
+		api.Delete("/rooms/:id", h.DeleteRoom)
+	} else {
+		// Protected routes for production
+		api.Get("/rooms", middleware.JWTAuth(middleware.AuthConfig{
+			JWTManager:  jwtManager,
+			Blacklist:   blacklist,
+			CSRFManager: csrfManager,
+			SkipCSRF:    true, // GET requests don't need CSRF
+		}), h.GetSimpleRooms)
+		api.Get("/rooms/:id", middleware.JWTAuth(middleware.AuthConfig{
+			JWTManager:  jwtManager,
+			Blacklist:   blacklist,
+			CSRFManager: csrfManager,
+			SkipCSRF:    true,
+		}), h.GetRoom)
+		api.Post("/rooms", middleware.JWTAuth(protectedConfig), h.CreateRoom)
+		api.Put("/rooms/:id", middleware.JWTAuth(protectedConfig), h.UpdateRoom)
+		api.Delete("/rooms/:id", middleware.JWTAuth(protectedConfig), h.DeleteRoom)
+	}
+	
+	// Item routes - using simple handlers for existing schema
+	if noAuth {
+		// No authentication for local development
+		api.Get("/items", h.GetSimpleItems)
+		api.Get("/items/:id", h.GetSimpleItem)
+		api.Post("/items", h.CreateItem)
+		api.Put("/items/:id", h.UpdateItem)
+		api.Delete("/items/:id", h.DeleteItem)
+		api.Post("/items/bulk", h.BulkUpdateItems)
+		
+		// Search and filter
+		api.Get("/search", h.SearchItems)
+		api.Get("/filter", h.FilterItems)
+	} else {
+		// Protected routes for production
+		api.Get("/items", middleware.JWTAuth(middleware.AuthConfig{
+			JWTManager:  jwtManager,
+			Blacklist:   blacklist,
+			CSRFManager: csrfManager,
+			SkipCSRF:    true,
+		}), h.GetSimpleItems)
+		api.Get("/items/:id", middleware.JWTAuth(middleware.AuthConfig{
+			JWTManager:  jwtManager,
+			Blacklist:   blacklist,
+			CSRFManager: csrfManager,
+			SkipCSRF:    true,
+		}), h.GetSimpleItem)
+		api.Post("/items", middleware.JWTAuth(protectedConfig), h.CreateItem)
+		api.Put("/items/:id", middleware.JWTAuth(protectedConfig), h.UpdateItem)
+		api.Delete("/items/:id", middleware.JWTAuth(protectedConfig), h.DeleteItem)
+		api.Post("/items/bulk", middleware.JWTAuth(protectedConfig), h.BulkUpdateItems)
+
+		// Search and filter (protected)
+		api.Get("/search", middleware.JWTAuth(middleware.AuthConfig{
+			JWTManager:  jwtManager,
+			Blacklist:   blacklist,
+			CSRFManager: csrfManager,
+			SkipCSRF:    true,
+		}), h.SearchItems)
+		api.Get("/filter", middleware.JWTAuth(middleware.AuthConfig{
+			JWTManager:  jwtManager,
+			Blacklist:   blacklist,
+			CSRFManager: csrfManager,
+			SkipCSRF:    true,
+		}), h.FilterItems)
+	}
 
 	// Activities
-	api.Get("/activities", h.GetActivities)
+	if noAuth {
+		api.Get("/activities", h.GetActivities)
+	} else {
+		api.Get("/activities", middleware.JWTAuth(middleware.AuthConfig{
+			JWTManager:  jwtManager,
+			Blacklist:   blacklist,
+			CSRFManager: csrfManager,
+			SkipCSRF:    true,
+		}), h.GetActivities)
+	}
 
-	// Analytics
-	api.Get("/analytics/summary", h.GetSummary)
+	// Analytics - using simple handler for existing schema
+	api.Get("/analytics/summary", h.GetSimpleSummary)
 	api.Get("/analytics/by-room", h.GetRoomAnalytics)
 	api.Get("/analytics/by-category", h.GetCategoryAnalytics)
 
@@ -205,4 +368,36 @@ func main() {
 
 	log.Printf("Server starting on port %s", port)
 	log.Fatal(app.Listen(":" + port))
+}
+
+// getCSRFSecret loads CSRF secret from AWS Secrets Manager or environment
+func getCSRFSecret() string {
+	// Try environment first
+	if secret := os.Getenv("CSRF_SECRET"); secret != "" {
+		return secret
+	}
+
+	// Try AWS Secrets Manager in production
+	if os.Getenv("AWS_REGION") != "" || os.Getenv("ENV") == "production" {
+		sess, err := session.NewSession(&aws.Config{
+			Region: aws.String("us-east-1"),
+		})
+		if err != nil {
+			log.Printf("Failed to create AWS session for CSRF secret: %v", err)
+			return ""
+		}
+
+		svc := secretsmanager.New(sess)
+		result, err := svc.GetSecretValue(&secretsmanager.GetSecretValueInput{
+			SecretId: aws.String("highline-inventory/csrf-secret"),
+		})
+		if err != nil {
+			log.Printf("Failed to load CSRF secret from AWS: %v", err)
+			return ""
+		}
+
+		return *result.SecretString
+	}
+
+	return ""
 }

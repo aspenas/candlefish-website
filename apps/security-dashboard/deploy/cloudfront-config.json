@@ -1,0 +1,132 @@
+{
+  "staging": {
+    "distributionConfig": {
+      "CallerReference": "security-dashboard-staging-2025",
+      "Comment": "Security Dashboard Staging Distribution",
+      "Aliases": ["staging.security-dashboard.io"],
+      "Origins": [
+        {
+          "Id": "S3-security-dashboard-staging",
+          "DomainName": "security-dashboard-staging.s3.amazonaws.com",
+          "S3OriginConfig": {
+            "OriginAccessIdentity": ""
+          }
+        }
+      ],
+      "DefaultCacheBehavior": {
+        "TargetOriginId": "S3-security-dashboard-staging",
+        "ViewerProtocolPolicy": "redirect-to-https",
+        "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
+        "Compress": true,
+        "AllowedMethods": ["GET", "HEAD", "OPTIONS"],
+        "CachedMethods": ["GET", "HEAD"]
+      },
+      "CacheBehaviors": [
+        {
+          "PathPattern": "/assets/*",
+          "TargetOriginId": "S3-security-dashboard-staging",
+          "ViewerProtocolPolicy": "redirect-to-https",
+          "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
+          "Compress": true,
+          "TTL": 31536000
+        },
+        {
+          "PathPattern": "*.js",
+          "TargetOriginId": "S3-security-dashboard-staging",
+          "ViewerProtocolPolicy": "redirect-to-https",
+          "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
+          "Compress": true,
+          "TTL": 31536000
+        },
+        {
+          "PathPattern": "*.css",
+          "TargetOriginId": "S3-security-dashboard-staging",
+          "ViewerProtocolPolicy": "redirect-to-https",
+          "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
+          "Compress": true,
+          "TTL": 31536000
+        }
+      ],
+      "CustomErrorResponses": [
+        {
+          "ErrorCode": 404,
+          "ResponsePagePath": "/index.html",
+          "ResponseCode": 200,
+          "ErrorCachingMinTTL": 10
+        },
+        {
+          "ErrorCode": 403,
+          "ResponsePagePath": "/index.html", 
+          "ResponseCode": 200,
+          "ErrorCachingMinTTL": 10
+        }
+      ],
+      "Enabled": true,
+      "HttpVersion": "http2and3",
+      "IsIPV6Enabled": true,
+      "PriceClass": "PriceClass_100",
+      "ViewerCertificate": {
+        "AcmCertificateArn": "arn:aws:acm:us-east-1:681214184463:certificate/your-ssl-cert",
+        "SslSupportMethod": "sni-only",
+        "MinimumProtocolVersion": "TLSv1.2_2021"
+      }
+    }
+  },
+  "production": {
+    "distributionConfig": {
+      "CallerReference": "security-dashboard-production-2025",
+      "Comment": "Security Dashboard Production Distribution",
+      "Aliases": ["security-dashboard.io"],
+      "Origins": [
+        {
+          "Id": "S3-security-dashboard-production",
+          "DomainName": "security-dashboard-production.s3.amazonaws.com",
+          "S3OriginConfig": {
+            "OriginAccessIdentity": ""
+          }
+        }
+      ],
+      "DefaultCacheBehavior": {
+        "TargetOriginId": "S3-security-dashboard-production",
+        "ViewerProtocolPolicy": "redirect-to-https",
+        "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
+        "Compress": true,
+        "AllowedMethods": ["GET", "HEAD", "OPTIONS"],
+        "CachedMethods": ["GET", "HEAD"]
+      },
+      "CacheBehaviors": [
+        {
+          "PathPattern": "/assets/*",
+          "TargetOriginId": "S3-security-dashboard-production",
+          "ViewerProtocolPolicy": "redirect-to-https",
+          "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
+          "Compress": true,
+          "TTL": 31536000
+        }
+      ],
+      "CustomErrorResponses": [
+        {
+          "ErrorCode": 404,
+          "ResponsePagePath": "/index.html",
+          "ResponseCode": 200,
+          "ErrorCachingMinTTL": 10
+        },
+        {
+          "ErrorCode": 403,
+          "ResponsePagePath": "/index.html",
+          "ResponseCode": 200,
+          "ErrorCachingMinTTL": 10
+        }
+      ],
+      "Enabled": true,
+      "HttpVersion": "http2and3",
+      "IsIPV6Enabled": true,
+      "PriceClass": "PriceClass_All",
+      "ViewerCertificate": {
+        "AcmCertificateArn": "arn:aws:acm:us-east-1:681214184463:certificate/your-ssl-cert-prod",
+        "SslSupportMethod": "sni-only",
+        "MinimumProtocolVersion": "TLSv1.2_2021"
+      }
+    }
+  }
+}

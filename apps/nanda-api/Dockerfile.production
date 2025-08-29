@@ -1,0 +1,97 @@
+# Production Dockerfile for NANDA API Service
+# Multi-stage build for optimal image size and security
+
+# Build arguments for metadata
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION
+
+# Stage 1: Base image with security updates
+FROM node:20-alpine AS base
+
+# Install security updates and required tools
+RUN apk update && \
+    apk upgrade && \
+    apk add --no-cache \
+        dumb-init \
+        curl \
+        tzdata && \
+    rm -rf /var/cache/apk/* && \
+    npm install -g npm@latest
+
+# Stage 2: Dependencies installation
+FROM base AS deps
+WORKDIR /app
+
+# Copy dependency files with proper caching
+COPY package*.json ./
+RUN npm ci --only=production --frozen-lockfile --silent && \
+    npm cache clean --force && \
+    rm -rf ~/.npm
+
+# Stage 3: Builder stage
+FROM base AS builder
+WORKDIR /app
+
+# Copy dependency files
+COPY package*.json ./
+RUN npm ci --frozen-lockfile --silent
+
+# Copy source code
+COPY . .
+
+# Build the application with TypeScript compilation
+ENV NODE_ENV production
+RUN npm run build && \
+    npm prune --production && \
+    npm cache clean --force
+
+# Stage 4: Runner stage - final production image
+FROM base AS runner
+WORKDIR /app
+
+# Create non-root user for security
+RUN addgroup --system --gid 1001 apiuser && \
+    adduser --system --uid 1001 apiuser --ingroup apiuser
+
+# Set security-focused environment variables
+ENV NODE_ENV production
+ENV NODE_OPTIONS "--unhandled-rejections=strict --max-old-space-size=2048"
+ENV PORT 3000
+
+# Copy production dependencies and built application
+COPY --from=deps --chown=apiuser:apiuser /app/node_modules ./node_modules
+COPY --from=builder --chown=apiuser:apiuser /app/dist ./dist
+COPY --from=builder --chown=apiuser:apiuser /app/package.json ./package.json
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/tmp && \
+    chown -R apiuser:apiuser /app
+
+# Create healthcheck script
+RUN echo '#!/bin/sh\ncurl -f http://localhost:3000/health || exit 1' > /app/healthcheck.sh && \
+    chmod +x /app/healthcheck.sh && \
+    chown apiuser:apiuser /app/healthcheck.sh
+
+# Switch to non-root user
+USER apiuser
+
+# Expose port
+EXPOSE 3000
+
+# Add labels for metadata
+LABEL maintainer="Candlefish.ai <dev@candlefish.ai>"
+LABEL org.opencontainers.image.title="NANDA API Service"
+LABEL org.opencontainers.image.description="Neural Autonomous Development Assistant API"
+LABEL org.opencontainers.image.version=${VERSION}
+LABEL org.opencontainers.image.created=${BUILD_DATE}
+LABEL org.opencontainers.image.revision=${VCS_REF}
+LABEL org.opencontainers.image.source="https://github.com/candlefish-ai/brand"
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD /app/healthcheck.sh
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "dist/index.js"]

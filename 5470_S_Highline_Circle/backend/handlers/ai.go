@@ -62,8 +62,10 @@ func (h *Handler) GetAIInsights(c *fiber.Ctx) error {
 
 	// Fetch all items for analysis
 	rows, err := h.db.Query(`
-		SELECT id, name, category, purchase_price, decision, condition, room_id
-		FROM items
+		SELECT i.id, i.name, COALESCE(c.name, 'Uncategorized') as category, i.purchase_price, i.status, i.condition, i.room_id
+		FROM items i
+		LEFT JOIN categories c ON i.category_id = c.id
+		WHERE i.status = 'Active'
 	`)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch items"})
@@ -73,12 +75,12 @@ func (h *Handler) GetAIInsights(c *fiber.Ctx) error {
 	var items []map[string]interface{}
 	for rows.Next() {
 		var item map[string]interface{} = make(map[string]interface{})
-		var id, name, category, decisionStatus string
+		var id, name, category, statusValue string
 		var purchasePrice sql.NullFloat64
 		var condition sql.NullString
 		var roomID sql.NullString
 
-		err := rows.Scan(&id, &name, &category, &purchasePrice, &decisionStatus, &condition, &roomID)
+		err := rows.Scan(&id, &name, &category, &purchasePrice, &statusValue, &condition, &roomID)
 		if err != nil {
 			continue
 		}
@@ -91,7 +93,17 @@ func (h *Handler) GetAIInsights(c *fiber.Ctx) error {
 		} else {
 			item["estimatedValue"] = 0.0
 		}
-		item["decisionStatus"] = decisionStatus
+		// Map status to decision for API compatibility
+		decision := "Unsure"
+		switch statusValue {
+		case "Sold":
+			decision = "Sold"
+		case "Donated":
+			decision = "Donated"
+		case "Active":
+			decision = "Keep"
+		}
+		item["decisionStatus"] = decision
 		if condition.Valid {
 			item["condition"] = condition.String
 		} else {
@@ -271,10 +283,11 @@ func (h *Handler) GetMarketAnalysis(c *fiber.Ctx) error {
 func (h *Handler) GetBundleSuggestions(c *fiber.Ctx) error {
 	// Fetch items for bundling
 	rows, err := h.db.Query(`
-		SELECT id, name, category, purchase_price, decision
-		FROM items
-		WHERE decision = 'Sell'
-		ORDER BY category, purchase_price DESC
+		SELECT i.id, i.name, COALESCE(c.name, 'Uncategorized') as category, i.purchase_price, i.status
+		FROM items i
+		LEFT JOIN categories c ON i.category_id = c.id
+		WHERE i.status IN ('Sold', 'Active')
+		ORDER BY c.name, i.purchase_price DESC
 	`)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch items"})
@@ -283,10 +296,10 @@ func (h *Handler) GetBundleSuggestions(c *fiber.Ctx) error {
 
 	categoryItems := make(map[string][]map[string]interface{})
 	for rows.Next() {
-		var id, name, category, decisionStatus string
+		var id, name, category, statusValue string
 		var value sql.NullFloat64
 
-		err := rows.Scan(&id, &name, &category, &value, &decisionStatus)
+		err := rows.Scan(&id, &name, &category, &value, &statusValue)
 		if err != nil {
 			continue
 		}

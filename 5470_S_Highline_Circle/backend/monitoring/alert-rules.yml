@@ -1,0 +1,296 @@
+# Prometheus Alert Rules for Item Valuation System
+groups:
+  # Application Health Alerts
+  - name: inventory_application_health
+    rules:
+      - alert: ApplicationDown
+        expr: up{job="inventory-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "Backend application is down"
+          description: "Backend application {{ $labels.instance }} has been down for more than 1 minute."
+          runbook_url: "https://docs.inventory.example.com/runbooks/application-down"
+
+      - alert: WebSocketServiceDown
+        expr: up{job="inventory-websocket"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          component: websocket
+        annotations:
+          summary: "WebSocket service is down"
+          description: "WebSocket service {{ $labels.instance }} has been down for more than 2 minutes."
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} for {{ $labels.instance }}"
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          component: backend
+        annotations:
+          summary: "High latency detected"
+          description: "95th percentile latency is {{ $value }}s for {{ $labels.instance }}"
+
+  # Infrastructure Alerts
+  - name: inventory_infrastructure
+    rules:
+      - alert: HighCPUUsage
+        expr: (100 - (avg(rate(cpu_usage_idle[5m])) * 100)) > 80
+        for: 10m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: DiskSpaceRunningOut
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100 < 15
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "Low disk space"
+          description: "Disk space is {{ $value }}% full on {{ $labels.instance }} for {{ $labels.mountpoint }}"
+
+      - alert: DiskSpaceCritical
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100 < 5
+        for: 1m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "Critical disk space"
+          description: "Disk space is {{ $value }}% full on {{ $labels.instance }} for {{ $labels.mountpoint }}"
+
+  # Database Alerts
+  - name: inventory_database
+    rules:
+      - alert: PostgreSQLDown
+        expr: up{job="postgres-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL database has been down for more than 1 minute."
+
+      - alert: PostgreSQLTooManyConnections
+        expr: pg_stat_database_numbackends / pg_settings_max_connections * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "PostgreSQL too many connections"
+          description: "PostgreSQL is using {{ $value }}% of max connections"
+
+      - alert: PostgreSQLSlowQueries
+        expr: pg_stat_activity_max_tx_duration > 300
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "PostgreSQL slow queries detected"
+          description: "Long running query detected ({{ $value }}s)"
+
+      - alert: PostgreSQLReplicationLag
+        expr: pg_replication_lag > 30
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "PostgreSQL replication lag"
+          description: "Replication lag is {{ $value }}s"
+
+  # Cache Alerts  
+  - name: inventory_cache
+    rules:
+      - alert: RedisDown
+        expr: up{job="redis-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: cache
+        annotations:
+          summary: "Redis is down"
+          description: "Redis cache has been down for more than 1 minute."
+
+      - alert: RedisHighMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Redis high memory usage"
+          description: "Redis memory usage is {{ $value }}%"
+
+      - alert: RedisHighConnections
+        expr: redis_connected_clients > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Redis high connection count"
+          description: "Redis has {{ $value }} connected clients"
+
+  # Kubernetes Alerts
+  - name: inventory_kubernetes
+    rules:
+      - alert: PodCrashLooping
+        expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: kubernetes
+        annotations:
+          summary: "Pod is crash looping"
+          description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is crash looping"
+
+      - alert: PodNotReady
+        expr: kube_pod_status_ready{condition="false"} == 1
+        for: 10m
+        labels:
+          severity: warning
+          component: kubernetes
+        annotations:
+          summary: "Pod not ready"
+          description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} has been not ready for more than 10 minutes"
+
+      - alert: DeploymentReplicasMismatch
+        expr: kube_deployment_status_replicas_available != kube_deployment_spec_replicas
+        for: 5m
+        labels:
+          severity: warning
+          component: kubernetes
+        annotations:
+          summary: "Deployment replicas mismatch"
+          description: "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} has {{ $labels.replica_available }} available replicas, expected {{ $labels.replica }}"
+
+      - alert: HPAScalingActive
+        expr: kube_hpa_status_current_replicas > kube_hpa_spec_min_replicas
+        for: 15m
+        labels:
+          severity: info
+          component: kubernetes
+        annotations:
+          summary: "HPA scaling active"
+          description: "HPA {{ $labels.namespace }}/{{ $labels.hpa }} is scaling ({{ $labels.current_replicas }} replicas)"
+
+  # Business Logic Alerts
+  - name: inventory_business
+    rules:
+      - alert: HighItemUploadFailureRate
+        expr: rate(inventory_item_upload_failures_total[5m]) / rate(inventory_item_upload_attempts_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: business
+        annotations:
+          summary: "High item upload failure rate"
+          description: "Item upload failure rate is {{ $value | humanizePercentage }}"
+
+      - alert: ValuationProcessingBacklog
+        expr: inventory_valuation_queue_size > 100
+        for: 10m
+        labels:
+          severity: warning
+          component: business
+        annotations:
+          summary: "Valuation processing backlog"
+          description: "Valuation queue has {{ $value }} pending items"
+
+      - alert: PhotoProcessingErrors
+        expr: increase(inventory_photo_processing_errors_total[10m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: business
+        annotations:
+          summary: "Photo processing errors"
+          description: "{{ $value }} photo processing errors in the last 10 minutes"
+
+  # External Dependencies
+  - name: inventory_external
+    rules:
+      - alert: ExternalAPIDown
+        expr: probe_success{job="blackbox-http"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          component: external
+        annotations:
+          summary: "External service is down"
+          description: "External service {{ $labels.instance }} is down"
+
+      - alert: SSLCertificateExpiring
+        expr: probe_ssl_earliest_cert_expiry - time() < 86400 * 30
+        for: 1h
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "SSL certificate expiring soon"
+          description: "SSL certificate for {{ $labels.instance }} expires in {{ $value | humanizeDuration }}"
+
+      - alert: SSLCertificateExpired
+        expr: probe_ssl_earliest_cert_expiry - time() <= 0
+        for: 1m
+        labels:
+          severity: critical
+          component: security
+        annotations:
+          summary: "SSL certificate expired"
+          description: "SSL certificate for {{ $labels.instance }} has expired"
+
+  # Security Alerts
+  - name: inventory_security
+    rules:
+      - alert: UnauthorizedAccessAttempts
+        expr: increase(inventory_auth_failures_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "High number of unauthorized access attempts"
+          description: "{{ $value }} failed authentication attempts in 5 minutes"
+
+      - alert: SuspiciousUserActivity
+        expr: rate(inventory_user_actions_total[5m]) > 50
+        for: 5m
+        labels:
+          severity: info
+          component: security
+        annotations:
+          summary: "Suspicious user activity detected"
+          description: "High activity rate ({{ $value }} actions/sec) from user {{ $labels.user_id }}"

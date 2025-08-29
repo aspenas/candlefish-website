@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: inventory-system
+  labels:
+    app: inventory-system
+    environment: production
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inventory-config
+  namespace: inventory-system
+data:
+  # Database configuration
+  DB_HOST: "postgres-service"
+  DB_PORT: "5432"
+  DB_NAME: "inventory_system"
+  
+  # Redis configuration
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  
+  # API configuration
+  PORT: "8080"
+  GIN_MODE: "release"
+  
+  # File upload configuration
+  UPLOAD_PATH: "/app/uploads"
+  MAX_FILE_SIZE: "10MB"
+  
+  # External services
+  AWS_REGION: "us-east-1"
+  
+  # WebSocket configuration
+  WS_PORT: "8081"
+  NODE_ENV: "production"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: inventory-secrets
+  namespace: inventory-system
+type: Opaque
+data:
+  # Base64 encoded secrets (replace with actual values)
+  DB_PASSWORD: Y2hhbmdlbWU=  # changeme
+  REDIS_PASSWORD: Y2hhbmdlbWU=  # changeme
+  JWT_SECRET: c3VwZXItc2VjcmV0LWp3dC1rZXk=  # super-secret-jwt-key

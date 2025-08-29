@@ -1,0 +1,1372 @@
+openapi: 3.0.3
+info:
+  title: CLOS API
+  description: |
+    Candlefish Localhost Orchestration System (CLOS) REST API
+    
+    A comprehensive API for managing Docker containers, service groups, port allocations,
+    and real-time monitoring of local development environments.
+    
+    ## Features
+    - Service registry and lifecycle management
+    - Real-time monitoring via WebSocket
+    - Port conflict detection and resolution
+    - Service group orchestration
+    - Health checks and status monitoring
+    - Container resource usage tracking
+    
+    ## Authentication
+    Uses JWT tokens with API key fallback for service-to-service communication.
+    
+  version: 2.0.0
+  contact:
+    name: CLOS API Support
+    url: https://github.com/candlefish-ai/clos
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080/api/v2
+    description: Local development server
+  - url: https://clos.local/api/v2
+    description: Local production server
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+paths:
+  # Health and System Info
+  /health:
+    get:
+      tags: [System]
+      summary: Health check endpoint
+      security: []
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded, unhealthy]
+                  timestamp:
+                    type: string
+                    format: date-time
+                  version:
+                    type: string
+                  uptime:
+                    type: integer
+                  checks:
+                    type: object
+                    properties:
+                      database:
+                        type: string
+                        enum: [healthy, unhealthy]
+                      docker:
+                        type: string
+                        enum: [healthy, unhealthy]
+                      disk_space:
+                        type: string
+                        enum: [healthy, warning, critical]
+
+  /system/info:
+    get:
+      tags: [System]
+      summary: Get system information
+      responses:
+        '200':
+          description: System information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: string
+                  build_info:
+                    type: object
+                  system_resources:
+                    $ref: '#/components/schemas/SystemResources'
+                  docker_info:
+                    type: object
+
+  /system/metrics:
+    get:
+      tags: [System]
+      summary: Get system metrics
+      responses:
+        '200':
+          description: System metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemMetrics'
+
+  # Service Management
+  /services:
+    get:
+      tags: [Services]
+      summary: List all services
+      parameters:
+        - name: group
+          in: query
+          schema:
+            type: string
+          description: Filter by service group
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [running, stopped, failed, starting, stopping]
+          description: Filter by service status
+        - name: tags
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: false
+          description: Filter by tags
+        - name: include_metrics
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Include real-time metrics
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: List of services
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  services:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Service'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+                  total_count:
+                    type: integer
+
+    post:
+      tags: [Services]
+      summary: Register a new service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceCreateRequest'
+      responses:
+        '201':
+          description: Service created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Port conflict detected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictError'
+
+  /services/{serviceId}:
+    get:
+      tags: [Services]
+      summary: Get service by ID
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: include_metrics
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Service details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Services]
+      summary: Update service configuration
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceUpdateRequest'
+      responses:
+        '200':
+          description: Service updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Services]
+      summary: Unregister service
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: force
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Force delete even if service is running
+      responses:
+        '204':
+          description: Service deleted successfully
+        '409':
+          description: Service is running and force=false
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /services/{serviceId}/start:
+    post:
+      tags: [Services]
+      summary: Start a service
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Service start initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceOperation'
+
+  /services/{serviceId}/stop:
+    post:
+      tags: [Services]
+      summary: Stop a service
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                timeout:
+                  type: integer
+                  description: Graceful shutdown timeout in seconds
+                  default: 30
+      responses:
+        '200':
+          description: Service stop initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceOperation'
+
+  /services/{serviceId}/restart:
+    post:
+      tags: [Services]
+      summary: Restart a service
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Service restart initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceOperation'
+
+  /services/{serviceId}/logs:
+    get:
+      tags: [Services]
+      summary: Get service logs
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: lines
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10000
+            default: 100
+        - name: since
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: follow
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Service logs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LogEntry'
+            text/plain:
+              schema:
+                type: string
+
+  /services/{serviceId}/metrics:
+    get:
+      tags: [Services]
+      summary: Get service metrics
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [1m, 5m, 15m, 1h, 6h, 24h]
+            default: 5m
+      responses:
+        '200':
+          description: Service metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceMetrics'
+
+  # Service Groups
+  /groups:
+    get:
+      tags: [Groups]
+      summary: List service groups
+      responses:
+        '200':
+          description: List of service groups
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  groups:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServiceGroup'
+
+    post:
+      tags: [Groups]
+      summary: Create service group
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceGroupCreateRequest'
+      responses:
+        '201':
+          description: Service group created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceGroup'
+
+  /groups/{groupName}:
+    get:
+      tags: [Groups]
+      summary: Get service group details
+      parameters:
+        - name: groupName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Service group details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceGroup'
+
+  /groups/{groupName}/start:
+    post:
+      tags: [Groups]
+      summary: Start service group
+      parameters:
+        - name: groupName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resolve_conflicts:
+                  type: boolean
+                  default: false
+                  description: Automatically resolve port conflicts
+      responses:
+        '200':
+          description: Group start operation initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupOperation'
+
+  /groups/{groupName}/stop:
+    post:
+      tags: [Groups]
+      summary: Stop service group
+      parameters:
+        - name: groupName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Group stop operation initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupOperation'
+
+  # Port Management
+  /ports:
+    get:
+      tags: [Ports]
+      summary: Get port allocation overview
+      parameters:
+        - name: project
+          in: query
+          schema:
+            type: string
+          description: Filter by project
+      responses:
+        '200':
+          description: Port allocation information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  port_ranges:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PortRange'
+                  allocated_ports:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AllocatedPort'
+
+  /ports/allocate:
+    post:
+      tags: [Ports]
+      summary: Allocate a port from range
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                project:
+                  type: string
+                preferred_port:
+                  type: integer
+                  minimum: 1024
+                  maximum: 65535
+      responses:
+        '200':
+          description: Port allocated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  port:
+                    type: integer
+                  project:
+                    type: string
+                  allocated_at:
+                    type: string
+                    format: date-time
+
+  /ports/{port}/conflicts:
+    get:
+      tags: [Ports]
+      summary: Check for port conflicts
+      parameters:
+        - name: port
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Port conflict information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortConflictDetails'
+
+  # Conflict Resolution
+  /conflicts:
+    get:
+      tags: [Conflicts]
+      summary: Detect all port conflicts
+      responses:
+        '200':
+          description: List of detected conflicts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conflicts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PortConflict'
+                  total_count:
+                    type: integer
+
+  /conflicts/resolve:
+    post:
+      tags: [Conflicts]
+      summary: Resolve port conflicts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                strategy:
+                  type: string
+                  enum: [auto, manual, migrate]
+                  default: auto
+                conflicts:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      port:
+                        type: integer
+                      resolution:
+                        type: string
+                        enum: [migrate_service, kill_process, ignore]
+      responses:
+        '200':
+          description: Conflict resolution results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resolved_conflicts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ConflictResolution'
+                  failed_resolutions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ConflictResolution'
+
+  # WebSocket endpoint for real-time updates
+  /ws:
+    get:
+      tags: [WebSocket]
+      summary: WebSocket connection for real-time updates
+      description: |
+        Establishes a WebSocket connection for real-time updates of service status,
+        metrics, and system events.
+        
+        ## Message Types:
+        - service.status_changed
+        - service.metrics_updated
+        - system.resource_alert
+        - port.conflict_detected
+        - group.operation_completed
+      responses:
+        '101':
+          description: WebSocket connection established
+
+  # Event History
+  /events:
+    get:
+      tags: [Events]
+      summary: Get system event history
+      parameters:
+        - name: event_type
+          in: query
+          schema:
+            type: string
+        - name: service_id
+          in: query
+          schema:
+            type: string
+        - name: since
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Event history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SystemEvent'
+
+  # Configuration Management
+  /config:
+    get:
+      tags: [Configuration]
+      summary: Get system configuration
+      responses:
+        '200':
+          description: System configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemConfig'
+
+    put:
+      tags: [Configuration]
+      summary: Update system configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemConfigUpdate'
+      responses:
+        '200':
+          description: Configuration updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemConfig'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    Service:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        group:
+          type: string
+        port:
+          type: integer
+        status:
+          type: string
+          enum: [running, stopped, failed, starting, stopping, unhealthy]
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        stopped_at:
+          type: string
+          format: date-time
+          nullable: true
+        health_url:
+          type: string
+          nullable: true
+        environment:
+          type: object
+          additionalProperties:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        health_check:
+          $ref: '#/components/schemas/HealthCheck'
+        docker_config:
+          $ref: '#/components/schemas/DockerConfig'
+        metrics:
+          $ref: '#/components/schemas/ServiceMetrics'
+
+    ServiceCreateRequest:
+      type: object
+      required: [name, group]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        group:
+          type: string
+          minLength: 1
+          maxLength: 50
+        port:
+          type: integer
+          minimum: 1024
+          maximum: 65535
+        health_url:
+          type: string
+          format: uri
+        environment:
+          type: object
+          additionalProperties:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        health_check:
+          $ref: '#/components/schemas/HealthCheckConfig'
+        docker_config:
+          $ref: '#/components/schemas/DockerConfigCreate'
+
+    ServiceUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        port:
+          type: integer
+          minimum: 1024
+          maximum: 65535
+        health_url:
+          type: string
+          format: uri
+        environment:
+          type: object
+          additionalProperties:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        health_check:
+          $ref: '#/components/schemas/HealthCheckConfig'
+
+    ServiceGroup:
+      type: object
+      properties:
+        name:
+          type: string
+        services:
+          type: array
+          items:
+            $ref: '#/components/schemas/Service'
+        dependencies:
+          type: array
+          items:
+            type: string
+        start_order:
+          type: integer
+        status:
+          type: string
+          enum: [running, stopped, partial, starting, stopping]
+        health_score:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    ServiceGroupCreateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        dependencies:
+          type: array
+          items:
+            type: string
+        start_order:
+          type: integer
+          default: 0
+        compose_file:
+          type: string
+
+    ServiceOperation:
+      type: object
+      properties:
+        operation_id:
+          type: string
+        service_id:
+          type: string
+        operation_type:
+          type: string
+          enum: [start, stop, restart]
+        status:
+          type: string
+          enum: [pending, in_progress, completed, failed]
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        error:
+          type: string
+          nullable: true
+
+    GroupOperation:
+      type: object
+      properties:
+        operation_id:
+          type: string
+        group_name:
+          type: string
+        operation_type:
+          type: string
+          enum: [start, stop, restart]
+        status:
+          type: string
+          enum: [pending, in_progress, completed, failed]
+        service_operations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServiceOperation'
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    HealthCheck:
+      type: object
+      properties:
+        url:
+          type: string
+        interval:
+          type: string
+          description: Duration string (e.g., "30s", "1m")
+        timeout:
+          type: string
+        retries:
+          type: integer
+        start_period:
+          type: string
+        expected_status:
+          type: integer
+        last_check:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [healthy, unhealthy, starting]
+
+    HealthCheckConfig:
+      type: object
+      properties:
+        url:
+          type: string
+        interval:
+          type: string
+          default: "30s"
+        timeout:
+          type: string
+          default: "10s"
+        retries:
+          type: integer
+          default: 3
+        start_period:
+          type: string
+          default: "30s"
+        expected_status:
+          type: integer
+          default: 200
+
+    DockerConfig:
+      type: object
+      properties:
+        container_id:
+          type: string
+          nullable: true
+        image:
+          type: string
+        networks:
+          type: array
+          items:
+            type: string
+        volumes:
+          type: array
+          items:
+            type: string
+        restart_policy:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+
+    DockerConfigCreate:
+      type: object
+      properties:
+        image:
+          type: string
+        networks:
+          type: array
+          items:
+            type: string
+        volumes:
+          type: array
+          items:
+            type: string
+        restart_policy:
+          type: string
+          default: "unless-stopped"
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+
+    ServiceMetrics:
+      type: object
+      properties:
+        cpu_usage:
+          type: number
+          minimum: 0
+          maximum: 100
+        memory_usage:
+          type: number
+          description: Memory usage in MB
+        memory_percent:
+          type: number
+          minimum: 0
+          maximum: 100
+        network_rx:
+          type: integer
+          description: Network bytes received
+        network_tx:
+          type: integer
+          description: Network bytes transmitted
+        disk_usage:
+          type: integer
+          description: Disk usage in bytes
+        uptime:
+          type: integer
+          description: Uptime in seconds
+        response_time:
+          type: number
+          description: Average response time in ms
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+
+    SystemMetrics:
+      type: object
+      properties:
+        cpu_usage:
+          type: number
+        memory_usage:
+          type: number
+        disk_usage:
+          type: number
+        load_average:
+          type: array
+          items:
+            type: number
+        docker_stats:
+          type: object
+          properties:
+            containers_running:
+              type: integer
+            containers_stopped:
+              type: integer
+            images_count:
+              type: integer
+            volumes_count:
+              type: integer
+        timestamp:
+          type: string
+          format: date-time
+
+    SystemResources:
+      type: object
+      properties:
+        cpu_count:
+          type: integer
+        memory_total:
+          type: integer
+        disk_total:
+          type: integer
+        docker_version:
+          type: string
+
+    PortRange:
+      type: object
+      properties:
+        project:
+          type: string
+        start_port:
+          type: integer
+        end_port:
+          type: integer
+        usage_count:
+          type: integer
+        usage_percent:
+          type: number
+
+    AllocatedPort:
+      type: object
+      properties:
+        port:
+          type: integer
+        service_id:
+          type: string
+          nullable: true
+        service_name:
+          type: string
+          nullable: true
+        project:
+          type: string
+        allocated_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [allocated, in_use, conflict]
+
+    PortConflict:
+      type: object
+      properties:
+        port:
+          type: integer
+        services:
+          type: array
+          items:
+            type: string
+        process_name:
+          type: string
+          nullable: true
+        pid:
+          type: integer
+          nullable: true
+        resolution_suggestion:
+          type: string
+          enum: [migrate_service, kill_process, change_port]
+
+    PortConflictDetails:
+      type: object
+      properties:
+        port:
+          type: integer
+        is_conflict:
+          type: boolean
+        current_user:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [service, system_process, unknown]
+            name:
+              type: string
+            pid:
+              type: integer
+              nullable: true
+        conflicting_services:
+          type: array
+          items:
+            type: string
+        resolution_options:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              description:
+                type: string
+              risk_level:
+                type: string
+                enum: [low, medium, high]
+
+    ConflictResolution:
+      type: object
+      properties:
+        port:
+          type: integer
+        resolution_type:
+          type: string
+        status:
+          type: string
+          enum: [success, failed]
+        details:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    LogEntry:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        level:
+          type: string
+          enum: [debug, info, warn, error, fatal]
+        message:
+          type: string
+        source:
+          type: string
+        container_id:
+          type: string
+          nullable: true
+
+    SystemEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        event_type:
+          type: string
+        service_id:
+          type: string
+          nullable: true
+        group_name:
+          type: string
+          nullable: true
+        data:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+        severity:
+          type: string
+          enum: [info, warning, error, critical]
+
+    SystemConfig:
+      type: object
+      properties:
+        port_ranges:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortRange'
+        service_groups:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              compose_file:
+                type: string
+              dependencies:
+                type: array
+                items:
+                  type: string
+        docker:
+          type: object
+          properties:
+            host:
+              type: string
+            network_name:
+              type: string
+        monitoring:
+          type: object
+          properties:
+            metrics_retention:
+              type: string
+            health_check_interval:
+              type: string
+            log_retention:
+              type: string
+
+    SystemConfigUpdate:
+      type: object
+      properties:
+        port_ranges:
+          type: array
+          items:
+            type: object
+            properties:
+              project:
+                type: string
+              start_port:
+                type: integer
+              end_port:
+                type: integer
+        monitoring:
+          type: object
+          properties:
+            metrics_retention:
+              type: string
+            health_check_interval:
+              type: string
+            log_retention:
+              type: string
+
+    Pagination:
+      type: object
+      properties:
+        limit:
+          type: integer
+        offset:
+          type: integer
+        has_more:
+          type: boolean
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+
+    ConflictError:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            conflicts:
+              type: array
+              items:
+                $ref: '#/components/schemas/PortConflict'
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+tags:
+  - name: System
+    description: System health and information
+  - name: Services
+    description: Service lifecycle management
+  - name: Groups
+    description: Service group orchestration
+  - name: Ports
+    description: Port allocation and management
+  - name: Conflicts
+    description: Port conflict detection and resolution
+  - name: WebSocket
+    description: Real-time updates via WebSocket
+  - name: Events
+    description: System event history
+  - name: Configuration
+    description: System configuration management

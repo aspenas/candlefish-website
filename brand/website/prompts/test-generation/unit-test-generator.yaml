@@ -1,0 +1,198 @@
+# Unit Test Generator Prompt Template
+id: test-generation-unit
+name: Unit Test Generator
+version: 1.0.0
+description: Generate comprehensive unit tests for code
+category: test-generation
+modelCompatibility:
+  - anthropic
+  - openai
+tags:
+  - testing
+  - unit-tests
+  - automation
+  - quality
+
+systemPrompt: |
+  You are an expert test engineer specializing in creating comprehensive, maintainable unit tests.
+  You follow testing best practices including AAA pattern (Arrange, Act, Assert), proper mocking,
+  and edge case coverage. You write tests that are clear, focused, and provide good documentation.
+
+template: |
+  ## Unit Test Generation Request
+  
+  Generate comprehensive unit tests for the following code.
+  
+  ### Code to Test
+  **File:** {{filePath}}
+  **Language:** {{language}}
+  **Framework:** {{framework}}
+  
+  ```{{language}}
+  {{code}}
+  ```
+  
+  {{#if dependencies}}
+  ### Dependencies
+  {{#each dependencies}}
+  - {{this}}
+  {{/each}}
+  {{/if}}
+  
+  {{#if existingTests}}
+  ### Existing Test Pattern
+  ```{{testLanguage}}
+  {{existingTests}}
+  ```
+  {{/if}}
+  
+  ### Test Requirements
+  
+  1. **Coverage Goals**
+     - Achieve {{coverageTarget}}% code coverage
+     - Test all public methods/functions
+     - Cover edge cases and error conditions
+     - Test boundary conditions
+  
+  2. **Test Structure**
+     - Use {{testFramework}} testing framework
+     - Follow AAA (Arrange, Act, Assert) pattern
+     - One assertion per test when possible
+     - Clear, descriptive test names
+  
+  3. **Mock Requirements**
+     {{#if mockingFramework}}
+     - Use {{mockingFramework}} for mocking
+     {{/if}}
+     - Mock external dependencies
+     - Mock database/API calls
+     - Avoid testing implementation details
+  
+  4. **Test Categories**
+     - Happy path scenarios
+     - Error handling
+     - Edge cases
+     - Boundary conditions
+     - Input validation
+     - Concurrency (if applicable)
+  
+  ### Output Format
+  
+  Generate tests in the following structure:
+  
+  ```{{testLanguage}}
+  {{#if testTemplate}}
+  {{testTemplate}}
+  {{else}}
+  describe('{{className}}', () => {
+    // Setup and teardown
+    beforeEach(() => {
+      // Test setup
+    });
+    
+    afterEach(() => {
+      // Cleanup
+    });
+    
+    describe('{{methodName}}', () => {
+      it('should [expected behavior] when [condition]', () => {
+        // Arrange
+        
+        // Act
+        
+        // Assert
+      });
+      
+      it('should handle [error case]', () => {
+        // Test implementation
+      });
+    });
+  });
+  {{/if}}
+  ```
+  
+  ### Additional Requirements
+  - Include helpful comments for complex test setups
+  - Ensure tests are independent and can run in any order
+  - Use meaningful test data that reflects real scenarios
+  - Include performance tests if applicable
+  - Add integration test suggestions where appropriate
+
+variables:
+  - name: filePath
+    type: string
+    required: true
+    description: Path to the file being tested
+  
+  - name: code
+    type: string
+    required: true
+    description: Source code to generate tests for
+  
+  - name: language
+    type: string
+    required: true
+    description: Programming language (js, ts, python, java, etc.)
+  
+  - name: framework
+    type: string
+    required: false
+    description: Framework being used (React, Express, Django, etc.)
+  
+  - name: testFramework
+    type: string
+    required: true
+    default: jest
+    description: Testing framework to use
+  
+  - name: testLanguage
+    type: string
+    required: false
+    description: Language for tests (defaults to source language)
+  
+  - name: mockingFramework
+    type: string
+    required: false
+    description: Mocking framework to use
+  
+  - name: coverageTarget
+    type: number
+    required: false
+    default: 80
+    description: Target code coverage percentage
+  
+  - name: className
+    type: string
+    required: false
+    description: Class or module name being tested
+  
+  - name: methodName
+    type: string
+    required: false
+    description: Specific method to focus on
+  
+  - name: dependencies
+    type: array
+    required: false
+    description: List of dependencies to consider
+  
+  - name: existingTests
+    type: string
+    required: false
+    description: Example of existing test pattern to follow
+  
+  - name: testTemplate
+    type: string
+    required: false
+    description: Custom test template to follow
+
+maxTokens: 6000
+temperature: 0.3
+topP: 0.95
+
+metadata:
+  author: Candlefish AI
+  team: Engineering
+  approvalStatus: approved
+  costEstimate: 0.09
+  averageLatency: 3000

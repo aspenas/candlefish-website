@@ -1,0 +1,542 @@
+# Blue-Green Deployment Strategy for Security Dashboard
+# Zero-downtime deployment with automatic rollback capabilities
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: security-dashboard-backend-rollout
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard-backend
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: blue-green-deployment
+spec:
+  replicas: 6
+  strategy:
+    blueGreen:
+      # Service names for blue and green environments
+      activeService: security-dashboard-backend-active
+      previewService: security-dashboard-backend-preview
+      
+      # Auto-promotion configuration
+      autoPromotionEnabled: false
+      
+      # Health check configuration
+      prePromotionAnalysis:
+        templates:
+        - templateName: success-rate
+        - templateName: response-time
+        - templateName: error-rate
+        args:
+        - name: service-name
+          value: security-dashboard-backend-preview
+      
+      # Post-promotion analysis
+      postPromotionAnalysis:
+        templates:
+        - templateName: success-rate
+        - templateName: response-time
+        args:
+        - name: service-name
+          value: security-dashboard-backend-active
+      
+      # Promotion policy
+      scaleDownDelaySeconds: 30
+      previewReplicaCount: 2
+      
+      # Rollback configuration
+      abortScaleDownDelaySeconds: 30
+      
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: security-dashboard-backend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: security-dashboard-backend
+        app.kubernetes.io/part-of: security-dashboard
+        app.kubernetes.io/component: api
+    spec:
+      serviceAccountName: security-dashboard-backend
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+      containers:
+      - name: backend
+        image: ${ECR_REGISTRY}/security-dashboard-backend:${IMAGE_TAG}
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 4000
+          protocol: TCP
+        - name: websocket
+          containerPort: 4001
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "4000"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: security-dashboard-secrets
+              key: database-url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: security-dashboard-secrets
+              key: redis-url
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: security-dashboard-secrets
+              key: jwt-secret
+        - name: DEPLOYMENT_COLOR
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['rollouts-pod-template-hash']
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
+
+---
+# Active Service for Blue-Green Deployment
+apiVersion: v1
+kind: Service
+metadata:
+  name: security-dashboard-backend-active
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard-backend
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: active-service
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 4000
+    targetPort: http
+    protocol: TCP
+  - name: websocket
+    port: 4001
+    targetPort: websocket
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: metrics
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: security-dashboard-backend
+
+---
+# Preview Service for Blue-Green Deployment
+apiVersion: v1
+kind: Service
+metadata:
+  name: security-dashboard-backend-preview
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard-backend
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: preview-service
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 4000
+    targetPort: http
+    protocol: TCP
+  - name: websocket
+    port: 4001
+    targetPort: websocket
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: metrics
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: security-dashboard-backend
+
+---
+# Analysis Template for Success Rate
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: success-rate
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: analysis
+spec:
+  args:
+  - name: service-name
+  - name: prometheus-server
+    value: prometheus.monitoring.svc.cluster.local:9090
+  metrics:
+  - name: success-rate
+    interval: 1m
+    successCondition: result[0] >= 0.95
+    failureLimit: 3
+    provider:
+      prometheus:
+        address: http://{{args.prometheus-server}}
+        query: |
+          sum(rate(http_requests_total{service="{{args.service-name}}",code!~"5.."}[5m])) /
+          sum(rate(http_requests_total{service="{{args.service-name}}"}[5m]))
+
+---
+# Analysis Template for Response Time
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: response-time
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: analysis
+spec:
+  args:
+  - name: service-name
+  - name: prometheus-server
+    value: prometheus.monitoring.svc.cluster.local:9090
+  metrics:
+  - name: response-time
+    interval: 1m
+    successCondition: result[0] <= 1000
+    failureLimit: 3
+    provider:
+      prometheus:
+        address: http://{{args.prometheus-server}}
+        query: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{service="{{args.service-name}}"}[5m])) by (le)
+          ) * 1000
+
+---
+# Analysis Template for Error Rate
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: error-rate
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: analysis
+spec:
+  args:
+  - name: service-name
+  - name: prometheus-server
+    value: prometheus.monitoring.svc.cluster.local:9090
+  metrics:
+  - name: error-rate
+    interval: 1m
+    successCondition: result[0] <= 0.05
+    failureLimit: 3
+    provider:
+      prometheus:
+        address: http://{{args.prometheus-server}}
+        query: |
+          sum(rate(http_requests_total{service="{{args.service-name}}",code=~"5.."}[5m])) /
+          sum(rate(http_requests_total{service="{{args.service-name}}"}[5m]))
+
+---
+# Blue-Green Rollout for Frontend
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: security-dashboard-frontend-rollout
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard-frontend
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: blue-green-deployment
+spec:
+  replicas: 4
+  strategy:
+    blueGreen:
+      activeService: security-dashboard-frontend-active
+      previewService: security-dashboard-frontend-preview
+      autoPromotionEnabled: false
+      scaleDownDelaySeconds: 30
+      previewReplicaCount: 1
+      
+      prePromotionAnalysis:
+        templates:
+        - templateName: frontend-health-check
+        args:
+        - name: service-name
+          value: security-dashboard-frontend-preview
+      
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: security-dashboard-frontend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: security-dashboard-frontend
+        app.kubernetes.io/part-of: security-dashboard
+        app.kubernetes.io/component: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: ${ECR_REGISTRY}/security-dashboard-frontend:${IMAGE_TAG}
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 3000
+          protocol: TCP
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: NEXT_PUBLIC_API_URL
+          value: "https://api.security.candlefish.ai"
+        - name: DEPLOYMENT_COLOR
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['rollouts-pod-template-hash']
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+
+---
+# Frontend Active Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: security-dashboard-frontend-active
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard-frontend
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: active-service
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 3000
+    targetPort: http
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: security-dashboard-frontend
+
+---
+# Frontend Preview Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: security-dashboard-frontend-preview
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard-frontend
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: preview-service
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 3000
+    targetPort: http
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: security-dashboard-frontend
+
+---
+# Analysis Template for Frontend Health Check
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: frontend-health-check
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: analysis
+spec:
+  args:
+  - name: service-name
+  metrics:
+  - name: frontend-health
+    interval: 30s
+    count: 5
+    successCondition: result == "success"
+    provider:
+      web:
+        url: http://{{args.service-name}}.security-dashboard.svc.cluster.local:3000/health
+        headers:
+        - key: User-Agent
+          value: "ArgoCD-Health-Check"
+        jsonPath: "{$.status}"
+
+---
+# Ingress for Blue-Green Preview Environment
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: security-dashboard-preview-ingress
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: preview-ingress
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:681214184463:certificate/CERTIFICATE_ID
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+spec:
+  rules:
+  - host: preview.security.candlefish.ai
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: security-dashboard-frontend-preview
+            port:
+              number: 3000
+  - host: preview-api.security.candlefish.ai
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: security-dashboard-backend-preview
+            port:
+              number: 4000
+  tls:
+  - hosts:
+    - preview.security.candlefish.ai
+    - preview-api.security.candlefish.ai
+
+---
+# ArgoCD Application for Blue-Green Deployment
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: security-dashboard-blue-green
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: gitops
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/candlefish-ai/security-dashboard
+    path: deployment/k8s/security-dashboard
+    targetRevision: main
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: security-dashboard
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+    - CreateNamespace=true
+    - PrunePropagationPolicy=foreground
+    - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  revisionHistoryLimit: 10
+
+---
+# Rollback Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rollback-config
+  namespace: security-dashboard
+  labels:
+    app.kubernetes.io/name: security-dashboard
+    app.kubernetes.io/part-of: security-dashboard
+    app.kubernetes.io/component: rollback
+data:
+  rollback-timeout: "300s"
+  rollback-strategy: "immediate"
+  health-check-timeout: "60s"
+  health-check-retries: "5"
+  notification-webhook: "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+  rollback-script: |
+    #!/bin/bash
+    # Automatic rollback script
+    set -euo pipefail
+    
+    ROLLOUT_NAME=$1
+    NAMESPACE=${2:-security-dashboard}
+    
+    echo "Initiating rollback for $ROLLOUT_NAME in namespace $NAMESPACE"
+    
+    # Abort current rollout
+    kubectl argo rollouts abort $ROLLOUT_NAME -n $NAMESPACE
+    
+    # Rollback to previous stable version
+    kubectl argo rollouts undo $ROLLOUT_NAME -n $NAMESPACE
+    
+    # Wait for rollback to complete
+    kubectl argo rollouts status $ROLLOUT_NAME -n $NAMESPACE --timeout 300s
+    
+    echo "Rollback completed successfully"

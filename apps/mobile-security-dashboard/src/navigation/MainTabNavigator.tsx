@@ -5,19 +5,12 @@ import { useTheme } from '@react-navigation/native';
 import { Platform } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 
-// Stack Navigators
-import OverviewStackNavigator from './OverviewStackNavigator';
-import AlertsStackNavigator from './AlertsStackNavigator';
-import VulnerabilitiesStackNavigator from './VulnerabilitiesStackNavigator';
-import AssetsStackNavigator from './AssetsStackNavigator';
-import IncidentsStackNavigator from './IncidentsStackNavigator';
-
-// Custom components
-import TabBarBadge from '@/components/navigation/TabBarBadge';
-
-// Hooks
-import { useSecurityMetrics } from '@/hooks/useSecurityMetrics';
-import { useNotificationBadges } from '@/hooks/useNotificationBadges';
+// Main Screens
+import DashboardScreen from '@/screens/Dashboard';
+import AlertsScreen from '@/screens/Alerts';
+import IncidentsScreen from '@/screens/Incidents';
+import AnalyticsScreen from '@/screens/Analytics';
+import SettingsScreen from '@/screens/Settings';
 
 // Types
 import { MainTabParamList } from './types';
@@ -28,54 +21,52 @@ interface MainTabNavigatorProps {}
 
 const MainTabNavigator: React.FC<MainTabNavigatorProps> = () => {
   const theme = useTheme();
-  const { badges } = useNotificationBadges();
-  const { metrics } = useSecurityMetrics();
 
-  // Tab configurations with dynamic badges
+  // Tab configurations
   const tabConfigs = [
     {
-      name: 'Overview' as keyof MainTabParamList,
-      component: OverviewStackNavigator,
-      title: 'Overview',
+      name: 'Dashboard' as keyof MainTabParamList,
+      component: DashboardScreen,
+      title: 'Dashboard',
       icon: 'dashboard',
       iconType: 'MaterialIcons',
       badge: null,
     },
     {
       name: 'Alerts' as keyof MainTabParamList,
-      component: AlertsStackNavigator,
+      component: AlertsScreen,
       title: 'Alerts',
       icon: 'alert-circle',
       iconType: 'MaterialCommunityIcons',
-      badge: badges.criticalAlerts || metrics?.activeAlerts || 0,
+      badge: null, // Will be updated with real data
       badgeColor: '#f44336',
     },
     {
-      name: 'Vulnerabilities' as keyof MainTabParamList,
-      component: VulnerabilitiesStackNavigator,
-      title: 'Vulns',
-      icon: 'shield-alert',
-      iconType: 'MaterialCommunityIcons',
-      badge: badges.criticalVulnerabilities || metrics?.criticalVulnerabilities || 0,
-      badgeColor: '#ff9800',
-    },
-    {
-      name: 'Assets' as keyof MainTabParamList,
-      component: AssetsStackNavigator,
-      title: 'Assets',
-      icon: 'devices',
-      iconType: 'MaterialIcons',
-      badge: badges.unhealthyAssets || null,
-      badgeColor: '#2196f3',
-    },
-    {
       name: 'Incidents' as keyof MainTabParamList,
-      component: IncidentsStackNavigator,
+      component: IncidentsScreen,
       title: 'Incidents',
       icon: 'fire-alert',
       iconType: 'MaterialCommunityIcons',
-      badge: badges.openIncidents || null,
+      badge: null,
       badgeColor: '#9c27b0',
+    },
+    {
+      name: 'Analytics' as keyof MainTabParamList,
+      component: AnalyticsScreen,
+      title: 'Analytics',
+      icon: 'chart-line',
+      iconType: 'MaterialCommunityIcons',
+      badge: null,
+      badgeColor: '#2196f3',
+    },
+    {
+      name: 'Settings' as keyof MainTabParamList,
+      component: SettingsScreen,
+      title: 'Settings',
+      icon: 'settings',
+      iconType: 'MaterialIcons',
+      badge: null,
+      badgeColor: '#757575',
     },
   ];
 
@@ -121,18 +112,7 @@ const MainTabNavigator: React.FC<MainTabNavigatorProps> = () => {
               const iconSize = focused ? size + 2 : size;
               const iconColor = focused ? theme.colors.primary : color;
 
-              return (
-                <>
-                  {getTabBarIcon(config.icon, config.iconType, iconColor, iconSize)}
-                  {config.badge && config.badge > 0 && (
-                    <TabBarBadge
-                      count={config.badge}
-                      color={config.badgeColor || theme.colors.notification}
-                      position="top-right"
-                    />
-                  )}
-                </>
-              );
+              return getTabBarIcon(config.icon, config.iconType, iconColor, iconSize);
             },
             tabBarBadge: undefined, // We use custom badge component instead
             tabBarAccessibilityLabel: `${config.title} tab${

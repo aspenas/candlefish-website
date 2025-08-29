@@ -1,0 +1,212 @@
+version: '3.8'
+
+# Base Docker Compose for CLOS - Core Infrastructure Services
+# This file defines shared network and core services used by all applications
+
+networks:
+  clos-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+services:
+  # Core Database - PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: clos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: candlefish
+      POSTGRES_USER: candlefish
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-candlefish_dev_2024}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.0.10
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U candlefish -d candlefish"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_stat_statements
+      -c pg_stat_statements.track=all
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c work_mem=4MB
+      -c maintenance_work_mem=64MB
+      -c random_page_cost=1.1
+      -c temp_file_limit=2GB
+      -c log_min_duration_statement=1000
+      -c log_statement=ddl
+
+  # Cache Layer - Redis
+  redis:
+    image: redis:7-alpine
+    container_name: clos-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    ports:
+      - "6379:6379"
+    networks:
+      clos-network:
+        ipv4_address: 172.20.0.11
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    command: redis-server /usr/local/etc/redis/redis.conf
+    sysctls:
+      - net.core.somaxconn=65535
+
+  # Reverse Proxy - Caddy
+  caddy:
+    image: caddy:2-alpine
+    container_name: clos-caddy
+    restart: unless-stopped
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "80:80"
+      - "443:443"
+      - "2019:2019" # Admin API
+    networks:
+      clos-network:
+        ipv4_address: 172.20.0.12
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:2019/config/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    environment:
+      - CADDY_ADMIN=0.0.0.0:2019
+
+  # Message Queue - RabbitMQ (for async processing)
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: clos-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: candlefish
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-candlefish_dev_2024}
+      RABBITMQ_DEFAULT_VHOST: /candlefish
+    volumes:
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI
+    networks:
+      clos-network:
+        ipv4_address: 172.20.0.13
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Service Discovery - Consul (for multi-service coordination)
+  consul:
+    image: consul:1.16
+    container_name: clos-consul
+    restart: unless-stopped
+    command: >
+      consul agent
+      -server
+      -bootstrap-expect=1
+      -data-dir=/consul/data
+      -config-dir=/consul/config
+      -ui-content-path=/ui/
+      -bind=0.0.0.0
+      -client=0.0.0.0
+    volumes:
+      - ./consul/config:/consul/config:ro
+    ports:
+      - "8500:8500" # HTTP API
+      - "8600:8600/udp" # DNS
+    networks:
+      clos-network:
+        ipv4_address: 172.20.0.14
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # Distributed Tracing - Jaeger
+  jaeger:
+    image: jaegertracing/all-in-one:1.49
+    container_name: clos-jaeger
+    restart: unless-stopped
+    environment:
+      COLLECTOR_ZIPKIN_HOST_PORT: :9411
+      COLLECTOR_OTLP_ENABLED: true
+    ports:
+      - "16686:16686" # UI
+      - "14268:14268" # HTTP collector
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    networks:
+      clos-network:
+        ipv4_address: 172.20.0.15
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:16686/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+# Health monitoring service
+  healthcheck:
+    image: alpine:latest
+    container_name: clos-healthcheck
+    restart: unless-stopped
+    volumes:
+      - ./health-checks:/health-checks:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - clos-network
+    command: >
+      sh -c "
+        apk add --no-cache curl docker-cli &&
+        while true; do
+          /health-checks/check-all-services.sh
+          sleep 60
+        done
+      "
+    depends_on:
+      - postgres
+      - redis
+      - caddy
+      - rabbitmq
+      - consul
+      - jaeger

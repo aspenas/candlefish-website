@@ -1,0 +1,880 @@
+# =====================================================
+# ITEM VALUATION AND PRICING SYSTEM GRAPHQL SCHEMA
+# =====================================================
+# Comprehensive schema for item valuation, pricing analysis,
+# market comparisons, and real-time price tracking
+# =====================================================
+
+# Core Scalar Types
+scalar DateTime
+scalar JSON
+scalar UUID
+scalar BigInt
+scalar Decimal
+
+# =====================================================
+# VALUATION CORE TYPES
+# =====================================================
+
+"""
+Valuation method used to determine item value
+Each method represents a different approach to pricing
+"""
+enum ValuationMethod {
+  PURCHASE_PRICE
+  MARKET_LOOKUP
+  DEPRECIATION_MODEL
+  COMPARABLE_SALES
+  PROFESSIONAL_APPRAISAL
+  MANUAL_OVERRIDE
+}
+
+"""
+Market data sources for pricing research
+"""
+enum MarketSource {
+  EBAY
+  FACEBOOK_MARKETPLACE
+  CHAIRISH
+  ARTICLE
+  WEST_ELM
+  RESTORATION_HARDWARE
+  POTTERY_BARN
+  MANUAL_ENTRY
+}
+
+"""
+Request types for valuation analysis
+"""
+enum ValuationRequestType {
+  FULL_ANALYSIS
+  QUICK_ESTIMATE
+  MARKET_CHECK
+  DEPRECIATION_UPDATE
+  COMPARABLE_SEARCH
+}
+
+"""
+Status of valuation requests
+"""
+enum ValuationStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+"""
+Trend direction for market analysis
+"""
+enum TrendDirection {
+  RISING
+  FALLING
+  STABLE
+  VOLATILE
+  UNKNOWN
+}
+
+# =====================================================
+# CORE VALUATION ENTITIES
+# =====================================================
+
+"""
+Item valuation record with confidence scoring
+Tracks estimated value using specified methodology
+"""
+type ItemValuation {
+  id: UUID!
+  itemId: UUID!
+  valuationMethod: ValuationMethod!
+  estimatedValue: Decimal!
+  confidenceScore: Float
+  depreciationRate: Float
+  estimatedAgeMonths: Int
+  conditionFactor: Float
+  notes: String
+  valuerType: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  expiresAt: DateTime
+  
+  # Relations
+  item: Item!
+  marketComparisons: [MarketComparison!]!
+  priceHistory: [PriceHistory!]!
+}
+
+"""
+Market comparison data from various sources
+Used for comparable sales analysis
+"""
+type MarketComparison {
+  id: UUID!
+  itemId: UUID!
+  source: MarketSource!
+  sourceUrl: String
+  title: String!
+  price: Decimal
+  originalPrice: Decimal
+  condition: String
+  location: String
+  similarityScore: Float
+  listingDate: DateTime
+  soldDate: DateTime
+  shippingCost: Decimal
+  taxesFees: Decimal
+  imageUrls: [String!]!
+  description: String
+  sellerRating: Float
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  
+  # Relations
+  item: Item!
+}
+
+"""
+Price change tracking over time
+Records all price modifications with context
+"""
+type PriceHistory {
+  id: UUID!
+  itemId: UUID!
+  priceType: String! # 'asking', 'valuation', 'market_avg', 'sold'
+  price: Decimal!
+  changeReason: String
+  sourceType: String # 'owner', 'system', 'market_update'
+  metadata: JSON
+  effectiveDate: DateTime!
+  createdAt: DateTime!
+  
+  # Relations
+  item: Item!
+}
+
+"""
+Depreciation models by category and brand
+Defines value decline patterns over time
+"""
+type DepreciationModel {
+  id: UUID!
+  category: ItemCategory
+  brand: String
+  initialDepreciation: Float # Year 1 depreciation rate
+  annualDepreciation: Float # Subsequent years rate
+  minValueRatio: Float # Minimum % of original value
+  maxAgeYears: Int
+  conditionMultipliers: JSON # {"excellent": 1.0, "good": 0.85, etc}
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  
+  # Usage statistics
+  itemsUsing: Int!
+  averageAccuracy: Float
+}
+
+"""
+Market trend analysis by category/brand
+Tracks pricing patterns over time periods
+"""
+type MarketTrend {
+  id: UUID!
+  category: ItemCategory
+  brand: String
+  timePeriod: String! # 'weekly', 'monthly', 'quarterly'
+  avgPrice: Decimal
+  medianPrice: Decimal
+  priceChangePercent: Float
+  sampleSize: Int
+  trendDirection: TrendDirection
+  periodStart: DateTime!
+  periodEnd: DateTime!
+  createdAt: DateTime!
+  
+  # Related trends
+  previousPeriod: MarketTrend
+  nextPeriod: MarketTrend
+}
+
+"""
+Valuation request tracking
+Manages automated and manual valuation processes
+"""
+type ValuationRequest {
+  id: UUID!
+  itemId: UUID!
+  requestedBy: UserRole
+  requestType: ValuationRequestType!
+  status: ValuationStatus!
+  priority: Int! # 1-10, 1 is highest
+  estimatedCompletion: DateTime
+  completedAt: DateTime
+  errorMessage: String
+  results: JSON
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  
+  # Relations
+  item: Item!
+  resultingValuation: ItemValuation
+}
+
+# =====================================================
+# AGGREGATED VIEW TYPES
+# =====================================================
+
+"""
+Current valuation view with enriched data
+Latest active valuation for each item
+"""
+type CurrentValuation {
+  itemId: UUID!
+  valuationId: UUID!
+  valuationMethod: ValuationMethod!
+  estimatedValue: Decimal!
+  confidenceScore: Float
+  valuationDate: DateTime!
+  expiresAt: DateTime
+  itemName: String!
+  purchasePrice: Decimal
+  askingPrice: Decimal
+  valueChangePercent: Float
+  
+  # Relations
+  item: Item!
+  valuation: ItemValuation!
+}
+
+"""
+Room-level valuation summary
+Aggregated pricing data by room
+"""
+type RoomValuationSummary {
+  roomId: UUID!
+  roomName: String!
+  floor: FloorLevel!
+  itemsWithValuations: Int!
+  totalPurchaseValue: Decimal
+  totalEstimatedValue: Decimal
+  avgConfidence: Float
+  totalAppreciation: Decimal
+  appreciationPercent: Float
+  
+  # Relations
+  room: Room!
+  topValuedItems: [CurrentValuation!]!
+  recentChanges: [PriceHistory!]!
+}
+
+"""
+Market insights by category and brand
+Performance analysis for investment decisions
+"""
+type MarketInsight {
+  category: ItemCategory!
+  brand: String!
+  itemCount: Int!
+  avgCurrentValue: Decimal
+  avgPurchasePrice: Decimal
+  avgConfidence: Float
+  retentionPercent: Float # Value retention rate
+  marketComparisonsAvailable: Int!
+  
+  # Trend analysis
+  priceVelocity: Float # Rate of price change
+  marketHealth: String # 'strong', 'stable', 'declining'
+  recommendedAction: String # 'hold', 'sell', 'buy_more'
+}
+
+# =====================================================
+# PRICING ANALYTICS TYPES
+# =====================================================
+
+"""
+Comprehensive pricing insights dashboard
+High-level portfolio analytics
+"""
+type PricingInsights {
+  totalItems: Int!
+  itemsWithValuations: Int!
+  totalPurchaseValue: Decimal!
+  totalCurrentValue: Decimal!
+  overallAppreciation: Decimal!
+  avgConfidenceScore: Float!
+  
+  # Summaries
+  roomSummaries: [RoomValuationSummary!]!
+  marketInsights: [MarketInsight!]!
+  topPerformers: [CurrentValuation!]!
+  needsUpdate: [CurrentValuation!]!
+  
+  # Time-based analysis
+  appreciationOverTime: [PricePoint!]!
+  marketTrends: [MarketTrend!]!
+}
+
+"""
+Price point for time series data
+"""
+type PricePoint {
+  date: DateTime!
+  totalValue: Decimal!
+  itemCount: Int!
+  avgValue: Decimal!
+}
+
+"""
+Valuation batch result for bulk operations
+"""
+type ValuationBatchResult {
+  requestId: UUID!
+  totalItems: Int!
+  successCount: Int!
+  failureCount: Int!
+  estimatedCompletion: DateTime
+  errors: [ValuationError!]!
+  
+  # Progress tracking
+  status: ValuationStatus!
+  progressPercent: Float!
+}
+
+"""
+Valuation error details
+"""
+type ValuationError {
+  itemId: UUID!
+  itemName: String!
+  error: String!
+  code: String!
+  retryable: Boolean!
+}
+
+# =====================================================
+# SUBSCRIPTION TYPES
+# =====================================================
+
+"""
+Real-time valuation update
+Pushed when valuations change
+"""
+type ValuationUpdate {
+  itemId: UUID!
+  valuationId: UUID!
+  oldValue: Decimal
+  newValue: Decimal!
+  method: ValuationMethod!
+  confidence: Float
+  changeReason: String
+  timestamp: DateTime!
+  
+  # Relations
+  item: Item!
+  valuation: ItemValuation!
+}
+
+"""
+Market price alert
+Triggered by significant price movements
+"""
+type PriceAlert {
+  itemId: UUID!
+  alertType: String! # 'price_drop', 'price_spike', 'new_comparable'
+  currentPrice: Decimal!
+  previousPrice: Decimal
+  changePercent: Float!
+  source: MarketSource
+  message: String!
+  timestamp: DateTime!
+  
+  # Relations
+  item: Item!
+}
+
+"""
+Batch operation progress update
+"""
+type BatchProgress {
+  requestId: UUID!
+  status: ValuationStatus!
+  completedItems: Int!
+  totalItems: Int!
+  progressPercent: Float!
+  estimatedRemaining: Int # seconds
+  currentItem: String
+  errors: [ValuationError!]!
+}
+
+# =====================================================
+# INPUT TYPES
+# =====================================================
+
+input ValuationInput {
+  itemId: UUID!
+  valuationMethod: ValuationMethod!
+  estimatedValue: Decimal!
+  confidenceScore: Float
+  depreciationRate: Float
+  estimatedAgeMonths: Int
+  conditionFactor: Float
+  notes: String
+  valuerType: String
+  expiresAt: DateTime
+}
+
+input ValuationUpdateInput {
+  estimatedValue: Decimal
+  confidenceScore: Float
+  notes: String
+  expiresAt: DateTime
+}
+
+input MarketComparisonInput {
+  itemId: UUID!
+  source: MarketSource!
+  sourceUrl: String
+  title: String!
+  price: Decimal
+  originalPrice: Decimal
+  condition: String
+  location: String
+  similarityScore: Float
+  listingDate: DateTime
+  soldDate: DateTime
+  shippingCost: Decimal
+  taxesFees: Decimal
+  imageUrls: [String!]
+  description: String
+  sellerRating: Float
+}
+
+input PriceHistoryInput {
+  itemId: UUID!
+  priceType: String!
+  price: Decimal!
+  changeReason: String
+  sourceType: String
+  metadata: JSON
+  effectiveDate: DateTime
+}
+
+input DepreciationModelInput {
+  category: ItemCategory
+  brand: String
+  initialDepreciation: Float!
+  annualDepreciation: Float!
+  minValueRatio: Float
+  maxAgeYears: Int
+  conditionMultipliers: JSON
+}
+
+input ValuationRequestInput {
+  itemIds: [UUID!]!
+  requestType: ValuationRequestType!
+  priority: Int
+  forceRefresh: Boolean
+}
+
+input MarketResearchInput {
+  itemId: UUID!
+  sources: [MarketSource!]
+  maxResults: Int
+  includeImages: Boolean
+  similarityThreshold: Float
+}
+
+# =====================================================
+# FILTER AND SORT INPUTS
+# =====================================================
+
+input ValuationFilter {
+  itemIds: [UUID!]
+  methods: [ValuationMethod!]
+  confidenceRange: FloatRange
+  valueRange: DecimalRange
+  createdAfter: DateTime
+  createdBefore: DateTime
+  expiresAfter: DateTime
+  expiresBefore: DateTime
+  categories: [ItemCategory!]
+  rooms: [UUID!]
+  hasComparisons: Boolean
+  needsUpdate: Boolean
+}
+
+input ValuationSort {
+  field: ValuationSortField!
+  direction: SortDirection!
+}
+
+enum ValuationSortField {
+  CREATED_AT
+  UPDATED_AT
+  ESTIMATED_VALUE
+  CONFIDENCE_SCORE
+  EXPIRY_DATE
+  ITEM_NAME
+  VALUE_CHANGE
+}
+
+input MarketComparisonFilter {
+  itemIds: [UUID!]
+  sources: [MarketSource!]
+  priceRange: DecimalRange
+  similarityRange: FloatRange
+  soldOnly: Boolean
+  activeOnly: Boolean
+  location: String
+  createdAfter: DateTime
+}
+
+input PriceHistoryFilter {
+  itemIds: [UUID!]
+  priceTypes: [String!]
+  dateRange: DateRange
+  sources: [String!]
+  minChange: Float
+}
+
+input MarketTrendFilter {
+  categories: [ItemCategory!]
+  brands: [String!]
+  timePeriods: [String!]
+  trendDirections: [TrendDirection!]
+  dateRange: DateRange
+}
+
+# =====================================================
+# UTILITY INPUT TYPES
+# =====================================================
+
+input FloatRange {
+  min: Float
+  max: Float
+}
+
+input DecimalRange {
+  min: Decimal
+  max: Decimal
+}
+
+input DateRange {
+  start: DateTime!
+  end: DateTime!
+}
+
+input PaginationInput {
+  first: Int
+  after: String
+  last: Int
+  before: String
+}
+
+enum SortDirection {
+  ASC
+  DESC
+}
+
+# =====================================================
+# CONNECTION TYPES (for pagination)
+# =====================================================
+
+type ValuationConnection {
+  edges: [ValuationEdge!]!
+  nodes: [ItemValuation!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type ValuationEdge {
+  node: ItemValuation!
+  cursor: String!
+}
+
+type MarketComparisonConnection {
+  edges: [MarketComparisonEdge!]!
+  nodes: [MarketComparison!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type MarketComparisonEdge {
+  node: MarketComparison!
+  cursor: String!
+}
+
+type PriceHistoryConnection {
+  edges: [PriceHistoryEdge!]!
+  nodes: [PriceHistory!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PriceHistoryEdge {
+  node: PriceHistory!
+  cursor: String!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+# =====================================================
+# QUERY INTERFACE
+# =====================================================
+
+type Query {
+  # Single item queries
+  itemValuation(id: UUID!): ItemValuation
+  currentValuation(itemId: UUID!): CurrentValuation
+  itemPricingHistory(itemId: UUID!, limit: Int): [PriceHistory!]!
+  itemMarketComparisons(itemId: UUID!, limit: Int): [MarketComparison!]!
+  
+  # Collection queries with filtering and pagination
+  valuations(
+    filter: ValuationFilter
+    sort: ValuationSort
+    pagination: PaginationInput
+  ): ValuationConnection!
+  
+  marketComparisons(
+    filter: MarketComparisonFilter
+    pagination: PaginationInput
+  ): MarketComparisonConnection!
+  
+  priceHistory(
+    filter: PriceHistoryFilter
+    pagination: PaginationInput
+  ): PriceHistoryConnection!
+  
+  # Aggregated analytics queries
+  pricingInsights(
+    roomIds: [UUID!]
+    categories: [ItemCategory!]
+    timeRange: DateRange
+  ): PricingInsights!
+  
+  roomValuationSummary(roomId: UUID!): RoomValuationSummary
+  roomValuationSummaries(roomIds: [UUID!]): [RoomValuationSummary!]!
+  
+  marketInsights(
+    categories: [ItemCategory!]
+    brands: [String!]
+    minItems: Int
+  ): [MarketInsight!]!
+  
+  # Market trend analysis
+  marketTrends(
+    filter: MarketTrendFilter
+    pagination: PaginationInput
+  ): [MarketTrend!]!
+  
+  categoryTrends(
+    category: ItemCategory!
+    timeRange: DateRange
+  ): [MarketTrend!]!
+  
+  # Depreciation analysis
+  depreciationModels: [DepreciationModel!]!
+  depreciationModel(
+    category: ItemCategory
+    brand: String
+  ): DepreciationModel
+  
+  # Portfolio analysis
+  portfolioPerformance(
+    timeRange: DateRange
+    groupBy: String # 'room', 'category', 'brand', 'month'
+  ): [PricePoint!]!
+  
+  valueAtRisk(
+    confidenceLevel: Float # 95%, 99%, etc
+    timeHorizon: Int # days
+  ): Decimal!
+  
+  # Valuation requests
+  valuationRequest(id: UUID!): ValuationRequest
+  valuationRequests(
+    status: ValuationStatus
+    itemIds: [UUID!]
+    pagination: PaginationInput
+  ): [ValuationRequest!]!
+  
+  # Market research
+  findComparables(
+    itemId: UUID!
+    sources: [MarketSource!]
+    limit: Int
+  ): [MarketComparison!]!
+  
+  # Price predictions
+  predictedValue(
+    itemId: UUID!
+    targetDate: DateTime
+    scenario: String # 'conservative', 'optimistic', 'pessimistic'
+  ): Decimal!
+  
+  # Recommendations
+  sellRecommendations(
+    maxItems: Int
+    minAppreciation: Float
+  ): [CurrentValuation!]!
+  
+  undervaluedItems(
+    maxItems: Int
+    confidenceThreshold: Float
+  ): [CurrentValuation!]!
+}
+
+# =====================================================
+# MUTATION INTERFACE
+# =====================================================
+
+type Mutation {
+  # Valuation management
+  createValuation(input: ValuationInput!): ItemValuation!
+  updateValuation(id: UUID!, input: ValuationUpdateInput!): ItemValuation!
+  deleteValuation(id: UUID!): Boolean!
+  
+  # Batch valuation operations
+  requestValuations(input: ValuationRequestInput!): ValuationBatchResult!
+  refreshValuations(itemIds: [UUID!]!): ValuationBatchResult!
+  cancelValuationRequest(requestId: UUID!): Boolean!
+  
+  # Market comparison management
+  addMarketComparison(input: MarketComparisonInput!): MarketComparison!
+  updateMarketComparison(id: UUID!, input: MarketComparisonInput!): MarketComparison!
+  deleteMarketComparison(id: UUID!): Boolean!
+  
+  # Market research operations
+  performMarketResearch(input: MarketResearchInput!): [MarketComparison!]!
+  refreshMarketData(itemIds: [UUID!]!): Int!
+  
+  # Price history tracking
+  recordPriceChange(input: PriceHistoryInput!): PriceHistory!
+  bulkUpdatePrices(updates: [PriceHistoryInput!]!): [PriceHistory!]!
+  
+  # Depreciation model management
+  createDepreciationModel(input: DepreciationModelInput!): DepreciationModel!
+  updateDepreciationModel(id: UUID!, input: DepreciationModelInput!): DepreciationModel!
+  deleteDepreciationModel(id: UUID!): Boolean!
+  
+  # Manual price overrides
+  setManualValuation(
+    itemId: UUID!
+    value: Decimal!
+    reason: String
+    expiresAt: DateTime
+  ): ItemValuation!
+  
+  setAskingPrice(
+    itemId: UUID!
+    price: Decimal!
+    reason: String
+  ): PriceHistory!
+  
+  # Bulk operations
+  bulkSetAskingPrices(
+    updates: [BulkPriceUpdate!]!
+  ): [PriceHistory!]!
+  
+  # System maintenance
+  cleanupExpiredValuations: Int!
+  recalculateConfidenceScores(itemIds: [UUID!]): Int!
+  updateMarketTrends: Int!
+}
+
+# =====================================================
+# SUBSCRIPTION INTERFACE
+# =====================================================
+
+type Subscription {
+  # Real-time valuation updates
+  valuationUpdated(itemIds: [UUID!]): ValuationUpdate!
+  
+  # Price movement alerts
+  priceAlert(
+    itemIds: [UUID!]
+    alertTypes: [String!]
+    minChangePercent: Float
+  ): PriceAlert!
+  
+  # Market comparison updates
+  newMarketComparison(itemIds: [UUID!]): MarketComparison!
+  
+  # Batch operation progress
+  batchProgress(requestId: UUID!): BatchProgress!
+  
+  # Market trend updates
+  marketTrendUpdate(
+    categories: [ItemCategory!]
+    brands: [String!]
+  ): MarketTrend!
+  
+  # Portfolio performance updates
+  portfolioValueUpdate: PricingInsights!
+}
+
+# =====================================================
+# ADDITIONAL INPUT TYPES
+# =====================================================
+
+input BulkPriceUpdate {
+  itemId: UUID!
+  price: Decimal!
+  reason: String
+}
+
+# =====================================================
+# FEDERATION EXTENSIONS
+# =====================================================
+
+"""
+Item type extension for federation
+Extends the core Item type with valuation data
+"""
+extend type Item @key(fields: "id") {
+  id: UUID! @external
+  
+  # Valuation relations
+  currentValuation: CurrentValuation
+  valuations: [ItemValuation!]!
+  marketComparisons: [MarketComparison!]!
+  priceHistory: [PriceHistory!]!
+  valuationRequests: [ValuationRequest!]!
+  
+  # Computed valuation fields
+  estimatedValue: Decimal
+  valueAppreciation: Decimal
+  valuationConfidence: Float
+  lastValuationDate: DateTime
+  needsValuationUpdate: Boolean!
+  
+  # Market insights
+  marketPerformance: String # 'outperforming', 'underperforming', 'stable'
+  investmentGrade: String # 'A', 'B', 'C', 'D'
+  liquidityScore: Float # How easy to sell (0-1)
+}
+
+"""
+Room type extension for federation
+Extends the core Room type with aggregated valuation data
+"""
+extend type Room @key(fields: "id") {
+  id: UUID! @external
+  
+  # Room valuation summary
+  valuationSummary: RoomValuationSummary
+  totalEstimatedValue: Decimal
+  valueAppreciation: Decimal
+  avgItemValue: Decimal
+  
+  # Performance metrics
+  topValuedItems(limit: Int): [CurrentValuation!]!
+  recentPriceChanges(days: Int): [PriceHistory!]!
+  roomMarketHealth: String
+}

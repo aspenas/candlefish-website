@@ -1,0 +1,59 @@
+version: '3.8'
+services:
+  candlefish-frontend:
+    image: candlefish-frontend:latest
+    build:
+      context: ../../apps/website
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      - NODE_ENV=development
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - clos-network
+
+  candlefish-api:
+    image: candlefish-api:latest
+    build:
+      context: ../../5470_S_Highline_Circle/backend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:8080"
+    environment:
+      - PORT=8080
+      - DATABASE_URL=postgresql://postgres:password@candlefish-db:5432/candlefish
+    depends_on:
+      - candlefish-db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - clos-network
+
+  candlefish-db:
+    image: postgres:15
+    ports:
+      - "3002:5432"
+    environment:
+      - POSTGRES_DB=candlefish
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - candlefish_db_data:/var/lib/postgresql/data
+      - ../../5470_S_Highline_Circle/backend/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    networks:
+      - clos-network
+
+volumes:
+  candlefish_db_data:
+
+networks:
+  clos-network:
+    external: true

@@ -1,0 +1,1942 @@
+# Threat Intelligence Microservice Schema - Federation v2
+extend schema @link(url: "https://specs.apollo.dev/federation/v2.0", import: ["@key", "@shareable", "@provides", "@external", "@requires", "@override", "@inaccessible", "@tag"])
+
+# Core Threat Intelligence Types
+type ThreatIntelligence implements Node & SecurityEntity & Auditable @key(fields: "id") {
+  id: ID!
+  organizationId: ID! @shareable
+  
+  # Intelligence Metadata
+  title: String!
+  description: String!
+  threatType: ThreatType!
+  severity: Severity! @shareable
+  confidence: ThreatConfidence!
+  reliability: ThreatReliability!
+  
+  # Threat Classification
+  category: ThreatCategory!
+  subCategory: String
+  ttps: [MitreTechnique!]! @external
+  killChainPhases: [KillChainPhase!]!
+  
+  # Source Information
+  sources: [ThreatSource!]!
+  firstSeen: DateTime!
+  lastSeen: DateTime!
+  lastUpdated: DateTime!
+  
+  # Threat Actors and Campaigns
+  threatActors: [ThreatActor!]!
+  campaigns: [ThreatCampaign!]!
+  attribution: ThreatAttribution
+  
+  # Indicators of Compromise
+  indicators: [Indicator!]!
+  iocs: [IOC!]!
+  
+  # Affected Assets and Impact
+  affectedAssets: [Asset!]! @external
+  targetedSectors: [IndustrySector!]!
+  targetedRegions: [String!]!
+  
+  # Relationships
+  relatedThreats: [ThreatIntelligence!]! @provides(fields: "id")
+  relatedAlerts: [Alert!]! @external
+  relatedIncidents: [Incident!]! @external
+  
+  # Mitigation and Response
+  mitigations: [ThreatMitigation!]!
+  countermeasures: [Countermeasure!]!
+  
+  # Metadata
+  tags: [String!]! @shareable
+  metadata: JSON @shareable
+  
+  # Audit fields
+  createdAt: DateTime! @shareable
+  updatedAt: DateTime! @shareable
+  createdBy: User @external
+  updatedBy: User @external
+  auditTrail: [AuditEntry!]! @external
+}
+
+enum ThreatType {
+  MALWARE
+  APT
+  PHISHING
+  RANSOMWARE
+  BOTNET
+  EXPLOIT_KIT
+  TROJAN
+  BACKDOOR
+  ROOTKIT
+  KEYLOGGER
+  SPYWARE
+  ADWARE
+  WORM
+  VIRUS
+  SCAM
+  FRAUD
+  INSIDER_THREAT
+  SUPPLY_CHAIN
+  WATERING_HOLE
+  SOCIAL_ENGINEERING
+}
+
+enum ThreatConfidence {
+  LOW
+  MEDIUM
+  HIGH
+  CONFIRMED
+}
+
+enum ThreatReliability {
+  UNRELIABLE
+  USUALLY_UNRELIABLE
+  FAIRLY_RELIABLE
+  USUALLY_RELIABLE
+  COMPLETELY_RELIABLE
+}
+
+enum ThreatCategory {
+  CYBER_ESPIONAGE
+  CYBER_CRIME
+  CYBER_WARFARE
+  HACKTIVISM
+  CYBER_TERRORISM
+  INSIDER_THREAT
+  NATION_STATE
+  ORGANIZED_CRIME
+}
+
+enum IndustrySector {
+  FINANCIAL
+  HEALTHCARE
+  GOVERNMENT
+  EDUCATION
+  TECHNOLOGY
+  ENERGY
+  TRANSPORTATION
+  MANUFACTURING
+  RETAIL
+  TELECOMMUNICATIONS
+  DEFENSE
+  AEROSPACE
+  CRITICAL_INFRASTRUCTURE
+}
+
+enum KillChainPhase {
+  RECONNAISSANCE
+  WEAPONIZATION
+  DELIVERY
+  EXPLOITATION
+  INSTALLATION
+  COMMAND_CONTROL
+  ACTIONS_OBJECTIVES
+}
+
+# Threat Actors
+type ThreatActor implements Node @key(fields: "id") {
+  id: ID!
+  name: String!
+  aliases: [String!]!
+  description: String!
+  
+  # Classification
+  actorType: ThreatActorType!
+  sophistication: ThreatSophistication!
+  motivations: [ThreatMotivation!]!
+  
+  # Attribution
+  attribution: ThreatAttribution
+  countries: [String!]!
+  organizations: [String!]!
+  
+  # Activity
+  firstSeen: DateTime!
+  lastSeen: DateTime!
+  isActive: Boolean!
+  
+  # Capabilities
+  capabilities: [ThreatCapability!]!
+  tools: [ThreatTool!]!
+  malwareFamilies: [MalwareFamily!]!
+  
+  # Targeting
+  targetedSectors: [IndustrySector!]!
+  targetedRegions: [String!]!
+  victimology: Victimology!
+  
+  # Associated Threats
+  campaigns: [ThreatCampaign!]!
+  indicators: [Indicator!]!
+  relatedActors: [ThreatActor!]! @provides(fields: "id")
+  
+  # Intelligence Sources
+  sources: [ThreatSource!]!
+  
+  # Metadata
+  tags: [String!]!
+  metadata: JSON
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum ThreatActorType {
+  INDIVIDUAL
+  GROUP
+  ORGANIZATION
+  NATION_STATE
+  UNKNOWN
+}
+
+enum ThreatSophistication {
+  MINIMAL
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+  INNOVATOR
+  STRATEGIC
+}
+
+enum ThreatMotivation {
+  FINANCIAL_GAIN
+  ESPIONAGE
+  SABOTAGE
+  HACKTIVISM
+  IDEOLOGY
+  PERSONAL_SATISFACTION
+  PERSONAL_VENDETTA
+  ORGANIZATIONAL_GAIN
+  UNPREDICTABLE
+}
+
+enum ThreatCapability {
+  SCRIPT_KIDDIE
+  SKILLED_INDIVIDUAL
+  ORGANIZED_GROUP
+  NATION_STATE
+  ADVANCED_PERSISTENT_THREAT
+}
+
+type Victimology {
+  primaryTargets: [String!]!
+  secondaryTargets: [String!]!
+  targetingCriteria: [String!]!
+  opportunistic: Boolean!
+  targeted: Boolean!
+}
+
+# Threat Campaigns
+type ThreatCampaign implements Node @key(fields: "id") {
+  id: ID!
+  name: String!
+  aliases: [String!]!
+  description: String!
+  
+  # Campaign Details
+  status: CampaignStatus!
+  confidence: ThreatConfidence!
+  
+  # Timeline
+  startDate: DateTime!
+  endDate: DateTime
+  isActive: Boolean!
+  
+  # Attribution
+  threatActors: [ThreatActor!]!
+  attribution: ThreatAttribution
+  
+  # Technical Details
+  objectives: [String!]!
+  ttps: [MitreTechnique!]! @external
+  tools: [ThreatTool!]!
+  malware: [MalwareFamily!]!
+  
+  # Targeting
+  targets: [String!]!
+  targetedSectors: [IndustrySector!]!
+  targetedCountries: [String!]!
+  
+  # Impact Assessment
+  impact: CampaignImpact!
+  victimCount: Int
+  estimatedLoss: Float
+  
+  # Associated Threats
+  indicators: [Indicator!]!
+  relatedCampaigns: [ThreatCampaign!]! @provides(fields: "id")
+  
+  # Intelligence
+  sources: [ThreatSource!]!
+  reports: [ThreatReport!]!
+  
+  # Metadata
+  tags: [String!]!
+  metadata: JSON
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum CampaignStatus {
+  ACTIVE
+  INACTIVE
+  DORMANT
+  CONCLUDED
+  SUSPECTED
+  CONFIRMED
+}
+
+type CampaignImpact {
+  scope: ImpactScope!
+  severity: Severity! @external
+  financialImpact: Float
+  reputationalImpact: ReputationImpact!
+  operationalImpact: OperationalImpact!
+}
+
+enum ImpactScope {
+  INDIVIDUAL
+  ORGANIZATIONAL
+  SECTORAL
+  NATIONAL
+  INTERNATIONAL
+}
+
+enum ReputationImpact {
+  MINIMAL
+  MINOR
+  MODERATE
+  MAJOR
+  SEVERE
+}
+
+enum OperationalImpact {
+  NONE
+  MINIMAL
+  MODERATE
+  SIGNIFICANT
+  CRITICAL
+}
+
+# Indicators of Compromise (IOCs)
+type IOC implements Node @key(fields: "id") {
+  id: ID!
+  type: IOCType!
+  value: String!
+  
+  # Classification
+  category: IOCCategory!
+  confidence: ThreatConfidence!
+  severity: Severity! @external
+  
+  # Context
+  description: String
+  context: [IOCContext!]!
+  
+  # Temporal Information
+  firstSeen: DateTime!
+  lastSeen: DateTime!
+  expiresAt: DateTime
+  isActive: Boolean!
+  
+  # Attribution
+  threatActors: [ThreatActor!]!
+  campaigns: [ThreatCampaign!]!
+  malwareFamilies: [MalwareFamily!]!
+  
+  # Detection and Response
+  detectionMethods: [DetectionMethod!]! @external
+  falsePositiveRate: Float
+  killChainPhase: KillChainPhase!
+  
+  # Relationships
+  relatedIOCs: [IOC!]! @provides(fields: "id")
+  parentIOC: IOC
+  childIOCs: [IOC!]!
+  
+  # Matches and Sightings
+  sightings: [IOCSighting!]!
+  matches: [IOCMatch!]!
+  
+  # Sources and Intelligence
+  sources: [ThreatSource!]!
+  feeds: [ThreatFeed!]!
+  
+  # Whitelisting and Suppression
+  isWhitelisted: Boolean!
+  whitelistReason: String
+  suppressionRules: [SuppressionRule!]! @external
+  
+  # Enrichment
+  enrichment: IOCEnrichment
+  geoLocation: GeoLocation @external
+  reputation: ThreatReputation! @external
+  
+  # Metadata
+  tags: [String!]!
+  metadata: JSON
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum IOCType {
+  IP_ADDRESS
+  DOMAIN
+  URL
+  EMAIL_ADDRESS
+  FILE_HASH
+  MD5
+  SHA1
+  SHA256
+  SSDEEP
+  IMPHASH
+  PEHASH
+  REGISTRY_KEY
+  MUTEX
+  USER_AGENT
+  SSL_CERTIFICATE
+  X509_CERTIFICATE
+  YARA_RULE
+  SIGMA_RULE
+  CVE
+  PHONE_NUMBER
+  BITCOIN_ADDRESS
+  CREDIT_CARD
+  IBAN
+  MAC_ADDRESS
+  PROCESS_NAME
+  SERVICE_NAME
+  FILENAME
+  FILE_PATH
+  AUTONOMOUS_SYSTEM
+  CIDR_BLOCK
+}
+
+enum IOCCategory {
+  NETWORK
+  HOST
+  EMAIL
+  FILE
+  REGISTRY
+  PROCESS
+  SERVICE
+  CERTIFICATE
+  FINANCIAL
+  IDENTITY
+  BEHAVIORAL
+}
+
+type IOCContext {
+  contextType: IOCContextType!
+  value: String!
+  description: String
+  confidence: Float!
+}
+
+enum IOCContextType {
+  CAMPAIGN
+  MALWARE_FAMILY
+  ATTACK_VECTOR
+  TARGET_SECTOR
+  GEOGRAPHIC_REGION
+  TIME_PERIOD
+  TECHNIQUE
+  TOOL
+}
+
+type IOCSighting {
+  id: ID!
+  source: String!
+  location: String
+  timestamp: DateTime!
+  confidence: ThreatConfidence!
+  context: String
+  reportedBy: ThreatSource!
+}
+
+type IOCMatch {
+  id: ID!
+  asset: Asset! @external
+  alert: Alert @external
+  matchType: IOCMatchType!
+  confidence: Float!
+  timestamp: DateTime!
+  context: IOCMatchContext!
+}
+
+enum IOCMatchType {
+  EXACT
+  PARTIAL
+  PATTERN
+  BEHAVIORAL
+  FUZZY
+}
+
+type IOCMatchContext {
+  source: String!
+  location: String
+  additionalInfo: JSON
+  severity: Severity! @external
+}
+
+type IOCEnrichment {
+  asn: AutonomousSystem
+  whoisData: WhoisData
+  dnsData: DNSData
+  sslCertificate: SSLCertificate
+  geoLocation: GeoLocation @external
+  reputation: ReputationData
+  malwareAnalysis: MalwareAnalysis
+  enrichedAt: DateTime!
+  sources: [String!]!
+}
+
+type AutonomousSystem {
+  number: Int!
+  name: String!
+  country: String
+  registry: String
+}
+
+type WhoisData {
+  registrar: String
+  registrant: String
+  creationDate: DateTime
+  expirationDate: DateTime
+  nameServers: [String!]!
+  contacts: [WhoisContact!]!
+}
+
+type WhoisContact {
+  type: ContactType!
+  name: String
+  organization: String
+  email: String
+  phone: String
+  address: ContactAddress
+}
+
+enum ContactType {
+  REGISTRANT
+  ADMINISTRATIVE
+  TECHNICAL
+  BILLING
+}
+
+type ContactAddress {
+  street: String
+  city: String
+  state: String
+  postalCode: String
+  country: String
+}
+
+type DNSData {
+  aRecords: [String!]!
+  aaaaRecords: [String!]!
+  cnameRecords: [String!]!
+  mxRecords: [MXRecord!]!
+  txtRecords: [String!]!
+  nsRecords: [String!]!
+  soaRecord: SOARecord
+}
+
+type MXRecord {
+  priority: Int!
+  exchange: String!
+}
+
+type SOARecord {
+  primaryNameServer: String!
+  responsibleEmail: String!
+  serial: Int!
+  refresh: Int!
+  retry: Int!
+  expire: Int!
+  minimumTTL: Int!
+}
+
+type SSLCertificate {
+  subject: String!
+  issuer: String!
+  serialNumber: String!
+  notBefore: DateTime!
+  notAfter: DateTime!
+  fingerprints: CertificateFingerprints!
+  subjectAlternativeNames: [String!]!
+  isValid: Boolean!
+  isSelfSigned: Boolean!
+}
+
+type CertificateFingerprints {
+  sha1: String!
+  sha256: String!
+  md5: String!
+}
+
+type ReputationData {
+  overallScore: Float!
+  sources: [ReputationSource!]!
+  categories: [ReputationCategory!]!
+  firstSeen: DateTime
+  lastSeen: DateTime
+}
+
+type ReputationSource {
+  source: String!
+  score: Float!
+  categories: [String!]!
+  lastUpdated: DateTime!
+}
+
+enum ReputationCategory {
+  MALWARE
+  PHISHING
+  SPAM
+  BOTNET
+  SUSPICIOUS
+  CLEAN
+  UNKNOWN
+}
+
+type MalwareAnalysis {
+  detectionRate: Float!
+  firstSubmission: DateTime
+  lastAnalysis: DateTime
+  engines: [MalwareEngine!]!
+  signatures: [String!]!
+  behaviors: [MalwareBehavior!]!
+}
+
+type MalwareEngine {
+  name: String!
+  version: String
+  result: String
+  detected: Boolean!
+  category: String
+}
+
+type MalwareBehavior {
+  category: BehaviorCategory!
+  description: String!
+  severity: Severity! @external
+}
+
+enum BehaviorCategory {
+  FILE_SYSTEM
+  NETWORK
+  REGISTRY
+  PROCESS
+  SERVICE
+  PERSISTENCE
+  PRIVILEGE_ESCALATION
+  DEFENSE_EVASION
+  CREDENTIAL_ACCESS
+  DISCOVERY
+  LATERAL_MOVEMENT
+  COLLECTION
+  EXFILTRATION
+  COMMAND_CONTROL
+  IMPACT
+}
+
+# Threat Feeds
+type ThreatFeed implements Node @key(fields: "id") {
+  id: ID!
+  name: String!
+  description: String!
+  
+  # Feed Configuration
+  url: URL!
+  feedType: ThreatFeedType!
+  format: FeedFormat!
+  frequency: UpdateFrequency!
+  
+  # Status and Health
+  status: FeedStatus!
+  isActive: Boolean!
+  lastUpdate: DateTime
+  nextUpdate: DateTime
+  health: FeedHealth!
+  
+  # Content Statistics
+  totalIndicators: Int!
+  activeIndicators: Int!
+  newIndicators: Int!
+  expiredIndicators: Int!
+  
+  # Quality Metrics
+  qualityScore: Float!
+  accuracy: Float!
+  falsePositiveRate: Float!
+  coverage: Float!
+  
+  # Source Information
+  provider: ThreatFeedProvider!
+  license: FeedLicense!
+  cost: FeedCost
+  
+  # Processing Configuration
+  processingRules: [FeedProcessingRule!]!
+  enrichmentEnabled: Boolean!
+  deduplicationEnabled: Boolean!
+  
+  # Relationships
+  indicators: [Indicator!]!
+  iocs: [IOC!]!
+  
+  # Metadata
+  tags: [String!]!
+  metadata: JSON
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum ThreatFeedType {
+  COMMERCIAL
+  OPEN_SOURCE
+  GOVERNMENT
+  PRIVATE
+  COMMUNITY
+  INTERNAL
+}
+
+enum FeedFormat {
+  STIX
+  TAXII
+  JSON
+  XML
+  CSV
+  RSS
+  ATOM
+  MISP
+  YARA
+  SIGMA
+  IOC
+  SNORT
+  SURICATA
+}
+
+enum UpdateFrequency {
+  REAL_TIME
+  MINUTELY
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+  ON_DEMAND
+}
+
+enum FeedStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+  UPDATING
+  PENDING
+  DISABLED
+}
+
+type FeedHealth {
+  overallHealth: HealthStatus! @external
+  connectivity: HealthStatus! @external
+  latency: Int # milliseconds
+  errorRate: Float
+  lastError: String
+  uptime: Float # percentage
+}
+
+type ThreatFeedProvider {
+  name: String!
+  type: ProviderType!
+  website: URL
+  contact: ContactInfo
+  reputation: ProviderReputation!
+}
+
+enum ProviderType {
+  COMMERCIAL
+  GOVERNMENT
+  RESEARCH
+  COMMUNITY
+  INTERNAL
+}
+
+type ContactInfo {
+  email: EmailAddress @external
+  phone: String
+  address: String
+  supportUrl: URL
+}
+
+type ProviderReputation {
+  score: Float!
+  reliability: ThreatReliability!
+  trackRecord: String
+  endorsements: [String!]!
+}
+
+type FeedLicense {
+  type: LicenseType!
+  terms: String!
+  restrictions: [String!]!
+  attribution: Boolean!
+  sharing: SharingPermission!
+}
+
+enum LicenseType {
+  COMMERCIAL
+  OPEN_SOURCE
+  GOVERNMENT
+  ACADEMIC
+  CUSTOM
+}
+
+enum SharingPermission {
+  PROHIBITED
+  RESTRICTED
+  ALLOWED
+  REQUIRED
+}
+
+type FeedCost {
+  model: PricingModel!
+  amount: Float
+  currency: String!
+  billingPeriod: BillingPeriod!
+}
+
+enum PricingModel {
+  FREE
+  SUBSCRIPTION
+  PAY_PER_USE
+  TIERED
+  CUSTOM
+}
+
+enum BillingPeriod {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+  ONE_TIME
+}
+
+type FeedProcessingRule {
+  id: ID!
+  name: String!
+  condition: String!
+  action: ProcessingAction!
+  parameters: JSON
+  enabled: Boolean!
+  order: Int!
+}
+
+enum ProcessingAction {
+  INCLUDE
+  EXCLUDE
+  TRANSFORM
+  ENRICH
+  TAG
+  PRIORITIZE
+  EXPIRE
+}
+
+# Correlation and Analysis
+type ThreatCorrelation implements Node @key(fields: "id") {
+  id: ID!
+  name: String!
+  description: String!
+  
+  # Correlation Configuration
+  correlationType: CorrelationType!
+  confidence: Float!
+  threshold: Float!
+  timeWindow: Int! # seconds
+  
+  # Rules and Logic
+  rules: [CorrelationRule!]!
+  logic: CorrelationLogic!
+  
+  # Status
+  isActive: Boolean!
+  status: CorrelationStatus!
+  
+  # Metrics
+  matchCount: Int!
+  falsePositiveRate: Float!
+  effectivenessScore: Float!
+  
+  # Results
+  matches: [CorrelationMatch!]!
+  alerts: [Alert!]! @external
+  
+  # Metadata
+  tags: [String!]!
+  metadata: JSON
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  createdBy: User! @external
+}
+
+enum CorrelationType {
+  TEMPORAL
+  SPATIAL
+  BEHAVIORAL
+  INDICATOR_BASED
+  PATTERN_BASED
+  THREAT_ACTOR
+  CAMPAIGN
+  TECHNIQUE
+  ASSET_BASED
+}
+
+type CorrelationRule {
+  id: ID!
+  field: String!
+  operator: CorrelationOperator!
+  value: String!
+  weight: Float!
+  isRequired: Boolean!
+}
+
+enum CorrelationOperator {
+  EQUALS
+  NOT_EQUALS
+  CONTAINS
+  NOT_CONTAINS
+  STARTS_WITH
+  ENDS_WITH
+  MATCHES_REGEX
+  IN_LIST
+  NOT_IN_LIST
+  GREATER_THAN
+  LESS_THAN
+  BETWEEN
+  EXISTS
+  NOT_EXISTS
+}
+
+enum CorrelationLogic {
+  AND
+  OR
+  WEIGHTED_AVERAGE
+  MAJORITY
+  CUSTOM
+}
+
+enum CorrelationStatus {
+  ACTIVE
+  INACTIVE
+  TESTING
+  ERROR
+  TUNING
+}
+
+type CorrelationMatch {
+  id: ID!
+  events: [SecurityEvent!]! @external
+  indicators: [Indicator!]!
+  confidence: Float!
+  score: Float!
+  timestamp: DateTime!
+  details: CorrelationDetails!
+}
+
+type CorrelationDetails {
+  matchingFields: [String!]!
+  weights: [Float!]!
+  calculations: JSON
+  reasoning: String!
+}
+
+# Threat Intelligence Sources
+type ThreatSource implements Node @key(fields: "id") {
+  id: ID!
+  name: String!
+  type: SourceType!
+  
+  # Source Details
+  url: URL
+  description: String!
+  category: SourceCategory!
+  
+  # Quality and Reliability
+  reliability: ThreatReliability!
+  credibility: SourceCredibility!
+  accuracy: Float!
+  timeliness: SourceTimeliness!
+  
+  # Content Statistics
+  totalReports: Int!
+  recentReports: Int!
+  avgReportQuality: Float!
+  
+  # Contact and Attribution
+  contact: ContactInfo
+  organization: String
+  country: String
+  
+  # Access and Licensing
+  accessType: AccessType!
+  license: SourceLicense
+  cost: SourceCost
+  
+  # Metadata
+  tags: [String!]!
+  metadata: JSON
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum SourceType {
+  COMMERCIAL_VENDOR
+  GOVERNMENT_AGENCY
+  RESEARCH_INSTITUTION
+  SECURITY_COMPANY
+  THREAT_HUNTER
+  INCIDENT_RESPONDER
+  HONEYPOT
+  SANDBOX
+  SINKHOLE
+  DARKNETHONEYNET
+  SOCIAL_MEDIA
+  NEWS_MEDIA
+  BLOG
+  FORUM
+  UNDERGROUND
+  INTERNAL
+}
+
+enum SourceCategory {
+  TECHNICAL
+  STRATEGIC
+  TACTICAL
+  OPERATIONAL
+  CONTEXTUAL
+}
+
+enum SourceCredibility {
+  VERIFIED
+  CREDIBLE
+  FAIRLY_CREDIBLE
+  DOUBTFUL
+  IMPROBABLE
+  CANNOT_BE_JUDGED
+}
+
+enum SourceTimeliness {
+  REAL_TIME
+  NEAR_REAL_TIME
+  RECENT
+  DATED
+  HISTORICAL
+}
+
+enum AccessType {
+  PUBLIC
+  RESTRICTED
+  CLASSIFIED
+  COMMERCIAL
+  PRIVATE
+}
+
+type SourceLicense {
+  type: LicenseType!
+  terms: String!
+  restrictions: [String!]!
+}
+
+type SourceCost {
+  model: PricingModel!
+  amount: Float
+  currency: String!
+}
+
+# Threat Intelligence Reports
+type ThreatReport implements Node & SecurityEntity @key(fields: "id") {
+  id: ID!
+  organizationId: ID! @shareable
+  
+  # Report Details
+  title: String!
+  summary: String!
+  content: String!
+  reportType: ReportType!
+  
+  # Classification
+  classification: ReportClassification!
+  sensitivity: SensitivityLevel!
+  dissemination: DisseminationLevel!
+  
+  # Threat Information
+  threats: [ThreatIntelligence!]!
+  indicators: [Indicator!]!
+  iocs: [IOC!]!
+  
+  # Analysis
+  keyFindings: [String!]!
+  recommendations: [String!]!
+  implications: [String!]!
+  
+  # Source and Attribution
+  sources: [ThreatSource!]!
+  author: String!
+  organization: String
+  
+  # Temporal Information
+  publishedAt: DateTime!
+  validUntil: DateTime
+  
+  # Quality and Confidence
+  confidenceLevel: ThreatConfidence!
+  qualityScore: Float!
+  peer_reviewed: Boolean!
+  
+  # Relationships
+  relatedReports: [ThreatReport!]! @provides(fields: "id")
+  references: [Reference!]! @external
+  
+  # Distribution
+  audience: [String!]!
+  distributionList: [String!]!
+  
+  # Metadata
+  tags: [String!]! @shareable
+  metadata: JSON @shareable
+  createdAt: DateTime! @shareable
+  updatedAt: DateTime! @shareable
+}
+
+enum ReportType {
+  THREAT_INTELLIGENCE
+  TECHNICAL_ANALYSIS
+  STRATEGIC_ASSESSMENT
+  TACTICAL_REPORT
+  INCIDENT_REPORT
+  VULNERABILITY_REPORT
+  CAMPAIGN_ANALYSIS
+  ACTOR_PROFILE
+  SECTOR_REPORT
+  GEOGRAPHIC_REPORT
+}
+
+enum ReportClassification {
+  UNCLASSIFIED
+  CONFIDENTIAL
+  SECRET
+  TOP_SECRET
+  RESTRICTED
+}
+
+enum SensitivityLevel {
+  PUBLIC
+  INTERNAL
+  CONFIDENTIAL
+  HIGHLY_CONFIDENTIAL
+}
+
+enum DisseminationLevel {
+  PUBLIC
+  RESTRICTED
+  NEED_TO_KNOW
+  NO_DISTRIBUTION
+}
+
+# Malware Families
+type MalwareFamily implements Node @key(fields: "id") {
+  id: ID!
+  name: String!
+  aliases: [String!]!
+  description: String!
+  
+  # Classification
+  type: MalwareType!
+  category: MalwareCategory!
+  platform: [String!]!
+  
+  # Characteristics
+  capabilities: [MalwareCapability!]!
+  techniques: [MitreTechnique!]! @external
+  behaviors: [MalwareBehavior!]!
+  
+  # Attribution
+  threatActors: [ThreatActor!]!
+  campaigns: [ThreatCampaign!]!
+  
+  # Indicators
+  signatures: [MalwareSignature!]!
+  indicators: [Indicator!]!
+  iocs: [IOC!]!
+  
+  # Evolution
+  firstSeen: DateTime!
+  lastSeen: DateTime!
+  isActive: Boolean!
+  variants: [MalwareVariant!]!
+  
+  # Analysis
+  complexity: MalwareComplexity!
+  sophistication: ThreatSophistication!
+  evolution: MalwareEvolution!
+  
+  # Countermeasures
+  detectionMethods: [DetectionMethod!]! @external
+  mitigations: [ThreatMitigation!]!
+  
+  # Metadata
+  tags: [String!]!
+  metadata: JSON
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum MalwareType {
+  VIRUS
+  WORM
+  TROJAN
+  BACKDOOR
+  ROOTKIT
+  KEYLOGGER
+  SPYWARE
+  ADWARE
+  RANSOMWARE
+  CRYPTOMINER
+  BOTNET_CLIENT
+  EXPLOIT_KIT
+  LOADER
+  DROPPER
+  RAT
+  INFOSTEALER
+  BANKING_TROJAN
+  POS_MALWARE
+  MOBILE_MALWARE
+  IOT_MALWARE
+  FIRMWARE_MALWARE
+  FILELESS_MALWARE
+  LIVING_OFF_THE_LAND
+}
+
+enum MalwareCategory {
+  COMMODITY
+  TARGETED
+  NATION_STATE
+  CRIMEWARE
+  HACKWARE
+  GRAYWARE
+  POTENTIALLY_UNWANTED
+}
+
+enum MalwareCapability {
+  DATA_THEFT
+  CREDENTIAL_THEFT
+  CRYPTOCURRENCY_MINING
+  REMOTE_ACCESS
+  KEYLOGGING
+  SCREEN_CAPTURE
+  FILE_ENCRYPTION
+  SYSTEM_MODIFICATION
+  NETWORK_PROPAGATION
+  PERSISTENCE
+  PRIVILEGE_ESCALATION
+  DEFENSE_EVASION
+  COMMAND_CONTROL
+  LATERAL_MOVEMENT
+  DATA_EXFILTRATION
+  DESTRUCTION
+  DENIAL_OF_SERVICE
+  BOTNET_PARTICIPATION
+}
+
+enum MalwareComplexity {
+  SIMPLE
+  MODERATE
+  COMPLEX
+  ADVANCED
+  HIGHLY_SOPHISTICATED
+}
+
+type MalwareEvolution {
+  generationCount: Int!
+  evolutionRate: Float!
+  adaptability: MalwareAdaptability!
+  polymorphism: Boolean!
+  metamorphism: Boolean!
+  packing: Boolean!
+  obfuscation: Boolean!
+}
+
+enum MalwareAdaptability {
+  STATIC
+  LOW
+  MEDIUM
+  HIGH
+  ADAPTIVE
+}
+
+type MalwareVariant {
+  id: ID!
+  name: String!
+  version: String
+  firstSeen: DateTime!
+  changes: [String!]!
+  similarity: Float!
+  indicators: [Indicator!]!
+}
+
+type MalwareSignature {
+  id: ID!
+  type: SignatureType!
+  signature: String!
+  description: String
+  confidence: Float!
+  createdAt: DateTime!
+}
+
+enum SignatureType {
+  YARA
+  SIGMA
+  SNORT
+  SURICATA
+  HASH
+  PATTERN
+  BEHAVIORAL
+  NETWORK
+  REGISTRY
+  FILE_SYSTEM
+}
+
+# Threat Tools
+type ThreatTool implements Node @key(fields: "id") {
+  id: ID!
+  name: String!
+  aliases: [String!]!
+  description: String!
+  
+  # Classification
+  toolType: ThreatToolType!
+  category: ToolCategory!
+  
+  # Technical Details
+  platform: [String!]!
+  language: String
+  version: String
+  
+  # Usage
+  threatActors: [ThreatActor!]!
+  campaigns: [ThreatCampaign!]!
+  techniques: [MitreTechnique!]! @external
+  
+  # Capabilities
+  capabilities: [ToolCapability!]!
+  features: [String!]!
+  
+  # Availability
+  availability: ToolAvailability!
+  cost: ToolCost
+  
+  # Detection
+  signatures: [ThreatToolSignature!]!
+  indicators: [Indicator!]!
+  
+  # Metadata
+  tags: [String!]!
+  metadata: JSON
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum ThreatToolType {
+  EXPLOIT
+  PAYLOAD
+  POST_EXPLOITATION
+  RECONNAISSANCE
+  VULNERABILITY_SCANNER
+  NETWORK_SCANNER
+  PASSWORD_CRACKER
+  SOCIAL_ENGINEERING
+  PHISHING_KIT
+  CRYPTER
+  PACKER
+  OBFUSCATOR
+  DROPPER
+  LOADER
+  RAT
+  C2_FRAMEWORK
+  LATERAL_MOVEMENT
+  PERSISTENCE
+  PRIVILEGE_ESCALATION
+  DEFENSE_EVASION
+  CREDENTIAL_DUMPING
+  DATA_EXFILTRATION
+}
+
+enum ToolCategory {
+  COMMERCIAL
+  OPEN_SOURCE
+  UNDERGROUND
+  CUSTOM
+  DUAL_USE
+  LEGITIMATE
+}
+
+enum ToolCapability {
+  EXPLOITATION
+  POST_EXPLOITATION
+  COMMAND_CONTROL
+  DATA_COLLECTION
+  CREDENTIAL_ACCESS
+  PERSISTENCE
+  PRIVILEGE_ESCALATION
+  DEFENSE_EVASION
+  LATERAL_MOVEMENT
+  DISCOVERY
+  COLLECTION
+  EXFILTRATION
+  IMPACT
+}
+
+enum ToolAvailability {
+  PUBLICLY_AVAILABLE
+  RESTRICTED
+  UNDERGROUND
+  EXCLUSIVE
+  CUSTOM
+}
+
+type ToolCost {
+  model: PricingModel!
+  price: Float
+  currency: String!
+}
+
+type ThreatToolSignature {
+  id: ID!
+  type: SignatureType!
+  signature: String!
+  confidence: Float!
+}
+
+# Threat Attribution
+type ThreatAttribution {
+  confidence: AttributionConfidence! @external
+  country: String
+  region: String
+  organization: String
+  sector: String
+  motivations: [ThreatMotivation!]!
+  capabilities: [ThreatCapability!]!
+  evidence: [AttributionEvidence!]! @external
+  reasoning: String!
+  alternativeHypotheses: [String!]!
+  sources: [ThreatSource!]!
+  lastUpdated: DateTime!
+}
+
+# Threat Mitigations and Countermeasures
+type ThreatMitigation implements Node @key(fields: "id") {
+  id: ID!
+  name: String!
+  description: String!
+  
+  # Mitigation Details
+  mitigationType: MitigationType!
+  effectiveness: MitigationEffectiveness!
+  implementationDifficulty: ImplementationDifficulty!
+  
+  # Technical Details
+  techniques: [MitreTechnique!]! @external
+  controls: [SecurityControl!]!
+  technologies: [String!]!
+  
+  # Cost and Resources
+  cost: MitigationCost!
+  resourceRequirements: [String!]!
+  timeline: MitigationTimeline!
+  
+  # Effectiveness Metrics
+  successRate: Float!
+  falsePositiveRate: Float!
+  impactReduction: Float!
+  
+  # Dependencies
+  prerequisites: [String!]!
+  dependencies: [ThreatMitigation!]!
+  
+  # Metadata
+  tags: [String!]!
+  metadata: JSON
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum MitigationType {
+  PREVENTIVE
+  DETECTIVE
+  CORRECTIVE
+  COMPENSATING
+  DETERRENT
+}
+
+enum MitigationEffectiveness {
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+enum ImplementationDifficulty {
+  EASY
+  MODERATE
+  DIFFICULT
+  VERY_DIFFICULT
+}
+
+type MitigationCost {
+  initial: Float
+  ongoing: Float
+  currency: String!
+  timeframe: String!
+}
+
+type MitigationTimeline {
+  planning: Int # days
+  implementation: Int # days
+  deployment: Int # days
+  total: Int # days
+}
+
+type SecurityControl {
+  id: String!
+  name: String!
+  category: ControlCategory!
+  framework: String!
+  description: String!
+}
+
+enum ControlCategory {
+  ACCESS_CONTROL
+  AWARENESS_TRAINING
+  AUDIT_ACCOUNTABILITY
+  ASSESSMENT_AUTHORIZATION
+  CONFIGURATION_MANAGEMENT
+  CONTINGENCY_PLANNING
+  IDENTIFICATION_AUTHENTICATION
+  INCIDENT_RESPONSE
+  MAINTENANCE
+  MEDIA_PROTECTION
+  PHYSICAL_PROTECTION
+  PLANNING
+  PERSONNEL_SECURITY
+  RISK_ASSESSMENT
+  SYSTEM_ACQUISITION
+  SYSTEM_COMMUNICATIONS
+  SYSTEM_INFORMATION_INTEGRITY
+}
+
+type Countermeasure implements Node @key(fields: "id") {
+  id: ID!
+  name: String!
+  description: String!
+  type: CountermeasureType!
+  
+  # Effectiveness
+  effectiveness: MitigationEffectiveness!
+  coverage: Float! # percentage of threats addressed
+  
+  # Implementation
+  complexity: ImplementationComplexity!
+  requirements: [String!]!
+  
+  # Threats Addressed
+  threatens: [ThreatIntelligence!]!
+  techniques: [MitreTechnique!]! @external
+  
+  # Metadata
+  tags: [String!]!
+  metadata: JSON
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum CountermeasureType {
+  TECHNICAL
+  ADMINISTRATIVE
+  PHYSICAL
+  BEHAVIORAL
+  PROCEDURAL
+}
+
+enum ImplementationComplexity {
+  SIMPLE
+  MODERATE
+  COMPLEX
+  HIGHLY_COMPLEX
+}
+
+# Queries
+type Query {
+  # Threat Intelligence Queries
+  threatIntelligence(
+    filter: ThreatIntelligenceFilter
+    sort: ThreatIntelligenceSort
+    first: Int
+    after: String
+    last: Int
+    before: String
+  ): ThreatIntelligenceConnection @auth(requires: ANALYST) @organizationScope @complexity(value: 30)
+  
+  threat(id: ID!): ThreatIntelligence @auth(requires: ANALYST) @organizationScope
+  
+  searchThreats(
+    query: String!
+    filter: ThreatIntelligenceFilter
+    sort: ThreatIntelligenceSort
+    first: Int = 20
+    after: String
+  ): ThreatSearchResult @auth(requires: ANALYST) @organizationScope @complexity(value: 80)
+  
+  # IOC Queries
+  iocs(
+    filter: IOCFilter
+    sort: IOCSort
+    first: Int
+    after: String
+  ): IOCConnection @auth(requires: ANALYST) @organizationScope @complexity(value: 25)
+  
+  ioc(id: ID!): IOC @auth(requires: ANALYST) @organizationScope
+  
+  searchIOCs(
+    query: String!
+    types: [IOCType!]
+    confidence: ThreatConfidence
+    activeOnly: Boolean = true
+    first: Int = 50
+  ): IOCSearchResult @auth(requires: ANALYST) @organizationScope @complexity(value: 50)
+  
+  # IOC Enrichment
+  enrichIOC(
+    value: String!
+    type: IOCType!
+    sources: [String!]
+  ): IOCEnrichment @auth(requires: ANALYST) @organizationScope @complexity(value: 100) @rateLimit(max: 10, window: 60)
+  
+  # Threat Actor Queries
+  threatActors(
+    filter: ThreatActorFilter
+    sort: ThreatActorSort
+    first: Int
+    after: String
+  ): ThreatActorConnection @auth(requires: ANALYST) @organizationScope
+  
+  threatActor(id: ID!): ThreatActor @auth(requires: ANALYST) @organizationScope
+  
+  # Campaign Queries
+  threatCampaigns(
+    filter: ThreatCampaignFilter
+    sort: ThreatCampaignSort
+    first: Int
+    after: String
+  ): ThreatCampaignConnection @auth(requires: ANALYST) @organizationScope
+  
+  threatCampaign(id: ID!): ThreatCampaign @auth(requires: ANALYST) @organizationScope
+  
+  # Malware Queries
+  malwareFamilies(
+    filter: MalwareFamilyFilter
+    sort: MalwareFamilySort
+    first: Int
+    after: String
+  ): MalwareFamilyConnection @auth(requires: ANALYST) @organizationScope
+  
+  malwareFamily(id: ID!): MalwareFamily @auth(requires: ANALYST) @organizationScope
+  
+  # Threat Feed Queries
+  threatFeeds(
+    filter: ThreatFeedFilter
+    sort: ThreatFeedSort
+    first: Int
+    after: String
+  ): ThreatFeedConnection @auth(requires: ADMIN) @organizationScope
+  
+  threatFeed(id: ID!): ThreatFeed @auth(requires: ADMIN) @organizationScope
+  
+  # Correlation Queries
+  threatCorrelations(
+    filter: ThreatCorrelationFilter
+    first: Int
+    after: String
+  ): ThreatCorrelationConnection @auth(requires: ANALYST) @organizationScope
+  
+  threatCorrelation(id: ID!): ThreatCorrelation @auth(requires: ANALYST) @organizationScope
+  
+  # Intelligence Reports
+  threatReports(
+    filter: ThreatReportFilter
+    sort: ThreatReportSort
+    first: Int
+    after: String
+  ): ThreatReportConnection @auth(requires: ANALYST) @organizationScope
+  
+  threatReport(id: ID!): ThreatReport @auth(requires: ANALYST) @organizationScope
+  
+  # Analytics and Dashboards
+  threatIntelligenceDashboard(
+    organizationId: ID!
+    timeRange: TimeRange! @external
+  ): ThreatIntelligenceDashboard @auth(requires: ANALYST) @organizationScope @complexity(value: 150)
+  
+  threatAnalytics(
+    organizationId: ID!
+    timeRange: TimeRange! @external
+    filters: ThreatAnalyticsFilter
+  ): ThreatAnalytics @auth(requires: ANALYST) @organizationScope @complexity(value: 200)
+  
+  # Threat Landscape
+  threatLandscape(
+    organizationId: ID!
+    sector: IndustrySector
+    region: String
+    timeRange: TimeRange! @external
+  ): ThreatLandscape @auth(requires: ANALYST) @organizationScope @complexity(value: 100)
+  
+  # Attribution Analysis
+  attributionAnalysis(
+    indicators: [String!]!
+    threatTypes: [ThreatType!]
+    confidence: ThreatConfidence = MEDIUM
+  ): [AttributionResult!]! @auth(requires: ANALYST) @organizationScope @complexity(value: 300)
+  
+  # Tool and Technique Queries
+  threatTools(
+    filter: ThreatToolFilter
+    first: Int
+    after: String
+  ): ThreatToolConnection @auth(requires: ANALYST) @organizationScope
+  
+  threatTool(id: ID!): ThreatTool @auth(requires: ANALYST) @organizationScope
+  
+  # Mitigation Queries
+  threatMitigations(
+    filter: ThreatMitigationFilter
+    first: Int
+    after: String
+  ): ThreatMitigationConnection @auth(requires: ANALYST) @organizationScope
+  
+  threatMitigation(id: ID!): ThreatMitigation @auth(requires: ANALYST) @organizationScope
+  
+  # Recommended Mitigations
+  recommendedMitigations(
+    threatId: ID!
+    organizationContext: OrganizationContext
+    maxResults: Int = 10
+  ): [ThreatMitigation!]! @auth(requires: ANALYST) @organizationScope @complexity(value: 50)
+}
+
+# Mutations
+type Mutation {
+  # Threat Intelligence Management
+  createThreatIntelligence(
+    input: CreateThreatIntelligenceInput!
+  ): CreateThreatIntelligenceResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  updateThreatIntelligence(
+    id: ID!
+    input: UpdateThreatIntelligenceInput!
+  ): UpdateThreatIntelligenceResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  deleteThreatIntelligence(
+    id: ID!
+  ): DeleteThreatIntelligenceResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  # IOC Management
+  createIOC(
+    input: CreateIOCInput!
+  ): CreateIOCResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  
+  updateIOC(
+    id: ID!
+    input: UpdateIOCInput!
+  ): UpdateIOCResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  
+  deleteIOC(
+    id: ID!
+  ): DeleteIOCResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  
+  # IOC Operations
+  whitelistIOC(
+    id: ID!
+    reason: String!
+    expiresAt: DateTime
+  ): WhitelistIOCResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  
+  removeIOCWhitelist(
+    id: ID!
+  ): RemoveIOCWhitelistResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  
+  bulkImportIOCs(
+    input: BulkImportIOCsInput!
+  ): BulkImportIOCsResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  # Threat Actor Management
+  createThreatActor(
+    input: CreateThreatActorInput!
+  ): CreateThreatActorResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  updateThreatActor(
+    id: ID!
+    input: UpdateThreatActorInput!
+  ): UpdateThreatActorResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  # Campaign Management
+  createThreatCampaign(
+    input: CreateThreatCampaignInput!
+  ): CreateThreatCampaignResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  updateThreatCampaign(
+    id: ID!
+    input: UpdateThreatCampaignInput!
+  ): UpdateThreatCampaignResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  # Feed Management
+  createThreatFeed(
+    input: CreateThreatFeedInput!
+  ): CreateThreatFeedResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  updateThreatFeed(
+    id: ID!
+    input: UpdateThreatFeedInput!
+  ): UpdateThreatFeedResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  deleteThreatFeed(
+    id: ID!
+  ): DeleteThreatFeedResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  # Feed Operations
+  testThreatFeed(
+    id: ID!
+  ): TestThreatFeedResult! @auth(requires: ADMIN) @organizationScope
+  
+  syncThreatFeed(
+    id: ID!
+    force: Boolean = false
+  ): SyncThreatFeedResult! @auth(requires: ADMIN) @organizationScope
+  
+  # Correlation Management
+  createThreatCorrelation(
+    input: CreateThreatCorrelationInput!
+  ): CreateThreatCorrelationResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  updateThreatCorrelation(
+    id: ID!
+    input: UpdateThreatCorrelationInput!
+  ): UpdateThreatCorrelationResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  deleteThreatCorrelation(
+    id: ID!
+  ): DeleteThreatCorrelationResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  # Enrichment Operations
+  enrichIndicators(
+    indicators: [String!]!
+    sources: [String!]
+    organizationId: ID!
+  ): EnrichIndicatorsResult! @auth(requires: ANALYST) @organizationScope @rateLimit(max: 5, window: 300)
+  
+  # Report Management
+  createThreatReport(
+    input: CreateThreatReportInput!
+  ): CreateThreatReportResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  
+  updateThreatReport(
+    id: ID!
+    input: UpdateThreatReportInput!
+  ): UpdateThreatReportResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  
+  publishThreatReport(
+    id: ID!
+    distributionList: [String!]!
+  ): PublishThreatReportResult! @auth(requires: ADMIN) @organizationScope @auditLog
+  
+  # Attribution Operations
+  submitAttribution(
+    input: SubmitAttributionInput!
+  ): SubmitAttributionResult! @auth(requires: ANALYST) @organizationScope @auditLog
+  
+  # Mitigation Operations
+  recommendMitigations(
+    threatId: ID!
+    context: MitigationContext!
+  ): RecommendMitigationsResult! @auth(requires: ANALYST) @organizationScope
+  
+  implementMitigation(
+    mitigationId: ID!
+    assetIds: [ID!]!
+    priority: MitigationPriority!
+  ): ImplementMitigationResult! @auth(requires: INCIDENT_RESPONDER) @organizationScope @auditLog
+}
+
+# Subscriptions
+type Subscription {
+  # Real-time Threat Intelligence Updates
+  threatIntelligenceUpdates(
+    organizationId: ID!
+    filter: ThreatIntelligenceFilter
+  ): ThreatIntelligenceUpdate! @auth(requires: ANALYST) @organizationScope
+  
+  # IOC Match Notifications
+  iocMatches(
+    organizationId: ID!
+    confidence: ThreatConfidence = MEDIUM
+    severity: Severity = MEDIUM @external
+  ): IOCMatchNotification! @auth(requires: ANALYST) @organizationScope
+  
+  # New IOC Notifications
+  newIOCs(
+    organizationId: ID!
+    types: [IOCType!]
+    feeds: [ID!]
+    confidence: ThreatConfidence = MEDIUM
+  ): NewIOCNotification! @auth(requires: ANALYST) @organizationScope
+  
+  # Threat Feed Status Updates
+  threatFeedUpdates(
+    organizationId: ID!
+    feedIds: [ID!]
+  ): ThreatFeedUpdate! @auth(requires: ADMIN) @organizationScope
+  
+  # Correlation Matches
+  correlationMatches(
+    organizationId: ID!
+    correlationIds: [ID!]
+    minConfidence: Float = 0.7
+  ): CorrelationMatchNotification! @auth(requires: ANALYST) @organizationScope
+  
+  # Attribution Updates
+  attributionUpdates(
+    organizationId: ID!
+    threatIds: [ID!]
+  ): AttributionUpdate! @auth(requires: ANALYST) @organizationScope
+  
+  # Threat Actor Activity
+  threatActorActivity(
+    organizationId: ID!
+    actorIds: [ID!]
+  ): ThreatActorActivityUpdate! @auth(requires: ANALYST) @organizationScope
+  
+  # Campaign Updates
+  campaignUpdates(
+    organizationId: ID!
+    campaignIds: [ID!]
+  ): ThreatCampaignUpdate! @auth(requires: ANALYST) @organizationScope
+  
+  # Threat Landscape Changes
+  threatLandscapeUpdates(
+    organizationId: ID!
+    sectors: [IndustrySector!]
+    regions: [String!]
+    updateInterval: Int = 3600 # seconds
+  ): ThreatLandscapeUpdate! @auth(requires: ANALYST) @organizationScope
+}
+
+# Input Types (continued in next part due to length limits)

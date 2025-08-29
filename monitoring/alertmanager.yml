@@ -1,0 +1,296 @@
+# Alertmanager Configuration for Candlefish Operational Maturity Map
+# Production-ready alerting with multiple notification channels
+
+global:
+  # SMTP configuration for email alerts
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alerts@candlefish.ai'
+  smtp_auth_username: 'alerts@candlefish.ai'
+  smtp_auth_password_file: '/etc/alertmanager/secrets/smtp_password'
+  
+  # Slack configuration
+  slack_api_url_file: '/etc/alertmanager/secrets/slack_api_url'
+  
+  # Global resolve timeout
+  resolve_timeout: 5m
+
+# Email template configuration
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Routing configuration
+route:
+  # Default receiver for all alerts
+  receiver: 'web.hook'
+  
+  # Group alerts by these labels
+  group_by: ['alertname', 'cluster', 'service']
+  
+  # Wait before sending initial notification
+  group_wait: 10s
+  
+  # Wait before sending additional notifications for the same group
+  group_interval: 10s
+  
+  # Wait before sending repeat notifications
+  repeat_interval: 12h
+  
+  # Child routes for specific alert types
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 0s
+      group_interval: 5m
+      repeat_interval: 30m
+      
+    # High priority alerts
+    - match:
+        severity: high
+      receiver: 'high-priority-alerts'
+      group_wait: 5s
+      group_interval: 10m
+      repeat_interval: 2h
+      
+    # Warning alerts
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 30s
+      group_interval: 15m
+      repeat_interval: 4h
+      
+    # Database alerts
+    - match:
+        service: postgres
+      receiver: 'database-alerts'
+      group_by: ['alertname', 'instance', 'database']
+      
+    # Infrastructure alerts
+    - match_re:
+        alertname: 'Node.*|Kubernetes.*|EKS.*'
+      receiver: 'infrastructure-alerts'
+      group_by: ['alertname', 'instance', 'node']
+      
+    # Application performance alerts
+    - match_re:
+        alertname: 'High.*|Slow.*|Response.*'
+      receiver: 'performance-alerts'
+      
+    # Security alerts
+    - match:
+        category: security
+      receiver: 'security-alerts'
+      group_wait: 0s
+      repeat_interval: 15m
+
+# Inhibition rules to prevent alert spam
+inhibit_rules:
+  # Inhibit warning alerts when critical alerts are firing
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'cluster', 'service']
+    
+  # Inhibit high alerts when critical alerts are firing
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'high'
+    equal: ['alertname', 'cluster', 'service']
+
+# Alert receivers configuration
+receivers:
+  # Default webhook receiver
+  - name: 'web.hook'
+    webhook_configs:
+      - url: 'http://webhook-server:5001/webhook'
+        send_resolved: true
+        http_config:
+          basic_auth:
+            username: 'candlefish'
+            password_file: '/etc/alertmanager/secrets/webhook_password'
+
+  # Critical alerts - multiple channels
+  - name: 'critical-alerts'
+    email_configs:
+      - to: 'ops@candlefish.ai'
+        subject: '[CRITICAL] Candlefish Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          Alert: {{ .GroupLabels.alertname }}
+          Severity: {{ .CommonLabels.severity }}
+          Environment: {{ .CommonLabels.environment }}
+          
+          {{ range .Alerts }}
+          Summary: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          
+          Labels:
+          {{ range .Labels.SortedPairs }}  {{ .Name }}: {{ .Value }}
+          {{ end }}
+          
+          {{ end }}
+          
+          Runbook: {{ .CommonAnnotations.runbook_url }}
+        headers:
+          X-Priority: '1'
+          
+    slack_configs:
+      - api_url_file: '/etc/alertmanager/secrets/slack_critical_url'
+        channel: '#alerts-critical'
+        title: '🚨 CRITICAL ALERT'
+        text: |
+          *Alert:* {{ .GroupLabels.alertname }}
+          *Severity:* {{ .CommonLabels.severity }}
+          *Environment:* {{ .CommonLabels.environment }}
+          
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          {{ end }}
+        send_resolved: true
+        
+    pagerduty_configs:
+      - routing_key_file: '/etc/alertmanager/secrets/pagerduty_key'
+        description: 'Candlefish Critical Alert: {{ .GroupLabels.alertname }}'
+
+  # High priority alerts
+  - name: 'high-priority-alerts'
+    email_configs:
+      - to: 'ops@candlefish.ai'
+        subject: '[HIGH] Candlefish Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          Alert: {{ .GroupLabels.alertname }}
+          Severity: {{ .CommonLabels.severity }}
+          Environment: {{ .CommonLabels.environment }}
+          
+          {{ range .Alerts }}
+          Summary: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          {{ end }}
+          
+    slack_configs:
+      - api_url_file: '/etc/alertmanager/secrets/slack_alerts_url'
+        channel: '#alerts'
+        title: '⚠️ High Priority Alert'
+        text: |
+          *Alert:* {{ .GroupLabels.alertname }}
+          *Severity:* {{ .CommonLabels.severity }}
+          
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          {{ end }}
+
+  # Warning alerts
+  - name: 'warning-alerts'
+    slack_configs:
+      - api_url_file: '/etc/alertmanager/secrets/slack_alerts_url'
+        channel: '#alerts-warning'
+        title: '⚡ Warning Alert'
+        text: |
+          *Alert:* {{ .GroupLabels.alertname }}
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          {{ end }}
+
+  # Database specific alerts
+  - name: 'database-alerts'
+    email_configs:
+      - to: 'dba@candlefish.ai'
+        subject: '[DB] Database Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          Database Alert: {{ .GroupLabels.alertname }}
+          Instance: {{ .CommonLabels.instance }}
+          
+          {{ range .Alerts }}
+          Summary: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          
+          Current Value: {{ .Annotations.value }}
+          Threshold: {{ .Annotations.threshold }}
+          {{ end }}
+          
+    slack_configs:
+      - api_url_file: '/etc/alertmanager/secrets/slack_alerts_url'
+        channel: '#alerts-database'
+        title: '🗃️ Database Alert'
+        text: |
+          *Database:* {{ .CommonLabels.database }}
+          *Alert:* {{ .GroupLabels.alertname }}
+          
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Current Value:* {{ .Annotations.value }}
+          {{ end }}
+
+  # Infrastructure alerts
+  - name: 'infrastructure-alerts'
+    email_configs:
+      - to: 'infrastructure@candlefish.ai'
+        subject: '[INFRA] Infrastructure Alert: {{ .GroupLabels.alertname }}'
+        
+    slack_configs:
+      - api_url_file: '/etc/alertmanager/secrets/slack_alerts_url'
+        channel: '#alerts-infrastructure'
+        title: '🏗️ Infrastructure Alert'
+        text: |
+          *Node/Instance:* {{ .CommonLabels.instance }}
+          *Alert:* {{ .GroupLabels.alertname }}
+          
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          {{ end }}
+
+  # Performance alerts
+  - name: 'performance-alerts'
+    slack_configs:
+      - api_url_file: '/etc/alertmanager/secrets/slack_alerts_url'
+        channel: '#alerts-performance'
+        title: '⚡ Performance Alert'
+        text: |
+          *Service:* {{ .CommonLabels.service }}
+          *Alert:* {{ .GroupLabels.alertname }}
+          
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Current Value:* {{ .Annotations.value }}
+          {{ end }}
+
+  # Security alerts
+  - name: 'security-alerts'
+    email_configs:
+      - to: 'security@candlefish.ai'
+        subject: '[SECURITY] Security Alert: {{ .GroupLabels.alertname }}'
+        headers:
+          X-Priority: '1'
+          
+    slack_configs:
+      - api_url_file: '/etc/alertmanager/secrets/slack_security_url'
+        channel: '#security-alerts'
+        title: '🛡️ SECURITY ALERT'
+        text: |
+          *SECURITY INCIDENT DETECTED*
+          
+          *Alert:* {{ .GroupLabels.alertname }}
+          *Environment:* {{ .CommonLabels.environment }}
+          
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          
+          *Immediate Action Required*
+          {{ end }}
+        send_resolved: true
+
+# Silencing configuration
+silences:
+  # Example: Maintenance window silencing
+  - matchers:
+      - name: alertname
+        value: MaintenanceMode
+    starts_at: "2024-01-01T00:00:00Z"
+    ends_at: "2024-01-01T06:00:00Z"
+    created_by: "ops@candlefish.ai"
+    comment: "Scheduled maintenance window"

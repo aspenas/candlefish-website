@@ -1,0 +1,170 @@
+# Docker Compose for Security Dashboard Development Environment
+# Provides all necessary services for local development
+
+version: '3.8'
+
+services:
+  # Security Dashboard Frontend (React + Vite)
+  security-dashboard:
+    build:
+      context: ../../
+      dockerfile: deployment/docker/Dockerfile.security-dashboard-frontend
+      target: builder
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./src:/app/apps/security-dashboard/src:cached
+      - ./public:/app/apps/security-dashboard/public:cached
+      - ./.env.development:/app/apps/security-dashboard/.env:ro
+    environment:
+      - NODE_ENV=development
+      - VITE_ENV=development
+      - VITE_GRAPHQL_URL=http://localhost:4000/graphql
+      - VITE_WS_URL=ws://localhost:4000/graphql
+      - VITE_API_BASE_URL=http://localhost:3005/api/v1
+      - VITE_ENABLE_DEBUG=true
+      - VITE_ENABLE_HOT_RELOAD=true
+    depends_on:
+      - graphql-gateway
+      - backend-api
+      - redis
+      - postgres
+    networks:
+      - security-dashboard-dev
+    command: npm run dev
+    stdin_open: true
+    tty: true
+
+  # GraphQL Gateway
+  graphql-gateway:
+    build:
+      context: ../../
+      dockerfile: deployment/docker/Dockerfile.graphql-gateway
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=development
+      - GRAPHQL_PORT=4000
+      - BACKEND_API_URL=http://backend-api:3005
+      - REDIS_URL=redis://redis:6379
+      - POSTGRES_URL=postgresql://security_user:security_pass@postgres:5432/security_dashboard_dev
+    depends_on:
+      - backend-api
+      - redis
+      - postgres
+    networks:
+      - security-dashboard-dev
+    volumes:
+      - ../../graphql:/app/graphql:cached
+
+  # Backend API
+  backend-api:
+    build:
+      context: ../../
+      dockerfile: deployment/docker/Dockerfile.backend
+    ports:
+      - "3005:3005"
+    environment:
+      - NODE_ENV=development
+      - API_PORT=3005
+      - DATABASE_URL=postgresql://security_user:security_pass@postgres:5432/security_dashboard_dev
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=dev_jwt_secret_key_change_in_production
+      - CORS_ORIGIN=http://localhost:3000
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - security-dashboard-dev
+    volumes:
+      - ../../backend:/app/backend:cached
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=security_dashboard_dev
+      - POSTGRES_USER=security_user
+      - POSTGRES_PASSWORD=security_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../../database/migrations:/docker-entrypoint-initdb.d:ro
+    networks:
+      - security-dashboard-dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U security_user -d security_dashboard_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching and sessions
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - security-dashboard-dev
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Kong API Gateway (Optional - for testing)
+  kong-gateway:
+    build:
+      context: ../../
+      dockerfile: deployment/docker/Dockerfile.kong-gateway
+    ports:
+      - "8000:8000"  # HTTP
+      - "8443:8443"  # HTTPS
+      - "8001:8001"  # Admin API
+    environment:
+      - KONG_DATABASE=off
+      - KONG_DECLARATIVE_CONFIG=/kong/kong.yml
+      - KONG_PROXY_ACCESS_LOG=/dev/stdout
+      - KONG_ADMIN_ACCESS_LOG=/dev/stdout
+      - KONG_PROXY_ERROR_LOG=/dev/stderr
+      - KONG_ADMIN_ERROR_LOG=/dev/stderr
+      - KONG_ADMIN_LISTEN=0.0.0.0:8001
+    depends_on:
+      - graphql-gateway
+      - backend-api
+    networks:
+      - security-dashboard-dev
+    profiles:
+      - gateway
+
+  # Mock External Services (for development)
+  mock-services:
+    image: mockoon/cli:latest
+    ports:
+      - "3010:3010"  # Mock threat intelligence API
+      - "3011:3011"  # Mock SIEM API
+    volumes:
+      - ../../mocks:/app/mocks:ro
+    command: ["mockoon-cli", "start", "--data", "/app/mocks/threat-intelligence.json", "--port", "3010"]
+    networks:
+      - security-dashboard-dev
+    profiles:
+      - mocks
+
+# Networks
+networks:
+  security-dashboard-dev:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# Volumes
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local

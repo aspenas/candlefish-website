@@ -1,0 +1,46 @@
+# Simple Caddyfile for CLOS
+{
+    admin 0.0.0.0:2019
+    auto_https off
+}
+
+# Security Dashboard
+security.local {
+    reverse_proxy localhost:3100
+}
+
+api.security.local {
+    reverse_proxy localhost:4100
+}
+
+# PKB
+pkb.local {
+    reverse_proxy localhost:8501
+}
+
+api.pkb.local {
+    reverse_proxy localhost:8787
+}
+
+# Candlefish
+candlefish.local {
+    reverse_proxy localhost:3000
+}
+
+api.candlefish.local {
+    reverse_proxy localhost:4000
+}
+
+# Monitoring
+grafana.local {
+    reverse_proxy localhost:3001
+}
+
+prometheus.local {
+    reverse_proxy localhost:9090
+}
+
+# Status page
+localhost {
+    respond "CLOS is running!" 200
+}

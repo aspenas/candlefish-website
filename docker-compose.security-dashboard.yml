@@ -27,7 +27,7 @@ services:
   # ============================================================================
   
   postgres:
-    image: timescale/timescaledb:2.12-pg16
+    image: timescale/timescaledb:latest-pg15
     container_name: security-dashboard-postgres
     restart: unless-stopped
     environment:

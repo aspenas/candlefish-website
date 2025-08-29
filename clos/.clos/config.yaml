@@ -1,0 +1,425 @@
+# CLOS Configuration
+# Container Life-cycle Operations System for Candlefish AI
+
+# Project metadata
+project:
+  name: "candlefish-clos"
+  version: "1.0.0"
+  description: "Container orchestration system for Candlefish AI applications"
+  environment: "development"  # development, staging, production
+
+# Core infrastructure settings
+infrastructure:
+  network:
+    name: "candlefish-network"
+    subnet: "172.20.0.0/16"
+    driver: "bridge"
+  
+  volumes:
+    driver: "local"
+    backup_enabled: true
+    backup_schedule: "0 2 * * *"  # Daily at 2 AM
+  
+  restart_policy: "unless-stopped"
+  
+  # Resource limits (applied to all services unless overridden)
+  resources:
+    default_memory: "512MB"
+    default_cpu: "0.5"
+    
+# Service groups configuration
+services:
+  # Core infrastructure services
+  core:
+    enabled: true
+    services:
+      - postgres
+      - redis
+      - caddy
+      - rabbitmq
+      - consul
+      - jaeger
+    startup_order: ["postgres", "redis", "consul", "rabbitmq", "jaeger", "caddy"]
+    
+  # Security Dashboard
+  security_dashboard:
+    enabled: true
+    port_prefix: "31"  # 3100, 4100, 5433, 6380
+    services:
+      - security-dashboard-frontend
+      - security-dashboard-api
+      - security-dashboard-postgres
+      - security-dashboard-redis
+      - security-dashboard-worker
+    depends_on:
+      - core
+    startup_order: ["security-dashboard-postgres", "security-dashboard-redis", "security-dashboard-api", "security-dashboard-frontend", "security-dashboard-worker"]
+    
+  # PKB (Personal Knowledge Base)
+  pkb:
+    enabled: true
+    port_prefix: "85"  # 8501, 8787, 5434
+    services:
+      - pkb-ui
+      - pkb-api
+      - pkb-postgres
+      - pkb-redis
+      - pkb-elasticsearch
+      - pkb-minio
+      - pkb-worker
+    depends_on:
+      - core
+    startup_order: ["pkb-postgres", "pkb-redis", "pkb-elasticsearch", "pkb-minio", "pkb-api", "pkb-ui", "pkb-worker"]
+    
+  # Candlefish main application
+  candlefish:
+    enabled: true
+    port_prefix: "30"  # 3000, 4000, 5435, 6381
+    services:
+      - candlefish-web
+      - candlefish-api
+      - candlefish-postgres
+      - candlefish-redis
+      - candlefish-worker
+      - candlefish-scheduler
+    depends_on:
+      - core
+    startup_order: ["candlefish-postgres", "candlefish-redis", "candlefish-api", "candlefish-web", "candlefish-worker", "candlefish-scheduler"]
+    
+  # Monitoring and observability
+  monitoring:
+    enabled: true
+    services:
+      - prometheus
+      - grafana
+      - alertmanager
+      - node-exporter
+      - cadvisor
+      - loki
+      - promtail
+      - tempo
+      - uptime-kuma
+    depends_on:
+      - core
+    startup_order: ["prometheus", "loki", "tempo", "alertmanager", "grafana", "node-exporter", "cadvisor", "promtail", "uptime-kuma"]
+
+# Environment-specific configurations
+environments:
+  development:
+    log_level: "debug"
+    debug_mode: true
+    hot_reload: true
+    auto_restart: true
+    health_check_interval: "30s"
+    resource_limits:
+      memory: "1GB"
+      cpu: "1.0"
+    
+  staging:
+    log_level: "info"
+    debug_mode: false
+    hot_reload: false
+    auto_restart: true
+    health_check_interval: "15s"
+    resource_limits:
+      memory: "2GB"
+      cpu: "2.0"
+    
+  production:
+    log_level: "warn"
+    debug_mode: false
+    hot_reload: false
+    auto_restart: true
+    health_check_interval: "10s"
+    resource_limits:
+      memory: "4GB"
+      cpu: "4.0"
+    backup_enabled: true
+    monitoring_enabled: true
+
+# Health check configuration
+health_checks:
+  enabled: true
+  interval: "60s"  # How often to run health checks
+  timeout: "10s"   # Timeout for individual checks
+  retries: 3       # Number of retries before marking as failed
+  
+  # Alert thresholds
+  thresholds:
+    cpu_percent: 80
+    memory_percent: 85
+    disk_percent: 90
+    response_time_ms: 5000
+  
+  # Services to monitor
+  services:
+    - name: "caddy"
+      url: "http://localhost:2019/config/"
+      critical: true
+    - name: "postgres"
+      type: "tcp"
+      host: "localhost"
+      port: 5432
+      critical: true
+    - name: "redis"
+      type: "tcp"
+      host: "localhost"
+      port: 6379
+      critical: true
+    - name: "security-dashboard"
+      url: "http://localhost:3100/health"
+      critical: false
+    - name: "pkb"
+      url: "http://localhost:8501/_stcore/health"
+      critical: false
+    - name: "candlefish"
+      url: "http://localhost:3000/api/health"
+      critical: false
+    - name: "grafana"
+      url: "http://localhost:3001/api/health"
+      critical: false
+
+# Reverse proxy configuration
+reverse_proxy:
+  enabled: true
+  provider: "caddy"
+  
+  # Domain mappings
+  domains:
+    security_dashboard: "security.local"
+    security_api: "api.security.local"
+    pkb: "pkb.local"
+    pkb_api: "api.pkb.local"
+    candlefish: "candlefish.local"
+    candlefish_api: "api.candlefish.local"
+    grafana: "grafana.local"
+    prometheus: "prometheus.local"
+    jaeger: "jaeger.local"
+    minio: "minio.local"
+    rabbitmq: "rabbitmq.local"
+    consul: "consul.local"
+  
+  # SSL/TLS configuration
+  tls:
+    enabled: true
+    auto_https: true
+    certificate_authority: "letsencrypt"  # letsencrypt, self-signed, custom
+    
+  # Security headers
+  security:
+    hsts_enabled: true
+    content_security_policy: true
+    rate_limiting: true
+    rate_limit_requests: 100
+    rate_limit_window: "1m"
+
+# Logging configuration
+logging:
+  level: "info"  # debug, info, warn, error
+  format: "json" # json, text
+  
+  # Log destinations
+  destinations:
+    console: true
+    file: true
+    syslog: false
+    
+  # File logging settings
+  file:
+    path: "/var/log/clos"
+    max_size: "100MB"
+    max_files: 10
+    compress: true
+    
+  # Service-specific log levels
+  services:
+    caddy: "warn"
+    postgres: "warn"
+    redis: "warn"
+    grafana: "info"
+
+# Backup configuration
+backup:
+  enabled: false  # Enable in production
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  retention_days: 30
+  
+  # What to backup
+  targets:
+    databases: true
+    volumes: true
+    configs: true
+    
+  # Backup destinations
+  destinations:
+    local:
+      enabled: true
+      path: "/var/backups/clos"
+    s3:
+      enabled: false
+      bucket: ""
+      region: "us-east-1"
+      prefix: "clos-backups/"
+
+# Security configuration
+security:
+  # Authentication
+  auth:
+    enabled: true
+    provider: "local"  # local, oauth, ldap
+    session_timeout: "24h"
+    
+  # Secrets management
+  secrets:
+    provider: "env"  # env, vault, aws-secrets-manager
+    rotation_enabled: false
+    rotation_interval: "30d"
+    
+  # Network security
+  network:
+    firewall_enabled: false
+    allowed_ips: []
+    blocked_ips: []
+    
+  # Container security
+  containers:
+    run_as_non_root: true
+    read_only_root: false
+    no_new_privileges: true
+    security_opt:
+      - "no-new-privileges:true"
+
+# Performance tuning
+performance:
+  # Database connection pooling
+  database:
+    max_connections: 100
+    pool_size: 20
+    connection_timeout: "30s"
+    
+  # Caching
+  cache:
+    enabled: true
+    ttl: "1h"
+    max_memory: "256MB"
+    
+  # Resource optimization
+  resources:
+    cpu_optimization: true
+    memory_optimization: true
+    disk_optimization: true
+
+# Development tools
+development:
+  # Hot reloading
+  hot_reload:
+    enabled: true
+    watch_patterns:
+      - "**/*.js"
+      - "**/*.ts"
+      - "**/*.tsx"
+      - "**/*.py"
+      - "**/*.go"
+      
+  # Debugging
+  debug:
+    enabled: true
+    port: 9229
+    log_queries: true
+    
+  # Testing
+  testing:
+    parallel: true
+    coverage_threshold: 80
+    integration_tests: true
+
+# Notifications and alerting
+notifications:
+  enabled: false
+  
+  # Notification channels
+  channels:
+    email:
+      enabled: false
+      smtp_host: ""
+      smtp_port: 587
+      username: ""
+      password: ""
+      from: "clos@candlefish.ai"
+      to: ["admin@candlefish.ai"]
+      
+    slack:
+      enabled: false
+      webhook_url: ""
+      channel: "#alerts"
+      
+    webhook:
+      enabled: false
+      url: ""
+      method: "POST"
+      
+  # Alert rules
+  alerts:
+    - name: "service_down"
+      condition: "service_healthy == false"
+      severity: "critical"
+      channels: ["email", "slack"]
+      
+    - name: "high_cpu"
+      condition: "cpu_percent > 90"
+      severity: "warning"
+      channels: ["slack"]
+      
+    - name: "high_memory"
+      condition: "memory_percent > 95"
+      severity: "critical"
+      channels: ["email", "slack"]
+      
+    - name: "disk_full"
+      condition: "disk_percent > 95"
+      severity: "critical"
+      channels: ["email", "slack", "webhook"]
+
+# Integration settings
+integrations:
+  # CI/CD
+  cicd:
+    enabled: false
+    provider: "github-actions"  # github-actions, gitlab-ci, jenkins
+    webhook_secret: ""
+    
+  # Monitoring
+  monitoring:
+    prometheus_enabled: true
+    grafana_enabled: true
+    jaeger_enabled: true
+    
+  # Service discovery
+  service_discovery:
+    enabled: true
+    provider: "consul"
+    
+# Custom commands
+commands:
+  # Pre/post hooks
+  hooks:
+    pre_start: []
+    post_start: []
+    pre_stop: []
+    post_stop: []
+    
+  # Custom scripts
+  scripts:
+    backup: "./scripts/backup.sh"
+    restore: "./scripts/restore.sh"
+    migrate: "./scripts/migrate.sh"
+    
+# Feature flags
+features:
+  auto_scaling: false
+  load_balancing: false
+  service_mesh: false
+  encryption_at_rest: false
+  encryption_in_transit: true
+  audit_logging: false
+  compliance_mode: false

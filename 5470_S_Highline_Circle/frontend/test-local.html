@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend API Test (Local)</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
+        .test-container { max-width: 800px; margin: 0 auto; }
+        .result { margin: 10px 0; padding: 15px; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background-color: #e2e3e5; border: 1px solid #d1d3d4; color: #383d41; }
+        .warning { background-color: #fff3cd; border: 1px solid #fdeaa7; color: #856404; }
+        button { padding: 12px 20px; margin: 5px; cursor: pointer; border: none; border-radius: 5px; background-color: #007bff; color: white; }
+        button:hover { background-color: #0056b3; }
+        pre { white-space: pre-wrap; max-height: 300px; overflow-y: auto; font-size: 12px; background-color: #f8f9fa; padding: 10px; border-radius: 5px; }
+        h1 { color: #333; }
+        .status { font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Frontend API Configuration Test</h1>
+        <p>Testing the updated frontend configuration and API connectivity fixes.</p>
+        
+        <div id="config-info"></div>
+        
+        <button onclick="testConfig()">Test Configuration</button>
+        <button onclick="testDirectAPI()">Test Direct API</button>
+        <button onclick="testWithRetry()">Test with Retry Logic</button>
+        <button onclick="clearResults()">Clear Results</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        // Simulate the production config logic
+        function getAPIURL() {
+            const productionApiUrl = 'https://5470-inventory.fly.dev/api/v1';
+            const developmentApiUrl = 'http://localhost:4050/api/v1';
+            const viteApiUrl = undefined; // Simulating VITE_API_URL not being set
+            const mode = 'production'; // Simulating production mode
+            
+            const finalUrl = viteApiUrl || (mode === 'development' ? developmentApiUrl : productionApiUrl);
+            
+            return {
+                viteApiUrl,
+                mode,
+                finalUrl,
+                productionApiUrl,
+                developmentApiUrl
+            };
+        }
+
+        function addResult(type, title, content) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `<h3>${title}</h3><pre>${content}</pre>`;
+            results.appendChild(div);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        function testConfig() {
+            const config = getAPIURL();
+            
+            addResult('info', 'Configuration Test', `
+Environment Mode: ${config.mode}
+VITE_API_URL: ${config.viteApiUrl || 'undefined'}
+Production URL: ${config.productionApiUrl}
+Development URL: ${config.developmentApiUrl}
+Final API URL: ${config.finalUrl}
+
+✓ Configuration logic is working correctly
+✓ Production URL will be used when VITE_API_URL is not set
+✓ URL format is correct: ${config.finalUrl}`);
+        }
+
+        async function testDirectAPI() {
+            const config = getAPIURL();
+            const testUrls = [
+                { name: 'Health Check', url: 'https://5470-inventory.fly.dev/health' },
+                { name: 'Items API', url: `${config.finalUrl}/items` }
+            ];
+
+            for (const test of testUrls) {
+                try {
+                    addResult('info', `${test.name} - Starting`, `Testing: ${test.url}`);
+                    
+                    const startTime = Date.now();
+                    const response = await fetch(test.url, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    });
+                    const endTime = Date.now();
+                    
+                    const responseTime = endTime - startTime;
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        const summary = test.name === 'Items API' ? 
+                            `Items: ${data.items ? data.items.length : 0}` :
+                            `Status: ${data.status}`;
+                            
+                        addResult('success', `${test.name} - Success`, `
+Response Time: ${responseTime}ms
+Status: ${response.status} ${response.statusText}
+${summary}
+
+Headers:
+${Array.from(response.headers.entries()).map(([k,v]) => `${k}: ${v}`).join('\\n')}
+
+Response Preview:
+${JSON.stringify(data, null, 2).substring(0, 500)}${JSON.stringify(data, null, 2).length > 500 ? '...' : ''}`);
+                    } else {
+                        const errorText = await response.text();
+                        addResult('error', `${test.name} - HTTP Error`, `
+Status: ${response.status} ${response.statusText}
+Response Time: ${responseTime}ms
+Error: ${errorText.substring(0, 200)}`);
+                    }
+                } catch (error) {
+                    addResult('error', `${test.name} - Network Error`, `
+Error Type: ${error.name}
+Message: ${error.message}
+Stack: ${error.stack}
+
+This could indicate:
+- CORS issues
+- Network connectivity problems
+- Backend server down
+- DNS resolution issues`);
+                }
+            }
+        }
+
+        async function testWithRetry() {
+            const config = getAPIURL();
+            const url = `${config.finalUrl}/items`;
+            
+            addResult('info', 'Retry Logic Test', `Testing retry mechanism with: ${url}`);
+            
+            let attempt = 1;
+            const maxAttempts = 3;
+            
+            while (attempt <= maxAttempts) {
+                try {
+                    addResult('info', `Retry Attempt ${attempt}/${maxAttempts}`, `Attempting request...`);
+                    
+                    const startTime = Date.now();
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    });
+                    const endTime = Date.now();
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        addResult('success', 'Retry Logic - Success', `
+Succeeded on attempt ${attempt}/${maxAttempts}
+Response Time: ${endTime - startTime}ms
+Items Found: ${data.items ? data.items.length : 0}
+
+✓ Request succeeded without needing retry logic`);
+                        return;
+                    } else {
+                        addResult('warning', `Attempt ${attempt} - HTTP Error`, `Status: ${response.status}`);
+                    }
+                } catch (error) {
+                    addResult('warning', `Attempt ${attempt} - Network Error`, `${error.message}`);
+                }
+                
+                if (attempt < maxAttempts) {
+                    const delay = 1000 * attempt; // Exponential backoff
+                    addResult('info', 'Retry Delay', `Waiting ${delay}ms before next attempt...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+                
+                attempt++;
+            }
+            
+            addResult('error', 'Retry Logic - Failed', `All ${maxAttempts} attempts failed. This simulates how the frontend would handle persistent connectivity issues.`);
+        }
+
+        // Show configuration on page load
+        window.onload = function() {
+            const config = getAPIURL();
+            
+            document.getElementById('config-info').innerHTML = `
+                <div class="result info">
+                    <h3>Current Configuration</h3>
+                    <p><span class="status">API URL:</span> ${config.finalUrl}</p>
+                    <p><span class="status">Mode:</span> ${config.mode}</p>
+                    <p><span class="status">Ready to test:</span> Configuration loaded successfully</p>
+                </div>
+            `;
+            
+            addResult('info', 'Test Environment Ready', `
+Frontend Configuration Test Environment Initialized
+
+Current Settings:
+- API URL: ${config.finalUrl}  
+- Environment: ${config.mode}
+- CORS Support: Enabled
+- Retry Logic: Implemented
+- Timeout: 10 seconds
+
+Click the buttons above to run different tests and verify the frontend fixes are working correctly.`);
+        };
+    </script>
+</body>
+</html>

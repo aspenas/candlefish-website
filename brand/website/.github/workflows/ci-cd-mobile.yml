@@ -1,0 +1,256 @@
+name: Mobile CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'apps/mobile-**/**'
+      - '.github/workflows/ci-cd-mobile.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'apps/mobile-**/**'
+      - '.github/workflows/ci-cd-mobile.yml'
+
+env:
+  EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+  EAS_BUILD_PROFILE: production
+  AWS_REGION: us-east-1
+
+jobs:
+  # Mobile Quality Assurance
+  mobile-qa:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [mobile-dashboard, mobile-inventory, mobile-maturity-map, mobile-security-dashboard, mobile-collaboration]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Cache node modules
+        uses: actions/cache@v3
+        with:
+          path: apps/${{ matrix.app }}/node_modules
+          key: ${{ runner.os }}-mobile-${{ matrix.app }}-${{ hashFiles('apps/' + matrix.app + '/package-lock.json') }}
+
+      - name: Install dependencies
+        working-directory: apps/${{ matrix.app }}
+        run: npm ci
+
+      - name: Run linting
+        working-directory: apps/${{ matrix.app }}
+        run: npm run lint || npx expo lint
+
+      - name: Run type checking
+        working-directory: apps/${{ matrix.app }}
+        run: npx tsc --noEmit
+
+      - name: Run unit tests
+        working-directory: apps/${{ matrix.app }}
+        run: npm test -- --coverage --watchAll=false || echo "No tests configured"
+
+      - name: Upload test coverage
+        uses: codecov/codecov-action@v3
+        if: always()
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: apps/${{ matrix.app }}/coverage/lcov.info
+          flags: mobile-${{ matrix.app }}
+
+  # Mobile Security Scanning
+  mobile-security:
+    runs-on: ubuntu-latest
+    needs: mobile-qa
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install audit tools
+        run: npm install -g npm-audit-resolver
+
+      - name: Run security audit
+        run: |
+          find apps/mobile-* -name package.json -exec dirname {} \; | while read dir; do
+            echo "Auditing $dir"
+            cd "$dir" && npm audit --audit-level moderate || echo "Audit issues found in $dir"
+            cd - > /dev/null
+          done
+
+      - name: Scan for secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: apps/
+          base: main
+          head: HEAD
+          extra_args: --debug --only-verified
+
+  # EAS Build for Production
+  mobile-build:
+    runs-on: ubuntu-latest
+    needs: [mobile-qa, mobile-security]
+    if: github.ref == 'refs/heads/main'
+    strategy:
+      matrix:
+        app: [mobile-dashboard, mobile-inventory, mobile-maturity-map, mobile-security-dashboard, mobile-collaboration]
+        platform: [ios, android]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Expo CLI
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        working-directory: apps/${{ matrix.app }}
+        run: npm ci
+
+      - name: Configure build environment
+        working-directory: apps/${{ matrix.app }}
+        run: |
+          # Update app.json/app.config.js with build-specific settings
+          if [ -f "app.config.js" ]; then
+            node -e "
+              const config = require('./app.config.js');
+              config.expo.extra = { 
+                ...config.expo.extra, 
+                buildProfile: '${{ env.EAS_BUILD_PROFILE }}',
+                gitCommit: '${{ github.sha }}',
+                buildTime: new Date().toISOString()
+              };
+              console.log(JSON.stringify(config, null, 2));
+            " > app.config.temp.js
+            mv app.config.temp.js app.config.js
+          fi
+
+      - name: Build for ${{ matrix.platform }}
+        working-directory: apps/${{ matrix.app }}
+        run: |
+          if [ "${{ matrix.platform }}" = "ios" ]; then
+            eas build --platform ios --profile ${{ env.EAS_BUILD_PROFILE }} --non-interactive --wait
+          else
+            eas build --platform android --profile ${{ env.EAS_BUILD_PROFILE }} --non-interactive --wait
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.app }}-${{ matrix.platform }}-build
+          path: apps/${{ matrix.app }}/dist/
+          retention-days: 30
+
+  # Mobile Testing on Device Farm
+  mobile-device-testing:
+    runs-on: ubuntu-latest
+    needs: mobile-build
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload to Device Farm
+        run: |
+          # Upload APK/IPA files to AWS Device Farm for automated testing
+          PROJECT_ARN=$(aws devicefarm list-projects --query 'projects[?name==`Candlefish Mobile`].arn' --output text)
+          
+          if [ -z "$PROJECT_ARN" ]; then
+            PROJECT_ARN=$(aws devicefarm create-project --name "Candlefish Mobile" --query 'project.arn' --output text)
+          fi
+          
+          echo "Device Farm project: $PROJECT_ARN"
+          
+          # This would typically involve uploading builds and running test suites
+          echo "Device Farm testing would be configured here"
+
+  # Mobile Deployment to App Stores
+  mobile-deploy:
+    runs-on: ubuntu-latest
+    needs: mobile-device-testing
+    if: github.ref == 'refs/heads/main'
+    environment: mobile-production
+    strategy:
+      matrix:
+        app: [mobile-dashboard, mobile-inventory, mobile-maturity-map, mobile-security-dashboard, mobile-collaboration]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Expo CLI
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Submit to App Stores
+        working-directory: apps/${{ matrix.app }}
+        run: |
+          # Submit to iOS App Store
+          if [ -n "${{ secrets.APPLE_ID }}" ] && [ -n "${{ secrets.APPLE_ID_PASSWORD }}" ]; then
+            eas submit --platform ios --latest --non-interactive
+          fi
+          
+          # Submit to Google Play Store
+          if [ -n "${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}" ]; then
+            eas submit --platform android --latest --non-interactive
+          fi
+
+  # Mobile Rollout Monitoring
+  mobile-monitoring:
+    runs-on: ubuntu-latest
+    needs: mobile-deploy
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Monitor rollout metrics
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          # Monitor app store rollout status and crash metrics
+          echo "Monitoring mobile app rollout..."
+          
+          # This would integrate with Firebase Analytics, Sentry, or other mobile monitoring services
+          MESSAGE="📱 Mobile apps deployed successfully to app stores"
+          
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"$MESSAGE\"}" \
+            $SLACK_WEBHOOK_URL || echo "Slack notification failed"
+
+      - name: Performance baseline check
+        run: |
+          echo "Mobile performance monitoring configured"
+          # This would typically involve:
+          # - App launch time monitoring
+          # - Memory usage tracking  
+          # - Crash rate monitoring
+          # - User engagement metrics

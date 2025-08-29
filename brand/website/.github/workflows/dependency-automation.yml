@@ -1,0 +1,456 @@
+name: Dependency Update Automation
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'  # Weekly on Monday at 3 AM UTC
+  workflow_dispatch:
+    inputs:
+      update-type:
+        description: 'Type of updates to perform'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - security
+          - minor
+          - major
+          - dependencies
+          - devDependencies
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '8'
+  AUTO_MERGE_DELAY: 3600  # 1 hour in seconds
+
+jobs:
+  # ========================================
+  # Dependency Analysis
+  # ========================================
+  analyze-dependencies:
+    name: Analyze Dependencies
+    runs-on: ubuntu-latest
+    outputs:
+      security-updates: ${{ steps.analysis.outputs.security-updates }}
+      minor-updates: ${{ steps.analysis.outputs.minor-updates }}
+      major-updates: ${{ steps.analysis.outputs.major-updates }}
+      
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          
+      - name: Analyze Updates
+        id: analysis
+        run: |
+          # Check for outdated packages
+          pnpm outdated --json > outdated.json || true
+          
+          # Analyze security updates
+          npm audit --json > audit.json || true
+          SECURITY_COUNT=$(jq '.metadata.vulnerabilities.total' audit.json)
+          echo "security-updates=$SECURITY_COUNT" >> $GITHUB_OUTPUT
+          
+          # Count update types
+          MINOR_COUNT=$(jq '[.[] | select(.current != .latest and .current != .wanted)] | length' outdated.json)
+          MAJOR_COUNT=$(jq '[.[] | select(.current != .latest and (.latest | split(".")[0]) != (.current | split(".")[0]))] | length' outdated.json)
+          
+          echo "minor-updates=$MINOR_COUNT" >> $GITHUB_OUTPUT
+          echo "major-updates=$MAJOR_COUNT" >> $GITHUB_OUTPUT
+          
+      - name: Generate Dependency Report
+        run: |
+          node scripts/generate-dependency-report.js \
+            --outdated outdated.json \
+            --audit audit.json \
+            --output dependency-report.md
+            
+      - name: Upload Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-analysis
+          path: |
+            outdated.json
+            audit.json
+            dependency-report.md
+          retention-days: 30
+
+  # ========================================
+  # Security Updates (High Priority)
+  # ========================================
+  security-updates:
+    name: Security Updates
+    needs: analyze-dependencies
+    if: needs.analyze-dependencies.outputs.security-updates > 0
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Setup Environment
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          
+      - name: Configure Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+      - name: Fix Security Vulnerabilities
+        run: |
+          # Try to auto-fix vulnerabilities
+          npm audit fix --force
+          pnpm install
+          
+      - name: Run Tests
+        run: |
+          pnpm run test:unit
+          pnpm run test:integration
+          
+      - name: Create Security Update PR
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'fix(security): update dependencies with security vulnerabilities'
+          title: '🔒 Security Update: Fix vulnerabilities'
+          body: |
+            ## Security Update
+            
+            This PR automatically fixes security vulnerabilities found in dependencies.
+            
+            ### Changes
+            - Updated packages with known security vulnerabilities
+            - Ran `npm audit fix` to resolve issues
+            
+            ### Testing
+            - ✅ Unit tests passed
+            - ✅ Integration tests passed
+            
+            ### Review Instructions
+            Please review the changes carefully and ensure nothing breaks.
+            
+            ---
+            *This PR was automatically created by the Dependency Update workflow*
+          branch: security-updates-${{ github.run_number }}
+          labels: |
+            security
+            dependencies
+            automated
+          reviewers: |
+            security-team
+            lead-developers
+          auto-merge: true
+
+  # ========================================
+  # Renovate Configuration
+  # ========================================
+  configure-renovate:
+    name: Configure Renovate
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Create Renovate Config
+        run: |
+          cat > renovate.json << 'EOF'
+          {
+            "extends": [
+              "config:base",
+              ":dependencyDashboard",
+              ":semanticCommits",
+              ":automergeDigest",
+              ":automergeMinor",
+              "group:allNonMajor",
+              "schedule:weekly"
+            ],
+            "timezone": "America/New_York",
+            "schedule": ["after 10pm every weekday", "before 5am every weekday", "every weekend"],
+            "vulnerabilityAlerts": {
+              "labels": ["security"],
+              "automerge": true,
+              "assignees": ["security-team"]
+            },
+            "packageRules": [
+              {
+                "matchUpdateTypes": ["patch", "minor"],
+                "matchCurrentVersion": "!/^0/",
+                "automerge": true,
+                "automergeType": "branch"
+              },
+              {
+                "matchDepTypes": ["devDependencies"],
+                "automerge": true
+              },
+              {
+                "matchPackagePatterns": ["^@types/"],
+                "automerge": true,
+                "automergeType": "branch"
+              },
+              {
+                "matchPackagePatterns": ["eslint", "prettier"],
+                "groupName": "linters",
+                "automerge": true
+              },
+              {
+                "matchPackagePatterns": ["^@testing-library/"],
+                "groupName": "testing-library",
+                "automerge": true
+              },
+              {
+                "matchPackageNames": ["node"],
+                "enabled": false
+              },
+              {
+                "matchManagers": ["github-actions"],
+                "automerge": true,
+                "automergeType": "branch"
+              },
+              {
+                "matchManagers": ["docker"],
+                "pinDigests": true
+              }
+            ],
+            "postUpdateOptions": [
+              "npmDedupe",
+              "pnpmDedupe"
+            ],
+            "prConcurrentLimit": 3,
+            "prCreation": "not-pending",
+            "rebaseWhen": "behind-base-branch",
+            "semanticCommitScope": "deps",
+            "labels": ["dependencies"],
+            "assignees": ["devops-team"],
+            "reviewers": ["team:frontend", "team:backend"],
+            "ignoreDeps": [],
+            "ignorePaths": ["**/node_modules/**", "**/test/**"],
+            "rangeStrategy": "bump",
+            "lockFileMaintenance": {
+              "enabled": true,
+              "automerge": true,
+              "schedule": ["before 3am on Monday"]
+            },
+            "dependencyDashboard": true,
+            "dependencyDashboardTitle": "📦 Dependency Dashboard",
+            "dependencyDashboardHeader": "This issue lists Renovate updates and detected dependencies.",
+            "dependencyDashboardFooter": "---\n*Powered by [Renovate](https://renovatebot.com)*",
+            "prBodyColumns": [
+              "Package",
+              "Type",
+              "Update",
+              "Change",
+              "Pending"
+            ]
+          }
+          EOF
+          
+      - name: Commit Renovate Config
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add renovate.json
+          git commit -m "chore: configure renovate for automated dependency updates" || true
+          git push || true
+
+  # ========================================
+  # Manual Dependency Updates
+  # ========================================
+  manual-updates:
+    name: Manual Dependency Updates
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Setup Environment
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          
+      - name: Update Dependencies
+        run: |
+          case "${{ github.event.inputs.update-type }}" in
+            security)
+              npm audit fix
+              ;;
+            minor)
+              pnpm update --interactive false
+              ;;
+            major)
+              pnpm update --latest --interactive false
+              ;;
+            dependencies)
+              pnpm update --prod --interactive false
+              ;;
+            devDependencies)
+              pnpm update --dev --interactive false
+              ;;
+            all)
+              pnpm update --latest --interactive false
+              ;;
+          esac
+          
+      - name: Run Tests
+        run: |
+          pnpm run lint
+          pnpm run typecheck
+          pnpm run test:unit
+          pnpm run build
+          
+      - name: Create Update PR
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore(deps): ${{ github.event.inputs.update-type }} dependency updates'
+          title: '📦 Dependency Update: ${{ github.event.inputs.update-type }}'
+          body: |
+            ## Dependency Update
+            
+            ### Update Type: ${{ github.event.inputs.update-type }}
+            
+            This PR updates dependencies based on the selected update type.
+            
+            ### Testing
+            - ✅ Linting passed
+            - ✅ Type checking passed
+            - ✅ Unit tests passed
+            - ✅ Build succeeded
+            
+            ### Checklist
+            - [ ] Review dependency changes
+            - [ ] Test affected features
+            - [ ] Update documentation if needed
+            
+            ---
+            *This PR was created by manual dependency update workflow*
+          branch: deps-update-${{ github.event.inputs.update-type }}-${{ github.run_number }}
+          labels: |
+            dependencies
+            ${{ github.event.inputs.update-type }}
+
+  # ========================================
+  # License Compliance Check
+  # ========================================
+  license-compliance:
+    name: License Compliance
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Check Licenses
+        run: |
+          npx license-checker --production \
+            --onlyAllow 'MIT;Apache-2.0;BSD-3-Clause;BSD-2-Clause;ISC;0BSD;CC0-1.0;Unlicense' \
+            --excludePackages '@candlefish-ai/*' \
+            --json > licenses.json
+            
+      - name: Generate License Report
+        run: |
+          node scripts/generate-license-report.js licenses.json > license-report.md
+          
+      - name: Check for GPL Licenses
+        run: |
+          if grep -E "(GPL|LGPL|AGPL)" licenses.json; then
+            echo "❌ Found GPL-licensed packages!"
+            exit 1
+          fi
+          
+      - name: Upload License Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: license-report
+          path: |
+            licenses.json
+            license-report.md
+          retention-days: 30
+
+  # ========================================
+  # Dependency Dashboard
+  # ========================================
+  dependency-dashboard:
+    name: Update Dependency Dashboard
+    needs: [analyze-dependencies, security-updates, license-compliance]
+    if: always()
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download All Reports
+        uses: actions/download-artifact@v3
+        with:
+          path: reports/
+          
+      - name: Generate Dashboard
+        run: |
+          node scripts/generate-dependency-dashboard.js reports/ > dependency-dashboard.md
+          
+      - name: Update Dashboard Issue
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const dashboard = fs.readFileSync('dependency-dashboard.md', 'utf8');
+            
+            // Find or create dashboard issue
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'dependency-dashboard',
+              state: 'open'
+            });
+            
+            if (issues.data.length > 0) {
+              // Update existing issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issues.data[0].number,
+                body: dashboard
+              });
+            } else {
+              // Create new issue
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '📦 Dependency Dashboard',
+                body: dashboard,
+                labels: ['dependency-dashboard', 'dependencies']
+              });
+            }

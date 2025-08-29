@@ -1,0 +1,121 @@
+
+[0;34mSystem Information:[0m
+Date: Wed Aug 27 08:27:45 MDT 2025
+Hostname: Patricks-MacBook-Pro.local
+OS: Darwin Patricks-MacBook-Pro.local 25.0.0 Darwin Kernel Version 25.0.0: Fri Jul 11 23:59:44 PDT 2025; root:xnu-12377.0.154.0.2~26/RELEASE_ARM64_T6041 arm64
+Docker Version: Docker version 28.2.2, build e6534b4
+Docker Compose Version: Docker Compose version v2.37.1-desktop.1
+
+[0;34mCLOS Installation Check:[0m
+CLOS binary: [0;32mFound[0m
+Location: /Users/patricksmith/candlefish-ai/clos/clos
+Permissions: -rwxr-xr-x@ 1 patricksmith  staff  11831970 Aug 27 07:02 /Users/patricksmith/candlefish-ai/clos/clos
+
+[0;34mDocker Status:[0m
+Docker daemon: [0;32mRunning[0m
+Containers:       13 running
+Images:       41 total
+Networks:       15 total
+
+[0;34mCLOS Containers Status:[0m
+clos-postgres: [0;32mRunning[0m
+  Status: Up 53 minutes (healthy)
+  Ports: 0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+clos-redis: [0;32mRunning[0m
+  Status: Up 10 minutes (healthy)
+  Ports: 0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
+clos-caddy: [0;32mRunning[0m
+  Status: Up 9 minutes (healthy)
+  Ports: 0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp, 0.0.0.0:2019->2019/tcp, [::]:2019->2019/tcp
+
+[0;34mNetwork Configuration:[0m
+CLOS network: [0;32mExists[0m
+Network details:
+  Driver: bridge
+  Subnet: 172.26.0.0/16
+
+[0;34mPort Availability Check:[0m
+Port 80: [1;33mUsed by other process[0m
+  Process: com.docke 1307 *:http
+Port 443: [1;33mUsed by other process[0m
+  Process: com.docke 1307 *:https
+Port 2019: [1;33mUsed by other process[0m
+  Process: com.docke 1307 *:whosockami
+Port 3000: [0;32mAvailable[0m
+Port 3100: [0;32mAvailable[0m
+Port 3200: [0;32mAvailable[0m
+Port 4000: [0;32mAvailable[0m
+Port 4100: [0;32mAvailable[0m
+Port 5432: [1;33mUsed by other process[0m
+  Process: com.docke 1307 *:postgresql
+Port 6379: [1;33mUsed by other process[0m
+  Process: redis-ser 1221 localhost:6379
+Port 8080: [0;32mAvailable[0m
+Port 8501: [0;32mAvailable[0m
+Port 8787: [1;33mUsed by other process[0m
+  Process:   
+Port 9090: [1;33mUsed by other process[0m
+  Process: com.docke 1307 *:websm
+
+[0;34mRegistry Database Check:[0m
+Registry database: [0;31mNot found[0m
+
+[0;34mConfiguration Files:[0m
+config.yaml: [0;32mFound[0m
+docker-compose.essential.yml: [0;32mFound[0m
+Caddyfile.simple: [0;32mFound[0m
+
+[0;34mDocker Compose Services:[0m
+time="2025-08-27T08:27:49-06:00" level=warning msg="/Users/patricksmith/candlefish-ai/clos/deployment/docker-compose.essential.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+NAME            IMAGE                COMMAND                  SERVICE    CREATED          STATUS                    PORTS
+clos-caddy      caddy:2-alpine       "caddy run --config …"   caddy      9 minutes ago    Up 9 minutes (healthy)    0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp, 0.0.0.0:2019->2019/tcp, [::]:2019->2019/tcp
+clos-postgres   postgres:15-alpine   "docker-entrypoint.s…"   postgres   53 minutes ago   Up 53 minutes (healthy)   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+clos-redis      redis:7-alpine       "docker-entrypoint.s…"   redis      53 minutes ago   Up 10 minutes (healthy)   0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
+
+[0;34mRecent Docker Logs:[0m
+
+[0;36mclos-postgres logs (last 10 lines):[0m
+2025-08-27 14:22:49.904 UTC [179] FATAL:  role "candlefish" does not exist
+2025-08-27 14:23:19.960 UTC [187] FATAL:  role "candlefish" does not exist
+2025-08-27 14:23:50.013 UTC [195] FATAL:  role "candlefish" does not exist
+2025-08-27 14:24:20.049 UTC [203] FATAL:  role "candlefish" does not exist
+2025-08-27 14:24:50.115 UTC [211] FATAL:  role "candlefish" does not exist
+2025-08-27 14:25:20.174 UTC [219] FATAL:  role "candlefish" does not exist
+2025-08-27 14:25:50.227 UTC [227] FATAL:  role "candlefish" does not exist
+2025-08-27 14:26:20.279 UTC [235] FATAL:  role "candlefish" does not exist
+2025-08-27 14:26:50.349 UTC [243] FATAL:  role "candlefish" does not exist
+2025-08-27 14:27:20.408 UTC [251] FATAL:  role "candlefish" does not exist
+
+[0;36mclos-redis logs (last 10 lines):[0m
+1:C 27 Aug 2025 14:17:18.805 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+1:C 27 Aug 2025 14:17:18.805 * Redis version=7.4.5, bits=64, commit=00000000, modified=0, pid=1, just started
+1:C 27 Aug 2025 14:17:18.805 * Configuration loaded
+1:M 27 Aug 2025 14:17:18.806 * monotonic clock: POSIX clock_gettime
+1:M 27 Aug 2025 14:17:18.816 * Running mode=standalone, port=6379.
+1:M 27 Aug 2025 14:17:18.817 * Server initialized
+1:M 27 Aug 2025 14:17:18.819 * Creating AOF base file appendonly.aof.1.base.rdb on server start
+1:M 27 Aug 2025 14:17:18.821 * Creating AOF incr file appendonly.aof.1.incr.aof on server start
+1:M 27 Aug 2025 14:17:18.821 * Ready to accept connections tcp
+
+[0;36mclos-caddy logs (last 10 lines):[0m
+{"level":"info","ts":1756304576.227417,"logger":"admin.api","msg":"received request","method":"GET","host":"localhost:2019","uri":"/config/","remote_ip":"::1","remote_port":"40994","headers":{"Accept":["*/*"],"Connection":["close"],"User-Agent":["Wget"]}}
+{"level":"info","ts":1756304606.2915816,"logger":"admin.api","msg":"received request","method":"GET","host":"localhost:2019","uri":"/config/","remote_ip":"::1","remote_port":"57572","headers":{"Accept":["*/*"],"Connection":["close"],"User-Agent":["Wget"]}}
+{"level":"info","ts":1756304636.3306577,"logger":"admin.api","msg":"received request","method":"GET","host":"localhost:2019","uri":"/config/","remote_ip":"::1","remote_port":"50726","headers":{"Accept":["*/*"],"Connection":["close"],"User-Agent":["Wget"]}}
+{"level":"info","ts":1756304666.407954,"logger":"admin.api","msg":"received request","method":"GET","host":"localhost:2019","uri":"/config/","remote_ip":"::1","remote_port":"45046","headers":{"Accept":["*/*"],"Connection":["close"],"User-Agent":["Wget"]}}
+{"level":"info","ts":1756304696.458038,"logger":"admin.api","msg":"received request","method":"GET","host":"localhost:2019","uri":"/config/","remote_ip":"::1","remote_port":"37552","headers":{"Accept":["*/*"],"Connection":["close"],"User-Agent":["Wget"]}}
+{"level":"info","ts":1756304726.5049136,"logger":"admin.api","msg":"received request","method":"GET","host":"localhost:2019","uri":"/config/","remote_ip":"::1","remote_port":"59468","headers":{"Accept":["*/*"],"Connection":["close"],"User-Agent":["Wget"]}}
+{"level":"info","ts":1756304756.5481021,"logger":"admin.api","msg":"received request","method":"GET","host":"localhost:2019","uri":"/config/","remote_ip":"::1","remote_port":"38058","headers":{"Accept":["*/*"],"Connection":["close"],"User-Agent":["Wget"]}}
+{"level":"info","ts":1756304786.608675,"logger":"admin.api","msg":"received request","method":"GET","host":"localhost:2019","uri":"/config/","remote_ip":"::1","remote_port":"55086","headers":{"Accept":["*/*"],"Connection":["close"],"User-Agent":["Wget"]}}
+{"level":"info","ts":1756304816.6775231,"logger":"admin.api","msg":"received request","method":"GET","host":"localhost:2019","uri":"/config/","remote_ip":"::1","remote_port":"43430","headers":{"Accept":["*/*"],"Connection":["close"],"User-Agent":["Wget"]}}
+{"level":"info","ts":1756304846.7283175,"logger":"admin.api","msg":"received request","method":"GET","host":"localhost:2019","uri":"/config/","remote_ip":"::1","remote_port":"43630","headers":{"Accept":["*/*"],"Connection":["close"],"User-Agent":["Wget"]}}
+
+[0;34mShell Integration Check:[0m
+Shell functions: [1;33mNot loaded[0m
+Add 'source /Users/patricksmith/candlefish-ai/clos/scripts/shell-integration.sh' to your ~/.zshrc
+
+[0;34mRecommendations:[0m
+[0;32mSystem appears to be healthy![0m
+
+[0;34m======================================[0m
+[0;32mDiagnostic report saved to: /Users/patricksmith/candlefish-ai/clos/diagnostics_2025-08-27_08-27-45.txt[0m
+[0;34m======================================[0m

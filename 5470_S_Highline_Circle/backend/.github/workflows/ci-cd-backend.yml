@@ -1,0 +1,352 @@
+name: Backend CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/ci-cd-backend.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE_NAME: ${{ github.repository }}/backend
+  AWS_REGION: us-east-1
+  EKS_CLUSTER_NAME: inventory-cluster
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 3s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.23'
+        cache-dependency-path: backend/go.sum
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('backend/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Download dependencies
+      run: go mod download && go mod verify
+
+    - name: Run linter
+      uses: golangci/golangci-lint-action@v3
+      with:
+        version: latest
+        working-directory: backend
+        args: --timeout=5m
+
+    - name: Set up test environment
+      run: |
+        export DB_HOST=localhost
+        export DB_PORT=5432
+        export DB_USER=postgres
+        export DB_PASSWORD=postgres
+        export DB_NAME=test_db
+        export REDIS_HOST=localhost
+        export REDIS_PORT=6379
+
+    - name: Run database migrations
+      run: |
+        go run migrate.go
+      env:
+        DB_HOST: localhost
+        DB_PORT: 5432
+        DB_USER: postgres
+        DB_PASSWORD: postgres
+        DB_NAME: test_db
+
+    - name: Run unit tests
+      run: |
+        go test -v -race -coverprofile=coverage.out ./...
+      env:
+        DB_HOST: localhost
+        DB_PORT: 5432
+        DB_USER: postgres
+        DB_PASSWORD: postgres
+        DB_NAME: test_db
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
+
+    - name: Run integration tests
+      run: |
+        go test -v -tags=integration ./tests/integration/...
+      env:
+        DB_HOST: localhost
+        DB_PORT: 5432
+        DB_USER: postgres
+        DB_PASSWORD: postgres
+        DB_NAME: test_db
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./backend/coverage.out
+        flags: backend
+        name: backend-coverage
+
+  security-scan:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Gosec Security Scanner
+      uses: securecodewarrior/github-action-gosec@master
+      with:
+        args: '-fmt sarif -out gosec-report.sarif ./...'
+        working-directory: backend
+
+    - name: Upload SARIF file
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: backend/gosec-report.sarif
+
+    - name: Run Trivy vulnerability scanner in repo mode
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: './backend'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  build-and-push:
+    needs: [test, security-scan]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-tag: ${{ steps.meta.outputs.tags }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend
+        file: ./backend/Dockerfile
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64,linux/arm64
+
+    - name: Generate SBOM
+      uses: anchore/sbom-action@v0
+      with:
+        image: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}
+        format: spdx-json
+        output-file: sbom-backend.spdx.json
+
+    - name: Upload SBOM
+      uses: actions/upload-artifact@v3
+      with:
+        name: sbom-backend
+        path: sbom-backend.spdx.json
+
+  deploy-staging:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment:
+      name: staging
+      url: https://staging-api.inventory.example.com
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+    - name: Deploy to staging
+      run: |
+        # Update image in deployment
+        kubectl set image deployment/backend backend=${{ needs.build-and-push.outputs.image-tag }} \
+          -n inventory-system-staging
+        
+        # Wait for rollout to complete
+        kubectl rollout status deployment/backend -n inventory-system-staging --timeout=300s
+        
+        # Verify deployment
+        kubectl get pods -n inventory-system-staging -l app=backend
+
+    - name: Run smoke tests
+      run: |
+        # Wait for service to be ready
+        sleep 30
+        
+        # Basic health check
+        curl -f https://staging-api.inventory.example.com/health
+        
+        # API functionality test
+        curl -f https://staging-api.inventory.example.com/api/v1/items
+
+  deploy-production:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://api.inventory.example.com
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+    - name: Blue-Green Deployment
+      run: |
+        # Create blue-green deployment script
+        cat > blue-green-deploy.sh << 'EOF'
+        #!/bin/bash
+        set -e
+        
+        NAMESPACE="inventory-system"
+        APP_NAME="backend"
+        NEW_IMAGE="${{ needs.build-and-push.outputs.image-tag }}"
+        
+        echo "Starting blue-green deployment..."
+        
+        # Create green deployment
+        kubectl patch deployment $APP_NAME -n $NAMESPACE -p \
+          '{"spec":{"template":{"spec":{"containers":[{"name":"backend","image":"'$NEW_IMAGE'"}]}}}}'
+        
+        # Wait for green deployment to be ready
+        kubectl rollout status deployment/$APP_NAME -n $NAMESPACE --timeout=300s
+        
+        # Get the new replicaset
+        NEW_RS=$(kubectl get rs -n $NAMESPACE -l app=$APP_NAME --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1].metadata.name}')
+        
+        # Verify health of new pods
+        kubectl wait --for=condition=ready pod -l app=$APP_NAME -n $NAMESPACE --timeout=300s
+        
+        echo "Green deployment successful!"
+        
+        # Run health checks
+        echo "Running health checks..."
+        for i in {1..5}; do
+          if curl -f https://api.inventory.example.com/health; then
+            echo "Health check $i passed"
+          else
+            echo "Health check $i failed"
+            exit 1
+          fi
+          sleep 10
+        done
+        
+        echo "All health checks passed. Deployment complete!"
+        EOF
+        
+        chmod +x blue-green-deploy.sh
+        ./blue-green-deploy.sh
+
+    - name: Notify deployment success
+      if: success()
+      run: |
+        echo "✅ Production deployment successful!"
+        echo "Backend API deployed with image: ${{ needs.build-and-push.outputs.image-tag }}"
+
+    - name: Rollback on failure
+      if: failure()
+      run: |
+        echo "❌ Production deployment failed. Initiating rollback..."
+        kubectl rollout undo deployment/backend -n inventory-system
+        kubectl rollout status deployment/backend -n inventory-system --timeout=300s
+        echo "Rollback completed"
