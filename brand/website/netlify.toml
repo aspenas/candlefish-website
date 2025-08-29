@@ -1,0 +1,69 @@
+# Netlify Configuration for Candlefish.ai Brand Website
+
+[build]
+  # Build command for Next.js static export
+  command = "npm run export"
+  
+  # Publish directory for static export
+  publish = "out"
+
+[build.environment]
+  # Enable Next.js static export
+  NEXT_TELEMETRY_DISABLED = "1"
+  STATIC_EXPORT = "true"
+  NODE_VERSION = "18.17.0"
+
+# Headers for security and performance
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+# Cache static assets
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/fonts/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, must-revalidate"
+
+# Redirect www to non-www
+[[redirects]]
+  from = "https://www.candlefish.ai/*"
+  to = "https://candlefish.ai/:splat"
+  status = 301
+  force = true
+
+# Handle client-side routing for Next.js
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  conditions = {Role = ["admin"]}
+  force = false
+
+# Enable Netlify Functions (if needed in future)
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Deployment settings
+[deploy]
+  # Skip builds if only documentation changes
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF . ':(exclude)*.md' ':(exclude)docs/'"
+
+# Build plugins - disabled for static export
+# [[plugins]]
+#   package = "@netlify/plugin-nextjs"
