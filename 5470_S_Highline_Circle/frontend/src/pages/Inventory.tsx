@@ -129,22 +129,25 @@ export default function Inventory() {
 
         console.log('Inventory API response:', result);
 
+        // Handle axios response structure
+        const responseData = result?.data || result;
+        
         // Normalize the data structure
-        if (Array.isArray(result)) {
-          return { items: result, total: result.length };
+        if (Array.isArray(responseData)) {
+          return { items: responseData, total: responseData.length };
         }
         
-        if (result && typeof result === 'object') {
-          if (Array.isArray(result.items)) {
-            return result;
-          }
-          if (result.data && Array.isArray(result.data)) {
-            return { items: result.data, total: result.total || result.data.length };
+        if (responseData && typeof responseData === 'object') {
+          if (Array.isArray(responseData.items)) {
+            return { 
+              items: responseData.items, 
+              total: responseData.items.length // Use actual items count, not the misleading 'total' field
+            };
           }
         }
 
         // Fallback for unexpected data structures
-        console.warn('Unexpected API response structure:', result);
+        console.warn('Unexpected API response structure:', responseData);
         return { items: [], total: 0 };
         
       } catch (error) {
