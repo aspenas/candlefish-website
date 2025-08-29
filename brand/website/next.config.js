@@ -4,8 +4,10 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Static export disabled - application now has API routes that require server-side functionality
-  // Previously: output: 'export' was used but is incompatible with /api routes
+  // Conditionally enable static export based on environment
+  ...(process.env.STATIC_EXPORT === 'true' && {
+    output: 'export',
+  }),
   trailingSlash: true,
   // Webpack configuration for Three.js and WebGL
   webpack: (config, { isServer }) => {

@@ -157,4 +157,11 @@ module.exports = {
     },
   },
   plugins: [],
+  safelist: [
+    // Gradient utilities that must be included
+    'bg-gradient-to-br',
+    'from-[#0D1B2A]',
+    'via-[#1B263B]',
+    'to-[#1C1C1C]',
+  ],
 }

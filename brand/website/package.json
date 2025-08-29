@@ -9,7 +9,7 @@
     "prebuild": "npm run build-workshop-index && npm run validate-workshop",
     "dev": "npm run refresh-mocks && npm run build-workshop-index && next dev",
     "build": "npm run refresh-mocks && npm run prebuild && next build",
-    "export": "NODE_ENV=production STATIC_EXPORT=true next build",
+    "export": "./scripts/static-export.sh",
     "start": "next start",
     "lint": "next lint",
     "export-pdf": "node scripts/export-pdf.js",

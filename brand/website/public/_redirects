@@ -1,3 +1,7 @@
+# Redirects for old URLs
+/maturity-map /assessment 301
+/workshop-notes /workshop 301
+
 # API routes to Netlify Functions
 /api/consideration    /.netlify/functions/consideration    200
 /api/contact         /.netlify/functions/contact          200

@@ -30,7 +30,12 @@ export default function OperationalHomepage() {
       {/* Hero Section */}
       <section className="min-h-screen relative overflow-hidden">
         {/* Background Gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0D1B2A] via-[#1B263B] to-[#1C1C1C]">
+        <div 
+          className="absolute inset-0"
+          style={{
+            background: 'linear-gradient(to bottom right, #0D1B2A, #1B263B, #1C1C1C)'
+          }}
+        >
           <div
             className="absolute inset-0 opacity-[0.03]"
             style={{
