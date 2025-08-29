@@ -148,46 +148,46 @@ export const CaseManagementBoard: React.FC<CaseManagementBoardProps> = ({
             onClick={() => onCaseSelect(securityCase)}
           >
             {/* Header */}
-            <div className=\"flex items-start justify-between mb-3\">
-              <div className=\"flex items-center space-x-2\">
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center space-x-2">
                 <Badge 
                   className={`${PRIORITY_COLORS[securityCase.priority]} text-xs`}
-                  variant=\"outline\"
+                  variant="outline"
                 >
                   {securityCase.priority}
                 </Badge>
                 {isDueOverdue && (
-                  <Badge className=\"text-red-400 bg-red-500/10 border-red-500/20 text-xs\">
+                  <Badge className="text-red-400 bg-red-500/10 border-red-500/20 text-xs">
                     OVERDUE
                   </Badge>
                 )}
               </div>
               
-              <div className=\"text-xs text-gray-400\">
+              <div className="text-xs text-gray-400">
                 #{securityCase.id.slice(-6)}
               </div>
             </div>
 
             {/* Title */}
-            <h4 className=\"font-semibold text-white mb-2 text-sm line-clamp-2\">
+            <h4 className="font-semibold text-white mb-2 text-sm line-clamp-2">
               {securityCase.title}
             </h4>
 
             {/* Description */}
-            <p className=\"text-xs text-gray-300 mb-3 line-clamp-3\">
+            <p className="text-xs text-gray-300 mb-3 line-clamp-3">
               {securityCase.description}
             </p>
 
             {/* Tags */}
             {securityCase.tags.length > 0 && (
-              <div className=\"flex flex-wrap gap-1 mb-3\">
+              <div className="flex flex-wrap gap-1 mb-3">
                 {securityCase.tags.slice(0, 3).map((tag) => (
-                  <Badge key={tag} variant=\"outline\" className=\"text-xs\">
+                  <Badge key={tag} variant="outline" className="text-xs">
                     {tag}
                   </Badge>
                 ))}
                 {securityCase.tags.length > 3 && (
-                  <Badge variant=\"outline\" className=\"text-xs text-gray-400\">
+                  <Badge variant="outline" className="text-xs text-gray-400">
                     +{securityCase.tags.length - 3}
                   </Badge>
                 )}
@@ -196,43 +196,43 @@ export const CaseManagementBoard: React.FC<CaseManagementBoardProps> = ({
 
             {/* Assignee */}
             {securityCase.assignedTo && (
-              <div className=\"flex items-center space-x-2 mb-3\">
-                <Avatar className=\"w-6 h-6\">
-                  <span className=\"text-xs font-medium\">
+              <div className="flex items-center space-x-2 mb-3">
+                <Avatar className="w-6 h-6">
+                  <span className="text-xs font-medium">
                     {securityCase.assignedTo.name.split(' ').map(n => n[0]).join('')}
                   </span>
                 </Avatar>
-                <span className=\"text-xs text-gray-300\">
+                <span className="text-xs text-gray-300">
                   {securityCase.assignedTo.name}
                 </span>
               </div>
             )}
 
             {/* Metrics */}
-            <div className=\"flex items-center justify-between text-xs text-gray-400\">
-              <div className=\"flex items-center space-x-3\">
-                <div className=\"flex items-center space-x-1\">
-                  <FileText className=\"w-3 h-3\" />
+            <div className="flex items-center justify-between text-xs text-gray-400">
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-1">
+                  <FileText className="w-3 h-3" />
                   <span>{securityCase.relatedEvents.length}</span>
                 </div>
                 
                 {securityCase.evidence.length > 0 && (
-                  <div className=\"flex items-center space-x-1\">
-                    <Paperclip className=\"w-3 h-3\" />
+                  <div className="flex items-center space-x-1">
+                    <Paperclip className="w-3 h-3" />
                     <span>{securityCase.evidence.length}</span>
                   </div>
                 )}
                 
                 {securityCase.timeline.length > 1 && (
-                  <div className=\"flex items-center space-x-1\">
-                    <MessageSquare className=\"w-3 h-3\" />
+                  <div className="flex items-center space-x-1">
+                    <MessageSquare className="w-3 h-3" />
                     <span>{securityCase.timeline.length}</span>
                   </div>
                 )}
               </div>
               
-              <div className=\"flex items-center space-x-1\">
-                <Clock className=\"w-3 h-3\" />
+              <div className="flex items-center space-x-1">
+                <Clock className="w-3 h-3" />
                 <span>
                   {new Date(securityCase.createdAt).toLocaleDateString()}
                 </span>
@@ -241,9 +241,9 @@ export const CaseManagementBoard: React.FC<CaseManagementBoardProps> = ({
 
             {/* SLA Status */}
             {securityCase.sla.breached && (
-              <div className=\"mt-3 pt-3 border-t border-gray-700\">
-                <div className=\"flex items-center space-x-1 text-xs text-red-400\">
-                  <AlertCircle className=\"w-3 h-3\" />
+              <div className="mt-3 pt-3 border-t border-gray-700">
+                <div className="flex items-center space-x-1 text-xs text-red-400">
+                  <AlertCircle className="w-3 h-3" />
                   <span>SLA Breached</span>
                 </div>
               </div>
@@ -251,11 +251,11 @@ export const CaseManagementBoard: React.FC<CaseManagementBoardProps> = ({
 
             {/* Due Date */}
             {securityCase.dueDate && (
-              <div className=\"mt-3 pt-3 border-t border-gray-700\">
+              <div className="mt-3 pt-3 border-t border-gray-700">
                 <div className={`flex items-center space-x-1 text-xs ${
                   isDueOverdue ? 'text-red-400' : 'text-gray-400'
                 }`}>
-                  <Calendar className=\"w-3 h-3\" />
+                  <Calendar className="w-3 h-3" />
                   <span>
                     Due: {new Date(securityCase.dueDate).toLocaleDateString()}
                   </span>
@@ -265,18 +265,18 @@ export const CaseManagementBoard: React.FC<CaseManagementBoardProps> = ({
 
             {/* Playbook Progress */}
             {securityCase.playbooks.length > 0 && (
-              <div className=\"mt-3 pt-3 border-t border-gray-700\">
-                <div className=\"flex items-center justify-between mb-1\">
-                  <span className=\"text-xs text-gray-400\">
+              <div className="mt-3 pt-3 border-t border-gray-700">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-gray-400">
                     {securityCase.playbooks[0].name}
                   </span>
-                  <span className=\"text-xs text-white font-medium\">
+                  <span className="text-xs text-white font-medium">
                     {securityCase.playbooks[0].progress}%
                   </span>
                 </div>
-                <div className=\"w-full bg-gray-700 rounded-full h-1\">
+                <div className="w-full bg-gray-700 rounded-full h-1">
                   <div 
-                    className=\"bg-blue-500 h-1 rounded-full transition-all duration-300\"
+                    className="bg-blue-500 h-1 rounded-full transition-all duration-300"
                     style={{ width: `${securityCase.playbooks[0].progress}%` }}
                   />
                 </div>
@@ -294,22 +294,22 @@ export const CaseManagementBoard: React.FC<CaseManagementBoardProps> = ({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6\">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {COLUMNS.map((column) => {
             const columnCases = casesByStatus[column.id] || [];
             
             return (
-              <Card key={column.id} className=\"flex flex-col h-full\">
+              <Card key={column.id} className="flex flex-col h-full">
                 <div className={`p-4 border-b border-gray-700 border-l-4 ${column.color}`}>
-                  <div className=\"flex items-center justify-between\">
-                    <h3 className=\"font-semibold text-white\">{column.title}</h3>
-                    <Badge variant=\"outline\" className=\"text-xs\">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-white">{column.title}</h3>
+                    <Badge variant="outline" className="text-xs">
                       {columnCases.length}
                     </Badge>
                   </div>
                 </div>
                 
-                <div className=\"flex-1 p-4\">
+                <div className="flex-1 p-4">
                   <Droppable droppableId={column.id}>
                     {(provided, snapshot) => (
                       <div
@@ -331,7 +331,7 @@ export const CaseManagementBoard: React.FC<CaseManagementBoardProps> = ({
                         {provided.placeholder}
                         
                         {columnCases.length === 0 && (
-                          <div className=\"flex items-center justify-center h-32 text-gray-500 text-sm\">
+                          <div className="flex items-center justify-center h-32 text-gray-500 text-sm">
                             No cases in {column.title.toLowerCase()}
                           </div>
                         )}

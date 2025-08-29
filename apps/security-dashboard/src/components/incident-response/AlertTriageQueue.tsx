@@ -20,32 +20,32 @@ export const AlertTriageQueue: React.FC<AlertTriageQueueProps> = ({
 
   return (
     <Card className={`p-6 ${className}`}>
-      <h3 className=\"text-lg font-semibold text-white mb-4\">Alert Triage Queue</h3>
+      <h3 className="text-lg font-semibold text-white mb-4">Alert Triage Queue</h3>
       
-      <div className=\"space-y-3\">
+      <div className="space-y-3">
         {pendingEvents.map((event) => (
-          <div key={event.id} className=\"p-3 bg-gray-800 rounded-lg border border-gray-700\">
-            <div className=\"flex items-center justify-between mb-2\">
+          <div key={event.id} className="p-3 bg-gray-800 rounded-lg border border-gray-700">
+            <div className="flex items-center justify-between mb-2">
               <Badge className={`text-xs ${
                 event.severity === 'CRITICAL' ? 'text-red-400 bg-red-500/10' : 'text-orange-400 bg-orange-500/10'
               }`}>
                 {event.severity}
               </Badge>
-              <div className=\"flex items-center space-x-2\">
-                <Button size=\"sm\" variant=\"outline\">
-                  <CheckCircle className=\"w-4 h-4 mr-1\" />
+              <div className="flex items-center space-x-2">
+                <Button size="sm" variant="outline">
+                  <CheckCircle className="w-4 h-4 mr-1" />
                   Accept
                 </Button>
-                <Button size=\"sm\" variant=\"outline\">
-                  <XCircle className=\"w-4 h-4 mr-1\" />
+                <Button size="sm" variant="outline">
+                  <XCircle className="w-4 h-4 mr-1" />
                   Dismiss
                 </Button>
               </div>
             </div>
-            <h4 className=\"font-medium text-white mb-1\">{event.title}</h4>
-            <p className=\"text-sm text-gray-300\">{event.description}</p>
-            <div className=\"mt-2 text-xs text-gray-400\">
-              <Clock className=\"w-3 h-3 inline mr-1\" />
+            <h4 className="font-medium text-white mb-1">{event.title}</h4>
+            <p className="text-sm text-gray-300">{event.description}</p>
+            <div className="mt-2 text-xs text-gray-400">
+              <Clock className="w-3 h-3 inline mr-1" />
               {new Date(event.timestamp).toLocaleString()}
             </div>
           </div>

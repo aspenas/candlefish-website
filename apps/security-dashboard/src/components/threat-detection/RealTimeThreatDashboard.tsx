@@ -261,25 +261,25 @@ export const RealTimeThreatDashboard: React.FC<RealTimeThreatDashboardProps> = (
           }`}
           onClick={() => setSelectedEvent(event)}
         >
-          <div className=\"flex items-start justify-between mb-2\">
-            <div className=\"flex items-center space-x-3\">
+          <div className="flex items-start justify-between mb-2">
+            <div className="flex items-center space-x-3">
               <Badge 
                 className={`${SEVERITY_COLORS[event.severity]} text-xs font-medium`}
-                variant=\"outline\"
+                variant="outline"
               >
                 {event.severity}
               </Badge>
               {event.threatLevel && (
                 <span className={`text-xs ${THREAT_LEVEL_COLORS[event.threatLevel as ThreatLevel]}`}>
-                  <Target className=\"w-3 h-3 inline mr-1\" />
+                  <Target className="w-3 h-3 inline mr-1" />
                   {event.threatLevel}
                 </span>
               )}
-              <span className=\"text-xs text-gray-400\">
+              <span className="text-xs text-gray-400">
                 {formatDistanceToNow(new Date(event.timestamp), { addSuffix: true })}
               </span>
             </div>
-            <div className=\"flex items-center space-x-2\">
+            <div className="flex items-center space-x-2">
               {event.riskScore && (
                 <span className={`text-xs font-mono px-2 py-1 rounded ${
                   event.riskScore >= 80 ? 'bg-red-900 text-red-300' :
@@ -291,32 +291,32 @@ export const RealTimeThreatDashboard: React.FC<RealTimeThreatDashboardProps> = (
                 </span>
               )}
               {event.geoLocation && (
-                <span className=\"text-xs text-gray-400\">
-                  <Globe className=\"w-3 h-3 inline mr-1\" />
+                <span className="text-xs text-gray-400">
+                  <Globe className="w-3 h-3 inline mr-1" />
                   {event.geoLocation.country}
                 </span>
               )}
             </div>
           </div>
           
-          <h4 className=\"font-medium text-white mb-1 line-clamp-2\">{event.title}</h4>
-          <p className=\"text-sm text-gray-300 mb-2 line-clamp-2\">{event.description}</p>
+          <h4 className="font-medium text-white mb-1 line-clamp-2">{event.title}</h4>
+          <p className="text-sm text-gray-300 mb-2 line-clamp-2">{event.description}</p>
           
-          <div className=\"flex items-center justify-between text-xs text-gray-400\">
-            <div className=\"flex items-center space-x-4\">
+          <div className="flex items-center justify-between text-xs text-gray-400">
+            <div className="flex items-center space-x-4">
               <span>Source: {event.source}</span>
               {event.sourceIP && <span>IP: {event.sourceIP}</span>}
               {event.asset && <span>Asset: {event.asset.name}</span>}
             </div>
-            <div className=\"flex items-center space-x-2\">
+            <div className="flex items-center space-x-2">
               {event.mitreAttackTactics && event.mitreAttackTactics.length > 0 && (
-                <Badge variant=\"secondary\" className=\"text-xs\">
+                <Badge variant="secondary" className="text-xs">
                   MITRE: {event.mitreAttackTactics[0].tacticName}
                 </Badge>
               )}
               {event.indicators && event.indicators.length > 0 && (
-                <span className=\"text-amber-400\">
-                  <Zap className=\"w-3 h-3 inline\" /> IOCs
+                <span className="text-amber-400">
+                  <Zap className="w-3 h-3 inline" /> IOCs
                 </span>
               )}
             </div>
@@ -324,9 +324,9 @@ export const RealTimeThreatDashboard: React.FC<RealTimeThreatDashboardProps> = (
 
           {/* CEF Fields Display */}
           {event.cefFields && (
-            <div className=\"mt-2 p-2 bg-gray-900 rounded text-xs font-mono\">
-              <span className=\"text-gray-500\">CEF:</span>
-              <span className=\"text-green-400 ml-2\">
+            <div className="mt-2 p-2 bg-gray-900 rounded text-xs font-mono">
+              <span className="text-gray-500">CEF:</span>
+              <span className="text-green-400 ml-2">
                 {event.cefFields.deviceVendor}|{event.cefFields.deviceProduct}|
                 {event.cefFields.deviceVersion}|{event.cefFields.signatureID}|
                 {event.cefFields.name}|{event.cefFields.severity}
@@ -341,41 +341,41 @@ export const RealTimeThreatDashboard: React.FC<RealTimeThreatDashboardProps> = (
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Header */}
-      <div className=\"flex items-center justify-between\">
-        <div className=\"flex items-center space-x-4\">
-          <div className=\"flex items-center space-x-2\">
-            <Shield className=\"w-6 h-6 text-blue-400\" />
-            <h2 className=\"text-2xl font-bold text-white\">Real-time Threat Detection</h2>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <Shield className="w-6 h-6 text-blue-400" />
+            <h2 className="text-2xl font-bold text-white">Real-time Threat Detection</h2>
           </div>
-          <div className=\"flex items-center space-x-2\">
+          <div className="flex items-center space-x-2">
             <div className={`w-3 h-3 rounded-full ${isStreamPaused ? 'bg-yellow-500' : 'bg-green-500'} animate-pulse`} />
-            <span className=\"text-sm text-gray-400\">
+            <span className="text-sm text-gray-400">
               {isStreamPaused ? 'Stream Paused' : 'Live Stream Active'}
             </span>
           </div>
         </div>
         
-        <div className=\"flex items-center space-x-3\">
+        <div className="flex items-center space-x-3">
           <Button
-            variant=\"outline\"
-            size=\"sm\"
+            variant="outline"
+            size="sm"
             onClick={handlePauseStream}
-            className=\"flex items-center space-x-2\"
+            className="flex items-center space-x-2"
           >
-            {isStreamPaused ? <Play className=\"w-4 h-4\" /> : <Pause className=\"w-4 h-4\" />}
+            {isStreamPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
             <span>{isStreamPaused ? 'Resume' : 'Pause'} Stream</span>
           </Button>
           <Button
-            variant=\"outline\"
-            size=\"sm\"
+            variant="outline"
+            size="sm"
             onClick={handleExportEvents}
-            className=\"flex items-center space-x-2\"
+            className="flex items-center space-x-2"
           >
-            <Download className=\"w-4 h-4\" />
+            <Download className="w-4 h-4" />
             <span>Export</span>
           </Button>
-          <Button variant=\"outline\" size=\"sm\">
-            <Settings className=\"w-4 h-4\" />
+          <Button variant="outline" size="sm">
+            <Settings className="w-4 h-4" />
           </Button>
         </div>
       </div>
@@ -388,43 +388,43 @@ export const RealTimeThreatDashboard: React.FC<RealTimeThreatDashboardProps> = (
       />
 
       {/* Filters */}
-      <Card className=\"p-4\">
-        <div className=\"flex items-center justify-between mb-4\">
-          <h3 className=\"text-lg font-semibold text-white flex items-center\">
-            <Filter className=\"w-5 h-5 mr-2\" />
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white flex items-center">
+            <Filter className="w-5 h-5 mr-2" />
             Event Filters
           </h3>
-          <div className=\"flex items-center space-x-2\">
+          <div className="flex items-center space-x-2">
             <Switch
               checked={eventFilter.showOnlyThreats}
               onCheckedChange={(checked) => handleFilterChange('showOnlyThreats', checked)}
-              className=\"data-[state=checked]:bg-red-600\"
+              className="data-[state=checked]:bg-red-600"
             />
-            <span className=\"text-sm text-gray-300\">Threats Only</span>
+            <span className="text-sm text-gray-300">Threats Only</span>
           </div>
         </div>
         
-        <div className=\"grid grid-cols-1 md:grid-cols-4 gap-4\">
-          <div className=\"space-y-2\">
-            <label className=\"text-sm text-gray-300\">Search Events</label>
-            <div className=\"relative\">
-              <Search className=\"absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400\" />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="space-y-2">
+            <label className="text-sm text-gray-300">Search Events</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
-                placeholder=\"Search events, IPs, sources...\"
+                placeholder="Search events, IPs, sources..."
                 value={eventFilter.searchTerm}
                 onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
-                className=\"pl-10\"
+                className="pl-10"
               />
             </div>
           </div>
           
-          <div className=\"space-y-2\">
-            <label className=\"text-sm text-gray-300\">Severity</label>
-            <div className=\"flex flex-wrap gap-2\">
+          <div className="space-y-2">
+            <label className="text-sm text-gray-300">Severity</label>
+            <div className="flex flex-wrap gap-2">
               {Object.keys(SEVERITY_COLORS).map((severity) => (
                 <Badge
                   key={severity}
-                  variant={eventFilter.severity.includes(severity as Severity) ? \"default\" : \"outline\"}
+                  variant={eventFilter.severity.includes(severity as Severity) ? "default" : "outline"}
                   className={`cursor-pointer ${SEVERITY_COLORS[severity as Severity]}`}
                   onClick={() => {
                     const currentSeverity = eventFilter.severity;
@@ -441,24 +441,24 @@ export const RealTimeThreatDashboard: React.FC<RealTimeThreatDashboardProps> = (
             </div>
           </div>
           
-          <div className=\"space-y-2\">
-            <label className=\"text-sm text-gray-300\">Time Range</label>
+          <div className="space-y-2">
+            <label className="text-sm text-gray-300">Time Range</label>
             <select
               value={eventFilter.timeRange}
               onChange={(e) => handleFilterChange('timeRange', e.target.value)}
-              className=\"w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-sm\"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-sm"
             >
-              <option value=\"1h\">Last Hour</option>
-              <option value=\"6h\">Last 6 Hours</option>
-              <option value=\"24h\">Last 24 Hours</option>
-              <option value=\"7d\">Last 7 Days</option>
-              <option value=\"30d\">Last 30 Days</option>
+              <option value="1h">Last Hour</option>
+              <option value="6h">Last 6 Hours</option>
+              <option value="24h">Last 24 Hours</option>
+              <option value="7d">Last 7 Days</option>
+              <option value="30d">Last 30 Days</option>
             </select>
           </div>
           
-          <div className=\"space-y-2\">
-            <label className=\"text-sm text-gray-300\">View</label>
-            <div className=\"flex space-x-1\">
+          <div className="space-y-2">
+            <label className="text-sm text-gray-300">View</label>
+            <div className="flex space-x-1">
               {[
                 { key: 'events', label: 'Events', icon: Activity },
                 { key: 'heatmap', label: 'Heatmap', icon: Globe },
@@ -468,13 +468,13 @@ export const RealTimeThreatDashboard: React.FC<RealTimeThreatDashboardProps> = (
               ].map(({ key, label, icon: Icon }) => (
                 <Button
                   key={key}
-                  variant={selectedView === key ? \"default\" : \"outline\"}
-                  size=\"sm\"
+                  variant={selectedView === key ? "default" : "outline"}
+                  size="sm"
                   onClick={() => setSelectedView(key as any)}
-                  className=\"flex items-center space-x-1 text-xs\"
+                  className="flex items-center space-x-1 text-xs"
                 >
-                  <Icon className=\"w-3 h-3\" />
-                  <span className=\"hidden sm:inline\">{label}</span>
+                  <Icon className="w-3 h-3" />
+                  <span className="hidden sm:inline">{label}</span>
                 </Button>
               ))}
             </div>
@@ -483,39 +483,39 @@ export const RealTimeThreatDashboard: React.FC<RealTimeThreatDashboardProps> = (
       </Card>
 
       {/* Main Content Area */}
-      <div className=\"grid grid-cols-1 xl:grid-cols-3 gap-6\">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Event Stream */}
-        <div className=\"xl:col-span-2\">
-          <Card className=\"h-[800px] flex flex-col\">
-            <div className=\"p-4 border-b border-gray-700 flex items-center justify-between\">
-              <h3 className=\"text-lg font-semibold text-white flex items-center\">
-                <Activity className=\"w-5 h-5 mr-2\" />
+        <div className="xl:col-span-2">
+          <Card className="h-[800px] flex flex-col">
+            <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-white flex items-center">
+                <Activity className="w-5 h-5 mr-2" />
                 Live Security Events ({filteredEvents.length})
               </h3>
-              <div className=\"text-sm text-gray-400\">
+              <div className="text-sm text-gray-400">
                 {eventsLoading && 'Loading...'}
                 {eventsError && 'Error loading events'}
                 {!eventsLoading && !eventsError && `${filteredEvents.length} events`}
               </div>
             </div>
             
-            <div className=\"flex-1 overflow-hidden\">
+            <div className="flex-1 overflow-hidden">
               {filteredEvents.length > 0 ? (
                 <List
                   ref={eventListRef}
                   height={750}
                   itemCount={filteredEvents.length}
                   itemSize={180}
-                  className=\"scrollbar-thin scrollbar-track-gray-800 scrollbar-thumb-gray-600\"
+                  className="scrollbar-thin scrollbar-track-gray-800 scrollbar-thumb-gray-600"
                 >
                   {EventListItem}
                 </List>
               ) : (
-                <div className=\"flex items-center justify-center h-full text-gray-400\">
-                  <div className=\"text-center\">
-                    <Shield className=\"w-12 h-12 mx-auto mb-4 opacity-50\" />
+                <div className="flex items-center justify-center h-full text-gray-400">
+                  <div className="text-center">
+                    <Shield className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>No security events match your filters</p>
-                    <p className=\"text-sm mt-2\">Adjust your filters or wait for new events</p>
+                    <p className="text-sm mt-2">Adjust your filters or wait for new events</p>
                   </div>
                 </div>
               )}
@@ -524,7 +524,7 @@ export const RealTimeThreatDashboard: React.FC<RealTimeThreatDashboardProps> = (
         </div>
 
         {/* Side Panel */}
-        <div className=\"space-y-6\">
+        <div className="space-y-6">
           {selectedView === 'events' && selectedEvent && (
             <LiveEventStream 
               event={selectedEvent} 
@@ -535,28 +535,28 @@ export const RealTimeThreatDashboard: React.FC<RealTimeThreatDashboardProps> = (
           {selectedView === 'heatmap' && (
             <GlobalThreatHeatmap 
               events={filteredEvents}
-              className=\"h-96\"
+              className="h-96"
             />
           )}
           
           {selectedView === 'mitre' && (
             <MITREAttackVisualization 
               events={filteredEvents}
-              className=\"h-96\"
+              className="h-96"
             />
           )}
           
           {selectedView === 'actors' && (
             <ThreatActorAttributionCards 
               events={filteredEvents}
-              className=\"h-96\"
+              className="h-96"
             />
           )}
           
           {selectedView === 'iocs' && (
             <IOCManagementInterface 
               events={filteredEvents}
-              className=\"h-96\"
+              className="h-96"
             />
           )}
         </div>

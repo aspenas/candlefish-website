@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
@@ -7,15 +7,20 @@ import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/Layout';
 import PerformanceMonitor from './components/PerformanceMonitor';
 import HashRedirect from './components/HashRedirect';
+import { lazyWithRetry } from './utils/lazyWithRetry';
+
+// Eagerly load critical pages for immediate interaction
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
-import ItemDetail from './pages/ItemDetail';
-import BuyerView from './pages/BuyerView';
-import Analytics from './pages/Analytics';
-import Insights from './pages/Insights';
-import Settings from './pages/Settings';
-import PhotoCapture from './pages/PhotoCapture';
-import Collaboration from './pages/Collaboration';
+
+// Lazy load non-critical pages to reduce initial bundle size
+const ItemDetail = lazyWithRetry(() => import('./pages/ItemDetail'));
+const BuyerView = lazyWithRetry(() => import('./pages/BuyerView'));
+const Analytics = lazyWithRetry(() => import('./pages/Analytics'));
+const Insights = lazyWithRetry(() => import('./pages/Insights'));
+const Settings = lazyWithRetry(() => import('./pages/Settings'));
+const PhotoCapture = lazyWithRetry(() => import('./pages/PhotoCapture'));
+const Collaboration = lazyWithRetry(() => import('./pages/Collaboration'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,6 +30,13 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Loading component for lazy-loaded routes
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center h-64">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+  </div>
+);
 
 function App() {
   return (
@@ -47,37 +59,51 @@ function App() {
               } />
               <Route path="/item/:id" element={
                 <Layout>
-                  <ItemDetail />
+                  <Suspense fallback={<LoadingFallback />}>
+                    <ItemDetail />
+                  </Suspense>
                 </Layout>
               } />
               <Route path="/buyer-view" element={
                 <Layout>
-                  <BuyerView />
+                  <Suspense fallback={<LoadingFallback />}>
+                    <BuyerView />
+                  </Suspense>
                 </Layout>
               } />
               <Route path="/analytics" element={
                 <Layout>
-                  <Analytics />
+                  <Suspense fallback={<LoadingFallback />}>
+                    <Analytics />
+                  </Suspense>
                 </Layout>
               } />
               <Route path="/insights" element={
                 <Layout>
-                  <Insights />
+                  <Suspense fallback={<LoadingFallback />}>
+                    <Insights />
+                  </Suspense>
                 </Layout>
               } />
               <Route path="/collaboration" element={
                 <Layout>
-                  <Collaboration />
+                  <Suspense fallback={<LoadingFallback />}>
+                    <Collaboration />
+                  </Suspense>
                 </Layout>
               } />
               <Route path="/settings" element={
                 <Layout>
-                  <Settings />
+                  <Suspense fallback={<LoadingFallback />}>
+                    <Settings />
+                  </Suspense>
                 </Layout>
               } />
               <Route path="/photos" element={
                 <Layout>
-                  <PhotoCapture />
+                  <Suspense fallback={<LoadingFallback />}>
+                    <PhotoCapture />
+                  </Suspense>
                 </Layout>
               } />
               

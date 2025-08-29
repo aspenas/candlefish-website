@@ -421,74 +421,74 @@ export const AttackPathGraph: React.FC<AttackPathGraphProps> = ({
 
   return (
     <div className={`${className} ${isFullscreen ? 'fixed inset-4 z-50 bg-gray-900' : ''}`}>
-      <Card className=\"h-full\">
-        <div className=\"p-4 border-b border-gray-700\">
-          <div className=\"flex items-center justify-between mb-4\">
-            <h3 className=\"text-lg font-semibold text-white flex items-center\">
-              <Target className=\"w-5 h-5 mr-2\" />
+      <Card className="h-full">
+        <div className="p-4 border-b border-gray-700">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white flex items-center">
+              <Target className="w-5 h-5 mr-2" />
               Attack Path Analysis
             </h3>
-            <div className=\"flex items-center space-x-2\">
+            <div className="flex items-center space-x-2">
               <Button
-                variant=\"outline\"
-                size=\"sm\"
+                variant="outline"
+                size="sm"
                 onClick={() => setIsFullscreen(!isFullscreen)}
               >
-                <Maximize2 className=\"w-4 h-4\" />
+                <Maximize2 className="w-4 h-4" />
               </Button>
-              <Button variant=\"outline\" size=\"sm\">
-                <Download className=\"w-4 h-4\" />
+              <Button variant="outline" size="sm">
+                <Download className="w-4 h-4" />
               </Button>
             </div>
           </div>
 
           {/* Filters */}
-          <div className=\"grid grid-cols-1 md:grid-cols-3 gap-4\">
-            <div className=\"relative\">
-              <Search className=\"absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400\" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
-                placeholder=\"Search nodes...\"
+                placeholder="Search nodes..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className=\"pl-10\"
+                className="pl-10"
               />
             </div>
 
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className=\"px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm\"
+              className="px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm"
             >
-              <option value=\"all\">All Types</option>
+              <option value="all">All Types</option>
               {Object.entries(NODE_TYPES).map(([key, label]) => (
                 <option key={key} value={key}>{label}</option>
               ))}
             </select>
 
-            <div className=\"flex items-center space-x-2\">
-              <span className=\"text-sm text-gray-400\">Nodes:</span>
-              <span className=\"text-sm text-white font-medium\">{filteredData.nodes.length}</span>
-              <span className=\"text-sm text-gray-400\">Links:</span>
-              <span className=\"text-sm text-white font-medium\">{filteredData.links.length}</span>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-400">Nodes:</span>
+              <span className="text-sm text-white font-medium">{filteredData.nodes.length}</span>
+              <span className="text-sm text-gray-400">Links:</span>
+              <span className="text-sm text-white font-medium">{filteredData.links.length}</span>
             </div>
           </div>
         </div>
 
-        <div className=\"flex h-full\">
+        <div className="flex h-full">
           {/* Graph Visualization */}
-          <div className=\"flex-1\" ref={containerRef}>
+          <div className="flex-1" ref={containerRef}>
             <svg
               ref={svgRef}
-              className=\"w-full h-full\"
+              className="w-full h-full"
               style={{ height: isFullscreen ? 'calc(100vh - 200px)' : '600px' }}
             />
 
             {filteredData.nodes.length === 0 && (
-              <div className=\"absolute inset-0 flex items-center justify-center\">
-                <div className=\"text-center text-gray-400\">
-                  <Target className=\"w-12 h-12 mx-auto mb-4 opacity-50\" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center text-gray-400">
+                  <Target className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p>No attack paths to display</p>
-                  <p className=\"text-sm mt-2\">
+                  <p className="text-sm mt-2">
                     {searchTerm || filterType !== 'all'
                       ? 'Adjust your filters to see results'
                       : 'Attack paths will appear as events are analyzed'}
@@ -499,21 +499,21 @@ export const AttackPathGraph: React.FC<AttackPathGraphProps> = ({
           </div>
 
           {/* Side Panel */}
-          <div className=\"w-80 border-l border-gray-700 p-4 overflow-y-auto\">
+          <div className="w-80 border-l border-gray-700 p-4 overflow-y-auto">
             {/* Legend */}
-            <div className=\"mb-6\">
-              <h4 className=\"text-sm font-semibold text-white mb-3\">Node Types</h4>
-              <div className=\"space-y-2\">
+            <div className="mb-6">
+              <h4 className="text-sm font-semibold text-white mb-3">Node Types</h4>
+              <div className="space-y-2">
                 {nodeStats.map(({ type, count, color }) => (
-                  <div key={type} className=\"flex items-center justify-between\">
-                    <div className=\"flex items-center space-x-2\">
+                  <div key={type} className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
                       <div 
-                        className=\"w-3 h-3 rounded-full\" 
+                        className="w-3 h-3 rounded-full" 
                         style={{ backgroundColor: color }}
                       />
-                      <span className=\"text-sm text-gray-300\">{NODE_TYPES[type]}</span>
+                      <span className="text-sm text-gray-300">{NODE_TYPES[type]}</span>
                     </div>
-                    <span className=\"text-sm text-white font-medium\">{count}</span>
+                    <span className="text-sm text-white font-medium">{count}</span>
                   </div>
                 ))}
               </div>
@@ -524,20 +524,20 @@ export const AttackPathGraph: React.FC<AttackPathGraphProps> = ({
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className=\"space-y-4\"
+                className="space-y-4"
               >
-                <div className=\"border-b border-gray-700 pb-4\">
-                  <h4 className=\"text-sm font-semibold text-white mb-2\">Selected Node</h4>
-                  <div className=\"space-y-2\">
-                    <div className=\"flex items-center space-x-2\">
+                <div className="border-b border-gray-700 pb-4">
+                  <h4 className="text-sm font-semibold text-white mb-2">Selected Node</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
                       <div 
-                        className=\"w-3 h-3 rounded-full\" 
+                        className="w-3 h-3 rounded-full" 
                         style={{ backgroundColor: NODE_COLORS[selectedNode.type] }}
                       />
-                      <Badge variant=\"outline\">{selectedNode.type}</Badge>
+                      <Badge variant="outline">{selectedNode.type}</Badge>
                     </div>
-                    <p className=\"text-sm text-white font-medium\">{selectedNode.label}</p>
-                    <div className=\"text-xs text-gray-400 space-y-1\">
+                    <p className="text-sm text-white font-medium">{selectedNode.label}</p>
+                    <div className="text-xs text-gray-400 space-y-1">
                       <div>Events: {selectedNode.eventCount}</div>
                       <div>Severity: {selectedNode.severity}</div>
                     </div>
@@ -545,22 +545,22 @@ export const AttackPathGraph: React.FC<AttackPathGraphProps> = ({
                 </div>
 
                 <div>
-                  <h5 className=\"text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wide\">
+                  <h5 className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wide">
                     Metadata
                   </h5>
-                  <div className=\"space-y-1 text-xs\">
+                  <div className="space-y-1 text-xs">
                     {Object.entries(selectedNode.metadata).map(([key, value]) => (
-                      <div key={key} className=\"flex justify-between\">
-                        <span className=\"text-gray-400\">{key}:</span>
-                        <span className=\"text-gray-300\">{String(value)}</span>
+                      <div key={key} className="flex justify-between">
+                        <span className="text-gray-400">{key}:</span>
+                        <span className="text-gray-300">{String(value)}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               </motion.div>
             ) : (
-              <div className=\"text-center py-8 text-gray-400\">
-                <p className=\"text-sm\">Click on a node to view details</p>
+              <div className="text-center py-8 text-gray-400">
+                <p className="text-sm">Click on a node to view details</p>
               </div>
             )}
           </div>
