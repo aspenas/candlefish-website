@@ -1,0 +1,370 @@
+# Candlefish Stage-Gate Configuration
+# Version: 1.0 | Generated: 2025-08-31
+# This file drives automation in GitHub Actions and defines progression criteria
+
+gates:
+  spark:
+    name: "Spark"
+    description: "Idea capture and qualification"
+    entry_criteria:
+      - problem_statement_exists: true
+      - hypothesis_defined: true
+      - idea_ledger_entry: true
+    
+    required_artifacts:
+      - type: "idea_ledger_entry"
+        location: "Notion:Idea-Ledger"
+        fields:
+          - problem_statement
+          - hypothesis
+          - impact_score
+          - effort_score
+          - strategic_fit_score
+      
+      - type: "initial_pov"
+        location: "issue_description"
+        min_length: 200
+    
+    exit_criteria:
+      - strategic_fit_score: ">=3"
+      - impact_score: ">=3"
+      - feasibility_check: "completed"
+    
+    reviewers:
+      - role: "pod_lead"
+        required: false
+      - role: "integrator_pod"
+        required: true
+    
+    promotion_test:
+      script: ".github/scripts/validate-spark.sh"
+      timeout: 300
+    
+    auto_kill_triggers:
+      - condition: "days_since_update > 30"
+        action: "archive"
+        notification: "owner,pod_lead"
+      
+      - condition: "strategic_fit_score < 2"
+        action: "reject"
+        notification: "owner"
+    
+    sla: "7 days"
+
+  seed:
+    name: "Seed"
+    description: "Feasibility validation and planning"
+    entry_criteria:
+      - spark_gate_passed: true
+      - owner_assigned: true
+      - pod_identified: true
+    
+    required_artifacts:
+      - type: "technical_spike"
+        location: "repo:spikes/"
+        validation:
+          - code_compiles: true
+          - readme_exists: true
+      
+      - type: "dependency_map"
+        location: "repo:docs/dependencies/"
+        format: "mermaid|graphviz|yaml"
+      
+      - type: "decision_memo"
+        location: "repo:decision-memos/"
+        template: "decision-memo.md"
+        required_sections:
+          - context
+          - three_paths
+          - recommendation
+          - reversibility
+          - success_metrics
+    
+    exit_criteria:
+      - technical_feasibility: "proven"
+      - dependencies_identified: true
+      - risk_assessment: "completed"
+      - effort_estimate: "documented"
+    
+    reviewers:
+      - role: "integrator_pod"
+        required: true
+      - role: "technical_lead"
+        required: true
+      - role: "patrick"
+        required: "if effort > 2 weeks"
+    
+    promotion_test:
+      script: ".github/scripts/validate-seed.sh"
+      timeout: 600
+    
+    auto_kill_triggers:
+      - condition: "blocking_dependencies_unresolved > 14 days"
+        action: "escalate"
+        notification: "integrator_pod,patrick"
+      
+      - condition: "effort_estimate > 3x original"
+        action: "review"
+        notification: "portfolio_council"
+    
+    sla: "14 days"
+
+  scaffold:
+    name: "Scaffold"
+    description: "Build core functionality"
+    entry_criteria:
+      - seed_gate_passed: true
+      - acceptance_criteria_defined: true
+      - api_contracts_drafted: true
+    
+    required_artifacts:
+      - type: "core_implementation"
+        location: "repo:src/"
+        validation:
+          - builds: true
+          - lints_pass: true
+          - no_security_warnings: true
+      
+      - type: "test_suite"
+        location: "repo:tests/"
+        validation:
+          - coverage: ">60%"
+          - all_pass: true
+          - integration_tests_exist: true
+      
+      - type: "api_documentation"
+        location: "repo:docs/api/"
+        format: "openapi|graphql|proto"
+      
+      - type: "demo_recording"
+        location: "artifacts:demos/"
+        max_duration: "5 minutes"
+        required_elements:
+          - user_flow
+          - error_handling
+          - performance_metrics
+    
+    exit_criteria:
+      - core_features_complete: true
+      - test_coverage: ">60%"
+      - demo_approved: true
+      - acceptance_tests_passing: true
+    
+    reviewers:
+      - role: "pod_lead"
+        required: true
+      - role: "qa_engineer"
+        required: "if exists"
+      - role: "design_lead"
+        required: "if ui_changes"
+    
+    promotion_test:
+      script: ".github/scripts/validate-scaffold.sh"
+      timeout: 1200
+      stages:
+        - lint
+        - test
+        - build
+        - acceptance
+    
+    auto_kill_triggers:
+      - condition: "acceptance_tests_failing > 7 days"
+        action: "block"
+        notification: "owner,pod_lead,integrator_pod"
+      
+      - condition: "wip_limit_exceeded"
+        action: "queue"
+        notification: "owner"
+    
+    sla: "21 days"
+
+  ship:
+    name: "Ship"
+    description: "Polish and production release"
+    entry_criteria:
+      - scaffold_gate_passed: true
+      - minimum_remarkable_checklist: "started"
+      - deployment_plan_exists: true
+    
+    required_artifacts:
+      - type: "production_code"
+        location: "repo:src/"
+        validation:
+          - security_scan_passed: true
+          - performance_benchmarks_met: true
+          - accessibility_audit_passed: true
+      
+      - type: "minimum_remarkable_checklist"
+        location: "repo:ship-checklist.md"
+        all_items_green: true
+      
+      - type: "release_notes"
+        location: "repo:CHANGELOG.md"
+        required_sections:
+          - features
+          - fixes
+          - breaking_changes
+          - migration_guide
+      
+      - type: "support_runbook"
+        location: "repo:runbooks/"
+        required_sections:
+          - common_issues
+          - escalation_path
+          - rollback_procedure
+          - monitoring_queries
+      
+      - type: "metrics_dashboard"
+        location: "links:grafana|datadog|cloudwatch"
+        required_panels:
+          - availability
+          - latency
+          - error_rate
+          - business_metrics
+    
+    exit_criteria:
+      - production_deployed: true
+      - monitoring_active: true
+      - documentation_complete: true
+      - team_trained: true
+    
+    reviewers:
+      - role: "integrator_pod"
+        required: true
+      - role: "portfolio_council"
+        required: true
+      - role: "patrick"
+        required: "for elevation_review"
+    
+    promotion_test:
+      script: ".github/scripts/validate-ship.sh"
+      timeout: 1800
+      environments:
+        - staging
+        - production
+    
+    auto_kill_triggers:
+      - condition: "customer_impacting_bugs > 48 hours"
+        action: "rollback"
+        notification: "all_stakeholders"
+      
+      - condition: "minimum_remarkable_violations > 0"
+        action: "block"
+        notification: "patrick"
+    
+    sla: "7 days"
+
+  scale:
+    name: "Scale"
+    description: "Optimize and expand"
+    entry_criteria:
+      - ship_gate_passed: true
+      - stability_period: "30 days"
+      - usage_metrics_baseline: true
+    
+    required_artifacts:
+      - type: "optimization_report"
+        location: "repo:reports/scale/"
+        metrics:
+          - performance_improvements
+          - cost_reductions
+          - capacity_increases
+      
+      - type: "scaling_plan"
+        location: "repo:docs/scaling/"
+        required_sections:
+          - current_limits
+          - target_capacity
+          - migration_strategy
+          - cost_projection
+      
+      - type: "operational_handoff"
+        location: "repo:ops/"
+        checklists:
+          - monitoring_setup
+          - alerting_rules
+          - backup_procedures
+          - disaster_recovery
+    
+    exit_criteria:
+      - performance_targets_met: true
+      - operational_maturity: "L2"
+      - documentation_complete: true
+      - team_onboarded: true
+    
+    reviewers:
+      - role: "operations_lead"
+        required: true
+      - role: "portfolio_council"
+        required: "quarterly"
+    
+    promotion_test:
+      script: ".github/scripts/validate-scale.sh"
+      timeout: 3600
+      load_test: true
+    
+    auto_kill_triggers:
+      - condition: "sla_violations > 3 consecutive days"
+        action: "incident"
+        notification: "on_call,patrick"
+      
+      - condition: "cost_overrun > 50%"
+        action: "review"
+        notification: "portfolio_council"
+    
+    sla: "ongoing"
+
+# Global Configuration
+configuration:
+  wip_limits:
+    per_pod:
+      scaffold: 3
+      total: 5
+    per_person:
+      owned: 2
+      involved: 4
+    cross_pod:
+      seed: 5
+    portfolio:
+      total_active: 10
+  
+  notification_channels:
+    slack:
+      default: "#engineering"
+      escalation: "#incidents"
+      demos: "#demo-friday"
+      blockers: "#unblock-and-commit"
+    
+    email:
+      pod_leads: "pod-leads@candlefish.ai"
+      integrator_pod: "integrators@candlefish.ai"
+      portfolio_council: "council@candlefish.ai"
+  
+  automation:
+    github_actions:
+      - ".github/workflows/stage-gates.yml"
+      - ".github/workflows/wip-enforcer.yml"
+      - ".github/workflows/auto-kill.yml"
+    
+    webhooks:
+      gate_promotion: "https://api.candlefish.ai/gates/promote"
+      gate_rejection: "https://api.candlefish.ai/gates/reject"
+      metrics_update: "https://api.candlefish.ai/metrics/update"
+  
+  reporting:
+    dashboards:
+      portfolio: "https://metrics.candlefish.ai/portfolio"
+      velocity: "https://metrics.candlefish.ai/velocity"
+      quality: "https://metrics.candlefish.ai/quality"
+    
+    exports:
+      weekly_summary: "s3://candlefish-reports/weekly/"
+      monthly_review: "s3://candlefish-reports/monthly/"
+
+# Metadata
+metadata:
+  version: "1.0.0"
+  last_updated: "2025-08-31"
+  owner: "integrator-pod"
+  review_cycle: "quarterly"
+  schema_version: "2024.1"

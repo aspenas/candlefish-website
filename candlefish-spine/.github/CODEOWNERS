@@ -1,0 +1,26 @@
+# Candlefish Code Owners
+# Version: 1.0 | Generated: 2025-08-31
+
+# Global Owners (Integrator Pod)
+* @candlefish/integrator-pod
+
+# Domain-Specific Ownership
+/crown-trophy/ @candlefish/crown-trophy-pod @candlefish/integrator-pod
+/paintbox/ @candlefish/paintbox-pod @candlefish/integrator-pod
+/promoteros/ @candlefish/promoteros-pod @candlefish/integrator-pod
+/ratio/ @candlefish/ratio-pod @candlefish/integrator-pod
+
+# Critical Paths
+/.github/ @candlefish/integrator-pod @patricksmith
+/stage-gates.yaml @candlefish/integrator-pod @patricksmith
+/Charter.md @patricksmith
+/decision-memos/ @candlefish/portfolio-council
+
+# Operations
+/runbooks/ @candlefish/operations @candlefish/integrator-pod
+/ops/ @candlefish/operations
+/validation/ @candlefish/qa @candlefish/integrator-pod
+
+# Documentation
+*.md @candlefish/integrator-pod
+/docs/ @candlefish/integrator-pod

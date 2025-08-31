@@ -1,0 +1,33 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Candlefish//Operating Cadence//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Candlefish Demo Friday
+X-WR-TIMEZONE:UTC
+BEGIN:VEVENT
+DTSTART:20250905T200000Z
+DTEND:20250905T210000Z
+RRULE:FREQ=WEEKLY;BYDAY=FR
+DTSTAMP:20250831T120000Z
+UID:candlefish-demo-friday@candlefish.ai
+CREATED:20250831T120000Z
+DESCRIPTION:Demo Friday\n\nShowcase working software and celebrate shipped features!\n\nAgenda:\n:00-:05 Opening\n:05-:50 Live Demos (5-7 demos)\n:50-:55 Ship of the Week voting\n:55-:60 Recognition\n\nRules:\n- Live demos only (no slides)\n- 7 minutes maximum per demo\n- Working software required\n- Sign up by Thursday in #demo-friday\n\nJoin: [Video call link to be added]\n\nSee /cadence/weekly_demo_friday.md for details
+LAST-MODIFIED:20250831T120000Z
+LOCATION:Video Call + #demo-friday
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:Demo Friday 🚀
+TRANSP:OPAQUE
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Demo Friday starting in 15 minutes! Test your demo setup
+TRIGGER:-PT15M
+END:VALARM
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Demo Friday tomorrow - sign up for demo slots in #demo-friday
+TRIGGER:-P1D
+END:VALARM
+END:VEVENT
+END:VCALENDAR

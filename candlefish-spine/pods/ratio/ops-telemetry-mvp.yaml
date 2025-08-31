@@ -1,0 +1,363 @@
+# Ratio Brewing Operations Telemetry MVP
+# Version: 1.0 | Generated: 2025-08-31
+
+system:
+  name: "Ratio Ops Telemetry"
+  description: "Real-time brewing operations monitoring and optimization"
+  version: "1.0.0-mvp"
+
+telemetry_points:
+  fermentation:
+    sensors:
+      - id: temp_fv_01
+        type: temperature
+        unit: celsius
+        range: [-5, 40]
+        frequency: 60s
+        location: "Fermenter 1"
+        alert_thresholds:
+          low: 15
+          high: 25
+        
+      - id: gravity_fv_01
+        type: specific_gravity
+        unit: sg
+        range: [0.990, 1.150]
+        frequency: 3600s
+        location: "Fermenter 1"
+        alert_thresholds:
+          stalled_fermentation: "<0.002 change in 24h"
+      
+      - id: pressure_fv_01
+        type: pressure
+        unit: psi
+        range: [0, 30]
+        frequency: 300s
+        location: "Fermenter 1"
+        alert_thresholds:
+          over_pressure: 25
+          under_pressure: 5
+      
+      - id: ph_fv_01
+        type: ph
+        unit: ph
+        range: [2.0, 8.0]
+        frequency: 3600s
+        location: "Fermenter 1"
+        alert_thresholds:
+          low: 3.8
+          high: 4.6
+  
+  cold_storage:
+    sensors:
+      - id: temp_cooler_01
+        type: temperature
+        unit: celsius
+        range: [-5, 10]
+        frequency: 60s
+        location: "Walk-in Cooler"
+        alert_thresholds:
+          critical_high: 4
+          warning_high: 2
+      
+      - id: humidity_cooler_01
+        type: humidity
+        unit: percentage
+        range: [0, 100]
+        frequency: 300s
+        location: "Walk-in Cooler"
+      
+      - id: door_cooler_01
+        type: contact
+        unit: boolean
+        frequency: event_based
+        location: "Walk-in Cooler Door"
+        alert_thresholds:
+          open_duration: ">5 minutes"
+  
+  kegging:
+    sensors:
+      - id: flow_keg_line_01
+        type: flow_rate
+        unit: liters_per_minute
+        range: [0, 20]
+        frequency: 1s
+        location: "Keg Line 1"
+      
+      - id: volume_keg_01
+        type: volume
+        unit: liters
+        range: [0, 60]
+        frequency: event_based
+        location: "Keg 1"
+      
+      - id: pressure_keg_01
+        type: pressure
+        unit: psi
+        range: [0, 50]
+        frequency: 60s
+        location: "Keg 1"
+  
+  environmental:
+    sensors:
+      - id: temp_brewhouse
+        type: temperature
+        unit: celsius
+        range: [0, 50]
+        frequency: 300s
+        location: "Brewhouse"
+      
+      - id: co2_brewhouse
+        type: gas_concentration
+        unit: ppm
+        range: [0, 5000]
+        frequency: 60s
+        location: "Brewhouse"
+        alert_thresholds:
+          warning: 1000
+          danger: 3000
+
+data_pipeline:
+  ingestion:
+    protocol: MQTT
+    broker: "tcp://mqtt.ratio.local:1883"
+    topics:
+      - "sensors/+/data"
+      - "sensors/+/status"
+      - "alerts/+"
+    
+  processing:
+    stream_processor: Apache Kafka
+    topics:
+      - raw_telemetry
+      - processed_metrics
+      - alerts
+      - predictions
+    
+  storage:
+    time_series:
+      database: InfluxDB
+      retention:
+        raw: 7_days
+        aggregated: 90_days
+        summary: 2_years
+    
+    operational:
+      database: PostgreSQL
+      tables:
+        - batches
+        - recipes
+        - inventory
+        - maintenance
+        - quality_checks
+
+monitoring_dashboards:
+  fermentation_overview:
+    panels:
+      - title: "Active Fermentations"
+        type: gauge_grid
+        metrics:
+          - fermenter_id
+          - current_temp
+          - target_temp
+          - gravity
+          - days_fermenting
+          - estimated_completion
+      
+      - title: "Temperature Trends"
+        type: time_series
+        metrics:
+          - actual_temp
+          - target_temp
+          - ambient_temp
+        period: 24h
+      
+      - title: "Gravity Progress"
+        type: line_chart
+        metrics:
+          - original_gravity
+          - current_gravity
+          - final_gravity_target
+        x_axis: days_since_pitch
+      
+      - title: "Fermentation Efficiency"
+        type: scatter_plot
+        metrics:
+          - attenuation_percentage
+          - temperature_stability
+          - time_to_terminal
+  
+  cold_chain:
+    panels:
+      - title: "Storage Temperatures"
+        type: heat_map
+        metrics:
+          - location
+          - temperature
+          - duration_in_range
+      
+      - title: "Door Activity"
+        type: event_timeline
+        events:
+          - door_open
+          - door_close
+          - duration
+      
+      - title: "Temperature Excursions"
+        type: alert_list
+        filters:
+          - severity: [warning, critical]
+          - timeframe: 24h
+  
+  production_metrics:
+    panels:
+      - title: "Daily Production"
+        type: bar_chart
+        metrics:
+          - kegs_filled
+          - liters_produced
+          - batches_completed
+      
+      - title: "Efficiency KPIs"
+        type: kpi_cards
+        metrics:
+          - yield_percentage: "Actual vs Recipe"
+          - cycle_time: "Grain to Glass"
+          - quality_pass_rate: "First Pass %"
+          - waste_percentage: "Loss Rate"
+      
+      - title: "Predictive Maintenance"
+        type: timeline
+        items:
+          - equipment
+          - next_maintenance
+          - risk_score
+          - estimated_downtime
+
+alerting_rules:
+  - name: fermentation_temperature_deviation
+    condition: "abs(actual_temp - target_temp) > 2"
+    duration: 15_minutes
+    severity: warning
+    actions:
+      - notify: ["brewmaster", "on_call"]
+      - auto_correct: true
+  
+  - name: stalled_fermentation
+    condition: "gravity_change < 0.002"
+    duration: 24_hours
+    severity: critical
+    actions:
+      - notify: ["brewmaster"]
+      - create_ticket: true
+  
+  - name: cooler_temperature_critical
+    condition: "temp > 4"
+    duration: 5_minutes
+    severity: critical
+    actions:
+      - notify: ["all_staff"]
+      - sms: ["manager"]
+      - auto_escalate: 10_minutes
+  
+  - name: co2_leak_detected
+    condition: "co2_level > 3000"
+    duration: immediate
+    severity: emergency
+    actions:
+      - notify: ["all_staff"]
+      - trigger: "evacuation_alarm"
+      - call: ["emergency_contact"]
+
+predictive_models:
+  fermentation_completion:
+    inputs:
+      - current_gravity
+      - temperature_history
+      - yeast_strain
+      - original_gravity
+    output: estimated_hours_remaining
+    accuracy_target: "±6 hours"
+  
+  quality_prediction:
+    inputs:
+      - fermentation_profile
+      - temperature_stability
+      - ph_progression
+      - time_in_fermenter
+    output: quality_score_probability
+    accuracy_target: ">85%"
+  
+  maintenance_forecast:
+    inputs:
+      - equipment_runtime
+      - vibration_patterns
+      - temperature_patterns
+      - last_maintenance
+    output: failure_risk_score
+    accuracy_target: ">90% true positive"
+
+acceptance_criteria:
+  mvp_requirements:
+    - [ ] "Real-time data ingestion from 10+ sensors"
+    - [ ] "Dashboard displays with <2s latency"
+    - [ ] "Alert delivery within 30 seconds"
+    - [ ] "7-day data retention minimum"
+    - [ ] "Mobile responsive dashboards"
+    - [ ] "CSV export functionality"
+    - [ ] "Email/SMS alerting operational"
+    - [ ] "Basic predictive model deployed"
+  
+  performance_targets:
+    - data_latency: "<2 seconds end-to-end"
+    - dashboard_load: "<3 seconds initial"
+    - alert_delivery: "<30 seconds"
+    - uptime: ">99.5%"
+    - data_accuracy: ">99%"
+  
+  user_acceptance:
+    - [ ] "Brewmaster can monitor all active fermentations"
+    - [ ] "Alerts prevent at least 1 quality issue in first month"
+    - [ ] "Reduce manual temperature checks by 80%"
+    - [ ] "Identify optimization opportunity worth >$1000"
+
+implementation_phases:
+  phase_1_core:
+    duration: 2_weeks
+    deliverables:
+      - Sensor installation (temperature only)
+      - Basic dashboard (fermentation)
+      - Email alerts
+      - 24h data retention
+  
+  phase_2_expansion:
+    duration: 2_weeks
+    deliverables:
+      - Additional sensors (gravity, pressure)
+      - Cold storage monitoring
+      - SMS alerts
+      - 7-day retention
+  
+  phase_3_intelligence:
+    duration: 2_weeks
+    deliverables:
+      - Predictive models
+      - Advanced analytics
+      - Mobile app
+      - 90-day retention
+
+success_metrics:
+  operational:
+    - reduced_quality_issues: ">30%"
+    - faster_issue_detection: ">50%"
+    - reduced_manual_checks: ">80%"
+    - improved_consistency: ">25%"
+  
+  financial:
+    - reduced_waste: ">$2000/month"
+    - prevented_losses: ">$5000/month"
+    - efficiency_gains: ">10%"
+    - roi: "<6 months"
+
+---
+# Next: Deploy Phase 1 sensors and dashboard
