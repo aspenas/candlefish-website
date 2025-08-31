@@ -1,0 +1,304 @@
+# PromoterOS Relationship Cadence Map
+# Version: 1.0 | Generated: 2025-08-31
+
+cadences:
+  venue_touchpoint:
+    name: "Venue Relationship Cadence"
+    description: "Systematic venue partner engagement"
+    
+    stages:
+      prospect:
+        frequency: weekly
+        actions:
+          - type: research
+            description: "Venue capacity, calendar, demographics"
+          - type: outreach
+            description: "Initial contact via preferred channel"
+          - type: follow_up
+            description: "Value prop customized to venue"
+        
+        templates:
+          initial_outreach: |
+            Hi {venue_contact_name},
+            
+            I noticed {venue_name} has been hosting {event_type} events. 
+            We specialize in matching venues with proven artists that drive 
+            {specific_metric: bar sales, ticket sales, foot traffic}.
+            
+            Our recent show at {similar_venue} saw {impressive_metric}.
+            
+            Worth a quick call to discuss your {timeframe} calendar?
+            
+            {signature}
+          
+          follow_up_1: |
+            Hi {venue_contact_name},
+            
+            Following up on my note about {venue_name}'s event calendar.
+            
+            Just booked {artist_name} who pulled {attendance} at {venue}.
+            They have {date_range} open and would be perfect for your {audience_type} crowd.
+            
+            15 minutes to discuss?
+        
+        success_metrics:
+          - response_rate: ">20%"
+          - meeting_booked_rate: ">10%"
+          - time_to_response: "<3 days"
+      
+      active:
+        frequency: bi_weekly
+        actions:
+          - type: check_in
+            description: "Event performance review"
+          - type: planning
+            description: "Upcoming calendar discussion"
+          - type: optimization
+            description: "Improve event outcomes"
+        
+        templates:
+          performance_review: |
+            {venue_contact_name},
+            
+            Great show last {day}! Quick metrics:
+            • Attendance: {number} ({change}% vs. average)
+            • Bar sales: ${amount} ({change}% vs. average)
+            • Social mentions: {number}
+            
+            The crowd really connected with {specific_moment}.
+            
+            For next time, we could {improvement_suggestion}.
+            
+            What dates are you looking at for {next_month}?
+          
+          calendar_planning: |
+            Hi {venue_contact_name},
+            
+            Looking at your {month} calendar. Based on what worked well,
+            here are 3 artists I'd recommend:
+            
+            1. {artist_1} - {why_good_fit}
+               Available: {dates}
+               Expected draw: {number}
+            
+            2. {artist_2} - {why_good_fit}
+               Available: {dates}
+               Expected draw: {number}
+            
+            3. {artist_3} - {why_good_fit}
+               Available: {dates}
+               Expected draw: {number}
+            
+            Which interests you most?
+        
+        success_metrics:
+          - events_per_quarter: ">=3"
+          - satisfaction_score: ">=4.5/5"
+          - revenue_per_venue: ">$10k/quarter"
+      
+      at_risk:
+        frequency: weekly
+        triggers:
+          - no_event_60_days: true
+          - satisfaction_below_4: true
+          - response_time_over_72h: true
+        
+        actions:
+          - type: re_engagement
+            description: "High-touch recovery sequence"
+          - type: feedback_gathering
+            description: "Understand issues"
+          - type: special_offer
+            description: "Incentive to continue"
+        
+        templates:
+          win_back: |
+            {venue_contact_name},
+            
+            Noticed we haven't had a show at {venue_name} recently.
+            
+            Wanted to check in and see if there's anything we could
+            do differently. Your feedback would really help.
+            
+            As a thanks, I can offer {incentive}:
+            • Waived booking fee on next show
+            • Exclusive access to {hot_artist}
+            • Custom marketing package
+            
+            Worth a quick call?
+
+  artist_development:
+    name: "Artist Development Cadence"
+    description: "Support and grow artist relationships"
+    
+    stages:
+      onboarding:
+        duration: 30_days
+        actions:
+          - day_1:
+              - type: welcome
+                channel: email
+              - type: profile_setup
+                channel: platform
+          - day_3:
+              - type: check_in
+                channel: sms
+          - day_7:
+              - type: first_opportunity
+                channel: email
+          - day_14:
+              - type: performance_tips
+                channel: email
+          - day_30:
+              - type: feedback_survey
+                channel: email
+        
+        templates:
+          welcome: |
+            Welcome to PromoterOS, {artist_name}!
+            
+            We're excited to help you book more shows and grow your fanbase.
+            
+            First steps:
+            1. Complete your profile: {profile_link}
+            2. Upload your EPK: {epk_link}
+            3. Set your availability: {calendar_link}
+            
+            You'll get your first opportunity within 7 days.
+            
+            Questions? Reply here or text {support_number}.
+      
+      active:
+        frequency: per_booking
+        actions:
+          - pre_show:
+              - minus_14_days: "Confirm details"
+              - minus_7_days: "Marketing materials"
+              - minus_3_days: "Final logistics"
+              - minus_1_day: "Good luck message"
+          - post_show:
+              - plus_1_day: "Performance feedback"
+              - plus_3_days: "Metrics report"
+              - plus_7_days: "Next opportunities"
+        
+        success_metrics:
+          - shows_per_month: ">=2"
+          - audience_growth: ">10%/quarter"
+          - earnings_growth: ">15%/quarter"
+
+crm_fields:
+  venue:
+    required:
+      - name: string
+      - contact_name: string
+      - email: email
+      - phone: phone
+      - capacity: integer
+      - venue_type: enum
+      - preferred_genres: array
+    
+    optional:
+      - website: url
+      - social_handles: object
+      - calendar_link: url
+      - past_events: array
+      - avg_attendance: integer
+      - bar_sales_avg: decimal
+      - preferred_contact_method: enum
+      - preferred_contact_time: string
+      - decision_maker_notes: text
+      - competitor_events: array
+      - technical_requirements: object
+      - payment_terms: enum
+      - marketing_assets: array
+    
+    computed:
+      - lifetime_value: decimal
+      - events_count: integer
+      - last_event_date: date
+      - satisfaction_score: decimal
+      - response_time_avg: duration
+      - revenue_per_event: decimal
+  
+  artist:
+    required:
+      - stage_name: string
+      - email: email
+      - phone: phone
+      - genre: enum
+      - experience_level: enum
+      - availability: object
+    
+    optional:
+      - real_name: string
+      - bio: text
+      - hometown: string
+      - social_handles: object
+      - streaming_links: object
+      - press_kit: url
+      - rider: document
+      - rate_range: object
+      - travel_radius: integer
+      - band_size: integer
+      - technical_requirements: object
+      - preferred_venues: array
+      - past_performances: array
+      - references: array
+    
+    computed:
+      - total_shows: integer
+      - avg_attendance: integer
+      - growth_rate: percentage
+      - reliability_score: decimal
+      - fan_engagement: decimal
+
+automation_rules:
+  - name: "Venue follow-up"
+    trigger: "email_opened && !responded"
+    wait: 72_hours
+    action: "send_follow_up_1"
+  
+  - name: "Artist first booking"
+    trigger: "profile_complete && available_dates"
+    wait: 24_hours
+    action: "match_opportunities"
+  
+  - name: "At-risk detection"
+    trigger: "days_since_last_event > 60"
+    action: "move_to_at_risk"
+  
+  - name: "Birthday outreach"
+    trigger: "contact_birthday"
+    action: "send_birthday_greeting"
+  
+  - name: "Show reminder"
+    trigger: "event_date - 24_hours"
+    action: "send_reminder_all_parties"
+
+reporting:
+  dashboards:
+    relationship_health:
+      metrics:
+        - active_venues: count
+        - at_risk_venues: count
+        - avg_events_per_venue: average
+        - venue_satisfaction: average
+        - response_time: average
+    
+    artist_performance:
+      metrics:
+        - active_artists: count
+        - shows_this_month: count
+        - avg_attendance: average
+        - artist_earnings: sum
+        - growth_rate: percentage
+    
+    cadence_effectiveness:
+      metrics:
+        - email_open_rate: percentage
+        - response_rate: percentage
+        - meeting_conversion: percentage
+        - reactivation_rate: percentage
+
+---
+# Demo Script v1 coming next...

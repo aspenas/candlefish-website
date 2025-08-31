@@ -1,0 +1,311 @@
+# Crown Trophy Inventory Schema v1
+# Version: 1.0 | Generated: 2025-08-31
+
+schema:
+  name: crown_trophy_inventory
+  version: "1.0"
+  description: "Schema for tracking awards, trophies, and engraving inventory"
+
+entities:
+  item:
+    fields:
+      - name: id
+        type: uuid
+        primary: true
+        description: "Unique identifier"
+      
+      - name: sku
+        type: string
+        unique: true
+        required: true
+        pattern: "^CT-[A-Z0-9]{6}$"
+        description: "Stock keeping unit"
+      
+      - name: name
+        type: string
+        required: true
+        max_length: 200
+        description: "Display name"
+      
+      - name: category
+        type: enum
+        required: true
+        values:
+          - trophy
+          - plaque
+          - medal
+          - ribbon
+          - engraving_plate
+          - accessory
+        description: "Item category"
+      
+      - name: material
+        type: enum
+        values:
+          - metal
+          - wood
+          - acrylic
+          - glass
+          - plastic
+          - fabric
+        description: "Primary material"
+      
+      - name: dimensions
+        type: object
+        fields:
+          height: number
+          width: number
+          depth: number
+          unit: enum[inches, cm]
+        description: "Physical dimensions"
+      
+      - name: weight
+        type: object
+        fields:
+          value: number
+          unit: enum[oz, lbs, g, kg]
+        description: "Item weight"
+      
+      - name: engravable
+        type: boolean
+        default: false
+        description: "Can be engraved"
+      
+      - name: engraving_area
+        type: object
+        fields:
+          width: number
+          height: number
+          max_lines: integer
+          max_chars_per_line: integer
+        description: "Engraving specifications"
+      
+      - name: price
+        type: object
+        required: true
+        fields:
+          wholesale: decimal
+          retail: decimal
+          custom: decimal
+          currency: string
+        description: "Pricing tiers"
+      
+      - name: stock
+        type: object
+        fields:
+          on_hand: integer
+          committed: integer
+          available: integer
+          reorder_point: integer
+          reorder_quantity: integer
+        description: "Inventory levels"
+      
+      - name: location
+        type: object
+        fields:
+          warehouse: string
+          zone: string
+          bin: string
+          shelf: string
+        description: "Physical location"
+      
+      - name: images
+        type: array
+        items:
+          url: string
+          type: enum[main, detail, engraved_sample]
+          caption: string
+        description: "Product images"
+      
+      - name: tags
+        type: array
+        items: string
+        description: "Searchable tags"
+      
+      - name: created_at
+        type: timestamp
+        auto: true
+      
+      - name: updated_at
+        type: timestamp
+        auto: true
+
+  engraving_job:
+    fields:
+      - name: id
+        type: uuid
+        primary: true
+      
+      - name: item_id
+        type: uuid
+        foreign_key: item.id
+        required: true
+      
+      - name: order_id
+        type: string
+        required: true
+        index: true
+      
+      - name: customer_id
+        type: string
+        required: true
+        index: true
+      
+      - name: status
+        type: enum
+        required: true
+        values:
+          - pending
+          - designing
+          - approved
+          - engraving
+          - quality_check
+          - complete
+          - shipped
+        default: pending
+      
+      - name: text_lines
+        type: array
+        items:
+          line_number: integer
+          text: string
+          font: string
+          size: integer
+          alignment: enum[left, center, right]
+      
+      - name: artwork
+        type: object
+        fields:
+          type: enum[text_only, logo, combined]
+          file_url: string
+          approved: boolean
+          approved_by: string
+          approved_at: timestamp
+      
+      - name: rush
+        type: boolean
+        default: false
+      
+      - name: due_date
+        type: date
+        required: true
+      
+      - name: completed_at
+        type: timestamp
+      
+      - name: notes
+        type: text
+
+  customer:
+    fields:
+      - name: id
+        type: uuid
+        primary: true
+      
+      - name: name
+        type: string
+        required: true
+      
+      - name: type
+        type: enum
+        values:
+          - individual
+          - school
+          - business
+          - organization
+        default: individual
+      
+      - name: contact
+        type: object
+        fields:
+          email: string
+          phone: string
+          address: object
+      
+      - name: tax_exempt
+        type: boolean
+        default: false
+      
+      - name: discount_tier
+        type: enum
+        values:
+          - retail
+          - wholesale
+          - vip
+        default: retail
+      
+      - name: credit_terms
+        type: enum
+        values:
+          - prepaid
+          - net_30
+          - net_60
+        default: prepaid
+
+indexes:
+  - name: idx_item_sku
+    table: item
+    columns: [sku]
+    unique: true
+  
+  - name: idx_item_category
+    table: item
+    columns: [category]
+  
+  - name: idx_job_status
+    table: engraving_job
+    columns: [status, due_date]
+  
+  - name: idx_job_customer
+    table: engraving_job
+    columns: [customer_id, created_at]
+
+migrations:
+  - version: "1.0.0"
+    up: |
+      CREATE TABLE items (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        sku VARCHAR(12) UNIQUE NOT NULL,
+        name VARCHAR(200) NOT NULL,
+        category VARCHAR(50) NOT NULL,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      
+      CREATE TABLE engraving_jobs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        item_id UUID REFERENCES items(id),
+        order_id VARCHAR(50) NOT NULL,
+        customer_id VARCHAR(50) NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+        data JSONB NOT NULL,
+        due_date DATE NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    
+    down: |
+      DROP TABLE engraving_jobs;
+      DROP TABLE items;
+
+validation_rules:
+  - rule: "SKU format"
+    field: item.sku
+    check: "REGEXP_MATCHES(sku, '^CT-[A-Z0-9]{6}$')"
+    message: "SKU must be format CT-XXXXXX"
+  
+  - rule: "Price consistency"
+    field: item.price
+    check: "wholesale <= retail"
+    message: "Wholesale price must be less than retail"
+  
+  - rule: "Stock consistency"
+    field: item.stock
+    check: "available = on_hand - committed"
+    message: "Available stock must equal on_hand minus committed"
+  
+  - rule: "Due date future"
+    field: engraving_job.due_date
+    check: "due_date >= CURRENT_DATE"
+    message: "Due date must be in the future"

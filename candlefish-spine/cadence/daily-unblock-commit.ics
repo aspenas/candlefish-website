@@ -1,0 +1,28 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Candlefish//Operating Cadence//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Candlefish Daily Unblock & Commit
+X-WR-TIMEZONE:UTC
+BEGIN:VEVENT
+DTSTART:20250901T170000Z
+DTEND:20250901T171500Z
+RRULE:FREQ=DAILY;BYDAY=MO,TU,WE,TH,FR
+DTSTAMP:20250831T120000Z
+UID:candlefish-daily-unblock@candlefish.ai
+CREATED:20250831T120000Z
+DESCRIPTION:Daily Unblock & Commit\n\nFormat: Async Slack thread\nChannel: #unblock-and-commit\n\nPost your update:\n✅ Completed Yesterday\n🚧 Blocked On\n📝 Committing to Today\n\nRules:\n- Post by 10:15 PST\n- Be specific and measurable\n- Tag blockers for resolution\n\nSee /cadence/daily_unblock_commit.md for details
+LAST-MODIFIED:20250831T120000Z
+LOCATION:Slack #unblock-and-commit
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:Daily Unblock & Commit
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Daily Unblock & Commit starting in 5 minutes
+TRIGGER:-PT5M
+END:VALARM
+END:VEVENT
+END:VCALENDAR

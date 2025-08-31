@@ -1,0 +1,37 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Candlefish//Operating Cadence//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Candlefish Portfolio Council
+X-WR-TIMEZONE:UTC
+BEGIN:VEVENT
+DTSTART:20250901T180000Z
+DTEND:20250901T190000Z
+RRULE:FREQ=MONTHLY;BYDAY=1MO
+DTSTAMP:20250831T120000Z
+UID:candlefish-portfolio-council@candlefish.ai
+CREATED:20250831T120000Z
+DESCRIPTION:Monthly Portfolio Council\n\nStrategic decision-making forum\n\nAgenda:\n:00-:05 Metrics Review\n:05-:15 Gate Promotions\n:15-:25 Escalated Items\n:25-:50 Strategic Decision (3-paths)\n:50-:55 Resource Allocation\n:55-:60 Action Items\n\nAttendees:\n- Patrick (required)\n- Pod Leads (required)\n- Integrator Pod (required)\n\nPre-work due Friday:\n- Submit metrics\n- Finalize decision memos\n- Prepare gate promotions\n\nJoin: [Video call link to be added]\n\nSee /cadence/monthly_portfolio_council.md for details
+LAST-MODIFIED:20250831T120000Z
+LOCATION:Video Call
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:Portfolio Council - Strategic Decisions
+TRANSP:OPAQUE
+ORGANIZER:mailto:integrator-pod@candlefish.ai
+ATTENDEE;ROLE=REQ-PARTICIPANT:mailto:patrick@candlefish.ai
+ATTENDEE;ROLE=REQ-PARTICIPANT:mailto:pod-leads@candlefish.ai
+ATTENDEE;ROLE=REQ-PARTICIPANT:mailto:integrator-pod@candlefish.ai
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Portfolio Council tomorrow - review decision memos
+TRIGGER:-P1D
+END:VALARM
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Portfolio Council in 3 days - submit pre-work by Friday
+TRIGGER:-P3D
+END:VALARM
+END:VEVENT
+END:VCALENDAR
