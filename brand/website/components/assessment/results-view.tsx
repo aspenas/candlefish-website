@@ -1,13 +1,28 @@
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { motion } from 'framer-motion'
+import dynamic from 'next/dynamic'
 import { OperationalScoreVisualization } from './score-visualization'
 import { DimensionalRadarChart } from './radar-chart'
 import { OperationalPortraitCanvas } from './portrait-canvas'
+
+// Dynamically import 3D component to avoid SSR issues
+const DimensionalRadar3D = dynamic(
+  () => import('./dimensional-radar-enhanced').then(mod => ({ default: mod.DimensionalRadarEnhanced })),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="h-[600px] flex items-center justify-center bg-[#1C1C1C] rounded">
+        <div className="text-[#3FD3C6] animate-pulse">Initializing 3D Visualization...</div>
+      </div>
+    )
+  }
+)
 import { InterventionTimeline } from './intervention-timeline'
 import { trackReportDownload, trackConsultationRequest } from '@/lib/assessment/analytics'
 import { downloadJSON } from '@/lib/assessment/utils'
 import { copyToClipboard, createShareableText, showShareDialog, checkBrowserSupport } from '@/lib/assessment/share-utils'
 import { generateAssessmentPDF, openAssessmentForPrint } from '@/utils/generate-pdf'
+import { OperationalSoundscape } from './dimensional-sound'
 import type { AssessmentScore, OperationalPortrait, AssessmentResponse } from '@/types/assessment'
 
 interface ResultsViewProps {
@@ -27,6 +42,8 @@ export const ResultsView = ({
 }: ResultsViewProps) => {
   const [downloading, setDownloading] = useState(false)
   const [sharing, setSharing] = useState(false)
+  const [use3D, setUse3D] = useState(false) // Start with 2D to ensure it works
+  const [soundEnabled, setSoundEnabled] = useState(false) // Disabled by default
   const [browserSupport] = useState(() => checkBrowserSupport())
 
   const downloadPDF = async () => {
@@ -80,6 +97,8 @@ export const ResultsView = ({
       animate={{ opacity: 1 }}
       className="max-w-6xl mx-auto px-6 pt-24 pb-32"
     >
+      {/* Ambient soundscape */}
+      <OperationalSoundscape score={score} enabled={soundEnabled} />
       {/* Header */}
       <header className="mb-16 text-center">
         <h1 className="text-5xl font-light text-[#F8F8F2] mb-4">
@@ -124,14 +143,36 @@ export const ResultsView = ({
 
       {/* Dimensional Breakdown */}
       <div className="mb-20">
-        <h2 className="text-3xl font-light text-[#F8F8F2] mb-8">
-          Dimensional Analysis
-        </h2>
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="text-3xl font-light text-[#F8F8F2]">
+            Dimensional Analysis
+          </h2>
+          <button
+            onClick={() => setUse3D(!use3D)}
+            className="px-4 py-2 text-sm text-[#3FD3C6] border border-[#3FD3C6] 
+                       hover:bg-[#3FD3C6]/10 transition-colors rounded"
+          >
+            {use3D ? '2D View' : '3D Experience'}
+          </button>
+        </div>
 
-        <DimensionalRadarChart
-          dimensions={score.dimensions}
-          industry={score.industryComparison}
-        />
+        {use3D ? (
+          <Suspense fallback={
+            <div className="h-[600px] flex items-center justify-center bg-[#1C1C1C] rounded">
+              <div className="text-[#3FD3C6] animate-pulse">Loading 3D Visualization...</div>
+            </div>
+          }>
+            <DimensionalRadar3D
+              dimensions={score.dimensions}
+              industry={score.industryComparison}
+            />
+          </Suspense>
+        ) : (
+          <DimensionalRadarChart
+            dimensions={score.dimensions}
+            industry={score.industryComparison}
+          />
+        )}
 
         {/* Top 3 Strengths & Weaknesses */}
         <div className="grid md:grid-cols-2 gap-12 mt-12">

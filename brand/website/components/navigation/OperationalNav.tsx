@@ -29,7 +29,24 @@ const Navigation: React.FC = () => {
       setScrolled(window.scrollY > 10)
     }
     window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
+    
+    // Set navigation height CSS custom property for other components
+    const updateNavHeight = () => {
+      const nav = document.querySelector('#navigation') as HTMLElement
+      if (nav) {
+        const height = nav.offsetHeight
+        document.documentElement.style.setProperty('--main-nav-height', `${height}px`)
+      }
+    }
+    
+    // Update on mount and resize
+    updateNavHeight()
+    window.addEventListener('resize', updateNavHeight)
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('resize', updateNavHeight)
+    }
   }, [])
 
   useEffect(() => {

@@ -10,6 +10,8 @@ import { useForm } from '../../hooks/useForm';
 import { LoadingState } from '../ui/LoadingSpinner';
 import { CheckCircleIcon, ArrowRightIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { Assessment, AssessmentQuestion, AssessmentAnswer, AssessmentResult } from '../../types/api';
+import { DimensionalRadarChart } from '../assessment/radar-chart';
+import type { DimensionScore } from '../../types/assessment';
 
 interface AssessmentFormProps {
   assessmentId?: string;
@@ -421,7 +423,23 @@ export const AssessmentForm: React.FC<AssessmentFormProps> = ({
               </p>
             </div>
 
-            {/* Category Breakdown */}
+            {/* Maturity Map Visualization */}
+            <div className="mb-12">
+              <h2 className="text-2xl font-semibold text-slate mb-6 text-center">
+                Maturity Map Analysis
+              </h2>
+              <DimensionalRadarChart
+                dimensions={results.categories.map((cat: any): DimensionScore => ({
+                  name: cat.name,
+                  rawScore: (cat.score / 100) * 4, // Convert percentage to 0-4 scale
+                  level: cat.score >= 75 ? 3 : cat.score >= 50 ? 2 : cat.score >= 25 ? 1 : 0,
+                  description: cat.recommendations?.[0] || ''
+                }))}
+                industry={results.categories.map((cat: any) => 2.5)} // Default industry average at 2.5/4
+              />
+            </div>
+
+            {/* Category Details */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               {results.categories.map((category, index) => (
                 <Card key={index} variant="outlined">
@@ -430,12 +448,6 @@ export const AssessmentForm: React.FC<AssessmentFormProps> = ({
                       <h3 className="font-semibold text-slate">{category.name}</h3>
                       <Badge variant="outline">{category.score}%</Badge>
                     </div>
-                    <Progress
-                      value={category.score}
-                      size="sm"
-                      className="mb-3"
-                      variant={category.score >= 75 ? 'success' : category.score >= 50 ? 'default' : 'warning'}
-                    />
                     <ul className="space-y-1">
                       {category.recommendations.slice(0, 2).map((rec, idx) => (
                         <li key={idx} className="text-sm text-mist flex items-start">

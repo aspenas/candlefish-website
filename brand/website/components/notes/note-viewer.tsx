@@ -54,8 +54,12 @@ export const NoteViewer = ({ noteId, onClose, onTagClick }: NoteViewerProps) => 
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="fixed top-6 right-6 z-40 p-3 bg-[#1B263B] text-[#E0E1DD]
+          className="fixed z-50 p-3 bg-[#1B263B] text-[#E0E1DD]
                    hover:bg-[#415A77] transition-colors rounded-full"
+          style={{ 
+            top: 'calc(var(--main-nav-height, 72px) + var(--workshop-nav-height, 60px) + 12px)',
+            right: '24px'
+          }}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path d="M18 6L6 18M6 6l12 12" strokeWidth="2" strokeLinecap="round"/>
@@ -63,7 +67,12 @@ export const NoteViewer = ({ noteId, onClose, onTagClick }: NoteViewerProps) => 
         </button>
 
         {/* Content */}
-        <div className="max-w-4xl mx-auto px-6 pt-24 pb-32">
+        <div 
+          className="max-w-4xl mx-auto px-6 pb-32"
+          style={{ 
+            paddingTop: 'calc(var(--main-nav-height, 72px) + var(--workshop-nav-height, 60px) + 24px)' 
+          }}
+        >
           {/* Header */}
           <header className="mb-12">
             <div className="flex items-center gap-4 mb-4">

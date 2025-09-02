@@ -37,6 +37,11 @@ module.exports = {
         'nearBlack': '#0A0A0B',
         'charcoal': '#1A1A1C',
         'livingCyan': '#3FD3C6',
+        
+        /* ASSESSMENT FORM COLORS */
+        'sea-glow': '#3FD3C6',
+        'slate': '#1B263B',
+        'mist': '#6B7280',
       },
       fontFamily: {
         'display': ['Druk Wide', 'Suisse Works', 'system-ui', 'sans-serif'],

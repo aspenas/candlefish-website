@@ -1,3 +1,6 @@
+/* Import Workshop Notes Unified System */
+@import '../styles/workshop-notes-unified.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
