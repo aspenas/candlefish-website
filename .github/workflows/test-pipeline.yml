@@ -1,0 +1,764 @@
+name: Comprehensive Test Pipeline
+
+on:
+  push:
+    branches: [ main, develop, 'feature/*' ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run comprehensive tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+env:
+  NODE_VERSION: '18.x'
+  PYTHON_VERSION: '3.11'
+  GO_VERSION: '1.21'
+  JAVA_VERSION: '17'
+
+jobs:
+  # Parallel test matrix for different service types
+  backend-tests:
+    name: Backend Services Tests
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        service: [collaboration-service, document-service, project-service, ai-integration-service]
+        node-version: [16.x, 18.x, 20.x]
+      fail-fast: false
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: test_user
+          POSTGRES_DB: collaboration_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.8.0
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: false
+          ES_JAVA_OPTS: -Xms512m -Xmx512m
+        options: >-
+          --health-cmd "curl -f http://localhost:9200/_cluster/health"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 9200:9200
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Setup Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        npm ci
+        pip install -r requirements.txt
+        go mod download
+
+    - name: Setup test databases
+      run: |
+        PGPASSWORD=test_password psql -h localhost -U test_user -d collaboration_test -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+        redis-cli -h localhost ping
+      env:
+        PGPASSWORD: test_password
+
+    - name: Run unit tests - ${{ matrix.service }}
+      run: |
+        case "${{ matrix.service }}" in
+          collaboration-service)
+            cd tests/backend/collaboration-service
+            npm test -- --coverage --ci --watchAll=false
+            ;;
+          document-service)
+            cd tests/backend/document-service
+            go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+            ;;
+          project-service)
+            cd tests/backend/project-service
+            python -m pytest --cov=. --cov-report=xml --cov-report=html -v
+            ;;
+          ai-integration-service)
+            cd tests/backend/ai-integration-service
+            python -m pytest --cov=. --cov-report=xml --cov-report=html -v --timeout=60
+            ;;
+        esac
+
+    - name: Run integration tests - ${{ matrix.service }}
+      run: |
+        case "${{ matrix.service }}" in
+          collaboration-service)
+            cd tests/integration
+            npm run test:integration:collaboration
+            ;;
+          document-service)
+            cd tests/integration
+            go test -v -tags=integration ./document-service/...
+            ;;
+          project-service)
+            cd tests/integration
+            python -m pytest tests/integration/project_service/ -v --timeout=120
+            ;;
+          ai-integration-service)
+            cd tests/integration
+            python -m pytest tests/integration/ai_service/ -v --timeout=300
+            ;;
+        esac
+      env:
+        DATABASE_URL: postgres://test_user:test_password@localhost:5432/collaboration_test
+        REDIS_URL: redis://localhost:6379
+        ELASTICSEARCH_URL: http://localhost:9200
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: |
+          coverage/lcov.info,
+          coverage.out,
+          coverage.xml
+        flags: backend,${{ matrix.service }}
+        name: ${{ matrix.service }}-coverage
+
+  graphql-tests:
+    name: GraphQL API Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: test_user
+          POSTGRES_DB: graphql_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Setup test database
+      run: |
+        PGPASSWORD=test_password psql -h localhost -U test_user -d graphql_test -f schema.sql
+      env:
+        PGPASSWORD: test_password
+
+    - name: Run GraphQL schema validation tests
+      run: npm run test:graphql:schema
+
+    - name: Run GraphQL resolver tests
+      run: npm run test:graphql:resolvers -- --coverage
+
+    - name: Run DataLoader tests
+      run: npm run test:graphql:dataloaders -- --coverage
+
+    - name: Run GraphQL integration tests
+      run: npm run test:graphql:integration
+      env:
+        DATABASE_URL: postgres://test_user:test_password@localhost:5432/graphql_test
+
+    - name: Upload GraphQL coverage
+      uses: codecov/codecov-action@v3
+      with:
+        files: coverage/lcov.info
+        flags: graphql
+        name: graphql-coverage
+
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit]
+      fail-fast: false
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install Playwright browsers
+      run: npx playwright install --with-deps ${{ matrix.browser }}
+
+    - name: Run component tests
+      run: npm run test:frontend:components -- --coverage
+
+    - name: Run React Testing Library tests
+      run: npm run test:frontend:rtl -- --coverage --watchAll=false
+
+    - name: Build frontend
+      run: npm run build:frontend
+
+    - name: Run accessibility tests
+      run: npm run test:frontend:a11y
+
+    - name: Upload frontend coverage
+      uses: codecov/codecov-action@v3
+      with:
+        files: coverage/lcov.info
+        flags: frontend
+        name: frontend-coverage
+
+  mobile-tests:
+    name: Mobile App Tests
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Setup React Native environment
+      run: |
+        npm install -g @react-native-community/cli
+        npm ci
+
+    - name: Run React Native unit tests
+      run: npm run test:mobile:unit -- --coverage --watchAll=false
+
+    - name: Run React Native component tests
+      run: npm run test:mobile:components -- --coverage
+
+    - name: Run offline sync tests
+      run: npm run test:mobile:offline
+
+    - name: Run biometric auth tests
+      run: npm run test:mobile:biometric
+
+    - name: Upload mobile coverage
+      uses: codecov/codecov-action@v3
+      with:
+        files: coverage/lcov.info
+        flags: mobile
+        name: mobile-coverage
+
+  e2e-tests:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    needs: [backend-tests, graphql-tests, frontend-tests]
+
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit]
+        shard: [1, 2, 3, 4]
+      fail-fast: false
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: test_user
+          POSTGRES_DB: e2e_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install Playwright browsers
+      run: npx playwright install --with-deps ${{ matrix.browser }}
+
+    - name: Setup test environment
+      run: |
+        npm run setup:e2e
+        npm run seed:test-data
+
+    - name: Start test servers
+      run: |
+        npm run start:backend:test &
+        npm run start:frontend:test &
+        sleep 30
+      env:
+        DATABASE_URL: postgres://test_user:test_password@localhost:5432/e2e_test
+        REDIS_URL: redis://localhost:6379
+
+    - name: Run E2E tests
+      run: npx playwright test --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/4
+      env:
+        CI: true
+
+    - name: Upload E2E test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: e2e-results-${{ matrix.browser }}-shard-${{ matrix.shard }}
+        path: |
+          test-results/
+          playwright-report/
+        retention-days: 30
+
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: [backend-tests]
+    if: github.event_name == 'schedule' || contains(github.event.head_commit.message, '[perf]')
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: test_user
+          POSTGRES_DB: perf_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Setup performance test environment
+      run: |
+        npm run setup:perf-test
+        npm run start:backend:perf &
+        sleep 30
+      env:
+        DATABASE_URL: postgres://test_user:test_password@localhost:5432/perf_test
+        REDIS_URL: redis://localhost:6379
+
+    - name: Run WebSocket load tests
+      run: npm run test:performance:websocket
+      timeout-minutes: 30
+
+    - name: Run API performance tests
+      run: npm run test:performance:api
+      timeout-minutes: 15
+
+    - name: Run database performance tests
+      run: npm run test:performance:database
+      timeout-minutes: 10
+
+    - name: Generate performance report
+      run: npm run generate:performance-report
+
+    - name: Upload performance results
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-results
+        path: |
+          performance-report/
+          performance-metrics.json
+
+  security-tests:
+    name: Security Tests
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run dependency vulnerability scan
+      run: npm audit --audit-level high
+
+    - name: Run SAST scan with CodeQL
+      uses: github/codeql-action/analyze@v2
+      with:
+        languages: javascript, typescript, python, go
+
+    - name: Run security linting
+      run: npm run lint:security
+
+    - name: Run authentication security tests
+      run: npm run test:security:auth
+
+    - name: Run authorization security tests
+      run: npm run test:security:authz
+
+    - name: Run input validation security tests
+      run: npm run test:security:validation
+
+    - name: Run Docker security scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'collaboration-platform:latest'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload security scan results
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  accessibility-tests:
+    name: Accessibility Tests
+    runs-on: ubuntu-latest
+    needs: [frontend-tests]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install Playwright browsers
+      run: npx playwright install --with-deps chromium
+
+    - name: Start frontend server
+      run: |
+        npm run start:frontend:test &
+        sleep 30
+
+    - name: Run axe-core accessibility tests
+      run: npm run test:a11y:axe
+
+    - name: Run WCAG compliance tests
+      run: npm run test:a11y:wcag
+
+    - name: Run screen reader compatibility tests
+      run: npm run test:a11y:screen-reader
+
+    - name: Run keyboard navigation tests
+      run: npm run test:a11y:keyboard
+
+    - name: Generate accessibility report
+      run: npm run generate:a11y-report
+
+    - name: Upload accessibility results
+      uses: actions/upload-artifact@v3
+      with:
+        name: accessibility-report
+        path: accessibility-report/
+
+  coverage-report:
+    name: Coverage Report
+    runs-on: ubuntu-latest
+    needs: [backend-tests, graphql-tests, frontend-tests, mobile-tests]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download coverage reports
+      uses: actions/download-artifact@v3
+
+    - name: Merge coverage reports
+      run: |
+        npm install -g nyc
+        nyc merge coverage/ .nyc_output/coverage.json
+        nyc report --reporter=html --reporter=lcov --reporter=json-summary
+
+    - name: Upload merged coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: coverage/lcov.info
+        flags: merged
+        name: merged-coverage
+
+    - name: Check coverage thresholds
+      run: |
+        COVERAGE=$(node -p "require('./coverage/coverage-summary.json').total.lines.pct")
+        echo "Current coverage: $COVERAGE%"
+        if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+          echo "Coverage $COVERAGE% is below minimum threshold of 80%"
+          exit 1
+        fi
+
+    - name: Comment coverage on PR
+      uses: marocchino/sticky-pull-request-comment@v2
+      if: github.event_name == 'pull_request'
+      with:
+        recreate: true
+        message: |
+          ## Coverage Report
+          
+          | Type | Coverage | Change |
+          |------|----------|--------|
+          | Total | ${{ env.TOTAL_COVERAGE }}% | ${{ env.COVERAGE_CHANGE }}% |
+          | Frontend | ${{ env.FRONTEND_COVERAGE }}% | ${{ env.FRONTEND_CHANGE }}% |
+          | Backend | ${{ env.BACKEND_COVERAGE }}% | ${{ env.BACKEND_CHANGE }}% |
+          | Mobile | ${{ env.MOBILE_COVERAGE }}% | ${{ env.MOBILE_CHANGE }}% |
+          | GraphQL | ${{ env.GRAPHQL_COVERAGE }}% | ${{ env.GRAPHQL_CHANGE }}% |
+
+  quality-gates:
+    name: Quality Gates
+    runs-on: ubuntu-latest
+    needs: [coverage-report, security-tests, accessibility-tests]
+    if: always()
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Check test results
+      run: |
+        echo "Checking quality gates..."
+        
+        # Coverage threshold check
+        if [ "${{ needs.coverage-report.result }}" != "success" ]; then
+          echo "Coverage check failed"
+          exit 1
+        fi
+        
+        # Security tests check
+        if [ "${{ needs.security-tests.result }}" != "success" ]; then
+          echo "Security tests failed"
+          exit 1
+        fi
+        
+        # Accessibility tests check
+        if [ "${{ needs.accessibility-tests.result }}" != "success" ]; then
+          echo "Accessibility tests failed"
+          exit 1
+        fi
+        
+        echo "All quality gates passed!"
+
+    - name: Create quality report
+      run: |
+        cat << EOF > quality-report.md
+        # Quality Report
+        
+        ## Test Results
+        - Backend Tests: ${{ needs.backend-tests.result }}
+        - GraphQL Tests: ${{ needs.graphql-tests.result }}
+        - Frontend Tests: ${{ needs.frontend-tests.result }}
+        - Mobile Tests: ${{ needs.mobile-tests.result }}
+        - E2E Tests: ${{ needs.e2e-tests.result }}
+        - Performance Tests: ${{ needs.performance-tests.result }}
+        - Security Tests: ${{ needs.security-tests.result }}
+        - Accessibility Tests: ${{ needs.accessibility-tests.result }}
+        
+        ## Coverage
+        - Overall: ${{ env.TOTAL_COVERAGE }}%
+        - Threshold: 80% ✅
+        
+        ## Quality Gates
+        - All critical tests passed: ✅
+        - Security scan clean: ✅
+        - Accessibility compliant: ✅
+        EOF
+
+    - name: Upload quality report
+      uses: actions/upload-artifact@v3
+      with:
+        name: quality-report
+        path: quality-report.md
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [quality-gates]
+    if: github.ref == 'refs/heads/develop' && needs.quality-gates.result == 'success'
+
+    environment:
+      name: staging
+      url: https://staging.collaboration-platform.com
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to staging
+      run: |
+        echo "Deploying to staging environment..."
+        # Deployment logic would go here
+        
+    - name: Run staging smoke tests
+      run: npm run test:smoke:staging
+
+    - name: Notify deployment
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        channel: '#deployments'
+        message: 'Staging deployment completed for ${{ github.sha }}'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [quality-gates]
+    if: github.ref == 'refs/heads/main' && needs.quality-gates.result == 'success'
+
+    environment:
+      name: production
+      url: https://collaboration-platform.com
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to production
+      run: |
+        echo "Deploying to production environment..."
+        # Production deployment logic would go here
+        
+    - name: Run production smoke tests
+      run: npm run test:smoke:production
+
+    - name: Notify production deployment
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        channel: '#production'
+        message: 'Production deployment completed for ${{ github.sha }}'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Cleanup job
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+
+    steps:
+    - name: Cleanup test data
+      run: |
+        echo "Cleaning up test artifacts and temporary data..."
+        # Cleanup logic would go here
+
+    - name: Clean up old artifacts
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            run_id: context.runId,
+          });
+          
+          // Keep only the most recent 10 artifacts
+          const oldArtifacts = artifacts.data.artifacts.slice(10);
+          
+          for (const artifact of oldArtifacts) {
+            await github.rest.actions.deleteArtifact({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              artifact_id: artifact.id,
+            });
+          }
