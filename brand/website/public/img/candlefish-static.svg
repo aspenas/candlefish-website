@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100" width="200" height="100">
+  <defs>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <linearGradient id="fishGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#FFB347;stop-opacity:0.8" />
+      <stop offset="50%" style="stop-color:#FFB347;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FFB347;stop-opacity:0.6" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="200" height="100" fill="#3A3A60"/>
+  
+  <!-- Candlefish body -->
+  <g transform="translate(100,50)" filter="url(#glow)">
+    <!-- Main body -->
+    <path d="M -20,0 Q -15,-6 0,-4 Q 15,-2 20,0 Q 15,2 0,4 Q -15,6 -20,0 Z" 
+          fill="none" 
+          stroke="#FFB347" 
+          stroke-width="1.5" 
+          stroke-linecap="round" 
+          stroke-linejoin="round"
+          opacity="0.9"/>
+    
+    <!-- Tail fin -->
+    <path d="M 20,0 L 28,-6 L 32,0 L 28,6 Z" 
+          fill="none" 
+          stroke="#FFB347" 
+          stroke-width="1.5" 
+          stroke-linecap="round" 
+          stroke-linejoin="round"
+          opacity="0.9"/>
+    
+    <!-- Eye -->
+    <circle cx="-10" cy="0" r="2" fill="#FFB347" opacity="0.8"/>
+    
+    <!-- Glow effect dots -->
+    <circle cx="-5" cy="-2" r="0.5" fill="#FFB347" opacity="0.4"/>
+    <circle cx="5" cy="1" r="0.5" fill="#FFB347" opacity="0.4"/>
+    <circle cx="10" cy="-1" r="0.5" fill="#FFB347" opacity="0.4"/>
+  </g>
+  
+  <!-- Subtle ambient bubbles -->
+  <g opacity="0.15">
+    <circle cx="30" cy="70" r="2" fill="#FFB347"/>
+    <circle cx="160" cy="20" r="1.5" fill="#FFB347"/>
+    <circle cx="140" cy="75" r="1" fill="#FFB347"/>
+    <circle cx="50" cy="25" r="1.5" fill="#FFB347"/>
+  </g>
+  
+  <!-- Light trail effect -->
+  <g transform="translate(100,50)" opacity="0.3">
+    <path d="M 32,0 Q 40,-2 48,0" 
+          fill="none" 
+          stroke="#FFB347" 
+          stroke-width="1" 
+          stroke-linecap="round"
+          opacity="0.6"/>
+    <path d="M 35,2 Q 42,3 50,2" 
+          fill="none" 
+          stroke="#FFB347" 
+          stroke-width="0.8" 
+          stroke-linecap="round"
+          opacity="0.4"/>
+    <path d="M 33,-2 Q 41,-3 49,-2" 
+          fill="none" 
+          stroke="#FFB347" 
+          stroke-width="0.8" 
+          stroke-linecap="round"
+          opacity="0.4"/>
+  </g>
+</svg>

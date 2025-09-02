@@ -1,0 +1,134 @@
+:root {
+  --candlefish-height-desktop: 240px;
+  --candlefish-height-mobile: 160px;
+  --candlefish-bg: #3A3A60;
+  --candlefish-glow: #FFB347;
+  --candlefish-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.candlefish-aquarium {
+  width: 100%;
+  height: var(--candlefish-height-desktop);
+  background: var(--candlefish-bg);
+  position: relative;
+  overflow: hidden;
+  transition: var(--candlefish-transition);
+}
+
+.candlefish-aquarium canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  image-rendering: optimizeSpeed;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+.candlefish-aquarium--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.candlefish-aquarium--loading::before {
+  content: '';
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--candlefish-glow);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: candlefish-spin 1s linear infinite;
+}
+
+.candlefish-fallback {
+  width: 100%;
+  height: var(--candlefish-height-desktop);
+  background: var(--candlefish-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.candlefish-fallback img,
+.candlefish-fallback svg {
+  width: auto;
+  height: 60%;
+  max-width: 90%;
+  opacity: 0.8;
+  filter: drop-shadow(0 0 20px var(--candlefish-glow));
+  animation: candlefish-pulse 3s ease-in-out infinite;
+}
+
+@keyframes candlefish-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes candlefish-pulse {
+  0%, 100% {
+    opacity: 0.8;
+    filter: drop-shadow(0 0 20px var(--candlefish-glow));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 30px var(--candlefish-glow));
+  }
+}
+
+@media (max-width: 768px) {
+  .candlefish-aquarium,
+  .candlefish-fallback {
+    height: var(--candlefish-height-mobile);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .candlefish-aquarium canvas {
+    display: none;
+  }
+  
+  .candlefish-fallback img,
+  .candlefish-fallback svg {
+    animation: none;
+  }
+  
+  @keyframes candlefish-pulse {
+    to {
+      opacity: 0.8;
+    }
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .candlefish-aquarium:hover canvas {
+    cursor: pointer;
+  }
+}
+
+@supports (backdrop-filter: blur(10px)) {
+  .candlefish-aquarium::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      180deg,
+      rgba(58, 58, 96, 0) 0%,
+      rgba(58, 58, 96, 0.1) 100%
+    );
+    backdrop-filter: blur(2px);
+    pointer-events: none;
+    z-index: 1;
+  }
+  
+  .candlefish-aquarium canvas {
+    position: relative;
+    z-index: 2;
+  }
+}
