@@ -3,8 +3,8 @@
 
 # AWS Configuration
 aws_region     = "us-east-1"
-aws_access_key = "AKIAZ5G4HRQHXCTDSXNI"
-aws_secret_key = "Qf+sp3dglGZP3i/+wNqVRs9BgH1wVuTcjZu4qiyX"
+aws_access_key = "YOUR_AWS_ACCESS_KEY_ID_HERE"
+aws_secret_key = "YOUR_AWS_SECRET_ACCESS_KEY_HERE"
 
 # Environment Configuration
 environment  = "prod"

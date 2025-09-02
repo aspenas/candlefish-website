@@ -12,12 +12,12 @@ Go to: https://github.com/candlefish-ai/candlefish-ai/settings/secrets/actions
 
 **Secret Name:** `AWS_ACCESS_KEY_ID`
 ```
-AKIAZ5G4HRQHZIBGMDNM
+YOUR_AWS_ACCESS_KEY_ID_HERE
 ```
 
 **Secret Name:** `AWS_SECRET_ACCESS_KEY`
 ```
-H4KiIdIGsQeFhvjIUET2X1dGRSP0p6sIkX5yJ+iB
+YOUR_AWS_SECRET_ACCESS_KEY_HERE
 ```
 
 ## Step 2: Trigger Deployment (30 seconds)
