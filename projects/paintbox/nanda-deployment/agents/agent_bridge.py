@@ -68,14 +68,14 @@ IMPROVE_MESSAGE_PROMPTS = {
 MONGO_URI = (
     os.getenv("MONGODB_URI")
     or os.getenv("MONGO_URI")
-    or "mongodb+srv://mihirsheth2911:wx1mxUn2788jLdnl@cluster0.fvevtjx.mongodb.net/?retryWrites=true&w=majority"
+    or "mongodb+srv://YOUR_MONGODB_USERNAME:YOUR_MONGODB_PASSWORD@YOUR_CLUSTER.mongodb.net/?retryWrites=true&w=majority"
 )
 
 # Allow custom DB name via env
 MONGO_DBNAME = os.getenv("MONGODB_DB", "iot_agents_db")
 MCP_REGISTRY = "mcp_registry"
 
-SMITHERY_API_KEY = os.getenv("SMITHERY_API_KEY") or "bfcb8cec-9d56-4957-8156-bced0bfca532"
+SMITHERY_API_KEY = os.getenv("SMITHERY_API_KEY") or "YOUR_SMITHERY_API_KEY_HERE"
 
 try:
     mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
