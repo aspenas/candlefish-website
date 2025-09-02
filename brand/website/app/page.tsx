@@ -6,12 +6,26 @@ import HeaderText from '../components/HeaderText'
 import SystemActivity from '../components/SystemActivity'
 import SystemArchitecture from '../components/SystemArchitecture'
 import { NewsletterForm } from '../components/forms/NewsletterForm'
+import dynamic from 'next/dynamic'
 
 // Lazy load visualizations for better initial performance with error boundary
 const OperationalCraft = lazy(() =>
   import('../components/visuals/OperationalCraft').catch(() => ({
     default: () => <div className="text-[#415A77] text-xs">Visualization unavailable</div>
   }))
+)
+
+// Dynamic import CandleFish with no SSR to avoid hydration issues
+const CandleFish = dynamic(
+  () => import('../web/aquarium/react/CandleFish'),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-[240px] bg-[#3A3A60] flex items-center justify-center">
+        <div className="text-[#415A77] text-xs font-mono animate-pulse">INITIALIZING AQUARIUM...</div>
+      </div>
+    )
+  }
 )
 
 export default function OperationalHomepage() {
@@ -86,46 +100,15 @@ export default function OperationalHomepage() {
         </div>
       </section>
 
-      {/* Operational Matrix Section */}
-      <section className="py-28 relative">
-        <div className="max-w-7xl mx-auto px-6">
-          <h2 className="text-4xl font-light text-[#F8F8F2] mb-16">Operational Matrix</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="card-operational">
-              <div className="text-[#3FD3C6] text-xs uppercase tracking-wider mb-4">
-                Active Systems
-              </div>
-              <div className="text-5xl font-light text-[#F8F8F2] mb-2">3</div>
-              <div className="text-[#415A77] text-sm">
-                Engagements in-build now
-              </div>
-              <div className="text-[#415A77] text-xs mt-1">
-                Crown Trophy · Paintbox · PromoterOS
-              </div>
-            </div>
-            <div className="card-operational">
-              <div className="text-[#3FD3C6] text-xs uppercase tracking-wider mb-4">
-                Queue Length
-              </div>
-              <div className="text-5xl font-light text-[#F8F8F2] mb-2">7</div>
-              <div className="text-[#415A77] text-sm">
-                Qualified orgs awaiting consideration
-              </div>
-            </div>
-            <div className="card-operational">
-              <div className="text-[#3FD3C6] text-xs uppercase tracking-wider mb-4">
-                Next Window
-              </div>
-              <div className="text-5xl font-light text-[#F8F8F2] mb-2">Q4</div>
-              <div className="text-[#415A77] text-sm">
-                Period when new builds can start
-              </div>
-              <div className="text-[#415A77] text-xs mt-1">
-                At Capacity Until December 2025
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Bioluminescent Candlefish Animation */}
+      <section className="relative" data-widget="operational-matrix">
+        {isClient && process.env.NEXT_PUBLIC_FISH_ANIM !== '0' && (
+          <CandleFish 
+            height={240}
+            className="candlefish-aquarium"
+            aria-label="Bioluminescent candlefish swimming in deep water"
+          />
+        )}
       </section>
 
       {/* Philosophy Section */}
