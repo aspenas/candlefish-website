@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Verification</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        .info { color: blue; }
+        pre { background: #f4f4f4; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🏠 Dashboard Data Verification</h1>
+    <div id="status">Checking dashboard data...</div>
+    
+    <script>
+        async function verifyDashboard() {
+            const status = document.getElementById('status');
+            
+            try {
+                // Test direct API call
+                const response = await fetch('http://localhost:4050/api/v1/analytics/summary');
+                const data = await response.json();
+                
+                // Transform data (same as frontend does)
+                const toCamelCase = (obj) => {
+                    if (obj === null || obj === undefined || typeof obj !== 'object') {
+                        return obj;
+                    }
+                    if (Array.isArray(obj)) {
+                        return obj.map(toCamelCase);
+                    }
+                    const camelCaseObj = {};
+                    for (const [key, value] of Object.entries(obj)) {
+                        const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+                        camelCaseObj[camelKey] = toCamelCase(value);
+                    }
+                    return camelCaseObj;
+                };
+                
+                const transformed = toCamelCase(data);
+                
+                // Check values
+                const isCorrect = 
+                    transformed.totalItems === 134 &&
+                    transformed.totalValue === 213300 &&
+                    transformed.keepCount === 108 &&
+                    transformed.sellCount === 0 &&
+                    transformed.unsureCount === 26;
+                
+                if (isCorrect) {
+                    status.innerHTML = `
+                        <h2 class="success">✅ DASHBOARD FIXED SUCCESSFULLY!</h2>
+                        <div class="info">
+                            <h3>Expected Dashboard Display:</h3>
+                            <ul>
+                                <li>Total Items: <strong>134</strong> ✓</li>
+                                <li>Total Value: <strong>$213,300</strong> ✓</li>
+                                <li>Keep Count: <strong>108</strong> ✓</li>
+                                <li>Sell Count: <strong>0</strong> ✓</li>
+                                <li>Unsure Count: <strong>26</strong> ✓</li>
+                            </ul>
+                            
+                            <h3>API Response (Raw):</h3>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                            
+                            <h3>Transformed Data (Frontend):</h3>
+                            <pre>${JSON.stringify(transformed, null, 2)}</pre>
+                            
+                            <p class="success">The inventory dashboard should now show the correct data instead of zeros!</p>
+                        </div>
+                    `;
+                } else {
+                    status.innerHTML = `
+                        <h2 class="error">❌ Data Verification Failed</h2>
+                        <p>Expected: 134 items, $213,300 value</p>
+                        <p>Got: ${transformed.totalItems} items, $${transformed.totalValue} value</p>
+                    `;
+                }
+                
+            } catch (error) {
+                status.innerHTML = `
+                    <h2 class="error">❌ Connection Error</h2>
+                    <p>Could not connect to API: ${error.message}</p>
+                    <p>Make sure the backend is running on port 4050</p>
+                `;
+            }
+        }
+        
+        // Run verification
+        verifyDashboard();
+        
+        // Auto-refresh every 10 seconds
+        setInterval(verifyDashboard, 10000);
+    </script>
+</body>
+</html>

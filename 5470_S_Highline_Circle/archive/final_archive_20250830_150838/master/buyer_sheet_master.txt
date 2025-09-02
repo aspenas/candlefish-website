@@ -1,0 +1,429 @@
+====================================================================================================
+5470 S HIGHLINE CIRCLE - MASTER BUYER SHEET
+====================================================================================================
+Generated: August 30, 2025 at 01:26 PM
+
+
+====================================================================================================
+LOWER LEVEL - EXERCISE ROOM
+====================================================================================================
+7 items | Total: $11,812.96
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. Peloton Tread (Family Package)                           | $ 4,544.00 | Invoice (2021)                         | ✅ VERIFIED |
+| 2. Tonal + Smart Accessories                                | $ 3,898.96 | Invoice (March 24, 2021)               | ✅ VERIFIED |
+| 3. Peloton Bike+ (Basics Package)                           | $ 2,495.00 | Invoice (2021)                         | ✅ VERIFIED |
+| 4. Samsung TV (approx. 2020 model)                          | $   400.00 | Estimate - Fair Market                 | ⚪ ESTIMATE |
+| 5. Precor Elliptical (older model)                          | $   300.00 | Estimate - Fair Market                 | ⚪ ESTIMATE |
+| 6. Weights rack                                             | $   100.00 | Estimate                               | ⚪ ESTIMATE |
+| 7. Workout bench                                            | $    75.00 | Estimate                               | ⚪ ESTIMATE |
+
+Room Total: $11,812.96
+- Verified with invoices: $10,937.96 (92.6%)
+- Estimates: $875.00 (7.4%)
+
+====================================================================================================
+LOWER LEVEL - THEATER ROOM
+====================================================================================================
+1 items | Total: $7,698.39
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. Lovesac Sactionals Modular Sofa (Tan Combed Chenille, tier | $ 7,698.39 | Invoice                                | ✅ VERIFIED |
+
+Room Total: $7,698.39
+- Verified with invoices: $7,698.39 (100.0%)
+
+====================================================================================================
+LOWER LEVEL - REC ROOM
+====================================================================================================
+7 items | Total: $12,843.39
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. Lovesac Sactionals Modular Sofa (Tan Combed Chenille, L-sh | $ 7,698.39 | Invoice                                | ✅ VERIFIED |
+| 2. FLOR Carpet Tiles - Rec Room (2 rugs @ 21.5'x11' each)   | $ 1,800.00 | Invoice (proportional from $5,451.26 t | ✅ VERIFIED |
+| 3. Moss Wall Art (custom preserved moss installation)       | $ 1,500.00 | Invoice                                | ✅ VERIFIED |
+| 4. 2 Floor Plants with Black Matte Planters                 | $   970.00 | B&F Invoice (2x 10" Sansevieria @ $104 | ✅ VERIFIED |
+| 5. JOOLA Ping Pong Table (conversion top for pool table)    | $   600.00 | Estimate - Fair Market                 | ⚪ ESTIMATE |
+| 6. Pool Table Mini Golf Set                                 | $   200.00 | Estimate - Fair Market                 | ⚪ ESTIMATE |
+| 7. Small Side Stool                                         | $    75.00 | Estimate                               | ⚪ ESTIMATE |
+
+Room Total: $12,843.39
+- Verified with invoices: $11,968.39 (93.2%)
+- Estimates: $875.00 (6.8%)
+
+====================================================================================================
+LOWER LEVEL - POOL BATHROOM
+====================================================================================================
+1 items | Total: $371.94
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. Pool Entry Rug (repair/replacement)                      | $   371.94 | Holly Downs Invoice                    | ✅ VERIFIED |
+
+Room Total: $371.94
+- Verified with invoices: $371.94 (100.0%)
+
+====================================================================================================
+LOWER TERRACE PATIO (OUTDOOR)
+====================================================================================================
+12 items | Total: $31,988.98
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. CoreChill Cold Plunge + Insulative Spa Cover             | $17,009.98 | Invoice                                | ✅ VERIFIED |
+| 2. Gloster Loop Chairs (2) - Premium Teak                   | $ 6,000.00 | Smart Estimate based on cushion replac | ⚪ ESTIMATE |
+| 3. 12 Black Planters with Faux Boxwoods                     | $ 3,500.00 | Smart Estimate (12 planters @ $150 + 1 | ⚪ ESTIMATE |
+| 4. Gloster Loop Side Table - Teak                           | $ 1,500.00 | Smart Estimate                         | ⚪ ESTIMATE |
+| 5. Annual Flower Planters - 2x 20" pots                     | $ 1,180.00 | B Gardening Invoice BG3971             | ✅ VERIFIED |
+| 6. 6 Grey Adirondack Chairs                                 | $   900.00 | Estimate @ $150 each                   | ⚪ ESTIMATE |
+| 7. Annual Flower Planters - 2x 16" pots                     | $   746.00 | B Gardening Invoice BG3971             | ✅ VERIFIED |
+| 8. Annual Flower Planters - 2x 12" pots                     | $   428.00 | B Gardening Invoice BG3971             | ✅ VERIFIED |
+| 9. 2 Red Adirondack Chairs                                  | $   300.00 | Estimate @ $150 each                   | ⚪ ESTIMATE |
+| 10. Black Outdoor Bench                                      | $   200.00 | Fair Market Value                      | ⚪ ESTIMATE |
+| 11. Standing Patio Umbrella                                  | $   150.00 | Conservative Estimate                  | ⚪ ESTIMATE |
+| 12. Cold Plunge Timer                                        | $    75.00 | Estimate                               | ⚪ ESTIMATE |
+
+Room Total: $31,988.98
+- Verified with invoices: $19,363.98 (60.5%)
+- Estimates: $12,625.00 (39.5%)
+
+====================================================================================================
+GUEST BEDROOM (LOWER EAST)
+====================================================================================================
+3 items | Total: $625.00
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. Samsung TV (older model, approx 55")                     | $   400.00 | Fair Market Value                      | ⚪ ESTIMATE |
+| 2. Wall-Mounted Shelves (above bed)                         | $   150.00 | Fair Market Value                      | ⚪ ESTIMATE |
+| 3. Desk Chair                                               | $    75.00 | Fair Market Value                      | ⚪ ESTIMATE |
+
+Room Total: $625.00
+- Estimates: $625.00 (100.0%)
+
+====================================================================================================
+GUEST BEDROOM (LOWER WEST)
+====================================================================================================
+5 items | Total: $2,494.99
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. TV – Samsung QN55Q70A 55" QLED 4K (2021)                 | $ 1,044.99 | Invoice                                | ✅ VERIFIED |
+| 2. Ethan Allen King Bed Frame (dark wood)                   | $   600.00 | Fair Market Value                      | ⚪ ESTIMATE |
+| 3. King Mattress                                            | $   500.00 | Fair Market Value                      | ⚪ ESTIMATE |
+| 4. Ethan Allen Dresser                                      | $   275.00 | Fair Market Value                      | ⚪ ESTIMATE |
+| 5. Desk Chair                                               | $    75.00 | Fair Market Value                      | ⚪ ESTIMATE |
+
+Room Total: $2,494.99
+- Verified with invoices: $1,044.99 (41.9%)
+- Estimates: $1,450.00 (58.1%)
+
+====================================================================================================
+DINING ROOM
+====================================================================================================
+5 items | Total: $27,322.81
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. Dining chairs (10, cane back)                            | $12,037.84 | Holly Downs Invoice                    | ✅ VERIFIED |
+| 2. Red Lacquer Buffet                                       | $ 9,059.20 | Holly Downs Invoice                    | ✅ VERIFIED |
+| 3. Dining Room Custom Grey Oak Table                        | $ 5,145.77 | Holly Downs Invoice                    | ✅ VERIFIED |
+| 4. Area Rug (approx. 10x12)                                 | $   800.00 | Fair Market Value                      | ⚪ ESTIMATE |
+| 5. Ficus Tree in Decorative Pot                             | $   280.00 | B&F Estimate (Ficus @ $130 + large pot | ⚪ ESTIMATE |
+
+Room Total: $27,322.81
+- Verified with invoices: $26,242.81 (96.0%)
+- Estimates: $1,080.00 (4.0%)
+
+====================================================================================================
+ENTRY (MAIN LEVEL)
+====================================================================================================
+4 items | Total: $5,745.49
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. 2 Navy Blue Planters (Ming Aralia & Lady Palm)           | $ 2,478.10 | B&F Invoice (2 navy planters @ $689 ea | ✅ VERIFIED |
+| 2. Custom Benches Green (2)                                 | $ 2,089.32 | Holly Downs Invoice                    | ✅ VERIFIED |
+| 3. Area Rug (approx. 10x12)                                 | $   800.00 | Fair Market Value                      | ⚪ ESTIMATE |
+| 4. Custom Pillows for Bench                                 | $   378.07 | Holly Downs Invoice                    | ✅ VERIFIED |
+
+Room Total: $5,745.49
+- Verified with invoices: $4,945.49 (86.1%)
+- Estimates: $800.00 (13.9%)
+
+====================================================================================================
+HEARTH ROOM
+====================================================================================================
+4 items | Total: $15,065.50
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. RH Maxwell U-Chaise Sectional (Performance Velvet, Graphit | $12,485.00 | RH Invoice                             | ✅ VERIFIED |
+| 2. Brio Adjustable Dining Table                             | $ 1,705.50 | DWR Invoice                            | ✅ VERIFIED |
+| 3. Area Rug (8x12)                                          | $   800.00 | Fair Market Value                      | ⚪ ESTIMATE |
+| 4. Small Side Stool                                         | $    75.00 | Fair Market Value                      | ⚪ ESTIMATE |
+
+Room Total: $15,065.50
+- Verified with invoices: $14,190.50 (94.2%)
+- Estimates: $875.00 (5.8%)
+
+====================================================================================================
+KITCHEN
+====================================================================================================
+1 items | Total: $2,964.15
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. Caned counter stools (set at island)                     | $ 2,964.15 | Holly Downs Invoice                    | ✅ VERIFIED |
+
+Room Total: $2,964.15
+- Verified with invoices: $2,964.15 (100.0%)
+
+====================================================================================================
+NOOK (BREAKFAST ROOM)
+====================================================================================================
+5 items | Total: $12,163.72
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. Black metal dining table                                 | $ 5,341.05 | Holly Downs Invoice                    | ✅ VERIFIED |
+| 2. Cane chairs for breakfast table (6 total)                | $ 5,398.74 | Holly Downs Invoice                    | ✅ VERIFIED |
+| 3. Custom Area Rug (11' round, serged)                      | $   773.93 | Holly Downs Invoice                    | ✅ VERIFIED |
+| 4. Circular Art Mirror (RH)                                 | $   350.00 | Estimate - RH style                    | ⚪ ESTIMATE |
+| 5. 2 Silver Lamps (above fireplace)                         | $   300.00 | Fair Market Value                      | ⚪ ESTIMATE |
+
+Room Total: $12,163.72
+- Verified with invoices: $11,513.72 (94.7%)
+- Estimates: $650.00 (5.3%)
+
+====================================================================================================
+LIVING ROOM
+====================================================================================================
+10 items | Total: $63,280.13
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. Custom Blue Velvet Sofas (2) with fabric                 | $16,259.48 | Holly Downs Invoice                    | ✅ VERIFIED |
+| 2. Custom Area Rug (22'4" × 15'2", cut around corners, serged | $ 9,442.27 | Holly Downs Invoice                    | ✅ VERIFIED |
+| 3. Red Chairs (2)                                           | $ 9,428.52 | Holly Downs Invoice                    | ✅ VERIFIED |
+| 4. Black Library Hutch with Mirrored Doors                  | $ 8,000.00 | Invoice                                | ✅ VERIFIED |
+| 5. TV – Samsung QN65QN900C 65" Neo QLED 8K (2023)           | $ 4,999.99 | Samsung Invoice                        | ✅ VERIFIED |
+| 6. Custom Green Velvet Chaise Lounge                        | $ 4,565.15 | Holly Downs Invoice                    | ✅ VERIFIED |
+| 7. Coffee Table (Black)                                     | $ 3,262.42 | Holly Downs Invoice                    | ✅ VERIFIED |
+| 8. 2 Round Urns (33.5"D x 33.5"H) with Kentia Palms         | $ 3,060.00 | B&F Invoice (2 urns @ $750 each + 2 Ke | ✅ VERIFIED |
+| 9. Custom Pillows (7 total - mixed colors)                  | $ 2,814.30 | Holly Downs Invoice                    | ✅ VERIFIED |
+| 10. Knoll Side Tables (2)                                    | $ 1,448.00 | Invoice ($724 x 2)                     | ✅ VERIFIED |
+
+Room Total: $63,280.13
+- Verified with invoices: $63,280.13 (100.0%)
+
+====================================================================================================
+MAIN LEVEL BAR AREA
+====================================================================================================
+1 items | Total: $5,490.72
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. Green Bar Stools (6 total)                               | $ 5,490.72 | Holly Downs Invoice                    | ✅ VERIFIED |
+
+Room Total: $5,490.72
+- Verified with invoices: $5,490.72 (100.0%)
+
+====================================================================================================
+MAIN LEVEL HALLWAY
+====================================================================================================
+1 items | Total: $2,067.15
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. 3 Navy Blue Planters with Plants                         | $ 2,067.15 | B&F Invoice (3 navy planters @ $689 ea | ✅ VERIFIED |
+
+Room Total: $2,067.15
+- Verified with invoices: $2,067.15 (100.0%)
+
+====================================================================================================
+UPPER TERRACE (MAIN LEVEL OUTDOOR)
+====================================================================================================
+3 items | Total: $8,024.99
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. TV – Samsung QN75LST7T 75" The Terrace (Partial Sun)     | $ 5,199.99 | Samsung Invoice                        | ✅ VERIFIED |
+| 2. Arhaus Outdoor Dining Set (Table, 2 Benches, 2 Armchairs) | $ 2,500.00 | Fair Market Value (resale estimate)    | ⚪ ESTIMATE |
+| 3. Outdoor Planters (Pair) - Bronze Metallic with Ferns     | $   325.00 | Fair Market Value (resale estimate)    | ⚪ ESTIMATE |
+
+Room Total: $8,024.99
+- Verified with invoices: $5,199.99 (64.8%)
+- Estimates: $2,825.00 (35.2%)
+
+====================================================================================================
+PRIMARY BEDROOM
+====================================================================================================
+3 items | Total: $6,983.49
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. TV – Samsung QN65QN900C 65" Neo QLED 8K (2023)           | $ 4,999.99 | Samsung Invoice                        | ✅ VERIFIED |
+| 2. Upholstered Lounge Chairs (Pair) - Gray Geometric        | $ 1,500.00 | Fair Market Value (resale estimate)    | ⚪ ESTIMATE |
+| 3. Fiddle Leaf Fig (14") in Terra Cotta Planter             | $   483.50 | B&F Invoice (Ficus Lyrata @ $283.50 +  | ✅ VERIFIED |
+
+Room Total: $6,983.49
+- Verified with invoices: $5,483.49 (78.5%)
+- Estimates: $1,500.00 (21.5%)
+
+====================================================================================================
+PRIMARY BEDROOM ENTRY
+====================================================================================================
+1 items | Total: $3,771.79
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. Blue console                                             | $ 3,771.79 | Holly Downs Invoice                    | ✅ VERIFIED |
+
+Room Total: $3,771.79
+- Verified with invoices: $3,771.79 (100.0%)
+
+====================================================================================================
+PRIMARY BATH
+====================================================================================================
+1 items | Total: $392.50
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. Corn Plant (10" Dracaena) in Decorative Pot              | $   392.50 | B&F Invoice (Dracaena @ $292.50 + pot  | ✅ VERIFIED |
+
+Room Total: $392.50
+- Verified with invoices: $392.50 (100.0%)
+
+====================================================================================================
+UPPER LEVEL HALLWAY (LANDING)
+====================================================================================================
+1 items | Total: $614.01
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. Blue Runners (2 × 30" × 11', rubber backing)             | $   614.01 | Holly Downs Invoice                    | ✅ VERIFIED |
+
+Room Total: $614.01
+- Verified with invoices: $614.01 (100.0%)
+
+====================================================================================================
+EAST STAIRCASE (MAIN TO UPPER)
+====================================================================================================
+1 items | Total: $3,435.33
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. Vestaboard (Smart Display Board)                         | $ 3,435.33 | Invoice (Order #7546, Dec 4, 2023)     | ✅ VERIFIED |
+
+Room Total: $3,435.33
+- Verified with invoices: $3,435.33 (100.0%)
+
+====================================================================================================
+UPSTAIRS OFFICE
+====================================================================================================
+9 items | Total: $35,409.99
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. Barcelona Daybed (black tufted leather, stainless/wood)  | $13,000.00 | DWR/Knoll Retail Value                 | ⚪ ESTIMATE |
+| 2. Eames Lounge Chair + Ottoman (Tall Version, Walnut)      | $ 7,495.00 | DWR Retail Value                       | ✅ VERIFIED |
+| 3. TV – Samsung QN65QN900C 65" Neo QLED 8K (2023)           | $ 4,999.99 | Samsung Invoice                        | ✅ VERIFIED |
+| 4. DWR Swivel Lounge Chairs (Pair, charcoal wool blend)     | $ 4,300.00 | DWR Retail Value (avg $2,150 each)     | ⚪ ESTIMATE |
+| 5. Nelson Platform Bench (George Nelson, maple/ebonized/chrom | $ 1,395.00 | DWR Retail Value                       | ⚪ ESTIMATE |
+| 6. Metallic Cube Side Tables (2, silver with marbled veining) | $ 1,250.00 | Market Value ($625 each)               | ⚪ ESTIMATE |
+| 7. Tri Arm Floor Lamp                                       | $ 1,165.50 | DWR Invoice                            | ✅ VERIFIED |
+| 8. DWR Round Café Table (light oak veneer, stainless base)  | $ 1,150.00 | DWR Retail Value                       | ⚪ ESTIMATE |
+| 9. Snake Plant (14") & Chinese Evergreen (10") with Planters | $   654.50 | B&F Invoice                            | ✅ VERIFIED |
+
+Room Total: $35,409.99
+- Verified with invoices: $14,314.99 (40.4%)
+- Estimates: $21,095.00 (59.6%)
+
+====================================================================================================
+UPPER BEDROOM A
+====================================================================================================
+4 items | Total: $2,300.00
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. Custom Floating Wood Shelves (2) with Hanging Rod        | $ 1,200.00 | Market Value (mid-range estimate)      | ⚪ ESTIMATE |
+| 2. Queen Bed Frame and Mattress                             | $   500.00 | Fair Market Value                      | ⚪ ESTIMATE |
+| 3. Samsung TV (55" older model)                             | $   400.00 | Fair Market Value                      | ⚪ ESTIMATE |
+| 4. Area Rug                                                 | $   200.00 | Fair Market Value                      | ⚪ ESTIMATE |
+
+Room Total: $2,300.00
+- Estimates: $2,300.00 (100.0%)
+
+====================================================================================================
+UPPER BEDROOM B
+====================================================================================================
+8 items | Total: $2,780.00
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. 2 Corn Plants (9" Dracaena) with Pots                    | $   480.00 | B&F Invoice (2 @ $170 each + 2 pots @  | ✅ VERIFIED |
+| 2. Oak Bed Frame (IKEA style) and Queen Mattress            | $   750.00 | Fair Market Value ($450 frame + $300 m | ⚪ ESTIMATE |
+| 3. Samsung TV (55" older model)                             | $   400.00 | Fair Market Value                      | ⚪ ESTIMATE |
+| 4. 2 Area Rugs                                              | $   400.00 | Fair Market Value ($200 each)          | ⚪ ESTIMATE |
+| 5. 2 Bedside Tables (IKEA style)                            | $   200.00 | Fair Market Value ($100 each)          | ⚪ ESTIMATE |
+| 6. Desk (IKEA style)                                        | $   200.00 | Fair Market Value                      | ⚪ ESTIMATE |
+| 7. Lounge Chair                                             | $   200.00 | Fair Market Value                      | ⚪ ESTIMATE |
+| 8. Wall-Mounted Shelves (IKEA style)                        | $   150.00 | Fair Market Value                      | ⚪ ESTIMATE |
+
+Room Total: $2,780.00
+- Verified with invoices: $480.00 (17.3%)
+- Estimates: $2,300.00 (82.7%)
+
+====================================================================================================
+UPPER LEVEL HALLWAY
+====================================================================================================
+2 items | Total: $1,069.01
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. 3 White Planters with Assorted Plants                    | $   762.00 | B&F Invoice (3 white planters @ $150 e | ✅ VERIFIED |
+| 2. Blue Runner (30" × 11', rubber backing)                  | $   307.01 | Holly Downs Invoice                    | ✅ VERIFIED |
+
+Room Total: $1,069.01
+- Verified with invoices: $1,069.01 (100.0%)
+
+====================================================================================================
+OUTDOOR NOOK PATIO
+====================================================================================================
+3 items | Total: $1,850.00
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. Wicker Chaise Lounges (2) with Red Umbrella              | $ 1,000.00 | Fair Market Value                      | ⚪ ESTIMATE |
+| 2. Black Metal Bistro Set with Red Umbrella                 | $   525.00 | Fair Market Value                      | ⚪ ESTIMATE |
+| 3. White Adirondack Chairs (2) with Side Table              | $   325.00 | Fair Market Value                      | ⚪ ESTIMATE |
+
+Room Total: $1,850.00
+- Estimates: $1,850.00 (100.0%)
+
+====================================================================================================
+B GARDENING CONTAINER COLLECTION
+====================================================================================================
+1 items | Total: $13,000.00
+
+| Item | Price | Source | Status |
+|------------------------------------------------------------|------------|----------------------------------------|------------|
+| 1. Front Entry and Patio Planters (7 containers)            | $13,000.00 | B Gardening Estimate                   | ⚪ ESTIMATE |
+
+Room Total: $13,000.00
+- Estimates: $13,000.00 (100.0%)
+
+====================================================================================================
+GRAND TOTAL SUMMARY
+====================================================================================================
+Total Items: 104
+Total Rooms: 27
+Verified Items: 52 (50.0%)
+Estimated Items: 52 (50.0%)
+
+GRAND TOTAL VALUE: $281,566.43
+====================================================================================================

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Debug Test</title>
+    <script>
+        async function testAuth() {
+            const results = {};
+            
+            try {
+                // Test 1: Direct Backend API
+                console.log('Testing Direct Backend API...');
+                const backendResponse = await fetch('http://44.202.133.225:4000/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: 'test@test.com', password: 'test' })
+                });
+                results.backend = { status: backendResponse.status, statusText: backendResponse.statusText };
+                results.backendBody = await backendResponse.text();
+            } catch (error) {
+                results.backend = { error: error.message };
+            }
+
+            try {
+                // Test 2: Dashboard Proxy
+                console.log('Testing Dashboard Proxy...');
+                const proxyResponse = await fetch('https://dashboard.candlefish.ai/api/backend/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: 'test@test.com', password: 'test' })
+                });
+                results.proxy = { status: proxyResponse.status, statusText: proxyResponse.statusText };
+                results.proxyBody = await proxyResponse.text();
+            } catch (error) {
+                results.proxy = { error: error.message };
+            }
+
+            try {
+                // Test 3: NextAuth Sign In
+                console.log('Testing NextAuth Sign In...');
+                const nextauthResponse = await fetch('https://dashboard.candlefish.ai/api/auth/signin');
+                results.nextauth = { status: nextauthResponse.status, statusText: nextauthResponse.statusText };
+                results.nextauthBody = await nextauthResponse.text();
+            } catch (error) {
+                results.nextauth = { error: error.message };
+            }
+
+            try {
+                // Test 4: Session Status
+                console.log('Testing Session Status...');
+                const sessionResponse = await fetch('https://dashboard.candlefish.ai/api/auth/session');
+                results.session = { status: sessionResponse.status, statusText: sessionResponse.statusText };
+                results.sessionBody = await sessionResponse.text();
+            } catch (error) {
+                results.session = { error: error.message };
+            }
+
+            // Display results
+            document.getElementById('results').innerHTML = '<pre>' + JSON.stringify(results, null, 2) + '</pre>';
+        }
+    </script>
+</head>
+<body>
+    <h1>Authentication Debug Test</h1>
+    <button onclick="testAuth()">Run Tests</button>
+    <div id="results"></div>
+</body>
+</html>

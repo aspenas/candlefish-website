@@ -1,45 +1,42 @@
-# RTPM Production Deployment Guide
+# CLOS Analytics Dashboard - Production Deployment Guide
 
-This document provides comprehensive instructions for deploying the Real-time Performance Monitoring (RTPM) Dashboard to production.
+This comprehensive deployment guide covers all aspects of deploying the CLOS Analytics Dashboard to production, including infrastructure setup, security configuration, monitoring, and rollback procedures.
 
-## 🏗️ Architecture Overview
+## Overview
 
-The RTPM system consists of:
-
-- **FastAPI Backend** (Python 3.11+)
-- **React Frontend** (TypeScript + Vite)
-- **PostgreSQL Database** (Primary data store)
-- **Redis Cache** (Session storage & background tasks)
-- **Celery Workers** (Background task processing)
-- **Nginx** (Reverse proxy & load balancer)
-- **Prometheus + Grafana** (Monitoring & metrics)
-- **AlertManager** (Alert routing & notifications)
+The CLOS Analytics Dashboard is a real-time analytics system built with:
+- **Frontend**: Next.js dashboard with TypeScript and Tailwind CSS
+- **Backend**: Node.js API server with PostgreSQL and Redis
+- **WebSocket**: Real-time analytics event processing
+- **Infrastructure**: AWS (RDS, ElastiCache, EKS) with Terraform
+- **Orchestration**: Kubernetes with comprehensive monitoring and logging
 
 ## 📋 Prerequisites
 
-### System Requirements
+### Prerequisites
 
-- Docker 20.10+
-- Docker Compose 2.0+
-- Kubernetes 1.25+ (for production)
-- kubectl 1.25+
-- Helm 3.0+ (optional)
-- 4GB RAM minimum (8GB recommended)
-- 20GB disk space minimum
+- AWS CLI configured with appropriate permissions
+- kubectl configured for your EKS cluster
+- Docker installed for building images
+- Terraform >= 1.5.0
+- Node.js 20+ and pnpm
 
-### Required Tools
+### Basic Deployment
 
 ```bash
-# Install Docker
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
+# 1. Setup secrets (run once per environment)
+./scripts/setup-secrets.sh --environment production
 
-# Install kubectl
-curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+# 2. Deploy infrastructure with Terraform
+cd terraform
+terraform plan -var="environment=production"
+terraform apply
 
-# Install Helm (optional)
-curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+# 3. Deploy to Kubernetes
+./scripts/deploy-clos-analytics.sh --environment production --image-tag latest
+
+# 4. Verify deployment
+kubectl get pods -n clos-analytics
 ```
 
 ## 🚀 Quick Start

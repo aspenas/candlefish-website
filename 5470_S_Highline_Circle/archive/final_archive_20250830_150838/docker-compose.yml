@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: highline-postgres
+    environment:
+      POSTGRES_DB: highline_inventory
+      POSTGRES_USER: highline
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-highline123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    ports:
+      - "5434:5432"
+    networks:
+      - highline-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U highline"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: highline-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - highline-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: highline-n8n
+    environment:
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: admin
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD:-admin123}
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      N8N_SECURE_COOKIE: "false"
+      WEBHOOK_URL: http://n8n:5678/
+      GENERIC_TIMEZONE: America/Denver
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./workflows:/workflows
+    networks:
+      - highline-network
+
+networks:
+  highline-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  n8n_data:

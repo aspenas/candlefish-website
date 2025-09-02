@@ -1,0 +1,54 @@
+# PostgreSQL with custom initialization and migrations
+FROM postgres:16-alpine
+
+# Install additional tools
+RUN apk add --no-cache \
+    curl \
+    bash \
+    python3 \
+    py3-pip
+
+# Install Python dependencies for data import
+RUN pip3 install --no-cache-dir \
+    pandas \
+    psycopg2-binary \
+    python-dotenv \
+    openpyxl \
+    boto3
+
+# Create directories
+RUN mkdir -p /docker-entrypoint-initdb.d/migrations
+RUN mkdir -p /app/scripts
+
+# Copy initialization scripts
+COPY schema.sql /docker-entrypoint-initdb.d/01-schema.sql
+COPY migrations/*.sql /docker-entrypoint-initdb.d/migrations/
+COPY scripts/ /app/scripts/
+
+# Copy custom init script
+COPY <<EOF /docker-entrypoint-initdb.d/02-init-migrations.sh
+#!/bin/bash
+set -e
+
+echo "Running database migrations..."
+
+# Apply migrations in order
+for migration in /docker-entrypoint-initdb.d/migrations/*.sql; do
+    if [ -f "$migration" ]; then
+        echo "Applying migration: $(basename $migration)"
+        psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f "$migration"
+    fi
+done
+
+echo "Database migrations completed"
+EOF
+
+# Make init script executable
+RUN chmod +x /docker-entrypoint-initdb.d/02-init-migrations.sh
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=5 \
+    CMD pg_isready -U $POSTGRES_USER -d $POSTGRES_DB || exit 1
+
+# Expose PostgreSQL port
+EXPOSE 5432

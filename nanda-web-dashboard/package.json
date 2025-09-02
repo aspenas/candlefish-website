@@ -2,6 +2,18 @@
   "name": "nanda-web-dashboard",
   "version": "1.0.0",
   "description": "NANDA Agent Management Dashboard - Web Interface for Distributed Consciousness",
+  "homepage": "https://candlefish.ai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/candlefish-ai/nanda-web-dashboard"
+  },
+  "author": {
+    "name": "Candlefish AI",
+    "url": "https://candlefish.ai"
+  },
+  "bugs": {
+    "url": "https://github.com/candlefish-ai/nanda-web-dashboard/issues"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",

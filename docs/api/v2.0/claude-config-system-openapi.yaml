@@ -1,0 +1,255 @@
+openapi: 3.0.3
+info:
+  title: Claude Configuration System API
+  version: 2.0.0
+  description: |
+    Comprehensive API for managing Claude Code configurations, 
+    integrating AI-powered development workflows across enterprise environments.
+  contact:
+    name: Candlefish.ai DevOps
+    email: devops@candlefish.ai
+    url: https://candlefish.ai/support
+  x-enterprise-features:
+    - Multi-tenant configuration management
+    - Advanced AI workflow orchestration
+    - Secure, granular access controls
+
+servers:
+  - url: https://api.candlefish.ai/v2.0
+    description: Production environment
+  - url: https://staging-api.candlefish.ai/v2.0
+    description: Staging environment
+
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://auth.candlefish.ai/oauth/authorize
+          tokenUrl: https://auth.candlefish.ai/oauth/token
+          scopes:
+            read:config: Read configuration data
+            write:config: Modify configuration data
+            admin:config: Full configuration management
+    APIKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Enterprise API key for authentication
+
+  schemas:
+    ConfigProfile:
+      type: object
+      required:
+        - profile_id
+        - name
+        - version
+      properties:
+        profile_id:
+          type: string
+          description: Unique identifier for the configuration profile
+        name:
+          type: string
+          description: Human-readable name of the configuration profile
+        version:
+          type: string
+          description: Semantic version of the configuration
+        description:
+          type: string
+        settings:
+          type: object
+          description: Nested configuration settings
+        metadata:
+          type: object
+          description: Additional metadata about the profile
+
+    ConfigValidationError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: string
+
+    WebSocketEvent:
+      type: object
+      properties:
+        event_type:
+          type: string
+        payload:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+
+  parameters:
+    ProfileIDParam:
+      name: profile_id
+      in: path
+      required: true
+      schema:
+        type: string
+
+paths:
+  /config/profiles:
+    get:
+      summary: List Configuration Profiles
+      description: Retrieve all available configuration profiles
+      security:
+        - OAuth2: [read:config]
+        - APIKey: []
+      responses:
+        '200':
+          description: Successfully retrieved configuration profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConfigProfile'
+        '403':
+          description: Insufficient permissions
+
+    post:
+      summary: Create Configuration Profile
+      description: Create a new configuration profile
+      security:
+        - OAuth2: [write:config]
+        - APIKey: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigProfile'
+      responses:
+        '201':
+          description: Configuration profile created successfully
+        '400':
+          description: Invalid configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigValidationError'
+
+  /config/profiles/{profile_id}:
+    get:
+      summary: Get Configuration Profile
+      description: Retrieve a specific configuration profile
+      parameters:
+        - $ref: '#/components/parameters/ProfileIDParam'
+      security:
+        - OAuth2: [read:config]
+        - APIKey: []
+      responses:
+        '200':
+          description: Successfully retrieved configuration profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigProfile'
+        '404':
+          description: Configuration profile not found
+
+    put:
+      summary: Update Configuration Profile
+      description: Update an existing configuration profile
+      parameters:
+        - $ref: '#/components/parameters/ProfileIDParam'
+      security:
+        - OAuth2: [write:config]
+        - APIKey: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigProfile'
+      responses:
+        '200':
+          description: Configuration profile updated successfully
+        '400':
+          description: Invalid configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigValidationError'
+
+    delete:
+      summary: Delete Configuration Profile
+      description: Remove a configuration profile
+      parameters:
+        - $ref: '#/components/parameters/ProfileIDParam'
+      security:
+        - OAuth2: [admin:config]
+        - APIKey: []
+      responses:
+        '204':
+          description: Configuration profile deleted successfully
+        '403':
+          description: Insufficient permissions
+
+  /ws/config-events:
+    get:
+      summary: WebSocket Configuration Events
+      description: Real-time WebSocket events for configuration changes
+      security:
+        - OAuth2: [read:config]
+        - APIKey: []
+      responses:
+        '101':
+          description: WebSocket connection established
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebSocketEvent'
+
+x-rate-limits:
+  tier:
+    - name: Free
+      requests_per_minute: 10
+      max_profiles: 3
+    - name: Pro
+      requests_per_minute: 100
+      max_profiles: 25
+    - name: Enterprise
+      requests_per_minute: 1000
+      max_profiles: 250
+      additional_features:
+        - Advanced access controls
+        - Audit logging
+        - Multi-tenant support
+
+x-versioning:
+  current_version: 2.0.0
+  deprecation_policy:
+    v1.x:
+      end_of_support: 2025-12-31
+    v2.x:
+      planned_support_end: 2028-12-31
+  migration_guide: https://candlefish.ai/docs/api/migration-v1-to-v2
+
+x-sdk-generators:
+  python:
+    package: candlefish-claude-config
+    repository: https://github.com/candlefish/claude-config-python
+  typescript:
+    package: '@candlefish/claude-config'
+    repository: https://github.com/candlefish/claude-config-js
+  golang:
+    package: github.com/candlefish/claude-config-go
+    repository: https://github.com/candlefish/claude-config-go
+
+x-postman-collection:
+  url: https://api.candlefish.ai/docs/postman/claude-config-v2.json
+
+tags:
+  - name: Configuration Management
+    description: APIs for managing Claude Code configuration profiles
+  - name: Authentication
+    description: Authentication and authorization mechanisms
+  - name: WebSocket Events
+    description: Real-time configuration event streaming
