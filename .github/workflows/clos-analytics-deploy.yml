@@ -1,0 +1,398 @@
+name: CLOS Analytics Production Deployment
+
+on:
+  push:
+    branches: [main, production]
+    paths:
+      - 'clos/**'
+      - 'k8s/clos-analytics/**'
+      - '.github/workflows/clos-analytics-deploy.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'clos/**'
+      - 'k8s/clos-analytics/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+      force_deploy:
+        description: 'Force deployment without checks'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER_NAME: candlefish-production
+  REGISTRY: ghcr.io
+  IMAGE_TAG: ${{ github.sha }}
+  DEPLOYMENT_TIMEOUT: 600s
+
+jobs:
+  # Security and quality checks
+  security-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          cd clos/web-dashboard
+          npm ci
+
+      - name: Run security audit
+        run: |
+          cd clos/web-dashboard
+          npm audit --audit-level=moderate
+
+      - name: Scan for secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+
+      - name: Docker security scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Build and test applications
+  build-test:
+    runs-on: ubuntu-latest
+    needs: security-scan
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        service: [web-dashboard, api-server, websocket-server]
+    
+    outputs:
+      dashboard-image: ${{ steps.build-dashboard.outputs.image }}
+      api-image: ${{ steps.build-api.outputs.image }}
+      websocket-image: ${{ steps.build-websocket.outputs.image }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}/clos-${{ matrix.service }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and test Docker image
+        uses: docker/build-push-action@v5
+        id: build
+        with:
+          context: ./clos/${{ matrix.service }}
+          file: ./clos/${{ matrix.service }}/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+
+      - name: Set output
+        shell: bash
+        run: |
+          case "${{ matrix.service }}" in
+            "web-dashboard")
+              echo "image=${{ steps.meta.outputs.tags }}" >> $GITHUB_OUTPUT
+              echo "dashboard-image=${{ steps.meta.outputs.tags }}" >> $GITHUB_ENV
+              ;;
+            "api-server")
+              echo "image=${{ steps.meta.outputs.tags }}" >> $GITHUB_OUTPUT
+              echo "api-image=${{ steps.meta.outputs.tags }}" >> $GITHUB_ENV
+              ;;
+            "websocket-server")
+              echo "image=${{ steps.meta.outputs.tags }}" >> $GITHUB_OUTPUT
+              echo "websocket-image=${{ steps.meta.outputs.tags }}" >> $GITHUB_ENV
+              ;;
+          esac
+
+      - name: Test container
+        run: |
+          docker run --rm -d --name test-${{ matrix.service }} \
+            ${{ env.REGISTRY }}/${{ github.repository }}/clos-${{ matrix.service }}:${{ env.IMAGE_TAG }}
+          
+          sleep 30
+          
+          case "${{ matrix.service }}" in
+            "web-dashboard")
+              docker exec test-${{ matrix.service }} curl -f http://localhost:3500/api/health || exit 1
+              ;;
+            "api-server")
+              docker exec test-${{ matrix.service }} curl -f http://localhost:8000/api/v1/health || exit 1
+              ;;
+            "websocket-server")
+              docker exec test-${{ matrix.service }} curl -f http://localhost:8001/health || exit 1
+              ;;
+          esac
+          
+          docker stop test-${{ matrix.service }}
+
+  # Run comprehensive tests
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: build-test
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: clos_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 3s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies and run tests
+        run: |
+          cd clos/web-dashboard
+          npm ci
+          npm run test:ci
+          npm run test:e2e
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: |
+            clos/web-dashboard/coverage/
+            clos/web-dashboard/test-results/
+
+  # Deploy to staging environment
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: [build-test, integration-tests]
+    if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'staging'
+    environment: staging
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 3600
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --region ${{ env.AWS_REGION }} \
+            --name ${{ env.EKS_CLUSTER_NAME }}-staging
+
+      - name: Deploy to staging
+        run: |
+          # Update image tags in manifests
+          find k8s/clos-analytics/ -name "*.yaml" -exec \
+            sed -i "s|candlefish/clos-dashboard:latest|${{ env.REGISTRY }}/${{ github.repository }}/clos-web-dashboard:${{ env.IMAGE_TAG }}|g" {} \;
+          
+          find k8s/clos-analytics/ -name "*.yaml" -exec \
+            sed -i "s|candlefish/clos-api:latest|${{ env.REGISTRY }}/${{ github.repository }}/clos-api-server:${{ env.IMAGE_TAG }}|g" {} \;
+          
+          find k8s/clos-analytics/ -name "*.yaml" -exec \
+            sed -i "s|candlefish/clos-websocket:latest|${{ env.REGISTRY }}/${{ github.repository }}/clos-websocket-server:${{ env.IMAGE_TAG }}|g" {} \;
+          
+          # Apply manifests
+          kubectl apply -f k8s/clos-analytics/namespace.yaml
+          kubectl apply -f k8s/clos-analytics/rbac.yaml
+          kubectl apply -f k8s/clos-analytics/configmap.yaml
+          kubectl apply -f k8s/clos-analytics/secrets.yaml
+          kubectl apply -f k8s/clos-analytics/postgres.yaml
+          kubectl apply -f k8s/clos-analytics/redis.yaml
+          kubectl apply -f k8s/clos-analytics/api-server.yaml
+          kubectl apply -f k8s/clos-analytics/websocket-server.yaml
+          kubectl apply -f k8s/clos-analytics/web-dashboard.yaml
+          kubectl apply -f k8s/clos-analytics/ingress.yaml
+
+      - name: Wait for deployment
+        run: |
+          kubectl wait --for=condition=available --timeout=${{ env.DEPLOYMENT_TIMEOUT }} \
+            deployment/clos-api deployment/clos-websocket deployment/clos-web-dashboard \
+            -n clos-analytics
+
+      - name: Run smoke tests
+        run: |
+          # Wait for services to be ready
+          kubectl wait --for=condition=ready pod -l app=clos-api -n clos-analytics --timeout=300s
+          
+          # Port forward for testing
+          kubectl port-forward svc/clos-api-service 8080:8000 -n clos-analytics &
+          kubectl port-forward svc/clos-web-dashboard-service 3080:3500 -n clos-analytics &
+          
+          sleep 10
+          
+          # Test API health
+          curl -f http://localhost:8080/api/v1/health || exit 1
+          
+          # Test dashboard health  
+          curl -f http://localhost:3080/api/health || exit 1
+
+  # Deploy to production
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.ref == 'refs/heads/production' || (github.event.inputs.environment == 'production' && github.event.inputs.force_deploy == 'true')
+    environment: production
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_PRODUCTION }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 3600
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --region ${{ env.AWS_REGION }} \
+            --name ${{ env.EKS_CLUSTER_NAME }}
+
+      - name: Create deployment backup
+        run: |
+          kubectl get deployment clos-api -n clos-analytics -o yaml > backup-api-${{ env.IMAGE_TAG }}.yaml
+          kubectl get deployment clos-websocket -n clos-analytics -o yaml > backup-websocket-${{ env.IMAGE_TAG }}.yaml
+          kubectl get deployment clos-web-dashboard -n clos-analytics -o yaml > backup-dashboard-${{ env.IMAGE_TAG }}.yaml
+
+      - name: Deploy to production with rolling update
+        run: |
+          # Update image tags
+          find k8s/clos-analytics/ -name "*.yaml" -exec \
+            sed -i "s|candlefish/clos-dashboard:latest|${{ env.REGISTRY }}/${{ github.repository }}/clos-web-dashboard:${{ env.IMAGE_TAG }}|g" {} \;
+          
+          find k8s/clos-analytics/ -name "*.yaml" -exec \
+            sed -i "s|candlefish/clos-api:latest|${{ env.REGISTRY }}/${{ github.repository }}/clos-api-server:${{ env.IMAGE_TAG }}|g" {} \;
+          
+          find k8s/clos-analytics/ -name "*.yaml" -exec \
+            sed -i "s|candlefish/clos-websocket:latest|${{ env.REGISTRY }}/${{ github.repository }}/clos-websocket-server:${{ env.IMAGE_TAG }}|g" {} \;
+          
+          # Rolling deployment
+          kubectl apply -f k8s/clos-analytics/
+          
+          # Wait for rollout to complete
+          kubectl rollout status deployment/clos-api -n clos-analytics --timeout=${{ env.DEPLOYMENT_TIMEOUT }}
+          kubectl rollout status deployment/clos-websocket -n clos-analytics --timeout=${{ env.DEPLOYMENT_TIMEOUT }}
+          kubectl rollout status deployment/clos-web-dashboard -n clos-analytics --timeout=${{ env.DEPLOYMENT_TIMEOUT }}
+
+      - name: Verify production deployment
+        run: |
+          # Health checks
+          kubectl wait --for=condition=ready pod -l app=clos-api -n clos-analytics --timeout=300s
+          kubectl wait --for=condition=ready pod -l app=clos-websocket -n clos-analytics --timeout=300s
+          kubectl wait --for=condition=ready pod -l app=clos-web-dashboard -n clos-analytics --timeout=300s
+          
+          # Test endpoints
+          kubectl run curl-test --image=curlimages/curl:latest --rm -i --restart=Never -n clos-analytics -- \
+            curl -f http://clos-api-service:8000/api/v1/health
+          
+          kubectl run curl-test --image=curlimages/curl:latest --rm -i --restart=Never -n clos-analytics -- \
+            curl -f http://clos-websocket-service:8001/health
+          
+          kubectl run curl-test --image=curlimages/curl:latest --rm -i --restart=Never -n clos-analytics -- \
+            curl -f http://clos-web-dashboard-service:3500/api/health
+
+      - name: Post-deployment notifications
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Production deployment successful!"
+            # Send success notification to Slack/Teams
+          else
+            echo "❌ Production deployment failed!"
+            # Send failure notification and trigger rollback
+          fi
+
+  # Cleanup old images and resources
+  cleanup:
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: always()
+    steps:
+      - name: Clean up old container images
+        run: |
+          # Keep last 10 images
+          echo "Cleaning up old container images..."
+          # This would typically use GitHub Packages API or registry-specific cleanup

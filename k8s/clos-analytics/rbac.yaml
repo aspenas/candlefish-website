@@ -1,0 +1,164 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: clos-analytics-sa
+  namespace: clos-analytics
+  labels:
+    app: clos-analytics
+automountServiceAccountToken: true
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: clos-analytics-role
+  namespace: clos-analytics
+  labels:
+    app: clos-analytics
+rules:
+# ConfigMap access for configuration
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch"]
+
+# Secret access for credentials
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list", "watch"]
+
+# Service access for service discovery
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list", "watch"]
+
+# Pod access for health checks and metrics
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+
+# Events for logging and monitoring
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: clos-analytics-rolebinding
+  namespace: clos-analytics
+  labels:
+    app: clos-analytics
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: clos-analytics-role
+subjects:
+- kind: ServiceAccount
+  name: clos-analytics-sa
+  namespace: clos-analytics
+
+---
+# Cluster role for monitoring and metrics collection
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: clos-analytics-monitoring
+  labels:
+    app: clos-analytics
+rules:
+# Node metrics access
+- apiGroups: [""]
+  resources: ["nodes", "nodes/metrics", "nodes/stats", "nodes/proxy"]
+  verbs: ["get", "list", "watch"]
+
+# Pod metrics across namespaces
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+
+# Metrics API access
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["nodes", "pods"]
+  verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: clos-analytics-monitoring-binding
+  labels:
+    app: clos-analytics
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: clos-analytics-monitoring
+subjects:
+- kind: ServiceAccount
+  name: clos-analytics-sa
+  namespace: clos-analytics
+
+---
+# Pod Security Policy (if PSP is enabled)
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: clos-analytics-psp
+  labels:
+    app: clos-analytics
+spec:
+  privileged: false
+  allowPrivilegeEscalation: false
+  requiredDropCapabilities:
+    - ALL
+  volumes:
+    - 'configMap'
+    - 'emptyDir'
+    - 'projected'
+    - 'secret'
+    - 'downwardAPI'
+    - 'persistentVolumeClaim'
+  hostNetwork: false
+  hostIPC: false
+  hostPID: false
+  runAsUser:
+    rule: 'MustRunAsNonRoot'
+  supplementalGroups:
+    rule: 'MustRunAs'
+    ranges:
+      - min: 1
+        max: 65535
+  fsGroup:
+    rule: 'MustRunAs'
+    ranges:
+      - min: 1
+        max: 65535
+  seLinux:
+    rule: 'RunAsAny'
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: clos-analytics-psp-role
+  namespace: clos-analytics
+rules:
+- apiGroups: ['policy']
+  resources: ['podsecuritypolicies']
+  verbs: ['use']
+  resourceNames: ['clos-analytics-psp']
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: clos-analytics-psp-binding
+  namespace: clos-analytics
+roleRef:
+  kind: Role
+  name: clos-analytics-psp-role
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: clos-analytics-sa
+  namespace: clos-analytics
