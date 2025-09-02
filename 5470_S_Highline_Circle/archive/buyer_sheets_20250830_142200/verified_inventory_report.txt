@@ -1,0 +1,640 @@
+======================================================================================================================================================
+5470 S HIGHLINE CIRCLE - COMPLETE INVENTORY WITH VERIFIED PRICES
+======================================================================================================================================================
+Generated: 2025-08-30 10:08:58
+Total Items: 282
+Verified Items (with receipts): 158
+Branded Items: 177
+Total Value: $402,585.98
+======================================================================================================================================================
+
+======================================================================================================================================================
+UPPER LEVEL | Items: 41 | Total Value: $35,074.55
+======================================================================================================================================================
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Primary Bath | Items: 6 | Total: $0.00
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Freestanding tub                                             | $       0.00 | Unknown         |    |                           | Other               
+Indoor plants (by tub)                                       | $       0.00 | B&F Invoice     |    | Bloom & Flourish          | Plants (Bloom & Flo 
+Chandelier (fixture)                                         | $       0.00 | Unknown         |    |                           | Lighting            
+Rug                                                          | $       0.00 | Unknown         |    |                           | Rug / Carpet        
+Wall art                                                     | $       0.00 | Unknown         |    |                           | Art / Decor         
+Small table                                                  | $       0.00 | Unknown         |    |                           | Furniture           
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Primary Bath Vanity | Items: 1 | Total: $0.00
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Double vanity with sconces/mirrors (fixtures)                | $       0.00 | Unknown         |    |                           | Lighting            
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Primary Bedroom | Items: 15 | Total: $17,407.99
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Bedside tables (pair)                                        | $   6,322.39 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+TV – Samsung QN65QN900C 65" Neo QLED 8K (2023)               | $   4,999.99 | Invoice         | ✓  | Samsung                   | Electronics         
+Teak and leather lounger                                     | $   3,491.42 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+Scalloped side table (bay window area)                       | $   1,843.70 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+Bedside lamps (pair), blue w/ off-white shade                | $     750.49 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+2 arm chairs                                                 | $       0.00 | Unknown         |    |                           | Furniture           
+Indoor plants (bay window area)                              | $       0.00 | B&F Invoice     |    | Bloom & Flourish          | Plants (Bloom & Flo 
+Four-poster bed frame                                        | $       0.00 | Unknown         |    |                           | Furniture           
+2 bedside lamps                                              | $       0.00 | Unknown         |    |                           | Furniture           
+Rug                                                          | $       0.00 | Unknown         |    |                           | Rug / Carpet        
+2 bedside tables                                             | $       0.00 | Unknown         |    |                           | Furniture           
+Lounge chair                                                 | $       0.00 | Unknown         |    |                           | Furniture           
+Bedding set                                                  | $       0.00 | Unknown         |    |                           | Furniture           
+Armchair                                                     | $       0.00 | Unknown         |    |                           | Furniture           
+Lounge chair                                                 | $       0.00 | Unknown         |    |                           | Furniture           
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Primary Bedroom Entry | Items: 2 | Total: $4,778.06
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Blue console                                                 | $   3,771.79 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+Bison art                                                    | $   1,006.27 | Invoice         | ✓  | Holly Downs Design        | Art / Decor         
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Primary Closet | Items: 2 | Total: $0.00
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Built-in shelving                                            | $       0.00 | Unknown         |    |                           | Other               
+Small rug                                                    | $       0.00 | Unknown         |    |                           | Rug / Carpet        
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Upper Level Bedroom Bath | Items: 1 | Total: $0.00
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Vanity with mirror and sconces (fixtures)                    | $       0.00 | Unknown         |    |                           | Lighting            
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Upper Level → Hallway (Landing) | Items: 5 | Total: $2,855.01
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Dulwich Extension Table                                      | $   2,241.00 | Invoice         | ✓  | Design Within Reach       | Furniture           
+Blue Runners (2 × 30” × 11’, rubber backing)                 | $     614.01 | Invoice         | ✓  | Holly Downs Design        | Rug / Carpet        
+Gallery wall with 7 framed pieces                            | $       0.00 | Unknown         |    |                           | Other               
+Gallery wall with framed art                                 | $       0.00 | Unknown         |    |                           | Art / Decor         
+Framed artwork gallery wall                                  | $       0.00 | Unknown         |    |                           | Art / Decor         
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Upper Level → Upstairs Office | Items: 9 | Total: $10,033.49
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Eames Lounge Chair + Ottoman (Tall Version, Walnut shell, A  | $   5,510.00 | Invoice         | ✓  | Design Within Reach       | Furniture           
+Bacco Chair                                                  | $   2,358.00 | Invoice         | ✓  | Design Within Reach       | Furniture           
+Tri Arm Floor Lamp                                           | $   1,165.50 | Invoice         | ✓  | Design Within Reach       | Lighting            
+TV – Samsung QN43LS03B 43" The Frame                         | $     999.99 | Invoice         | ✓  | Samsung                   | Electronics         
+Eames Lounge Chair + Ottoman (black leather, walnut shell)   | $       0.00 | Unknown         |    | Design Within Reach       | Furniture           
+Nelson Swag Leg Desk + Extension Table (walnut/white top)    | $       0.00 | Unknown         |    | Design Within Reach       | Furniture           
+Shell Chairs (3, white molded plastic with wood legs)        | $       0.00 | Unknown         |    | Design Within Reach       | Furniture           
+Built-in planter with snake plants (fixture + Bloom & Flour  | $       0.00 | Unknown         |    | Design Within Reach       | Plants (Bloom & Flo 
+Electronics (TV, record player, speakers) - to be excluded   | $       0.00 | Unknown         |    | Design Within Reach       | Electronics         
+
+======================================================================================================================================================
+MAIN LEVEL | Items: 77 | Total Value: $192,491.06
+======================================================================================================================================================
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Covered Porch (Main Level Outdoor) | Items: 4 | Total: $0.00
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Outdoor plants in pots                                       | $       0.00 | B&F Invoice     |    | Bloom & Flourish          | Plants (Bloom & Flo 
+Small side table                                             | $       0.00 | Unknown         |    |                           | Furniture           
+2 outdoor lounge chairs                                      | $       0.00 | Unknown         |    |                           | Furniture           
+Partial sofa visible                                         | $       0.00 | Unknown         |    |                           | Furniture           
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Dining Room | Items: 9 | Total: $26,242.81
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Dining chairs (10, cane back)                                | $  12,037.84 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+Red Lacquer Buffet                                           | $   9,059.20 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+Dining table (red base / rectangular)                        | $   5,145.77 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+Large dining table with 8 upholstered chairs                 | $       0.00 | Unknown         |    |                           | Furniture           
+Area rug                                                     | $       0.00 | Unknown         |    |                           | Rug / Carpet        
+Red buffet cabinet behind table                              | $       0.00 | Unknown         |    |                           | Furniture           
+Chandelier                                                   | $       0.00 | Unknown         |    |                           | Lighting            
+Wall artwork                                                 | $       0.00 | Unknown         |    |                           | Art / Decor         
+Indoor plants (by buffet, corners)                           | $       0.00 | B&F Invoice     |    | Bloom & Flourish          | Plants (Bloom & Flo 
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Entry (Main Level) | Items: 2 | Total: $14,608.57
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Custom Carpet for Front Stairs (Grey Chevron, templated + p  | $  11,964.01 | Invoice         | ✓  | Holly Downs Design        | Rug / Carpet        
+Custom Area Rug (Blue Indoor/Outdoor, 8x11)                  | $   2,644.56 | Invoice         | ✓  | Holly Downs Design        | Rug / Carpet        
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Foyer / Main Entry | Items: 10 | Total: $17,236.84
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Custom Carpet for Front Stairs (Grey Chevron, templated, pa  | $  11,964.01 | Invoice         | ✓  | Holly Downs Design        | Rug / Carpet        
+Custom Area Rug (Blue Indoor/Outdoor, 8x11)                  | $   2,644.56 | Invoice         | ✓  | Holly Downs Design        | Rug / Carpet        
+Custom Benches Green (2)                                     | $   2,089.32 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+Custom Pillows for Bench                                     | $     378.07 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+Delivery of Entry Area Rug                                   | $     160.88 | Invoice         | ✓  | Holly Downs Design        | Rug / Carpet        
+Herringbone runner rug                                       | $       0.00 | Unknown         |    |                           | Rug / Carpet        
+Console table with décor                                     | $       0.00 | Unknown         |    |                           | Furniture           
+Framed wall art above console                                | $       0.00 | Unknown         |    |                           | Furniture           
+2 tall blue planters                                         | $       0.00 | Unknown         |    |                           | Plants (Bloom & Flo 
+Indoor plant (large blue planter)                            | $       0.00 | B&F Invoice     |    | Bloom & Flourish          | Plants (Bloom & Flo 
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Hearth Room | Items: 13 | Total: $27,157.18
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+RH Maxwell U-Chaise Sectional (Performance Velvet, Graphite  | $  12,485.00 | Invoice         | ✓  | Restoration Hardware      | Furniture           
+Sofa                                                         | $   6,951.98 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+Coffee table (marble top)                                    | $   3,371.15 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+Lamps (pair)                                                 | $   2,643.55 | Invoice         | ✓  | Holly Downs Design        | Lighting            
+Brio Adjustable Dining Table                                 | $   1,705.50 | Invoice         | ✓  | Design Within Reach       | Furniture           
+Indoor plants (mantle & corners)                             | $       0.00 | B&F Invoice     |    | Bloom & Flourish          | Plants (Bloom & Flo 
+2 upholstered armchairs                                      | $       0.00 | Unknown         |    |                           | Furniture           
+Coffee table                                                 | $       0.00 | Unknown         |    |                           | Furniture           
+Fireplace mantle décor                                       | $       0.00 | Unknown         |    |                           | Other               
+Art above fireplace                                          | $       0.00 | Unknown         |    |                           | Art / Decor         
+Rug                                                          | $       0.00 | Unknown         |    |                           | Rug / Carpet        
+Round side table                                             | $       0.00 | Unknown         |    |                           | Furniture           
+Sectional sofa                                               | $       0.00 | Unknown         |    |                           | Furniture           
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Kitchen | Items: 5 | Total: $2,964.15
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Caned counter stools (set at island)                         | $   2,964.15 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+Countertop décor                                             | $       0.00 | Unknown         |    |                           | Other               
+Pendant lights above island (fixtures)                       | $       0.00 | Unknown         |    |                           | Lighting            
+Island with 4 stools                                         | $       0.00 | Unknown         |    |                           | Furniture           
+Countertop herbs/plants                                      | $       0.00 | B&F Invoice     |    | Bloom & Flourish          | Plants (Bloom & Flo 
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Living Room | Items: 15 | Total: $79,355.37
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Custom Sofas (2) with fabric                                 | $  16,259.48 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+Sectional sofa (4-piece)                                     | $  12,794.24 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+Custom Area Rug (22’4” x 15’2”, custom cut, serged edges)    | $   9,442.27 | Invoice         | ✓  | Holly Downs Design        | Rug / Carpet        
+Custom Area Rug (22’4” × 15’2”, cut around corners, serged   | $   9,442.27 | Invoice         | ✓  | Holly Downs Design        | Rug / Carpet        
+Red Chairs                                                   | $   9,428.52 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+TV – Samsung QN65QN900C 65" Neo QLED 8K (2023)               | $   4,999.99 | Invoice         | ✓  | Samsung                   | Electronics         
+Custom Chaise Lounge                                         | $   4,565.15 | Invoice         | ✓  | Holly Downs Design        | Other               
+Coffee Table                                                 | $   3,262.42 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+Coffee table (bronze + glass)                                | $   3,074.26 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+Lamps (pair)                                                 | $   2,643.55 | Invoice         | ✓  | Holly Downs Design        | Lighting            
+Custom Pillows (6)                                           | $   2,186.24 | Invoice         | ✓  | Holly Downs Design        | Art / Decor         
+Custom Pillows (3 Green+White)                               | $     628.06 | Invoice         | ✓  | Holly Downs Design        | Art / Decor         
+Vinyl for Custom Game Table                                  | $     466.97 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+Accessories/styling items (Blue Vase, Red Wood Heart Bowl,   | $     161.95 | Invoice         | ✓  | Holly Downs Design        | Art / Decor         
+Indoor plants (2 large, 1 small)                             | $       0.00 | B&F Invoice     |    | Bloom & Flourish          | Plants (Bloom & Flo 
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Lower Level (Pool Bathroom Entry) | Items: 3 | Total: $2,033.45
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Framed Whale Art                                             | $   1,554.00 | Invoice         | ✓  | Holly Downs Design        | Art / Decor         
+Whale Art - Freight                                          | $     329.45 | Invoice         | ✓  | Holly Downs Design        | Art / Decor         
+Whale Art - Professional Art Hanging Service                 | $     150.00 | Invoice         | ✓  | Holly Downs Design        | Art / Decor         
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Main Level Hallway | Items: 2 | Total: $0.00
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Runner rug                                                   | $       0.00 | Unknown         |    |                           | Rug / Carpet        
+Multiple framed wall pieces                                  | $       0.00 | Unknown         |    |                           | Other               
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Mudroom / Side Entry | Items: 2 | Total: $0.00
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Large framed whale artwork                                   | $       0.00 | Unknown         |    |                           | Art / Decor         
+Black/white runner rug                                       | $       0.00 | Unknown         |    |                           | Rug / Carpet        
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Powder Room | Items: 1 | Total: $0.00
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Small framed wall art                                        | $       0.00 | Unknown         |    |                           | Art / Decor         
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Upper Terrace (Main Level Outdoor) | Items: 11 | Total: $22,892.69
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+RH Merida Outdoor Set (Sofa, 2 Lounge Chairs, Coffee Table,  | $  12,252.51 | Invoice         | ✓  | Restoration Hardware      | Furniture           
+TV – Samsung QN75LST7T 75" The Terrace (Partial Sun)         | $   5,199.99 | Invoice         | ✓  | Samsung                   | Electronics         
+Planters set (6 medium + 6 large) – whole set only           | $   2,790.00 | Invoice         | ✓  | Holly Downs Design        | Plants (Bloom & Flo 
+RH Outdoor Protective Covers (Bench, Sofa, Coffee Table, 2   | $   1,319.19 | Invoice         | ✓  | Restoration Hardware      | Furniture           
+RH Aegean Teak Dining Bench (63")                            | $     971.00 | Invoice         | ✓  | Restoration Hardware      | Furniture           
+RH Cosimo Side Tables (Set of 3, Grey)                       | $     360.00 | Invoice         | ✓  | Restoration Hardware      | Furniture           
+Outdoor planters (full set installed)                        | $       0.00 | B&F Invoice     |    | Bloom & Flourish          | Plants (Bloom & Flo 
+Outdoor pots + plants                                        | $       0.00 | Unknown         |    |                           | Plants (Bloom & Flo 
+Mounted TV above fireplace                                   | $       0.00 | Unknown         |    |                           | Electronics         
+Outdoor sofa + chairs with cushions                          | $       0.00 | Unknown         |    |                           | Furniture           
+Coffee table                                                 | $       0.00 | Unknown         |    |                           | Furniture           
+
+======================================================================================================================================================
+LOWER LEVEL | Items: 30 | Total Value: $50,734.44
+======================================================================================================================================================
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Exercise Room | Items: 8 | Total: $7,039.00
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Peloton Tread (Family Package)                               | $   4,544.00 | Invoice         | ✓  |                           | Furniture           
+Peloton Bike+ (Basics Package)                               | $   2,495.00 | Invoice         | ✓  |                           | Furniture           
+Indoor plant                                                 | $       0.00 | B&F Invoice     |    | Bloom & Flourish          | Plants (Bloom & Flo 
+Mats                                                         | $       0.00 | Unknown         |    |                           | Other               
+Weights rack                                                 | $       0.00 | Unknown         |    |                           | Other               
+Treadmill                                                    | $       0.00 | Unknown         |    |                           | Other               
+Bench                                                        | $       0.00 | Unknown         |    |                           | Furniture           
+TV                                                           | $       0.00 | Unknown         |    |                           | Electronics         
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Hall by Rec Room | Items: 1 | Total: $0.00
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Framed Union Jack flag artwork                               | $       0.00 | Unknown         |    |                           | Art / Decor         
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Lower Level Theater | Items: 7 | Total: $9,942.39
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Lovesac Sactionals Modular Sofa (Tan Combed Chenille, tiere  | $   7,698.39 | Invoice         | ✓  | LoveSac                   | Furniture           
+LEM Piston Bar Stools (3 total: 1 Wood Seat, 2 Stainless St  | $   2,244.00 | Invoice         | ✓  | Design Within Reach       | Furniture           
+Sectional sofa                                               | $       0.00 | Unknown         |    |                           | Furniture           
+Indoor plant                                                 | $       0.00 | B&F Invoice     |    | Bloom & Flourish          | Plants (Bloom & Flo 
+Wall sconces (fixtures)                                      | $       0.00 | Unknown         |    |                           | Lighting            
+Rug                                                          | $       0.00 | Unknown         |    |                           | Rug / Carpet        
+Projector                                                    | $       0.00 | Unknown         |    |                           | Electronics         
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Pool Bathroom (Lower Level) | Items: 1 | Total: $371.94
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Pool Entry Rug (repair/replacement)                          | $     371.94 | Invoice         | ✓  | Holly Downs Design        | Rug / Carpet        
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Rec Room (Lower Level) | Items: 9 | Total: $27,890.39
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Malibu Pool Table w/ Ping Pong Top (Glossy Blue, Simonis Ca  | $  17,376.00 | Invoice         | ✓  |                           | Furniture           
+Lovesac Sactionals Modular Sofa (Tan Combed Chenille, L-sha  | $   7,698.39 | Invoice         | ✓  | LoveSac                   | Furniture           
+Arella Walnut Cue Rack                                       | $   2,816.00 | Invoice         | ✓  |                           | Furniture           
+Star artwork on wall                                         | $       0.00 | Unknown         |    |                           | Art / Decor         
+2 floor plants                                               | $       0.00 | Unknown         |    |                           | Plants (Bloom & Flo 
+Sectional sofa set                                           | $       0.00 | Unknown         |    |                           | Furniture           
+Rug                                                          | $       0.00 | Unknown         |    |                           | Rug / Carpet        
+Pool table                                                   | $       0.00 | Unknown         |    |                           | Furniture           
+Indoor plant (by star artwork)                               | $       0.00 | B&F Invoice     |    | Bloom & Flourish          | Art / Decor         
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Rec Room Bar (Lower Level) | Items: 4 | Total: $5,490.72
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+3 extra green barstools                                      | $   2,745.36 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+3 green barstools (main set)                                 | $   2,745.36 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+3 bar stools                                                 | $       0.00 | Unknown         |    |                           | Furniture           
+Counter décor                                                | $       0.00 | Unknown         |    |                           | Other               
+
+======================================================================================================================================================
+LOWER LEVEL - OUTDOOR | Items: 3 | Total Value: $0.00
+======================================================================================================================================================
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Lower Terrace Patio (Below) | Items: 3 | Total: $0.00
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Outdoor planters                                             | $       0.00 | B&F Invoice     |    | Bloom & Flourish          | Plants (Bloom & Flo 
+Large outdoor planter                                        | $       0.00 | Unknown         |    |                           | Plants (Bloom & Flo 
+Red Adirondack chairs (yard)                                 | $       0.00 | Unknown         |    |                           | Furniture           
+
+======================================================================================================================================================
+GARAGE/STORAGE | Items: 2 | Total Value: $0.00
+======================================================================================================================================================
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Storage/Closet | Items: 2 | Total: $0.00
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Potted floor plant                                           | $       0.00 | Unknown         |    |                           | Plants (Bloom & Flo 
+Wall-mounted wood shelving system                            | $       0.00 | Unknown         |    |                           | Other               
+
+======================================================================================================================================================
+WHOLE PROPERTY | Items: 2 | Total Value: $33,540.48
+======================================================================================================================================================
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Whole Property (Plants) | Items: 2 | Total: $33,540.48
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Plants/install (2nd portion) – reference                     | $  19,944.48 | Invoice         | ✓  | Holly Downs Design        | Plants (Bloom & Flo 
+Bloom&Flourish plant plan & install (global interior/exteri  | $  13,596.00 | Invoice         | ✓  | Bloom & Flourish          | Plants (Bloom & Flo 
+
+======================================================================================================================================================
+OTHER | Items: 127 | Total Value: $90,745.45
+======================================================================================================================================================
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: East Staircase (Main to Lower) | Items: 2 | Total: $0.00
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Framed wall art (2 small squares)                            | $       0.00 | Unknown         |    |                           | Art / Decor         
+Framed wall art (2 small pieces)                             | $       0.00 | Unknown         |    |                           | Art / Decor         
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Guest Bath | Items: 1 | Total: $0.00
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Double vanity, sconces, framed mirror                        | $       0.00 | Unknown         |    |                           | Lighting            
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Guest Bedroom (Lower East) | Items: 3 | Total: $2,089.99
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+TV – Samsung QN75Q80C 75" QLED 4K (2023)                     | $   2,089.99 | Invoice         | ✓  | Samsung                   | Electronics         
+Small side art piece                                         | $       0.00 | Unknown         |    |                           | Art / Decor         
+Indoor plant                                                 | $       0.00 | B&F Invoice     |    | Bloom & Flourish          | Plants (Bloom & Flo 
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Guest Bedroom (Lower West) | Items: 6 | Total: $1,044.99
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+TV – Samsung QN55Q70A 55" QLED 4K (2021)                     | $   1,044.99 | Invoice         | ✓  | Samsung                   | Electronics         
+Dresser                                                      | $       0.00 | Unknown         |    |                           | Furniture           
+Bed with dark frame                                          | $       0.00 | Unknown         |    |                           | Furniture           
+2 bedside lamps                                              | $       0.00 | Unknown         |    |                           | Furniture           
+Armchair                                                     | $       0.00 | Unknown         |    |                           | Furniture           
+Indoor plant                                                 | $       0.00 | B&F Invoice     |    | Bloom & Flourish          | Plants (Bloom & Flo 
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Hot Tub Area (Covered, Lower) | Items: 3 | Total: $17,009.98
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+CoreChill Cold Plunge + Insulative Spa Cover                 | $  17,009.98 | Invoice         | ✓  |                           | Furniture           
+Outdoor plants                                               | $       0.00 | B&F Invoice     |    | Bloom & Flourish          | Plants (Bloom & Flo 
+Built-in spa (fixtures only)                                 | $       0.00 | Unknown         |    |                           | Other               
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Nook | Items: 5 | Total: $0.00
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Mirror                                                       | $       0.00 | Unknown         |    |                           | Art / Decor         
+Area rug                                                     | $       0.00 | Unknown         |    |                           | Rug / Carpet        
+Round dining table with 4 wicker chairs                      | $       0.00 | Unknown         |    |                           | Furniture           
+Fireplace mantle décor                                       | $       0.00 | Unknown         |    |                           | Other               
+Indoor plant (corner)                                        | $       0.00 | B&F Invoice     |    | Bloom & Flourish          | Plants (Bloom & Flo 
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Nook (Breakfast Room) | Items: 4 | Total: $11,513.72
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Black metal dining table                                     | $   5,341.05 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+Cane chairs for breakfast table (set)                        | $   4,440.15 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+Extra cane chair (additional)                                | $     958.59 | Invoice         | ✓  | Holly Downs Design        | Furniture           
+Area rug re-configure service (11' round, serged)            | $     773.93 | Invoice         | ✓  | Holly Downs Design        | Rug / Carpet        
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Unassigned (Bloom & Flourish) | Items: 86 | Total: $56,686.78
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+#7 Boxwood Green Velvet                                      | $   2,940.00 | Invoice         | ✓  | Bloom & Flourish          | Outdoor Planter/Pla 
+#7 Boxwood Green Velvet (Qty: 14)                            | $   2,940.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Mid fiberglass planter in matte black 60"L x 16"W x 24"H     | $   2,348.00 | Invoice         | ✓  | Bloom & Flourish          | Planter (Indoor)    
+Mid fiberglass planter in matte black 60"L x 16"W x 24"H (Q  | $   2,348.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Round Urn - 33.5"D x 33.5"H                                  | $   1,500.00 | Invoice         | ✓  | Bloom & Flourish          | Planter (Indoor)    
+Round Urn - 33.5"D x 33.5"H (Qty: 2)                         | $   1,500.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Tall fiberglass planter in matte charcoal 48”L x 16”W x 32”  | $   1,247.00 | Invoice         | ✓  | Bloom & Flourish          | Planter (Indoor)    
+Tall fiberglass planter in matte black 48"L x 16"W x 32"H    | $   1,247.00 | Invoice         | ✓  | Bloom & Flourish          | Planter (Indoor)    
+Tall fiberglass planter in matte charcoal 48”L x 16”W x 32”  | $   1,247.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Tall fiberglass planter in matte black 48"L x 16"W x 32"H    | $   1,247.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Urn fiberglass planters in matte black 24"D x 37"H           | $   1,220.00 | Invoice         | ✓  | Bloom & Flourish          | Planter (Indoor)    
+Urn fiberglass planters in matte black 24"D x 37"H (Qty: 2)  | $   1,220.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Exterior subirrigation - 6.25 gal                            | $   1,173.00 | Invoice         | ✓  | Bloom & Flourish          | Planter Accessory ( 
+Exterior subirrigation - 6.25 gal (Qty: 3)                   | $   1,173.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+#7 Boxwood Green Mountain                                    | $   1,140.00 | Invoice         | ✓  | Bloom & Flourish          | Outdoor Planter/Pla 
+#7 Boxwood Green Mountain                                    | $   1,140.00 | Invoice         | ✓  | Bloom & Flourish          | Outdoor Planter/Pla 
+#7 Boxwood Green Mountain (Qty: 3)                           | $   1,140.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+#7 Boxwood Green Mountain (Qty: 3)                           | $   1,140.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+14" Kentia Palms                                             | $   1,060.00 | Invoice         | ✓  | Bloom & Flourish          | Plant (Indoor)      
+14" Kentia Palms (Qty: 2)                                    | $   1,060.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Large fiber cement planters in black finish 20.5"D x26.75"H  | $     825.00 | Invoice         | ✓  | Bloom & Flourish          | Outdoor Planter/Pla 
+Large fiber cement planters in black finish 20.5"D x26.75"H  | $     825.00 | Invoice         | ✓  | Bloom & Flourish          | Outdoor Planter/Pla 
+Large fiber cement planters in black finish 20.5"D x26.75"H  | $     825.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Large fiber cement planters in black finish 20.5"D x26.75"H  | $     825.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Exterior subirrigation - 2.5 gal                             | $     804.00 | Invoice         | ✓  | Bloom & Flourish          | Planter Accessory ( 
+Exterior subirrigation - 2.5 gal (Qty: 6)                    | $     804.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Bulb fiberglass planter in custom navy 24"D x 35"H           | $     700.55 | Invoice         | ✓  | Bloom & Flourish          | Planter (Indoor)    
+Bulb fiberglass planter in custom navy 24"D x 35"H           | $     700.55 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+ST fiberglass container in custom Navy 20" x 20" x 43"       | $     688.54 | Invoice         | ✓  | Bloom & Flourish          | Planter (Indoor)    
+ST fiberglass container in custom Navy 20" x 20" x 43"       | $     688.54 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+#7 Boxwood Green Velvet                                      | $     630.00 | Invoice         | ✓  | Bloom & Flourish          | Outdoor Planter/Pla 
+#7 Boxwood Green Velvet (Qty: 3)                             | $     630.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Exterior subirrigation - 1.5 gal                             | $     594.00 | Invoice         | ✓  | Bloom & Flourish          | Planter Accessory ( 
+Exterior subirrigation - 1.5 gal (Qty: 6)                    | $     594.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Medium fiber cement planters in black finish 16.5"D x 21.25  | $     570.00 | Invoice         | ✓  | Bloom & Flourish          | Outdoor Planter/Pla 
+Medium fiber cement planters in black finish 16.5"D x 21.25  | $     570.00 | Invoice         | ✓  | Bloom & Flourish          | Outdoor Planter/Pla 
+Medium fiber cement planters in black finish 16.5"D x 21.25  | $     570.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Medium fiber cement planters in black finish 16.5"D x 21.25  | $     570.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Exterior subirrigation - 2 gal                               | $     562.00 | Invoice         | ✓  | Bloom & Flourish          | Planter Accessory ( 
+Exterior subirrigation - 2 gal (Qty: 2)                      | $     562.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+14" Rhapis Palm                                              | $     552.00 | Invoice         | ✓  | Bloom & Flourish          | Plant (Indoor)      
+14" Rhapis Palm                                              | $     552.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Roman Urn – Ficonstone finish in light grey   28”Dia x 24”H  | $     550.00 | Invoice         | ✓  | Bloom & Flourish          | Planter (Indoor)    
+Roman Urn – Ficonstone finish in light grey   28”Dia x 24”H  | $     550.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+2.5gal subirrigation                                         | $     536.00 | Invoice         | ✓  | Bloom & Flourish          | Planter Accessory ( 
+2.5gal subirrigation (Qty: 4)                                | $     536.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Round fiberglass planter in matte black 13"D x 24"H          | $     500.00 | Invoice         | ✓  | Bloom & Flourish          | Planter (Indoor)    
+Round fiberglass planter in matte black 13"D x 24"H (Qty: 2  | $     500.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+14" Sansevieria                                              | $     460.00 | Invoice         | ✓  | Bloom & Flourish          | Plant (Indoor)      
+14" Sansevieria (Qty: 2)                                     | $     460.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Roman Urn – Ficonstone finish in light grey   21.3”Dia x 18  | $     350.00 | Invoice         | ✓  | Bloom & Flourish          | Planter (Indoor)    
+Roman Urn – Ficonstone finish in light grey   21.3”Dia x 18  | $     350.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Ribbed planter in custom navy 16"Dx 30"H                     | $     345.80 | Invoice         | ✓  | Bloom & Flourish          | Planter (Indoor)    
+Ribbed planter in custom navy 16"Dx 30"H                     | $     345.80 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+9" Dracaena Lisa Cane                                        | $     340.00 | Invoice         | ✓  | Bloom & Flourish          | Plant (Indoor)      
+9" Dracaena Lisa Cane (Qty: 2)                               | $     340.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Medium composite planter in black crater 13.5"D x 24"H       | $     324.00 | Invoice         | ✓  | Bloom & Flourish          | Planter (Indoor)    
+Large composite planter in black crater 21"D x 16"H          | $     324.00 | Invoice         | ✓  | Bloom & Flourish          | Planter (Indoor)    
+Medium composite planter in black crater 13.5"D x 24"H       | $     324.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Large composite planter in black crater 21"D x 16"H          | $     324.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Round fiberglass container in custom navy 15"D x 23"H        | $     302.00 | Invoice         | ✓  | Bloom & Flourish          | Planter (Indoor)    
+Round fiberglass container in custom navy 15"D x 23"H        | $     302.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+10" Dracaena Lisa Cane                                       | $     292.50 | Invoice         | ✓  | Bloom & Flourish          | Plant (Indoor)      
+10" Dracaena Lisa Cane                                       | $     292.50 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+14" Ficus Lyrata                                             | $     283.50 | Invoice         | ✓  | Bloom & Flourish          | Plant (Indoor)      
+14" Ficus Lyrata                                             | $     283.50 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Tall fiberglass cylinder in matte black 13"D x 24"H          | $     264.00 | Invoice         | ✓  | Bloom & Flourish          | Other               
+Tall fiberglass cylinder in matte black 13"D x 24"H          | $     264.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Staggered fiberglass container in matte white 15.7"D x 15.7  | $     225.00 | Invoice         | ✓  | Bloom & Flourish          | Planter (Indoor)    
+Short ribbed planter in custom navy 15"D x 21"H              | $     225.00 | Invoice         | ✓  | Bloom & Flourish          | Planter (Indoor)    
+Staggered fiberglass container in matte white 15.7"D x 15.7  | $     225.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+Short ribbed planter in custom navy 15"D x 21"H              | $     225.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+10" ZZ plant                                                 | $     112.00 | Invoice         | ✓  | Bloom & Flourish          | Plant (Indoor)      
+10" ZZ plant                                                 | $     112.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+10" Ficus Burgundy                                           | $     104.00 | Invoice         | ✓  | Bloom & Flourish          | Plant (Indoor)      
+10" Sansevieria                                              | $     104.00 | Invoice         | ✓  | Bloom & Flourish          | Plant (Indoor)      
+10" Ficus Burgundy                                           | $     104.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+10" Sansevieria (Qty: 4)                                     | $     104.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+1.5ga subirrigation                                          | $      99.00 | Invoice         | ✓  | Bloom & Flourish          | Planter Accessory ( 
+1.5ga subirrigation                                          | $      99.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+10" Aglaonema ''Silver Bay"                                  | $      94.50 | Invoice         | ✓  | Bloom & Flourish          | Plant (Indoor)      
+10" Aglaonema ''Silver Bay"                                  | $      94.50 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+10" Philodendron Congo                                       | $      92.00 | Invoice         | ✓  | Bloom & Flourish          | Plant (Indoor)      
+10" Philodendron Congo                                       | $      92.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+10" Bird Nest Fern                                           | $      80.00 | Invoice         | ✓  | Bloom & Flourish          | Plant (Indoor)      
+10" Bird Nest Fern                                           | $      80.00 | Invoice         | ✓  | Bloom & Flourish          | Plants              
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Upper Bath | Items: 1 | Total: $0.00
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Vanity with sconces, framed mirror, rug                      | $       0.00 | Unknown         |    |                           | Rug / Carpet        
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Upper Bedroom A | Items: 9 | Total: $2,399.99
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+TV – Samsung 65" The Frame (2023)                            | $   2,399.99 | Invoice         | ✓  | Samsung                   | Electronics         
+Bed with bedding                                             | $       0.00 | Unknown         |    |                           | Furniture           
+Indoor plant                                                 | $       0.00 | B&F Invoice     |    | Bloom & Flourish          | Plants (Bloom & Flo 
+Art on wall                                                  | $       0.00 | Unknown         |    |                           | Art / Decor         
+2 side tables with lamps                                     | $       0.00 | Unknown         |    |                           | Furniture           
+Dresser                                                      | $       0.00 | Unknown         |    |                           | Furniture           
+Rug                                                          | $       0.00 | Unknown         |    |                           | Rug / Carpet        
+Desk + chair                                                 | $       0.00 | Unknown         |    |                           | Furniture           
+Mirror                                                       | $       0.00 | Unknown         |    |                           | Art / Decor         
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ROOM: Upper Bedroom B | Items: 7 | Total: $0.00
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Item                                                         |        Price | Source          | ✓  | Brand                     | Category            
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Wall art                                                     | $       0.00 | Unknown         |    |                           | Art / Decor         
+Art above bed                                                | $       0.00 | Unknown         |    |                           | Furniture           
+Indoor plant                                                 | $       0.00 | B&F Invoice     |    | Bloom & Flourish          | Plants (Bloom & Flo 
+Dresser with mirror                                          | $       0.00 | Unknown         |    |                           | Furniture           
+Rug                                                          | $       0.00 | Unknown         |    |                           | Rug / Carpet        
+2 side tables with lamps                                     | $       0.00 | Unknown         |    |                           | Furniture           
+Bed with white frame                                         | $       0.00 | Unknown         |    |                           | Furniture           
+
+======================================================================================================================================================
+HIGH-VALUE ITEMS (>$10,000)
+======================================================================================================================================================
+Item                                                         | Room                           |        Price | Brand                     | Verified
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Plants/install (2nd portion) – reference                     | Whole Property (Plants)        | $  19,944.48 | Holly Downs Design        | ✓ Invoice
+Malibu Pool Table w/ Ping Pong Top (Glossy Blue, Simonis Ca  | Rec Room (Lower Level)         | $  17,376.00 |                           | ✓ Invoice
+CoreChill Cold Plunge + Insulative Spa Cover                 | Hot Tub Area (Covered, Lower)  | $  17,009.98 |                           | ✓ Invoice
+Custom Sofas (2) with fabric                                 | Living Room                    | $  16,259.48 | Holly Downs Design        | ✓ Invoice
+Bloom&Flourish plant plan & install (global interior/exteri  | Whole Property (Plants)        | $  13,596.00 | Bloom & Flourish          | ✓ Invoice
+Sectional sofa (4-piece)                                     | Living Room                    | $  12,794.24 | Holly Downs Design        | ✓ Invoice
+RH Maxwell U-Chaise Sectional (Performance Velvet, Graphite  | Hearth Room                    | $  12,485.00 | Restoration Hardware      | ✓ Invoice
+RH Merida Outdoor Set (Sofa, 2 Lounge Chairs, Coffee Table,  | Upper Terrace (Main Level Out  | $  12,252.51 | Restoration Hardware      | ✓ Invoice
+Dining chairs (10, cane back)                                | Dining Room                    | $  12,037.84 | Holly Downs Design        | ✓ Invoice
+Custom Carpet for Front Stairs (Grey Chevron, templated, pa  | Foyer / Main Entry             | $  11,964.01 | Holly Downs Design        | ✓ Invoice
+Custom Carpet for Front Stairs (Grey Chevron, templated + p  | Entry (Main Level)             | $  11,964.01 | Holly Downs Design        | ✓ Invoice
+
+======================================================================================================================================================
+ITEMS BY BRAND
+======================================================================================================================================================
+
+Holly Downs Design: 46 items ($208,318.81) - 46 verified with invoices
+  ✓ Plants/install (2nd portion) – reference           | Whole Property (Plants)   | $ 19,944.48
+  ✓ Custom Sofas (2) with fabric                       | Living Room               | $ 16,259.48
+  ✓ Sectional sofa (4-piece)                           | Living Room               | $ 12,794.24
+  ✓ Dining chairs (10, cane back)                      | Dining Room               | $ 12,037.84
+  ✓ Custom Carpet for Front Stairs (Grey Chevron, temp | Foyer / Main Entry        | $ 11,964.01
+  ✓ Custom Carpet for Front Stairs (Grey Chevron, temp | Entry (Main Level)        | $ 11,964.01
+  ✓ Custom Area Rug (22’4” x 15’2”, custom cut, serged | Living Room               | $  9,442.27
+  ✓ Custom Area Rug (22’4” × 15’2”, cut around corners | Living Room               | $  9,442.27
+  ✓ Red Chairs                                         | Living Room               | $  9,428.52
+  ✓ Red Lacquer Buffet                                 | Dining Room               | $  9,059.20
+
+Bloom & Flourish: 106 items ($70,282.78) - 87 verified with invoices
+  ✓ Bloom&Flourish plant plan & install (global interi | Whole Property (Plants)   | $ 13,596.00
+  ✓ #7 Boxwood Green Velvet                            | Unassigned (Bloom & Flour | $  2,940.00
+  ✓ #7 Boxwood Green Velvet (Qty: 14)                  | Unassigned (Bloom & Flour | $  2,940.00
+  ✓ Mid fiberglass planter in matte black 60"L x 16"W  | Unassigned (Bloom & Flour | $  2,348.00
+  ✓ Mid fiberglass planter in matte black 60"L x 16"W  | Unassigned (Bloom & Flour | $  2,348.00
+  ✓ Round Urn - 33.5"D x 33.5"H                        | Unassigned (Bloom & Flour | $  1,500.00
+  ✓ Round Urn - 33.5"D x 33.5"H (Qty: 2)               | Unassigned (Bloom & Flour | $  1,500.00
+  ✓ Tall fiberglass planter in matte charcoal 48”L x 1 | Unassigned (Bloom & Flour | $  1,247.00
+  ✓ Tall fiberglass planter in matte black 48"L x 16"W | Unassigned (Bloom & Flour | $  1,247.00
+  ✓ Tall fiberglass planter in matte charcoal 48”L x 1 | Unassigned (Bloom & Flour | $  1,247.00
+
+Restoration Hardware: 5 items ($27,387.70) - 5 verified with invoices
+  ✓ RH Maxwell U-Chaise Sectional (Performance Velvet, | Hearth Room               | $ 12,485.00
+  ✓ RH Merida Outdoor Set (Sofa, 2 Lounge Chairs, Coff | Upper Terrace (Main Level | $ 12,252.51
+  ✓ RH Outdoor Protective Covers (Bench, Sofa, Coffee  | Upper Terrace (Main Level | $  1,319.19
+  ✓ RH Aegean Teak Dining Bench (63")                  | Upper Terrace (Main Level | $    971.00
+  ✓ RH Cosimo Side Tables (Set of 3, Grey)             | Upper Terrace (Main Level | $    360.00
+
+Samsung: 7 items ($21,734.93) - 7 verified with invoices
+  ✓ TV – Samsung QN75LST7T 75" The Terrace (Partial Su | Upper Terrace (Main Level | $  5,199.99
+  ✓ TV – Samsung QN65QN900C 65" Neo QLED 8K (2023)     | Living Room               | $  4,999.99
+  ✓ TV – Samsung QN65QN900C 65" Neo QLED 8K (2023)     | Primary Bedroom           | $  4,999.99
+  ✓ TV – Samsung 65" The Frame (2023)                  | Upper Bedroom A           | $  2,399.99
+  ✓ TV – Samsung QN75Q80C 75" QLED 4K (2023)           | Guest Bedroom (Lower East | $  2,089.99
+  ✓ TV – Samsung QN55Q70A 55" QLED 4K (2021)           | Guest Bedroom (Lower West | $  1,044.99
+  ✓ TV – Samsung QN43LS03B 43" The Frame               | Upper Level → Upstairs Of | $    999.99
+
+LoveSac: 2 items ($15,396.78) - 2 verified with invoices
+  ✓ Lovesac Sactionals Modular Sofa (Tan Combed Chenil | Rec Room (Lower Level)    | $  7,698.39
+  ✓ Lovesac Sactionals Modular Sofa (Tan Combed Chenil | Lower Level Theater       | $  7,698.39
+
+Design Within Reach: 11 items ($15,224.00) - 6 verified with invoices
+  ✓ Eames Lounge Chair + Ottoman (Tall Version, Walnut | Upper Level → Upstairs Of | $  5,510.00
+  ✓ Bacco Chair                                        | Upper Level → Upstairs Of | $  2,358.00
+  ✓ LEM Piston Bar Stools (3 total: 1 Wood Seat, 2 Sta | Lower Level Theater       | $  2,244.00
+  ✓ Dulwich Extension Table                            | Upper Level → Hallway (La | $  2,241.00
+  ✓ Brio Adjustable Dining Table                       | Hearth Room               | $  1,705.50
+  ✓ Tri Arm Floor Lamp                                 | Upper Level → Upstairs Of | $  1,165.50
+    Eames Lounge Chair + Ottoman (black leather, walnu | Upper Level → Upstairs Of | $      0.00
+    Nelson Swag Leg Desk + Extension Table (walnut/whi | Upper Level → Upstairs Of | $      0.00
+    Shell Chairs (3, white molded plastic with wood le | Upper Level → Upstairs Of | $      0.00
+    Built-in planter with snake plants (fixture + Bloo | Upper Level → Upstairs Of | $      0.00
+
+======================================================================================================================================================
+END OF VERIFIED INVENTORY REPORT
+======================================================================================================================================================

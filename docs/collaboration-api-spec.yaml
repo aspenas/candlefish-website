@@ -1,0 +1,989 @@
+openapi: 3.0.0
+info:
+  title: Candlefish AI - Real-Time Collaboration API
+  description: Backend API for real-time collaborative document editing and project management
+  version: 2.0.0
+  contact:
+    name: Candlefish AI Team
+
+servers:
+  - url: https://api.candlefish.ai/v2
+    description: Production server
+  - url: https://staging-api.candlefish.ai/v2
+    description: Staging server
+
+security:
+  - BearerAuth: []
+
+paths:
+  # Project Management
+  /projects:
+    get:
+      summary: List user's projects
+      tags: [Projects]
+      parameters:
+        - name: organization_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [owner, admin, editor, viewer]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Projects retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projects:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Project'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+    post:
+      summary: Create new project
+      tags: [Projects]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                description:
+                  type: string
+                organization_id:
+                  type: string
+                  format: uuid
+                settings:
+                  type: object
+      responses:
+        '201':
+          description: Project created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+
+  /projects/{projectId}:
+    get:
+      summary: Get project details
+      tags: [Projects]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Project details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectWithMembers'
+
+    put:
+      summary: Update project
+      tags: [Projects]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                settings:
+                  type: object
+      responses:
+        '200':
+          description: Project updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+
+    delete:
+      summary: Delete project
+      tags: [Projects]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '204':
+          description: Project deleted successfully
+
+  /projects/{projectId}/members:
+    get:
+      summary: Get project members
+      tags: [Project Members]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Project members
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  members:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProjectMember'
+
+    post:
+      summary: Add project member
+      tags: [Project Members]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, role]
+              properties:
+                user_id:
+                  type: string
+                  format: uuid
+                role:
+                  type: string
+                  enum: [admin, editor, viewer]
+                permissions:
+                  type: object
+      responses:
+        '201':
+          description: Member added successfully
+
+  # Document Management
+  /projects/{projectId}/documents:
+    get:
+      summary: List project documents
+      tags: [Documents]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: folder_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [text, code, markdown, diagram]
+      responses:
+        '200':
+          description: Documents retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  documents:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Document'
+                  folders:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DocumentFolder'
+
+    post:
+      summary: Create new document
+      tags: [Documents]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, document_type]
+              properties:
+                title:
+                  type: string
+                  maxLength: 500
+                document_type:
+                  type: string
+                  enum: [text, code, markdown, diagram]
+                parent_folder_id:
+                  type: string
+                  format: uuid
+                content:
+                  type: object
+      responses:
+        '201':
+          description: Document created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+
+  /documents/{documentId}:
+    get:
+      summary: Get document details
+      tags: [Documents]
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - name: include_operations
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Document details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentWithContent'
+
+    put:
+      summary: Update document metadata
+      tags: [Documents]
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                parent_folder_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Document updated
+
+  # Real-time Collaboration
+  /documents/{documentId}/collaborate:
+    post:
+      summary: Join collaboration session
+      tags: [Collaboration]
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [session_id]
+              properties:
+                session_id:
+                  type: string
+                cursor_position:
+                  type: object
+      responses:
+        '200':
+          description: Collaboration session joined
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  websocket_url:
+                    type: string
+                  session_token:
+                    type: string
+                  current_document_state:
+                    type: object
+
+  /documents/{documentId}/operations:
+    post:
+      summary: Apply document operation
+      tags: [Collaboration]
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [operation_type, operation_data, session_id]
+              properties:
+                operation_type:
+                  type: string
+                  enum: [insert, delete, retain, format]
+                operation_data:
+                  type: object
+                session_id:
+                  type: string
+                sequence_number:
+                  type: integer
+      responses:
+        '200':
+          description: Operation applied
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transformed_operation:
+                    type: object
+                  current_sequence:
+                    type: integer
+
+    get:
+      summary: Get recent operations
+      tags: [Collaboration]
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - name: since_sequence
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Operations retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  operations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DocumentOperation'
+
+  # AI-Powered Features
+  /documents/{documentId}/ai/suggestions:
+    post:
+      summary: Request AI suggestions
+      tags: [AI Features]
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [suggestion_type, context_range]
+              properties:
+                suggestion_type:
+                  type: string
+                  enum: [completion, correction, enhancement, translation]
+                context_range:
+                  type: object
+                  properties:
+                    start:
+                      type: integer
+                    end:
+                      type: integer
+                    content:
+                      type: string
+                nanda_agent_id:
+                  type: string
+      responses:
+        '200':
+          description: AI suggestion generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AISuggestion'
+
+    get:
+      summary: Get active AI suggestions
+      tags: [AI Features]
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, accepted, rejected, expired]
+      responses:
+        '200':
+          description: AI suggestions retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AISuggestion'
+
+  /ai/suggestions/{suggestionId}/accept:
+    post:
+      summary: Accept AI suggestion
+      tags: [AI Features]
+      parameters:
+        - name: suggestionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Suggestion accepted
+
+  # Version History
+  /documents/{documentId}/versions:
+    get:
+      summary: Get document version history
+      tags: [Versions]
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Version history retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentVersion'
+
+    post:
+      summary: Create new version snapshot
+      tags: [Versions]
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                commit_message:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Version created
+
+  /documents/{documentId}/versions/{versionNumber}/restore:
+    post:
+      summary: Restore document to specific version
+      tags: [Versions]
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - name: versionNumber
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Document restored
+
+  # Comments
+  /documents/{documentId}/comments:
+    get:
+      summary: Get document comments
+      tags: [Comments]
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - name: resolved
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Comments retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentComment'
+
+    post:
+      summary: Add comment to document
+      tags: [Comments]
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                position_reference:
+                  type: object
+                parent_comment_id:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: Comment created
+
+  # Activity Feed
+  /projects/{projectId}/activity:
+    get:
+      summary: Get project activity feed
+      tags: [Activity]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: document_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: activity_types
+          in: query
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: since
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Activity feed
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CollaborationActivity'
+
+  # Presence
+  /projects/{projectId}/presence:
+    get:
+      summary: Get online users in project
+      tags: [Presence]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: User presence data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserPresence'
+
+    put:
+      summary: Update user presence
+      tags: [Presence]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [online, away, busy]
+                document_id:
+                  type: string
+                  format: uuid
+                current_activity:
+                  type: object
+      responses:
+        '200':
+          description: Presence updated
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    DocumentId:
+      name: documentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        owner_id:
+          type: string
+          format: uuid
+        organization_id:
+          type: string
+          format: uuid
+        settings:
+          type: object
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ProjectWithMembers:
+      allOf:
+        - $ref: '#/components/schemas/Project'
+        - type: object
+          properties:
+            members:
+              type: array
+              items:
+                $ref: '#/components/schemas/ProjectMember'
+            member_count:
+              type: integer
+
+    ProjectMember:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        user:
+          $ref: '#/components/schemas/User'
+        role:
+          type: string
+          enum: [owner, admin, editor, viewer]
+        permissions:
+          type: object
+        joined_at:
+          type: string
+          format: date-time
+
+    Document:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        document_type:
+          type: string
+          enum: [text, code, markdown, diagram]
+        file_path:
+          type: string
+        parent_folder_id:
+          type: string
+          format: uuid
+        created_by:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        last_modified_by:
+          type: string
+          format: uuid
+
+    DocumentWithContent:
+      allOf:
+        - $ref: '#/components/schemas/Document'
+        - type: object
+          properties:
+            content:
+              type: object
+            current_collaborators:
+              type: array
+              items:
+                $ref: '#/components/schemas/User'
+
+    DocumentFolder:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        parent_folder_id:
+          type: string
+          format: uuid
+        created_by:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+
+    DocumentVersion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        document_id:
+          type: string
+          format: uuid
+        version_number:
+          type: integer
+        created_by:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        commit_message:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    DocumentOperation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        document_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        session_id:
+          type: string
+        operation_type:
+          type: string
+          enum: [insert, delete, retain, format]
+        operation_data:
+          type: object
+        sequence_number:
+          type: integer
+        applied_at:
+          type: string
+          format: date-time
+
+    AISuggestion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        document_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        suggestion_type:
+          type: string
+          enum: [completion, correction, enhancement, translation]
+        context_range:
+          type: object
+        suggestion_content:
+          type: object
+        confidence_score:
+          type: number
+          minimum: 0
+          maximum: 1
+        nanda_agent_id:
+          type: string
+        status:
+          type: string
+          enum: [pending, accepted, rejected, expired]
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+
+    DocumentComment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        document_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        user:
+          $ref: '#/components/schemas/User'
+        parent_comment_id:
+          type: string
+          format: uuid
+        content:
+          type: string
+        position_reference:
+          type: object
+        is_resolved:
+          type: boolean
+        resolved_by:
+          type: string
+          format: uuid
+        resolved_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CollaborationActivity:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        document_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        user:
+          $ref: '#/components/schemas/User'
+        activity_type:
+          type: string
+        activity_data:
+          type: object
+        occurred_at:
+          type: string
+          format: date-time
+
+    UserPresence:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        user:
+          $ref: '#/components/schemas/User'
+        project_id:
+          type: string
+          format: uuid
+        document_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [online, away, busy, offline]
+        current_activity:
+          type: object
+        last_seen:
+          type: string
+          format: date-time
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+        full_name:
+          type: string
+        avatar_url:
+          type: string
+
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        has_more:
+          type: boolean
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object

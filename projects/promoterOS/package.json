@@ -39,9 +39,10 @@
     "netlify-cli": "^17.0.0",
     "@types/jest": "^29.5.5"
   },
+  "homepage": "https://candlefish.ai",
   "repository": {
     "type": "git",
-    "url": "https://github.com/candlefish/promoteros"
+    "url": "https://github.com/candlefish-ai/promoteros"
   },
   "keywords": [
     "concert-booking",
@@ -50,7 +51,13 @@
     "music-industry",
     "venue-management"
   ],
-  "author": "Patrick Smith",
+  "author": {
+    "name": "Candlefish AI",
+    "url": "https://candlefish.ai"
+  },
+  "bugs": {
+    "url": "https://github.com/candlefish-ai/promoteros/issues"
+  },
   "license": "PROPRIETARY",
   "private": true,
   "engines": {

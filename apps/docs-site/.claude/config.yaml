@@ -1,0 +1,35 @@
+# Claude Project Configuration
+# Generated: 2025-09-01
+
+extends: global
+project:
+  name: docs-site
+  type: documentation
+  path: /Users/patricksmith/candlefish-ai/apps/docs-site
+  aws_profile: candlefish-dev
+  region: us-east-1
+
+# Project-specific overrides
+overrides:
+  # Uncomment to override global settings
+  # model: claude-sonnet-3-5
+  # context: 100000
+
+# Project-specific MCP servers
+mcp_servers:
+  # Inherit all global servers
+  inherit: true
+  
+# Team access
+team:
+  owner: patrick
+  collaborators:
+    - tyler
+    - aaron
+    - james
+
+# Project metadata
+metadata:
+  created: 2025-09-01
+  version: 2.0
+  managed_by: claude-config-v2

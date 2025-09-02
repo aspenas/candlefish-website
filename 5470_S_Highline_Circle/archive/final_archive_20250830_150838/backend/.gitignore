@@ -1,0 +1,10 @@
+# Binary files
+main
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.a
+*.o

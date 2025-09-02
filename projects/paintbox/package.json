@@ -1,6 +1,19 @@
 {
   "name": "eggshell-app",
   "version": "0.1.1",
+  "description": "Paintbox - Creative AI tools and brand management platform powered by Candlefish AI",
+  "homepage": "https://candlefish.ai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/candlefish-ai/paintbox"
+  },
+  "author": {
+    "name": "Candlefish AI",
+    "url": "https://candlefish.ai"
+  },
+  "bugs": {
+    "url": "https://github.com/candlefish-ai/paintbox/issues"
+  },
   "private": true,
   "scripts": {
     "dev": "NODE_ENV=development ts-node -r tsconfig-paths/register --project tsconfig.server.json server/websocket-server.ts",

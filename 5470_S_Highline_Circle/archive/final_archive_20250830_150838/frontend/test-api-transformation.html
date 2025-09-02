@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Transformation Test</title>
+</head>
+<body>
+    <h1>API Transformation Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        // Helper function to convert snake_case to camelCase
+        const toCamelCase = (obj) => {
+            if (obj === null || obj === undefined || typeof obj !== 'object') {
+                return obj;
+            }
+            
+            if (Array.isArray(obj)) {
+                return obj.map(toCamelCase);
+            }
+            
+            const camelCaseObj = {};
+            for (const [key, value] of Object.entries(obj)) {
+                const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+                camelCaseObj[camelKey] = toCamelCase(value);
+            }
+            return camelCaseObj;
+        };
+
+        async function testAPI() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<h2>Testing API...</h2>';
+
+            try {
+                // Test the API call
+                const response = await fetch('http://localhost:4050/api/v1/analytics/summary');
+                const data = await response.json();
+                
+                console.log('Raw API Response:', data);
+                
+                // Transform the data
+                const transformed = toCamelCase(data);
+                
+                console.log('Transformed Data:', transformed);
+                
+                results.innerHTML = `
+                    <h2>API Test Results</h2>
+                    <h3>Raw API Response:</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                    
+                    <h3>Transformed Data (camelCase):</h3>
+                    <pre>${JSON.stringify(transformed, null, 2)}</pre>
+                    
+                    <h3>Values Check:</h3>
+                    <p>totalItems: ${transformed.totalItems} (should be 134)</p>
+                    <p>totalValue: ${transformed.totalValue} (should be 213300)</p>
+                    <p>keepCount: ${transformed.keepCount} (should be 108)</p>
+                    <p>sellCount: ${transformed.sellCount} (should be 0)</p>
+                    <p>unsureCount: ${transformed.unsureCount} (should be 26)</p>
+                `;
+                
+            } catch (error) {
+                console.error('API Test Error:', error);
+                results.innerHTML = `<h2>Error:</h2><pre>${error.message}</pre>`;
+            }
+        }
+
+        // Run test when page loads
+        testAPI();
+    </script>
+</body>
+</html>

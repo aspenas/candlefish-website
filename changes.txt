@@ -1,0 +1,173 @@
+ M README-DEPLOYMENT.md
+ M apps/collaboration-editor/src/app/layout.tsx
+ M apps/collaboration-editor/src/app/page.tsx
+ M brand/website/app/assessment/page.tsx
+ M brand/website/app/globals.css
+ M brand/website/app/workshop-notes/page.tsx
+ M brand/website/components/assessment/results-view.tsx
+ M brand/website/components/forms/AssessmentForm.tsx
+ M brand/website/components/navigation/OperationalNav.tsx
+ M brand/website/components/notes/note-viewer.tsx
+ M brand/website/components/workshop/ShareModal.tsx
+ M brand/website/content/workshop-notes/index.ts
+ M brand/website/package-lock.json
+ M brand/website/package.json
+ M brand/website/public/_redirects
+ M brand/website/styles/atelier-refined.css
+ M brand/website/tailwind.config.js
+ M clos/api-server/package.json
+ M clos/web-dashboard/package.json
+ M docker-compose.production.yml
+ M graphql/federation/collaboration-federation.ts
+ M graphql/schema/collaboration-mutations.graphql
+ M graphql/schema/collaboration-queries.graphql
+ M graphql/schema/collaboration-subscriptions.graphql
+ M nanda-web-dashboard/package.json
+ M netlify.toml
+ M projects/paintbox/package.json
+ M projects/promoterOS/package.json
+ M scripts/setup-secrets.sh
+?? .github/workflows/analytics-test-pipeline.yml
+?? .github/workflows/clos-analytics-deploy.yml
+?? .github/workflows/clos-analytics-rollback.yml
+?? .github/workflows/test-pipeline.yml
+?? 5470_S_Highline_Circle/FINAL_DELIVERED_TO_JON.html
+?? 5470_S_Highline_Circle/FINAL_EMAIL_TO_JON.txt
+?? 5470_S_Highline_Circle/README_FINAL.md
+?? 5470_S_Highline_Circle/archive/
+?? 5470_S_Highline_Circle/buyer-presentation-standalone/
+?? 5470_highline_inventory_categorized.txt
+?? CLAUDE_CONFIG_V2_FIXED.md
+?? CLAUDE_V2_DEPLOYMENT_COMPLETE.md
+?? CLAUDE_V2_ENTERPRISE_COMPLETE.md
+?? CLAUDE_V2_PERFECT_SYSTEM.md
+?? CONTEXT7_EVALUATION_REPORT.md
+?? DEPLOYMENT_PROGRESS.md
+?? DEPLOYMENT_REVIEW_CHECKLIST.md
+?? ENHANCED_CLAUDE_1M_FRAMEWORK.md
+?? FULL_REVIEW_CONSOLIDATED_REPORT.md
+?? PATH_B_WEEK_2_3_COMPLETE.md
+?? PERFORMANCE_ANALYSIS_REPORT.md
+?? READY_TO_DEPLOY.md
+?? SECURITY_AUDIT_REPORT_REALTIME_COLLABORATION.md
+?? SECURITY_COMPLIANCE_REPORT.md
+?? SECURITY_FIX_COMPLETE.md
+?? TERRAFORM_FIXED.md
+?? WEEK_1_CRITICAL_FIXES_COMPLETE.md
+?? amy_tomlan_buyer_list.txt
+?? apps/collaboration-editor/.claude/
+?? apps/collaboration-editor/src/components/accessibility/
+?? apps/collaboration-editor/src/components/ai/
+?? apps/collaboration-editor/src/components/common/
+?? apps/collaboration-editor/src/components/layout/CollaborationLayout.tsx
+?? apps/collaboration-editor/src/components/providers/ApolloProvider.tsx
+?? apps/collaboration-editor/src/components/tree/
+?? apps/collaboration-editor/src/components/versions/VersionTimeline.tsx
+?? apps/collaboration-editor/src/graphql/operations.ts
+?? apps/collaboration-editor/src/hooks/
+?? apps/collaboration-mobile/
+?? apps/docs-site/.claude/
+?? apps/nanda-dashboard/.claude/
+?? apps/website/vite.config.optimized.ts
+?? auth-test.html
+?? brand/.claude/
+?? brand/website/app/atelier/enhancement-paradox/
+?? brand/website/app/atelier/workshop-notes/
+?? brand/website/app/not-found.tsx
+?? brand/website/components/assessment/assessment-orchestrator.tsx
+?? brand/website/components/assessment/dimensional-effects.tsx
+?? brand/website/components/assessment/dimensional-radar-3d.tsx
+?? brand/website/components/assessment/dimensional-radar-enhanced.tsx
+?? brand/website/components/assessment/dimensional-sound.tsx
+?? brand/website/components/assessment/enhanced-results-view.tsx
+?? brand/website/components/assessment/maturity-sphere.tsx
+?? brand/website/components/assessment/particle-field.tsx
+?? brand/website/components/assessment/results-view-enhanced.tsx
+?? brand/website/components/observatory/
+?? brand/website/components/workshop/BrowserOptimizations.tsx
+?? brand/website/content/workshop-notes/2025-09-01-paradox-of-enhancement.md
+?? brand/website/docs/WORKSHOP_NOTES_UNIFIED_SYSTEM.md
+?? brand/website/styles/workshop-notes-unified.css
+?? candlefish-operating-system-clean/
+?? candlefish-spine/COMPLETE_PACKAGE.md
+?? changes.txt
+?? claude-config-api-spec.yaml
+?? claude-config-architecture.md
+?? claude-config-database-schema.sql
+?? claude-config-deployment.md
+?? claude-config-rate-limiting.md
+?? claude-config-realtime.md
+?? claude-config-security.md
+?? clos/.claude/
+?? clos/api-server/Dockerfile
+?? clos/api-server/cache/
+?? clos/api-server/jest.config.js
+?? clos/api-server/server-secure.ts
+?? clos/api-server/tests/
+?? clos/docker-compose.test.yml
+?? clos/web-dashboard/Dockerfile
+?? clos/web-dashboard/__tests__/
+?? clos/web-dashboard/app/analytics/
+?? clos/web-dashboard/components/__tests__/
+?? clos/web-dashboard/components/analytics/
+?? clos/web-dashboard/e2e/
+?? clos/web-dashboard/jest.config.js
+?? clos/web-dashboard/jest.setup.js
+?? clos/web-dashboard/playwright.config.ts
+?? clos/web-dashboard/stores/
+?? clos/web-dashboard/tests/
+?? clos/websocket-server/
+?? database/optimization/
+?? deploy-infrastructure.sh
+?? docs/api/v2.0/
+?? docs/collaboration-api-spec.yaml
+?? docs/collaboration-clos-integration.md
+?? docs/collaboration-db-schema.sql
+?? docs/collaboration-service-implementations.md
+?? docs/collaboration-tech-stack.md
+?? genesis/APPLY_ALL_FIXES_NOW.sh
+?? genesis/WEEK_2_CLEAN_ARCHITECTURE_IMPLEMENTATION.md
+?? genesis/config/
+?? genesis/nanda_example_demo.py
+?? genesis/prompts/
+?? graphql/dataloaders/dataloader-factory.ts
+?? graphql/dataloaders/enhanced-dataloaders.ts
+?? graphql/middleware/
+?? graphql/resolvers/enhanced-resolvers.ts
+?? graphql/schema/collaboration-platform.graphql
+?? infrastructure/aws/
+?? infrastructure/database/
+?? infrastructure/dns/
+?? infrastructure/pgbouncer/
+?? infrastructure/scripts/
+?? infrastructure/terraform/DEPLOYMENT_STATUS.md
+?? infrastructure/terraform/claude-config/
+?? infrastructure/terraform/deployment_log.txt
+?? infrastructure/terraform/elasticache-redis.tf.standalone
+?? infrastructure/terraform/rds-postgresql.tf.standalone
+?? infrastructure/terraform/templates/
+?? infrastructure/terraform/terraform.tfvars
+?? infrastructure/terraform/tfplan_20250901_194027
+?? k8s/claude-config/
+?? k8s/clos-analytics/
+?? k8s/security/
+?? kubernetes/
+?? performance/bundle-optimization.md
+?? performance/optimization-report.md
+?? scripts/README-backlinks.md
+?? scripts/deploy-clos-analytics.sh
+?? scripts/deploy-nanda-v2.sh
+?? scripts/nanda-v2-mesh.py
+?? scripts/nanda-v2-monitor.py
+?? scripts/nanda-v2-orchestrator.py
+?? scripts/rollback-clos-analytics.sh
+?? scripts/run-analytics-tests.sh
+?? scripts/security/rotate-secrets.sh
+?? scripts/test-nanda-v2.py
+?? scripts/update-npm-backlinks.sh
+?? sdks/
+?? security/
+?? terraform/clos-analytics.tf
+?? terraform/modules/clos-analytics/
+?? tests/
+?? validate-deployment.sh

@@ -1,0 +1,55 @@
+# Clean Netlify Configuration for Inventory System
+[build]
+  command = "npm run build"
+  publish = "dist"
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF"
+
+[build.environment]
+  NODE_VERSION = "18"
+  VITE_API_URL = "https://5470-inventory.fly.dev/api/v1"
+  SKIP_PLUGIN_LIGHTHOUSE = "true"
+  NETLIFY_SKIP_LIGHTHOUSE = "true"
+
+# Security Headers for HTML
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(self), microphone=(self), geolocation=(self)"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://inventory.highline.work https://5470-inventory.fly.dev wss://inventory.highline.work wss://5470-inventory.fly.dev"
+    Cache-Control = "public, max-age=3600"
+
+# Static Assets Caching
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Images Caching
+[[headers]]
+  for = "/*.{jpg,jpeg,png,gif,svg,webp}"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+# SPA Redirects
+[[redirects]]
+  from = "/login"
+  to = "/index.html"
+  status = 200
+  
+[[redirects]]
+  from = "/register"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Disable problematic plugins
+[build.processing]
+  skip_processing = false

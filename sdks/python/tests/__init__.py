@@ -1,0 +1,1 @@
+# Test package for Candlefish Claude Config SDK

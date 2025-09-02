@@ -1,0 +1,305 @@
+name: Frontend CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/ci-cd-frontend.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'frontend/**'
+
+env:
+  REGISTRY: ghcr.io
+  FRONTEND_IMAGE_NAME: ${{ github.repository }}/frontend
+  NODE_VERSION: '20'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run linter
+      run: npm run lint
+
+    - name: Run type checking
+      run: npm run type-check
+
+    - name: Run unit tests
+      run: npm run test:unit -- --coverage --watchAll=false
+
+    - name: Run integration tests
+      run: npm run test:integration
+
+    - name: Build application
+      run: npm run build
+      env:
+        REACT_APP_API_URL: https://api.inventory.example.com
+        REACT_APP_WS_URL: wss://ws.inventory.example.com
+        GENERATE_SOURCEMAP: false
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        directory: ./frontend/coverage
+        flags: frontend
+        name: frontend-coverage
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: frontend-build
+        path: frontend/build/
+        retention-days: 7
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./frontend
+      run: npm ci
+
+    - name: Install Playwright browsers
+      working-directory: ./frontend
+      run: npx playwright install --with-deps
+
+    - name: Start test services
+      run: |
+        # Start backend services for e2e testing
+        docker-compose -f docker-compose.test.yml up -d
+        # Wait for services to be ready
+        sleep 30
+
+    - name: Run E2E tests
+      working-directory: ./frontend
+      run: npm run test:e2e
+      env:
+        PLAYWRIGHT_BASE_URL: http://localhost:3000
+
+    - name: Upload E2E test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: playwright-report
+        path: frontend/playwright-report/
+        retention-days: 7
+
+    - name: Stop test services
+      if: always()
+      run: docker-compose -f docker-compose.test.yml down
+
+  security-scan:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run npm audit
+      run: npm audit --audit-level=high
+
+    - name: Run dependency security scan
+      run: npx audit-ci --high
+
+    - name: Scan for secrets
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./frontend/
+        base: main
+        head: HEAD
+
+  build-and-push:
+    needs: [test, e2e-tests, security-scan]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-tag: ${{ steps.meta.outputs.tags }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: ./frontend
+        file: ./frontend/Dockerfile
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64,linux/arm64
+        build-args: |
+          REACT_APP_API_URL=https://api.inventory.example.com
+          REACT_APP_WS_URL=wss://ws.inventory.example.com
+          REACT_APP_CDN_URL=https://cdn.inventory.example.com
+
+  deploy-staging:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment:
+      name: staging
+      url: https://staging.inventory.example.com
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --name inventory-cluster --region us-east-1
+
+    - name: Deploy to staging
+      run: |
+        kubectl set image deployment/frontend frontend=${{ needs.build-and-push.outputs.image-tag }} \
+          -n inventory-system-staging
+        kubectl rollout status deployment/frontend -n inventory-system-staging --timeout=300s
+
+    - name: Run smoke tests
+      run: |
+        sleep 30
+        curl -f https://staging.inventory.example.com/
+        # Add more smoke tests as needed
+
+  deploy-production:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://inventory.example.com
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --name inventory-cluster --region us-east-1
+
+    - name: Blue-Green Deployment
+      run: |
+        # Frontend blue-green deployment
+        NEW_IMAGE="${{ needs.build-and-push.outputs.image-tag }}"
+        
+        # Update deployment
+        kubectl patch deployment frontend -n inventory-system -p \
+          '{"spec":{"template":{"spec":{"containers":[{"name":"frontend","image":"'$NEW_IMAGE'"}]}}}}'
+        
+        # Wait for rollout
+        kubectl rollout status deployment/frontend -n inventory-system --timeout=300s
+        
+        # Health checks
+        echo "Running health checks..."
+        for i in {1..5}; do
+          if curl -f https://inventory.example.com/; then
+            echo "Health check $i passed"
+          else
+            echo "Health check $i failed"
+            kubectl rollout undo deployment/frontend -n inventory-system
+            exit 1
+          fi
+          sleep 10
+        done
+        
+        echo "Frontend deployment successful!"
+
+  lighthouse-audit:
+    needs: deploy-production
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Lighthouse CI
+      uses: treosh/lighthouse-ci-action@v10
+      with:
+        urls: |
+          https://inventory.example.com
+          https://inventory.example.com/items
+          https://inventory.example.com/valuation
+        configPath: './frontend/.lighthouserc.js'
+        uploadArtifacts: true
+        temporaryPublicStorage: true

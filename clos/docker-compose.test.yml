@@ -1,0 +1,288 @@
+# Docker Compose for Analytics Dashboard Testing Environment
+version: '3.8'
+
+services:
+  # Test Database
+  postgres-test:
+    image: postgres:15-alpine
+    container_name: clos-postgres-test
+    environment:
+      POSTGRES_DB: clos_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+      - ./database/init/test-schema.sql:/docker-entrypoint-initdb.d/01-test-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - clos-test-network
+
+  # Test Redis Cache
+  redis-test:
+    image: redis:7-alpine
+    container_name: clos-redis-test
+    ports:
+      - "6380:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_test_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - clos-test-network
+
+  # API Server for Testing
+  api-server-test:
+    build:
+      context: ./api-server
+      dockerfile: Dockerfile
+      target: development
+    container_name: clos-api-test
+    environment:
+      NODE_ENV: test
+      PORT: 3501
+      DATABASE_URL: postgresql://postgres:postgres@postgres-test:5432/clos_test
+      REDIS_URL: redis://redis-test:6379
+      JWT_SECRET: test-jwt-secret-for-docker
+      CORS_ORIGIN: http://localhost:3500
+    ports:
+      - "3502:3501"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    volumes:
+      - ./api-server/src:/app/src:ro
+      - ./api-server/tests:/app/tests:ro
+    command: npm run dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3501/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - clos-test-network
+
+  # Web Dashboard for Testing
+  web-dashboard-test:
+    build:
+      context: ./web-dashboard
+      dockerfile: Dockerfile
+      target: development
+    container_name: clos-web-test
+    environment:
+      NODE_ENV: test
+      PORT: 3500
+      NEXT_PUBLIC_API_URL: http://localhost:3502
+      NEXT_PUBLIC_WS_URL: ws://localhost:3502
+    ports:
+      - "3501:3500"
+    depends_on:
+      - api-server-test
+    volumes:
+      - ./web-dashboard/components:/app/components:ro
+      - ./web-dashboard/app:/app/app:ro
+      - ./web-dashboard/__tests__:/app/__tests__:ro
+      - ./web-dashboard/e2e:/app/e2e:ro
+    command: npm run dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3500"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - clos-test-network
+
+  # Test Runner for Backend
+  test-runner-backend:
+    build:
+      context: ./api-server
+      dockerfile: Dockerfile
+      target: test
+    container_name: clos-test-runner-backend
+    environment:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@postgres-test:5432/clos_test
+      TEST_DATABASE_URL: postgresql://postgres:postgres@postgres-test:5432/clos_test
+      REDIS_URL: redis://redis-test:6379/1
+      TEST_REDIS_URL: redis://redis-test:6379/1
+      JWT_SECRET: test-jwt-secret-for-docker
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    volumes:
+      - ./api-server:/app
+      - /app/node_modules
+      - test_coverage:/app/coverage
+    command: >
+      sh -c "
+        echo '🧪 Running backend tests...' &&
+        npm run test:coverage &&
+        echo '🔗 Running integration tests...' &&
+        npm run test:integration &&
+        echo '✅ Backend tests completed'
+      "
+    networks:
+      - clos-test-network
+
+  # Test Runner for Frontend
+  test-runner-frontend:
+    build:
+      context: ./web-dashboard
+      dockerfile: Dockerfile
+      target: test
+    container_name: clos-test-runner-frontend
+    environment:
+      NODE_ENV: test
+      CI: true
+    volumes:
+      - ./web-dashboard:/app
+      - /app/node_modules
+      - /app/.next
+      - test_coverage:/app/coverage
+    command: >
+      sh -c "
+        echo '🧪 Running frontend tests...' &&
+        npm run test:coverage &&
+        npm run type-check &&
+        echo '✅ Frontend tests completed'
+      "
+    networks:
+      - clos-test-network
+
+  # E2E Test Runner
+  test-runner-e2e:
+    build:
+      context: ./web-dashboard
+      dockerfile: Dockerfile
+      target: e2e
+    container_name: clos-test-runner-e2e
+    environment:
+      NODE_ENV: test
+      BASE_URL: http://web-dashboard-test:3500
+      API_URL: http://api-server-test:3501
+    depends_on:
+      api-server-test:
+        condition: service_healthy
+      web-dashboard-test:
+        condition: service_healthy
+    volumes:
+      - ./web-dashboard:/app
+      - /app/node_modules
+      - test_results:/app/test-results
+    command: >
+      sh -c "
+        echo '🎭 Running E2E tests...' &&
+        npx playwright install --with-deps &&
+        npm run test:e2e &&
+        echo '✅ E2E tests completed'
+      "
+    networks:
+      - clos-test-network
+
+  # Performance Test Runner
+  test-runner-performance:
+    image: grafana/k6:latest
+    container_name: clos-test-runner-performance
+    environment:
+      BASE_URL: http://api-server-test:3501
+      WS_URL: ws://api-server-test:3501
+    depends_on:
+      api-server-test:
+        condition: service_healthy
+    volumes:
+      - ./api-server/tests/performance:/scripts
+      - test_results:/results
+    command: >
+      sh -c "
+        echo '⚡ Running performance tests...' &&
+        k6 run /scripts/load-test.js &&
+        k6 run /scripts/websocket-load-test.js &&
+        echo '✅ Performance tests completed'
+      "
+    networks:
+      - clos-test-network
+
+  # Lighthouse Performance Testing
+  lighthouse-test:
+    image: femtopixel/google-lighthouse
+    container_name: clos-lighthouse-test
+    environment:
+      LIGHTHOUSE_URL: http://web-dashboard-test:3500
+    depends_on:
+      web-dashboard-test:
+        condition: service_healthy
+    volumes:
+      - test_results:/home/chrome/reports
+    command: >
+      sh -c "
+        echo '🏠 Running Lighthouse performance tests...' &&
+        lighthouse --chrome-flags='--headless --no-sandbox --disable-gpu' 
+                   --output-path=/home/chrome/reports/lighthouse-desktop.html 
+                   --output=html 
+                   --view 
+                   http://web-dashboard-test:3500/analytics &&
+        lighthouse --chrome-flags='--headless --no-sandbox --disable-gpu' 
+                   --output-path=/home/chrome/reports/lighthouse-mobile.html 
+                   --output=html 
+                   --preset=perf 
+                   --emulated-form-factor=mobile 
+                   http://web-dashboard-test:3500/analytics &&
+        echo '✅ Lighthouse tests completed'
+      "
+    networks:
+      - clos-test-network
+
+  # Test Results Aggregator
+  test-aggregator:
+    image: alpine:latest
+    container_name: clos-test-aggregator
+    depends_on:
+      - test-runner-backend
+      - test-runner-frontend
+      - test-runner-e2e
+      - test-runner-performance
+      - lighthouse-test
+    volumes:
+      - test_coverage:/coverage
+      - test_results:/results
+      - ./scripts:/scripts:ro
+    command: >
+      sh -c "
+        echo '📊 Aggregating test results...' &&
+        apk add --no-cache jq curl &&
+        /scripts/aggregate-test-results.sh &&
+        echo '✅ Test results aggregated'
+      "
+    networks:
+      - clos-test-network
+
+volumes:
+  postgres_test_data:
+    driver: local
+  redis_test_data:
+    driver: local
+  test_coverage:
+    driver: local
+  test_results:
+    driver: local
+
+networks:
+  clos-test-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

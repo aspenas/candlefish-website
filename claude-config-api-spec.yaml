@@ -1,0 +1,1642 @@
+openapi: 3.0.3
+info:
+  title: Claude Configuration Dashboard API
+  description: |
+    Comprehensive RESTful API for the Claude Configuration Dashboard at Candlefish.ai.
+    Provides real-time usage metrics, project management, team collaboration, and system monitoring.
+  version: 2.0.0
+  contact:
+    name: Candlefish AI Team
+    url: https://candlefish.ai
+    email: support@candlefish.ai
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://claude-config.candlefish.ai/api/v2
+    description: Production API Gateway
+  - url: https://staging-claude-config.candlefish.ai/api/v2
+    description: Staging Environment
+  - url: http://localhost:8000/api/v2
+    description: Local Development
+
+security:
+  - bearerAuth: []
+  - apiKeyAuth: []
+
+paths:
+  # Authentication & Users
+  /auth/login:
+    post:
+      summary: Authenticate user
+      tags: [Authentication]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+      responses:
+        200:
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/User'
+                      accessToken:
+                        type: string
+                      refreshToken:
+                        type: string
+                      expiresIn:
+                        type: number
+                        example: 3600
+
+  /auth/refresh:
+    post:
+      summary: Refresh access token
+      tags: [Authentication]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        200:
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+
+  /users/me:
+    get:
+      summary: Get current user profile
+      tags: [Users]
+      responses:
+        200:
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  # Projects Management
+  /projects:
+    get:
+      summary: List all projects
+      tags: [Projects]
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive, archived]
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        200:
+          description: Projects list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Project'
+
+    post:
+      summary: Create new project
+      tags: [Projects]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, path]
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                description:
+                  type: string
+                  maxLength: 500
+                path:
+                  type: string
+                  pattern: '^[a-zA-Z0-9/_-]+$'
+                configuration:
+                  $ref: '#/components/schemas/ClaudeConfigurationInput'
+      responses:
+        201:
+          description: Project created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Project'
+
+  /projects/{projectId}:
+    get:
+      summary: Get project by ID
+      tags: [Projects]
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: Project details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Project'
+
+    put:
+      summary: Update project
+      tags: [Projects]
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectUpdateInput'
+      responses:
+        200:
+          description: Project updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Project'
+
+    delete:
+      summary: Delete project
+      tags: [Projects]
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        204:
+          description: Project deleted successfully
+
+  /projects/{projectId}/deploy:
+    post:
+      summary: Deploy project configuration
+      tags: [Projects]
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                environment:
+                  type: string
+                  enum: [development, staging, production]
+                  default: development
+                force:
+                  type: boolean
+                  default: false
+      responses:
+        202:
+          description: Deployment initiated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Deployment'
+
+  # Configuration Management
+  /configs:
+    get:
+      summary: List all configurations
+      tags: [Configurations]
+      parameters:
+        - name: projectId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        200:
+          description: Configurations list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ClaudeConfiguration'
+
+    post:
+      summary: Create new configuration
+      tags: [Configurations]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClaudeConfigurationInput'
+      responses:
+        201:
+          description: Configuration created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ClaudeConfiguration'
+
+  /configs/{configId}:
+    get:
+      summary: Get configuration by ID
+      tags: [Configurations]
+      parameters:
+        - name: configId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: Configuration details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ClaudeConfiguration'
+
+  # Usage Metrics & Analytics
+  /metrics:
+    get:
+      summary: Get usage metrics
+      tags: [Metrics]
+      parameters:
+        - name: period
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [hour, day, week, month]
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: projectId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: userId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: modelId
+          in: query
+          schema:
+            type: string
+      responses:
+        200:
+          description: Usage metrics
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UsageMetrics'
+
+    post:
+      summary: Record usage metrics
+      tags: [Metrics]
+      security:
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsageEvent'
+      responses:
+        201:
+          description: Metrics recorded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /metrics/realtime:
+    get:
+      summary: Get real-time metrics
+      tags: [Metrics]
+      responses:
+        200:
+          description: Real-time usage metrics
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RealtimeMetrics'
+
+  # Cost Management
+  /costs:
+    get:
+      summary: Get cost analytics
+      tags: [Costs]
+      parameters:
+        - name: period
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [day, week, month, quarter, year]
+        - name: breakdown
+          in: query
+          schema:
+            type: string
+            enum: [project, model, user, team]
+        - name: currency
+          in: query
+          schema:
+            type: string
+            enum: [USD, EUR, GBP]
+            default: USD
+      responses:
+        200:
+          description: Cost analytics
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/CostAnalytics'
+
+  /costs/budgets:
+    get:
+      summary: Get cost budgets and alerts
+      tags: [Costs]
+      responses:
+        200:
+          description: Budget information
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Budget'
+
+    post:
+      summary: Create cost budget
+      tags: [Costs]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BudgetInput'
+      responses:
+        201:
+          description: Budget created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Budget'
+
+  # Model Management
+  /models:
+    get:
+      summary: List available models
+      tags: [Models]
+      parameters:
+        - name: provider
+          in: query
+          schema:
+            type: string
+            enum: [anthropic, openai, google, ollama]
+        - name: active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        200:
+          description: Available models
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Model'
+
+  /models/routing:
+    get:
+      summary: Get model routing analytics
+      tags: [Models]
+      parameters:
+        - name: period
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [hour, day, week, month]
+      responses:
+        200:
+          description: Model routing analytics
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ModelRoutingAnalytics'
+
+  # Team Management
+  /teams:
+    get:
+      summary: List teams
+      tags: [Teams]
+      responses:
+        200:
+          description: Teams list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Team'
+
+    post:
+      summary: Create team
+      tags: [Teams]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamInput'
+      responses:
+        201:
+          description: Team created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Team'
+
+  /teams/{teamId}/members:
+    get:
+      summary: Get team members
+      tags: [Teams]
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: Team members
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/TeamMember'
+
+    post:
+      summary: Add team member
+      tags: [Teams]
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email:
+                  type: string
+                  format: email
+                role:
+                  type: string
+                  enum: [owner, admin, member, viewer]
+                permissions:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        201:
+          description: Team member added successfully
+
+  # System Health & Monitoring
+  /health:
+    get:
+      summary: System health check
+      tags: [Health]
+      security: []
+      responses:
+        200:
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded, unhealthy]
+                  services:
+                    type: object
+                    properties:
+                      api:
+                        $ref: '#/components/schemas/ServiceHealth'
+                      database:
+                        $ref: '#/components/schemas/ServiceHealth'
+                      redis:
+                        $ref: '#/components/schemas/ServiceHealth'
+                      s3:
+                        $ref: '#/components/schemas/ServiceHealth'
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /health/detailed:
+    get:
+      summary: Detailed system health
+      tags: [Health]
+      responses:
+        200:
+          description: Detailed health information
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DetailedHealth'
+
+  # Error Logs & Monitoring
+  /errors:
+    get:
+      summary: Get error logs
+      tags: [Errors]
+      parameters:
+        - name: level
+          in: query
+          schema:
+            type: string
+            enum: [error, warning, info]
+        - name: resolved
+          in: query
+          schema:
+            type: boolean
+        - name: projectId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        200:
+          description: Error logs
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ErrorLog'
+
+    post:
+      summary: Log error
+      tags: [Errors]
+      security:
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ErrorLogInput'
+      responses:
+        201:
+          description: Error logged successfully
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    # Core Entities
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          type: string
+          enum: [owner, admin, member, viewer]
+        avatar:
+          type: string
+          format: uri
+        createdAt:
+          type: string
+          format: date-time
+        lastActive:
+          type: string
+          format: date-time
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Permission'
+
+    Permission:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        resource:
+          type: string
+        actions:
+          type: array
+          items:
+            type: string
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        path:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive, archived]
+        owner:
+          $ref: '#/components/schemas/User'
+        collaborators:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        configuration:
+          $ref: '#/components/schemas/ClaudeConfiguration'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        lastDeployment:
+          type: string
+          format: date-time
+
+    ClaudeConfiguration:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        model:
+          $ref: '#/components/schemas/Model'
+        settings:
+          $ref: '#/components/schemas/ClaudeSettings'
+        secrets:
+          type: array
+          items:
+            $ref: '#/components/schemas/SecretReference'
+        mcpServers:
+          type: array
+          items:
+            $ref: '#/components/schemas/MCPServer'
+        workflows:
+          type: array
+          items:
+            $ref: '#/components/schemas/Workflow'
+        version:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Model:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        provider:
+          type: string
+          enum: [anthropic, openai, google, ollama]
+        version:
+          type: string
+        maxTokens:
+          type: integer
+        costPerToken:
+          type: object
+          properties:
+            input:
+              type: number
+              format: float
+            output:
+              type: number
+              format: float
+        capabilities:
+          type: array
+          items:
+            type: string
+        rateLimits:
+          type: object
+          properties:
+            tokensPerMinute:
+              type: integer
+            requestsPerMinute:
+              type: integer
+
+    ClaudeSettings:
+      type: object
+      properties:
+        workingDirectory:
+          type: string
+        shell:
+          type: string
+        responseStyle:
+          type: string
+        fileOperations:
+          type: string
+          enum: [edit, create, both]
+        documentation:
+          type: boolean
+        testing:
+          type: boolean
+        gitWorkflow:
+          type: boolean
+        stackPreferences:
+          $ref: '#/components/schemas/StackPreferences'
+
+    StackPreferences:
+      type: object
+      properties:
+        languages:
+          type: array
+          items:
+            type: string
+        packageManagers:
+          type: object
+          additionalProperties:
+            type: string
+        linting:
+          type: object
+          additionalProperties:
+            type: string
+        testing:
+          type: object
+          additionalProperties:
+            type: string
+        frontend:
+          type: string
+
+    # Usage & Analytics
+    UsageMetrics:
+      type: object
+      properties:
+        period:
+          type: string
+          enum: [hour, day, week, month]
+        timeRange:
+          type: object
+          properties:
+            start:
+              type: string
+              format: date-time
+            end:
+              type: string
+              format: date-time
+        metrics:
+          type: object
+          properties:
+            totalTokens:
+              type: integer
+            inputTokens:
+              type: integer
+            outputTokens:
+              type: integer
+            requests:
+              type: integer
+            cost:
+              type: number
+              format: float
+            errors:
+              type: integer
+            avgResponseTime:
+              type: number
+              format: float
+        breakdown:
+          type: object
+          properties:
+            byModel:
+              type: object
+              additionalProperties:
+                type: number
+            byProject:
+              type: object
+              additionalProperties:
+                type: number
+            byUser:
+              type: object
+              additionalProperties:
+                type: number
+        trends:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              value:
+                type: number
+
+    UsageEvent:
+      type: object
+      required: [timestamp, projectId, modelId, tokens, cost]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        projectId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        modelId:
+          type: string
+        provider:
+          type: string
+        tokens:
+          type: object
+          required: [input, output]
+          properties:
+            input:
+              type: integer
+            output:
+              type: integer
+        cost:
+          type: number
+          format: float
+        responseTime:
+          type: number
+          format: float
+        success:
+          type: boolean
+        errorType:
+          type: string
+
+    RealtimeMetrics:
+      type: object
+      properties:
+        activeUsers:
+          type: integer
+        requestsPerSecond:
+          type: number
+          format: float
+        avgResponseTime:
+          type: number
+          format: float
+        errorRate:
+          type: number
+          format: float
+        topProjects:
+          type: array
+          items:
+            type: object
+            properties:
+              projectId:
+                type: string
+                format: uuid
+              name:
+                type: string
+              requests:
+                type: integer
+        recentErrors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorLog'
+
+    CostAnalytics:
+      type: object
+      properties:
+        period:
+          type: string
+        total:
+          type: number
+          format: float
+        currency:
+          type: string
+        breakdown:
+          type: object
+          properties:
+            byProject:
+              type: object
+              additionalProperties:
+                type: number
+            byModel:
+              type: object
+              additionalProperties:
+                type: number
+            byUser:
+              type: object
+              additionalProperties:
+                type: number
+        trends:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              cost:
+                type: number
+                format: float
+        predictions:
+          type: object
+          properties:
+            nextMonth:
+              type: number
+              format: float
+            confidence:
+              type: number
+              format: float
+
+    Budget:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        amount:
+          type: number
+          format: float
+        period:
+          type: string
+          enum: [daily, weekly, monthly, quarterly, yearly]
+        scope:
+          type: string
+          enum: [global, project, user, team]
+        scopeId:
+          type: string
+          format: uuid
+        spent:
+          type: number
+          format: float
+        remaining:
+          type: number
+          format: float
+        alertThresholds:
+          type: array
+          items:
+            type: object
+            properties:
+              percentage:
+                type: number
+                format: float
+              notified:
+                type: boolean
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    # System Health
+    ServiceHealth:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        responseTime:
+          type: number
+          format: float
+        uptime:
+          type: number
+          format: float
+        lastCheck:
+          type: string
+          format: date-time
+        details:
+          type: object
+
+    DetailedHealth:
+      type: object
+      properties:
+        overall:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        services:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ServiceHealth'
+        metrics:
+          type: object
+          properties:
+            cpuUsage:
+              type: number
+              format: float
+            memoryUsage:
+              type: number
+              format: float
+            diskUsage:
+              type: number
+              format: float
+            activeConnections:
+              type: integer
+        version:
+          type: object
+          properties:
+            api:
+              type: string
+            database:
+              type: string
+            buildTime:
+              type: string
+              format: date-time
+
+    # Common Response Types
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        error:
+          type: string
+        metadata:
+          type: object
+          properties:
+            pagination:
+              type: object
+              properties:
+                page:
+                  type: integer
+                limit:
+                  type: integer
+                total:
+                  type: integer
+            timestamp:
+              type: string
+              format: date-time
+
+    TokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+
+    # Input Types
+    ClaudeConfigurationInput:
+      type: object
+      required: [model, settings]
+      properties:
+        projectId:
+          type: string
+          format: uuid
+        model:
+          type: object
+          required: [id]
+          properties:
+            id:
+              type: string
+        settings:
+          $ref: '#/components/schemas/ClaudeSettings'
+        secrets:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              provider:
+                type: string
+              path:
+                type: string
+        mcpServers:
+          type: array
+          items:
+            $ref: '#/components/schemas/MCPServerInput'
+
+    ProjectUpdateInput:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive, archived]
+        configuration:
+          $ref: '#/components/schemas/ClaudeConfigurationInput'
+
+    TeamInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+
+    BudgetInput:
+      type: object
+      required: [name, amount, period]
+      properties:
+        name:
+          type: string
+        amount:
+          type: number
+          format: float
+        period:
+          type: string
+          enum: [daily, weekly, monthly, quarterly, yearly]
+        scope:
+          type: string
+          enum: [global, project, user, team]
+        scopeId:
+          type: string
+          format: uuid
+        alertThresholds:
+          type: array
+          items:
+            type: number
+            format: float
+
+    MCPServerInput:
+      type: object
+      required: [name, command]
+      properties:
+        name:
+          type: string
+        command:
+          type: string
+        args:
+          type: array
+          items:
+            type: string
+        enabled:
+          type: boolean
+          default: true
+        description:
+          type: string
+
+    ErrorLogInput:
+      type: object
+      required: [level, message, source]
+      properties:
+        level:
+          type: string
+          enum: [error, warning, info]
+        message:
+          type: string
+        source:
+          type: string
+        projectId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        metadata:
+          type: object
+
+    # Additional schemas referenced in existing types
+    SecretReference:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        provider:
+          type: string
+          enum: [aws, infisical, local]
+        path:
+          type: string
+        description:
+          type: string
+        lastUpdated:
+          type: string
+          format: date-time
+
+    MCPServer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        command:
+          type: string
+        args:
+          type: array
+          items:
+            type: string
+        enabled:
+          type: boolean
+        description:
+          type: string
+
+    Workflow:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        triggers:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowTrigger'
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowStep'
+        enabled:
+          type: boolean
+
+    WorkflowTrigger:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [file_change, git_event, schedule, manual]
+        config:
+          type: object
+
+    WorkflowStep:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        command:
+          type: string
+        args:
+          type: array
+          items:
+            type: string
+        environment:
+          type: object
+          additionalProperties:
+            type: string
+        condition:
+          type: string
+
+    ErrorLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+        level:
+          type: string
+          enum: [error, warning, info]
+        message:
+          type: string
+        source:
+          type: string
+        projectId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        metadata:
+          type: object
+        resolved:
+          type: boolean
+
+    Team:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        owner:
+          $ref: '#/components/schemas/User'
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamMember'
+        projects:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+        createdAt:
+          type: string
+          format: date-time
+
+    TeamMember:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        role:
+          type: string
+          enum: [owner, admin, member, viewer]
+        joinedAt:
+          type: string
+          format: date-time
+        projects:
+          type: array
+          items:
+            type: string
+            format: uuid
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Permission'
+        isActive:
+          type: boolean
+
+    ModelRoutingAnalytics:
+      type: object
+      properties:
+        period:
+          type: string
+        totalRequests:
+          type: integer
+        routingDecisions:
+          type: object
+          additionalProperties:
+            type: integer
+        performance:
+          type: object
+          properties:
+            avgLatency:
+              type: object
+              additionalProperties:
+                type: number
+            successRate:
+              type: object
+              additionalProperties:
+                type: number
+            costEfficiency:
+              type: object
+              additionalProperties:
+                type: number
+        trends:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              model:
+                type: string
+              requests:
+                type: integer
+
+    Deployment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        environment:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, success, failed]
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        logs:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              level:
+                type: string
+              message:
+                type: string

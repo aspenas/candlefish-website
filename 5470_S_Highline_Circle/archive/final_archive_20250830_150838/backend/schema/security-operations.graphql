@@ -1,0 +1,1841 @@
+# =====================================================
+# SECURITY OPERATIONS GRAPHQL SCHEMA
+# =====================================================
+# Comprehensive schema for security operations platform
+# Supporting MITRE ATT&CK, threat intelligence, SOAR,
+# and real-time security event management
+# =====================================================
+
+# Core Scalar Types
+scalar DateTime
+scalar JSON
+scalar UUID
+scalar BigInt
+
+# =====================================================
+# SECURITY EVENT MANAGEMENT
+# =====================================================
+
+"""
+Security Event based on Common Event Format (CEF) with enhanced fields
+Supports ingestion from SIEM, EDR, NDR, and custom security tools
+"""
+type SecurityEvent {
+  id: UUID!
+  
+  # CEF Header Fields
+  cefVersion: Int!
+  deviceVendor: String!
+  deviceProduct: String!
+  deviceVersion: String!
+  deviceEventClassId: String!
+  name: String!
+  severity: SecuritySeverity!
+  
+  # CEF Extension Fields (key-value pairs)
+  extensions: JSON!
+  
+  # Enhanced Fields for Security Operations
+  timestamp: DateTime!
+  sourceIp: String
+  destinationIp: String
+  sourcePort: Int
+  destinationPort: Int
+  protocol: String
+  userId: String
+  userName: String
+  processName: String
+  commandLine: String
+  filePath: String
+  fileHash: String
+  registryKey: String
+  
+  # MITRE ATT&CK Mapping
+  mitreAttackPatterns: [MitreAttackPattern!]!
+  
+  # Threat Intelligence
+  threatIntelligence: [ThreatIntelligence!]!
+  
+  # Case Association
+  cases: [SecurityCase!]!
+  
+  # Event Correlation
+  correlatedEvents: [SecurityEvent!]!
+  correlationScore: Float
+  
+  # Enrichment Data
+  geoLocation: GeoLocation
+  asn: ASN
+  dnsResolution: [DNSRecord!]!
+  
+  # Metadata
+  ingestionSource: String!
+  tags: [String!]!
+  rawLog: String
+  processedAt: DateTime!
+  
+  # Risk Scoring
+  riskScore: Float!
+  riskFactors: [RiskFactor!]!
+}
+
+enum SecuritySeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFO
+}
+
+type GeoLocation {
+  country: String
+  region: String
+  city: String
+  latitude: Float
+  longitude: Float
+  timezone: String
+}
+
+type ASN {
+  number: Int!
+  organization: String!
+  networkRange: String!
+}
+
+type DNSRecord {
+  domain: String!
+  recordType: String!
+  value: String!
+  ttl: Int
+}
+
+type RiskFactor {
+  factor: String!
+  score: Float!
+  description: String
+}
+
+# =====================================================
+# THREAT INTELLIGENCE
+# =====================================================
+
+"""
+Threat Intelligence objects based on STIX 2.1 format
+Supports indicators, malware, attack patterns, and campaigns
+"""
+type ThreatIntelligence {
+  id: UUID!
+  stixId: String!
+  stixType: StixObjectType!
+  
+  # Core Properties
+  name: String!
+  description: String
+  labels: [String!]!
+  confidence: Int! # 0-100
+  
+  # Temporal Properties
+  validFrom: DateTime!
+  validUntil: DateTime
+  firstSeen: DateTime
+  lastSeen: DateTime
+  
+  # Source Information
+  source: ThreatIntelligenceSource!
+  externalReferences: [ExternalReference!]!
+  
+  # Relationships to other STIX objects
+  relationships: [ThreatRelationship!]!
+  
+  # IOC Pattern (if indicator)
+  pattern: String
+  patternType: String
+  
+  # Kill Chain Phases
+  killChainPhases: [KillChainPhase!]!
+  
+  # MITRE ATT&CK Mapping
+  mitreAttackPatterns: [MitreAttackPattern!]!
+  
+  # Associated Security Events
+  associatedEvents: [SecurityEvent!]!
+  
+  # Metadata
+  tlpMarking: TLPMarking!
+  tags: [String!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum StixObjectType {
+  INDICATOR
+  MALWARE
+  ATTACK_PATTERN
+  CAMPAIGN
+  INTRUSION_SET
+  THREAT_ACTOR
+  TOOL
+  VULNERABILITY
+  OBSERVED_DATA
+}
+
+type ThreatIntelligenceSource {
+  name: String!
+  reliability: SourceReliability!
+  url: String
+  description: String
+}
+
+enum SourceReliability {
+  A_COMPLETELY_RELIABLE
+  B_USUALLY_RELIABLE
+  C_FAIRLY_RELIABLE
+  D_NOT_USUALLY_RELIABLE
+  E_UNRELIABLE
+  F_RELIABILITY_UNKNOWN
+}
+
+type ExternalReference {
+  sourceName: String!
+  url: String
+  description: String
+  externalId: String
+}
+
+type ThreatRelationship {
+  id: UUID!
+  relationshipType: String!
+  source: ThreatIntelligence!
+  target: ThreatIntelligence!
+  confidence: Int!
+  description: String
+}
+
+type KillChainPhase {
+  killChainName: String!
+  phaseName: String!
+  order: Int
+}
+
+enum TLPMarking {
+  WHITE
+  GREEN
+  AMBER
+  RED
+}
+
+# =====================================================
+# MITRE ATT&CK FRAMEWORK
+# =====================================================
+
+"""
+MITRE ATT&CK Framework integration
+Techniques, tactics, and procedures mapping
+"""
+type MitreAttackPattern {
+  id: String! # ATT&CK ID (e.g., T1055)
+  name: String!
+  description: String!
+  
+  # Hierarchy
+  tactic: MitreTactic!
+  subTechniques: [MitreAttackPattern!]!
+  parentTechnique: MitreAttackPattern
+  
+  # Platform Information
+  platforms: [MitrePlatform!]!
+  dataSourcesRequired: [MitreDataSource!]!
+  
+  # Detection and Mitigation
+  detectionStrategies: [DetectionStrategy!]!
+  mitigationStrategies: [MitigationStrategy!]!
+  
+  # Usage Statistics
+  eventCount: Int!
+  lastSeenInEvents: DateTime
+  
+  # Associated Threat Intelligence
+  threatIntelligence: [ThreatIntelligence!]!
+  
+  # Playbooks for Response
+  responsePlaybooks: [SecurityPlaybook!]!
+  
+  # External References
+  externalReferences: [ExternalReference!]!
+  
+  # Metadata
+  version: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type MitreTactic {
+  id: String! # TA0001
+  name: String!
+  shortName: String!
+  description: String!
+  techniques: [MitreAttackPattern!]!
+}
+
+enum MitrePlatform {
+  WINDOWS
+  MACOS
+  LINUX
+  ANDROID
+  IOS
+  CLOUD
+  CONTAINERS
+  NETWORK
+}
+
+type MitreDataSource {
+  name: String!
+  description: String
+  dataComponents: [String!]!
+}
+
+type DetectionStrategy {
+  id: UUID!
+  name: String!
+  description: String!
+  query: String # SIEM query or detection rule
+  queryLanguage: String # KQL, SPL, etc.
+  confidence: Float!
+  falsePositiveRate: Float
+}
+
+type MitigationStrategy {
+  id: String! # M1001
+  name: String!
+  description: String!
+  implementationGuidance: String
+  effectiveness: MitigationEffectiveness!
+}
+
+enum MitigationEffectiveness {
+  COMPLETE
+  SIGNIFICANT
+  PARTIAL
+  MINIMAL
+}
+
+# =====================================================
+# SECURITY CASES & INCIDENT MANAGEMENT
+# =====================================================
+
+"""
+Security Case management for incidents and investigations
+"""
+type SecurityCase {
+  id: UUID!
+  title: String!
+  description: String!
+  
+  # Case Classification
+  caseType: SecurityCaseType!
+  severity: SecuritySeverity!
+  priority: CasePriority!
+  status: CaseStatus!
+  
+  # Assignment and Ownership
+  assignee: SecurityAnalyst
+  team: SecurityTeam!
+  
+  # Timeline
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  firstOccurrence: DateTime!
+  lastOccurrence: DateTime!
+  resolvedAt: DateTime
+  closedAt: DateTime
+  
+  # Evidence and Analysis
+  securityEvents: [SecurityEvent!]!
+  threatIntelligence: [ThreatIntelligence!]!
+  indicators: [IOC!]!
+  
+  # Case Activities
+  activities: [CaseActivity!]!
+  notes: [CaseNote!]!
+  attachments: [CaseAttachment!]!
+  
+  # SOAR Integration
+  playbooks: [PlaybookExecution!]!
+  automatedActions: [AutomatedAction!]!
+  
+  # Compliance and Reporting
+  complianceFrameworks: [ComplianceFramework!]!
+  slaStatus: SLAStatus!
+  
+  # Metrics
+  meanTimeToDetection: Int # seconds
+  meanTimeToResponse: Int # seconds
+  meanTimeToResolution: Int # seconds
+  
+  # Relationships
+  relatedCases: [SecurityCase!]!
+  
+  # Tags and Categorization
+  tags: [String!]!
+}
+
+enum SecurityCaseType {
+  INCIDENT
+  INVESTIGATION
+  THREAT_HUNT
+  COMPLIANCE_VIOLATION
+  VULNERABILITY_ASSESSMENT
+  MALWARE_ANALYSIS
+}
+
+enum CasePriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum CaseStatus {
+  NEW
+  ASSIGNED
+  IN_PROGRESS
+  PENDING_REVIEW
+  RESOLVED
+  CLOSED
+  REOPENED
+}
+
+type SecurityAnalyst {
+  id: UUID!
+  name: String!
+  email: String!
+  role: SecurityRole!
+  team: SecurityTeam!
+  skills: [String!]!
+  certifications: [String!]!
+  activeWorkload: Int!
+}
+
+type SecurityTeam {
+  id: UUID!
+  name: String!
+  description: String
+  members: [SecurityAnalyst!]!
+  capabilities: [String!]!
+}
+
+enum SecurityRole {
+  ANALYST_L1
+  ANALYST_L2
+  ANALYST_L3
+  INCIDENT_COMMANDER
+  THREAT_HUNTER
+  FORENSIC_INVESTIGATOR
+  SOC_MANAGER
+}
+
+type CaseActivity {
+  id: UUID!
+  activityType: ActivityType!
+  description: String!
+  performer: SecurityAnalyst!
+  timestamp: DateTime!
+  metadata: JSON
+}
+
+enum ActivityType {
+  CREATED
+  ASSIGNED
+  STATUS_CHANGED
+  SEVERITY_CHANGED
+  EVIDENCE_ADDED
+  NOTE_ADDED
+  PLAYBOOK_EXECUTED
+  ESCALATED
+  RESOLVED
+  CLOSED
+}
+
+type CaseNote {
+  id: UUID!
+  content: String!
+  author: SecurityAnalyst!
+  createdAt: DateTime!
+  isInternal: Boolean!
+  tags: [String!]!
+}
+
+type CaseAttachment {
+  id: UUID!
+  filename: String!
+  contentType: String!
+  size: BigInt!
+  uploadedBy: SecurityAnalyst!
+  uploadedAt: DateTime!
+  description: String
+  isEvidence: Boolean!
+}
+
+type SLAStatus {
+  isWithinSLA: Boolean!
+  timeRemaining: Int # seconds
+  breachReason: String
+}
+
+# =====================================================
+# INDICATORS OF COMPROMISE (IOCs)
+# =====================================================
+
+"""
+Indicators of Compromise for threat detection
+"""
+type IOC {
+  id: UUID!
+  value: String!
+  type: IOCType!
+  
+  # Context and Classification
+  description: String
+  confidence: Float! # 0.0 to 1.0
+  severity: SecuritySeverity!
+  
+  # Temporal Properties
+  firstSeen: DateTime!
+  lastSeen: DateTime!
+  validUntil: DateTime
+  
+  # Source Information
+  source: ThreatIntelligenceSource!
+  tags: [String!]!
+  
+  # Detection Statistics
+  hitCount: Int!
+  falsePositiveCount: Int!
+  lastHit: DateTime
+  
+  # Associated Threats
+  threatIntelligence: [ThreatIntelligence!]!
+  associatedMalware: [String!]! # Malware family names
+  campaigns: [String!]! # Campaign names
+  
+  # MITRE ATT&CK Association
+  mitreAttackPatterns: [MitreAttackPattern!]!
+  
+  # Detection Rules
+  detectionRules: [DetectionRule!]!
+  
+  # Status
+  status: IOCStatus!
+  whitelisted: Boolean!
+  whitelistReason: String
+  
+  # Metadata
+  tlpMarking: TLPMarking!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum IOCType {
+  IP_ADDRESS
+  DOMAIN
+  URL
+  FILE_HASH_MD5
+  FILE_HASH_SHA1
+  FILE_HASH_SHA256
+  FILE_HASH_SHA512
+  EMAIL_ADDRESS
+  USER_AGENT
+  MUTEX
+  REGISTRY_KEY
+  CERTIFICATE_THUMBPRINT
+  YARA_RULE
+  SNORT_RULE
+  PROCESS_NAME
+  FILE_PATH
+}
+
+enum IOCStatus {
+  ACTIVE
+  EXPIRED
+  DEPRECATED
+  UNDER_REVIEW
+}
+
+type DetectionRule {
+  id: UUID!
+  name: String!
+  description: String!
+  ruleContent: String!
+  ruleFormat: DetectionRuleFormat!
+  enabled: Boolean!
+  lastTriggered: DateTime
+  triggerCount: Int!
+  falsePositiveRate: Float
+}
+
+enum DetectionRuleFormat {
+  SIGMA
+  YARA
+  SNORT
+  SURICATA
+  KQL
+  SPL
+  CUSTOM
+}
+
+# =====================================================
+# SOAR PLAYBOOKS & AUTOMATION
+# =====================================================
+
+"""
+Security Orchestration, Automation, and Response (SOAR) Playbooks
+"""
+type SecurityPlaybook {
+  id: UUID!
+  name: String!
+  description: String!
+  version: String!
+  
+  # Playbook Configuration
+  category: PlaybookCategory!
+  severity: SecuritySeverity!
+  automated: Boolean!
+  approvalRequired: Boolean!
+  
+  # Triggers
+  triggers: [PlaybookTrigger!]!
+  
+  # Workflow Definition
+  steps: [PlaybookStep!]!
+  
+  # Input/Output Schema
+  inputSchema: JSON!
+  outputSchema: JSON!
+  
+  # Usage Statistics
+  executionCount: Int!
+  successRate: Float!
+  averageExecutionTime: Int! # seconds
+  lastExecuted: DateTime
+  
+  # Authoring and Maintenance
+  author: SecurityAnalyst!
+  maintainer: SecurityAnalyst!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  
+  # Status and Lifecycle
+  status: PlaybookStatus!
+  tags: [String!]!
+  
+  # Associated Elements
+  mitreAttackPatterns: [MitreAttackPattern!]!
+  relatedPlaybooks: [SecurityPlaybook!]!
+  
+  # Execution History
+  executions: [PlaybookExecution!]!
+}
+
+enum PlaybookCategory {
+  INCIDENT_RESPONSE
+  THREAT_HUNTING
+  MALWARE_ANALYSIS
+  PHISHING_RESPONSE
+  DATA_BREACH_RESPONSE
+  VULNERABILITY_MANAGEMENT
+  COMPLIANCE_VALIDATION
+  FORENSIC_COLLECTION
+}
+
+enum PlaybookStatus {
+  DRAFT
+  ACTIVE
+  DEPRECATED
+  TESTING
+  ARCHIVED
+}
+
+type PlaybookTrigger {
+  id: UUID!
+  triggerType: TriggerType!
+  condition: String! # Rule or condition expression
+  enabled: Boolean!
+  priority: Int!
+}
+
+enum TriggerType {
+  EVENT_MATCH
+  THRESHOLD_BREACH
+  SCHEDULE
+  MANUAL
+  API_CALL
+  CASE_CREATION
+  IOC_HIT
+}
+
+type PlaybookStep {
+  id: UUID!
+  name: String!
+  description: String!
+  stepType: PlaybookStepType!
+  order: Int!
+  
+  # Execution Configuration
+  actionDefinition: JSON! # Specific action configuration
+  timeout: Int! # seconds
+  retryAttempts: Int!
+  continueOnFailure: Boolean!
+  
+  # Conditions
+  preconditions: [String!]! # Conditions that must be met
+  
+  # Human Interaction
+  requiresApproval: Boolean!
+  approvers: [SecurityAnalyst!]!
+  
+  # Input/Output Mapping
+  inputMapping: JSON!
+  outputMapping: JSON!
+  
+  # Relationships
+  dependencies: [PlaybookStep!]! # Steps that must complete first
+  nextSteps: [PlaybookStep!]! # Possible next steps
+}
+
+enum PlaybookStepType {
+  # Data Collection
+  COLLECT_EVIDENCE
+  QUERY_SIEM
+  LOOKUP_THREAT_INTEL
+  SCAN_ENDPOINT
+  
+  # Analysis
+  ANALYZE_MALWARE
+  CORRELATE_EVENTS
+  RISK_ASSESSMENT
+  
+  # Response Actions
+  ISOLATE_HOST
+  BLOCK_IP
+  BLOCK_DOMAIN
+  BLOCK_URL
+  DISABLE_USER_ACCOUNT
+  RESET_PASSWORD
+  QUARANTINE_FILE
+  
+  # Communication
+  SEND_NOTIFICATION
+  CREATE_TICKET
+  UPDATE_CASE
+  
+  # Integration
+  CALL_API
+  RUN_SCRIPT
+  EXECUTE_COMMAND
+  
+  # Workflow Control
+  DECISION_POINT
+  PARALLEL_EXECUTION
+  WAIT_FOR_APPROVAL
+  HUMAN_TASK
+}
+
+type PlaybookExecution {
+  id: UUID!
+  playbook: SecurityPlaybook!
+  
+  # Execution Context
+  triggeredBy: ExecutionTrigger!
+  case: SecurityCase
+  securityEvent: SecurityEvent
+  
+  # Status and Timeline
+  status: ExecutionStatus!
+  startedAt: DateTime!
+  completedAt: DateTime
+  duration: Int # seconds
+  
+  # Results
+  success: Boolean
+  errorMessage: String
+  
+  # Step Executions
+  stepExecutions: [StepExecution!]!
+  
+  # Input/Output
+  inputData: JSON!
+  outputData: JSON
+  
+  # Human Interactions
+  approvals: [ExecutionApproval!]!
+  
+  # Executor Information
+  executedBy: SecurityAnalyst
+  automated: Boolean!
+  
+  # Metrics
+  metrics: ExecutionMetrics!
+}
+
+union ExecutionTrigger = SecurityEvent | SecurityCase | IOC | ScheduledTrigger | ManualTrigger
+
+type ScheduledTrigger {
+  scheduleId: UUID!
+  scheduleName: String!
+  cronExpression: String!
+}
+
+type ManualTrigger {
+  triggeredBy: SecurityAnalyst!
+  reason: String!
+}
+
+enum ExecutionStatus {
+  QUEUED
+  RUNNING
+  WAITING_FOR_APPROVAL
+  PAUSED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+type StepExecution {
+  id: UUID!
+  step: PlaybookStep!
+  status: ExecutionStatus!
+  startedAt: DateTime
+  completedAt: DateTime
+  duration: Int # seconds
+  success: Boolean
+  errorMessage: String
+  inputData: JSON
+  outputData: JSON
+  retryCount: Int!
+}
+
+type ExecutionApproval {
+  id: UUID!
+  step: PlaybookStep!
+  approver: SecurityAnalyst!
+  approved: Boolean!
+  comments: String
+  approvedAt: DateTime!
+}
+
+type ExecutionMetrics {
+  totalSteps: Int!
+  completedSteps: Int!
+  failedSteps: Int!
+  skippedSteps: Int!
+  averageStepDuration: Float! # seconds
+  resourcesUsed: JSON # Custom metrics per integration
+}
+
+type AutomatedAction {
+  id: UUID!
+  actionType: String!
+  description: String!
+  executedAt: DateTime!
+  success: Boolean!
+  result: String
+  executedBy: String! # System identifier
+}
+
+# =====================================================
+# COMPLIANCE & FRAMEWORKS
+# =====================================================
+
+type ComplianceFramework {
+  id: UUID!
+  name: String!
+  version: String!
+  description: String
+  requirements: [ComplianceRequirement!]!
+}
+
+type ComplianceRequirement {
+  id: String!
+  title: String!
+  description: String!
+  controls: [String!]!
+  status: ComplianceStatus!
+  lastAssessed: DateTime
+  nextAssessment: DateTime
+  evidence: [String!]!
+}
+
+enum ComplianceStatus {
+  COMPLIANT
+  NON_COMPLIANT
+  PARTIALLY_COMPLIANT
+  NOT_ASSESSED
+  IN_REMEDIATION
+}
+
+# =====================================================
+# QUERY INTERFACE
+# =====================================================
+
+type Query {
+  # Security Events
+  securityEvents(
+    filter: SecurityEventFilter
+    sort: SecurityEventSort
+    pagination: PaginationInput
+  ): SecurityEventConnection!
+  
+  securityEvent(id: UUID!): SecurityEvent
+  
+  # Advanced Event Queries
+  eventsTimeSeriesAggregation(
+    timeRange: TimeRangeInput!
+    interval: TimeInterval!
+    groupBy: [String!]
+    filter: SecurityEventFilter
+  ): TimeSeriesData!
+  
+  eventCorrelationGraph(
+    eventId: UUID!
+    maxDepth: Int = 3
+    minCorrelationScore: Float = 0.7
+  ): EventCorrelationGraph!
+  
+  # Threat Hunting Queries
+  threatHunt(
+    query: ThreatHuntQuery!
+    timeRange: TimeRangeInput!
+  ): ThreatHuntResult!
+  
+  # Threat Intelligence
+  threatIntelligence(
+    filter: ThreatIntelligenceFilter
+    sort: ThreatIntelligenceSort
+    pagination: PaginationInput
+  ): ThreatIntelligenceConnection!
+  
+  # IOC Management
+  iocs(
+    filter: IOCFilter
+    sort: IOCSort
+    pagination: PaginationInput
+  ): IOCConnection!
+  
+  # IOC Similarity Search using Vector Database
+  findSimilarIOCs(
+    ioc: String!
+    threshold: Float = 0.8
+    limit: Int = 10
+  ): [IOCSimilarity!]!
+  
+  # MITRE ATT&CK
+  mitreAttackPatterns(
+    filter: MitreAttackPatternFilter
+    pagination: PaginationInput
+  ): MitreAttackPatternConnection!
+  
+  mitreTactics: [MitreTactic!]!
+  
+  # Security Cases
+  securityCases(
+    filter: SecurityCaseFilter
+    sort: SecurityCaseSort
+    pagination: PaginationInput
+  ): SecurityCaseConnection!
+  
+  securityCase(id: UUID!): SecurityCase
+  
+  # Case Analytics
+  caseMetrics(
+    timeRange: TimeRangeInput
+    teamFilter: [UUID!]
+    severityFilter: [SecuritySeverity!]
+  ): CaseMetrics!
+  
+  # Playbooks
+  securityPlaybooks(
+    filter: SecurityPlaybookFilter
+    pagination: PaginationInput
+  ): SecurityPlaybookConnection!
+  
+  securityPlaybook(id: UUID!): SecurityPlaybook
+  
+  # Playbook Executions
+  playbookExecutions(
+    filter: PlaybookExecutionFilter
+    pagination: PaginationInput
+  ): PlaybookExecutionConnection!
+  
+  playbookExecution(id: UUID!): PlaybookExecution
+  
+  # System Status and Health
+  securityOperationsStatus: SecurityOperationsStatus!
+  
+  # Analytics and Reporting
+  securityMetrics(
+    timeRange: TimeRangeInput!
+    metrics: [String!]!
+  ): SecurityMetricsReport!
+  
+  # Compliance Reporting
+  complianceReport(
+    framework: String!
+    assessmentDate: DateTime
+  ): ComplianceReport!
+  
+  # Graph Analysis (Neo4j powered)
+  attackPathAnalysis(
+    startNode: String!
+    endNode: String!
+    maxHops: Int = 5
+  ): AttackPathResult!
+  
+  entityRelationshipGraph(
+    entityId: UUID!
+    entityType: String!
+    depth: Int = 2
+  ): EntityGraph!
+}
+
+# =====================================================
+# MUTATION INTERFACE
+# =====================================================
+
+type Mutation {
+  # Security Event Ingestion
+  ingestSecurityEvent(input: SecurityEventInput!): SecurityEvent!
+  
+  batchIngestSecurityEvents(
+    events: [SecurityEventInput!]!
+    batchSize: Int = 1000
+  ): SecurityEventBatchResult!
+  
+  # Event Management
+  updateSecurityEvent(id: UUID!, input: SecurityEventUpdateInput!): SecurityEvent!
+  deleteSecurityEvent(id: UUID!): Boolean!
+  
+  # Threat Intelligence Management
+  createThreatIntelligence(input: ThreatIntelligenceInput!): ThreatIntelligence!
+  updateThreatIntelligence(id: UUID!, input: ThreatIntelligenceUpdateInput!): ThreatIntelligence!
+  deleteThreatIntelligence(id: UUID!): Boolean!
+  
+  # IOC Management
+  createIOC(input: IOCInput!): IOC!
+  updateIOC(id: UUID!, input: IOCUpdateInput!): IOC!
+  deleteIOC(id: UUID!): Boolean!
+  whitelistIOC(id: UUID!, reason: String!): IOC!
+  
+  # Case Management
+  createSecurityCase(input: SecurityCaseInput!): SecurityCase!
+  updateSecurityCase(id: UUID!, input: SecurityCaseUpdateInput!): SecurityCase!
+  assignCase(caseId: UUID!, assigneeId: UUID!): SecurityCase!
+  closeCase(caseId: UUID!, resolution: String!): SecurityCase!
+  
+  # Case Activities
+  addCaseNote(caseId: UUID!, content: String!, isInternal: Boolean = false): CaseNote!
+  uploadCaseAttachment(caseId: UUID!, file: Upload!, description: String): CaseAttachment!
+  
+  # Playbook Management
+  createSecurityPlaybook(input: SecurityPlaybookInput!): SecurityPlaybook!
+  updateSecurityPlaybook(id: UUID!, input: SecurityPlaybookUpdateInput!): SecurityPlaybook!
+  deleteSecurityPlaybook(id: UUID!): Boolean!
+  
+  # Playbook Execution
+  executePlaybook(
+    playbookId: UUID!
+    inputData: JSON!
+    caseId: UUID
+    automated: Boolean = false
+  ): PlaybookExecution!
+  
+  approvePlaybookStep(executionId: UUID!, stepId: UUID!, approved: Boolean!, comments: String): ExecutionApproval!
+  cancelPlaybookExecution(executionId: UUID!): PlaybookExecution!
+  
+  # Response Actions
+  isolateHost(hostname: String!, reason: String!): AutomatedAction!
+  blockIP(ipAddress: String!, duration: Int, reason: String!): AutomatedAction!
+  blockDomain(domain: String!, duration: Int, reason: String!): AutomatedAction!
+  quarantineFile(filePath: String!, hostname: String!, reason: String!): AutomatedAction!
+  disableUserAccount(userId: String!, reason: String!): AutomatedAction!
+  
+  # Detection Rule Management
+  createDetectionRule(input: DetectionRuleInput!): DetectionRule!
+  updateDetectionRule(id: UUID!, input: DetectionRuleUpdateInput!): DetectionRule!
+  enableDetectionRule(id: UUID!): DetectionRule!
+  disableDetectionRule(id: UUID!): DetectionRule!
+}
+
+# =====================================================
+# SUBSCRIPTION INTERFACE
+# =====================================================
+
+type Subscription {
+  # Real-time Security Events
+  securityEventStream(filter: SecurityEventStreamFilter): SecurityEvent!
+  
+  # High-priority alerts
+  criticalSecurityAlerts: SecurityEvent!
+  
+  # Case Updates
+  caseUpdates(caseId: UUID): SecurityCase!
+  caseAssignments(analystId: UUID!): SecurityCase!
+  
+  # Playbook Execution Updates
+  playbookExecutionUpdates(executionId: UUID!): PlaybookExecution!
+  playbookApprovalRequests(analystId: UUID!): PlaybookExecution!
+  
+  # Threat Intelligence Updates
+  newThreatIntelligence(source: String): ThreatIntelligence!
+  iocUpdates: IOC!
+  
+  # System Health
+  systemHealthUpdates: SystemHealthStatus!
+  
+  # Attack Detection
+  attackPatternDetections: AttackPatternDetection!
+  
+  # Correlation Engine Results
+  eventCorrelations: EventCorrelation!
+}
+
+# =====================================================
+# INPUT TYPES
+# =====================================================
+
+input SecurityEventInput {
+  cefVersion: Int!
+  deviceVendor: String!
+  deviceProduct: String!
+  deviceVersion: String!
+  deviceEventClassId: String!
+  name: String!
+  severity: SecuritySeverity!
+  extensions: JSON!
+  timestamp: DateTime!
+  sourceIp: String
+  destinationIp: String
+  sourcePort: Int
+  destinationPort: Int
+  protocol: String
+  userId: String
+  userName: String
+  processName: String
+  commandLine: String
+  filePath: String
+  fileHash: String
+  registryKey: String
+  ingestionSource: String!
+  tags: [String!]
+  rawLog: String
+}
+
+input SecurityEventUpdateInput {
+  severity: SecuritySeverity
+  tags: [String!]
+  extensions: JSON
+}
+
+input ThreatIntelligenceInput {
+  stixId: String!
+  stixType: StixObjectType!
+  name: String!
+  description: String
+  labels: [String!]!
+  confidence: Int!
+  validFrom: DateTime!
+  validUntil: DateTime
+  sourceId: UUID!
+  pattern: String
+  patternType: String
+  tlpMarking: TLPMarking!
+  tags: [String!]
+}
+
+input ThreatIntelligenceUpdateInput {
+  name: String
+  description: String
+  labels: [String!]
+  confidence: Int
+  validUntil: DateTime
+  pattern: String
+  tags: [String!]
+}
+
+input IOCInput {
+  value: String!
+  type: IOCType!
+  description: String
+  confidence: Float!
+  severity: SecuritySeverity!
+  sourceId: UUID!
+  tags: [String!]
+  validUntil: DateTime
+  tlpMarking: TLPMarking!
+}
+
+input IOCUpdateInput {
+  description: String
+  confidence: Float
+  severity: SecuritySeverity
+  tags: [String!]
+  validUntil: DateTime
+  status: IOCStatus
+}
+
+input SecurityCaseInput {
+  title: String!
+  description: String!
+  caseType: SecurityCaseType!
+  severity: SecuritySeverity!
+  priority: CasePriority!
+  assigneeId: UUID
+  teamId: UUID!
+  eventIds: [UUID!]
+  tags: [String!]
+}
+
+input SecurityCaseUpdateInput {
+  title: String
+  description: String
+  severity: SecuritySeverity
+  priority: CasePriority
+  status: CaseStatus
+  assigneeId: UUID
+  tags: [String!]
+}
+
+input SecurityPlaybookInput {
+  name: String!
+  description: String!
+  category: PlaybookCategory!
+  severity: SecuritySeverity!
+  automated: Boolean!
+  approvalRequired: Boolean!
+  inputSchema: JSON!
+  outputSchema: JSON!
+  triggers: [PlaybookTriggerInput!]!
+  steps: [PlaybookStepInput!]!
+  tags: [String!]
+}
+
+input SecurityPlaybookUpdateInput {
+  name: String
+  description: String
+  status: PlaybookStatus
+  tags: [String!]
+}
+
+input PlaybookTriggerInput {
+  triggerType: TriggerType!
+  condition: String!
+  enabled: Boolean = true
+  priority: Int = 1
+}
+
+input PlaybookStepInput {
+  name: String!
+  description: String!
+  stepType: PlaybookStepType!
+  order: Int!
+  actionDefinition: JSON!
+  timeout: Int = 300
+  retryAttempts: Int = 3
+  continueOnFailure: Boolean = false
+  preconditions: [String!] = []
+  requiresApproval: Boolean = false
+  approverIds: [UUID!] = []
+  inputMapping: JSON = {}
+  outputMapping: JSON = {}
+}
+
+input DetectionRuleInput {
+  name: String!
+  description: String!
+  ruleContent: String!
+  ruleFormat: DetectionRuleFormat!
+  enabled: Boolean = true
+}
+
+input DetectionRuleUpdateInput {
+  name: String
+  description: String
+  ruleContent: String
+  enabled: Boolean
+}
+
+# =====================================================
+# FILTER & SORT TYPES
+# =====================================================
+
+input SecurityEventFilter {
+  severities: [SecuritySeverity!]
+  timeRange: TimeRangeInput
+  sourceIps: [String!]
+  destinationIps: [String!]
+  deviceVendors: [String!]
+  deviceProducts: [String!]
+  userNames: [String!]
+  processNames: [String!]
+  mitreAttackPatternIds: [String!]
+  tags: [String!]
+  riskScoreRange: FloatRangeInput
+  correlationScoreRange: FloatRangeInput
+  hasCorrelatedEvents: Boolean
+  hasThreatIntelligence: Boolean
+  search: String
+}
+
+input SecurityEventSort {
+  field: SecurityEventSortField!
+  direction: SortDirection!
+}
+
+enum SecurityEventSortField {
+  TIMESTAMP
+  SEVERITY
+  RISK_SCORE
+  CORRELATION_SCORE
+  DEVICE_VENDOR
+  DEVICE_PRODUCT
+  SOURCE_IP
+  DESTINATION_IP
+}
+
+input ThreatIntelligenceFilter {
+  stixTypes: [StixObjectType!]
+  sources: [UUID!]
+  confidenceRange: IntRangeInput
+  tlpMarkings: [TLPMarking!]
+  validFrom: DateTime
+  validUntil: DateTime
+  labels: [String!]
+  tags: [String!]
+  mitreAttackPatternIds: [String!]
+  search: String
+}
+
+input ThreatIntelligenceSort {
+  field: ThreatIntelligenceSortField!
+  direction: SortDirection!
+}
+
+enum ThreatIntelligenceSortField {
+  CREATED_AT
+  UPDATED_AT
+  CONFIDENCE
+  VALID_FROM
+  VALID_UNTIL
+  NAME
+  SOURCE
+}
+
+input IOCFilter {
+  types: [IOCType!]
+  severities: [SecuritySeverity!]
+  statuses: [IOCStatus!]
+  sources: [UUID!]
+  confidenceRange: FloatRangeInput
+  tlpMarkings: [TLPMarking!]
+  tags: [String!]
+  hitCountRange: IntRangeInput
+  whitelisted: Boolean
+  validUntil: DateTime
+  search: String
+}
+
+input IOCSort {
+  field: IOCSortField!
+  direction: SortDirection!
+}
+
+enum IOCSortField {
+  VALUE
+  TYPE
+  SEVERITY
+  CONFIDENCE
+  FIRST_SEEN
+  LAST_SEEN
+  HIT_COUNT
+  LAST_HIT
+}
+
+input SecurityCaseFilter {
+  types: [SecurityCaseType!]
+  severities: [SecuritySeverity!]
+  priorities: [CasePriority!]
+  statuses: [CaseStatus!]
+  assignees: [UUID!]
+  teams: [UUID!]
+  timeRange: TimeRangeInput
+  tags: [String!]
+  hasPlaybooks: Boolean
+  search: String
+}
+
+input SecurityCaseSort {
+  field: SecurityCaseSortField!
+  direction: SortDirection!
+}
+
+enum SecurityCaseSortField {
+  CREATED_AT
+  UPDATED_AT
+  SEVERITY
+  PRIORITY
+  STATUS
+  TITLE
+  ASSIGNEE
+  FIRST_OCCURRENCE
+  LAST_OCCURRENCE
+}
+
+input SecurityPlaybookFilter {
+  categories: [PlaybookCategory!]
+  severities: [SecuritySeverity!]
+  statuses: [PlaybookStatus!]
+  automated: Boolean
+  authors: [UUID!]
+  tags: [String!]
+  search: String
+}
+
+input PlaybookExecutionFilter {
+  playbookIds: [UUID!]
+  statuses: [ExecutionStatus!]
+  timeRange: TimeRangeInput
+  executors: [UUID!]
+  automated: Boolean
+  success: Boolean
+  caseIds: [UUID!]
+}
+
+input MitreAttackPatternFilter {
+  tacticIds: [String!]
+  platforms: [MitrePlatform!]
+  hasDetectionStrategies: Boolean
+  hasMitigationStrategies: Boolean
+  eventCountRange: IntRangeInput
+  search: String
+}
+
+input SecurityEventStreamFilter {
+  severities: [SecuritySeverity!]
+  deviceVendors: [String!]
+  sourceIps: [String!]
+  riskScoreThreshold: Float
+  mitreAttackPatternIds: [String!]
+}
+
+# =====================================================
+# UTILITY TYPES
+# =====================================================
+
+input TimeRangeInput {
+  start: DateTime!
+  end: DateTime!
+}
+
+input FloatRangeInput {
+  min: Float
+  max: Float
+}
+
+input IntRangeInput {
+  min: Int
+  max: Int
+}
+
+input PaginationInput {
+  first: Int
+  after: String
+  last: Int
+  before: String
+}
+
+enum SortDirection {
+  ASC
+  DESC
+}
+
+enum TimeInterval {
+  MINUTE
+  HOUR
+  DAY
+  WEEK
+  MONTH
+}
+
+scalar Upload
+
+# =====================================================
+# CONNECTION TYPES (for pagination)
+# =====================================================
+
+type SecurityEventConnection {
+  edges: [SecurityEventEdge!]!
+  nodes: [SecurityEvent!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type SecurityEventEdge {
+  node: SecurityEvent!
+  cursor: String!
+}
+
+type ThreatIntelligenceConnection {
+  edges: [ThreatIntelligenceEdge!]!
+  nodes: [ThreatIntelligence!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type ThreatIntelligenceEdge {
+  node: ThreatIntelligence!
+  cursor: String!
+}
+
+type IOCConnection {
+  edges: [IOCEdge!]!
+  nodes: [IOC!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type IOCEdge {
+  node: IOC!
+  cursor: String!
+}
+
+type SecurityCaseConnection {
+  edges: [SecurityCaseEdge!]!
+  nodes: [SecurityCase!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type SecurityCaseEdge {
+  node: SecurityCase!
+  cursor: String!
+}
+
+type SecurityPlaybookConnection {
+  edges: [SecurityPlaybookEdge!]!
+  nodes: [SecurityPlaybook!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type SecurityPlaybookEdge {
+  node: SecurityPlaybook!
+  cursor: String!
+}
+
+type PlaybookExecutionConnection {
+  edges: [PlaybookExecutionEdge!]!
+  nodes: [PlaybookExecution!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PlaybookExecutionEdge {
+  node: PlaybookExecution!
+  cursor: String!
+}
+
+type MitreAttackPatternConnection {
+  edges: [MitreAttackPatternEdge!]!
+  nodes: [MitreAttackPattern!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type MitreAttackPatternEdge {
+  node: MitreAttackPattern!
+  cursor: String!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+# =====================================================
+# ANALYTICS & REPORTING TYPES
+# =====================================================
+
+type TimeSeriesData {
+  series: [TimeSeries!]!
+  timeRange: TimeRange!
+  interval: TimeInterval!
+}
+
+type TimeSeries {
+  name: String!
+  data: [TimeSeriesPoint!]!
+}
+
+type TimeSeriesPoint {
+  timestamp: DateTime!
+  value: Float!
+  metadata: JSON
+}
+
+type TimeRange {
+  start: DateTime!
+  end: DateTime!
+}
+
+type EventCorrelationGraph {
+  centralEvent: SecurityEvent!
+  correlatedEvents: [CorrelatedEvent!]!
+  relationships: [EventRelationship!]!
+  metadata: CorrelationMetadata!
+}
+
+type CorrelatedEvent {
+  event: SecurityEvent!
+  correlationScore: Float!
+  correlationType: String!
+  distance: Int! # Degrees of separation from central event
+}
+
+type EventRelationship {
+  source: UUID!
+  target: UUID!
+  relationshipType: String!
+  score: Float!
+  evidence: [String!]!
+}
+
+type CorrelationMetadata {
+  totalEvents: Int!
+  maxDepth: Int!
+  correlationAlgorithm: String!
+  processingTime: Int! # milliseconds
+}
+
+type ThreatHuntResult {
+  query: ThreatHuntQuery!
+  results: [ThreatHuntMatch!]!
+  totalMatches: Int!
+  executionTime: Int! # milliseconds
+  recommendations: [String!]!
+}
+
+type ThreatHuntMatch {
+  event: SecurityEvent!
+  score: Float!
+  matchedCriteria: [String!]!
+  context: JSON!
+}
+
+input ThreatHuntQuery {
+  name: String!
+  description: String
+  query: String! # Threat hunting query in domain-specific language
+  queryType: ThreatHuntQueryType!
+  parameters: JSON
+}
+
+enum ThreatHuntQueryType {
+  EVENT_PATTERN
+  BEHAVIORAL_ANALYSIS
+  IOC_HUNT
+  ANOMALY_DETECTION
+  TIMELINE_ANALYSIS
+  GRAPH_TRAVERSAL
+}
+
+type IOCSimilarity {
+  ioc: IOC!
+  similarityScore: Float!
+  similarityFactors: [String!]!
+}
+
+type SecurityOperationsStatus {
+  systemHealth: SystemHealthStatus!
+  activeIncidents: Int!
+  criticalAlerts: Int!
+  playbooksRunning: Int!
+  averageResponseTime: Float! # minutes
+  slaCompliance: Float! # percentage
+  lastUpdated: DateTime!
+}
+
+type SystemHealthStatus {
+  overall: HealthStatus!
+  components: [ComponentHealth!]!
+  metrics: SystemMetrics!
+}
+
+enum HealthStatus {
+  HEALTHY
+  DEGRADED
+  CRITICAL
+  UNKNOWN
+}
+
+type ComponentHealth {
+  name: String!
+  status: HealthStatus!
+  message: String
+  lastCheck: DateTime!
+}
+
+type SystemMetrics {
+  eventsPerSecond: Float!
+  averageProcessingLatency: Float! # milliseconds
+  queueDepth: Int!
+  memoryUsage: Float! # percentage
+  cpuUsage: Float! # percentage
+  diskUsage: Float! # percentage
+}
+
+type SecurityMetricsReport {
+  timeRange: TimeRange!
+  metrics: [SecurityMetric!]!
+  generatedAt: DateTime!
+}
+
+type SecurityMetric {
+  name: String!
+  value: Float!
+  unit: String!
+  trend: TrendDirection!
+  context: JSON
+}
+
+enum TrendDirection {
+  UP
+  DOWN
+  STABLE
+  UNKNOWN
+}
+
+type CaseMetrics {
+  totalCases: Int!
+  openCases: Int!
+  closedCases: Int!
+  averageResolutionTime: Float! # hours
+  casesByTeam: [TeamCaseMetric!]!
+  casesBySeverity: [SeverityCaseMetric!]!
+  slaMetrics: SLAMetrics!
+}
+
+type TeamCaseMetric {
+  team: SecurityTeam!
+  openCases: Int!
+  closedCases: Int!
+  averageResolutionTime: Float! # hours
+}
+
+type SeverityCaseMetric {
+  severity: SecuritySeverity!
+  count: Int!
+  averageResolutionTime: Float! # hours
+}
+
+type SLAMetrics {
+  within1Hour: Float! # percentage
+  within4Hours: Float! # percentage
+  within24Hours: Float! # percentage
+  breaches: Int!
+}
+
+type ComplianceReport {
+  framework: ComplianceFramework!
+  assessmentDate: DateTime!
+  overallStatus: ComplianceStatus!
+  score: Float! # percentage
+  requirements: [RequirementAssessment!]!
+  recommendations: [String!]!
+}
+
+type RequirementAssessment {
+  requirement: ComplianceRequirement!
+  status: ComplianceStatus!
+  evidence: [String!]!
+  gaps: [String!]!
+}
+
+type AttackPathResult {
+  paths: [AttackPath!]!
+  totalPaths: Int!
+  shortestPath: AttackPath
+  riskScore: Float!
+  recommendations: [String!]!
+}
+
+type AttackPath {
+  nodes: [AttackPathNode!]!
+  edges: [AttackPathEdge!]!
+  length: Int!
+  riskScore: Float!
+}
+
+type AttackPathNode {
+  id: String!
+  type: String!
+  name: String!
+  properties: JSON!
+}
+
+type AttackPathEdge {
+  source: String!
+  target: String!
+  relationship: String!
+  properties: JSON!
+}
+
+type EntityGraph {
+  centralEntity: GraphEntity!
+  relatedEntities: [GraphEntity!]!
+  relationships: [GraphRelationship!]!
+  depth: Int!
+}
+
+type GraphEntity {
+  id: UUID!
+  type: String!
+  name: String!
+  properties: JSON!
+}
+
+type GraphRelationship {
+  source: UUID!
+  target: UUID!
+  type: String!
+  properties: JSON!
+}
+
+type SecurityEventBatchResult {
+  successCount: Int!
+  failureCount: Int!
+  errors: [BatchError!]!
+  processedAt: DateTime!
+}
+
+type BatchError {
+  index: Int!
+  error: String!
+  input: JSON!
+}
+
+type AttackPatternDetection {
+  attackPattern: MitreAttackPattern!
+  events: [SecurityEvent!]!
+  confidence: Float!
+  detectedAt: DateTime!
+  additionalContext: JSON!
+}
+
+type EventCorrelation {
+  primaryEvent: SecurityEvent!
+  correlatedEvents: [SecurityEvent!]!
+  correlationType: String!
+  score: Float!
+  detectedAt: DateTime!
+}

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Inventory Connection Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .success { color: green; }
+        .error { color: red; }
+        .loading { color: blue; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Inventory System Connection Test</h1>
+    
+    <div id="status" class="loading">Testing connection...</div>
+    
+    <h2>Health Check</h2>
+    <div id="health-status" class="loading">Checking...</div>
+    <pre id="health-response"></pre>
+    
+    <h2>Inventory Items</h2>
+    <div id="items-status" class="loading">Loading...</div>
+    <pre id="items-response"></pre>
+
+    <script>
+        const API_BASE = 'http://localhost:4050';
+
+        async function testConnection() {
+            try {
+                // Test health endpoint
+                const healthResponse = await fetch(`${API_BASE}/health`);
+                const healthData = await healthResponse.json();
+                
+                if (healthResponse.ok) {
+                    document.getElementById('health-status').textContent = '✓ Health check passed';
+                    document.getElementById('health-status').className = 'success';
+                    document.getElementById('health-response').textContent = JSON.stringify(healthData, null, 2);
+                } else {
+                    throw new Error(`Health check failed: ${healthResponse.status}`);
+                }
+
+                // Test inventory endpoint
+                const itemsResponse = await fetch(`${API_BASE}/api/v1/items`);
+                const itemsData = await itemsResponse.json();
+                
+                if (itemsResponse.ok) {
+                    document.getElementById('items-status').textContent = `✓ Loaded ${itemsData.items ? itemsData.items.length : 0} items`;
+                    document.getElementById('items-status').className = 'success';
+                    document.getElementById('items-response').textContent = JSON.stringify(itemsData, null, 2).substring(0, 1000) + '...';
+                    
+                    // Update overall status
+                    document.getElementById('status').textContent = '✓ All connections working!';
+                    document.getElementById('status').className = 'success';
+                } else {
+                    throw new Error(`Items API failed: ${itemsResponse.status}`);
+                }
+
+            } catch (error) {
+                console.error('Connection test failed:', error);
+                document.getElementById('status').textContent = `✗ Connection failed: ${error.message}`;
+                document.getElementById('status').className = 'error';
+                
+                if (document.getElementById('health-status').className === 'loading') {
+                    document.getElementById('health-status').textContent = `✗ Health check failed: ${error.message}`;
+                    document.getElementById('health-status').className = 'error';
+                }
+                
+                if (document.getElementById('items-status').className === 'loading') {
+                    document.getElementById('items-status').textContent = `✗ Items API failed: ${error.message}`;
+                    document.getElementById('items-status').className = 'error';
+                }
+            }
+        }
+
+        // Run the test
+        testConnection();
+    </script>
+</body>
+</html>
