@@ -58,14 +58,24 @@ export default function WorkshopNotes() {
     // Set workshop navigation height CSS custom property
     const updateWorkshopNavHeight = () => {
       const workshopNav = document.querySelector('.workshop-nav') as HTMLElement
+      const mainNav = document.querySelector('#navigation') as HTMLElement
       if (workshopNav) {
-        const height = workshopNav.offsetHeight
-        document.documentElement.style.setProperty('--workshop-nav-height', `${height}px`)
+        const workshopHeight = workshopNav.offsetHeight
+        document.documentElement.style.setProperty('--workshop-nav-height', `${workshopHeight}px`)
       }
+      if (mainNav) {
+        const mainHeight = mainNav.offsetHeight
+        document.documentElement.style.setProperty('--main-nav-height', `${mainHeight}px`)
+      }
+      // Update total height
+      const totalHeight = (workshopNav?.offsetHeight || 60) + (mainNav?.offsetHeight || 72)
+      document.documentElement.style.setProperty('--total-nav-height', `${totalHeight}px`)
     }
     
-    // Update on mount and resize
-    setTimeout(updateWorkshopNavHeight, 100) // Delay to ensure nav is rendered
+    // Update on mount with multiple attempts to ensure nav is rendered
+    updateWorkshopNavHeight()
+    setTimeout(updateWorkshopNavHeight, 50)
+    setTimeout(updateWorkshopNavHeight, 150)
     window.addEventListener('resize', updateWorkshopNavHeight)
 
     return () => {
