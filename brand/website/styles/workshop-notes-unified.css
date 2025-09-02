@@ -87,6 +87,7 @@
   /* Navigation dimensions - default desktop values */
   --main-nav-height: 72px;
   --workshop-nav-height: 60px;
+  --total-nav-height: calc(var(--main-nav-height) + var(--workshop-nav-height));
   
   /* Operational status colors */
   --workshop-active: var(--workshop-cyan);
@@ -330,7 +331,10 @@
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  padding: calc(var(--main-nav-height, 72px) + var(--workshop-nav-height, 60px) + var(--workshop-space-4)) var(--workshop-space-6) var(--workshop-space-8);
+  padding-top: calc(var(--total-nav-height, 132px) + var(--workshop-space-4));
+  padding-left: var(--workshop-space-6);
+  padding-right: var(--workshop-space-6);
+  padding-bottom: var(--workshop-space-8);
   min-height: 100vh;
 }
 
@@ -338,11 +342,12 @@
   :root {
     --main-nav-height: 64px; /* Smaller main nav on mobile */
     --workshop-nav-height: 56px; /* Smaller workshop nav on mobile */
+    --total-nav-height: calc(var(--main-nav-height) + var(--workshop-nav-height));
   }
   
   .workshop-grid {
     gap: var(--workshop-space-4);
-    padding: calc(var(--main-nav-height) + var(--workshop-nav-height) + var(--workshop-space-2)) var(--workshop-space-4) var(--workshop-space-4);
+    padding: calc(var(--total-nav-height) + var(--workshop-space-2)) var(--workshop-space-4) var(--workshop-space-4);
   }
   
   /* Workshop nav adjustments for mobile */
@@ -380,6 +385,7 @@
   :root {
     --main-nav-height: 58px; /* Even smaller main nav on tiny screens */
     --workshop-nav-height: 48px; /* Further reduced for very small screens */
+    --total-nav-height: calc(var(--main-nav-height) + var(--workshop-nav-height));
   }
   
   .workshop-nav-content h1 {
@@ -387,7 +393,7 @@
   }
   
   .workshop-grid {
-    padding: calc(var(--main-nav-height) + var(--workshop-nav-height) + var(--workshop-space-2)) var(--workshop-space-2) var(--workshop-space-4);
+    padding: calc(var(--total-nav-height) + var(--workshop-space-2)) var(--workshop-space-2) var(--workshop-space-4);
   }
   
   /* Hide metrics on very small screens to prevent cramping */
@@ -407,7 +413,7 @@
   top: var(--main-nav-height, 72px); /* Dynamic positioning based on main nav height */
   left: 0;
   right: 0;
-  z-index: 45; /* Higher than content (30) but lower than main nav (50) */
+  z-index: 40; /* Below main nav (50) but above content */
   background: rgba(13, 27, 42, 0.95);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -450,6 +456,7 @@
   :root {
     --main-nav-height: 68px; /* Medium size for tablets */
     --workshop-nav-height: 58px;
+    --total-nav-height: calc(var(--main-nav-height) + var(--workshop-nav-height));
   }
   
   .workshop-nav-content {
