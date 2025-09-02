@@ -24,7 +24,7 @@ done
 echo "🧹 Cleaning build cache..."
 rm -rf .next
 
-# Run the static export
+# Run the static export (Next.js 14 generates 'out' directory automatically with output: 'export')
 echo "🏗️ Building static export..."
 NODE_ENV=production STATIC_EXPORT=true next build
 
