@@ -219,26 +219,26 @@ export class CandlefishEngine {
     this.ctx.lineJoin = 'round'
     
     this.ctx.beginPath()
-    this.ctx.moveTo(-12, 0)
-    this.ctx.quadraticCurveTo(-8, -4, 0, -3)
-    this.ctx.quadraticCurveTo(8, -2, 12, 0)
-    this.ctx.quadraticCurveTo(8, 2, 0, 3)
-    this.ctx.quadraticCurveTo(-8, 4, -12, 0)
+    this.ctx.moveTo(-18, 0)
+    this.ctx.quadraticCurveTo(-12, -6, 0, -4.5)
+    this.ctx.quadraticCurveTo(12, -3, 18, 0)
+    this.ctx.quadraticCurveTo(12, 3, 0, 4.5)
+    this.ctx.quadraticCurveTo(-12, 6, -18, 0)
     this.ctx.closePath()
     this.ctx.stroke()
     
     this.ctx.beginPath()
-    this.ctx.moveTo(12, 0)
-    this.ctx.lineTo(18, -4)
-    this.ctx.lineTo(20, 0)
-    this.ctx.lineTo(18, 4)
+    this.ctx.moveTo(18, 0)
+    this.ctx.lineTo(27, -6)
+    this.ctx.lineTo(30, 0)
+    this.ctx.lineTo(27, 6)
     this.ctx.closePath()
     this.ctx.stroke()
     
     this.ctx.fillStyle = this.GLOW_COLOR
     this.ctx.globalAlpha = 0.6 * glowIntensity
     this.ctx.beginPath()
-    this.ctx.arc(-6, 0, 1.5, 0, Math.PI * 2)
+    this.ctx.arc(-9, 0, 2, 0, Math.PI * 2)
     this.ctx.fill()
     
     this.ctx.restore()

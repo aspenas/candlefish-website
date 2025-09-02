@@ -8,12 +8,6 @@ import SystemArchitecture from '../components/SystemArchitecture'
 import { NewsletterForm } from '../components/forms/NewsletterForm'
 import dynamic from 'next/dynamic'
 
-// Lazy load visualizations for better initial performance with error boundary
-const OperationalCraft = lazy(() =>
-  import('../components/visuals/OperationalCraft').catch(() => ({
-    default: () => <div className="text-[#415A77] text-xs">Visualization unavailable</div>
-  }))
-)
 
 // Import CandleFish component
 import CandleFish from '../web/aquarium/react/CandleFish'
@@ -74,32 +68,17 @@ export default function OperationalHomepage() {
           </div>
         </div>
 
-        {/* Operational Craft Visualization - Forward-looking design */}
-        <div className="absolute bottom-8 right-8 w-[400px] h-[200px] hidden lg:block">
-          <div className="bg-[#1B263B]/30 backdrop-blur-sm border border-[#415A77]/20 overflow-hidden">
-            {isClient && (
-              <Suspense fallback={
-                <div className="w-full h-full flex items-center justify-center">
-                  <div className="text-[#415A77] text-xs font-mono">INITIALIZING...</div>
-                </div>
-              }>
-                <OperationalCraft />
-              </Suspense>
-            )}
-          </div>
-        </div>
       </section>
 
       {/* Bioluminescent Candlefish Animation */}
       <section className="relative" data-widget="operational-matrix">
-        {isClient && (
-          <CandleFish 
-            height={240}
-            className="candlefish-aquarium"
-            aria-label="Bioluminescent candlefish swimming in deep water"
-            disabled={process.env.NEXT_PUBLIC_FISH_ANIM === '0'}
-          />
-        )}
+        <CandleFish 
+          height={240}
+          className="candlefish-aquarium"
+          aria-label="Bioluminescent candlefish swimming in deep water"
+          disabled={process.env.NEXT_PUBLIC_FISH_ANIM === '0'}
+          suppressHydrationWarning
+        />
       </section>
 
       {/* Philosophy Section */}
