@@ -1,0 +1,731 @@
+---
+# IDS/IPS and Intrusion Detection System Configuration
+# Implements real-time threat detection and prevention
+# Compliant with PCI DSS 11.4, HIPAA §164.312(a)(1), SOC 2 CC6.6
+
+# Falco - Runtime Security and Threat Detection
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: falco
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: falco
+    security.candlefish.ai/component: runtime-security
+    compliance: "pci-dss-11.4,soc2-cc6.6"
+spec:
+  selector:
+    matchLabels:
+      app: falco
+  template:
+    metadata:
+      labels:
+        app: falco
+        security-zone: monitoring
+        security-critical: "true"
+    spec:
+      serviceAccountName: falco-sa
+      hostNetwork: true
+      hostPID: true
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+      containers:
+      - name: falco
+        image: falcosecurity/falco:0.35.0
+        imagePullPolicy: Always
+        privileged: true
+        env:
+        - name: FALCO_BPF_PROBE
+          value: "true"
+        - name: FALCO_GRPC_ENABLED
+          value: "true"
+        - name: FALCO_GRPC_BIND_ADDRESS
+          value: "0.0.0.0:5060"
+        volumeMounts:
+        - mountPath: /host/var/run/docker.sock
+          name: docker-socket
+        - mountPath: /host/dev
+          name: dev-fs
+          readOnly: true
+        - mountPath: /host/proc
+          name: proc-fs
+          readOnly: true
+        - mountPath: /host/boot
+          name: boot-fs
+          readOnly: true
+        - mountPath: /host/lib/modules
+          name: lib-modules
+          readOnly: true
+        - mountPath: /host/usr
+          name: usr-fs
+          readOnly: true
+        - mountPath: /host/etc
+          name: etc-fs
+          readOnly: true
+        - mountPath: /etc/falco
+          name: falco-config
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        securityContext:
+          privileged: true
+      volumes:
+      - name: docker-socket
+        hostPath:
+          path: /var/run/docker.sock
+      - name: dev-fs
+        hostPath:
+          path: /dev
+      - name: proc-fs
+        hostPath:
+          path: /proc
+      - name: boot-fs
+        hostPath:
+          path: /boot
+      - name: lib-modules
+        hostPath:
+          path: /lib/modules
+      - name: usr-fs
+        hostPath:
+          path: /usr
+      - name: etc-fs
+        hostPath:
+          path: /etc
+      - name: falco-config
+        configMap:
+          name: falco-config
+
+---
+# Falco Configuration with Custom Rules
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: falco-config
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: falco
+    security.candlefish.ai/component: ids-rules
+data:
+  falco.yaml: |
+    # Falco configuration
+    rules_file:
+      - /etc/falco/falco_rules.yaml
+      - /etc/falco/falco_rules.local.yaml
+      - /etc/falco/custom_rules.yaml
+    
+    json_output: true
+    json_include_output_property: true
+    log_stderr: true
+    log_syslog: false
+    log_level: info
+    
+    priority: warning
+    
+    stdout_output:
+      enabled: true
+    
+    syslog_output:
+      enabled: false
+    
+    file_output:
+      enabled: true
+      keep_alive: false
+      filename: /var/log/falco/events.json
+    
+    grpc:
+      enabled: true
+      bind_address: "0.0.0.0:5060"
+      threadiness: 8
+    
+    grpc_output:
+      enabled: true
+    
+    # Security-specific settings
+    webserver:
+      enabled: true
+      listen_port: 8765
+      k8s_audit_endpoint: /k8s-audit
+      ssl_enabled: true
+      ssl_certificate: /etc/falco/certs/server.crt
+      ssl_key: /etc/falco/certs/server.key
+    
+    # Rate limiting
+    outputs_rate: 1
+    outputs_max_burst: 1000
+
+  custom_rules.yaml: |
+    # Custom security rules for Claude Configuration System
+    
+    - rule: Unauthorized Container Exec
+      desc: Detect exec into containers in production namespace
+      condition: >
+        spawned_process and
+        container and
+        container.name != "host" and
+        proc.name = "exec" and
+        k8s.ns.name = "claude-config"
+      output: >
+        Unauthorized exec into container
+        (user=%user.name container=%container.name command=%proc.cmdline namespace=%k8s.ns.name pod=%k8s.pod.name)
+      priority: WARNING
+      tags: [container, exec, unauthorized]
+    
+    - rule: Sensitive File Access
+      desc: Detect access to sensitive files
+      condition: >
+        open_read and
+        (fd.name contains "/etc/shadow" or
+         fd.name contains "/etc/passwd" or
+         fd.name contains ".kube/config" or
+         fd.name contains ".aws/credentials" or
+         fd.name contains ".ssh/id_rsa" or
+         fd.name contains "jwt" or
+         fd.name contains "private_key")
+      output: >
+        Sensitive file accessed
+        (user=%user.name command=%proc.cmdline file=%fd.name container=%container.name)
+      priority: WARNING
+      tags: [filesystem, sensitive_data]
+    
+    - rule: Cryptocurrency Mining Detection
+      desc: Detect cryptocurrency mining activities
+      condition: >
+        spawned_process and
+        (proc.name in (xmrig, minerd, minergate, ethminer) or
+         proc.cmdline contains "stratum+tcp" or
+         proc.cmdline contains "pool." or
+         proc.cmdline contains "nicehash")
+      output: >
+        Cryptocurrency mining detected
+        (user=%user.name command=%proc.cmdline container=%container.name)
+      priority: CRITICAL
+      tags: [cryptomining, malware]
+    
+    - rule: Privilege Escalation Attempt
+      desc: Detect privilege escalation attempts
+      condition: >
+        spawned_process and
+        proc.name in (sudo, su, passwd, chown, chmod) and
+        container and
+        not proc.user.name = "root"
+      output: >
+        Privilege escalation attempt
+        (user=%user.name command=%proc.cmdline container=%container.name)
+      priority: CRITICAL
+      tags: [privilege_escalation]
+    
+    - rule: Network Scanning Activity
+      desc: Detect network scanning tools
+      condition: >
+        spawned_process and
+        (proc.name in (nmap, masscan, zmap, nc, netcat, tcpdump, tshark) or
+         proc.cmdline contains "SYN scan" or
+         proc.cmdline contains "port scan")
+      output: >
+        Network scanning detected
+        (user=%user.name command=%proc.cmdline container=%container.name)
+      priority: WARNING
+      tags: [network, scanning]
+    
+    - rule: Reverse Shell Detection
+      desc: Detect reverse shell connections
+      condition: >
+        spawned_process and
+        (proc.cmdline contains "bash -i" or
+         proc.cmdline contains "sh -i" or
+         proc.cmdline regex "nc\s+.*\s+-e\s+/bin/(bash|sh)" or
+         proc.cmdline contains "socat exec")
+      output: >
+        Reverse shell detected
+        (user=%user.name command=%proc.cmdline container=%container.name connection=%fd.name)
+      priority: CRITICAL
+      tags: [reverse_shell, malware]
+    
+    - rule: Unauthorized Database Connection
+      desc: Detect unauthorized database connections
+      condition: >
+        (evt.type = connect or evt.type = accept) and
+        (fd.sport in (3306, 5432, 27017, 6379) or
+         fd.dport in (3306, 5432, 27017, 6379)) and
+        not proc.name in (mysql, psql, mongo, redis-cli, application-name)
+      output: >
+        Unauthorized database connection
+        (user=%user.name command=%proc.cmdline connection=%fd.name port=%fd.port)
+      priority: WARNING
+      tags: [database, unauthorized_access]
+    
+    - rule: Container Drift Detection
+      desc: Detect file system modifications in containers
+      condition: >
+        (evt.type = write or evt.type = rename or evt.type = unlink) and
+        container and
+        not fd.name startswith /tmp and
+        not fd.name startswith /var/log and
+        not fd.name startswith /var/run and
+        not proc.name in (logger, fluentd, fluent-bit)
+      output: >
+        Container drift detected - unauthorized file modification
+        (user=%user.name command=%proc.cmdline file=%fd.name container=%container.name)
+      priority: WARNING
+      tags: [container_drift, integrity]
+    
+    - rule: AWS Metadata Service Access
+      desc: Detect access to AWS metadata service
+      condition: >
+        (evt.type = connect or evt.type = sendto) and
+        fd.ip = "169.254.169.254"
+      output: >
+        AWS metadata service accessed
+        (user=%user.name command=%proc.cmdline container=%container.name)
+      priority: WARNING
+      tags: [aws, metadata, credentials]
+    
+    - rule: Suspicious Process Injection
+      desc: Detect process injection techniques
+      condition: >
+        (evt.type = ptrace or
+         proc.name = gdb or
+         proc.cmdline contains "/proc/*/mem" or
+         proc.cmdline contains "LD_PRELOAD")
+      output: >
+        Suspicious process injection detected
+        (user=%user.name command=%proc.cmdline container=%container.name)
+      priority: CRITICAL
+      tags: [process_injection, malware]
+
+---
+# Suricata - Network IDS/IPS
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: suricata
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: suricata
+    security.candlefish.ai/component: network-ids
+spec:
+  selector:
+    matchLabels:
+      app: suricata
+  template:
+    metadata:
+      labels:
+        app: suricata
+        security-zone: monitoring
+    spec:
+      serviceAccountName: suricata-sa
+      hostNetwork: true
+      containers:
+      - name: suricata
+        image: jasonish/suricata:latest
+        imagePullPolicy: Always
+        command: ["/usr/bin/suricata"]
+        args:
+        - "-c"
+        - "/etc/suricata/suricata.yaml"
+        - "-i"
+        - "eth0"
+        - "-v"
+        env:
+        - name: SURICATA_OPTIONS
+          value: "--af-packet"
+        volumeMounts:
+        - name: suricata-config
+          mountPath: /etc/suricata
+        - name: suricata-logs
+          mountPath: /var/log/suricata
+        - name: suricata-rules
+          mountPath: /var/lib/suricata/rules
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+            - NET_RAW
+            - SYS_NICE
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+      volumes:
+      - name: suricata-config
+        configMap:
+          name: suricata-config
+      - name: suricata-logs
+        emptyDir: {}
+      - name: suricata-rules
+        configMap:
+          name: suricata-rules
+
+---
+# Suricata Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: suricata-config
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: suricata
+data:
+  suricata.yaml: |
+    %YAML 1.1
+    ---
+    vars:
+      address-groups:
+        HOME_NET: "[10.0.0.0/8,172.16.0.0/12,192.168.0.0/16]"
+        EXTERNAL_NET: "!$HOME_NET"
+        HTTP_SERVERS: "$HOME_NET"
+        SMTP_SERVERS: "$HOME_NET"
+        SQL_SERVERS: "$HOME_NET"
+        DNS_SERVERS: "$HOME_NET"
+        TELNET_SERVERS: "$HOME_NET"
+        AIM_SERVERS: "$EXTERNAL_NET"
+        DC_SERVERS: "$HOME_NET"
+        DNP3_SERVERS: "$HOME_NET"
+        MODBUS_SERVERS: "$HOME_NET"
+        ENIP_SERVERS: "$HOME_NET"
+      
+      port-groups:
+        HTTP_PORTS: "[80,8080,8443]"
+        SHELLCODE_PORTS: "!80"
+        ORACLE_PORTS: 1521
+        SSH_PORTS: 22
+        DNP3_PORTS: 20000
+        MODBUS_PORTS: 502
+        FILE_DATA_PORTS: "[$HTTP_PORTS,110,143]"
+        FTP_PORTS: 21
+        VXLAN_PORTS: 4789
+    
+    default-rule-path: /var/lib/suricata/rules
+    rule-files:
+      - suricata.rules
+      - custom.rules
+    
+    logging:
+      default-log-level: notice
+      outputs:
+      - console:
+          enabled: yes
+      - file:
+          enabled: yes
+          level: info
+          filename: /var/log/suricata/suricata.log
+      - syslog:
+          enabled: no
+    
+    outputs:
+      - fast:
+          enabled: yes
+          filename: fast.log
+          append: yes
+      - eve-log:
+          enabled: yes
+          filetype: regular
+          filename: eve.json
+          types:
+            - alert:
+                payload: yes
+                payload-buffer-size: 4kb
+                payload-printable: yes
+                packet: yes
+                metadata: yes
+                http-body: yes
+                http-body-printable: yes
+            - anomaly:
+                enabled: yes
+            - http:
+                extended: yes
+            - dns:
+                enabled: yes
+            - tls:
+                extended: yes
+            - files:
+                force-magic: no
+            - smtp:
+                extended: yes
+            - flow:
+                enabled: yes
+            - netflow:
+                enabled: yes
+            - stats:
+                enabled: yes
+                interval: 30
+    
+    app-layer:
+      protocols:
+        tls:
+          enabled: yes
+          detection-ports:
+            dp: 443
+        dcerpc:
+          enabled: yes
+        ftp:
+          enabled: yes
+        ssh:
+          enabled: yes
+        smtp:
+          enabled: yes
+        imap:
+          enabled: yes
+        rdp:
+          enabled: yes
+        http:
+          enabled: yes
+          libhtp:
+            default-config:
+              personality: IDS
+    
+    # IPS mode configuration
+    ips:
+      mode: ips
+      default-action: pass
+      
+    # Performance tuning
+    threading:
+      cpu-affinity:
+        - management-cpu-set:
+            cpu: [ 0 ]
+        - receive-cpu-set:
+            cpu: [ 1 ]
+        - worker-cpu-set:
+            cpu: [ "2-7" ]
+    
+    # Detection engine
+    detect:
+      profile: high
+      custom-values:
+        toclient-groups: 3
+        toserver-groups: 25
+      sgh-mpm-context: auto
+      inspection-recursion-limit: 3000
+
+---
+# Suricata Custom Rules
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: suricata-rules
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: suricata
+data:
+  custom.rules: |
+    # SQL Injection Detection
+    alert http any any -> $HOME_NET any (msg:"SQL Injection - Union Select"; flow:to_server,established; content:"union"; nocase; content:"select"; nocase; distance:0; classtype:web-application-attack; sid:1000001; rev:1;)
+    alert http any any -> $HOME_NET any (msg:"SQL Injection - Boolean Based"; flow:to_server,established; pcre:"/(\%27)|(\')|(\-\-)|(\%23)|(#)/i"; classtype:web-application-attack; sid:1000002; rev:1;)
+    
+    # XSS Detection
+    alert http any any -> $HOME_NET any (msg:"XSS - Script Tag"; flow:to_server,established; content:"<script"; nocase; classtype:web-application-attack; sid:1000003; rev:1;)
+    alert http any any -> $HOME_NET any (msg:"XSS - Javascript Event"; flow:to_server,established; pcre:"/(onload|onmouseover|onerror|onclick)\s*=/i"; classtype:web-application-attack; sid:1000004; rev:1;)
+    
+    # Command Injection
+    alert http any any -> $HOME_NET any (msg:"Command Injection - Pipe Character"; flow:to_server,established; content:"|"; pcre:"/\|(ls|cat|wget|curl|bash|sh)/i"; classtype:web-application-attack; sid:1000005; rev:1;)
+    
+    # Directory Traversal
+    alert http any any -> $HOME_NET any (msg:"Directory Traversal"; flow:to_server,established; content:"../"; classtype:web-application-attack; sid:1000006; rev:1;)
+    
+    # Suspicious User Agents
+    alert http any any -> $HOME_NET any (msg:"Suspicious User Agent - SQLMap"; flow:to_server,established; content:"User-Agent|3a| sqlmap"; nocase; classtype:web-application-attack; sid:1000007; rev:1;)
+    alert http any any -> $HOME_NET any (msg:"Suspicious User Agent - Nikto"; flow:to_server,established; content:"User-Agent|3a|"; content:"Nikto"; nocase; classtype:web-application-attack; sid:1000008; rev:1;)
+    
+    # Brute Force Detection
+    alert tcp any any -> $HOME_NET 22 (msg:"SSH Brute Force Attempt"; flow:to_server,established; flags:S; threshold:type both, track by_src, count 5, seconds 60; classtype:attempted-admin; sid:1000009; rev:1;)
+    alert tcp any any -> $HOME_NET 3306 (msg:"MySQL Brute Force Attempt"; flow:to_server,established; flags:S; threshold:type both, track by_src, count 5, seconds 60; classtype:attempted-admin; sid:1000010; rev:1;)
+    
+    # Data Exfiltration Detection
+    alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"Potential Data Exfiltration - Large Outbound Transfer"; flow:to_server,established; stream_size:server,>,10485760; classtype:policy-violation; sid:1000011; rev:1;)
+    
+    # Cryptocurrency Mining
+    alert tcp $HOME_NET any -> any any (msg:"Cryptocurrency Mining Pool Connection"; content:"stratum+tcp"; classtype:policy-violation; sid:1000012; rev:1;)
+    
+    # DNS Tunneling Detection
+    alert dns any any -> any any (msg:"Suspicious DNS Query - Possible DNS Tunneling"; dns.query; content:"."; pcre:"/^.{50,}/"; classtype:policy-violation; sid:1000013; rev:1;)
+    
+    # Unauthorized API Access
+    alert http any any -> $HOME_NET any (msg:"Unauthorized API Access Attempt"; flow:to_server,established; content:"/api/"; http_uri; content:"401"; http_stat_code; classtype:web-application-attack; sid:1000014; rev:1;)
+
+---
+# OSSEC HIDS Agent
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ossec-agent
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: ossec
+    security.candlefish.ai/component: host-ids
+spec:
+  selector:
+    matchLabels:
+      app: ossec-agent
+  template:
+    metadata:
+      labels:
+        app: ossec-agent
+        security-zone: monitoring
+    spec:
+      serviceAccountName: ossec-sa
+      hostNetwork: true
+      hostPID: true
+      hostIPC: true
+      containers:
+      - name: ossec-agent
+        image: atomicorp/ossec-docker:latest
+        imagePullPolicy: Always
+        env:
+        - name: OSSEC_SERVER_IP
+          value: "ossec-server.claude-config.svc.cluster.local"
+        - name: OSSEC_AGENT_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: ossec-config
+          mountPath: /var/ossec/etc/ossec.conf
+          subPath: ossec.conf
+        - name: var-log
+          mountPath: /var/log
+          readOnly: true
+        - name: etc
+          mountPath: /host/etc
+          readOnly: true
+        securityContext:
+          privileged: true
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+      volumes:
+      - name: ossec-config
+        configMap:
+          name: ossec-config
+      - name: var-log
+        hostPath:
+          path: /var/log
+      - name: etc
+        hostPath:
+          path: /etc
+
+---
+# WAF - Web Application Firewall (ModSecurity)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: modsecurity-config
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: modsecurity
+    security.candlefish.ai/component: waf
+data:
+  modsecurity.conf: |
+    SecRuleEngine On
+    SecRequestBodyAccess On
+    SecResponseBodyAccess Off
+    SecRequestBodyLimit 13107200
+    SecRequestBodyNoFilesLimit 131072
+    SecRequestBodyLimitAction Reject
+    
+    SecPcreMatchLimit 100000
+    SecPcreMatchLimitRecursion 100000
+    
+    SecResponseBodyMimeType text/plain text/html text/xml
+    SecDataDir /tmp/
+    SecAuditEngine RelevantOnly
+    SecAuditLogRelevantStatus "^(?:5|4(?!04))"
+    SecAuditLogParts ABIJDEFHZ
+    SecAuditLogType Serial
+    SecAuditLog /var/log/modsec_audit.log
+    
+    SecArgumentSeparator &
+    SecCookieFormat 0
+    SecUnicodeMapFile unicode.mapping 20127
+    SecStatusEngine On
+    
+    # OWASP CRS
+    Include /etc/modsecurity/crs/crs-setup.conf
+    Include /etc/modsecurity/crs/rules/*.conf
+    
+    # Custom Rules
+    SecRule REQUEST_URI "@contains /admin" \
+        "id:1001,\
+        phase:1,\
+        deny,\
+        status:403,\
+        msg:'Admin access attempted',\
+        logdata:'Matched Data: %{MATCHED_VAR} found within %{MATCHED_VAR_NAME}'"
+    
+    SecRule REQUEST_HEADERS:User-Agent "@pmFromFile scanners.txt" \
+        "id:1002,\
+        phase:1,\
+        deny,\
+        status:403,\
+        msg:'Scanner detected',\
+        logdata:'Scanner User-Agent: %{MATCHED_VAR}'"
+    
+    SecRule REQUEST_METHOD "@streq POST" \
+        "id:1003,\
+        phase:2,\
+        chain,\
+        deny,\
+        status:403,\
+        msg:'Large POST detected'"
+        SecRule REQUEST_HEADERS:Content-Length "@gt 1000000"
+
+---
+# RBAC for IDS/IPS components
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: falco-sa
+  namespace: claude-config
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: suricata-sa
+  namespace: claude-config
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ossec-sa
+  namespace: claude-config
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: falco-role
+rules:
+- apiGroups: [""]
+  resources: ["nodes", "namespaces", "pods", "replicationcontrollers", "services", "events", "configmaps"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: falco-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: falco-role
+subjects:
+- kind: ServiceAccount
+  name: falco-sa
+  namespace: claude-config

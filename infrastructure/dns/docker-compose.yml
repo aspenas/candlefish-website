@@ -1,0 +1,371 @@
+version: '3.8'
+
+services:
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: candlefish-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Nginx configuration
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/candlefish-ai.conf:/etc/nginx/conf.d/candlefish-ai.conf:ro
+      - ./nginx/cors-config.conf:/etc/nginx/includes/cors-config.conf:ro
+      - ./nginx/rate-limiting.conf:/etc/nginx/includes/rate-limiting.conf:ro
+      - ./health/health-checks.conf:/etc/nginx/includes/health-checks.conf:ro
+      - ./health/cloudflare-ips.conf:/etc/nginx/cloudflare-ips.conf:ro
+      - ./ssl/ssl-config.conf:/etc/nginx/includes/ssl-config.conf:ro
+      
+      # SSL certificates
+      - certbot_certs:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+      
+      # Logs
+      - nginx_logs:/var/log/nginx
+      
+      # Static content
+      - static_content:/var/www/html
+      
+      # DH parameters
+      - ./ssl/dhparam.pem:/etc/ssl/certs/dhparam.pem:ro
+    
+    environment:
+      - TZ=UTC
+    
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "candlefish.service=nginx"
+    
+    depends_on:
+      - certbot
+    
+    networks:
+      - candlefish_network
+    
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Let's Encrypt Certbot
+  certbot:
+    image: certbot/certbot:latest
+    container_name: candlefish-certbot
+    restart: "no"
+    volumes:
+      - certbot_certs:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+      - certbot_logs:/var/log/letsencrypt
+    
+    environment:
+      - TZ=UTC
+    
+    command: >
+      sh -c "
+        trap exit TERM;
+        while :; do
+          certbot renew --webroot --webroot-path=/var/www/certbot --quiet;
+          sleep 12h & wait $!;
+        done
+      "
+    
+    networks:
+      - candlefish_network
+
+  # API Service (placeholder - replace with actual service)
+  api:
+    image: candlefish/api:latest
+    container_name: candlefish-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - NODE_ENV=production
+      - PORT=8000
+      - TZ=UTC
+    
+    volumes:
+      - api_data:/app/data
+      - api_logs:/app/logs
+    
+    labels:
+      - "candlefish.service=api"
+    
+    networks:
+      - candlefish_network
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Analytics Service
+  analytics:
+    image: candlefish/analytics:latest
+    container_name: candlefish-analytics
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      - NODE_ENV=production
+      - PORT=8001
+      - TZ=UTC
+    
+    volumes:
+      - analytics_data:/app/data
+      - analytics_logs:/app/logs
+    
+    labels:
+      - "candlefish.service=analytics"
+    
+    networks:
+      - candlefish_network
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Router Service  
+  router:
+    image: candlefish/router:latest
+    container_name: candlefish-router
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      - NODE_ENV=production
+      - PORT=8002
+      - TZ=UTC
+    
+    volumes:
+      - router_data:/app/data
+      - router_logs:/app/logs
+    
+    labels:
+      - "candlefish.service=router"
+    
+    networks:
+      - candlefish_network
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+
+  # Monitor Service
+  monitor:
+    image: candlefish/monitor:latest
+    container_name: candlefish-monitor
+    restart: unless-stopped
+    ports:
+      - "8003:8003"
+    environment:
+      - NODE_ENV=production
+      - PORT=8003
+      - TZ=UTC
+    
+    volumes:
+      - monitor_data:/app/data
+      - monitor_logs:/app/logs
+    
+    labels:
+      - "candlefish.service=monitor"
+    
+    networks:
+      - candlefish_network
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Config Dashboard
+  config:
+    image: candlefish/config:latest
+    container_name: candlefish-config
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - TZ=UTC
+    
+    volumes:
+      - config_data:/app/data
+      - config_logs:/app/logs
+    
+    labels:
+      - "candlefish.service=config"
+    
+    networks:
+      - candlefish_network
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis for caching and session storage
+  redis:
+    image: redis:7-alpine
+    container_name: candlefish-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server 
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    
+    volumes:
+      - redis_data:/data
+    
+    labels:
+      - "candlefish.service=redis"
+    
+    networks:
+      - candlefish_network
+    
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # PostgreSQL database (optional)
+  postgres:
+    image: postgres:15-alpine
+    container_name: candlefish-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=candlefish
+      - POSTGRES_USER=candlefish
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+      - TZ=UTC
+    
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    
+    labels:
+      - "candlefish.service=postgres"
+    
+    networks:
+      - candlefish_network
+    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U candlefish"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Health monitoring service
+  health-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile.health-monitor
+    container_name: candlefish-health-monitor
+    restart: unless-stopped
+    environment:
+      - TZ=UTC
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+    
+    volumes:
+      - health_logs:/var/log
+      - ./health/health-monitor.py:/app/health-monitor.py:ro
+    
+    labels:
+      - "candlefish.service=health-monitor"
+    
+    networks:
+      - candlefish_network
+    
+    depends_on:
+      - api
+      - analytics
+      - router
+      - monitor
+      - config
+
+  # Watchtower for automatic updates (optional)
+  watchtower:
+    image: containrrr/watchtower
+    container_name: candlefish-watchtower
+    restart: unless-stopped
+    environment:
+      - TZ=UTC
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=300
+      - WATCHTOWER_LABEL_ENABLE=true
+    
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    
+    labels:
+      - "candlefish.service=watchtower"
+    
+    networks:
+      - candlefish_network
+
+# Named volumes
+volumes:
+  certbot_certs:
+    driver: local
+  certbot_www:
+    driver: local
+  certbot_logs:
+    driver: local
+  nginx_logs:
+    driver: local
+  static_content:
+    driver: local
+  api_data:
+    driver: local
+  api_logs:
+    driver: local
+  analytics_data:
+    driver: local
+  analytics_logs:
+    driver: local
+  router_data:
+    driver: local
+  router_logs:
+    driver: local
+  monitor_data:
+    driver: local
+  monitor_logs:
+    driver: local
+  config_data:
+    driver: local
+  config_logs:
+    driver: local
+  redis_data:
+    driver: local
+  postgres_data:
+    driver: local
+  health_logs:
+    driver: local
+
+# Networks
+networks:
+  candlefish_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

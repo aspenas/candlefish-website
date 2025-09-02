@@ -1,0 +1,236 @@
+---
+# Default deny all ingress traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: network-security
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+
+---
+# Allow ingress from ALB to Gateway
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-gateway-ingress
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: network-security
+spec:
+  podSelector:
+    matchLabels:
+      app: gateway-service
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system  # ALB controller namespace
+    - podSelector: {}  # Allow from any pod in claude-config namespace
+    ports:
+    - protocol: TCP
+      port: 8080
+
+---
+# Allow internal service communication
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-internal-communication
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: network-security
+spec:
+  podSelector:
+    matchLabels:
+      component: backend
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          component: backend
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          component: backend
+    ports:
+    - protocol: TCP
+      port: 8080
+  # Allow DNS
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+
+---
+# Allow egress to Candlefish backend
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-candlefish-backend-egress
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: network-security
+spec:
+  podSelector:
+    matchLabels:
+      component: backend
+  policyTypes:
+  - Egress
+  egress:
+  # Allow to Candlefish backend
+  - to:
+    - ipBlock:
+        cidr: 3.239.245.130/32  # Candlefish backend IP
+    ports:
+    - protocol: TCP
+      port: 4000
+  # Allow HTTPS for external APIs
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+        except:
+        - 169.254.169.254/32  # Block metadata service
+        - 10.0.0.0/8
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80
+
+---
+# Allow metrics scraping from Prometheus
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scrape
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: network-security
+spec:
+  podSelector:
+    matchLabels:
+      component: backend
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring  # Prometheus namespace
+    - podSelector:
+        matchLabels:
+          app: prometheus
+    ports:
+    - protocol: TCP
+      port: 8080
+
+---
+# Allow health checks from kubelet
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-health-checks
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: network-security
+spec:
+  podSelector:
+    matchLabels:
+      component: backend
+  policyTypes:
+  - Ingress
+  ingress:
+  - ports:
+    - protocol: TCP
+      port: 8080
+
+---
+# Restrict Auth service - only from Gateway
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: auth-service-restriction
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: network-security
+spec:
+  podSelector:
+    matchLabels:
+      app: auth-service
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: gateway-service
+    ports:
+    - protocol: TCP
+      port: 8080
+  # Allow health checks
+  - ports:
+    - protocol: TCP
+      port: 8080
+      
+---
+# Allow Redis/Database connections if needed
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-data-store-egress
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: network-security
+spec:
+  podSelector:
+    matchLabels:
+      component: backend
+  policyTypes:
+  - Egress
+  egress:
+  # Redis
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    - namespaceSelector:
+        matchLabels:
+          name: claude-config
+    ports:
+    - protocol: TCP
+      port: 6379
+  # PostgreSQL (if using RDS, allow to VPC CIDR)
+  - to:
+    - ipBlock:
+        cidr: 10.0.0.0/16  # Replace with your VPC CIDR
+    ports:
+    - protocol: TCP
+      port: 5432

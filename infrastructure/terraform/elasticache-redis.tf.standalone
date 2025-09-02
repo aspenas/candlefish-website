@@ -1,0 +1,409 @@
+# ElastiCache Redis Configuration for Candlefish
+# Path B: Performance & Scale Focus - Week 2
+
+# Redis Subnet Group
+resource "aws_elasticache_subnet_group" "redis" {
+  name       = "candlefish-redis-subnet-group"
+  subnet_ids = data.aws_subnets.private.ids
+  
+  tags = {
+    Name        = "Candlefish Redis Subnet Group"
+    Environment = var.environment
+  }
+}
+
+# Security Group for Redis
+resource "aws_security_group" "redis" {
+  name        = "candlefish-redis-sg"
+  description = "Security group for Candlefish ElastiCache Redis"
+  vpc_id      = data.aws_vpc.main.id
+
+  ingress {
+    from_port       = 6379
+    to_port         = 6379
+    protocol        = "tcp"
+    security_groups = [aws_security_group.app.id]
+    description     = "Redis from application servers"
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name        = "Candlefish Redis Security Group"
+    Environment = var.environment
+  }
+}
+
+# Parameter Group for Redis optimization
+resource "aws_elasticache_parameter_group" "redis" {
+  name   = "candlefish-redis7-params"
+  family = "redis7"
+
+  # Memory management
+  parameter {
+    name  = "maxmemory-policy"
+    value = "allkeys-lru"  # Evict least recently used keys when memory is full
+  }
+
+  # Persistence settings (disable for cache-only use)
+  parameter {
+    name  = "save"
+    value = ""  # Disable RDB snapshots for better performance
+  }
+
+  parameter {
+    name  = "appendonly"
+    value = "no"  # Disable AOF for cache-only use
+  }
+
+  # Performance optimizations
+  parameter {
+    name  = "tcp-keepalive"
+    value = "300"
+  }
+
+  parameter {
+    name  = "tcp-backlog"
+    value = "511"
+  }
+
+  parameter {
+    name  = "timeout"
+    value = "300"  # Close idle connections after 5 minutes
+  }
+
+  # Slow log configuration
+  parameter {
+    name  = "slowlog-log-slower-than"
+    value = "10000"  # Log commands slower than 10ms
+  }
+
+  parameter {
+    name  = "slowlog-max-len"
+    value = "128"
+  }
+
+  # Client output buffer limits
+  parameter {
+    name  = "client-output-buffer-limit-normal-hard-limit"
+    value = "0"
+  }
+
+  parameter {
+    name  = "client-output-buffer-limit-normal-soft-limit"
+    value = "0"
+  }
+
+  parameter {
+    name  = "client-output-buffer-limit-replica-hard-limit"
+    value = "268435456"  # 256MB
+  }
+
+  tags = {
+    Name        = "Candlefish Redis Parameters"
+    Environment = var.environment
+  }
+}
+
+# ElastiCache Replication Group (Redis Cluster Mode Disabled)
+resource "aws_elasticache_replication_group" "redis" {
+  replication_group_id       = "candlefish-redis-cluster"
+  description               = "Candlefish Redis cluster for caching"
+  engine                    = "redis"
+  engine_version           = "7.0"
+  node_type                = "cache.r7g.xlarge"  # 4 vCPU, 26 GB RAM, Graviton3
+  port                     = 6379
+  parameter_group_name     = aws_elasticache_parameter_group.redis.name
+  subnet_group_name        = aws_elasticache_subnet_group.redis.name
+  security_group_ids       = [aws_security_group.redis.id]
+  
+  # High Availability
+  num_cache_clusters         = 3  # 1 primary + 2 replicas
+  automatic_failover_enabled = true
+  multi_az_enabled          = true
+  
+  # Backup configuration (minimal for cache)
+  snapshot_retention_limit = 1
+  snapshot_window         = "03:00-04:00"
+  maintenance_window      = "sun:04:00-sun:05:00"
+  
+  # Encryption
+  at_rest_encryption_enabled = true
+  transit_encryption_enabled = true
+  auth_token_enabled        = true
+  auth_token               = random_password.redis_auth_token.result
+  
+  # Notifications
+  notification_topic_arn = aws_sns_topic.redis_alerts.arn
+  
+  # Auto minor version upgrade
+  auto_minor_version_upgrade = true
+  
+  # Log delivery
+  log_delivery_configuration {
+    destination      = aws_cloudwatch_log_group.redis_slow_log.name
+    destination_type = "cloudwatch-logs"
+    log_format      = "json"
+    log_type        = "slow-log"
+  }
+  
+  log_delivery_configuration {
+    destination      = aws_cloudwatch_log_group.redis_engine_log.name
+    destination_type = "cloudwatch-logs"
+    log_format      = "json"
+    log_type        = "engine-log"
+  }
+
+  tags = {
+    Name        = "Candlefish Redis Cluster"
+    Environment = var.environment
+    Purpose     = "Caching"
+  }
+}
+
+# ElastiCache Cluster Mode Enabled (for future scaling)
+resource "aws_elasticache_replication_group" "redis_clustered" {
+  count = var.enable_redis_cluster_mode ? 1 : 0
+  
+  replication_group_id       = "candlefish-redis-sharded"
+  description               = "Candlefish Redis cluster with sharding"
+  engine                    = "redis"
+  engine_version           = "7.0"
+  node_type                = "cache.r7g.large"  # 2 vCPU, 13 GB RAM per node
+  port                     = 6379
+  parameter_group_name     = "default.redis7.cluster.on"
+  subnet_group_name        = aws_elasticache_subnet_group.redis.name
+  security_group_ids       = [aws_security_group.redis.id]
+  
+  # Cluster configuration
+  num_node_groups         = 3  # Number of shards
+  replicas_per_node_group = 2  # 2 replicas per shard
+  
+  # High Availability
+  automatic_failover_enabled = true
+  multi_az_enabled          = true
+  
+  # Encryption
+  at_rest_encryption_enabled = true
+  transit_encryption_enabled = true
+  auth_token_enabled        = true
+  auth_token               = random_password.redis_auth_token.result
+
+  tags = {
+    Name        = "Candlefish Redis Sharded Cluster"
+    Environment = var.environment
+    Purpose     = "High-throughput caching"
+  }
+}
+
+# Generate auth token
+resource "random_password" "redis_auth_token" {
+  length  = 32
+  special = true
+  upper   = true
+  lower   = true
+  numeric = true
+}
+
+# Store auth token in Secrets Manager
+resource "aws_secretsmanager_secret" "redis_auth" {
+  name                    = "candlefish-redis-auth-token"
+  recovery_window_in_days = 7
+
+  tags = {
+    Name        = "Candlefish Redis Auth Token"
+    Environment = var.environment
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "redis_auth" {
+  secret_id = aws_secretsmanager_secret.redis_auth.id
+  secret_string = jsonencode({
+    auth_token = random_password.redis_auth_token.result
+    endpoint   = aws_elasticache_replication_group.redis.configuration_endpoint_address
+    port       = 6379
+  })
+}
+
+# CloudWatch Log Groups
+resource "aws_cloudwatch_log_group" "redis_slow_log" {
+  name              = "/aws/elasticache/candlefish/redis/slow-log"
+  retention_in_days = 7
+
+  tags = {
+    Name        = "Candlefish Redis Slow Log"
+    Environment = var.environment
+  }
+}
+
+resource "aws_cloudwatch_log_group" "redis_engine_log" {
+  name              = "/aws/elasticache/candlefish/redis/engine-log"
+  retention_in_days = 7
+
+  tags = {
+    Name        = "Candlefish Redis Engine Log"
+    Environment = var.environment
+  }
+}
+
+# SNS Topic for Redis alerts
+resource "aws_sns_topic" "redis_alerts" {
+  name = "candlefish-redis-alerts"
+
+  tags = {
+    Name        = "Candlefish Redis Alerts"
+    Environment = var.environment
+  }
+}
+
+# CloudWatch Alarms
+resource "aws_cloudwatch_metric_alarm" "redis_cpu" {
+  alarm_name          = "candlefish-redis-high-cpu"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "2"
+  metric_name        = "CPUUtilization"
+  namespace          = "AWS/ElastiCache"
+  period             = "300"
+  statistic          = "Average"
+  threshold          = "75"
+  alarm_description  = "Redis cluster CPU utilization"
+  alarm_actions      = [aws_sns_topic.redis_alerts.arn]
+
+  dimensions = {
+    CacheClusterId = aws_elasticache_replication_group.redis.id
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "redis_memory" {
+  alarm_name          = "candlefish-redis-high-memory"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "2"
+  metric_name        = "DatabaseMemoryUsagePercentage"
+  namespace          = "AWS/ElastiCache"
+  period             = "300"
+  statistic          = "Average"
+  threshold          = "85"
+  alarm_description  = "Redis cluster memory usage"
+  alarm_actions      = [aws_sns_topic.redis_alerts.arn]
+
+  dimensions = {
+    CacheClusterId = aws_elasticache_replication_group.redis.id
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "redis_evictions" {
+  alarm_name          = "candlefish-redis-evictions"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "2"
+  metric_name        = "Evictions"
+  namespace          = "AWS/ElastiCache"
+  period             = "300"
+  statistic          = "Sum"
+  threshold          = "1000"
+  alarm_description  = "Redis evictions rate"
+  alarm_actions      = [aws_sns_topic.redis_alerts.arn]
+
+  dimensions = {
+    CacheClusterId = aws_elasticache_replication_group.redis.id
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "redis_connections" {
+  alarm_name          = "candlefish-redis-high-connections"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "2"
+  metric_name        = "CurrConnections"
+  namespace          = "AWS/ElastiCache"
+  period             = "300"
+  statistic          = "Average"
+  threshold          = "5000"
+  alarm_description  = "Redis connection count"
+  alarm_actions      = [aws_sns_topic.redis_alerts.arn]
+
+  dimensions = {
+    CacheClusterId = aws_elasticache_replication_group.redis.id
+  }
+}
+
+# Cache hit rate dashboard
+resource "aws_cloudwatch_dashboard" "redis_performance" {
+  dashboard_name = "candlefish-redis-performance"
+
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type = "metric"
+        properties = {
+          metrics = [
+            ["AWS/ElastiCache", "CacheHits", { stat = "Sum" }],
+            [".", "CacheMisses", { stat = "Sum" }]
+          ]
+          period = 300
+          stat   = "Sum"
+          region = data.aws_region.current.name
+          title  = "Cache Hit Rate"
+          yAxis = {
+            left = {
+              min = 0
+            }
+          }
+        }
+      },
+      {
+        type = "metric"
+        properties = {
+          metrics = [
+            ["AWS/ElastiCache", "CPUUtilization", { stat = "Average" }],
+            [".", "DatabaseMemoryUsagePercentage", { stat = "Average" }]
+          ]
+          period = 300
+          stat   = "Average"
+          region = data.aws_region.current.name
+          title  = "Resource Utilization"
+          yAxis = {
+            left = {
+              min = 0
+              max = 100
+            }
+          }
+        }
+      }
+    ]
+  })
+}
+
+# Outputs
+output "redis_endpoint" {
+  description = "Redis primary endpoint"
+  value       = aws_elasticache_replication_group.redis.primary_endpoint_address
+}
+
+output "redis_configuration_endpoint" {
+  description = "Redis configuration endpoint"
+  value       = aws_elasticache_replication_group.redis.configuration_endpoint_address
+}
+
+output "redis_reader_endpoint" {
+  description = "Redis reader endpoint"
+  value       = aws_elasticache_replication_group.redis.reader_endpoint_address
+}
+
+output "redis_auth_secret_arn" {
+  description = "ARN of the secret containing Redis auth token"
+  value       = aws_secretsmanager_secret.redis_auth.arn
+}
+
+# Data sources
+data "aws_region" "current" {}
+
+# Variables
+variable "enable_redis_cluster_mode" {
+  description = "Enable Redis Cluster Mode for sharding"
+  type        = bool
+  default     = false
+}

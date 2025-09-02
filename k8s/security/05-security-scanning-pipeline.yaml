@@ -1,0 +1,519 @@
+---
+# Security Scanning Automation Pipeline
+# Implements continuous security scanning and vulnerability management
+# Compliant with PCI DSS 11.2, HIPAA §164.308(a)(8), SOC 2 CC7.1
+
+# Container image scanning with Trivy
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: container-security-scan
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/component: image-scanning
+    compliance: "pci-dss-11.2"
+spec:
+  schedule: "0 */6 * * *"  # Every 6 hours
+  concurrencyPolicy: Replace
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: security-scanner
+            component: trivy
+            security-zone: monitoring
+        spec:
+          serviceAccountName: security-scanner-sa
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
+          containers:
+          - name: trivy-scanner
+            image: aquasec/trivy:latest
+            imagePullPolicy: Always
+            command: ["/bin/sh", "-c"]
+            args:
+            - |
+              #!/bin/sh
+              set -e
+              
+              echo "Starting container security scan..."
+              
+              # Get all running images in the namespace
+              IMAGES=$(kubectl get pods -n claude-config -o jsonpath='{range .items[*]}{range .spec.containers[*]}{.image}{"\n"}{end}{end}' | sort -u)
+              
+              CRITICAL_COUNT=0
+              HIGH_COUNT=0
+              
+              for IMAGE in $IMAGES; do
+                echo "Scanning image: $IMAGE"
+                
+                # Run Trivy scan
+                trivy image --severity CRITICAL,HIGH --format json --output /tmp/scan-result.json "$IMAGE" || true
+                
+                # Parse results
+                CRITICAL=$(jq '[.Results[].Vulnerabilities[] | select(.Severity=="CRITICAL")] | length' /tmp/scan-result.json)
+                HIGH=$(jq '[.Results[].Vulnerabilities[] | select(.Severity=="HIGH")] | length' /tmp/scan-result.json)
+                
+                CRITICAL_COUNT=$((CRITICAL_COUNT + CRITICAL))
+                HIGH_COUNT=$((HIGH_COUNT + HIGH))
+                
+                # Send to monitoring
+                cat <<EOF | kubectl apply -f -
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: scan-result-$(echo $IMAGE | md5sum | cut -d' ' -f1)
+                namespace: claude-config
+                labels:
+                  scan-type: container
+                  image: $(echo $IMAGE | sed 's/[^a-zA-Z0-9-]/-/g')
+              data:
+                critical: "$CRITICAL"
+                high: "$HIGH"
+                scan-time: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+                report: |
+              $(cat /tmp/scan-result.json | jq -r '.Results[].Vulnerabilities[] | "\(.Severity): \(.VulnerabilityID) - \(.Title)"' | head -20)
+              EOF
+                
+                # Alert if critical vulnerabilities found
+                if [ "$CRITICAL" -gt 0 ]; then
+                  echo "ALERT: Critical vulnerabilities found in $IMAGE"
+                  # Send alert to webhook
+                  curl -X POST "$ALERT_WEBHOOK" \
+                    -H "Content-Type: application/json" \
+                    -d "{\"severity\":\"critical\",\"image\":\"$IMAGE\",\"count\":$CRITICAL}"
+                fi
+              done
+              
+              echo "Scan complete. Critical: $CRITICAL_COUNT, High: $HIGH_COUNT"
+            env:
+            - name: ALERT_WEBHOOK
+              valueFrom:
+                secretKeyRef:
+                  name: security-webhooks
+                  key: alert-endpoint
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
+              capabilities:
+                drop:
+                - ALL
+            resources:
+              requests:
+                cpu: 500m
+                memory: 512Mi
+              limits:
+                cpu: 2000m
+                memory: 2Gi
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: trivy-cache
+              mountPath: /root/.cache
+          volumes:
+          - name: tmp
+            emptyDir: {}
+          - name: trivy-cache
+            emptyDir: {}
+          restartPolicy: OnFailure
+
+---
+# SAST - Static Application Security Testing
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sast-code-scan
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/component: sast
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  concurrencyPolicy: Replace
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: security-scanner
+            component: sast
+        spec:
+          serviceAccountName: security-scanner-sa
+          containers:
+          - name: semgrep-scanner
+            image: returntocorp/semgrep:latest
+            imagePullPolicy: Always
+            command: ["/bin/sh", "-c"]
+            args:
+            - |
+              #!/bin/sh
+              set -e
+              
+              # Clone repository
+              git clone --depth 1 https://github.com/candlefish/claude-config /repo
+              cd /repo
+              
+              # Run Semgrep with security rules
+              semgrep --config=auto \
+                --json \
+                --output=/tmp/semgrep-results.json \
+                --metrics=off \
+                --severity ERROR \
+                --exclude='*.test.*' \
+                --exclude='**/node_modules/**' \
+                --exclude='**/vendor/**'
+              
+              # Parse and store results
+              ISSUES=$(jq '.results | length' /tmp/semgrep-results.json)
+              
+              if [ "$ISSUES" -gt 0 ]; then
+                echo "Found $ISSUES security issues"
+                
+                # Create alert
+                kubectl create configmap sast-results-$(date +%s) \
+                  --from-file=report=/tmp/semgrep-results.json \
+                  -n claude-config \
+                  --dry-run=client -o yaml | kubectl apply -f -
+              fi
+              
+              # Run additional security checks
+              # Check for hardcoded secrets
+              truffleHog filesystem /repo --json > /tmp/secrets-scan.json || true
+              
+              # Check dependencies
+              if [ -f /repo/package.json ]; then
+                cd /repo && npm audit --json > /tmp/npm-audit.json || true
+              fi
+              
+              if [ -f /repo/requirements.txt ]; then
+                pip-audit --desc --format json --file /repo/requirements.txt > /tmp/pip-audit.json || true
+              fi
+              
+              echo "SAST scan completed"
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
+            resources:
+              limits:
+                cpu: 2000m
+                memory: 2Gi
+          restartPolicy: OnFailure
+
+---
+# DAST - Dynamic Application Security Testing
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: dast-security-scan
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/component: dast
+spec:
+  schedule: "0 3 * * 1"  # Weekly on Monday at 3 AM
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: security-scanner
+            component: dast
+        spec:
+          serviceAccountName: security-scanner-sa
+          containers:
+          - name: zap-scanner
+            image: owasp/zap2docker-stable:latest
+            imagePullPolicy: Always
+            command: ["/bin/sh", "-c"]
+            args:
+            - |
+              #!/bin/bash
+              set -e
+              
+              # Target URL
+              TARGET="https://api.candlefish.ai"
+              
+              # Run OWASP ZAP baseline scan
+              zap-baseline.py -t "$TARGET" \
+                -r /tmp/zap-report.html \
+                -J /tmp/zap-report.json \
+                -x /tmp/zap-report.xml \
+                --auto \
+                -z "-config api.key=$ZAP_API_KEY"
+              
+              # Parse results
+              HIGH_RISK=$(python3 -c "import json; data=json.load(open('/tmp/zap-report.json')); print(len([a for a in data.get('site',[])[0].get('alerts',[]) if a['risk'] == 'High']))")
+              MEDIUM_RISK=$(python3 -c "import json; data=json.load(open('/tmp/zap-report.json')); print(len([a for a in data.get('site',[])[0].get('alerts',[]) if a['risk'] == 'Medium']))")
+              
+              echo "DAST Results - High: $HIGH_RISK, Medium: $MEDIUM_RISK"
+              
+              # Store results
+              kubectl create configmap dast-results-$(date +%s) \
+                --from-file=report=/tmp/zap-report.json \
+                --from-literal=high_risk="$HIGH_RISK" \
+                --from-literal=medium_risk="$MEDIUM_RISK" \
+                -n claude-config \
+                --dry-run=client -o yaml | kubectl apply -f -
+              
+              # Alert on high-risk findings
+              if [ "$HIGH_RISK" -gt 0 ]; then
+                curl -X POST "$ALERT_WEBHOOK" \
+                  -H "Content-Type: application/json" \
+                  -d "{\"type\":\"dast\",\"severity\":\"high\",\"count\":$HIGH_RISK}"
+              fi
+            env:
+            - name: ZAP_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: security-scanner-secrets
+                  key: zap-api-key
+            - name: ALERT_WEBHOOK
+              valueFrom:
+                secretKeyRef:
+                  name: security-webhooks
+                  key: alert-endpoint
+            securityContext:
+              allowPrivilegeEscalation: false
+            resources:
+              limits:
+                cpu: 2000m
+                memory: 4Gi
+          restartPolicy: OnFailure
+
+---
+# Infrastructure security scanning
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: infrastructure-security-scan
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/component: infrastructure-scan
+spec:
+  schedule: "0 4 * * *"  # Daily at 4 AM
+  concurrencyPolicy: Replace
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: security-scanner
+            component: infrastructure
+        spec:
+          serviceAccountName: security-scanner-sa
+          containers:
+          - name: kube-bench
+            image: aquasec/kube-bench:latest
+            imagePullPolicy: Always
+            command: ["kube-bench"]
+            args: ["run", "--json", "--outputfile", "/tmp/kube-bench.json"]
+            volumeMounts:
+            - name: var-lib-etcd
+              mountPath: /var/lib/etcd
+              readOnly: true
+            - name: var-lib-kubelet
+              mountPath: /var/lib/kubelet
+              readOnly: true
+            - name: etc-systemd
+              mountPath: /etc/systemd
+              readOnly: true
+            - name: etc-kubernetes
+              mountPath: /etc/kubernetes
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          - name: polaris
+            image: quay.io/fairwinds/polaris:latest
+            imagePullPolicy: Always
+            command: ["/bin/sh", "-c"]
+            args:
+            - |
+              polaris audit --format json --output-file /tmp/polaris.json
+              
+              # Parse results
+              SCORE=$(jq '.score' /tmp/polaris.json)
+              FAILING=$(jq '.results.failing' /tmp/polaris.json)
+              
+              echo "Polaris Score: $SCORE, Failing checks: $FAILING"
+              
+              # Alert if score is below threshold
+              if (( $(echo "$SCORE < 80" | bc -l) )); then
+                echo "ALERT: Polaris score below threshold: $SCORE"
+              fi
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          - name: kubesec
+            image: kubesec/kubesec:latest
+            imagePullPolicy: Always
+            command: ["/bin/sh", "-c"]
+            args:
+            - |
+              # Scan all deployments
+              kubectl get deployments -n claude-config -o yaml | \
+                kubesec scan - > /tmp/kubesec-results.json
+              
+              # Check for critical issues
+              CRITICAL=$(jq '[.[] | select(.score < 0)] | length' /tmp/kubesec-results.json)
+              
+              if [ "$CRITICAL" -gt 0 ]; then
+                echo "ALERT: Critical security issues in deployments"
+              fi
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          volumes:
+          - name: var-lib-etcd
+            hostPath:
+              path: /var/lib/etcd
+          - name: var-lib-kubelet
+            hostPath:
+              path: /var/lib/kubelet
+          - name: etc-systemd
+            hostPath:
+              path: /etc/systemd
+          - name: etc-kubernetes
+            hostPath:
+              path: /etc/kubernetes
+          - name: tmp
+            emptyDir: {}
+          restartPolicy: OnFailure
+
+---
+# Compliance scanning
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: compliance-scan
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/component: compliance
+spec:
+  schedule: "0 5 * * 0"  # Weekly on Sunday at 5 AM
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: security-scanner
+            component: compliance
+        spec:
+          serviceAccountName: security-scanner-sa
+          containers:
+          - name: compliance-scanner
+            image: candlefish/compliance-scanner:latest
+            imagePullPolicy: Always
+            command: ["/bin/sh", "-c"]
+            args:
+            - |
+              #!/bin/sh
+              set -e
+              
+              echo "Running compliance scans..."
+              
+              # PCI DSS Compliance Check
+              echo "Checking PCI DSS compliance..."
+              /usr/local/bin/pci-dss-checker --json > /tmp/pci-dss.json
+              
+              # HIPAA Compliance Check
+              echo "Checking HIPAA compliance..."
+              /usr/local/bin/hipaa-checker --json > /tmp/hipaa.json
+              
+              # SOC 2 Compliance Check
+              echo "Checking SOC 2 compliance..."
+              /usr/local/bin/soc2-checker --json > /tmp/soc2.json
+              
+              # Aggregate results
+              cat <<EOF > /tmp/compliance-summary.json
+              {
+                "scan_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+                "pci_dss": {
+                  "compliant": $(jq '.compliant' /tmp/pci-dss.json),
+                  "score": $(jq '.score' /tmp/pci-dss.json),
+                  "failing_controls": $(jq '.failing_controls | length' /tmp/pci-dss.json)
+                },
+                "hipaa": {
+                  "compliant": $(jq '.compliant' /tmp/hipaa.json),
+                  "score": $(jq '.score' /tmp/hipaa.json),
+                  "failing_safeguards": $(jq '.failing_safeguards | length' /tmp/hipaa.json)
+                },
+                "soc2": {
+                  "compliant": $(jq '.compliant' /tmp/soc2.json),
+                  "score": $(jq '.score' /tmp/soc2.json),
+                  "failing_criteria": $(jq '.failing_criteria | length' /tmp/soc2.json)
+                }
+              }
+              EOF
+              
+              # Store results
+              kubectl create configmap compliance-results-$(date +%Y%m%d) \
+                --from-file=summary=/tmp/compliance-summary.json \
+                --from-file=pci-dss=/tmp/pci-dss.json \
+                --from-file=hipaa=/tmp/hipaa.json \
+                --from-file=soc2=/tmp/soc2.json \
+                -n claude-config \
+                --dry-run=client -o yaml | kubectl apply -f -
+              
+              echo "Compliance scan completed"
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
+            resources:
+              limits:
+                cpu: 1000m
+                memory: 1Gi
+          restartPolicy: OnFailure
+
+---
+# RBAC for security scanners
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: security-scanner-sa
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/component: scanner-rbac
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: security-scanner-role
+  labels:
+    app.kubernetes.io/name: claude-config
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "endpoints", "configmaps"]
+  verbs: ["get", "list", "create", "patch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "daemonsets", "statefulsets"]
+  verbs: ["get", "list"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["get", "list"]
+- apiGroups: ["policy"]
+  resources: ["podsecuritypolicies"]
+  verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: security-scanner-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: security-scanner-role
+subjects:
+- kind: ServiceAccount
+  name: security-scanner-sa
+  namespace: claude-config

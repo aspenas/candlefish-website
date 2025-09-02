@@ -1,0 +1,285 @@
+---
+# ServiceMonitor for Prometheus Operator
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: claude-config-monitor
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: monitoring
+    prometheus: kube-prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: claude-config
+  namespaceSelector:
+    matchNames:
+    - claude-config
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+    honorLabels: true
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - sourceLabels: [__meta_kubernetes_pod_label_app]
+      targetLabel: service
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_label_version]
+      targetLabel: version
+
+---
+# PrometheusRule for alerting
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: claude-config-alerts
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: monitoring
+    prometheus: kube-prometheus
+spec:
+  groups:
+  - name: claude-config.rules
+    interval: 30s
+    rules:
+    # High CPU usage
+    - alert: ClaudeConfigHighCPU
+      expr: |
+        (
+          avg by (pod, namespace) (
+            rate(container_cpu_usage_seconds_total{namespace="claude-config"}[5m])
+          ) * 100
+        ) > 80
+      for: 5m
+      labels:
+        severity: warning
+        component: claude-config
+      annotations:
+        summary: "High CPU usage detected"
+        description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has CPU usage above 80% (current: {{ $value }}%)"
+    
+    # High Memory usage
+    - alert: ClaudeConfigHighMemory
+      expr: |
+        (
+          container_memory_usage_bytes{namespace="claude-config"} 
+          / container_spec_memory_limit_bytes{namespace="claude-config"}
+        ) * 100 > 90
+      for: 5m
+      labels:
+        severity: warning
+        component: claude-config
+      annotations:
+        summary: "High memory usage detected"
+        description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has memory usage above 90% (current: {{ $value }}%)"
+    
+    # Pod restart
+    - alert: ClaudeConfigPodRestart
+      expr: |
+        rate(kube_pod_container_status_restarts_total{namespace="claude-config"}[15m]) > 0
+      for: 5m
+      labels:
+        severity: warning
+        component: claude-config
+      annotations:
+        summary: "Pod restarting frequently"
+        description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has restarted {{ $value }} times in the last 15 minutes"
+    
+    # Service down
+    - alert: ClaudeConfigServiceDown
+      expr: |
+        up{job="claude-config-monitor"} == 0
+      for: 2m
+      labels:
+        severity: critical
+        component: claude-config
+      annotations:
+        summary: "Service is down"
+        description: "Service {{ $labels.service }} in namespace {{ $labels.namespace }} is not responding"
+    
+    # High error rate
+    - alert: ClaudeConfigHighErrorRate
+      expr: |
+        (
+          sum by (service, namespace) (
+            rate(http_requests_total{namespace="claude-config", status=~"5.."}[5m])
+          )
+          /
+          sum by (service, namespace) (
+            rate(http_requests_total{namespace="claude-config"}[5m])
+          )
+        ) * 100 > 5
+      for: 5m
+      labels:
+        severity: warning
+        component: claude-config
+      annotations:
+        summary: "High error rate detected"
+        description: "Service {{ $labels.service }} has error rate above 5% (current: {{ $value }}%)"
+    
+    # High latency
+    - alert: ClaudeConfigHighLatency
+      expr: |
+        histogram_quantile(0.95,
+          sum by (service, namespace, le) (
+            rate(http_request_duration_seconds_bucket{namespace="claude-config"}[5m])
+          )
+        ) > 1
+      for: 5m
+      labels:
+        severity: warning
+        component: claude-config
+      annotations:
+        summary: "High latency detected"
+        description: "Service {{ $labels.service }} has 95th percentile latency above 1s (current: {{ $value }}s)"
+    
+    # Pod not ready
+    - alert: ClaudeConfigPodNotReady
+      expr: |
+        kube_pod_status_ready{namespace="claude-config", condition="false"} == 1
+      for: 5m
+      labels:
+        severity: warning
+        component: claude-config
+      annotations:
+        summary: "Pod not ready"
+        description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has been not ready for 5 minutes"
+    
+    # Deployment replica mismatch
+    - alert: ClaudeConfigReplicaMismatch
+      expr: |
+        kube_deployment_spec_replicas{namespace="claude-config"}
+        !=
+        kube_deployment_status_replicas_available{namespace="claude-config"}
+      for: 10m
+      labels:
+        severity: warning
+        component: claude-config
+      annotations:
+        summary: "Deployment replica mismatch"
+        description: "Deployment {{ $labels.deployment }} has {{ $value }} replicas available, but spec requires {{ $labels.spec_replicas }}"
+
+---
+# Grafana Dashboard ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: claude-config-dashboard
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: monitoring
+    grafana_dashboard: "1"
+data:
+  claude-config-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "Claude Config System Dashboard",
+        "uid": "claude-config-001",
+        "tags": ["claude-config", "kubernetes", "microservices"],
+        "timezone": "browser",
+        "refresh": "30s",
+        "panels": [
+          {
+            "title": "Service Health",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "up{namespace=\"claude-config\"}"
+              }
+            ]
+          },
+          {
+            "title": "Request Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(http_requests_total{namespace=\"claude-config\"}[5m])) by (service)"
+              }
+            ]
+          },
+          {
+            "title": "Error Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(http_requests_total{namespace=\"claude-config\", status=~\"5..\"}[5m])) by (service)"
+              }
+            ]
+          },
+          {
+            "title": "Response Time (p95)",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace=\"claude-config\"}[5m])) by (service, le))"
+              }
+            ]
+          },
+          {
+            "title": "CPU Usage",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"claude-config\"}[5m])) by (pod)"
+              }
+            ]
+          },
+          {
+            "title": "Memory Usage",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(container_memory_usage_bytes{namespace=\"claude-config\"}) by (pod)"
+              }
+            ]
+          },
+          {
+            "title": "Pod Restarts",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=\"claude-config\"}[1h])) by (pod)"
+              }
+            ]
+          },
+          {
+            "title": "Active Connections",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(http_connections_active{namespace=\"claude-config\"}) by (service)"
+              }
+            ]
+          }
+        ]
+      }
+    }
+
+---
+# PodMonitor for individual pod metrics
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: claude-config-pods
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: monitoring
+spec:
+  selector:
+    matchLabels:
+      component: backend
+  namespaceSelector:
+    matchNames:
+    - claude-config
+  podMetricsEndpoints:
+  - port: http
+    path: /metrics
+    interval: 30s

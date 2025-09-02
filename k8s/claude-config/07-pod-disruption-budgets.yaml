@@ -1,0 +1,91 @@
+---
+# Config Service PDB
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: config-service-pdb
+  namespace: claude-config
+  labels:
+    app: config-service
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: availability
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: config-service
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+
+---
+# Gateway Service PDB - More strict for gateway
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: gateway-service-pdb
+  namespace: claude-config
+  labels:
+    app: gateway-service
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: availability
+spec:
+  minAvailable: 2
+  maxUnavailable: 1  # Only allow 1 pod to be unavailable
+  selector:
+    matchLabels:
+      app: gateway-service
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+
+---
+# Sync Service PDB
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sync-service-pdb
+  namespace: claude-config
+  labels:
+    app: sync-service
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: availability
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: sync-service
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+
+---
+# Metrics Service PDB
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: metrics-service-pdb
+  namespace: claude-config
+  labels:
+    app: metrics-service
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: availability
+spec:
+  minAvailable: 1  # Less strict for metrics
+  selector:
+    matchLabels:
+      app: metrics-service
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+
+---
+# Auth Service PDB - More strict for auth
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: auth-service-pdb
+  namespace: claude-config
+  labels:
+    app: auth-service
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: availability
+spec:
+  minAvailable: 2
+  maxUnavailable: 1  # Only allow 1 pod to be unavailable
+  selector:
+    matchLabels:
+      app: auth-service
+  unhealthyPodEvictionPolicy: IfHealthyBudget
