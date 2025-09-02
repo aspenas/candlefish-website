@@ -1,0 +1,170 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clos-web-dashboard
+  namespace: clos-analytics
+  labels:
+    app: clos-web-dashboard
+    component: frontend
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: clos-web-dashboard
+  template:
+    metadata:
+      labels:
+        app: clos-web-dashboard
+        component: frontend
+    spec:
+      serviceAccountName: clos-analytics-sa
+      securityContext:
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+      containers:
+      - name: clos-web-dashboard
+        image: candlefish/clos-dashboard:latest
+        ports:
+        - containerPort: 3500
+          name: http
+        env:
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: clos-analytics-config
+              key: NODE_ENV
+        - name: PORT
+          value: "3500"
+        - name: NEXT_TELEMETRY_DISABLED
+          valueFrom:
+            configMapKeyRef:
+              name: clos-analytics-config
+              key: NEXT_TELEMETRY_DISABLED
+        - name: NEXT_PUBLIC_API_URL
+          value: "https://api.clos.candlefish.ai"
+        - name: NEXT_PUBLIC_WS_URL
+          value: "wss://ws.clos.candlefish.ai"
+        - name: NEXT_PUBLIC_ANALYTICS_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: clos-analytics-config
+              key: NEXT_PUBLIC_ANALYTICS_ENABLED
+        - name: NEXTAUTH_URL
+          valueFrom:
+            secretKeyRef:
+              name: clos-analytics-secrets
+              key: NEXTAUTH_URL
+        - name: NEXTAUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: clos-analytics-secrets
+              key: NEXTAUTH_SECRET
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: clos-analytics-secrets
+              key: DATABASE_URL
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3500
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 3500
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 3
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 10"]
+      terminationGracePeriodSeconds: 20
+      imagePullSecrets:
+      - name: docker-registry-secret
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: clos-web-dashboard-service
+  namespace: clos-analytics
+  labels:
+    app: clos-web-dashboard
+    component: frontend
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "http"
+spec:
+  ports:
+  - port: 3500
+    targetPort: 3500
+    name: http
+    protocol: TCP
+  selector:
+    app: clos-web-dashboard
+  type: LoadBalancer
+  sessionAffinity: None
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: clos-web-dashboard-hpa
+  namespace: clos-analytics
+  labels:
+    app: clos-web-dashboard
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: clos-web-dashboard
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 1
+        periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 25
+        periodSeconds: 60

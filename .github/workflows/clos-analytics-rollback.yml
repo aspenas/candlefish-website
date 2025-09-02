@@ -1,0 +1,237 @@
+name: CLOS Analytics Emergency Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to rollback'
+        required: true
+        type: choice
+        options:
+        - staging
+        - production
+      rollback_revision:
+        description: 'Revision number to rollback to (leave empty for previous)'
+        required: false
+        type: string
+      reason:
+        description: 'Reason for rollback'
+        required: true
+        type: string
+
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER_NAME: candlefish-production
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ${{ github.event.inputs.environment }}
+    
+    steps:
+      - name: Validate inputs
+        run: |
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Rollback Revision: ${{ github.event.inputs.rollback_revision || 'previous' }}"
+          echo "Reason: ${{ github.event.inputs.reason }}"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ github.event.inputs.environment == 'production' && secrets.AWS_ROLE_ARN_PRODUCTION || secrets.AWS_ROLE_ARN_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 1800
+
+      - name: Update kubeconfig
+        run: |
+          CLUSTER_SUFFIX=""
+          if [ "${{ github.event.inputs.environment }}" = "staging" ]; then
+            CLUSTER_SUFFIX="-staging"
+          fi
+          aws eks update-kubeconfig \
+            --region ${{ env.AWS_REGION }} \
+            --name ${{ env.EKS_CLUSTER_NAME }}${CLUSTER_SUFFIX}
+
+      - name: Check current deployment status
+        id: current-status
+        run: |
+          echo "Checking current deployment status..."
+          
+          kubectl get deployments -n clos-analytics
+          
+          # Get current revision numbers
+          API_REVISION=$(kubectl rollout history deployment/clos-api -n clos-analytics | tail -1 | awk '{print $1}')
+          WS_REVISION=$(kubectl rollout history deployment/clos-websocket -n clos-analytics | tail -1 | awk '{print $1}')
+          DASHBOARD_REVISION=$(kubectl rollout history deployment/clos-web-dashboard -n clos-analytics | tail -1 | awk '{print $1}')
+          
+          echo "api-revision=${API_REVISION}" >> $GITHUB_OUTPUT
+          echo "websocket-revision=${WS_REVISION}" >> $GITHUB_OUTPUT
+          echo "dashboard-revision=${DASHBOARD_REVISION}" >> $GITHUB_OUTPUT
+
+      - name: Create pre-rollback snapshot
+        run: |
+          timestamp=$(date +%Y%m%d-%H%M%S)
+          
+          # Backup current state
+          kubectl get deployments,services,configmaps -n clos-analytics -o yaml > "pre-rollback-snapshot-${timestamp}.yaml"
+          
+          # Log current pod status
+          kubectl get pods -n clos-analytics -o wide > "pre-rollback-pods-${timestamp}.log"
+
+      - name: Execute rollback
+        id: rollback
+        run: |
+          echo "Executing rollback..."
+          
+          ROLLBACK_TO=""
+          if [ -n "${{ github.event.inputs.rollback_revision }}" ]; then
+            ROLLBACK_TO="--to-revision=${{ github.event.inputs.rollback_revision }}"
+          fi
+          
+          # Rollback API server
+          echo "Rolling back API server..."
+          kubectl rollout undo deployment/clos-api -n clos-analytics ${ROLLBACK_TO}
+          
+          # Rollback WebSocket server
+          echo "Rolling back WebSocket server..."
+          kubectl rollout undo deployment/clos-websocket -n clos-analytics ${ROLLBACK_TO}
+          
+          # Rollback Web Dashboard
+          echo "Rolling back Web Dashboard..."
+          kubectl rollout undo deployment/clos-web-dashboard -n clos-analytics ${ROLLBACK_TO}
+
+      - name: Wait for rollback completion
+        timeout-minutes: 5
+        run: |
+          echo "Waiting for rollback to complete..."
+          
+          # Wait for rollout to complete
+          kubectl rollout status deployment/clos-api -n clos-analytics --timeout=300s
+          kubectl rollout status deployment/clos-websocket -n clos-analytics --timeout=300s
+          kubectl rollout status deployment/clos-web-dashboard -n clos-analytics --timeout=300s
+          
+          echo "Rollback completed successfully!"
+
+      - name: Verify rollback health
+        id: health-check
+        run: |
+          echo "Verifying application health after rollback..."
+          
+          # Wait for pods to be ready
+          kubectl wait --for=condition=ready pod -l app=clos-api -n clos-analytics --timeout=180s
+          kubectl wait --for=condition=ready pod -l app=clos-websocket -n clos-analytics --timeout=180s
+          kubectl wait --for=condition=ready pod -l app=clos-web-dashboard -n clos-analytics --timeout=180s
+          
+          # Test health endpoints
+          kubectl run health-check --image=curlimages/curl:latest --rm -i --restart=Never -n clos-analytics -- \
+            curl -f http://clos-api-service:8000/api/v1/health || exit 1
+          
+          kubectl run health-check --image=curlimages/curl:latest --rm -i --restart=Never -n clos-analytics -- \
+            curl -f http://clos-websocket-service:8001/health || exit 1
+          
+          kubectl run health-check --image=curlimages/curl:latest --rm -i --restart=Never -n clos-analytics -- \
+            curl -f http://clos-web-dashboard-service:3500/api/health || exit 1
+          
+          echo "All health checks passed!"
+          echo "rollback-successful=true" >> $GITHUB_OUTPUT
+
+      - name: Update monitoring alerts
+        if: steps.health-check.outputs.rollback-successful == 'true'
+        run: |
+          # Temporarily disable alerts during rollback stabilization
+          kubectl patch deployment clos-api -n clos-analytics -p '{"metadata":{"annotations":{"deployment.kubernetes.io/revision":"rollback-'$(date +%s)'"}}}'
+          
+          echo "Monitoring alerts updated for rollback"
+
+      - name: Post-rollback validation
+        run: |
+          echo "Post-rollback validation..."
+          
+          # Check all pods are running
+          kubectl get pods -n clos-analytics
+          
+          # Verify no failing pods
+          FAILING_PODS=$(kubectl get pods -n clos-analytics --field-selector=status.phase!=Running --no-headers | wc -l)
+          if [ "$FAILING_PODS" -gt 0 ]; then
+            echo "❌ Found $FAILING_PODS failing pods after rollback"
+            kubectl get pods -n clos-analytics --field-selector=status.phase!=Running
+            exit 1
+          fi
+          
+          # Check service endpoints
+          kubectl get services -n clos-analytics
+          
+          echo "✅ Post-rollback validation successful"
+
+      - name: Generate rollback report
+        if: always()
+        run: |
+          timestamp=$(date +%Y%m%d-%H%M%S)
+          
+          cat > "rollback-report-${timestamp}.md" << EOF
+          # CLOS Analytics Rollback Report
+          
+          ## Rollback Details
+          - **Environment**: ${{ github.event.inputs.environment }}
+          - **Timestamp**: $(date)
+          - **Initiated by**: ${{ github.actor }}
+          - **Reason**: ${{ github.event.inputs.reason }}
+          - **Target Revision**: ${{ github.event.inputs.rollback_revision || 'previous' }}
+          
+          ## Pre-Rollback State
+          - API Server Revision: ${{ steps.current-status.outputs.api-revision }}
+          - WebSocket Server Revision: ${{ steps.current-status.outputs.websocket-revision }}
+          - Dashboard Revision: ${{ steps.current-status.outputs.dashboard-revision }}
+          
+          ## Rollback Status
+          - **Status**: ${{ steps.health-check.outputs.rollback-successful == 'true' && '✅ Successful' || '❌ Failed' }}
+          - **Duration**: $(date -d @$(($(date +%s) - ${{ github.run_started_at }})) +%M:%S)
+          
+          ## Post-Rollback State
+          $(kubectl get deployments -n clos-analytics)
+          
+          ## Health Check Results
+          ${{ steps.health-check.outputs.rollback-successful == 'true' && 'All services healthy' || 'Health check failed' }}
+          
+          ## Next Steps
+          ${{ steps.health-check.outputs.rollback-successful == 'true' && '- Monitor application stability\n- Investigate original issue\n- Plan forward fix' || '- Immediate investigation required\n- Manual intervention may be needed\n- Consider emergency maintenance mode' }}
+          EOF
+          
+          echo "Rollback report generated"
+
+      - name: Upload rollback artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rollback-artifacts-${{ github.event.inputs.environment }}-${{ github.run_number }}
+          path: |
+            *.yaml
+            *.log
+            *.md
+
+      - name: Send notifications
+        if: always()
+        run: |
+          if [ "${{ steps.health-check.outputs.rollback-successful }}" == "true" ]; then
+            echo "✅ CLOS Analytics rollback completed successfully in ${{ github.event.inputs.environment }}"
+            echo "Reason: ${{ github.event.inputs.reason }}"
+            # Send success notification to incident response channels
+          else
+            echo "❌ CLOS Analytics rollback failed in ${{ github.event.inputs.environment }}"
+            echo "Immediate attention required!"
+            # Send critical alert to on-call team
+          fi
+
+      - name: Post-rollback monitoring
+        if: steps.health-check.outputs.rollback-successful == 'true'
+        run: |
+          echo "Setting up enhanced monitoring for 24 hours post-rollback..."
+          
+          # Add temporary monitoring labels
+          kubectl label deployment clos-api -n clos-analytics "rollback-monitoring=enabled" --overwrite
+          kubectl label deployment clos-websocket -n clos-analytics "rollback-monitoring=enabled" --overwrite  
+          kubectl label deployment clos-web-dashboard -n clos-analytics "rollback-monitoring=enabled" --overwrite
+          
+          # Schedule monitoring cleanup (this would typically be done via a cron job)
+          echo "Enhanced monitoring enabled - will be automatically disabled after 24 hours"

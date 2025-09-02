@@ -1,0 +1,172 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: clos-analytics-ingress
+  namespace: clos-analytics
+  labels:
+    app: clos-analytics
+  annotations:
+    # NGINX Ingress Controller annotations
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    
+    # Rate limiting
+    nginx.ingress.kubernetes.io/rate-limit-connections: "100"
+    nginx.ingress.kubernetes.io/rate-limit-rps: "50"
+    
+    # Security headers
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header X-Frame-Options "SAMEORIGIN" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+      add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' wss: https:;" always;
+    
+    # CORS for API
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://clos.candlefish.ai"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
+    
+    # Let's Encrypt certificate
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    
+    # Load balancing
+    nginx.ingress.kubernetes.io/load-balance: "ewma"
+    
+    # WebSocket support for real-time analytics
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+
+spec:
+  tls:
+  - hosts:
+    - clos.candlefish.ai
+    - api.clos.candlefish.ai  
+    - ws.clos.candlefish.ai
+    secretName: clos-analytics-tls
+  rules:
+  # Main dashboard
+  - host: clos.candlefish.ai
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: clos-web-dashboard-service
+            port:
+              number: 3500
+  
+  # API endpoints
+  - host: api.clos.candlefish.ai
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: clos-api-service
+            port:
+              number: 8000
+  
+  # WebSocket connections
+  - host: ws.clos.candlefish.ai
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: clos-websocket-service
+            port:
+              number: 8001
+
+---
+# Additional ingress for internal services (monitoring)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: clos-monitoring-ingress
+  namespace: clos-analytics
+  labels:
+    app: clos-monitoring
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    
+    # Basic auth for monitoring endpoints
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: monitoring-auth
+    nginx.ingress.kubernetes.io/auth-realm: "Authentication Required - Monitoring"
+    
+    # Let's Encrypt
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+
+spec:
+  tls:
+  - hosts:
+    - monitoring.clos.candlefish.ai
+    secretName: clos-monitoring-tls
+  rules:
+  - host: monitoring.clos.candlefish.ai
+    http:
+      paths:
+      # Grafana dashboard
+      - path: /grafana
+        pathType: Prefix
+        backend:
+          service:
+            name: grafana-service
+            port:
+              number: 3000
+      # Prometheus metrics
+      - path: /prometheus
+        pathType: Prefix
+        backend:
+          service:
+            name: prometheus-service
+            port:
+              number: 9090
+
+---
+# Network Policy for ingress traffic control
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: clos-analytics-ingress-netpol
+  namespace: clos-analytics
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow ingress controller
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+  # Allow internal cluster communication
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: clos-analytics
+  egress:
+  # Allow all egress (for external APIs, DNS, etc.)
+  - {}
+
+---
+# Basic Auth Secret for monitoring endpoints
+apiVersion: v1
+kind: Secret
+metadata:
+  name: monitoring-auth
+  namespace: clos-analytics
+type: Opaque
+data:
+  # Generated with: htpasswd -nb admin password | base64
+  auth: ""  # Base64 encoded htpasswd format: admin:$apr1$...hash...

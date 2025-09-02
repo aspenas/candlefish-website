@@ -1,0 +1,101 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clos-analytics-config
+  namespace: clos-analytics
+  labels:
+    app: clos-analytics
+data:
+  # Database Configuration
+  POSTGRES_DB: "clos_analytics"
+  POSTGRES_USER: "clos_user"
+  
+  # Redis Configuration  
+  REDIS_MAX_MEMORY: "512mb"
+  REDIS_MAX_MEMORY_POLICY: "allkeys-lru"
+  
+  # Analytics Configuration
+  ANALYTICS_RETENTION_DAYS: "90"
+  ANALYTICS_EVENTS_BUFFER_SIZE: "1000"
+  
+  # Rate Limiting
+  RATE_LIMIT_WINDOW_MS: "900000"
+  RATE_LIMIT_MAX_REQUESTS: "1000"
+  
+  # WebSocket Configuration
+  WS_HEARTBEAT_INTERVAL: "30000"
+  WS_MAX_CONNECTIONS: "10000"
+  
+  # API Configuration
+  NODE_ENV: "production"
+  NEXT_TELEMETRY_DISABLED: "1"
+  NEXT_PUBLIC_ANALYTICS_ENABLED: "true"
+  
+  # Logging Configuration
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+  
+  # Health Check URLs
+  API_HEALTH_PATH: "/api/v1/health"
+  WS_HEALTH_PATH: "/health"
+  DASHBOARD_HEALTH_PATH: "/api/health"
+  
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-config
+  namespace: clos-analytics
+  labels:
+    app: postgres
+data:
+  init-analytics.sql: |
+    -- Analytics Database Schema
+    CREATE SCHEMA IF NOT EXISTS analytics;
+    
+    -- Events table for tracking analytics events
+    CREATE TABLE IF NOT EXISTS analytics.events (
+        id BIGSERIAL PRIMARY KEY,
+        event_type VARCHAR(100) NOT NULL,
+        user_id VARCHAR(100),
+        session_id VARCHAR(100) NOT NULL,
+        properties JSONB,
+        timestamp TIMESTAMPTZ DEFAULT NOW(),
+        ip_address INET,
+        user_agent TEXT
+    );
+    
+    -- Metrics table for aggregated data
+    CREATE TABLE IF NOT EXISTS analytics.metrics (
+        id BIGSERIAL PRIMARY KEY,
+        metric_name VARCHAR(100) NOT NULL,
+        metric_value NUMERIC NOT NULL,
+        labels JSONB,
+        timestamp TIMESTAMPTZ DEFAULT NOW()
+    );
+    
+    -- Sessions table for user sessions
+    CREATE TABLE IF NOT EXISTS analytics.sessions (
+        id VARCHAR(100) PRIMARY KEY,
+        user_id VARCHAR(100),
+        start_time TIMESTAMPTZ DEFAULT NOW(),
+        end_time TIMESTAMPTZ,
+        duration_seconds INTEGER,
+        page_views INTEGER DEFAULT 0,
+        events_count INTEGER DEFAULT 0
+    );
+    
+    -- Indexes for performance
+    CREATE INDEX IF NOT EXISTS idx_events_timestamp ON analytics.events(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_events_type ON analytics.events(event_type);
+    CREATE INDEX IF NOT EXISTS idx_events_user_id ON analytics.events(user_id);
+    CREATE INDEX IF NOT EXISTS idx_events_session_id ON analytics.events(session_id);
+    CREATE INDEX IF NOT EXISTS idx_metrics_name ON analytics.metrics(metric_name);
+    CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON analytics.metrics(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON analytics.sessions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_sessions_start_time ON analytics.sessions(start_time);
+    
+    -- Grant permissions
+    GRANT USAGE ON SCHEMA analytics TO clos_user;
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA analytics TO clos_user;
+    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA analytics TO clos_user;
