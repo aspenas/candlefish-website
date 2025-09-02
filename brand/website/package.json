@@ -38,7 +38,8 @@
     "test:netlify:quick": "node scripts/run-netlify-test-suite.js --skip-e2e --skip-performance",
     "test:netlify:ci": "node scripts/run-netlify-test-suite.js --verbose --continue-on-failure",
     "test:all": "node scripts/run-netlify-test-suite.js",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "sitemap": "node scripts/generate-sitemap.mjs"
   },
   "dependencies": {
     "@apollo/client": "^4.0.1",
