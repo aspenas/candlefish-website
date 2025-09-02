@@ -26,7 +26,7 @@ export default function OperationalHomepage() {
       <SystemActivity />
 
       {/* Hero Section */}
-      <section className="min-h-screen relative overflow-hidden">
+      <section className="relative overflow-hidden pb-20">
         {/* Background Gradient */}
         <div 
           className="absolute inset-0"
