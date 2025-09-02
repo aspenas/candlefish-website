@@ -72,13 +72,14 @@ export default function OperationalHomepage() {
 
       {/* Bioluminescent Candlefish Animation */}
       <section className="relative" data-widget="operational-matrix">
-        <CandleFish 
-          height={240}
-          className="candlefish-aquarium"
-          aria-label="Bioluminescent candlefish swimming in deep water"
-          disabled={process.env.NEXT_PUBLIC_FISH_ANIM === '0'}
-          suppressHydrationWarning
-        />
+        {isClient && (
+          <CandleFish 
+            height={240}
+            className="candlefish-aquarium"
+            aria-label="Bioluminescent candlefish swimming in deep water"
+            disabled={process.env.NEXT_PUBLIC_FISH_ANIM === '0'}
+          />
+        )}
       </section>
 
       {/* Philosophy Section */}
