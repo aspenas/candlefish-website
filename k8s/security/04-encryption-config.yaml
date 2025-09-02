@@ -1,0 +1,428 @@
+---
+# Encryption at Rest and In Transit Configuration
+# Implements comprehensive encryption for data protection
+# Compliant with PCI DSS 3.4, HIPAA §164.312(a)(2)(iv), SOC 2 CC6.7
+
+# KMS Provider Configuration for etcd encryption
+apiVersion: v1
+kind: Secret
+metadata:
+  name: encryption-config
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/component: encryption
+    compliance: "pci-dss-3.4,hipaa-164.312"
+type: Opaque
+stringData:
+  encryption-config.yaml: |
+    apiVersion: apiserver.config.k8s.io/v1
+    kind: EncryptionConfiguration
+    resources:
+      - resources:
+        - secrets
+        - configmaps
+        providers:
+        # AWS KMS provider for envelope encryption
+        - kms:
+            name: aws-kms
+            endpoint: unix:///var/run/kmsplugin/socket.sock
+            cachesize: 1000
+            timeout: 3s
+        # AES-CBC with PKCS#7 padding as fallback
+        - aescbc:
+            keys:
+            - name: key1
+              secret: <BASE64_ENCODED_32_BYTE_KEY>
+        # Identity provider for reading existing non-encrypted data
+        - identity: {}
+
+---
+# StorageClass with encryption
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: encrypted-gp3
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/encryption: enabled
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  encrypted: "true"
+  kmsKeyId: "arn:aws:kms:us-east-1:ACCOUNT_ID:key/KMS_KEY_ID"
+  iops: "3000"
+  throughput: "125"
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Delete
+allowVolumeExpansion: true
+
+---
+# TLS Certificate for internal communication
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: internal-tls
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/component: tls
+spec:
+  secretName: internal-tls-secret
+  issuerRef:
+    name: internal-ca-issuer
+    kind: ClusterIssuer
+  commonName: "*.claude-config.svc.cluster.local"
+  dnsNames:
+  - "*.claude-config.svc.cluster.local"
+  - "*.claude-config.svc"
+  - "gateway-service"
+  - "auth-service"
+  - "config-service"
+  duration: 720h  # 30 days
+  renewBefore: 168h  # 7 days
+  usages:
+  - digital signature
+  - key encipherment
+  - server auth
+  - client auth
+  privateKey:
+    algorithm: ECDSA
+    size: 384  # P-384 curve
+
+---
+# CA Issuer for internal certificates
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: internal-ca-issuer
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/component: ca
+spec:
+  ca:
+    secretName: internal-ca-secret
+
+---
+# mTLS Configuration for service mesh
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mtls-config
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/component: mtls
+data:
+  mtls-policy.yaml: |
+    apiVersion: security.istio.io/v1beta1
+    kind: PeerAuthentication
+    metadata:
+      name: default
+      namespace: claude-config
+    spec:
+      mtls:
+        mode: STRICT
+  
+  destination-rule.yaml: |
+    apiVersion: networking.istio.io/v1beta1
+    kind: DestinationRule
+    metadata:
+      name: default
+      namespace: claude-config
+    spec:
+      host: "*.claude-config.svc.cluster.local"
+      trafficPolicy:
+        tls:
+          mode: ISTIO_MUTUAL
+          minProtocolVersion: TLSV1_3
+          maxProtocolVersion: TLSV1_3
+          cipherSuites:
+          - TLS_AES_256_GCM_SHA384
+          - TLS_AES_128_GCM_SHA256
+          - TLS_CHACHA20_POLY1305_SHA256
+
+---
+# Database encryption configuration
+apiVersion: v1
+kind: Secret
+metadata:
+  name: database-encryption
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/component: database-encryption
+type: Opaque
+stringData:
+  pgcrypto-setup.sql: |
+    -- Enable pgcrypto extension
+    CREATE EXTENSION IF NOT EXISTS pgcrypto;
+    
+    -- Create encryption key table
+    CREATE TABLE IF NOT EXISTS encryption_keys (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      key_name VARCHAR(255) UNIQUE NOT NULL,
+      encrypted_key TEXT NOT NULL,
+      algorithm VARCHAR(50) NOT NULL DEFAULT 'aes256',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      rotated_at TIMESTAMP,
+      version INT DEFAULT 1
+    );
+    
+    -- Function to encrypt sensitive data
+    CREATE OR REPLACE FUNCTION encrypt_sensitive_data(
+      data TEXT,
+      key_name VARCHAR(255)
+    ) RETURNS TEXT AS $$
+    DECLARE
+      encryption_key TEXT;
+    BEGIN
+      SELECT encrypted_key INTO encryption_key
+      FROM encryption_keys
+      WHERE key_name = key_name
+      ORDER BY version DESC
+      LIMIT 1;
+      
+      RETURN encode(
+        encrypt(
+          data::bytea,
+          encryption_key::bytea,
+          'aes256'
+        ),
+        'base64'
+      );
+    END;
+    $$ LANGUAGE plpgsql;
+    
+    -- Function to decrypt sensitive data
+    CREATE OR REPLACE FUNCTION decrypt_sensitive_data(
+      encrypted_data TEXT,
+      key_name VARCHAR(255)
+    ) RETURNS TEXT AS $$
+    DECLARE
+      encryption_key TEXT;
+    BEGIN
+      SELECT encrypted_key INTO encryption_key
+      FROM encryption_keys
+      WHERE key_name = key_name;
+      
+      RETURN convert_from(
+        decrypt(
+          decode(encrypted_data, 'base64'),
+          encryption_key::bytea,
+          'aes256'
+        ),
+        'UTF8'
+      );
+    END;
+    $$ LANGUAGE plpgsql;
+    
+    -- Transparent Data Encryption for sensitive columns
+    ALTER TABLE users 
+    ADD COLUMN ssn_encrypted TEXT,
+    ADD COLUMN credit_card_encrypted TEXT;
+    
+    -- Trigger for automatic encryption
+    CREATE OR REPLACE FUNCTION auto_encrypt_trigger()
+    RETURNS TRIGGER AS $$
+    BEGIN
+      IF NEW.ssn IS NOT NULL THEN
+        NEW.ssn_encrypted = encrypt_sensitive_data(NEW.ssn, 'user_pii_key');
+        NEW.ssn = NULL;
+      END IF;
+      
+      IF NEW.credit_card IS NOT NULL THEN
+        NEW.credit_card_encrypted = encrypt_sensitive_data(NEW.credit_card, 'payment_key');
+        NEW.credit_card = NULL;
+      END IF;
+      
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    
+    CREATE TRIGGER encrypt_sensitive_fields
+    BEFORE INSERT OR UPDATE ON users
+    FOR EACH ROW EXECUTE FUNCTION auto_encrypt_trigger();
+
+---
+# Application-level encryption configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-encryption-config
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/component: app-encryption
+data:
+  encryption.yaml: |
+    encryption:
+      # Field-level encryption
+      field_encryption:
+        enabled: true
+        algorithm: AES-256-GCM
+        key_derivation: PBKDF2
+        iterations: 100000
+        fields:
+          - name: ssn
+            type: deterministic  # Allows searching
+          - name: credit_card
+            type: randomized    # Maximum security
+          - name: api_key
+            type: deterministic
+          - name: email
+            type: searchable    # Allows partial matching
+      
+      # Transit encryption
+      transit:
+        enforce_tls: true
+        min_tls_version: "1.3"
+        cipher_suites:
+          - TLS_AES_256_GCM_SHA384
+          - TLS_AES_128_GCM_SHA256
+          - TLS_CHACHA20_POLY1305_SHA256
+        certificate_validation: strict
+        mtls_required: true
+      
+      # Key management
+      key_management:
+        provider: aws_kms
+        master_key_arn: "arn:aws:kms:us-east-1:ACCOUNT_ID:key/MASTER_KEY_ID"
+        data_key_cache_ttl: 300  # 5 minutes
+        key_rotation_interval: 7776000  # 90 days
+      
+      # Backup encryption
+      backup:
+        encrypt_backups: true
+        compression: gzip
+        encryption_algorithm: AES-256-GCM
+        key_storage: aws_secrets_manager
+
+---
+# Ingress with TLS termination
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: secure-ingress
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/component: ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-protocols: "TLSv1.3"
+    nginx.ingress.kubernetes.io/ssl-ciphers: "TLS_AES_256_GCM_SHA384,TLS_AES_128_GCM_SHA256"
+    nginx.ingress.kubernetes.io/ssl-prefer-server-ciphers: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    nginx.ingress.kubernetes.io/proxy-ssl-verify: "on"
+spec:
+  tls:
+  - hosts:
+    - api.candlefish.ai
+    - config.candlefish.ai
+    secretName: external-tls-secret
+  rules:
+  - host: api.candlefish.ai
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: gateway-service
+            port:
+              number: 8443
+  - host: config.candlefish.ai
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: config-service
+            port:
+              number: 8443
+
+---
+# Sidecar container for TLS proxy
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: envoy-tls-proxy
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/component: tls-proxy
+data:
+  envoy.yaml: |
+    static_resources:
+      listeners:
+      - name: https_listener
+        address:
+          socket_address:
+            address: 0.0.0.0
+            port_value: 8443
+        filter_chains:
+        - filters:
+          - name: envoy.filters.network.http_connection_manager
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+              stat_prefix: ingress_https
+              codec_type: AUTO
+              route_config:
+                name: local_route
+                virtual_hosts:
+                - name: backend
+                  domains: ["*"]
+                  routes:
+                  - match:
+                      prefix: "/"
+                    route:
+                      cluster: local_service
+              http_filters:
+              - name: envoy.filters.http.router
+          transport_socket:
+            name: envoy.transport_sockets.tls
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+              common_tls_context:
+                tls_params:
+                  tls_minimum_protocol_version: TLSv1_3
+                  tls_maximum_protocol_version: TLSv1_3
+                  cipher_suites:
+                  - TLS_AES_256_GCM_SHA384
+                  - TLS_AES_128_GCM_SHA256
+                tls_certificates:
+                - certificate_chain:
+                    filename: /etc/tls/tls.crt
+                  private_key:
+                    filename: /etc/tls/tls.key
+                validation_context:
+                  trusted_ca:
+                    filename: /etc/tls/ca.crt
+                  verify_certificate_spki:
+                  - "BASE64_ENCODED_SPKI"
+      
+      clusters:
+      - name: local_service
+        connect_timeout: 5s
+        type: STATIC
+        lb_policy: ROUND_ROBIN
+        load_assignment:
+          cluster_name: local_service
+          endpoints:
+          - lb_endpoints:
+            - endpoint:
+                address:
+                  socket_address:
+                    address: 127.0.0.1
+                    port_value: 8080
+        transport_socket:
+          name: envoy.transport_sockets.tls
+          typed_config:
+            "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
+            common_tls_context:
+              tls_params:
+                tls_minimum_protocol_version: TLSv1_3

@@ -1,0 +1,91 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: claude-config
+  labels:
+    name: claude-config
+    environment: production
+    app.kubernetes.io/name: claude-config-system
+    app.kubernetes.io/part-of: candlefish-os
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: claude-config-sa
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: rbac
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: claude-config-role
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: rbac
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: claude-config-rolebinding
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: claude-config-role
+subjects:
+  - kind: ServiceAccount
+    name: claude-config-sa
+    namespace: claude-config
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: claude-config-cluster-role
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: rbac
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "namespaces"]
+    verbs: ["get", "list"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods", "nodes"]
+    verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: claude-config-cluster-rolebinding
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: claude-config-cluster-role
+subjects:
+  - kind: ServiceAccount
+    name: claude-config-sa
+    namespace: claude-config

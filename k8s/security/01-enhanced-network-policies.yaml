@@ -1,0 +1,414 @@
+---
+# Enhanced Network Security Policies for Claude Configuration System
+# Implements defense-in-depth with strict segmentation
+# PCI DSS, HIPAA, SOC 2 compliant network isolation
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: network-security
+    security.candlefish.ai/level: critical
+    compliance: "pci-dss,hipaa,soc2"
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+
+---
+# DMZ Zone - Internet-facing services
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dmz-zone-policy
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/zone: dmz
+    compliance: "pci-dss-1.3.1"
+spec:
+  podSelector:
+    matchLabels:
+      security-zone: dmz
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    # Only from ALB/Ingress controller
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: aws-load-balancer-controller
+    ports:
+    - protocol: TCP
+      port: 8443  # TLS only
+  egress:
+  # To Application Zone only
+  - to:
+    - podSelector:
+        matchLabels:
+          security-zone: application
+    ports:
+    - protocol: TCP
+      port: 8080
+  # DNS
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+
+---
+# Application Zone - Business logic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: application-zone-policy
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/zone: application
+    compliance: "pci-dss-1.3.2"
+spec:
+  podSelector:
+    matchLabels:
+      security-zone: application
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # From DMZ zone
+  - from:
+    - podSelector:
+        matchLabels:
+          security-zone: dmz
+    ports:
+    - protocol: TCP
+      port: 8080
+  # From same zone (microservices)
+  - from:
+    - podSelector:
+        matchLabels:
+          security-zone: application
+    ports:
+    - protocol: TCP
+      port: 8080
+  # Health checks
+  - ports:
+    - protocol: TCP
+      port: 8081  # Separate health check port
+  egress:
+  # To Data Zone
+  - to:
+    - podSelector:
+        matchLabels:
+          security-zone: data
+    ports:
+    - protocol: TCP
+      port: 5432  # PostgreSQL
+    - protocol: TCP
+      port: 6379  # Redis
+  # To same zone
+  - to:
+    - podSelector:
+        matchLabels:
+          security-zone: application
+    ports:
+    - protocol: TCP
+      port: 8080
+  # DNS
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+  # External APIs (restricted)
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+        except:
+        - 169.254.169.254/32  # Block AWS metadata
+        - 169.254.170.2/32    # Block EKS metadata
+        - 10.0.0.0/8
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+    ports:
+    - protocol: TCP
+      port: 443
+
+---
+# Data Zone - Databases and caches
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: data-zone-policy
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/zone: data
+    compliance: "pci-dss-1.3.4"
+spec:
+  podSelector:
+    matchLabels:
+      security-zone: data
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Only from Application Zone
+  - from:
+    - podSelector:
+        matchLabels:
+          security-zone: application
+    ports:
+    - protocol: TCP
+      port: 5432  # PostgreSQL
+    - protocol: TCP
+      port: 6379  # Redis
+  # Backup jobs from specific service account
+  - from:
+    - podSelector:
+        matchLabels:
+          app: backup-job
+    - namespaceSelector:
+        matchLabels:
+          name: claude-config
+    ports:
+    - protocol: TCP
+      port: 5432
+  egress:
+  # DNS only
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+  # Backup to S3 (specific endpoints)
+  - to:
+    - ipBlock:
+        cidr: 52.216.0.0/15  # S3 IP range for us-east-1
+    ports:
+    - protocol: TCP
+      port: 443
+
+---
+# Security Zone - Auth, secrets management
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: security-zone-policy
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/zone: security
+    compliance: "pci-dss-2.3"
+spec:
+  podSelector:
+    matchLabels:
+      security-zone: security
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Only from Application Zone
+  - from:
+    - podSelector:
+        matchLabels:
+          security-zone: application
+    ports:
+    - protocol: TCP
+      port: 8443  # TLS only for auth
+  # Health checks (separate port)
+  - ports:
+    - protocol: TCP
+      port: 8081
+  egress:
+  # To AWS Secrets Manager
+  - to:
+    - ipBlock:
+        cidr: 3.0.0.0/8  # AWS services CIDR
+    ports:
+    - protocol: TCP
+      port: 443
+  # To Data Zone for session storage
+  - to:
+    - podSelector:
+        matchLabels:
+          security-zone: data
+          app: redis-session
+    ports:
+    - protocol: TCP
+      port: 6379
+  # DNS
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+
+---
+# Monitoring Zone - Observability stack
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: monitoring-zone-policy
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/zone: monitoring
+    compliance: "soc2-cc8.1"
+spec:
+  podSelector:
+    matchLabels:
+      security-zone: monitoring
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Metrics scraping from all zones
+  - from:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 9090  # Prometheus metrics
+  egress:
+  # To all pods for metrics
+  - to:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 9090
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 8081
+  # DNS
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+  # External alerting (PagerDuty, Slack)
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+        except:
+        - 169.254.169.254/32
+        - 10.0.0.0/8
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+    ports:
+    - protocol: TCP
+      port: 443
+
+---
+# Egress control for external dependencies
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: external-api-whitelist
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/type: egress-control
+    compliance: "pci-dss-1.3.5"
+spec:
+  podSelector:
+    matchLabels:
+      allow-external: "true"
+  policyTypes:
+  - Egress
+  egress:
+  # Anthropic API
+  - to:
+    - ipBlock:
+        cidr: 104.18.0.0/16  # Cloudflare IPs for api.anthropic.com
+    ports:
+    - protocol: TCP
+      port: 443
+  # OpenAI API
+  - to:
+    - ipBlock:
+        cidr: 104.18.0.0/16  # Cloudflare IPs
+    ports:
+    - protocol: TCP
+      port: 443
+  # AWS APIs
+  - to:
+    - ipBlock:
+        cidr: 3.0.0.0/8
+    - ipBlock:
+        cidr: 52.0.0.0/8
+    ports:
+    - protocol: TCP
+      port: 443
+  # GitHub API
+  - to:
+    - ipBlock:
+        cidr: 140.82.112.0/20  # GitHub API IPs
+    ports:
+    - protocol: TCP
+      port: 443
+  # DNS
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+
+---
+# Rate limiting and DDoS protection
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: rate-limit-protection
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/type: ddos-protection
+    compliance: "soc2-cc7.2"
+  annotations:
+    description: "Implements connection limits per source"
+spec:
+  podSelector:
+    matchLabels:
+      security-zone: dmz
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 8443
+    # Note: Actual rate limiting implemented at ingress controller level

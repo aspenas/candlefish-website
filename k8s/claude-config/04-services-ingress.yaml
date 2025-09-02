@@ -1,0 +1,224 @@
+---
+# Config Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: config-service
+  namespace: claude-config
+  labels:
+    app: config-service
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: config
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
+spec:
+  type: ClusterIP
+  selector:
+    app: config-service
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+
+---
+# Gateway Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-service
+  namespace: claude-config
+  labels:
+    app: gateway-service
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: gateway
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
+spec:
+  type: ClusterIP
+  selector:
+    app: gateway-service
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+
+---
+# Sync Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: sync-service
+  namespace: claude-config
+  labels:
+    app: sync-service
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: sync
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
+spec:
+  type: ClusterIP
+  selector:
+    app: sync-service
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+
+---
+# Metrics Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: metrics-service
+  namespace: claude-config
+  labels:
+    app: metrics-service
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: metrics
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
+spec:
+  type: ClusterIP
+  selector:
+    app: metrics-service
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+
+---
+# Auth Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: claude-config
+  labels:
+    app: auth-service
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: auth
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
+spec:
+  type: ClusterIP
+  selector:
+    app: auth-service
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+
+---
+# Main Ingress for ALB
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: claude-config-ingress
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: ingress
+  annotations:
+    # AWS ALB Controller annotations
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "30"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "3"
+    alb.ingress.kubernetes.io/success-codes: "200"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:ACCOUNT:certificate/CERT-ID"  # Replace with actual
+    alb.ingress.kubernetes.io/tags: "Environment=production,Application=claude-config,ManagedBy=kubernetes"
+    alb.ingress.kubernetes.io/group.name: claude-config
+    alb.ingress.kubernetes.io/group.order: "100"
+    
+    # Security headers
+    alb.ingress.kubernetes.io/actions.ssl-redirect: |
+      {"Type": "redirect", "RedirectConfig": {"Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}
+    
+    # Rate limiting
+    alb.ingress.kubernetes.io/target-group-attributes: |
+      deregistration_delay.timeout_seconds=30,
+      stickiness.enabled=true,
+      stickiness.type=app_cookie,
+      stickiness.app_cookie.cookie_name=claude-session,
+      stickiness.app_cookie.duration_seconds=86400
+      
+spec:
+  rules:
+  - host: claude-config.candlefish.ai  # Replace with actual domain
+    http:
+      paths:
+      # Gateway (main entry point)
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: gateway-service
+            port:
+              number: 8080
+      
+      # Config API
+      - path: /api/config
+        pathType: Prefix
+        backend:
+          service:
+            name: config-service
+            port:
+              number: 8080
+      
+      # Sync API
+      - path: /api/sync
+        pathType: Prefix
+        backend:
+          service:
+            name: sync-service
+            port:
+              number: 8080
+      
+      # Metrics API
+      - path: /api/metrics
+        pathType: Prefix
+        backend:
+          service:
+            name: metrics-service
+            port:
+              number: 8080
+      
+      # Auth API
+      - path: /api/auth
+        pathType: Prefix
+        backend:
+          service:
+            name: auth-service
+            port:
+              number: 8080
+
+---
+# Headless service for internal service discovery
+apiVersion: v1
+kind: Service
+metadata:
+  name: claude-config-headless
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: discovery
+spec:
+  clusterIP: None
+  selector:
+    component: backend
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http

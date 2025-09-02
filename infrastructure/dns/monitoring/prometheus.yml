@@ -1,0 +1,126 @@
+# Prometheus configuration for candlefish.ai infrastructure monitoring
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'candlefish-ai'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Rules files
+rule_files:
+  - "alert_rules.yml"
+  - "recording_rules.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node exporter (system metrics)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets:
+        - 'localhost:9100'
+        - 'api.candlefish.ai:9100'
+    scrape_interval: 30s
+    metrics_path: '/metrics'
+
+  # Nginx metrics
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['localhost:9113']
+    scrape_interval: 30s
+
+  # API services
+  - job_name: 'candlefish-api'
+    static_configs:
+      - targets:
+        - 'api.candlefish.ai:8000'
+        - 'analytics.candlefish.ai:8001'
+        - 'router.candlefish.ai:8002'
+        - 'monitor.candlefish.ai:8003'
+        - 'config.candlefish.ai:3000'
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # SSL certificate monitoring
+  - job_name: 'ssl-certificates'
+    metrics_path: /probe
+    params:
+      module: [ssl_expire]
+    static_configs:
+      - targets:
+        - https://api.candlefish.ai
+        - https://analytics.candlefish.ai
+        - https://router.candlefish.ai
+        - https://monitor.candlefish.ai
+        - https://config.candlefish.ai
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: ssl-exporter:9219
+
+  # Blackbox exporter for HTTP monitoring
+  - job_name: 'blackbox-http'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - https://api.candlefish.ai/health
+        - https://analytics.candlefish.ai/health
+        - https://router.candlefish.ai/health
+        - https://monitor.candlefish.ai/health
+        - https://config.candlefish.ai/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # DNS monitoring
+  - job_name: 'blackbox-dns'
+    metrics_path: /probe
+    params:
+      module: [dns_candlefish]
+    static_configs:
+      - targets:
+        - api.candlefish.ai
+        - analytics.candlefish.ai
+        - router.candlefish.ai
+        - monitor.candlefish.ai
+        - config.candlefish.ai
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # Redis monitoring (if used)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['localhost:9121']
+    scrape_interval: 30s
+
+  # PostgreSQL monitoring (if used)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['localhost:9187']
+    scrape_interval: 30s

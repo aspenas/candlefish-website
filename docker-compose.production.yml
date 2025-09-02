@@ -1,9 +1,130 @@
 version: '3.8'
 
-# Production Docker Compose for Candlefish Operational Maturity Map
-# Includes all components with production-ready configuration
+# Production Docker Compose for Candlefish AI with Analytics Dashboard
+# Includes all components with production-ready configuration and CLOS Analytics
 
 services:
+  # CLOS Web Dashboard with Analytics
+  clos-web-dashboard:
+    build:
+      context: ./clos/web-dashboard
+      dockerfile: Dockerfile
+      args:
+        BUILD_DATE: ${BUILD_DATE:-now}
+        VCS_REF: ${VCS_REF:-latest}
+        VERSION: ${VERSION:-1.0.0}
+    image: candlefish/clos-dashboard:${VERSION:-latest}
+    container_name: clos-web-dashboard
+    restart: unless-stopped
+    ports:
+      - "3500:3500"
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+      - NEXT_PUBLIC_API_URL=http://clos-api:8000
+      - NEXT_PUBLIC_WS_URL=ws://clos-websocket:8001
+      - NEXT_PUBLIC_ANALYTICS_ENABLED=true
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-https://clos.candlefish.ai}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - DATABASE_URL=${DATABASE_URL}
+    volumes:
+      - dashboard-logs:/app/logs
+    networks:
+      - candlefish-network
+    depends_on:
+      - clos-api
+      - clos-websocket
+      - postgres
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.clos-dashboard.rule=Host(`clos.candlefish.ai`)"
+      - "traefik.http.routers.clos-dashboard.tls=true"
+      - "traefik.http.routers.clos-dashboard.tls.certresolver=letsencrypt"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3500/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # CLOS API Server with Analytics Endpoints
+  clos-api:
+    build:
+      context: ./clos/api-server
+      dockerfile: Dockerfile
+      args:
+        BUILD_DATE: ${BUILD_DATE:-now}
+        VCS_REF: ${VCS_REF:-latest}
+        VERSION: ${VERSION:-1.0.0}
+    image: candlefish/clos-api:${VERSION:-latest}
+    container_name: clos-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - NODE_ENV=production
+      - PORT=8000
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - ANALYTICS_RETENTION_DAYS=90
+      - RATE_LIMIT_WINDOW_MS=900000
+      - RATE_LIMIT_MAX_REQUESTS=1000
+      - AWS_REGION=${AWS_REGION}
+    volumes:
+      - api-logs:/app/logs
+    networks:
+      - candlefish-network
+    depends_on:
+      - postgres
+      - redis
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.clos-api.rule=Host(`api.candlefish.ai`) && PathPrefix(`/clos`)"
+      - "traefik.http.routers.clos-api.tls=true"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # CLOS WebSocket Server for Real-time Analytics
+  clos-websocket:
+    build:
+      context: ./clos/websocket-server
+      dockerfile: Dockerfile
+      args:
+        BUILD_DATE: ${BUILD_DATE:-now}
+        VCS_REF: ${VCS_REF:-latest}
+        VERSION: ${VERSION:-1.0.0}
+    image: candlefish/clos-websocket:${VERSION:-latest}
+    container_name: clos-websocket
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      - NODE_ENV=production
+      - PORT=8001
+      - REDIS_URL=${REDIS_URL}
+      - WS_HEARTBEAT_INTERVAL=30000
+      - WS_MAX_CONNECTIONS=10000
+      - ANALYTICS_EVENTS_BUFFER_SIZE=1000
+    volumes:
+      - websocket-logs:/app/logs
+    networks:
+      - candlefish-network
+    depends_on:
+      - redis
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.clos-ws.rule=Host(`ws.candlefish.ai`)"
+      - "traefik.http.routers.clos-ws.tls=true"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   # Core Web Application
   candlefish-website:
     build:
@@ -333,6 +454,12 @@ volumes:
   nanda-logs:
     driver: local
   gateway-logs:
+    driver: local
+  dashboard-logs:
+    driver: local
+  api-logs:
+    driver: local
+  websocket-logs:
     driver: local
   
   # Monitoring Data

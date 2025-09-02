@@ -1,0 +1,219 @@
+# Claude Configuration System - Terraform Variables Example
+# Copy this file to terraform.tfvars and customize the values
+
+# AWS Configuration
+aws_region     = "us-east-1"
+aws_access_key = "AKIAZ5G4HRQHXCTDSXNI"
+aws_secret_key = "Qf+sp3dglGZP3i/+wNqVRs9BgH1wVuTcjZu4qiyX"
+
+# Environment Configuration
+environment  = "prod"
+project_name = "claude-config"
+
+# Domain Configuration
+domain_name = "candlefish.ai"
+subdomain   = "api"
+
+# Networking Configuration
+vpc_cidr                 = "10.0.0.0/16"
+availability_zones_count = 2
+
+# ECS Configuration
+ecs_cluster_name = "claude-config-cluster"
+
+# You can override individual service configurations if needed
+# ecs_services = {
+#   api = {
+#     name           = "claude-config-api"
+#     port           = 8000
+#     cpu            = 1024
+#     memory         = 2048
+#     desired_count  = 3
+#     min_capacity   = 2
+#     max_capacity   = 10
+#     health_check_path = "/health"
+#   }
+# }
+
+# RDS Configuration
+db_instance_class           = "db.t3.medium"
+db_allocated_storage        = 100
+db_max_allocated_storage    = 1000
+db_name                     = "claude_config"
+db_username                 = "claude_admin"
+db_backup_retention_period  = 30
+db_backup_window           = "03:00-04:00"
+db_maintenance_window      = "sun:04:00-sun:05:00"
+
+# Redis Configuration
+redis_node_type            = "cache.t3.micro"
+redis_num_cache_nodes      = 2
+redis_parameter_group_name = "default.redis7"
+redis_engine_version       = "7.0"
+
+# Load Balancer Configuration
+alb_idle_timeout              = 60
+alb_enable_deletion_protection = true
+
+# Auto Scaling Configuration
+autoscaling_target_cpu        = 70
+autoscaling_target_memory     = 80
+autoscaling_scale_in_cooldown = 300
+autoscaling_scale_out_cooldown = 300
+
+# CloudWatch Configuration
+log_retention_days = 30
+
+# S3 Configuration
+s3_bucket_prefix = "candlefish-claude-config"
+s3_force_destroy = false  # Set to true for dev/test environments
+
+# CloudFront Configuration
+cloudfront_price_class  = "PriceClass_100"
+cloudfront_default_ttl  = 86400
+cloudfront_max_ttl      = 31536000
+
+# WAF Configuration
+waf_rate_limit      = 2000
+waf_blocked_countries = []  # Example: ["CN", "RU"]
+
+# Secret Management
+# IMPORTANT: Change these default values!
+secrets = {
+  claude_api_key = {
+    description = "Claude API key for AI services"
+    value       = "CHANGE_ME_CLAUDE_API_KEY_HERE"
+  }
+  jwt_secret = {
+    description = "JWT secret for authentication"
+    value       = "CHANGE_ME_GENERATE_RANDOM_JWT_SECRET"
+  }
+  encryption_key = {
+    description = "Encryption key for sensitive data"
+    value       = "CHANGE_ME_GENERATE_RANDOM_ENCRYPTION_KEY"
+  }
+}
+
+# Monitoring and Alerting
+enable_detailed_monitoring = true
+alert_email               = "alerts@candlefish.ai"
+
+# Additional Tags
+additional_tags = {
+  Owner       = "Patrick Smith"
+  Department  = "Engineering"
+  CostCenter  = "AI-Platform"
+  Backup      = "Required"
+}
+
+# =============================================================================
+# IMPORTANT NOTES:
+# =============================================================================
+
+# 1. AWS CREDENTIALS:
+#    - These are root credentials. Consider using IAM roles in production
+#    - Never commit this file with real credentials to version control
+#    - Use AWS CLI profiles or environment variables for better security
+
+# 2. SECRETS:
+#    - Change all secret values before deploying
+#    - Generate strong, random passwords for JWT and encryption keys
+#    - Consider using a password manager or secure key generation tool
+
+# 3. DOMAIN CONFIGURATION:
+#    - Ensure you own the domain specified in domain_name
+#    - Make sure the Route53 hosted zone exists for your domain
+#    - Update DNS delegation if using external domain registrar
+
+# 4. COST OPTIMIZATION:
+#    - Start with smaller instance sizes and scale up as needed
+#    - Monitor costs using AWS Cost Explorer and set up billing alerts
+#    - Consider using AWS Savings Plans or Reserved Instances for production
+
+# 5. SECURITY CONSIDERATIONS:
+#    - Review and adjust security group rules based on your requirements
+#    - Configure WAF rules according to your threat model
+#    - Regularly rotate secrets and access keys
+#    - Enable AWS Config and CloudTrail for compliance
+
+# 6. BACKUP AND DISASTER RECOVERY:
+#    - RDS automated backups are enabled with 30-day retention
+#    - Consider cross-region backup replication for critical data
+#    - Test disaster recovery procedures regularly
+
+# 7. MONITORING:
+#    - Update alert_email with your actual notification email
+#    - Configure additional notification channels (Slack, PagerDuty) as needed
+#    - Review and adjust alarm thresholds based on your application behavior
+
+# =============================================================================
+# EXAMPLE PRODUCTION-READY VALUES:
+# =============================================================================
+
+# For production, consider these enhanced configurations:
+
+# ecs_services = {
+#   api = {
+#     name           = "claude-config-api"
+#     port           = 8000
+#     cpu            = 1024
+#     memory         = 2048
+#     desired_count  = 3
+#     min_capacity   = 2
+#     max_capacity   = 20
+#     health_check_path = "/health"
+#   }
+#   analytics = {
+#     name           = "claude-config-analytics"
+#     port           = 8001
+#     cpu            = 512
+#     memory         = 1024
+#     desired_count  = 2
+#     min_capacity   = 1
+#     max_capacity   = 10
+#     health_check_path = "/health"
+#   }
+#   router = {
+#     name           = "claude-config-router"
+#     port           = 8002
+#     cpu            = 512
+#     memory         = 1024
+#     desired_count  = 2
+#     min_capacity   = 2
+#     max_capacity   = 8
+#     health_check_path = "/health"
+#   }
+#   monitor = {
+#     name           = "claude-config-monitor"
+#     port           = 8003
+#     cpu            = 256
+#     memory         = 512
+#     desired_count  = 1
+#     min_capacity   = 1
+#     max_capacity   = 3
+#     health_check_path = "/health"
+#   }
+# }
+
+# db_instance_class        = "db.r6g.large"
+# redis_node_type          = "cache.r6g.large"
+# cloudfront_price_class   = "PriceClass_All"
+
+# =============================================================================
+# COST ESTIMATES (Monthly, USD):
+# =============================================================================
+
+# Development Environment:  $200-400/month
+# Staging Environment:      $300-500/month  
+# Production Environment:   $500-1000/month
+
+# Major cost components:
+# - ECS Fargate: $100-400 (depends on CPU/memory allocation)
+# - RDS: $50-200 (depends on instance class)
+# - NAT Gateways: $90 (fixed cost for 2 AZs)
+# - ElastiCache: $30-150 (depends on node type)
+# - Data Transfer: $20-100 (depends on traffic)
+# - Other services: $50-100
+
+# Use AWS Cost Calculator for detailed estimates:
+# https://calculator.aws/

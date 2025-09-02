@@ -1,0 +1,427 @@
+---
+# Enhanced RBAC with Least Privilege Access Controls
+# Implements fine-grained permissions per service
+# Compliant with PCI DSS 7.1, HIPAA §164.308(a)(4), SOC 2 CC6.1
+
+# Namespace-level resource quota
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: claude-config-quota
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/component: resource-control
+spec:
+  hard:
+    requests.cpu: "10"
+    requests.memory: 20Gi
+    limits.cpu: "20"
+    limits.memory: 40Gi
+    persistentvolumeclaims: "10"
+    services.loadbalancers: "2"
+    services.nodeports: "0"  # Disabled for security
+
+---
+# Gateway Service - Minimal permissions
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gateway-service-sa
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: gateway
+    security.candlefish.ai/level: restricted
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/gateway-service-role
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gateway-service-role
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: gateway
+rules:
+# Only ConfigMap reading for configuration
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: ["gateway-config", "rate-limit-config"]
+  verbs: ["get", "watch"]
+# Service discovery
+- apiGroups: [""]
+  resources: ["services", "endpoints"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gateway-service-rolebinding
+  namespace: claude-config
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: gateway-service-role
+subjects:
+- kind: ServiceAccount
+  name: gateway-service-sa
+  namespace: claude-config
+
+---
+# Auth Service - Security-critical permissions
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: auth-service-sa
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: auth
+    security.candlefish.ai/level: critical
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/auth-service-role
+    eks.amazonaws.com/sts-regional-endpoints: "true"
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: auth-service-role
+  namespace: claude-config
+rules:
+# JWT key access (read-only)
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames: ["jwt-signing-key", "jwt-signing-key-new"]
+  verbs: ["get", "watch"]
+# Session management
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: ["auth-config", "jwks-endpoint"]
+  verbs: ["get", "watch", "update"]
+# Token validation cache
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: ["token-cache"]
+  verbs: ["get", "watch", "update", "patch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: auth-service-rolebinding
+  namespace: claude-config
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: auth-service-role
+subjects:
+- kind: ServiceAccount
+  name: auth-service-sa
+  namespace: claude-config
+
+---
+# Config Service - Configuration management
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: config-service-sa
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: config
+    security.candlefish.ai/level: standard
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: config-service-role
+  namespace: claude-config
+rules:
+# Read all ConfigMaps
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch"]
+# Limited secret access
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames: ["database-credentials", "api-keys"]
+  verbs: ["get", "watch"]
+# Service configuration updates
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["create", "update", "patch"]
+  # Restricted by admission webhook to specific prefix
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: config-service-rolebinding
+  namespace: claude-config
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: config-service-role
+subjects:
+- kind: ServiceAccount
+  name: config-service-sa
+  namespace: claude-config
+
+---
+# Monitoring Service - Read-only cluster-wide
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: monitoring-sa
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: monitoring
+    security.candlefish.ai/level: read-only
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: monitoring-cluster-role
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: monitoring
+rules:
+# Metrics collection
+- apiGroups: [""]
+  resources: ["nodes", "nodes/metrics", "nodes/proxy"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["pods", "pods/log", "services", "endpoints"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "daemonsets", "replicasets", "statefulsets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["batch"]
+  resources: ["jobs", "cronjobs"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "list"]
+# No write permissions
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: monitoring-cluster-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: monitoring-cluster-role
+subjects:
+- kind: ServiceAccount
+  name: monitoring-sa
+  namespace: claude-config
+
+---
+# Backup Service - Limited to specific resources
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: backup-service-sa
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    app.kubernetes.io/component: backup
+    security.candlefish.ai/level: privileged
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/backup-service-role
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: backup-service-role
+  namespace: claude-config
+rules:
+# Read secrets for backup
+- apiGroups: [""]
+  resources: ["secrets", "configmaps"]
+  verbs: ["get", "list"]
+# Read PVCs
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get", "list"]
+# Create backup jobs
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["create", "get", "list", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: backup-service-rolebinding
+  namespace: claude-config
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: backup-service-role
+subjects:
+- kind: ServiceAccount
+  name: backup-service-sa
+  namespace: claude-config
+
+---
+# Developer read-only access
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: developer-readonly
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/access: readonly
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "events"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch"]
+# No secret access
+
+---
+# Admin emergency break-glass role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: emergency-admin
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/access: break-glass
+    security.candlefish.ai/audit: required
+  annotations:
+    description: "Emergency access - all actions are audited"
+rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["*"]
+# Note: This role requires MFA and creates audit alerts
+
+---
+# Pod Security Policies
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: restricted-psp
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/level: restricted
+spec:
+  privileged: false
+  allowPrivilegeEscalation: false
+  requiredDropCapabilities:
+    - ALL
+  volumes:
+    - 'configMap'
+    - 'emptyDir'
+    - 'projected'
+    - 'secret'
+    - 'downwardAPI'
+    - 'persistentVolumeClaim'
+  hostNetwork: false
+  hostIPC: false
+  hostPID: false
+  runAsUser:
+    rule: 'MustRunAsNonRoot'
+    ranges:
+    - min: 1000
+      max: 65535
+  seLinux:
+    rule: 'RunAsAny'
+  supplementalGroups:
+    rule: 'MustRunAs'
+    ranges:
+    - min: 1000
+      max: 65535
+  fsGroup:
+    rule: 'MustRunAs'
+    ranges:
+    - min: 1000
+      max: 65535
+  readOnlyRootFilesystem: true
+
+---
+# Admission Controller for additional RBAC enforcement
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: rbac-enforcement
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/component: admission-control
+webhooks:
+- name: rbac.security.candlefish.ai
+  clientConfig:
+    service:
+      name: rbac-webhook
+      namespace: claude-config
+      path: "/validate"
+    caBundle: LS0tLS1CRUdJTi... # CA bundle here
+  rules:
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["secrets", "configmaps"]
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: ["rbac.authorization.k8s.io"]
+    apiVersions: ["v1"]
+    resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
+  admissionReviewVersions: ["v1", "v1beta1"]
+  sideEffects: None
+  failurePolicy: Fail
+  timeoutSeconds: 10
+
+---
+# Audit logging for RBAC actions
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: audit-policy
+  namespace: claude-config
+  labels:
+    app.kubernetes.io/name: claude-config
+    security.candlefish.ai/component: audit
+data:
+  audit-policy.yaml: |
+    apiVersion: audit.k8s.io/v1
+    kind: Policy
+    rules:
+    # Log all requests to secrets at Metadata level
+    - level: Metadata
+      resources:
+      - group: ""
+        resources: ["secrets"]
+    # Log all RBAC changes at RequestResponse level
+    - level: RequestResponse
+      resources:
+      - group: "rbac.authorization.k8s.io"
+        resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
+    # Log authentication failures
+    - level: RequestResponse
+      userGroups: ["system:unauthenticated"]
+    # Log all requests from emergency-admin role
+    - level: RequestResponse
+      users: ["emergency-admin"]
+    # Default level for other requests
+    - level: Metadata
+      omitStages:
+      - RequestReceived
