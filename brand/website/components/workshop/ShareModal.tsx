@@ -54,11 +54,10 @@ export const ShareModal = ({ isOpen, onClose, noteId, noteTitle, noteExcerpt }: 
     window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}&title=${title}&summary=${summary}`, '_blank')
   }
 
-  if (!isOpen) return null
-
   return (
     <AnimatePresence>
-      <motion.div
+      {isOpen && (
+        <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -155,6 +154,7 @@ export const ShareModal = ({ isOpen, onClose, noteId, noteTitle, noteExcerpt }: 
           </div>
         </motion.div>
       </motion.div>
+      )}
     </AnimatePresence>
   )
 }

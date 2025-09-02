@@ -1,0 +1,589 @@
+/* 
+ * Unified Workshop Notes CSS
+ * Combines operational aesthetics with cross-browser compatibility
+ * Optimized for mobile and desktop rendering
+ */
+
+/* CRITICAL: Font rendering optimization for all browsers */
+.workshop-text-optimize {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  /* Remove will-change unless actively animating */
+  will-change: auto;
+  /* Subpixel precision for crisp text */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Mobile-first responsive containers */
+.workshop-container {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  /* Prevent horizontal scroll issues */
+  box-sizing: border-box;
+}
+
+/* Optimized viewport scaling for mobile */
+@media screen and (max-width: 768px) {
+  .workshop-container {
+    padding: 0 16px;
+    /* Ensure content doesn't touch edges */
+  }
+  
+  .workshop-content {
+    /* Prevent content spillover */
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    hyphens: auto;
+  }
+}
+
+/* Browser-specific fixes */
+
+/* Safari-specific optimizations */
+@supports (-webkit-appearance: none) {
+  .workshop-animation {
+    /* Use transform3d for better Safari performance */
+    transform: translate3d(0, 0, 0);
+  }
+  
+  .workshop-backdrop {
+    /* Safari backdrop-filter fix */
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+}
+
+/* Chrome-specific optimizations */
+@supports (backdrop-filter: blur(8px)) {
+  .workshop-glass {
+    backdrop-filter: blur(8px);
+    /* Reduce GPU memory usage */
+    transform: translateZ(0);
+  }
+}
+
+/* Firefox-specific optimizations */
+@-moz-document url-prefix() {
+  .workshop-animation {
+    /* Firefox performs better with opacity transitions */
+    transition: opacity 0.3s ease;
+  }
+}
+
+/* UNIFIED COLOR SYSTEM */
+:root {
+  /* Core workshop colors - consistent across all pages */
+  --workshop-void: #0D1B2A;
+  --workshop-ocean: #1B263B;
+  --workshop-steel: #1C1C1C;
+  --workshop-graphite: #415A77;
+  --workshop-pearl: #F8F8F2;
+  --workshop-cyan: #3FD3C6;
+  --workshop-copper: #DAA520;
+  
+  /* Navigation dimensions - default desktop values */
+  --main-nav-height: 72px;
+  --workshop-nav-height: 60px;
+  
+  /* Operational status colors */
+  --workshop-active: var(--workshop-cyan);
+  --workshop-processing: #69A3B0;
+  --workshop-complete: #8AC926;
+  --workshop-alert: #FFA600;
+  
+  /* Typography scale - fluid responsive */
+  --workshop-text-xs: clamp(0.75rem, 0.9vw, 0.875rem);
+  --workshop-text-sm: clamp(0.875rem, 1vw, 1rem);
+  --workshop-text-base: clamp(1rem, 1.2vw, 1.125rem);
+  --workshop-text-lg: clamp(1.125rem, 1.5vw, 1.25rem);
+  --workshop-text-xl: clamp(1.25rem, 2vw, 1.5rem);
+  --workshop-text-2xl: clamp(1.5rem, 2.5vw, 2rem);
+  --workshop-text-3xl: clamp(2rem, 4vw, 3rem);
+  --workshop-text-4xl: clamp(2.5rem, 5vw, 4rem);
+  
+  /* Spacing system - 8px base */
+  --workshop-space-1: 0.25rem;
+  --workshop-space-2: 0.5rem;
+  --workshop-space-3: 0.75rem;
+  --workshop-space-4: 1rem;
+  --workshop-space-6: 1.5rem;
+  --workshop-space-8: 2rem;
+  --workshop-space-12: 3rem;
+  --workshop-space-16: 4rem;
+  --workshop-space-20: 5rem;
+  --workshop-space-24: 6rem;
+  
+  /* Animation system - respects prefers-reduced-motion */
+  --workshop-duration-fast: 0.15s;
+  --workshop-duration-normal: 0.3s;
+  --workshop-duration-slow: 0.6s;
+  --workshop-easing: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Reduced motion respect */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --workshop-duration-fast: 0.01s;
+    --workshop-duration-normal: 0.01s;
+    --workshop-duration-slow: 0.01s;
+  }
+  
+  .workshop-animation,
+  .workshop-animation * {
+    animation-duration: 0.01s !important;
+    transition-duration: 0.01s !important;
+  }
+}
+
+/* UNIFIED TYPOGRAPHY SYSTEM */
+.workshop-text-hero {
+  font-size: var(--workshop-text-4xl);
+  font-weight: 200;
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+  color: var(--workshop-pearl);
+}
+
+.workshop-text-title {
+  font-size: var(--workshop-text-2xl);
+  font-weight: 300;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--workshop-pearl);
+}
+
+.workshop-text-subtitle {
+  font-size: var(--workshop-text-xl);
+  font-weight: 300;
+  line-height: 1.4;
+  color: rgba(248, 248, 242, 0.8);
+}
+
+.workshop-text-body {
+  font-size: var(--workshop-text-base);
+  font-weight: 300;
+  line-height: 1.6;
+  color: rgba(248, 248, 242, 0.9);
+}
+
+.workshop-text-caption {
+  font-size: var(--workshop-text-sm);
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(248, 248, 242, 0.6);
+}
+
+.workshop-text-mono {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+  font-size: var(--workshop-text-sm);
+  color: var(--workshop-cyan);
+}
+
+/* OPTIMIZED BACKGROUND SYSTEM */
+.workshop-background {
+  background: linear-gradient(135deg, 
+    var(--workshop-void) 0%, 
+    var(--workshop-ocean) 50%, 
+    var(--workshop-steel) 100%);
+  min-height: 100vh;
+  /* Prevent background attachment issues on mobile */
+  background-attachment: fixed;
+}
+
+@media screen and (max-width: 768px) {
+  .workshop-background {
+    /* Fixed backgrounds cause performance issues on mobile */
+    background-attachment: scroll;
+  }
+}
+
+/* CARD SYSTEM - Glass morphism optimized */
+.workshop-card {
+  background: rgba(27, 38, 59, 0.4);
+  border: 1px solid rgba(65, 90, 119, 0.3);
+  border-radius: 8px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  /* Optimize for rendering */
+  transform: translateZ(0);
+  will-change: auto;
+  transition: all var(--workshop-duration-normal) var(--workshop-easing);
+}
+
+.workshop-card:hover {
+  border-color: rgba(63, 211, 198, 0.5);
+  background: rgba(27, 38, 59, 0.6);
+  /* Only add will-change during interaction */
+  will-change: background-color, border-color;
+}
+
+.workshop-card:not(:hover) {
+  will-change: auto;
+}
+
+/* BUTTON SYSTEM */
+.workshop-button {
+  padding: var(--workshop-space-3) var(--workshop-space-6);
+  background: transparent;
+  border: 1px solid var(--workshop-graphite);
+  color: var(--workshop-pearl);
+  font-size: var(--workshop-text-sm);
+  font-weight: 300;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--workshop-duration-normal) var(--workshop-easing);
+  /* Crisp button rendering */
+  transform: translateZ(0);
+}
+
+.workshop-button:hover {
+  border-color: var(--workshop-cyan);
+  color: var(--workshop-cyan);
+  background: rgba(63, 211, 198, 0.1);
+}
+
+.workshop-button:focus-visible {
+  outline: 2px solid var(--workshop-cyan);
+  outline-offset: 2px;
+}
+
+/* OPERATIONAL STATUS INDICATORS */
+.workshop-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--workshop-space-2);
+  font-size: var(--workshop-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.workshop-status::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  /* Optimize pulse animation */
+  animation: workshop-pulse 2s ease-in-out infinite;
+}
+
+.workshop-status--active {
+  color: var(--workshop-active);
+}
+
+.workshop-status--active::before {
+  background: var(--workshop-active);
+}
+
+.workshop-status--processing {
+  color: var(--workshop-processing);
+}
+
+.workshop-status--processing::before {
+  background: var(--workshop-processing);
+}
+
+.workshop-status--complete {
+  color: var(--workshop-complete);
+}
+
+.workshop-status--complete::before {
+  background: var(--workshop-complete);
+}
+
+/* ANIMATIONS - Optimized and respectful */
+@keyframes workshop-pulse {
+  0%, 100% { 
+    opacity: 1; 
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.5; 
+    transform: scale(1.1);
+  }
+}
+
+@keyframes workshop-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.workshop-fade-up {
+  animation: workshop-fade-up var(--workshop-duration-slow) var(--workshop-easing) forwards;
+}
+
+/* LAYOUT UTILITIES */
+.workshop-grid {
+  display: grid;
+  gap: var(--workshop-space-6);
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: calc(var(--main-nav-height, 72px) + var(--workshop-nav-height, 60px) + var(--workshop-space-4)) var(--workshop-space-6) var(--workshop-space-8);
+  min-height: 100vh;
+}
+
+@media screen and (max-width: 768px) {
+  :root {
+    --main-nav-height: 64px; /* Smaller main nav on mobile */
+    --workshop-nav-height: 56px; /* Smaller workshop nav on mobile */
+  }
+  
+  .workshop-grid {
+    gap: var(--workshop-space-4);
+    padding: calc(var(--main-nav-height) + var(--workshop-nav-height) + var(--workshop-space-2)) var(--workshop-space-4) var(--workshop-space-4);
+  }
+  
+  /* Workshop nav adjustments for mobile */
+  .workshop-nav {
+    height: var(--workshop-nav-height);
+    top: var(--main-nav-height);
+  }
+  
+  /* Mobile navigation content adjustments */
+  .workshop-nav-content {
+    padding: var(--workshop-space-2) var(--workshop-space-4);
+    flex-wrap: wrap;
+    gap: var(--workshop-space-2);
+    min-height: calc(var(--workshop-nav-height) - 4px); /* Account for borders */
+  }
+  
+  /* Responsive metrics display */
+  .workshop-metrics {
+    display: flex;
+    gap: var(--workshop-space-2);
+    font-size: var(--workshop-text-xs);
+    flex-wrap: wrap;
+  }
+  
+  .workshop-metric {
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 60px;
+  }
+}
+
+/* Very small mobile screens */
+@media screen and (max-width: 480px) {
+  :root {
+    --main-nav-height: 58px; /* Even smaller main nav on tiny screens */
+    --workshop-nav-height: 48px; /* Further reduced for very small screens */
+  }
+  
+  .workshop-nav-content h1 {
+    font-size: var(--workshop-text-sm);
+  }
+  
+  .workshop-grid {
+    padding: calc(var(--main-nav-height) + var(--workshop-nav-height) + var(--workshop-space-2)) var(--workshop-space-2) var(--workshop-space-4);
+  }
+  
+  /* Hide metrics on very small screens to prevent cramping */
+  .workshop-metrics {
+    display: none;
+  }
+  
+  /* Ensure navigation title wraps properly */
+  .workshop-nav-content {
+    padding: var(--workshop-space-1) var(--workshop-space-3);
+  }
+}
+
+/* NAVIGATION SYSTEM */
+.workshop-nav {
+  position: fixed;
+  top: var(--main-nav-height, 72px); /* Dynamic positioning based on main nav height */
+  left: 0;
+  right: 0;
+  z-index: 45; /* Higher than content (30) but lower than main nav (50) */
+  background: rgba(13, 27, 42, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(65, 90, 119, 0.2);
+  border-top: 1px solid rgba(65, 90, 119, 0.1);
+  height: var(--workshop-nav-height, 60px); /* Variable height for responsive design */
+  min-height: 60px; /* Ensure minimum height for content */
+  transition: all var(--workshop-duration-normal) var(--workshop-easing);
+  box-shadow: 0 4px 12px rgba(13, 27, 42, 0.3);
+}
+
+.workshop-nav-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--workshop-space-2) var(--workshop-space-6); /* Reduced padding for tighter layout */
+  max-width: 1200px;
+  margin: 0 auto;
+  height: 100%; /* Ensure content fills nav height */
+}
+
+@media screen and (max-width: 768px) {
+  .workshop-nav-content {
+    padding: var(--workshop-space-3) var(--workshop-space-4);
+    flex-wrap: wrap;
+    gap: var(--workshop-space-2);
+  }
+}
+
+/* METRICS DISPLAY */
+.workshop-metrics {
+  display: flex;
+  align-items: center;
+  gap: var(--workshop-space-6);
+  font-family: 'SF Mono', monospace;
+}
+
+/* Tablet responsive adjustments */
+@media screen and (max-width: 1024px) and (min-width: 769px) {
+  :root {
+    --main-nav-height: 68px; /* Medium size for tablets */
+    --workshop-nav-height: 58px;
+  }
+  
+  .workshop-nav-content {
+    flex-wrap: wrap;
+    gap: var(--workshop-space-3);
+  }
+  
+  .workshop-nav-content h1 {
+    font-size: var(--workshop-text-base);
+  }
+  
+  .workshop-metrics {
+    gap: var(--workshop-space-3);
+    font-size: var(--workshop-text-xs);
+  }
+  
+  .workshop-metric {
+    flex-direction: column;
+    gap: var(--workshop-space-1);
+    text-align: center;
+    min-width: 70px;
+  }
+  
+  .workshop-metric-label {
+    font-size: var(--workshop-text-xs);
+  }
+}
+
+/* Large tablet adjustments */
+@media screen and (max-width: 1200px) and (min-width: 1025px) {
+  .workshop-nav-content {
+    padding: var(--workshop-space-3) var(--workshop-space-5);
+  }
+  
+  .workshop-metrics {
+    gap: var(--workshop-space-4);
+  }
+  
+  .workshop-metric {
+    min-width: 80px;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .workshop-metrics {
+    gap: var(--workshop-space-4);
+    font-size: var(--workshop-text-xs);
+  }
+}
+
+.workshop-metric {
+  display: flex;
+  align-items: center;
+  gap: var(--workshop-space-2);
+}
+
+.workshop-metric-label {
+  color: rgba(248, 248, 242, 0.6);
+  font-size: var(--workshop-text-xs);
+}
+
+.workshop-metric-value {
+  color: var(--workshop-cyan);
+  font-size: var(--workshop-text-sm);
+  font-weight: 600;
+}
+
+/* ACCESSIBILITY ENHANCEMENTS */
+.workshop-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus management */
+.workshop-focus-visible {
+  outline: 2px solid var(--workshop-cyan);
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .workshop-card {
+    border-width: 2px;
+    background: var(--workshop-void);
+  }
+  
+  .workshop-text-body {
+    color: var(--workshop-pearl);
+  }
+}
+
+/* PERFORMANCE OPTIMIZATIONS */
+
+/* GPU layer management */
+.workshop-gpu-layer {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Intersection observer optimizations */
+.workshop-lazy-content {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all var(--workshop-duration-normal) var(--workshop-easing);
+}
+
+.workshop-lazy-content.workshop-in-view {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* PRINT STYLES */
+@media print {
+  .workshop-background {
+    background: white !important;
+    color: black !important;
+  }
+  
+  .workshop-text-hero,
+  .workshop-text-title,
+  .workshop-text-body {
+    color: black !important;
+  }
+  
+  .workshop-nav,
+  .workshop-metrics {
+    display: none !important;
+  }
+}

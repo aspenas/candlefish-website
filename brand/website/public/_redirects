@@ -2,9 +2,17 @@
 /maturity-map /assessment 301
 /workshop-notes /workshop 301
 
+# Workshop routes - ensure proper routing for static export
+/workshop/inventory-automation  /workshop/inventory-automation/  301
+/workshop/engraving-automation  /workshop/engraving-automation/  301
+/workshop/promoteros-intelligence  /workshop/promoteros-intelligence/  301
+/workshop/paintbox-estimation  /workshop/paintbox-estimation/  301
+/workshop/paintbox-platform  /workshop/paintbox-platform/  301
+
 # API routes to Netlify Functions
 /api/consideration    /.netlify/functions/consideration    200
 /api/contact         /.netlify/functions/contact          200
 
-# Next.js App Router handles its own routing
-# Removed SPA fallback that was breaking Next.js routing
+# Static export fallback for client-side routing
+# This ensures all paths work with the static export
+/workshop/*  /workshop/:splat/index.html  200

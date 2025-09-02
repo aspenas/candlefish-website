@@ -326,6 +326,35 @@ body {
   }
 }
 
+/* Text contrast improvements for atelier pages */
+.text-pearl {
+  color: var(--pearl) !important;
+}
+
+/* Ensure better contrast for gray text variations */
+.text-gray-100,
+.text-gray-100\/90,
+.text-gray-100\/80,
+.text-gray-100\/70 {
+  color: var(--pearl) !important;
+}
+
+.text-gray-100\/60 {
+  color: var(--pearlMuted) !important;
+}
+
+.text-gray-100\/50,
+.text-gray-100\/40 {
+  color: var(--pearlSubtle) !important;
+  opacity: 0.8 !important;
+}
+
+/* Ensure SpatialText components use proper contrast */
+.SpatialText,
+[class*="SpatialText"] {
+  color: var(--pearl) !important;
+}
+
 /* High contrast mode support */
 @media (prefers-contrast: high) {
   :root {
@@ -333,5 +362,13 @@ body {
     --charcoal: #000000;
     --livingCyan: #00FFFF;
     --glassBorder: rgba(255, 255, 255, 0.2);
+  }
+  
+  /* Force higher contrast in high contrast mode */
+  .text-gray-100\/60,
+  .text-gray-100\/50,
+  .text-gray-100\/40 {
+    color: #FFFFFF !important;
+    opacity: 1 !important;
   }
 }
