@@ -15,18 +15,8 @@ const OperationalCraft = lazy(() =>
   }))
 )
 
-// Dynamic import CandleFish with no SSR to avoid hydration issues
-const CandleFish = dynamic(
-  () => import('../web/aquarium/react/CandleFish'),
-  { 
-    ssr: false,
-    loading: () => (
-      <div className="w-full h-[240px] bg-[#3A3A60] flex items-center justify-center">
-        <div className="text-[#415A77] text-xs font-mono animate-pulse">INITIALIZING AQUARIUM...</div>
-      </div>
-    )
-  }
-)
+// Import CandleFish component
+import CandleFish from '../web/aquarium/react/CandleFish'
 
 export default function OperationalHomepage() {
   // Force rebuild after netlify.toml configuration fix
@@ -102,11 +92,12 @@ export default function OperationalHomepage() {
 
       {/* Bioluminescent Candlefish Animation */}
       <section className="relative" data-widget="operational-matrix">
-        {isClient && process.env.NEXT_PUBLIC_FISH_ANIM !== '0' && (
+        {isClient && (
           <CandleFish 
             height={240}
             className="candlefish-aquarium"
             aria-label="Bioluminescent candlefish swimming in deep water"
+            disabled={process.env.NEXT_PUBLIC_FISH_ANIM === '0'}
           />
         )}
       </section>
