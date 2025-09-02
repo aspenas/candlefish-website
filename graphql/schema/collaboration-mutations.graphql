@@ -1,1140 +1,607 @@
-# Real-time Collaboration Mutations
-# Comprehensive mutation interface for collaborative document system
+# =============================================================================
+# COLLABORATION PLATFORM MUTATIONS
+# Complete mutation schema for CRUD operations and real-time collaboration
+# =============================================================================
 
 extend type Mutation {
   # =============================================================================
-  # DOCUMENT MUTATIONS
+  # PROJECT MUTATIONS
   # =============================================================================
-
-  # Create new document with collaboration settings
-  createDocument(input: CreateDocumentInput!): Document!
-    @auth(requires: USER) @tenant @rateLimit(max: 10, window: "1h") @audit(level: INFO)
-
-  # Update document metadata and settings
-  updateDocument(input: UpdateDocumentInput!): Document!
-    @auth(requires: USER) @tenant @audit(level: INFO)
-
-  # Update document content with operational transforms
-  updateDocumentContent(input: UpdateDocumentContentInput!): DocumentContentUpdateResult!
-    @auth(requires: USER) @tenant @complexity(value: 20)
-
-  # Apply batch operations for performance
-  applyDocumentOperations(input: ApplyOperationsInput!): OperationResult!
-    @auth(requires: USER) @tenant @complexity(value: 25) @rateLimit(max: 100, window: "1m")
-
-  # Clone/duplicate document with options
-  cloneDocument(input: CloneDocumentInput!): Document!
-    @auth(requires: USER) @tenant @rateLimit(max: 5, window: "1h") @audit(level: INFO)
-
-  # Delete document (soft delete with recovery option)
-  deleteDocument(input: DeleteDocumentInput!): DocumentDeletionResult!
-    @auth(requires: USER) @tenant @audit(level: WARN) @rateLimit(max: 10, window: "1h")
-
-  # Restore deleted document
-  restoreDocument(id: UUID!): Document!
-    @auth(requires: USER) @tenant @audit(level: INFO)
-
-  # Permanently delete document (admin only)
-  purgeDocument(id: UUID!): Boolean!
-    @auth(requires: ORG_ADMIN) @tenant @audit(level: CRITICAL)
-
+  
+  """
+  Create a new project with AI agent configuration
+  """
+  createProject(
+    input: CreateProjectInput!
+  ): CreateProjectPayload! @complexity(value: 20) @rateLimit(max: 10, window: 3600) @auth(requires: USER)
+  
+  """
+  Update project metadata and configuration
+  """
+  updateProject(
+    input: UpdateProjectInput!
+  ): UpdateProjectPayload! @complexity(value: 15) @auth(requires: EDIT_PROJECT)
+  
+  """
+  Add team members to a project
+  """
+  addProjectMembers(
+    projectId: UUID!
+    members: [CreateProjectMemberInput!]!
+    sendInvitation: Boolean = true
+  ): AddProjectMembersPayload! @complexity(value: 12) @auth(requires: MANAGE_TEAM)
+  
+  """
+  Remove team member from project
+  """
+  removeProjectMember(
+    projectId: UUID!
+    userId: UUID!
+    transferOwnership: UUID # Required if removing owner
+  ): RemoveProjectMemberPayload! @complexity(value: 10) @auth(requires: MANAGE_TEAM)
+  
   # =============================================================================
-  # DOCUMENT SHARING AND PERMISSIONS
+  # DOCUMENT MUTATIONS (Enhanced)
   # =============================================================================
-
-  # Update document permissions
-  updateDocumentPermissions(input: UpdateDocumentPermissionsInput!): DocumentPermissions!
-    @auth(requires: USER) @tenant @audit(level: WARN)
-
-  # Share document with users or publicly
-  shareDocument(input: ShareDocumentInput!): DocumentSharing!
-    @auth(requires: USER) @tenant @rateLimit(max: 20, window: "1h") @audit(level: INFO)
-
-  # Update sharing settings
-  updateDocumentSharing(input: UpdateDocumentSharingInput!): DocumentSharing!
-    @auth(requires: USER) @tenant @audit(level: INFO)
-
-  # Revoke document sharing
-  revokeDocumentSharing(input: RevokeDocumentSharingInput!): Boolean!
-    @auth(requires: USER) @tenant @audit(level: WARN)
-
-  # Invite collaborators to document
-  inviteCollaborators(input: InviteCollaboratorsInput!): [CollaboratorInvitation!]!
-    @auth(requires: USER) @tenant @rateLimit(max: 50, window: "1h")
-
-  # Accept collaboration invitation
-  acceptCollaborationInvitation(token: NonEmptyString!): DocumentPermissions!
-    @auth(requires: USER)
-
-  # Remove collaborator from document
-  removeCollaborator(input: RemoveCollaboratorInput!): Boolean!
-    @auth(requires: USER) @tenant @audit(level: WARN)
-
+  
+  """
+  Create a new document with AI-powered template suggestions
+  """
+  createEnhancedDocument(
+    input: CreateEnhancedDocumentInput!
+  ): CreateDocumentPayload! @complexity(value: 25) @rateLimit(max: 20, window: 3600) @auth(requires: USER)
+  
+  """
+  Apply multiple operations in a single transaction (Operational Transform)
+  """
+  applyDocumentOperations(
+    input: ApplyOperationsInput!
+  ): ApplyOperationsPayload! @complexity(value: 30) @rateLimit(max: 1000, window: 60) @auth(requires: EDIT)
+  
+  """
+  Resolve conflicts with manual resolution
+  """
+  resolveConflicts(
+    input: ResolveConflictsInput!
+  ): ResolveConflictsPayload! @complexity(value: 20) @auth(requires: EDIT)
+  
+  # =============================================================================
+  # AI INTEGRATION MUTATIONS
+  # =============================================================================
+  
+  """
+  Configure NANDA AI agent for a project
+  """
+  configureAIAgent(
+    input: ConfigureAIAgentInput!
+  ): ConfigureAIAgentPayload! @complexity(value: 18) @rateLimit(max: 10, window: 3600) @auth(requires: MANAGE_AI_AGENT)
+  
+  """
+  Generate AI suggestions for document content
+  """
+  generateAISuggestions(
+    input: GenerateAISuggestionsInput!
+  ): GenerateAISuggestionsPayload! @complexity(value: 25) @rateLimit(max: 20, window: 60) @auth(requires: USER)
+  
+  """
+  Apply an AI suggestion to a document
+  """
+  applyAISuggestion(
+    suggestionId: UUID!
+    customModifications: JSON
+  ): ApplyAISuggestionPayload! @complexity(value: 15) @auth(requires: EDIT)
+  
+  """
+  Provide feedback on AI suggestions for learning
+  """
+  provideSuggestionFeedback(
+    input: ProvideSuggestionFeedbackInput!
+  ): ProvideFeedbackPayload! @complexity(value: 8) @auth(requires: USER)
+  
+  # =============================================================================
+  # REAL-TIME COLLABORATION MUTATIONS
+  # =============================================================================
+  
+  """
+  Join a document editing session
+  """
+  joinEditingSession(
+    input: JoinEditingSessionInput!
+  ): JoinEditingSessionPayload! @complexity(value: 12) @rateLimit(max: 100, window: 60) @auth(requires: USER)
+  
+  """
+  Update user presence information (cursor, selection, status)
+  """
+  updatePresence(
+    input: UpdatePresenceInput!
+  ): UpdatePresencePayload! @complexity(value: 5) @rateLimit(max: 1000, window: 60) @auth(requires: USER)
+  
+  """
+  Acquire exclusive edit lock on document blocks
+  """
+  acquireEditLock(
+    documentId: UUID!
+    blockIds: [UUID!]!
+    lockType: LockType! = BLOCK_LEVEL
+    duration: Duration = "PT5M" # 5 minutes default
+  ): AcquireLockPayload! @complexity(value: 10) @auth(requires: EDIT)
+  
+  # =============================================================================
+  # ENHANCED COMMENT MUTATIONS
+  # =============================================================================
+  
+  """
+  Create comment with AI enhancements and smart notifications
+  """
+  createEnhancedComment(
+    input: CreateEnhancedCommentInput!
+  ): CreateCommentPayload! @complexity(value: 18) @rateLimit(max: 100, window: 3600) @auth(requires: USER)
+  
+  """
+  Resolve comment thread with AI summary generation
+  """
+  resolveCommentThread(
+    threadId: UUID!
+    resolution: String
+    generateAISummary: Boolean = true
+  ): ResolveCommentThreadPayload! @complexity(value: 15) @auth(requires: USER)
+  
   # =============================================================================
   # VERSION CONTROL MUTATIONS
   # =============================================================================
-
-  # Create new version/snapshot of document
-  createDocumentVersion(input: CreateDocumentVersionInput!): DocumentVersion!
-    @auth(requires: USER) @tenant @rateLimit(max: 20, window: "1h")
-
-  # Create new branch for collaborative editing
-  createDocumentBranch(input: CreateDocumentBranchInput!): DocumentBranch!
-    @auth(requires: USER) @tenant @rateLimit(max: 10, window: "1h")
-
-  # Switch to different branch
-  switchDocumentBranch(input: SwitchBranchInput!): Document!
-    @auth(requires: USER) @tenant
-
-  # Merge branches with conflict resolution
-  mergeBranches(input: MergeBranchInput!): MergeResult!
-    @auth(requires: USER) @tenant @complexity(value: 30) @audit(level: INFO)
-
-  # Resolve merge conflicts
-  resolveMergeConflicts(input: ResolveMergeConflictsInput!): MergeResult!
-    @auth(requires: USER) @tenant @complexity(value: 25)
-
-  # Revert to previous version
-  revertToVersion(input: RevertToVersionInput!): Document!
-    @auth(requires: USER) @tenant @audit(level: WARN)
-
-  # Delete version (admin only)
-  deleteDocumentVersion(id: UUID!): Boolean!
-    @auth(requires: ORG_ADMIN) @tenant @audit(level: WARN)
-
-  # Delete branch
-  deleteDocumentBranch(input: DeleteBranchInput!): Boolean!
-    @auth(requires: USER) @tenant @audit(level: INFO)
-
-  # =============================================================================
-  # PRESENCE AND REAL-TIME MUTATIONS
-  # =============================================================================
-
-  # Join document editing session
-  joinDocument(input: JoinDocumentInput!): PresenceSession!
-    @auth(requires: USER) @tenant @rateLimit(max: 50, window: "1m")
-
-  # Leave document editing session
-  leaveDocument(documentId: UUID!): Boolean!
-    @auth(requires: USER) @tenant
-
-  # Update presence information (cursor, selection, etc.)
-  updatePresence(input: UpdatePresenceInput!): PresenceSession!
-    @auth(requires: USER) @tenant @rateLimit(max: 1000, window: "1m")
-
-  # Request lock on document sections
-  requestDocumentLock(input: RequestDocumentLockInput!): LockInfo!
-    @auth(requires: USER) @tenant @rateLimit(max: 20, window: "1m")
-
-  # Release document lock
-  releaseDocumentLock(lockId: UUID!): Boolean!
-    @auth(requires: USER) @tenant
-
-  # Force release lock (admin only)
-  forceReleaseLock(lockId: UUID!): Boolean!
-    @auth(requires: ORG_ADMIN) @tenant @audit(level: WARN)
-
-  # Update user status (typing, idle, etc.)
-  updateUserStatus(input: UpdateUserStatusInput!): PresenceSession!
-    @auth(requires: USER) @tenant @rateLimit(max: 200, window: "1m")
-
-  # =============================================================================
-  # COMMENT MUTATIONS
-  # =============================================================================
-
-  # Add comment to document
-  addComment(input: CreateCommentInput!): Comment!
-    @auth(requires: USER) @tenant @rateLimit(max: 100, window: "1h")
-
-  # Update existing comment
-  updateComment(input: UpdateCommentInput!): Comment!
-    @auth(requires: USER) @tenant
-
-  # Delete comment (soft delete)
-  deleteComment(id: UUID!): Boolean!
-    @auth(requires: USER) @tenant @audit(level: INFO)
-
-  # Reply to comment (creates threaded discussion)
-  replyToComment(input: ReplyToCommentInput!): Comment!
-    @auth(requires: USER) @tenant @rateLimit(max: 100, window: "1h")
-
-  # Resolve comment thread
-  resolveComment(input: ResolveCommentInput!): Comment!
-    @auth(requires: USER) @tenant
-
-  # Reopen resolved comment
-  reopenComment(id: UUID!): Comment!
-    @auth(requires: USER) @tenant
-
-  # Add reaction to comment
-  addCommentReaction(input: AddReactionInput!): Reaction!
-    @auth(requires: USER) @tenant @rateLimit(max: 200, window: "1h")
-
-  # Remove reaction from comment
-  removeCommentReaction(input: RemoveReactionInput!): Boolean!
-    @auth(requires: USER) @tenant
-
-  # Mention user in comment
-  mentionUser(input: MentionUserInput!): Boolean!
-    @auth(requires: USER) @tenant @rateLimit(max: 50, window: "1h")
-
-  # =============================================================================
-  # COMMENT THREAD MUTATIONS
-  # =============================================================================
-
-  # Create comment thread
-  createCommentThread(input: CreateCommentThreadInput!): CommentThread!
-    @auth(requires: USER) @tenant @rateLimit(max: 20, window: "1h")
-
-  # Update thread metadata
-  updateCommentThread(input: UpdateCommentThreadInput!): CommentThread!
-    @auth(requires: USER) @tenant
-
-  # Close comment thread
-  closeCommentThread(id: UUID!): CommentThread!
-    @auth(requires: USER) @tenant
-
-  # Reopen comment thread
-  reopenCommentThread(id: UUID!): CommentThread!
-    @auth(requires: USER) @tenant
-
-  # Watch/unwatch comment thread for notifications
-  watchCommentThread(threadId: UUID!): Boolean!
-    @auth(requires: USER) @tenant
-
-  unwatchCommentThread(threadId: UUID!): Boolean!
-    @auth(requires: USER) @tenant
-
-  # =============================================================================
-  # ANNOTATION MUTATIONS
-  # =============================================================================
-
-  # Add annotation to document
-  addAnnotation(input: CreateAnnotationInput!): Annotation!
-    @auth(requires: USER) @tenant @rateLimit(max: 50, window: "1h")
-
-  # Update annotation
-  updateAnnotation(input: UpdateAnnotationInput!): Annotation!
-    @auth(requires: USER) @tenant
-
-  # Delete annotation
-  deleteAnnotation(id: UUID!): Boolean!
-    @auth(requires: USER) @tenant
-
-  # Update annotation permissions
-  updateAnnotationPermissions(input: UpdateAnnotationPermissionsInput!): AnnotationPermissions!
-    @auth(requires: USER) @tenant
-
-  # =============================================================================
-  # INTEGRATION MUTATIONS
-  # =============================================================================
-
-  # Link Paintbox estimate to document
-  linkPaintboxEstimate(input: LinkPaintboxEstimateInput!): Document!
-    @auth(requires: VIEW_ESTIMATES) @tenant @rateLimit(max: 10, window: "1h")
-
-  # Unlink Paintbox estimate from document
-  unlinkPaintboxEstimate(input: UnlinkPaintboxEstimateInput!): Boolean!
-    @auth(requires: VIEW_ESTIMATES) @tenant
-
-  # Apply brand portal theme to document
-  applyBrandTheme(input: ApplyBrandThemeInput!): Document!
-    @auth(requires: VIEW_BRANDING) @tenant @rateLimit(max: 20, window: "1h")
-
-  # Remove brand theme from document
-  removeBrandTheme(documentId: UUID!): Document!
-    @auth(requires: VIEW_BRANDING) @tenant
-
-  # Sync document with external system
-  syncDocumentWithExternal(input: SyncDocumentInput!): SyncResult!
-    @auth(requires: USER) @tenant @complexity(value: 20) @rateLimit(max: 5, window: "1h")
-
-  # =============================================================================
-  # BULK OPERATIONS
-  # =============================================================================
-
-  # Bulk update document permissions
-  bulkUpdateDocumentPermissions(input: BulkUpdateDocumentPermissionsInput!): [Document!]!
-    @auth(requires: ORG_ADMIN) @tenant @complexity(value: 30) @audit(level: WARN)
-
-  # Bulk share documents
-  bulkShareDocuments(input: BulkShareDocumentsInput!): [DocumentSharing!]!
-    @auth(requires: USER) @tenant @rateLimit(max: 3, window: "1h")
-
-  # Bulk resolve comments
-  bulkResolveComments(input: BulkResolveCommentsInput!): [Comment!]!
-    @auth(requires: USER) @tenant @rateLimit(max: 5, window: "1h")
-
-  # Bulk delete documents
-  bulkDeleteDocuments(input: BulkDeleteDocumentsInput!): BulkOperationResult!
-    @auth(requires: USER) @tenant @audit(level: WARN) @rateLimit(max: 2, window: "1h")
-
-  # Bulk move documents
-  bulkMoveDocuments(input: BulkMoveDocumentsInput!): BulkOperationResult!
-    @auth(requires: USER) @tenant @rateLimit(max: 5, window: "1h")
-
-  # =============================================================================
-  # CONFLICT RESOLUTION MUTATIONS
-  # =============================================================================
-
-  # Manually resolve content conflict
-  resolveContentConflict(input: ResolveContentConflictInput!): ConflictResolution!
-    @auth(requires: USER) @tenant @complexity(value: 15)
-
-  # Accept automatic conflict resolution
-  acceptConflictResolution(conflictId: UUID!): Boolean!
-    @auth(requires: USER) @tenant
-
-  # Reject automatic conflict resolution
-  rejectConflictResolution(input: RejectConflictResolutionInput!): Boolean!
-    @auth(requires: USER) @tenant
-
-  # Force resolve all conflicts (admin)
-  forceResolveConflicts(input: ForceResolveConflictsInput!): [ConflictResolution!]!
-    @auth(requires: ORG_ADMIN) @tenant @audit(level: WARN)
-
-  # =============================================================================
-  # SYSTEM AND MAINTENANCE MUTATIONS
-  # =============================================================================
-
-  # Rebuild document CRDT state (admin)
-  rebuildDocumentCRDT(documentId: UUID!): CRDTState!
-    @auth(requires: ORG_ADMIN) @tenant @complexity(value: 30) @audit(level: INFO)
-
-  # Force sync document across all clients
-  forceSyncDocument(documentId: UUID!): Boolean!
-    @auth(requires: ORG_ADMIN) @tenant @audit(level: INFO)
-
-  # Clear document cache
-  clearDocumentCache(input: ClearDocumentCacheInput!): Boolean!
-    @auth(requires: ORG_ADMIN) @tenant @audit(level: INFO)
-
-  # Optimize document performance
-  optimizeDocument(input: OptimizeDocumentInput!): OptimizationResult!
-    @auth(requires: USER) @tenant @complexity(value: 20) @rateLimit(max: 5, window: "1h")
-
-  # Export document in various formats
-  exportDocument(input: ExportDocumentInput!): DocumentExport!
-    @auth(requires: USER) @tenant @complexity(value: 15) @rateLimit(max: 10, window: "1h")
-
-  # Import document from external format
-  importDocument(input: ImportDocumentInput!): Document!
-    @auth(requires: USER) @tenant @complexity(value: 25) @rateLimit(max: 5, window: "1h")
-}
-
-# =============================================================================
-# RESULT TYPES
-# =============================================================================
-
-type DocumentContentUpdateResult {
-  success: Boolean!
-  document: Document!
-  appliedOperations: [Operation!]!
-  conflicts: [ConflictInfo!]!
-  warnings: [String!]!
-
-  # Performance metrics
-  operationTime: Duration!
-  conflictResolutionTime: Duration!
-
-  # State information
-  newChecksum: String!
-  versionIncrement: NonNegativeInt!
-}
-
-type OperationResult {
-  success: Boolean!
-  appliedCount: NonNegativeInt!
-  rejectedCount: NonNegativeInt!
-  conflictCount: NonNegativeInt!
-
-  # Applied operations with their results
-  results: [SingleOperationResult!]!
-
-  # Overall timing
-  totalTime: Duration!
-  averageOperationTime: Duration!
-}
-
-type SingleOperationResult {
-  operation: Operation!
-  status: OperationStatus!
-  error: String
-  appliedAt: DateTime!
-  transformedOperation: Operation
-}
-
-type DocumentDeletionResult {
-  success: Boolean!
-  documentId: UUID!
-  deletedAt: DateTime!
-
-  # Recovery information
-  recoveryToken: String!
-  recoveryExpiresAt: DateTime!
-
-  # Cleanup information
-  dependentItems: [DependentItem!]!
-  cleanupJobs: [CleanupJob!]!
-}
-
-type DependentItem {
-  type: DependentItemType!
-  id: UUID!
-  name: String!
-  action: DependentAction!
-}
-
-type CleanupJob {
-  id: UUID!
-  type: CleanupJobType!
-  status: JobStatus!
-  scheduledAt: DateTime!
-  completedAt: DateTime
-}
-
-type CollaboratorInvitation {
-  id: UUID!
-  email: EmailAddress!
-  permission: DocumentPermission!
-  invitedBy: User!
-  invitedAt: DateTime!
-  expiresAt: DateTime!
-  acceptanceToken: String!
-  status: InvitationStatus!
-}
-
-type MergeResult {
-  success: Boolean!
-  mergedDocument: Document!
-  mergedVersion: DocumentVersion!
-
-  # Merge statistics
-  conflictCount: NonNegativeInt!
-  resolvedConflictCount: NonNegativeInt!
-  pendingConflictCount: NonNegativeInt!
-
-  # Merge details
-  conflicts: [MergeConflict!]!
-  resolutions: [ConflictResolution!]!
-
-  # Timing information
-  mergeTime: Duration!
-  conflictResolutionTime: Duration!
-}
-
-type ConflictResolution {
-  id: UUID!
-  conflict: MergeConflict!
-  resolution: ConflictResolutionType!
-  resolvedContent: JSON!
-  resolvedBy: User!
-  resolvedAt: DateTime!
-  confidence: Decimal!
-}
-
-type SyncResult {
-  success: Boolean!
-  syncedAt: DateTime!
-
-  # Sync statistics
-  itemsSynced: NonNegativeInt!
-  itemsSkipped: NonNegativeInt!
-  errors: [SyncError!]!
-
-  # Performance metrics
-  syncDuration: Duration!
-  throughput: Decimal! # items per second
-}
-
-type SyncError {
-  item: String!
-  error: String!
-  severity: ErrorSeverity!
-  isRetryable: Boolean!
-}
-
-type BulkOperationResult {
-  totalItems: NonNegativeInt!
-  successfulItems: NonNegativeInt!
-  failedItems: NonNegativeInt!
-
-  # Detailed results
-  successes: [BulkOperationSuccess!]!
-  failures: [BulkOperationFailure!]!
-
-  # Performance metrics
-  operationTime: Duration!
-  averageItemTime: Duration!
-}
-
-type BulkOperationSuccess {
-  itemId: UUID!
-  result: JSON!
-  processedAt: DateTime!
-}
-
-type BulkOperationFailure {
-  itemId: UUID!
-  error: String!
-  errorCode: String!
-  isRetryable: Boolean!
-}
-
-type OptimizationResult {
-  success: Boolean!
-  optimizedAt: DateTime!
-
-  # Optimization metrics
-  sizeBefore: BigInt!
-  sizeAfter: BigInt!
-  compressionRatio: Decimal!
-
-  # Performance improvements
-  loadTimeBefore: Duration!
-  loadTimeAfter: Duration!
-  performanceGain: Decimal!
-
-  # Optimization details
-  optimizations: [OptimizationDetail!]!
-}
-
-type OptimizationDetail {
-  type: OptimizationType!
-  description: String!
-  impact: OptimizationImpact!
-  metrics: JSON!
-}
-
-type DocumentExport {
-  id: UUID!
-  document: Document!
-  format: ExportFormat!
-
-  # Export results
-  exportUrl: URL!
-  downloadUrl: URL!
-  size: BigInt!
-
-  # Export metadata
-  exportedAt: DateTime!
-  expiresAt: DateTime!
-  downloadCount: NonNegativeInt!
-
-  # Export options used
-  options: JSON!
+  
+  """
+  Create document version with AI-generated changelog
+  """
+  createEnhancedVersion(
+    input: CreateEnhancedVersionInput!
+  ): CreateVersionPayload! @complexity(value: 20) @auth(requires: EDIT)
+  
+  """
+  Merge branches with conflict resolution
+  """
+  mergeBranches(
+    input: MergeBranchesInput!
+  ): MergeBranchesPayload! @complexity(value: 35) @auth(requires: EDIT)
 }
 
 # =============================================================================
 # INPUT TYPES
 # =============================================================================
 
-input CloneDocumentInput {
-  sourceDocumentId: UUID!
+input CreateProjectInput {
   name: NonEmptyString!
   description: String
+  workspaceId: UUID!
+  
+  # AI configuration
+  aiAgentConfig: CreateAIAgentConfigInput
+  enableAIFeatures: [AIFeature!] = [AUTO_SUGGESTIONS, GRAMMAR_CHECK]
+  
+  # Team setup
+  initialMembers: [CreateProjectMemberInput!]
+  defaultPermissions: ProjectPermission!
+}
 
-  # Clone options
-  includeComments: Boolean = false
-  includeVersionHistory: Boolean = false
-  includeSharing: Boolean = false
-  includeIntegrations: Boolean = false
+input UpdateProjectInput {
+  id: UUID!
+  name: NonEmptyString
+  description: String
+  status: ProjectStatus
+  
+  # AI configuration updates
+  aiAgentConfig: UpdateAIAgentConfigInput
+  enabledAIFeatures: [AIFeature!]
+}
 
-  # New document settings
+input CreateEnhancedDocumentInput {
+  name: NonEmptyString!
+  description: String
+  type: DocumentType!
+  projectId: UUID!
+  
+  # AI enhancements
+  generateAIOutline: Boolean = false
+  aiPersonalityType: AIPersonalityType = PROFESSIONAL
+  enableSmartSuggestions: Boolean = true
+  
+  # Collaboration settings
   permissions: CreateDocumentPermissionsInput
   sharing: CreateDocumentSharingInput
 }
 
-input DeleteDocumentInput {
-  id: UUID!
-  reason: String
-
-  # Deletion options
-  deleteImmediately: Boolean = false
-  deleteComments: Boolean = true
-  deleteVersions: Boolean = false
-  notifyCollaborators: Boolean = true
-}
-
-input ShareDocumentInput {
+input ApplyOperationsInput {
   documentId: UUID!
-
-  # Share targets
-  userIds: [UUID!]
-  emails: [EmailAddress!]
-  teamIds: [UUID!]
-
-  # Share settings
-  permission: DocumentPermission!
-  message: String
-  expiresAt: DateTime
-
-  # Notification settings
-  notifyImmediately: Boolean = true
-  includeMessage: Boolean = true
+  operations: [CreateOperationInput!]!
+  
+  # Operational Transform metadata
+  clientId: UUID!
+  baseSequenceNumber: NonNegativeInt!
+  
+  # Conflict resolution strategy
+  conflictResolution: ConflictResolutionStrategy = AUTO_MERGE
+  
+  # Session context
+  sessionId: UUID!
+  optimisticUpdates: Boolean = true
 }
 
-input UpdateDocumentSharingInput {
+input ResolveConflictsInput {
   documentId: UUID!
-
-  # Public sharing settings
-  isPublic: Boolean
-  allowAnonymousAccess: Boolean
-  allowAnonymousComments: Boolean
-  requirePassword: Boolean
-  password: String
-
-  # Link settings
-  customUrl: String
-  trackViews: Boolean = true
-  expiresAt: DateTime
-  maxViews: NonNegativeInt
-}
-
-input RevokeDocumentSharingInput {
-  documentId: UUID!
-
-  # Revocation targets
-  userIds: [UUID!]
-  revokePublicAccess: Boolean = false
-  revokeAnonymousAccess: Boolean = false
-
-  # Notification settings
-  notifyUsers: Boolean = true
-  reason: String
-}
-
-input InviteCollaboratorsInput {
-  documentId: UUID!
-
-  # Invitation details
-  invitations: [CollaboratorInvitationInput!]!
-
-  # Invitation settings
-  personalMessage: String
-  expirationDays: PositiveInt = 7
-  sendImmediately: Boolean = true
-}
-
-input CollaboratorInvitationInput {
-  email: EmailAddress!
-  permission: DocumentPermission!
-  personalNote: String
-}
-
-input RemoveCollaboratorInput {
-  documentId: UUID!
-  userId: UUID!
-
-  # Removal options
-  reason: String
-  notifyUser: Boolean = true
-  transferOwnership: UUID # New owner if removing current owner
-}
-
-input SwitchBranchInput {
-  documentId: UUID!
-  branchId: UUID!
-
-  # Switch options
-  saveCurrentChanges: Boolean = true
-  createCheckpoint: Boolean = false
-}
-
-input ResolveMergeConflictsInput {
-  mergeId: UUID!
-  resolutions: [ConflictResolutionInput!]!
-
-  # Resolution options
-  strategy: ConflictResolutionStrategy = MANUAL
-  autoResolveSimple: Boolean = true
+  conflicts: [ConflictResolutionInput!]!
+  
+  # Resolution strategy
+  globalStrategy: ConflictResolutionStrategy
+  preserveUserIntent: Boolean = true
+  
+  # AI assistance
+  useAIRecommendations: Boolean = true
+  aiConfidenceThreshold: Float = 0.8
 }
 
 input ConflictResolutionInput {
   conflictId: UUID!
-  resolution: ConflictResolutionType!
-  content: JSON
-  reason: String
+  resolutionType: ManualResolutionType!
+  acceptedContent: JSON
+  customResolution: JSON
+  reasoning: String
 }
 
-input RevertToVersionInput {
+input ConfigureAIAgentInput {
+  projectId: UUID
+  workspaceId: UUID
+  
+  # Agent configuration
+  name: NonEmptyString!
+  personality: AIPersonalityType!
+  capabilities: [AICapability!]!
+  
+  # Model configuration
+  primaryModel: AIModelType!
+  temperature: Float = 0.7
+  maxTokens: NonNegativeInt = 2048
+  
+  # Feature settings
+  autoSuggestionThreshold: Float = 0.7
+  conflictDetectionSensitivity: Float = 0.5
+  learningEnabled: Boolean = true
+}
+
+input GenerateAISuggestionsInput {
   documentId: UUID!
-  versionId: UUID!
-
-  # Revert options
-  createNewVersion: Boolean = true
-  preserveComments: Boolean = true
-  notifyCollaborators: Boolean = true
-  reason: String
+  context: AIContextInput!
+  suggestionTypes: [SuggestionType!]!
+  maxSuggestions: NonNegativeInt = 5
+  minConfidence: Float = 0.6
+  priority: RequestPriority = NORMAL
 }
 
-input DeleteBranchInput {
-  branchId: UUID!
-
-  # Deletion options
-  forceDeletion: Boolean = false
-  mergeToMain: Boolean = false
-  preserveVersions: Boolean = false
-}
-
-input RequestDocumentLockInput {
+input JoinEditingSessionInput {
   documentId: UUID!
-
-  # Lock specification
-  lockType: LockType!
-  blockIds: [UUID!] # For block-level locking
-
-  # Lock settings
-  duration: Duration # Auto-release after duration
-  reason: String
-  priority: LockPriority = NORMAL
+  clientId: UUID!
+  deviceInfo: DeviceInfoInput!
+  permissions: [SessionPermission!]
+  enableRealtimeSync: Boolean = true
 }
 
-input UpdateUserStatusInput {
-  documentId: UUID!
-
-  # Status updates
-  isTyping: Boolean
-  isIdle: Boolean
-  currentAction: UserAction
-
-  # Context information
+input UpdatePresenceInput {
+  sessionId: UUID!
   cursor: UpdateCursorPositionInput
   selection: UpdateTextSelectionInput
   viewport: UpdateViewportInfoInput
+  isTyping: Boolean
+  currentAction: UserAction
 }
 
-input ReplyToCommentInput {
-  parentCommentId: UUID!
+input CreateEnhancedCommentInput {
+  documentId: UUID!
   content: CreateCommentContentInput!
-
-  # Reply options
-  mentions: [UUID!]
-  priority: CommentPriority = NORMAL
-  type: CommentType = GENERAL
-}
-
-input ResolveCommentInput {
-  id: UUID!
-  resolution: String
-
-  # Resolution options
-  resolveThread: Boolean = false
-  notifyParticipants: Boolean = true
-}
-
-input AddReactionInput {
-  commentId: UUID!
-  reaction: ReactionInput!
-}
-
-input ReactionInput {
-  type: ReactionType!
-  emoji: String
-}
-
-input RemoveReactionInput {
-  commentId: UUID!
-  reactionId: UUID!
-}
-
-input MentionUserInput {
-  commentId: UUID!
-  userId: UUID!
-  position: NonNegativeInt!
-
-  # Mention options
-  notifyUser: Boolean = true
-  includeContext: Boolean = true
-}
-
-input CreateCommentThreadInput {
-  documentId: UUID!
-  subject: String!
-
-  # Thread settings
-  priority: CommentPriority = NORMAL
-  status: ThreadStatus = OPEN
-
-  # Initial comment
-  initialComment: CreateCommentContentInput
   position: CreateCommentPositionInput
+  type: CommentType = GENERAL
+  priority: CommentPriority = NORMAL
+  mentions: [UUID!]
+  enableAISuggestions: Boolean = true
 }
 
-input UpdateCommentThreadInput {
-  id: UUID!
-
-  # Thread updates
-  subject: String
-  priority: CommentPriority
-  status: ThreadStatus
-}
-
-input CreateAnnotationInput {
+input CreateEnhancedVersionInput {
   documentId: UUID!
-
-  # Annotation details
-  type: AnnotationType!
-  content: CreateAnnotationContentInput!
-  position: CreateAnnotationPositionInput!
-
-  # Annotation settings
-  visibility: AnnotationVisibility = SHARED
-  category: String
-  tags: [String!]
+  name: String
+  description: String
+  isMajorVersion: Boolean = false
+  generateChangelog: Boolean = true
+  generateSummary: Boolean = false
+  branchId: UUID
 }
 
-input CreateAnnotationContentInput {
-  text: String
-  data: JSON!
-  style: JSON
-
-  # Visual styling
-  color: HexColorCode
-  icon: String
-  shape: AnnotationShape
-}
-
-input CreateAnnotationPositionInput {
-  startBlock: UUID!
-  endBlock: UUID
-  startOffset: NonNegativeInt!
-  endOffset: NonNegativeInt
-
-  # Visual bounds
-  boundingBox: CreateBoundingBoxInput
-}
-
-input CreateBoundingBoxInput {
-  x: Decimal!
-  y: Decimal!
-  width: Decimal!
-  height: Decimal!
-}
-
-input UpdateAnnotationInput {
-  id: UUID!
-
-  # Annotation updates
-  content: UpdateAnnotationContentInput
-  position: UpdateAnnotationPositionInput
-  category: String
-  tags: [String!]
-}
-
-input UpdateAnnotationContentInput {
-  text: String
-  data: JSON
-  style: JSON
-  color: HexColorCode
-  icon: String
-  shape: AnnotationShape
-}
-
-input UpdateAnnotationPositionInput {
-  startBlock: UUID
-  endBlock: UUID
-  startOffset: NonNegativeInt
-  endOffset: NonNegativeInt
-  boundingBox: UpdateBoundingBoxInput
-}
-
-input UpdateBoundingBoxInput {
-  x: Decimal
-  y: Decimal
-  width: Decimal
-  height: Decimal
-}
-
-input UpdateAnnotationPermissionsInput {
-  annotationId: UUID!
-  visibility: AnnotationVisibility!
-  permissions: AnnotationPermissions!
-}
-
-input LinkPaintboxEstimateInput {
-  documentId: UUID!
-  estimateId: UUID!
-
-  # Link options
-  syncBidirectional: Boolean = false
-  autoUpdate: Boolean = true
-}
-
-input UnlinkPaintboxEstimateInput {
-  documentId: UUID!
-  estimateId: UUID!
-
-  # Unlink options
-  preserveData: Boolean = true
-}
-
-input ApplyBrandThemeInput {
-  documentId: UUID!
-  themeId: UUID!
-
-  # Application options
-  preserveCustomColors: Boolean = false
-  applyToExistingContent: Boolean = true
-  createVersion: Boolean = false
-}
-
-input SyncDocumentInput {
-  documentId: UUID!
-  externalSystemId: UUID!
-
-  # Sync options
-  direction: SyncDirection!
-  conflictResolution: ConflictResolutionStrategy = MANUAL
-  createBackup: Boolean = true
-}
-
-input BulkUpdateDocumentPermissionsInput {
-  documentIds: [UUID!]!
-  permissions: UpdateDocumentPermissionsInput!
-
-  # Bulk options
-  continueOnError: Boolean = true
-  notifyUsers: Boolean = false
-}
-
-input BulkShareDocumentsInput {
-  documentIds: [UUID!]!
-  sharing: ShareDocumentInput!
-
-  # Bulk options
-  continueOnError: Boolean = true
-  batchSize: PositiveInt = 10
-}
-
-input BulkResolveCommentsInput {
-  commentIds: [UUID!]!
-  resolution: String!
-
-  # Bulk options
-  resolveThreads: Boolean = false
-  notifyAuthors: Boolean = true
-}
-
-input BulkDeleteDocumentsInput {
-  documentIds: [UUID!]!
-
-  # Deletion options
-  deleteImmediately: Boolean = false
-  reason: String
-  notifyCollaborators: Boolean = false
-}
-
-input BulkMoveDocumentsInput {
-  documentIds: [UUID!]!
-  targetOrganizationId: UUID!
-
-  # Move options
-  preservePermissions: Boolean = true
-  notifyCollaborators: Boolean = true
-  createRedirects: Boolean = true
-}
-
-input ResolveContentConflictInput {
-  conflictId: UUID!
-
-  # Resolution details
-  resolution: ConflictResolutionType!
-  resolvedContent: JSON!
-  reason: String
-
-  # Resolution options
-  applyToSimilarConflicts: Boolean = false
-  confidence: Decimal
-}
-
-input RejectConflictResolutionInput {
-  conflictId: UUID!
-  reason: String!
-
-  # Alternative action
-  alternativeResolution: ConflictResolutionType
-}
-
-input ForceResolveConflictsInput {
-  documentId: UUID!
-
-  # Resolution strategy
-  strategy: ConflictResolutionStrategy!
-
-  # Force options
-  overrideUserPreferences: Boolean = false
-  notifyAffectedUsers: Boolean = true
-}
-
-input ClearDocumentCacheInput {
-  documentIds: [UUID!]
-
-  # Cache types to clear
-  contentCache: Boolean = true
-  versionCache: Boolean = true
-  presenceCache: Boolean = true
-  commentCache: Boolean = true
-}
-
-input OptimizeDocumentInput {
-  documentId: UUID!
-
-  # Optimization options
-  compressContent: Boolean = true
-  removeUnusedVersions: Boolean = false
-  consolidateOperations: Boolean = true
-  optimizeImages: Boolean = true
-
-  # Performance targets
-  targetLoadTime: Duration
-  maxSize: BigInt
-}
-
-input ExportDocumentInput {
-  documentId: UUID!
-  format: ExportFormat!
-
-  # Export options
-  includeComments: Boolean = false
-  includeVersionHistory: Boolean = false
-  includeMetadata: Boolean = true
-
-  # Format-specific options
-  options: JSON
-
-  # Security options
-  passwordProtect: Boolean = false
-  password: String
-  expiresIn: Duration
-}
-
-input ImportDocumentInput {
+input CreateAIAgentConfigInput {
   name: NonEmptyString!
-  format: ImportFormat!
+  personality: AIPersonalityType = PROFESSIONAL
+  capabilities: [AICapability!] = [AUTO_SUGGESTIONS, GRAMMAR_CHECK]
+  primaryModel: AIModelType = CLAUDE_3_SONNET
+  temperature: Float = 0.7
+}
 
-  # Import source
-  url: URL
-  fileData: String # Base64 encoded
+input UpdateAIAgentConfigInput {
+  name: NonEmptyString
+  personality: AIPersonalityType
+  capabilities: [AICapability!]
+  temperature: Float
+  learningEnabled: Boolean
+}
 
-  # Import options
-  preserveFormatting: Boolean = true
-  convertToMarkdown: Boolean = false
-  extractImages: Boolean = true
-
-  # Document settings
-  permissions: CreateDocumentPermissionsInput
-  sharing: CreateDocumentSharingInput
+input DeviceInfoInput {
+  type: DeviceType!
+  os: String!
+  browser: String
+  timezone: String!
+  locale: String!
 }
 
 # =============================================================================
-# ADDITIONAL ENUMERATIONS
+# PAYLOAD TYPES
 # =============================================================================
 
-enum OperationStatus {
-  SUCCESS
-  FAILED
-  CONFLICT
-  SKIPPED
+type CreateProjectPayload {
+  project: Project
+  errors: [MutationError!]!
+  generatedDocuments: [Document!]!
+  invitationsSent: [ProjectInvitation!]!
+  aiAgentStatus: AgentSetupStatus
+}
+
+type UpdateProjectPayload {
+  project: Project
+  errors: [MutationError!]!
+  changedFields: [String!]!
+  affectedMembers: [User!]!
+}
+
+type CreateDocumentPayload {
+  document: Document
+  errors: [MutationError!]!
+  generatedOutline: DocumentOutline
+  aiSuggestions: [AISuggestion!]!
+}
+
+type ApplyOperationsPayload {
+  document: Document
+  appliedOperations: [Operation!]!
+  rejectedOperations: [OperationRejection!]!
+  conflicts: [ActiveConflict!]!
+  errors: [MutationError!]!
+  newSequenceNumber: NonNegativeInt!
+  documentChecksum: String!
+  processingTime: Duration!
+}
+
+type ResolveConflictsPayload {
+  document: Document
+  resolvedConflicts: [ResolvedConflict!]!
+  remainingConflicts: [ActiveConflict!]!
+  errors: [MutationError!]!
+  resolutionSummary: ConflictResolutionSummary!
+}
+
+type ConfigureAIAgentPayload {
+  agent: NandaAgent
+  errors: [MutationError!]!
+  enabledCapabilities: [AICapability!]!
+  estimatedMonthlyCost: Decimal
+  setupStatus: AgentSetupStatus!
+}
+
+type GenerateAISuggestionsPayload {
+  suggestions: [AISuggestion!]!
+  errors: [MutationError!]!
+  processingTime: Duration!
+  tokensUsed: NonNegativeInt!
+  confidence: Float!
+}
+
+type JoinEditingSessionPayload {
+  session: PresenceSession
+  document: Document
+  errors: [MutationError!]!
+  activeCollaborators: [PresenceSession!]!
+  realtimeEndpoint: URL!
+  authToken: String!
+}
+
+type CreateCommentPayload {
+  comment: Comment
+  thread: CommentThread
+  errors: [MutationError!]!
+  aiSummary: String
+  sentimentAnalysis: SentimentAnalysis
+  suggestedReplies: [String!]!
+}
+
+type CreateVersionPayload {
+  version: DocumentVersion
+  errors: [MutationError!]!
+  changelog: [VersionChange!]!
+  aiSummary: String
+  changeAnalysis: ChangeAnalysis
+}
+
+# =============================================================================
+# UTILITY TYPES
+# =============================================================================
+
+type MutationError {
+  code: ErrorCode!
+  message: String!
+  field: String
+  context: JSON
+  recoverable: Boolean!
+}
+
+type ProjectInvitation {
+  id: UUID!
+  invitee: User!
+  role: ProjectRole!
+  status: InvitationStatus!
+  expiresAt: DateTime!
+}
+
+type OperationRejection {
+  operation: Operation!
+  reason: RejectionReason!
+  message: String!
+}
+
+type ResolvedConflict {
+  conflictId: UUID!
+  resolutionType: ConflictResolutionType!
+  finalContent: JSON!
+  confidence: Float!
+  aiAssisted: Boolean!
+}
+
+type ConflictResolutionSummary {
+  totalConflicts: NonNegativeInt!
+  resolvedConflicts: NonNegativeInt!
+  aiAssistedResolutions: NonNegativeInt!
+  averageResolutionTime: Duration!
+}
+
+type AgentSetupStatus {
+  status: SetupStatus!
+  progress: Float! # 0.0 to 1.0
+  currentStep: String!
+  estimatedCompletion: Duration
+}
+
+type DocumentOutline {
+  sections: [OutlineSection!]!
+  suggestedStructure: [StructureSuggestion!]!
+  estimatedReadingTime: Duration!
+}
+
+type OutlineSection {
+  title: String!
+  level: NonNegativeInt!
+  suggestedContent: String
+  aiGenerated: Boolean!
+}
+
+type StructureSuggestion {
+  type: StructureType!
+  description: String!
+  placement: NonNegativeInt!
+  confidence: Float!
+}
+
+type VersionChange {
+  type: ChangeType!
+  blockId: UUID
+  description: String!
+  impact: ChangeImpact!
+  author: User
+  timestamp: DateTime!
+}
+
+type ChangeAnalysis {
+  significantChanges: [VersionChange!]!
+  overallImpact: ChangeImpact!
+  recommendedActions: [String!]!
+  backwardCompatible: Boolean!
+}
+
+# =============================================================================
+# ENUMERATIONS
+# =============================================================================
+
+enum ErrorCode {
+  INVALID_INPUT
+  PERMISSION_DENIED
+  RESOURCE_NOT_FOUND
+  CONFLICT_DETECTED
+  RATE_LIMIT_EXCEEDED
+  AI_SERVICE_ERROR
+  VALIDATION_ERROR
+  SYSTEM_ERROR
+}
+
+enum InvitationStatus {
   PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  CANCELLED
 }
 
-enum DependentItemType {
-  COMMENT
-  ANNOTATION
-  VERSION
-  BRANCH
-  SHARE
-  INTEGRATION
+enum RejectionReason {
+  INVALID_OPERATION
+  PERMISSION_DENIED
+  CONFLICT_DETECTED
+  RATE_LIMIT_EXCEEDED
+  RESOURCE_LOCKED
+  VALIDATION_FAILED
 }
 
-enum DependentAction {
-  DELETE
-  TRANSFER
-  ARCHIVE
-  PRESERVE
+enum ConflictResolutionType {
+  AUTOMATIC
+  MANUAL
+  AI_ASSISTED
+  HYBRID
 }
 
-enum CleanupJobType {
-  DELETE_COMMENTS
-  DELETE_VERSIONS
-  DELETE_ANNOTATIONS
-  REVOKE_SHARES
-  NOTIFY_USERS
-  UPDATE_REFERENCES
-}
-
-enum JobStatus {
-  PENDING
-  RUNNING
+enum SetupStatus {
+  INITIALIZING
+  IN_PROGRESS
   COMPLETED
   FAILED
   CANCELLED
 }
 
-enum ConflictResolutionType {
-  ACCEPT_SOURCE
-  ACCEPT_TARGET
-  ACCEPT_BOTH
-  MANUAL_MERGE
-  CUSTOM_RESOLUTION
+enum StructureType {
+  HEADING
+  PARAGRAPH
+  LIST
+  TABLE
+  QUOTE
+  CODE_BLOCK
+  DIVIDER
 }
 
-enum ErrorSeverity {
-  LOW
-  MEDIUM
-  HIGH
-  CRITICAL
-}
-
-enum OptimizationType {
-  CONTENT_COMPRESSION
-  IMAGE_OPTIMIZATION
-  VERSION_CLEANUP
-  OPERATION_CONSOLIDATION
-  CACHE_OPTIMIZATION
-  INDEX_REBUILDING
-}
-
-enum OptimizationImpact {
-  MINIMAL
+enum ChangeImpact {
+  MINOR
   MODERATE
-  SIGNIFICANT
   MAJOR
+  BREAKING
 }
 
-enum ExportFormat {
-  PDF
-  HTML
-  MARKDOWN
-  DOCX
-  TXT
-  JSON
-  XML
-  CSV
+enum AIPersonalityType {
+  PROFESSIONAL
+  CASUAL
+  CREATIVE
+  TECHNICAL
+  ACADEMIC
+  FRIENDLY
+  FORMAL
 }
 
-enum ImportFormat {
-  HTML
-  MARKDOWN
-  DOCX
-  TXT
-  JSON
-  XML
-  CSV
-  GOOGLE_DOCS
-  NOTION
+enum AIModelType {
+  GPT_4
+  GPT_3_5_TURBO
+  CLAUDE_3_OPUS
+  CLAUDE_3_SONNET
+  CLAUDE_3_HAIKU
+  CUSTOM
 }
 
-enum LockPriority {
+enum RequestPriority {
   LOW
   NORMAL
   HIGH
   URGENT
 }
 
-enum SyncDirection {
-  PULL_FROM_EXTERNAL
-  PUSH_TO_EXTERNAL
-  BIDIRECTIONAL
+enum SessionPermission {
+  READ_ONLY
+  COMMENT_ONLY
+  EDIT_TEXT
+  EDIT_STRUCTURE
+  MANAGE_PERMISSIONS
 }

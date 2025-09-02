@@ -1,0 +1,32 @@
+schema: "../collaboration-editor/src/graphql/schema.graphql"
+documents:
+  - "src/**/*.graphql"
+  - "../collaboration-editor/src/graphql/**/*.graphql"
+generates:
+  src/graphql/generated.ts:
+    plugins:
+      - typescript
+      - typescript-operations
+      - typescript-react-apollo
+    config:
+      withHooks: true
+      withComponent: false
+      withHOC: false
+      scalars:
+        UUID: string
+        DateTime: string
+        JSON: any
+        Upload: any
+      namingConvention:
+        typeNames: pascal-case
+        enumValues: upper-case
+      skipTypename: false
+      nonOptionalTypename: true
+      avoidOptionals: 
+        field: true
+        inputValue: false
+        object: false
+      maybeValue: T | null | undefined
+hooks:
+  afterOneFileWrite:
+    - prettier --write

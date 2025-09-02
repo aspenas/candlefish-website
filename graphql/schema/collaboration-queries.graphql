@@ -1,1018 +1,239 @@
-# Real-time Collaboration Queries
-# Comprehensive query interface for collaborative document system
+# =============================================================================
+# COLLABORATION PLATFORM QUERIES
+# Comprehensive query schema with optimized field resolution and complexity analysis
+# =============================================================================
 
 extend type Query {
   # =============================================================================
-  # DOCUMENT QUERIES
+  # PROJECT QUERIES
   # =============================================================================
-
-  # Single document retrieval with full collaboration context
-  document(id: UUID!): Document
-    @auth(requires: USER) @complexity(value: 25) @rateLimit(max: 100, window: "1m")
-
-  # Document by sharing URL (public access)
-  documentByShareUrl(url: URL!, password: String): Document
-    @complexity(value: 30) @rateLimit(max: 20, window: "1m")
-
-  # Multiple documents with filtering and pagination
-  documents(
-    filter: DocumentFilter
-    sort: [DocumentSort!]
-    pagination: PaginationInput
-  ): DocumentConnection!
-    @auth(requires: USER) @tenant @complexity(value: 20)
-
-  # Documents accessible to current user across organizations
-  myDocuments(
-    filter: MyDocumentFilter
-    sort: [DocumentSort!]
-    pagination: PaginationInput
-  ): DocumentConnection!
-    @auth(requires: USER) @complexity(value: 15)
-
-  # Recently accessed documents with collaboration context
-  recentDocuments(limit: PositiveInt = 10): [DocumentWithActivity!]!
-    @auth(requires: USER) @tenant @complexity(value: 10)
-
-  # Documents currently being collaborated on
-  activeCollaborations(limit: PositiveInt = 20): [ActiveCollaboration!]!
-    @auth(requires: USER) @tenant @complexity(value: 15)
-
-  # Document templates for quick creation
-  documentTemplates(
-    type: DocumentType
-    category: String
-  ): [DocumentTemplate!]!
-    @auth(requires: USER) @tenant @complexity(value: 5)
-
+  
+  """
+  Retrieve a single project by ID with full context
+  Complexity: 15 (includes related entities)
+  Rate limit: 100 requests per minute
+  """
+  project(
+    id: UUID!
+    """Include archived projects in the search"""
+    includeArchived: Boolean = false
+  ): Project @complexity(value: 15) @rateLimit(max: 100, window: 60) @auth(requires: USER)
+  
+  """
+  List projects with advanced filtering and pagination
+  Supports organization-scoped queries with permission filtering
+  """
+  projects(
+    """Filter criteria for projects"""
+    filter: ProjectsFilter
+    """Sorting configuration"""
+    sort: [ProjectSort!] = [{ field: UPDATED_AT, direction: DESC }]
+    """Pagination parameters"""
+    pagination: PaginationInput = { first: 20 }
+    """Include projects from sub-workspaces"""
+    includeSubWorkspaces: Boolean = false
+  ): ProjectConnection! @complexity(value: 20) @rateLimit(max: 50, window: 60) @auth(requires: USER)
+  
+  """
+  Search projects using full-text search with AI-powered relevance
+  """
+  searchProjects(
+    """Search query with natural language support"""
+    query: NonEmptyString!
+    """Filter to apply to search results"""
+    filter: ProjectSearchFilter
+    """AI-powered search options"""
+    searchOptions: SearchOptionsInput
+    pagination: PaginationInput = { first: 10 }
+  ): ProjectSearchResults! @complexity(value: 25) @rateLimit(max: 20, window: 60) @auth(requires: USER)
+  
   # =============================================================================
-  # DOCUMENT VERSION QUERIES
+  # AI INTEGRATION QUERIES
   # =============================================================================
-
-  # Single version with diff information
-  documentVersion(id: UUID!): DocumentVersion
-    @auth(requires: USER) @tenant @complexity(value: 15)
-
-  # Version history for a document
-  documentVersions(
+  
+  """
+  Get AI suggestions for a specific document or context
+  """
+  aiSuggestions(
+    """Target document for suggestions"""
+    documentId: UUID
+    """Specific context within the document"""
+    context: AIContextInput
+    """Types of suggestions to generate"""
+    types: [SuggestionType!]
+    """Maximum number of suggestions to return"""
+    limit: NonNegativeInt = 5
+    """Minimum confidence threshold (0.0 to 1.0)"""
+    minConfidence: Float = 0.7
+  ): [AISuggestion!]! @complexity(value: 20) @rateLimit(max: 10, window: 60) @auth(requires: USER)
+  
+  """
+  Get AI analysis for a document
+  """
+  documentAIAnalysis(
     documentId: UUID!
-    branchId: UUID
-    pagination: PaginationInput
-  ): DocumentVersionConnection!
-    @auth(requires: USER) @tenant @complexity(value: 20)
-
-  # Compare two versions
-  compareVersions(
-    sourceVersionId: UUID!
-    targetVersionId: UUID!
-    options: CompareOptions
-  ): VersionComparison!
-    @auth(requires: USER) @tenant @complexity(value: 25)
-
-  # Document branches
-  documentBranches(documentId: UUID!): [DocumentBranch!]!
-    @auth(requires: USER) @tenant @complexity(value: 10)
-
-  # Branch comparison and merge preview
-  branchComparison(
-    sourceBranchId: UUID!
-    targetBranchId: UUID!
-  ): BranchComparison!
-    @auth(requires: USER) @tenant @complexity(value: 30)
-
+    """Types of analysis to perform"""
+    analysisTypes: [AnalysisType!] = [READABILITY, SENTIMENT, STRUCTURE]
+    """Force refresh of cached analysis"""
+    forceRefresh: Boolean = false
+  ): AIDocumentAnalysis @complexity(value: 30) @rateLimit(max: 5, window: 300) @auth(requires: USER)
+  
+  """
+  Get AI insights for a project or workspace
+  """
+  aiInsights(
+    """Scope the insights to a specific project"""
+    projectId: UUID
+    """Filter insights by type"""
+    types: [InsightType!]
+    """Filter insights by priority"""
+    priorities: [InsightPriority!]
+    """Only show unacknowledged insights"""
+    unacknowledgedOnly: Boolean = false
+    pagination: PaginationInput = { first: 10 }
+  ): InsightConnection! @complexity(value: 25) @auth(requires: USER)
+  
   # =============================================================================
-  # PRESENCE AND REAL-TIME QUERIES
+  # REAL-TIME COLLABORATION QUERIES
   # =============================================================================
-
-  # Real-time presence for a document
-  documentPresence(documentId: UUID!): [PresenceSession!]!
-    @auth(requires: USER) @tenant @complexity(value: 5)
-
-  # User's active sessions across all documents
-  myActiveSessions: [PresenceSession!]!
-    @auth(requires: USER) @complexity(value: 5)
-
-  # Presence analytics for organization
-  presenceAnalytics(
-    dateRange: DateRangeInput
-    documentIds: [UUID!]
-  ): PresenceAnalytics!
-    @auth(requires: ORG_ADMIN) @tenant @complexity(value: 20)
-
-  # Current locks on document
-  documentLocks(documentId: UUID!): [LockInfo!]!
-    @auth(requires: USER) @tenant @complexity(value: 5)
-
-  # =============================================================================
-  # COMMENT AND ANNOTATION QUERIES
-  # =============================================================================
-
-  # Comments for a document with threading
-  documentComments(
+  
+  """
+  Get current active collaborators for a document
+  """
+  documentCollaborators(
     documentId: UUID!
-    filter: CommentFilter
-    sort: [CommentSort!]
-    pagination: PaginationInput
-  ): CommentConnection!
-    @auth(requires: USER) @tenant @complexity(value: 15)
-
-  # Comment threads for better organization
-  commentThreads(
+    """Include idle users (inactive for >5 minutes)"""
+    includeIdle: Boolean = false
+    """Include detailed device information"""
+    includeDeviceInfo: Boolean = false
+  ): [PresenceSession!]! @complexity(value: 8) @auth(requires: USER)
+  
+  """
+  Get pending operations for operational transform
+  """
+  pendingOperations(
     documentId: UUID!
-    filter: ThreadFilter
-    sort: [ThreadSort!]
-    pagination: PaginationInput
-  ): CommentThreadConnection!
-    @auth(requires: USER) @tenant @complexity(value: 20)
-
-  # Single comment with full thread context
-  comment(id: UUID!): Comment
-    @auth(requires: USER) @tenant @complexity(value: 10)
-
-  # Comments assigned to or mentioning current user
-  myComments(
-    filter: MyCommentFilter
-    sort: [CommentSort!]
-    pagination: PaginationInput
-  ): CommentConnection!
-    @auth(requires: USER) @complexity(value: 15)
-
-  # Annotations on document
-  documentAnnotations(
+    """Only operations after this sequence number"""
+    afterSequence: NonNegativeInt
+    """Maximum number of operations to return"""
+    limit: NonNegativeInt = 100
+  ): [PendingOperation!]! @complexity(value: 12) @auth(requires: EDIT)
+  
+  """
+  Get active conflicts requiring resolution
+  """
+  activeConflicts(
     documentId: UUID!
-    types: [AnnotationType!]
-    visibility: [AnnotationVisibility!]
-  ): [Annotation!]!
-    @auth(requires: USER) @tenant @complexity(value: 10)
-
+    """Only conflicts involving the current user"""
+    myConflictsOnly: Boolean = false
+    """Include auto-resolvable conflicts"""
+    includeAutoResolvable: Boolean = true
+  ): [ActiveConflict!]! @complexity(value: 10) @auth(requires: EDIT)
+  
   # =============================================================================
-  # ACTIVITY AND ANALYTICS QUERIES
+  # ANALYTICS AND METRICS QUERIES
   # =============================================================================
-
-  # Activity feed for document
-  documentActivity(
-    documentId: UUID!
-    filter: ActivityFilter
-    pagination: PaginationInput
-  ): ActivityEventConnection!
-    @auth(requires: USER) @tenant @complexity(value: 25)
-
-  # Organization-wide collaboration activity
-  organizationActivity(
-    filter: ActivityFilter
-    pagination: PaginationInput
-  ): ActivityEventConnection!
-    @auth(requires: ORG_ADMIN) @tenant @complexity(value: 30)
-
-  # User's activity across all documents
-  myActivity(
-    filter: MyActivityFilter
-    pagination: PaginationInput
-  ): ActivityEventConnection!
-    @auth(requires: USER) @complexity(value: 15)
-
-  # Collaboration metrics and analytics
+  
+  """
+  Get comprehensive project metrics and analytics
+  """
+  projectAnalytics(
+    projectId: UUID!
+    """Metrics filter and configuration"""
+    metricsFilter: ProjectMetricsFilter
+    """Include comparative data from previous periods"""
+    includeComparative: Boolean = false
+    """Include predictive analytics"""
+    includePredictive: Boolean = false
+  ): ProjectMetrics! @complexity(value: 35) @rateLimit(max: 10, window: 300) @auth(requires: VIEW_ANALYTICS)
+  
+  """
+  Get user activity analytics across projects
+  """
+  userActivityAnalytics(
+    """User ID (defaults to current user)"""
+    userId: UUID
+    """Time range for analytics"""
+    timeRange: DateTimeRangeInput!
+    """Include detailed activity breakdown"""
+    includeBreakdown: Boolean = true
+  ): UserActivityAnalytics! @complexity(value: 25) @auth(requires: USER)
+  
+  """
+  Get collaboration effectiveness metrics
+  """
   collaborationMetrics(
-    documentIds: [UUID!]
-    dateRange: DateRangeInput
-    groupBy: [MetricGroupBy!]
-  ): CollaborationMetrics!
-    @auth(requires: USER) @tenant @complexity(value: 25)
-
-  # Document performance and usage analytics
-  documentAnalytics(
-    documentId: UUID!
-    dateRange: DateRangeInput
-  ): DocumentAnalytics!
-    @auth(requires: USER) @tenant @complexity(value: 20)
-
-  # =============================================================================
-  # INTEGRATION QUERIES
-  # =============================================================================
-
-  # Paintbox estimates linked to documents
-  linkedPaintboxEstimates(
-    documentId: UUID!
-  ): [PaintboxEstimate!]!
-    @auth(requires: VIEW_ESTIMATES) @tenant @complexity(value: 10)
-
-  # Available brand portal themes
-  availableBrandThemes: [BrandPortalTheme!]!
-    @auth(requires: VIEW_BRANDING) @tenant @complexity(value: 5)
-
-  # Documents using specific brand theme
-  documentsWithBrandTheme(themeId: UUID!): [Document!]!
-    @auth(requires: VIEW_BRANDING) @tenant @complexity(value: 10)
-
-  # =============================================================================
-  # SEARCH AND DISCOVERY QUERIES
-  # =============================================================================
-
-  # Full-text search across documents and comments
-  searchDocuments(
-    query: NonEmptyString!
-    filter: SearchFilter
-    sort: [SearchSort!]
-    pagination: PaginationInput
-  ): DocumentSearchConnection!
-    @auth(requires: USER) @tenant @complexity(value: 30)
-
-  # Search within a specific document
-  searchInDocument(
-    documentId: UUID!
-    query: NonEmptyString!
-    options: DocumentSearchOptions
-  ): DocumentSearchResult!
-    @auth(requires: USER) @tenant @complexity(value: 15)
-
-  # Suggest documents based on current context
-  suggestedDocuments(
-    basedOn: UUID # Current document ID
-    limit: PositiveInt = 5
-  ): [DocumentSuggestion!]!
-    @auth(requires: USER) @tenant @complexity(value: 10)
-
-  # =============================================================================
-  # COLLABORATION HEALTH AND STATUS
-  # =============================================================================
-
-  # Check document sync status
-  documentSyncStatus(documentId: UUID!): SyncStatusInfo!
-    @auth(requires: USER) @tenant @complexity(value: 5)
-
-  # Collaboration system health
-  collaborationHealth: CollaborationHealthStatus!
-    @auth(requires: USER) @complexity(value: 5)
-
-  # Conflict detection and resolution status
-  documentConflicts(documentId: UUID!): [ConflictInfo!]!
-    @auth(requires: USER) @tenant @complexity(value: 10)
-
-  # CRDT state information for debugging
-  documentCRDTState(documentId: UUID!): CRDTState!
-    @auth(requires: MANAGE) @tenant @complexity(value: 15)
+    """Scope to specific project"""
+    projectId: UUID
+    """Time range for metrics"""
+    timeRange: DateTimeRangeInput!
+    """Include team-level breakdown"""
+    includeTeamBreakdown: Boolean = false
+  ): CollaborationMetrics! @complexity(value: 30) @auth(requires: VIEW_ANALYTICS)
 }
 
 # =============================================================================
-# CONNECTION TYPES FOR PAGINATION
+# INPUT TYPES
 # =============================================================================
 
-type DocumentConnection {
-  edges: [DocumentEdge!]!
-  pageInfo: PageInfo!
-  totalCount: NonNegativeInt!
-
-  # Aggregated metadata
-  aggregations: DocumentAggregations
-}
-
-type DocumentEdge {
-  node: Document!
-  cursor: String!
-
-  # Edge-specific metadata
-  relevanceScore: Decimal
-  lastInteractionAt: DateTime
-}
-
-type DocumentVersionConnection {
-  edges: [DocumentVersionEdge!]!
-  pageInfo: PageInfo!
-  totalCount: NonNegativeInt!
-}
-
-type DocumentVersionEdge {
-  node: DocumentVersion!
-  cursor: String!
-}
-
-type CommentConnection {
-  edges: [CommentEdge!]!
-  pageInfo: PageInfo!
-  totalCount: NonNegativeInt!
-
-  # Comment aggregations
-  resolvedCount: NonNegativeInt!
-  activeCount: NonNegativeInt!
-  byPriority: [CommentCountByPriority!]!
-}
-
-type CommentEdge {
-  node: Comment!
-  cursor: String!
-}
-
-type CommentThreadConnection {
-  edges: [CommentThreadEdge!]!
-  pageInfo: PageInfo!
-  totalCount: NonNegativeInt!
-
-  # Thread aggregations
-  resolvedCount: NonNegativeInt!
-  activeCount: NonNegativeInt!
-}
-
-type CommentThreadEdge {
-  node: CommentThread!
-  cursor: String!
-}
-
-type ActivityEventConnection {
-  edges: [ActivityEventEdge!]!
-  pageInfo: PageInfo!
-  totalCount: NonNegativeInt!
-
-  # Activity aggregations
-  byType: [ActivityCountByType!]!
-  byActor: [ActivityCountByActor!]!
-  timeline: [ActivityTimelinePoint!]!
-}
-
-type ActivityEventEdge {
-  node: ActivityEvent!
-  cursor: String!
-}
-
-type DocumentSearchConnection {
-  edges: [DocumentSearchEdge!]!
-  pageInfo: PageInfo!
-  totalCount: NonNegativeInt!
-
-  # Search metadata
-  searchTime: Duration!
-  suggestions: [String!]!
-  facets: [SearchFacet!]!
-}
-
-type DocumentSearchEdge {
-  node: Document!
-  cursor: String!
-
-  # Search-specific metadata
-  score: Decimal!
-  highlights: [SearchHighlight!]!
-  matchedFields: [String!]!
-}
-
-# =============================================================================
-# COMPLEX RESULT TYPES
-# =============================================================================
-
-type DocumentWithActivity {
-  document: Document!
-  lastActivity: ActivityEvent
-  myLastInteraction: DateTime
-  collaboratorCount: NonNegativeInt!
-  unreadComments: NonNegativeInt!
-}
-
-type ActiveCollaboration {
-  document: Document!
-  activeUsers: [PresenceSession!]!
-  recentActivity: [ActivityEvent!]!
-  lastEditedAt: DateTime!
-  myRole: DocumentPermission!
-}
-
-type DocumentTemplate {
-  id: UUID!
-  name: NonEmptyString!
-  description: String
-  type: DocumentType!
-  category: String
-  tags: [String!]!
-
-  # Template content
-  previewUrl: URL
-  thumbnailUrl: URL
-
-  # Template metadata
-  usageCount: NonNegativeInt!
-  rating: Decimal
-  createdBy: User!
-  createdAt: DateTime!
-
-  # Template access
-  isPublic: Boolean!
-  organization: Organization
-}
-
-type VersionComparison {
-  sourceVersion: DocumentVersion!
-  targetVersion: DocumentVersion!
-
-  # Comparison results
-  changes: [Change!]!
-  diffStats: DiffStats!
-  conflicts: [MergeConflict!]!
-
-  # Visual diff information
-  diffHtml: String
-  sideBySideHtml: String
-
-  # Merge feasibility
-  canAutoMerge: Boolean!
-  mergeable: Boolean!
-}
-
-type BranchComparison {
-  sourceBranch: DocumentBranch!
-  targetBranch: DocumentBranch!
-
-  # Branch relationship
-  divergencePoint: DocumentVersion
-  commitsAhead: NonNegativeInt!
-  commitsBehind: NonNegativeInt!
-
-  # Merge analysis
-  canFastForward: Boolean!
-  hasConflicts: Boolean!
-  conflicts: [MergeConflict!]!
-
-  # Preview information
-  mergePreview: DocumentContent
-}
-
-type PresenceAnalytics {
-  # Time-based metrics
-  totalSessions: NonNegativeInt!
-  averageSessionDuration: Duration!
-  totalCollaborationTime: Duration!
-
-  # User metrics
-  uniqueUsers: NonNegativeInt!
-  peakConcurrentUsers: NonNegativeInt!
-  userDistribution: [PresenceUserDistribution!]!
-
-  # Document metrics
-  documentsAccessed: NonNegativeInt!
-  mostActiveDocument: Document
-
-  # Temporal patterns
-  hourlyDistribution: [PresenceHourlyData!]!
-  dailyDistribution: [PresenceDailyData!]!
-}
-
-type CollaborationMetrics {
-  # Document metrics
-  totalDocuments: NonNegativeInt!
-  activeDocuments: NonNegativeInt!
-
-  # User engagement
-  totalUsers: NonNegativeInt!
-  activeUsers: NonNegativeInt!
-
-  # Activity metrics
-  totalEdits: NonNegativeInt!
-  totalComments: NonNegativeInt!
-  totalVersions: NonNegativeInt!
-
-  # Collaboration efficiency
-  averageResolutionTime: Duration!
-  conflictRate: Decimal!
-
-  # Temporal data
-  timeline: [MetricTimelinePoint!]!
-}
-
-type DocumentAnalytics {
-  # Usage metrics
-  viewCount: NonNegativeInt!
-  uniqueViewers: NonNegativeInt!
-  editCount: NonNegativeInt!
-  uniqueEditors: NonNegativeInt!
-
-  # Collaboration metrics
-  commentCount: NonNegativeInt!
-  threadCount: NonNegativeInt!
-  versionCount: NonNegativeInt!
-
-  # Performance metrics
-  averageLoadTime: Duration!
-  averageSaveTime: Duration!
-  syncLatency: Duration!
-
-  # User engagement
-  sessionDurations: [Duration!]!
-  returnVisitors: NonNegativeInt!
-
-  # Content analysis
-  wordCount: NonNegativeInt!
-  characterCount: NonNegativeInt!
-  blockCount: NonNegativeInt!
-
-  # Growth metrics
-  growthRate: Decimal!
-  popularityScore: Decimal!
-}
-
-type DocumentSuggestion {
-  document: Document!
-  relevanceScore: Decimal!
-  reason: SuggestionReason!
-  explanation: String!
-}
-
-type DocumentSearchResult {
-  matches: [DocumentSearchMatch!]!
-  totalMatches: NonNegativeInt!
-  searchTime: Duration!
-
-  # Context and navigation
-  context: [SearchContext!]!
-  suggestions: [String!]!
-}
-
-type DocumentSearchMatch {
-  blockId: UUID!
-  position: BlockPosition!
-  snippet: String!
-  highlights: [TextHighlight!]!
-  context: String!
-}
-
-type SyncStatusInfo {
-  status: SyncStatus!
-  lastSyncAt: DateTime
-  pendingOperations: NonNegativeInt!
-  conflicts: NonNegativeInt!
-
-  # Sync health
-  isHealthy: Boolean!
-  issues: [SyncIssue!]!
-
-  # Network status
-  connectionStatus: ConnectionStatus!
-  latency: Duration!
-}
-
-type CollaborationHealthStatus {
-  overall: HealthStatus!
-  services: [ServiceHealth!]!
-
-  # Performance metrics
-  averageResponseTime: Duration!
-  errorRate: Decimal!
-  uptime: Decimal!
-
-  # Resource utilization
-  memoryUsage: Decimal!
-  cpuUsage: Decimal!
-
-  # Active connections
-  activeConnections: NonNegativeInt!
-  peakConnections: NonNegativeInt!
-}
-
-type ConflictInfo {
-  id: UUID!
-  type: ConflictType!
-  description: String!
-  severity: ConflictSeverity!
-
-  # Conflict context
-  position: BlockPosition
-  affectedUsers: [User!]!
-
-  # Resolution options
-  resolutionOptions: [ConflictResolutionOption!]!
-  canAutoResolve: Boolean!
-
-  # Timestamps
-  detectedAt: DateTime!
-  lastUpdatedAt: DateTime!
-}
-
-# =============================================================================
-# FILTER INPUT TYPES
-# =============================================================================
-
-input DocumentFilter {
-  # Basic filters
-  name: StringFilter
-  type: [DocumentType!]
-  status: [DocumentStatus!]
-
-  # Ownership and permissions
+input ProjectsFilter {
+  status: [ProjectStatus!]
   ownerId: UUID
-  collaboratorId: UUID
-  hasMyComments: Boolean
-  isSharedWithMe: Boolean
-
-  # Content filters
-  hasContent: Boolean
-  wordCount: IntRange
-  size: BigIntRange
-
-  # Time-based filters
-  createdAt: DateTimeRange
-  updatedAt: DateTimeRange
-  lastEditedAt: DateTimeRange
-  lastViewedAt: DateTimeRange
-
-  # Collaboration filters
-  hasActiveCollaborators: Boolean
-  hasUnresolvedComments: Boolean
-  hasRecentActivity: Boolean
-
-  # Integration filters
-  hasPaintboxEstimate: Boolean
-  hasBrandTheme: Boolean
-
-  # Tags and metadata
-  tags: [String!]
-  metadata: JSONFilter
+  workspaceId: UUID
+  userRole: [ProjectRole!]
+  createdAt: DateTimeRangeInput
+  updatedAt: DateTimeRangeInput
+  activityLevel: ActivityLevel
+  aiCapabilities: [AICapability!]
+  searchText: String
 }
 
-input MyDocumentFilter {
-  # My relationship to document
-  myRole: [DocumentPermission!]
-  isOwned: Boolean
-  isCollaborating: Boolean
-  isFavorite: Boolean
-
-  # Activity-based filters
-  hasMyComments: Boolean
-  hasMyEdits: Boolean
-  recentlyViewed: Boolean
-  recentlyEdited: Boolean
-
-  # Other filters inherit from DocumentFilter
-  name: StringFilter
-  type: [DocumentType!]
-  status: [DocumentStatus!]
-  createdAt: DateTimeRange
-  updatedAt: DateTimeRange
+input ProjectSearchFilter {
+  workspaceIds: [UUID!]
+  status: [ProjectStatus!]
+  dateRange: DateTimeRangeInput
+  involvement: ProjectInvolvement
+  contentRelevance: Boolean = true
 }
 
-input CommentFilter {
-  # Content filters
-  content: StringFilter
-  type: [CommentType!]
-  status: [CommentStatus!]
-  priority: [CommentPriority!]
+input SearchOptionsInput {
+  semanticSearch: Boolean = true
+  fuzzyMatching: Boolean = true
+  recencyBoost: Boolean = true
+  collaborationBoost: Boolean = true
+  maxResults: NonNegativeInt = 50
+}
 
-  # User filters
-  authorId: UUID
-  mentionsMe: Boolean
-  assignedToMe: Boolean
-
-  # Resolution filters
-  isResolved: Boolean
-  resolvedBy: UUID
-
-  # Time filters
-  createdAt: DateTimeRange
-  updatedAt: DateTimeRange
-  resolvedAt: DateTimeRange
-
-  # Position filters
-  hasPosition: Boolean
+input AIContextInput {
   blockId: UUID
+  selection: TextSelectionInput
+  userIntent: UserIntent
+  collaborationContext: JSON
+  previousSuggestions: [UUID!]
 }
 
-input ThreadFilter {
-  status: [ThreadStatus!]
-  priority: [CommentPriority!]
-  isResolved: Boolean
-  hasUnreadComments: Boolean
-
-  # Participation filters
-  isParticipant: Boolean
-  isWatching: Boolean
-
-  # Time filters
-  createdAt: DateTimeRange
-  lastActivityAt: DateTimeRange
+input TextSelectionInput {
+  start: NonNegativeInt!
+  end: NonNegativeInt!
 }
 
-input MyCommentFilter {
-  # My relationship to comment
-  isAuthor: Boolean
-  isMentioned: Boolean
-  isAssigned: Boolean
-  hasReplied: Boolean
-
-  # Status filters
-  status: [CommentStatus!]
-  priority: [CommentPriority!]
-  isResolved: Boolean
-
-  # Time filters
-  createdAt: DateTimeRange
-  updatedAt: DateTimeRange
-}
-
-input ActivityFilter {
-  # Event filters
-  type: [ActivityEventType!]
-  action: [ActivityAction!]
-  severity: [ActivitySeverity!]
-  scope: [ActivityScope!]
-
-  # Actor filters
-  actorId: UUID
-  actorType: [ActorType!]
-
-  # Target filters
-  targetType: [ActivityTargetType!]
-  targetId: UUID
-
-  # Time filters
-  timestamp: DateTimeRange
-
-  # Impact filters
-  minImpact: ActivitySeverity
-  affectsMe: Boolean
-}
-
-input MyActivityFilter {
-  # My involvement
-  isActor: Boolean
-  isAffected: Boolean
-  isWatching: Boolean
-
-  # Activity type
-  type: [ActivityEventType!]
-  action: [ActivityAction!]
-
-  # Time filters
-  timestamp: DateTimeRange
-  since: DateTime
-}
-
-input SearchFilter {
-  # Content search
-  includeContent: Boolean = true
-  includeComments: Boolean = true
-  includeMetadata: Boolean = true
-
-  # Document filters
-  type: [DocumentType!]
-  status: [DocumentStatus!]
-  hasMyAccess: Boolean
-
-  # Advanced search options
-  exactPhrase: Boolean = false
-  fuzzySearch: Boolean = true
-  includeArchived: Boolean = false
-}
-
-input DocumentSearchOptions {
-  # Search scope
-  includeComments: Boolean = true
-  includeAnnotations: Boolean = true
-  includeVersions: Boolean = false
-
-  # Result options
-  highlightMatches: Boolean = true
-  contextLines: NonNegativeInt = 2
-  maxMatches: NonNegativeInt = 100
-}
-
-# =============================================================================
-# SORT INPUT TYPES
-# =============================================================================
-
-input DocumentSort {
-  field: DocumentSortField!
-  direction: SortDirection!
-}
-
-input CommentSort {
-  field: CommentSortField!
-  direction: SortDirection!
-}
-
-input ThreadSort {
-  field: ThreadSortField!
-  direction: SortDirection!
-}
-
-input SearchSort {
-  field: SearchSortField!
-  direction: SortDirection!
-}
-
-# =============================================================================
-# AGGREGATION AND ANALYTICS TYPES
-# =============================================================================
-
-type DocumentAggregations {
-  byType: [DocumentCountByType!]!
-  byStatus: [DocumentCountByStatus!]!
-  byOwner: [DocumentCountByOwner!]!
-  byCreatedDate: [DocumentCountByDate!]!
-}
-
-type DocumentCountByType {
-  type: DocumentType!
-  count: NonNegativeInt!
-}
-
-type DocumentCountByStatus {
-  status: DocumentStatus!
-  count: NonNegativeInt!
-}
-
-type DocumentCountByOwner {
-  owner: User!
-  count: NonNegativeInt!
-}
-
-type DocumentCountByDate {
-  date: Date!
-  count: NonNegativeInt!
-}
-
-type CommentCountByPriority {
-  priority: CommentPriority!
-  count: NonNegativeInt!
-}
-
-type ActivityCountByType {
-  type: ActivityEventType!
-  count: NonNegativeInt!
-}
-
-type ActivityCountByActor {
-  actor: User!
-  count: NonNegativeInt!
-}
-
-type ActivityTimelinePoint {
-  timestamp: DateTime!
-  count: NonNegativeInt!
-  types: [ActivityEventType!]!
-}
-
-type PresenceUserDistribution {
-  user: User!
-  sessionCount: NonNegativeInt!
-  totalTime: Duration!
-  averageSessionDuration: Duration!
-}
-
-type PresenceHourlyData {
-  hour: NonNegativeInt! # 0-23
-  averageUsers: Decimal!
-  peakUsers: NonNegativeInt!
-  totalSessions: NonNegativeInt!
-}
-
-type PresenceDailyData {
-  date: Date!
-  uniqueUsers: NonNegativeInt!
-  totalSessions: NonNegativeInt!
-  averageSessionDuration: Duration!
-}
-
-type MetricTimelinePoint {
-  timestamp: DateTime!
-  metrics: JSON!
-}
-
-type SearchHighlight {
-  field: String!
-  fragments: [String!]!
-}
-
-type TextHighlight {
-  startOffset: NonNegativeInt!
-  endOffset: NonNegativeInt!
-  type: HighlightType!
-}
-
-type SearchContext {
-  before: String!
-  match: String!
-  after: String!
-  blockId: UUID!
-}
-
-type SearchFacet {
-  field: String!
-  values: [SearchFacetValue!]!
-}
-
-type SearchFacetValue {
-  value: String!
-  count: NonNegativeInt!
-  selected: Boolean!
-}
-
-type SyncIssue {
-  type: SyncIssueType!
-  message: String!
-  severity: IssueSeverity!
-  canAutoResolve: Boolean!
-}
-
-type ServiceHealth {
-  service: String!
-  status: HealthStatus!
-  responseTime: Duration!
-  errorRate: Decimal!
-  lastCheck: DateTime!
-}
-
-type ConflictResolutionOption {
-  id: UUID!
-  name: String!
-  description: String!
-  isAutomatic: Boolean!
-  confidence: Decimal!
-}
-
-# =============================================================================
-# UTILITY INPUT TYPES
-# =============================================================================
-
-input CompareOptions {
-  includeFormatting: Boolean = true
-  includeComments: Boolean = false
-  showWhitespace: Boolean = false
-  contextLines: NonNegativeInt = 3
-}
-
-input PaginationInput {
-  first: PositiveInt
-  after: String
-  last: PositiveInt
-  before: String
-}
-
-input StringFilter {
-  equals: String
-  contains: String
-  startsWith: String
-  endsWith: String
-  regex: String
-  in: [String!]
-  notIn: [String!]
-}
-
-input IntRange {
-  min: Int
-  max: Int
-}
-
-input BigIntRange {
-  min: BigInt
-  max: BigInt
-}
-
-input DateTimeRange {
-  start: DateTime
-  end: DateTime
-}
-
-input JSONFilter {
-  path: String!
-  operator: JSONOperator!
-  value: JSON!
+input ProjectSort {
+  field: ProjectSortField!
+  direction: SortDirection! = DESC
 }
 
 # =============================================================================
 # ENUMERATIONS
 # =============================================================================
 
-enum DocumentSortField {
+enum ProjectSortField {
   NAME
   CREATED_AT
   UPDATED_AT
-  LAST_EDITED_AT
-  LAST_VIEWED_AT
-  SIZE
-  COLLABORATOR_COUNT
-  COMMENT_COUNT
-  VIEW_COUNT
-  RELEVANCE_SCORE
-}
-
-enum CommentSortField {
-  CREATED_AT
-  UPDATED_AT
-  PRIORITY
+  LAST_ACTIVITY
+  DOCUMENT_COUNT
+  TEAM_SIZE
   STATUS
-  AUTHOR_NAME
-  POSITION
-}
-
-enum ThreadSortField {
-  CREATED_AT
-  LAST_ACTIVITY_AT
-  COMMENT_COUNT
-  PRIORITY
-  STATUS
-}
-
-enum SearchSortField {
-  RELEVANCE
-  DATE_CREATED
-  DATE_UPDATED
-  NAME
-  SIZE
 }
 
 enum SortDirection {
@@ -1020,74 +241,144 @@ enum SortDirection {
   DESC
 }
 
+enum ActivityLevel {
+  INACTIVE
+  LOW
+  MODERATE
+  HIGH
+  VERY_HIGH
+}
+
+enum ProjectInvolvement {
+  OWNER
+  COLLABORATOR
+  CONTRIBUTOR
+  VIEWER
+  ANY
+}
+
+enum AnalysisType {
+  READABILITY
+  SENTIMENT
+  STRUCTURE
+  COMPLETENESS
+  CONSISTENCY
+  COLLABORATION
+  QUALITY
+  ACCESSIBILITY
+}
+
+# =============================================================================
+# RESULT TYPES
+# =============================================================================
+
+type ProjectSearchResults {
+  results: [ProjectSearchResult!]!
+  totalCount: NonNegativeInt!
+  searchMetadata: SearchMetadata!
+}
+
+type ProjectSearchResult {
+  project: Project!
+  relevanceScore: Float!
+  matchedFields: [String!]!
+  highlightedSnippets: [HighlightedText!]!
+}
+
+type HighlightedText {
+  text: String!
+  highlights: [TextHighlight!]!
+}
+
+type TextHighlight {
+  start: NonNegativeInt!
+  end: NonNegativeInt!
+  type: HighlightType!
+}
+
+type SearchMetadata {
+  totalResults: NonNegativeInt!
+  searchTime: Duration!
+  searchId: UUID!
+  usedAI: Boolean!
+  suggestions: [String!]!
+}
+
+type UserActivityAnalytics {
+  user: User!
+  timeRange: DateTimeRange!
+  documentsCreated: NonNegativeInt!
+  documentsEdited: NonNegativeInt!
+  commentsPosted: NonNegativeInt!
+  collaborationHours: Duration!
+  activeProjects: NonNegativeInt!
+  peakActivityHour: Int!
+  averageDocumentQuality: Float!
+  conflictRate: Float!
+  suggestionAcceptanceRate: Float!
+  activityTrend: [DailyActivityData!]!
+}
+
+type DailyActivityData {
+  date: Date!
+  documentsEdited: NonNegativeInt!
+  timeSpent: Duration!
+  collaborationScore: Float!
+}
+
+type CollaborationMetrics {
+  timeRange: DateTimeRange!
+  totalCollaborators: NonNegativeInt!
+  activeCollaborators: NonNegativeInt!
+  averageTeamSize: Float!
+  collaborationEfficiency: Float!
+  conflictResolutionTime: Duration!
+  consensusRate: Float!
+  totalComments: NonNegativeInt!
+  averageResponseTime: Duration!
+  resolutionRate: Float!
+  aiSuggestionsUsed: NonNegativeInt!
+  aiEfficiencyGain: Float!
+  weeklyTrends: [WeeklyCollaborationData!]!
+}
+
+type WeeklyCollaborationData {
+  weekStart: Date!
+  activeUsers: NonNegativeInt!
+  documentsEdited: NonNegativeInt!
+  collaborationScore: Float!
+  conflictCount: NonNegativeInt!
+}
+
 enum HighlightType {
   EXACT_MATCH
-  FUZZY_MATCH
-  PHRASE_MATCH
   PARTIAL_MATCH
+  SEMANTIC_MATCH
+  FUZZY_MATCH
 }
 
-enum SuggestionReason {
-  SIMILAR_CONTENT
-  SHARED_COLLABORATORS
-  RECENT_ACTIVITY
-  RELATED_PROJECT
-  SAME_TYPE
-  FREQUENTLY_ACCESSED
+# =============================================================================
+# CONNECTION TYPES
+# =============================================================================
+
+type ProjectConnection {
+  edges: [ProjectEdge!]!
+  pageInfo: PageInfo!
+  totalCount: NonNegativeInt!
 }
 
-enum HealthStatus {
-  HEALTHY
-  DEGRADED
-  UNHEALTHY
-  UNKNOWN
+type ProjectEdge {
+  node: Project!
+  cursor: String!
 }
 
-enum ConnectionStatus {
-  CONNECTED
-  CONNECTING
-  DISCONNECTED
-  RECONNECTING
-  ERROR
+type InsightConnection {
+  edges: [InsightEdge!]!
+  pageInfo: PageInfo!
+  totalCount: NonNegativeInt!
 }
 
-enum ConflictSeverity {
-  LOW
-  MEDIUM
-  HIGH
-  CRITICAL
-}
-
-enum SyncIssueType {
-  NETWORK_ERROR
-  SERVER_ERROR
-  CONFLICT_ERROR
-  PERMISSION_ERROR
-  TIMEOUT_ERROR
-}
-
-enum IssueSeverity {
-  INFO
-  WARNING
-  ERROR
-  CRITICAL
-}
-
-enum JSONOperator {
-  EQUALS
-  NOT_EQUALS
-  CONTAINS
-  NOT_CONTAINS
-  EXISTS
-  NOT_EXISTS
-}
-
-enum MetricGroupBy {
-  HOUR
-  DAY
-  WEEK
-  MONTH
-  USER
-  DOCUMENT_TYPE
-  ORGANIZATION
+type InsightEdge {
+  node: AIInsight!
+  cursor: String!
 }

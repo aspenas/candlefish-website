@@ -1,1001 +1,594 @@
-# Real-time Collaboration Subscriptions
-# WebSocket-based real-time events for collaborative document system
+# =============================================================================
+# COLLABORATION PLATFORM SUBSCRIPTIONS
+# Real-time subscription schema for live collaboration features
+# =============================================================================
 
 extend type Subscription {
   # =============================================================================
-  # DOCUMENT CHANGE SUBSCRIPTIONS
+  # DOCUMENT REAL-TIME SUBSCRIPTIONS
   # =============================================================================
-
-  # Subscribe to real-time document content changes
-  documentContentChanged(documentId: UUID!): DocumentContentChangeEvent!
-    @auth(requires: USER) @tenant @rateLimit(max: 10, window: "1m")
-
-  # Subscribe to document operations as they're applied
-  documentOperations(documentId: UUID!): DocumentOperationEvent!
-    @auth(requires: USER) @tenant @rateLimit(max: 50, window: "1m")
-
-  # Subscribe to document metadata changes
-  documentMetadataChanged(documentId: UUID!): DocumentMetadataChangeEvent!
-    @auth(requires: USER) @tenant
-
-  # Subscribe to document status changes (draft, published, etc.)
-  documentStatusChanged(documentId: UUID!): DocumentStatusChangeEvent!
-    @auth(requires: USER) @tenant
-
-  # Subscribe to document permission changes
-  documentPermissionsChanged(documentId: UUID!): DocumentPermissionChangeEvent!
-    @auth(requires: USER) @tenant
-
-  # Subscribe to document sharing changes
-  documentSharingChanged(documentId: UUID!): DocumentSharingChangeEvent!
-    @auth(requires: USER) @tenant
-
-  # Subscribe to document lock changes
-  documentLocksChanged(documentId: UUID!): DocumentLockChangeEvent!
-    @auth(requires: USER) @tenant
-
-  # =============================================================================
-  # PRESENCE SUBSCRIPTIONS
-  # =============================================================================
-
-  # Subscribe to user presence changes in a document
-  documentPresenceChanged(documentId: UUID!): PresenceChangeEvent!
-    @auth(requires: USER) @tenant @rateLimit(max: 100, window: "1m")
-
-  # Subscribe to cursor and selection changes from other users
-  cursorPositionChanged(documentId: UUID!): CursorPositionEvent!
-    @auth(requires: USER) @tenant @rateLimit(max: 500, window: "1m")
-
-  # Subscribe to user typing indicators
-  userTypingStatusChanged(documentId: UUID!): TypingStatusEvent!
-    @auth(requires: USER) @tenant @rateLimit(max: 200, window: "1m")
-
-  # Subscribe to user activity status (active, idle, away)
-  userActivityStatusChanged(documentId: UUID!): ActivityStatusEvent!
-    @auth(requires: USER) @tenant @rateLimit(max: 50, window: "1m")
-
-  # Subscribe to viewport changes (scrolling, zoom)
-  userViewportChanged(documentId: UUID!): ViewportChangeEvent!
-    @auth(requires: USER) @tenant @rateLimit(max: 100, window: "1m")
-
-  # Subscribe to user joins and leaves
-  documentCollaborationChanged(documentId: UUID!): CollaborationEvent!
-    @auth(requires: USER) @tenant
-
-  # =============================================================================
-  # COMMENT SUBSCRIPTIONS
-  # =============================================================================
-
-  # Subscribe to new comments on a document
-  commentAdded(documentId: UUID!): CommentEvent!
-    @auth(requires: USER) @tenant @rateLimit(max: 50, window: "1m")
-
-  # Subscribe to comment updates (edits, status changes)
-  commentUpdated(documentId: UUID!): CommentUpdateEvent!
-    @auth(requires: USER) @tenant @rateLimit(max: 50, window: "1m")
-
-  # Subscribe to comment deletions
-  commentDeleted(documentId: UUID!): CommentDeleteEvent!
-    @auth(requires: USER) @tenant
-
-  # Subscribe to comment thread activities
-  commentThreadActivity(documentId: UUID!): CommentThreadEvent!
-    @auth(requires: USER) @tenant @rateLimit(max: 30, window: "1m")
-
-  # Subscribe to comment resolutions
-  commentResolutionChanged(documentId: UUID!): CommentResolutionEvent!
-    @auth(requires: USER) @tenant
-
-  # Subscribe to comment reactions
-  commentReactionChanged(documentId: UUID!): CommentReactionEvent!
-    @auth(requires: USER) @tenant @rateLimit(max: 100, window: "1m")
-
-  # Subscribe to mentions in comments
-  mentionReceived: MentionEvent!
-    @auth(requires: USER) @rateLimit(max: 20, window: "1m")
-
-  # =============================================================================
-  # VERSION CONTROL SUBSCRIPTIONS
-  # =============================================================================
-
-  # Subscribe to new document versions
-  documentVersionCreated(documentId: UUID!): DocumentVersionEvent!
-    @auth(requires: USER) @tenant
-
-  # Subscribe to version changes (updates, deletions)
-  documentVersionChanged(documentId: UUID!): DocumentVersionChangeEvent!
-    @auth(requires: USER) @tenant
-
-  # Subscribe to branch activities (create, merge, delete)
-  documentBranchActivity(documentId: UUID!): DocumentBranchEvent!
-    @auth(requires: USER) @tenant
-
-  # Subscribe to merge operations and conflicts
-  documentMergeActivity(documentId: UUID!): DocumentMergeEvent!
-    @auth(requires: USER) @tenant
-
-  # Subscribe to conflict resolution activities
-  conflictResolutionChanged(documentId: UUID!): ConflictResolutionEvent!
-    @auth(requires: USER) @tenant
-
-  # =============================================================================
-  # ANNOTATION SUBSCRIPTIONS
-  # =============================================================================
-
-  # Subscribe to annotation additions
-  annotationAdded(documentId: UUID!): AnnotationEvent!
-    @auth(requires: USER) @tenant @rateLimit(max: 30, window: "1m")
-
-  # Subscribe to annotation updates
-  annotationUpdated(documentId: UUID!): AnnotationUpdateEvent!
-    @auth(requires: USER) @tenant @rateLimit(max: 30, window: "1m")
-
-  # Subscribe to annotation deletions
-  annotationDeleted(documentId: UUID!): AnnotationDeleteEvent!
-    @auth(requires: USER) @tenant
-
-  # =============================================================================
-  # ACTIVITY AND AUDIT SUBSCRIPTIONS
-  # =============================================================================
-
-  # Subscribe to document activity feed
-  documentActivity(
+  
+  """
+  Subscribe to all document changes including content, permissions, and metadata
+  """
+  documentChanged(
     documentId: UUID!
-    filter: ActivitySubscriptionFilter
-  ): ActivityEvent!
-    @auth(requires: USER) @tenant @rateLimit(max: 100, window: "1m")
-
-  # Subscribe to organization-wide collaboration activity
-  organizationActivity(
-    filter: ActivitySubscriptionFilter
-  ): ActivityEvent!
-    @auth(requires: ORG_ADMIN) @tenant @rateLimit(max: 50, window: "1m")
-
-  # Subscribe to user's personal activity across all documents
-  myActivity: PersonalActivityEvent!
-    @auth(requires: USER) @rateLimit(max: 30, window: "1m")
-
-  # Subscribe to system health and performance metrics
-  collaborationMetrics(documentIds: [UUID!]): CollaborationMetricsEvent!
-    @auth(requires: USER) @tenant @rateLimit(max: 10, window: "1m")
-
+    changeTypes: [DocumentChangeType!]
+    includeOwnChanges: Boolean = false
+  ): DocumentChangeEvent! @auth(requires: VIEW)
+  
+  """
+  Subscribe to document content changes with operational transform events
+  """
+  documentContentChanged(
+    documentId: UUID!
+    blockIds: [UUID!]
+    minSignificance: ChangeSignificance = MINOR
+  ): DocumentContentChangeEvent! @auth(requires: VIEW)
+  
+  """
+  Subscribe to document operation stream for real-time collaborative editing
+  """
+  documentOperations(
+    documentId: UUID!
+    excludeClientId: UUID
+    afterSequence: NonNegativeInt
+  ): DocumentOperationEvent! @auth(requires: VIEW) @rateLimit(max: 10000, window: 3600)
+  
+  """
+  Subscribe to conflict detection and resolution events
+  """
+  documentConflicts(
+    documentId: UUID!
+    myConflictsOnly: Boolean = true
+    includeAutoResolved: Boolean = false
+  ): DocumentConflictEvent! @auth(requires: EDIT)
+  
   # =============================================================================
-  # INTEGRATION SUBSCRIPTIONS
+  # PRESENCE AND COLLABORATION SUBSCRIPTIONS
   # =============================================================================
-
-  # Subscribe to Paintbox estimate integration changes
-  paintboxEstimateChanged(documentId: UUID!): PaintboxIntegrationEvent!
-    @auth(requires: VIEW_ESTIMATES) @tenant
-
-  # Subscribe to Brand Portal theme changes
-  brandThemeChanged(documentId: UUID!): BrandThemeEvent!
-    @auth(requires: VIEW_BRANDING) @tenant
-
-  # Subscribe to external system sync events
-  externalSyncStatusChanged(documentId: UUID!): ExternalSyncEvent!
-    @auth(requires: USER) @tenant
-
+  
+  """
+  Subscribe to user presence changes in a document
+  """
+  documentPresenceChanged(
+    documentId: UUID!
+    includeIdleUsers: Boolean = false
+  ): PresenceChangeEvent! @auth(requires: VIEW)
+  
+  """
+  Subscribe to cursor position and selection changes
+  """
+  cursorPositionChanged(
+    documentId: UUID!
+    userIds: [UUID!]
+    includeSelections: Boolean = true
+  ): CursorPositionEvent! @auth(requires: VIEW)
+  
+  """
+  Subscribe to user awareness events (typing, scrolling, etc.)
+  """
+  userAwarenessChanged(
+    documentId: UUID!
+    awarenessTypes: [AwarenessType!] = [TYPING, SCROLLING, SELECTION]
+  ): UserAwarenessEvent! @auth(requires: VIEW)
+  
+  # =============================================================================
+  # COMMENT AND ANNOTATION SUBSCRIPTIONS
+  # =============================================================================
+  
+  """
+  Subscribe to new comments and comment updates
+  """
+  commentActivity(
+    documentId: UUID!
+    commentTypes: [CommentType!]
+    mentionsOnly: Boolean = false
+    includeRepliesToMe: Boolean = true
+  ): CommentActivityEvent! @auth(requires: VIEW)
+  
+  """
+  Subscribe to comment thread resolution events
+  """
+  commentResolutionChanged(
+    documentId: UUID!
+    myThreadsOnly: Boolean = false
+  ): CommentResolutionEvent! @auth(requires: VIEW)
+  
+  # =============================================================================
+  # AI INTEGRATION SUBSCRIPTIONS
+  # =============================================================================
+  
+  """
+  Subscribe to AI suggestions as they are generated
+  """
+  aiSuggestionsGenerated(
+    documentId: UUID!
+    suggestionTypes: [SuggestionType!]
+    minConfidence: Float = 0.7
+  ): AISuggestionEvent! @auth(requires: USER)
+  
+  """
+  Subscribe to AI analysis completion events
+  """
+  aiAnalysisCompleted(
+    documentId: UUID!
+    analysisTypes: [AnalysisType!]
+  ): AIAnalysisEvent! @auth(requires: USER)
+  
+  """
+  Subscribe to AI agent status and performance updates
+  """
+  aiAgentStatusChanged(
+    agentId: UUID
+    projectId: UUID
+    includeMetrics: Boolean = false
+  ): AIAgentStatusEvent! @auth(requires: MANAGE_AI_AGENT)
+  
+  # =============================================================================
+  # PROJECT SUBSCRIPTIONS
+  # =============================================================================
+  
+  """
+  Subscribe to project-level activity and updates
+  """
+  projectActivity(
+    projectId: UUID!
+    activityTypes: [ActivityEventType!]
+    minSeverity: ActivitySeverity = INFO
+  ): ProjectActivityEvent! @auth(requires: VIEW_PROJECT)
+  
+  """
+  Subscribe to project team changes
+  """
+  projectTeamChanged(
+    projectId: UUID!
+    includePermissionChanges: Boolean = true
+  ): ProjectTeamEvent! @auth(requires: VIEW_PROJECT)
+  
   # =============================================================================
   # NOTIFICATION SUBSCRIPTIONS
   # =============================================================================
-
-  # Subscribe to personal notifications
-  notificationReceived: NotificationEvent!
-    @auth(requires: USER) @rateLimit(max: 50, window: "1m")
-
-  # Subscribe to document-specific notifications
-  documentNotification(documentId: UUID!): DocumentNotificationEvent!
-    @auth(requires: USER) @tenant @rateLimit(max: 30, window: "1m")
-
-  # Subscribe to collaboration notifications
-  collaborationNotification: CollaborationNotificationEvent!
-    @auth(requires: USER) @rateLimit(max: 20, window: "1m")
-
-  # =============================================================================
-  # SYSTEM AND HEALTH SUBSCRIPTIONS
-  # =============================================================================
-
-  # Subscribe to document sync status changes
-  documentSyncStatusChanged(documentId: UUID!): SyncStatusEvent!
-    @auth(requires: USER) @tenant
-
-  # Subscribe to system health updates
-  systemHealthChanged: SystemHealthEvent!
-    @auth(requires: USER) @rateLimit(max: 5, window: "1m")
-
-  # Subscribe to performance alerts
-  performanceAlert: PerformanceAlertEvent!
-    @auth(requires: ORG_ADMIN) @tenant @rateLimit(max: 10, window: "1m")
-
-  # Subscribe to conflict detection and alerts
-  conflictDetected(documentId: UUID!): ConflictDetectionEvent!
-    @auth(requires: USER) @tenant
-
-  # =============================================================================
-  # BULK OPERATION SUBSCRIPTIONS
-  # =============================================================================
-
-  # Subscribe to bulk operation progress
-  bulkOperationProgress(operationId: UUID!): BulkOperationProgressEvent!
-    @auth(requires: USER) @tenant
-
-  # Subscribe to export/import operation progress
-  documentExportProgress(exportId: UUID!): ExportProgressEvent!
-    @auth(requires: USER) @tenant
-
-  documentImportProgress(importId: UUID!): ImportProgressEvent!
-    @auth(requires: USER) @tenant
+  
+  """
+  Subscribe to real-time notifications for the current user
+  """
+  notifications(
+    types: [NotificationType!]
+    priorities: [NotificationPriority!] = [HIGH, URGENT]
+    includeSystem: Boolean = false
+  ): NotificationEvent! @auth(requires: USER)
 }
 
 # =============================================================================
-# EVENT TYPES FOR SUBSCRIPTIONS
+# SUBSCRIPTION EVENT TYPES
 # =============================================================================
 
-# Document Change Events
+type DocumentChangeEvent {
+  id: UUID!
+  document: Document!
+  changeType: DocumentChangeType!
+  changes: [DocumentChange!]!
+  changedBy: User!
+  timestamp: DateTime!
+  sessionId: UUID!
+  sequenceNumber: NonNegativeInt!
+  significance: ChangeSignificance!
+  affectedUsers: [User!]!
+  activeCollaborators: NonNegativeInt!
+  documentVersion: String!
+}
+
 type DocumentContentChangeEvent {
-  type: DocumentChangeType!
+  id: UUID!
   document: Document!
   operations: [Operation!]!
+  transformedOperations: [TransformationResult!]!
   author: User!
   timestamp: DateTime!
-
-  # Change details
-  affectedBlocks: [UUID!]!
-  changeCount: NonNegativeInt!
-  newChecksum: String!
-
-  # Collaboration context
   sessionId: UUID!
-  conflictsDetected: [ConflictInfo!]!
+  clientId: UUID!
+  newSequenceNumber: NonNegativeInt!
+  documentChecksum: String!
+  affectedBlocks: [ContentBlockChange!]!
+  conflictsDetected: [ConflictPreview!]!
+  processingTime: Duration!
+  transformationCount: NonNegativeInt!
 }
 
 type DocumentOperationEvent {
-  operation: Operation!
+  id: UUID!
+  documentId: UUID!
+  operation: PendingOperation!
+  operationResult: OperationResult!
+  transformations: [TransformationStep!]!
+  conflictsWith: [UUID!]!
   author: User!
   timestamp: DateTime!
-
-  # Operation context
-  documentId: UUID!
-  sessionId: UUID!
-
-  # Operation results
-  applied: Boolean!
-  transformed: Boolean!
-  conflicts: [ConflictInfo!]!
+  expectedSequenceNumber: NonNegativeInt!
+  requiresTransformation: Boolean!
+  concurrentOperations: NonNegativeInt!
+  activeEditingSessions: NonNegativeInt!
 }
 
-type DocumentMetadataChangeEvent {
-  type: MetadataChangeType!
+type DocumentConflictEvent {
+  id: UUID!
   document: Document!
-  changedBy: User!
-  timestamp: DateTime!
-
-  # Change details
-  oldValues: JSON!
-  newValues: JSON!
-  changedFields: [String!]!
-}
-
-type DocumentStatusChangeEvent {
-  document: Document!
-  oldStatus: DocumentStatus!
-  newStatus: DocumentStatus!
-  changedBy: User!
-  timestamp: DateTime!
-  reason: String
-}
-
-type DocumentPermissionChangeEvent {
-  type: PermissionChangeType!
-  document: Document!
-  changedBy: User!
-  timestamp: DateTime!
-
-  # Permission details
-  affectedUser: User
-  oldPermission: DocumentPermission
-  newPermission: DocumentPermission
-  scope: PermissionScope!
-}
-
-type DocumentSharingChangeEvent {
-  type: SharingChangeType!
-  document: Document!
-  sharing: DocumentSharing!
-  changedBy: User!
+  conflict: ActiveConflict!
+  conflictType: ConflictEventType!
+  resolution: ConflictResolution
+  resolvedBy: User
+  involvedUsers: [User!]!
+  affectedBlocks: [UUID!]!
+  aiRecommendations: [ConflictRecommendation!]!
+  autoResolvable: Boolean!
   timestamp: DateTime!
 }
 
-type DocumentLockChangeEvent {
-  type: LockChangeType!
-  document: Document!
-  lock: LockInfo!
-  timestamp: DateTime!
-
-  # Lock context
-  previousLock: LockInfo
-  affectedUsers: [User!]!
-}
-
-# Presence Events
 type PresenceChangeEvent {
-  type: PresenceChangeType!
-  session: PresenceSession!
-  timestamp: DateTime!
-
-  # Presence context
+  id: UUID!
   documentId: UUID!
-  activeUserCount: NonNegativeInt!
+  session: PresenceSession!
+  changeType: PresenceChangeType!
+  previousState: PresenceState
+  totalActiveUsers: NonNegativeInt!
+  peakConcurrentUsers: NonNegativeInt!
+  timestamp: DateTime!
 }
 
 type CursorPositionEvent {
+  id: UUID!
+  documentId: UUID!
+  user: User!
   session: PresenceSession!
-  cursor: CursorPosition!
+  cursor: CursorPosition
   selection: TextSelection
+  viewport: ViewportInfo
+  currentBlock: UUID
+  editingContext: EditingContext
   timestamp: DateTime!
+  isRealtime: Boolean!
+}
 
-  # Additional context
+type UserAwarenessEvent {
+  id: UUID!
   documentId: UUID!
-  blockId: UUID
+  user: User!
+  session: PresenceSession!
+  awarenessType: AwarenessType!
+  awarenessData: AwarenessData!
+  duration: Duration
+  context: JSON
+  timestamp: DateTime!
 }
 
-type TypingStatusEvent {
-  user: User!
+type CommentActivityEvent {
+  id: UUID!
   documentId: UUID!
-  isTyping: Boolean!
-  typingLocation: CursorPosition
-  timestamp: DateTime!
-}
-
-type ActivityStatusEvent {
-  user: User!
-  documentId: UUID!
-  status: PresenceStatus!
-  currentAction: UserAction
-  timestamp: DateTime!
-}
-
-type ViewportChangeEvent {
-  user: User!
-  documentId: UUID!
-  viewport: ViewportInfo!
-  timestamp: DateTime!
-}
-
-type CollaborationEvent {
-  type: CollaborationType!
-  user: User!
-  document: Document!
-  timestamp: DateTime!
-
-  # Collaboration context
-  sessionId: UUID
-  totalActiveUsers: NonNegativeInt!
-  userRole: DocumentPermission!
-}
-
-# Comment Events
-type CommentEvent {
   comment: Comment!
+  activityType: CommentActivityType!
+  thread: CommentThread
+  parentComment: Comment
   author: User!
-  timestamp: DateTime!
-
-  # Comment context
-  documentId: UUID!
-  threadId: UUID
   mentionedUsers: [User!]!
-}
-
-type CommentUpdateEvent {
-  type: CommentUpdateType!
-  comment: Comment!
-  updatedBy: User!
+  aiSummary: String
+  sentimentAnalysis: SentimentAnalysis
+  suggestedActions: [String!]!
   timestamp: DateTime!
-
-  # Update details
-  oldValues: JSON
-  newValues: JSON
-  changedFields: [String!]!
-}
-
-type CommentDeleteEvent {
-  commentId: UUID!
-  documentId: UUID!
-  threadId: UUID
-  deletedBy: User!
-  timestamp: DateTime!
-  reason: String
-}
-
-type CommentThreadEvent {
-  type: ThreadEventType!
-  thread: CommentThread!
-  triggeredBy: User!
-  timestamp: DateTime!
-
-  # Thread context
-  commentCount: NonNegativeInt!
-  participantCount: NonNegativeInt!
-  newParticipants: [User!]!
 }
 
 type CommentResolutionEvent {
-  comment: Comment!
-  thread: CommentThread
-  resolvedBy: User!
-  timestamp: DateTime!
-
-  # Resolution details
-  isResolved: Boolean!
-  resolution: String
-  affectedComments: NonNegativeInt!
-}
-
-type CommentReactionEvent {
-  type: ReactionEventType!
-  comment: Comment!
-  reaction: Reaction!
-  user: User!
-  timestamp: DateTime!
-}
-
-type MentionEvent {
-  mention: Mention!
-  comment: Comment!
-  document: Document!
-  mentionedBy: User!
-  timestamp: DateTime!
-
-  # Mention context
-  context: String!
-  isUrgent: Boolean!
-}
-
-# Version Control Events
-type DocumentVersionEvent {
-  version: DocumentVersion!
-  document: Document!
-  createdBy: User!
-  timestamp: DateTime!
-
-  # Version details
-  isMajorVersion: Boolean!
-  changesSummary: String
-  diffStats: DiffStats!
-}
-
-type DocumentVersionChangeEvent {
-  type: VersionChangeType!
-  version: DocumentVersion!
-  changedBy: User!
-  timestamp: DateTime!
-}
-
-type DocumentBranchEvent {
-  type: BranchEventType!
-  branch: DocumentBranch!
-  document: Document!
-  actor: User!
-  timestamp: DateTime!
-
-  # Branch context
-  sourceBranch: DocumentBranch
-  targetBranch: DocumentBranch
-  conflictCount: NonNegativeInt!
-}
-
-type DocumentMergeEvent {
-  type: MergeEventType!
-  merge: MergeResult!
-  document: Document!
-  mergedBy: User!
-  timestamp: DateTime!
-
-  # Merge details
-  sourceBranch: DocumentBranch!
-  targetBranch: DocumentBranch!
-  conflictCount: NonNegativeInt!
-}
-
-type ConflictResolutionEvent {
-  type: ConflictEventType!
-  conflict: MergeConflict!
-  resolution: ConflictResolution
-  document: Document!
-  resolvedBy: User
-  timestamp: DateTime!
-}
-
-# Annotation Events
-type AnnotationEvent {
-  annotation: Annotation!
-  document: Document!
-  createdBy: User!
-  timestamp: DateTime!
-}
-
-type AnnotationUpdateEvent {
-  type: AnnotationUpdateType!
-  annotation: Annotation!
-  updatedBy: User!
-  timestamp: DateTime!
-
-  # Update details
-  oldValues: JSON
-  newValues: JSON
-}
-
-type AnnotationDeleteEvent {
-  annotationId: UUID!
+  id: UUID!
   documentId: UUID!
-  deletedBy: User!
+  thread: CommentThread!
+  resolutionType: ResolutionEventType!
+  resolvedBy: User
+  resolution: String
+  aiGeneratedSummary: String
+  resolvedComments: NonNegativeInt!
+  participantCount: NonNegativeInt!
   timestamp: DateTime!
 }
 
-# Activity Events
-type PersonalActivityEvent {
+type AISuggestionEvent {
+  id: UUID!
+  documentId: UUID!
+  suggestion: AISuggestion!
+  eventType: AISuggestionEventType!
+  generatedBy: NandaAgent!
+  context: AIContext!
+  relevanceScore: Float!
+  confidence: Float!
+  generationTime: Duration!
+  tokensUsed: NonNegativeInt!
+  timestamp: DateTime!
+}
+
+type AIAnalysisEvent {
+  id: UUID!
+  documentId: UUID!
+  analysis: AIDocumentAnalysis!
+  analysisTypes: [AnalysisType!]!
+  processingTime: Duration!
+  tokensUsed: NonNegativeInt!
+  insights: [AIInsight!]!
+  recommendations: [ImprovementSuggestion!]!
+  timestamp: DateTime!
+}
+
+type AIAgentStatusEvent {
+  id: UUID!
+  agent: NandaAgent!
+  previousStatus: AgentStatus
+  newStatus: AgentStatus!
+  changeReason: String
+  performance: AgentPerformance
+  usage: AgentUsage
+  healthCheck: AgentHealthCheck
+  timestamp: DateTime!
+}
+
+type ProjectActivityEvent {
+  id: UUID!
+  project: Project!
   activity: ActivityEvent!
-  documents: [Document!]!
+  activityType: ActivityEventType!
+  actor: User
+  target: ActivityTarget
+  impact: ActivityImpact!
   timestamp: DateTime!
-
-  # Personal context
-  isDirectlyInvolved: Boolean!
-  requiresAction: Boolean!
-  priority: ActivitySeverity!
 }
 
-type CollaborationMetricsEvent {
-  metrics: CollaborationMetrics!
+type ProjectTeamEvent {
+  id: UUID!
+  project: Project!
+  changeType: TeamChangeType!
+  affectedUser: User!
+  previousRole: ProjectRole
+  newRole: ProjectRole
+  permissionChanges: [PermissionChange!]!
+  changedBy: User!
+  reason: String
   timestamp: DateTime!
-
-  # Metrics context
-  documentIds: [UUID!]!
-  timeframe: Duration!
-  significantChanges: [MetricChange!]!
 }
 
-type MetricChange {
-  metric: String!
-  oldValue: Decimal!
-  newValue: Decimal!
-  changePercent: Decimal!
-  isImprovement: Boolean!
-}
-
-# Integration Events
-type PaintboxIntegrationEvent {
-  type: IntegrationEventType!
-  document: Document!
-  estimate: PaintboxEstimate!
+type NotificationEvent {
+  id: UUID!
+  notification: SmartNotification!
+  eventType: NotificationEventType!
+  recipient: User!
+  channels: [NotificationChannel!]!
+  scheduledDelivery: DateTime
+  personalizedContent: String
+  priority: NotificationPriority!
   timestamp: DateTime!
-
-  # Integration details
-  syncStatus: SyncStatus!
-  changes: [IntegrationChange!]!
 }
 
-type IntegrationChange {
+# =============================================================================
+# SUPPORTING TYPES
+# =============================================================================
+
+type DocumentChange {
   field: String!
   oldValue: JSON
-  newValue: JSON
-  syncDirection: SyncDirection!
+  newValue: JSON!
+  changeType: FieldChangeType!
 }
 
-type BrandThemeEvent {
-  type: ThemeEventType!
-  document: Document!
-  theme: BrandPortalTheme!
-  appliedBy: User!
-  timestamp: DateTime!
-
-  # Theme details
-  affectedElements: [String!]!
-  customizations: JSON
+type TransformationResult {
+  originalOperation: Operation!
+  transformedOperation: Operation!
+  transformationType: TransformationType!
+  confidence: Float!
 }
 
-type ExternalSyncEvent {
-  type: SyncEventType!
-  document: Document!
-  externalSystemId: UUID!
-  timestamp: DateTime!
-
-  # Sync details
-  status: SyncStatus!
-  itemsSynced: NonNegativeInt!
-  errors: [SyncError!]!
-  duration: Duration!
+type ContentBlockChange {
+  blockId: UUID!
+  changeType: BlockChangeType!
+  oldContent: JSON
+  newContent: JSON!
+  position: BlockPosition
 }
 
-# Notification Events
-type NotificationEvent {
-  notification: Notification!
-  timestamp: DateTime!
-
-  # Notification context
-  source: NotificationSource!
-  priority: NotificationPriority!
-  requiresAction: Boolean!
-}
-
-type DocumentNotificationEvent {
-  type: DocumentNotificationType!
-  document: Document!
-  notification: Notification!
-  timestamp: DateTime!
-
-  # Document context
-  triggeredBy: User
-  relatedUsers: [User!]!
-}
-
-type CollaborationNotificationEvent {
-  type: CollaborationNotificationType!
-  notification: Notification!
-  documents: [Document!]!
-  timestamp: DateTime!
-
-  # Collaboration context
-  collaborators: [User!]!
-  actionRequired: Boolean!
-}
-
-# System Events
-type SyncStatusEvent {
-  document: Document!
-  oldStatus: SyncStatus!
-  newStatus: SyncStatus!
-  timestamp: DateTime!
-
-  # Sync details
-  pendingOperations: NonNegativeInt!
-  conflicts: NonNegativeInt!
-  lastSyncAt: DateTime
-  issues: [SyncIssue!]!
-}
-
-type SystemHealthEvent {
-  service: String!
-  oldStatus: HealthStatus!
-  newStatus: HealthStatus!
-  timestamp: DateTime!
-
-  # Health details
-  metrics: JSON!
-  issues: [String!]!
-  affectedFeatures: [String!]!
-}
-
-type PerformanceAlertEvent {
-  type: PerformanceAlertType!
-  severity: AlertSeverity!
-  message: String!
-  timestamp: DateTime!
-
-  # Performance context
-  metrics: JSON!
-  affectedDocuments: [UUID!]!
-  suggestedActions: [String!]!
-}
-
-type ConflictDetectionEvent {
-  conflicts: [ConflictInfo!]!
-  document: Document!
-  detectedAt: DateTime!
-
-  # Detection context
-  triggeringOperation: Operation
-  affectedUsers: [User!]!
+type ConflictPreview {
+  conflictId: UUID!
   severity: ConflictSeverity!
+  affectedContent: String!
   autoResolvable: Boolean!
 }
 
-# Bulk Operation Events
-type BulkOperationProgressEvent {
-  operationId: UUID!
-  type: BulkOperationType!
-
-  # Progress details
-  totalItems: NonNegativeInt!
-  processedItems: NonNegativeInt!
-  successfulItems: NonNegativeInt!
-  failedItems: NonNegativeInt!
-
-  # Status
-  status: BulkOperationStatus!
-  estimatedTimeRemaining: Duration
-  currentItem: String
+type OperationResult {
+  success: Boolean!
+  appliedAt: DateTime!
+  sequenceNumber: NonNegativeInt!
+  transformationApplied: Boolean!
+  errors: [String!]!
 }
 
-type ExportProgressEvent {
-  exportId: UUID!
-  document: Document!
-
-  # Export progress
-  status: ExportStatus!
-  progress: Decimal! # 0.0 to 1.0
-  currentStep: String!
-
-  # Export details
-  format: ExportFormat!
-  size: BigInt
-  estimatedCompletion: DateTime
+type ConflictRecommendation {
+  type: ConflictRecommendationType!
+  description: String!
+  confidence: Float!
+  suggestedAction: String!
 }
 
-type ImportProgressEvent {
-  importId: UUID!
-
-  # Import progress
-  status: ImportStatus!
-  progress: Decimal! # 0.0 to 1.0
-  currentStep: String!
-
-  # Import details
-  format: ImportFormat!
-  itemsProcessed: NonNegativeInt!
-  itemsTotal: NonNegativeInt!
-  errors: [ImportError!]!
+type PresenceState {
+  status: PresenceStatus!
+  cursor: CursorPosition
+  selection: TextSelection
+  isTyping: Boolean!
+  lastAction: UserAction
 }
 
-type ImportError {
-  item: String!
-  error: String!
-  line: NonNegativeInt
-  isRecoverable: Boolean!
+type EditingContext {
+  editingBlocks: [UUID!]!
+  currentTool: EditingTool
+  collaborationMode: CollaborationMode!
+}
+
+type AwarenessData {
+  data: JSON!
+  metadata: JSON
+}
+
+type AgentHealthCheck {
+  status: HealthStatus!
+  responseTime: Duration!
+  errorRate: Float!
+  lastCheck: DateTime!
+}
+
+type PermissionChange {
+  permission: String!
+  oldValue: Boolean
+  newValue: Boolean!
 }
 
 # =============================================================================
-# FILTER TYPES FOR SUBSCRIPTIONS
-# =============================================================================
-
-input ActivitySubscriptionFilter {
-  # Event filtering
-  types: [ActivityEventType!]
-  actions: [ActivityAction!]
-  severity: [ActivitySeverity!]
-
-  # User filtering
-  includeMyActivity: Boolean = true
-  includeOthersActivity: Boolean = true
-  actorIds: [UUID!]
-
-  # Time filtering
-  since: DateTime
-
-  # Content filtering
-  documentTypes: [DocumentType!]
-  onlyDirectlyInvolved: Boolean = false
-}
-
-# =============================================================================
-# ENUMERATIONS FOR EVENTS
+# ENUMERATIONS
 # =============================================================================
 
 enum DocumentChangeType {
-  CONTENT_UPDATED
-  STRUCTURE_CHANGED
-  FORMATTING_APPLIED
-  BLOCKS_ADDED
-  BLOCKS_REMOVED
-  BLOCKS_MOVED
-  MEDIA_ADDED
-  MEDIA_REMOVED
+  CONTENT_MODIFIED
+  METADATA_UPDATED
+  PERMISSIONS_CHANGED
+  SHARING_UPDATED
+  STATUS_CHANGED
+  VERSION_CREATED
+  BRANCH_CREATED
+  MERGED
+  DELETED
+  RESTORED
 }
 
-enum MetadataChangeType {
-  NAME_CHANGED
-  DESCRIPTION_CHANGED
-  TAGS_UPDATED
-  CATEGORY_CHANGED
-  SETTINGS_UPDATED
+enum ChangeSignificance {
+  TRIVIAL
+  MINOR
+  MODERATE
+  MAJOR
+  STRUCTURAL
+  BREAKING
 }
 
-enum PermissionChangeType {
-  USER_ADDED
-  USER_REMOVED
-  PERMISSION_UPGRADED
-  PERMISSION_DOWNGRADED
-  SHARING_ENABLED
-  SHARING_DISABLED
-}
-
-enum PermissionScope {
-  INDIVIDUAL_USER
-  ORGANIZATION
-  PUBLIC
-  TEAM
-}
-
-enum SharingChangeType {
-  PUBLIC_SHARING_ENABLED
-  PUBLIC_SHARING_DISABLED
-  LINK_SHARING_ENABLED
-  LINK_SHARING_DISABLED
-  PASSWORD_UPDATED
-  EXPIRATION_UPDATED
-}
-
-enum LockChangeType {
-  LOCK_ACQUIRED
-  LOCK_RELEASED
-  LOCK_EXPIRED
-  LOCK_TRANSFERRED
-  LOCK_BROKEN
+enum ConflictEventType {
+  CONFLICT_DETECTED
+  CONFLICT_RESOLVED
+  CONFLICT_ESCALATED
+  CONFLICT_AUTO_RESOLVED
+  CONFLICT_TIMED_OUT
 }
 
 enum PresenceChangeType {
   USER_JOINED
   USER_LEFT
   STATUS_CHANGED
+  CURSOR_MOVED
+  SELECTION_CHANGED
+  ACTIVITY_CHANGED
   DEVICE_CHANGED
-  CONNECTION_CHANGED
 }
 
-enum CollaborationType {
-  USER_JOINED_DOCUMENT
-  USER_LEFT_DOCUMENT
-  USER_STARTED_EDITING
-  USER_STOPPED_EDITING
-  COLLABORATION_INVITED
-  COLLABORATION_REMOVED
+enum AwarenessType {
+  TYPING
+  SCROLLING
+  SELECTION
+  MENU_OPENED
+  TOOL_CHANGED
+  VOICE_CHAT
+  VIDEO_CHAT
+  SCREEN_SHARE
 }
 
-enum CommentUpdateType {
-  CONTENT_EDITED
-  STATUS_CHANGED
-  PRIORITY_CHANGED
-  POSITION_MOVED
-  MENTIONS_ADDED
-}
-
-enum ThreadEventType {
-  COMMENT_ADDED
-  PARTICIPANT_JOINED
-  STATUS_CHANGED
-  PRIORITY_UPDATED
-  THREAD_RESOLVED
-  THREAD_REOPENED
-}
-
-enum ReactionEventType {
+enum CommentActivityType {
+  COMMENT_CREATED
+  COMMENT_UPDATED
+  COMMENT_DELETED
+  REPLY_ADDED
   REACTION_ADDED
   REACTION_REMOVED
-  REACTION_CHANGED
+  MENTION_ADDED
 }
 
-enum VersionChangeType {
-  VERSION_UPDATED
-  VERSION_DELETED
-  VERSION_PUBLISHED
-  VERSION_ARCHIVED
+enum ResolutionEventType {
+  THREAD_RESOLVED
+  THREAD_REOPENED
+  COMMENT_RESOLVED
+  RESOLUTION_UPDATED
 }
 
-enum BranchEventType {
-  BRANCH_CREATED
-  BRANCH_DELETED
-  BRANCH_MERGED
-  BRANCH_SWITCHED
-  BRANCH_UPDATED
+enum AISuggestionEventType {
+  SUGGESTION_GENERATED
+  SUGGESTION_APPLIED
+  SUGGESTION_DISMISSED
+  SUGGESTION_EXPIRED
+  FEEDBACK_RECEIVED
 }
 
-enum MergeEventType {
-  MERGE_STARTED
-  MERGE_COMPLETED
-  MERGE_FAILED
-  MERGE_CONFLICTS_DETECTED
-  MERGE_CONFLICTS_RESOLVED
+enum TeamChangeType {
+  MEMBER_ADDED
+  MEMBER_REMOVED
+  ROLE_CHANGED
+  PERMISSIONS_UPDATED
+  MEMBER_INVITED
+  INVITATION_ACCEPTED
+  INVITATION_DECLINED
 }
 
-enum ConflictEventType {
-  CONFLICT_DETECTED
-  CONFLICT_RESOLVED
-  CONFLICT_AUTO_RESOLVED
-  CONFLICT_ESCALATED
+enum NotificationEventType {
+  NOTIFICATION_CREATED
+  NOTIFICATION_SCHEDULED
+  NOTIFICATION_DELIVERED
+  NOTIFICATION_READ
+  NOTIFICATION_ACTED_UPON
+  NOTIFICATION_EXPIRED
 }
 
-enum AnnotationUpdateType {
-  CONTENT_CHANGED
-  POSITION_MOVED
-  STYLE_UPDATED
-  VISIBILITY_CHANGED
+enum FieldChangeType {
+  CREATED
+  UPDATED
+  DELETED
+  MOVED
+  RENAMED
 }
 
-enum IntegrationEventType {
-  LINKED
-  UNLINKED
-  SYNCED
-  SYNC_FAILED
-  DATA_UPDATED
+enum BlockChangeType {
+  INSERTED
+  DELETED
+  MODIFIED
+  MOVED
+  SPLIT
+  MERGED
+  FORMATTED
 }
 
-enum ThemeEventType {
-  THEME_APPLIED
-  THEME_REMOVED
-  THEME_UPDATED
-  CUSTOMIZATION_APPLIED
+enum ConflictRecommendationType {
+  AUTO_MERGE
+  MANUAL_REVIEW
+  ACCEPT_THEIRS
+  ACCEPT_MINE
+  CREATE_HYBRID
 }
 
-enum SyncEventType {
-  SYNC_STARTED
-  SYNC_COMPLETED
-  SYNC_FAILED
-  SYNC_CONFLICT
-  SYNC_PARTIAL
+enum EditingTool {
+  TEXT_EDITOR
+  COMMENT_TOOL
+  ANNOTATION_TOOL
+  FORMATTING_TOOL
+  STRUCTURE_TOOL
+  AI_ASSISTANT
 }
 
-enum DocumentNotificationType {
-  DOCUMENT_SHARED
-  PERMISSION_CHANGED
-  COMMENT_ADDED
-  MENTION_RECEIVED
-  DOCUMENT_UPDATED
-  COLLABORATION_INVITED
+enum CollaborationMode {
+  REAL_TIME
+  ASYNC
+  REVIEW_MODE
+  CONFLICT_RESOLUTION
+  AI_ASSISTED
 }
 
-enum CollaborationNotificationType {
-  BULK_OPERATION_COMPLETED
-  SYSTEM_MAINTENANCE
-  FEATURE_ANNOUNCEMENT
-  SECURITY_ALERT
-  PERFORMANCE_WARNING
-}
-
-enum NotificationSource {
-  DOCUMENT
-  COMMENT
-  SYSTEM
-  INTEGRATION
-  USER
-}
-
-enum NotificationPriority {
-  LOW
-  NORMAL
-  HIGH
-  URGENT
-  CRITICAL
-}
-
-enum PerformanceAlertType {
-  HIGH_LATENCY
-  HIGH_ERROR_RATE
-  MEMORY_USAGE
-  CPU_USAGE
-  CONNECTION_ISSUES
-  SYNC_DELAYS
-}
-
-enum BulkOperationType {
-  DOCUMENT_UPDATE
-  PERMISSION_UPDATE
-  SHARING_UPDATE
-  COMMENT_RESOLUTION
-  DOCUMENT_DELETION
-  DOCUMENT_MOVE
-}
-
-enum BulkOperationStatus {
-  QUEUED
-  RUNNING
-  COMPLETED
-  FAILED
-  CANCELLED
-  PARTIALLY_COMPLETED
-}
-
-enum ExportStatus {
-  PREPARING
-  PROCESSING
-  GENERATING
-  COMPLETED
-  FAILED
-  EXPIRED
-}
-
-enum ImportStatus {
-  UPLOADING
-  VALIDATING
-  PROCESSING
-  CREATING_DOCUMENT
-  COMPLETED
-  FAILED
+enum HealthStatus {
+  HEALTHY
+  DEGRADED
+  UNHEALTHY
+  UNKNOWN
 }

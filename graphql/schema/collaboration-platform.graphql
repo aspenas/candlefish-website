@@ -1,0 +1,1309 @@
+# =============================================================================
+# REAL-TIME COLLABORATION PLATFORM SCHEMA
+# Complete GraphQL schema for collaborative document editing with AI integration
+# =============================================================================
+
+# Extend existing collaboration types with platform-specific enhancements
+extend type Document @key(fields: "id") @auth(requires: USER) @complexity(value: 10) {
+  # AI Integration Fields
+  aiSuggestions: [AISuggestion!]! @complexity(value: 8) @auth(requires: VIEW)
+  aiAnalysis: AIDocumentAnalysis @complexity(value: 15) @auth(requires: VIEW)
+  
+  # Enhanced collaboration metrics
+  collaborationScore: Float! @auth(requires: VIEW)
+  engagementMetrics: DocumentEngagement! @complexity(value: 5)
+  
+  # Real-time operational transform state
+  operationQueue: [PendingOperation!]! @complexity(value: 10) @auth(requires: EDIT)
+  conflictResolution: [ActiveConflict!]! @complexity(value: 8) @auth(requires: EDIT)
+  
+  # Project integration
+  project: Project @auth(requires: VIEW)
+  
+  # Quality metrics
+  qualityScore: DocumentQuality! @complexity(value: 5)
+}
+
+# =============================================================================
+# PROJECT MANAGEMENT TYPES
+# =============================================================================
+
+type Project @key(fields: "id") @auth(requires: USER) @tenant {
+  id: UUID!
+  name: NonEmptyString!
+  description: String
+  status: ProjectStatus!
+  
+  # Project hierarchy
+  workspace: Workspace!
+  parentProject: Project
+  subProjects: [Project!]! @complexity(value: 10)
+  
+  # Documents and content
+  documents: [Document!]! @complexity(value: 15)
+  documentsCount: NonNegativeInt!
+  
+  # Team and permissions
+  owner: User!
+  team: [ProjectMember!]! @complexity(value: 8)
+  permissions: ProjectPermissions!
+  
+  # AI Integration
+  aiAgent: NandaAgent @auth(requires: MANAGE)
+  aiInsights: [AIInsight!]! @complexity(value: 12)
+  
+  # Collaboration metrics
+  activity: [ActivityEvent!]! @complexity(value: 20)
+  metrics: ProjectMetrics!
+  
+  # Integration with existing systems
+  paintboxIntegration: PaintboxProjectIntegration
+  brandPortalIntegration: BrandPortalIntegration
+  
+  # Timestamps
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  archivedAt: DateTime
+}
+
+type Workspace @key(fields: "id") @auth(requires: USER) @tenant {
+  id: UUID!
+  name: NonEmptyString!
+  description: String
+  
+  # Workspace organization
+  organization: Organization!
+  projects: [Project!]! @complexity(value: 20)
+  
+  # AI Configuration
+  aiConfiguration: WorkspaceAIConfiguration!
+  
+  # Settings and preferences
+  settings: WorkspaceSettings!
+  
+  # Access control
+  members: [WorkspaceMember!]! @complexity(value: 10)
+  permissions: WorkspacePermissions!
+  
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type ProjectMember {
+  id: UUID!
+  user: User!
+  project: Project!
+  role: ProjectRole!
+  permissions: [ProjectPermission!]!
+  joinedAt: DateTime!
+  invitedBy: User
+}
+
+# =============================================================================
+# AI INTEGRATION TYPES (NANDA AGENT)
+# =============================================================================
+
+type NandaAgent @auth(requires: MANAGE) {
+  id: UUID!
+  name: NonEmptyString!
+  version: String!
+  status: AgentStatus!
+  
+  # Agent configuration
+  capabilities: [AICapability!]!
+  configuration: AgentConfiguration!
+  
+  # Performance metrics
+  performance: AgentPerformance!
+  usage: AgentUsage!
+  
+  # Integration status
+  connectedSystems: [ConnectedSystem!]!
+  lastSync: DateTime
+  
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type AISuggestion @auth(requires: USER) {
+  id: UUID!
+  type: SuggestionType!
+  content: AISuggestionContent!
+  
+  # Context and relevance
+  confidence: Float! # 0.0 to 1.0
+  relevanceScore: Float!
+  context: AIContext!
+  
+  # Suggestion metadata
+  generatedBy: NandaAgent!
+  appliedBy: User
+  appliedAt: DateTime
+  
+  # Feedback and learning
+  feedback: SuggestionFeedback
+  improvedVersion: AISuggestion
+  
+  # Status and lifecycle
+  status: SuggestionStatus!
+  expiresAt: DateTime
+  
+  createdAt: DateTime!
+}
+
+type AIDocumentAnalysis @auth(requires: USER) {
+  id: UUID!
+  document: Document!
+  
+  # Content analysis
+  readabilityScore: Float!
+  sentimentAnalysis: SentimentAnalysis!
+  keyTopics: [Topic!]!
+  suggestedTags: [String!]!
+  
+  # Structure analysis
+  structureQuality: Float!
+  completenessScore: Float!
+  consistencyScore: Float!
+  
+  # Collaboration insights
+  collaborationEfficiency: Float!
+  conflictPrediction: ConflictPrediction!
+  
+  # Recommendations
+  improvements: [ImprovementSuggestion!]!
+  nextActions: [ActionSuggestion!]!
+  
+  # Analysis metadata
+  analyzedAt: DateTime!
+  analyzedBy: NandaAgent!
+  version: String!
+}
+
+type AIInsight {
+  id: UUID!
+  type: InsightType!
+  title: NonEmptyString!
+  description: String!
+  
+  # Insight data
+  data: JSON!
+  visualization: InsightVisualization
+  
+  # Priority and relevance
+  priority: InsightPriority!
+  confidence: Float!
+  
+  # Context
+  relatedDocuments: [Document!]!
+  relatedUsers: [User!]!
+  
+  # Lifecycle
+  status: InsightStatus!
+  acknowledgedBy: [User!]!
+  
+  createdAt: DateTime!
+  expiresAt: DateTime
+}
+
+# =============================================================================
+# REAL-TIME COLLABORATION TYPES
+# =============================================================================
+
+type PendingOperation {
+  id: UUID!
+  type: OperationType!
+  
+  # Operation details
+  position: BlockPosition!
+  content: JSON!
+  length: NonNegativeInt
+  
+  # Operational Transform metadata
+  clientId: UUID!
+  sequenceNumber: NonNegativeInt!
+  dependencies: [UUID!]!
+  transformations: [TransformationStep!]!
+  
+  # Timing and priority
+  timestamp: DateTime!
+  priority: OperationPriority!
+  timeout: DateTime!
+  
+  # Author information
+  authorId: UUID!
+  sessionId: UUID!
+  
+  # Conflict resolution
+  conflicts: [OperationConflict!]!
+  resolutionStrategy: ConflictResolutionStrategy
+}
+
+type ActiveConflict {
+  id: UUID!
+  type: ConflictType!
+  
+  # Conflict details
+  operationA: PendingOperation!
+  operationB: PendingOperation!
+  conflictingBlocks: [UUID!]!
+  
+  # Resolution information
+  resolutionStatus: ConflictResolutionStatus!
+  suggestedResolution: ConflictResolution
+  manualResolution: ConflictResolution
+  resolvedBy: User
+  
+  # Priority and impact
+  severity: ConflictSeverity!
+  impactScope: ConflictImpactScope!
+  affectedUsers: [User!]!
+  
+  # Timestamps
+  detectedAt: DateTime!
+  resolvedAt: DateTime
+  timeoutAt: DateTime!
+}
+
+type DocumentEngagement {
+  # View metrics
+  totalViews: NonNegativeInt!
+  uniqueViewers: NonNegativeInt!
+  averageViewDuration: Duration!
+  
+  # Edit metrics
+  totalEdits: NonNegativeInt!
+  uniqueEditors: NonNegativeInt!
+  editsSessions: NonNegativeInt!
+  
+  # Collaboration metrics
+  commentsTotal: NonNegativeInt!
+  activeSessions: NonNegativeInt!
+  peakConcurrentUsers: NonNegativeInt!
+  
+  # Quality metrics
+  revisionVelocity: Float!
+  conflictResolutionTime: Duration!
+  userRetentionRate: Float!
+}
+
+type DocumentQuality {
+  # Content quality
+  grammarScore: Float! # 0.0 to 1.0
+  readabilityIndex: Float!
+  completenessRatio: Float!
+  
+  # Structure quality
+  organizationScore: Float!
+  consistencyScore: Float!
+  formattingScore: Float!
+  
+  # Collaboration quality
+  consensusLevel: Float!
+  conflictFrequency: Float!
+  resolutionEfficiency: Float!
+  
+  # Overall assessment
+  overallQuality: QualityGrade!
+  recommendations: [QualityRecommendation!]!
+  
+  lastAssessed: DateTime!
+  assessedBy: NandaAgent
+}
+
+# =============================================================================
+# ENHANCED COMMENT SYSTEM
+# =============================================================================
+
+extend type Comment @auth(requires: USER) @tenant {
+  # AI enhancements
+  aiSummary: String @auth(requires: VIEW)
+  sentimentScore: Float @auth(requires: VIEW)
+  suggestedResponses: [String!]! @auth(requires: COMMENT)
+  
+  # Enhanced threading
+  threadDepth: NonNegativeInt!
+  threadPath: [UUID!]!
+  
+  # Smart notifications
+  smartNotifications: [SmartNotification!]! @complexity(value: 5)
+  
+  # Analytics
+  engagementScore: Float!
+  impactScore: Float!
+}
+
+type SmartNotification {
+  id: UUID!
+  type: NotificationType!
+  recipient: User!
+  
+  # Notification content
+  title: NonEmptyString!
+  message: String!
+  actionUrl: URL
+  
+  # Smart features
+  priority: NotificationPriority!
+  deliveryTime: DateTime # Smart scheduling
+  personalizedContent: String
+  
+  # Status tracking
+  status: NotificationStatus!
+  deliveredAt: DateTime
+  readAt: DateTime
+  actedUponAt: DateTime
+  
+  createdAt: DateTime!
+}
+
+# =============================================================================
+# PROJECT METRICS AND ANALYTICS
+# =============================================================================
+
+type ProjectMetrics {
+  # Document metrics
+  totalDocuments: NonNegativeInt!
+  activeDocuments: NonNegativeInt!
+  documentGrowthRate: Float!
+  
+  # User engagement
+  totalUsers: NonNegativeInt!
+  activeUsers: NonNegativeInt!
+  userRetentionRate: Float!
+  collaborationIndex: Float!
+  
+  # Activity metrics
+  totalActivities: NonNegativeInt!
+  activitiesPerDay: Float!
+  peakActivityHours: [Int!]!
+  
+  # Quality metrics
+  averageDocumentQuality: Float!
+  conflictResolutionRate: Float!
+  aiSuggestionAcceptanceRate: Float!
+  
+  # Performance metrics
+  averageResponseTime: Duration!
+  systemUptime: Float!
+  errorRate: Float!
+  
+  # Time-based data
+  metricsTimeRange: DateTimeRange!
+  lastUpdated: DateTime!
+}
+
+# =============================================================================
+# INTEGRATIONS
+# =============================================================================
+
+type PaintboxProjectIntegration {
+  id: UUID!
+  paintboxProjectId: UUID!
+  syncStatus: SyncStatus!
+  
+  # Synchronized data
+  estimates: [PaintboxEstimate!]! @auth(requires: VIEW_ESTIMATES)
+  clients: [PaintboxClient!]! @auth(requires: VIEW_CLIENTS)
+  
+  # Sync configuration
+  autoSync: Boolean!
+  syncFrequency: SyncFrequency!
+  lastSyncAt: DateTime
+  nextSyncAt: DateTime
+  
+  # Error handling
+  syncErrors: [SyncError!]!
+  retryCount: NonNegativeInt!
+}
+
+type BrandPortalIntegration {
+  id: UUID!
+  brandPortalProjectId: UUID!
+  
+  # Brand assets
+  brandGuidelines: [BrandGuideline!]! @auth(requires: VIEW_BRANDING)
+  brandAssets: [BrandAsset!]! @auth(requires: VIEW_BRANDING)
+  
+  # Theme synchronization
+  activeTheme: BrandPortalTheme
+  availableThemes: [BrandPortalTheme!]!
+  
+  # Integration status
+  isActive: Boolean!
+  lastUpdated: DateTime!
+}
+
+# =============================================================================
+# INPUT TYPES
+# =============================================================================
+
+# Project Inputs
+input CreateProjectInput {
+  name: NonEmptyString!
+  description: String
+  workspaceId: UUID!
+  parentProjectId: UUID
+  
+  # Initial setup
+  templateId: UUID
+  aiAgentConfiguration: CreateAgentConfigurationInput
+  
+  # Team setup
+  initialMembers: [CreateProjectMemberInput!]
+  permissions: CreateProjectPermissionsInput
+}
+
+input UpdateProjectInput {
+  id: UUID!
+  name: NonEmptyString
+  description: String
+  status: ProjectStatus
+  
+  # AI configuration
+  aiAgentConfiguration: UpdateAgentConfigurationInput
+  
+  # Team management
+  addMembers: [CreateProjectMemberInput!]
+  removeMembers: [UUID!]
+  updateMemberPermissions: [UpdateProjectMemberInput!]
+}
+
+input CreateProjectMemberInput {
+  userId: UUID!
+  role: ProjectRole!
+  permissions: [ProjectPermission!]
+}
+
+input UpdateProjectMemberInput {
+  userId: UUID!
+  role: ProjectRole
+  permissions: [ProjectPermission!]
+}
+
+# AI Inputs
+input CreateAISuggestionInput {
+  documentId: UUID!
+  type: SuggestionType!
+  content: CreateAISuggestionContentInput!
+  context: CreateAIContextInput!
+  
+  # Metadata
+  confidence: Float
+  expiresIn: Duration
+}
+
+input CreateAISuggestionContentInput {
+  text: String
+  replacement: String
+  insertion: JSON
+  formatting: JSON
+  structure: JSON
+}
+
+input CreateAIContextInput {
+  blockId: UUID
+  selectionStart: NonNegativeInt
+  selectionEnd: NonNegativeInt
+  userIntent: UserIntent
+  collaborationState: JSON
+}
+
+input ProvideSuggestionFeedbackInput {
+  suggestionId: UUID!
+  feedback: SuggestionFeedbackType!
+  rating: Int # 1-5 scale
+  comments: String
+  improvementSuggestions: String
+}
+
+# Real-time Operation Inputs
+input SubmitOperationInput {
+  documentId: UUID!
+  operation: CreateOperationInput!
+  
+  # Operational Transform metadata
+  clientId: UUID!
+  sequenceNumber: NonNegativeInt!
+  dependencies: [UUID!]
+  
+  # Context
+  sessionId: UUID!
+  conflictResolution: ConflictResolutionStrategy
+}
+
+input ResolveConflictManuallyInput {
+  conflictId: UUID!
+  resolutionType: ManualResolutionType!
+  resolutionContent: JSON!
+  
+  # Metadata
+  comments: String
+  applyToSimilarConflicts: Boolean
+}
+
+# Enhanced Comment Inputs
+input CreateEnhancedCommentInput {
+  documentId: UUID!
+  content: CreateCommentContentInput!
+  position: CreateCommentPositionInput
+  
+  # Enhanced features
+  type: CommentType = GENERAL
+  priority: CommentPriority = NORMAL
+  tags: [String!]
+  mentions: [UUID!]
+  
+  # Smart features
+  requestAISummary: Boolean
+  notificationPreferences: NotificationPreferencesInput
+  
+  # Threading
+  parentCommentId: UUID
+  threadId: UUID
+}
+
+input NotificationPreferencesInput {
+  enableSmartScheduling: Boolean
+  priority: NotificationPriority
+  deliveryChannels: [NotificationChannel!]
+  quietHours: QuietHoursInput
+}
+
+input QuietHoursInput {
+  enabled: Boolean!
+  startTime: Time!
+  endTime: Time!
+  timezone: String!
+  daysOfWeek: [DayOfWeek!]!
+}
+
+# Analytics Inputs
+input ProjectMetricsFilter {
+  timeRange: DateTimeRangeInput!
+  includeSubProjects: Boolean
+  documentTypes: [DocumentType!]
+  userRoles: [ProjectRole!]
+  activityTypes: [ActivityEventType!]
+}
+
+input DateTimeRangeInput {
+  start: DateTime!
+  end: DateTime!
+}
+
+# =============================================================================
+# ENUMERATIONS
+# =============================================================================
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+  ARCHIVED
+}
+
+enum ProjectRole {
+  OWNER
+  ADMIN
+  EDITOR
+  REVIEWER
+  VIEWER
+  GUEST
+}
+
+enum ProjectPermission {
+  VIEW_PROJECT
+  EDIT_PROJECT
+  MANAGE_TEAM
+  DELETE_PROJECT
+  MANAGE_AI_AGENT
+  VIEW_ANALYTICS
+  EXPORT_DATA
+  MANAGE_INTEGRATIONS
+}
+
+enum AgentStatus {
+  ACTIVE
+  INACTIVE
+  TRAINING
+  ERROR
+  MAINTENANCE
+}
+
+enum AICapability {
+  CONTENT_GENERATION
+  GRAMMAR_CORRECTION
+  STRUCTURE_SUGGESTION
+  COLLABORATION_INSIGHT
+  CONFLICT_PREDICTION
+  SENTIMENT_ANALYSIS
+  SUMMARIZATION
+  TRANSLATION
+  CODE_COMPLETION
+  DATA_ANALYSIS
+}
+
+enum SuggestionType {
+  CONTENT_IMPROVEMENT
+  GRAMMAR_FIX
+  STYLE_ENHANCEMENT
+  STRUCTURE_OPTIMIZATION
+  COLLABORATION_TIP
+  CONFLICT_RESOLUTION
+  EFFICIENCY_BOOST
+  ACCESSIBILITY_IMPROVEMENT
+}
+
+enum SuggestionStatus {
+  PENDING
+  APPLIED
+  DISMISSED
+  EXPIRED
+  SUPERSEDED
+}
+
+enum SuggestionFeedbackType {
+  HELPFUL
+  NOT_HELPFUL
+  PARTIALLY_HELPFUL
+  INCORRECT
+  NEEDS_IMPROVEMENT
+}
+
+enum ConflictResolutionStatus {
+  PENDING
+  AUTO_RESOLVED
+  MANUALLY_RESOLVED
+  ESCALATED
+  TIMEOUT
+}
+
+enum ConflictSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ConflictImpactScope {
+  SINGLE_BLOCK
+  MULTIPLE_BLOCKS
+  DOCUMENT_STRUCTURE
+  USER_SESSION
+  MULTI_USER
+  SYSTEM_WIDE
+}
+
+enum OperationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+  SYSTEM
+}
+
+enum QualityGrade {
+  EXCELLENT # 90-100%
+  GOOD      # 70-89%
+  FAIR      # 50-69%
+  POOR      # 30-49%
+  CRITICAL  # 0-29%
+}
+
+enum NotificationType {
+  COMMENT_MENTION
+  DOCUMENT_SHARED
+  CONFLICT_DETECTED
+  AI_SUGGESTION
+  TASK_ASSIGNED
+  DEADLINE_APPROACHING
+  SYSTEM_ALERT
+  COLLABORATION_INVITE
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum NotificationStatus {
+  PENDING
+  SCHEDULED
+  DELIVERED
+  READ
+  ACTED_UPON
+  EXPIRED
+  CANCELLED
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  PUSH
+  SLACK
+  WEBHOOK
+}
+
+enum InsightType {
+  COLLABORATION_PATTERN
+  PRODUCTIVITY_TREND
+  QUALITY_ASSESSMENT
+  USAGE_ANALYTICS
+  PERFORMANCE_METRIC
+  PREDICTIVE_ANALYSIS
+  RECOMMENDATION
+  WARNING
+}
+
+enum InsightPriority {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum InsightStatus {
+  ACTIVE
+  ACKNOWLEDGED
+  ACTED_UPON
+  DISMISSED
+  EXPIRED
+}
+
+enum SyncFrequency {
+  REAL_TIME
+  EVERY_MINUTE
+  EVERY_5_MINUTES
+  EVERY_15_MINUTES
+  HOURLY
+  DAILY
+  WEEKLY
+  MANUAL
+}
+
+enum ManualResolutionType {
+  ACCEPT_A
+  ACCEPT_B
+  MERGE_BOTH
+  CUSTOM_RESOLUTION
+  REVERT_BOTH
+}
+
+enum UserIntent {
+  WRITING
+  EDITING
+  REVIEWING
+  COMMENTING
+  FORMATTING
+  RESTRUCTURING
+  COLLABORATING
+  RESEARCHING
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+# =============================================================================
+# UTILITY TYPES
+# =============================================================================
+
+type AgentConfiguration {
+  # Core settings
+  languageModel: String!
+  temperature: Float!
+  maxTokens: NonNegativeInt!
+  
+  # Feature toggles
+  enabledCapabilities: [AICapability!]!
+  autoSuggestionThreshold: Float!
+  conflictDetectionSensitivity: Float!
+  
+  # Personalization
+  userPreferences: JSON!
+  learningEnabled: Boolean!
+  
+  # Integration settings
+  externalAPIs: [ExternalAPIConfig!]!
+  webhookEndpoints: [WebhookConfig!]!
+}
+
+type AgentPerformance {
+  # Response metrics
+  averageResponseTime: Duration!
+  successRate: Float!
+  errorRate: Float!
+  
+  # Quality metrics
+  suggestionAcceptanceRate: Float!
+  userSatisfactionScore: Float!
+  accuracyScore: Float!
+  
+  # Usage patterns
+  dailyRequestCount: NonNegativeInt!
+  peakUsageHours: [Int!]!
+  
+  lastEvaluated: DateTime!
+}
+
+type AgentUsage {
+  # Request counts
+  totalRequests: BigInt!
+  successfulRequests: BigInt!
+  failedRequests: BigInt!
+  
+  # Token usage
+  totalTokensUsed: BigInt!
+  averageTokensPerRequest: Float!
+  
+  # Cost tracking
+  estimatedCost: Decimal!
+  costPerRequest: Decimal!
+  
+  # Time ranges
+  daily: AgentUsageStats!
+  weekly: AgentUsageStats!
+  monthly: AgentUsageStats!
+}
+
+type AgentUsageStats {
+  requests: NonNegativeInt!
+  tokens: BigInt!
+  cost: Decimal!
+  averageResponseTime: Duration!
+}
+
+type SentimentAnalysis {
+  overallSentiment: SentimentType!
+  positiveScore: Float! # 0.0 to 1.0
+  negativeScore: Float! # 0.0 to 1.0
+  neutralScore: Float!  # 0.0 to 1.0
+  emotions: [EmotionScore!]!
+  confidenceLevel: Float!
+}
+
+type EmotionScore {
+  emotion: EmotionType!
+  score: Float! # 0.0 to 1.0
+}
+
+type Topic {
+  name: NonEmptyString!
+  relevanceScore: Float!
+  confidence: Float!
+  mentions: NonNegativeInt!
+  relatedTopics: [String!]!
+}
+
+type ConflictPrediction {
+  likelihood: Float! # 0.0 to 1.0
+  riskFactors: [RiskFactor!]!
+  preventionSuggestions: [String!]!
+  timeToConflict: Duration
+  confidence: Float!
+}
+
+type RiskFactor {
+  factor: String!
+  impact: RiskImpact!
+  likelihood: Float!
+  description: String!
+}
+
+type ImprovementSuggestion {
+  type: ImprovementType!
+  title: NonEmptyString!
+  description: String!
+  priority: SuggestionPriority!
+  effort: EffortLevel!
+  expectedImpact: ImpactLevel!
+}
+
+type ActionSuggestion {
+  action: ActionType!
+  title: NonEmptyString!
+  description: String!
+  assignedTo: User
+  dueDate: DateTime
+  priority: ActionPriority!
+}
+
+type QualityRecommendation {
+  aspect: QualityAspect!
+  currentScore: Float!
+  targetScore: Float!
+  recommendation: String!
+  actionItems: [String!]!
+  estimatedImpact: Float!
+}
+
+type TransformationStep {
+  id: UUID!
+  type: TransformationType!
+  fromOperation: UUID!
+  toOperation: UUID!
+  transformation: JSON!
+  timestamp: DateTime!
+}
+
+type OperationConflict {
+  id: UUID!
+  conflictingOperation: UUID!
+  conflictType: OperationConflictType!
+  severity: ConflictSeverity!
+  autoResolvable: Boolean!
+}
+
+type WorkspaceSettings {
+  # General settings
+  defaultPermissions: ProjectPermission!
+  allowGuestAccess: Boolean!
+  
+  # AI settings
+  aiEnabled: Boolean!
+  autoSuggestions: Boolean!
+  conflictPrediction: Boolean!
+  
+  # Notification settings
+  emailNotifications: Boolean!
+  pushNotifications: Boolean!
+  quietHours: QuietHoursConfig
+  
+  # Integration settings
+  enabledIntegrations: [IntegrationType!]!
+  webhookEndpoints: [WebhookConfig!]!
+}
+
+type WorkspaceAIConfiguration {
+  # Model selection
+  primaryModel: String!
+  fallbackModels: [String!]!
+  
+  # Feature configuration
+  enabledFeatures: [AIFeature!]!
+  customPrompts: [CustomPrompt!]!
+  
+  # Performance settings
+  maxConcurrentRequests: NonNegativeInt!
+  requestTimeout: Duration!
+  retryAttempts: NonNegativeInt!
+  
+  # Cost management
+  dailyCostLimit: Decimal
+  monthlyCostLimit: Decimal
+  costAlertThreshold: Decimal
+}
+
+type WorkspacePermissions {
+  defaultRole: ProjectRole!
+  allowSelfRegistration: Boolean!
+  requireApproval: Boolean!
+  
+  # Role-based permissions
+  rolePermissions: [RolePermissionSet!]!
+  
+  # Special permissions
+  adminUsers: [UUID!]!
+  billingAdmins: [UUID!]!
+}
+
+type ConnectedSystem {
+  id: UUID!
+  name: NonEmptyString!
+  type: SystemType!
+  status: ConnectionStatus!
+  
+  # Connection details
+  endpoint: URL
+  apiVersion: String
+  
+  # Health metrics
+  lastHealthCheck: DateTime!
+  responseTime: Duration
+  successRate: Float!
+  
+  # Configuration
+  settings: JSON!
+  credentials: String @auth(requires: ADMIN) # Encrypted
+}
+
+# Additional utility enums
+enum SentimentType {
+  VERY_POSITIVE
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+  VERY_NEGATIVE
+}
+
+enum EmotionType {
+  JOY
+  ANGER
+  FEAR
+  SADNESS
+  SURPRISE
+  DISGUST
+  TRUST
+  ANTICIPATION
+}
+
+enum RiskImpact {
+  MINIMAL
+  LOW
+  MEDIUM
+  HIGH
+  SEVERE
+}
+
+enum ImprovementType {
+  CONTENT_QUALITY
+  STRUCTURE_ORGANIZATION
+  COLLABORATION_EFFICIENCY
+  ACCESSIBILITY
+  PERFORMANCE
+  SECURITY
+}
+
+enum SuggestionPriority {
+  OPTIONAL
+  RECOMMENDED
+  IMPORTANT
+  CRITICAL
+}
+
+enum EffortLevel {
+  MINIMAL
+  LOW
+  MEDIUM
+  HIGH
+  EXTENSIVE
+}
+
+enum ImpactLevel {
+  MINIMAL
+  LOW
+  MEDIUM
+  HIGH
+  TRANSFORMATIVE
+}
+
+enum ActionType {
+  REVIEW_DOCUMENT
+  RESOLVE_COMMENT
+  UPDATE_CONTENT
+  ASSIGN_TASK
+  SCHEDULE_MEETING
+  CREATE_TEMPLATE
+  BACKUP_DATA
+  NOTIFY_TEAM
+}
+
+enum ActionPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+  CRITICAL
+}
+
+enum QualityAspect {
+  CONTENT_ACCURACY
+  GRAMMAR_SPELLING
+  STRUCTURE_ORGANIZATION
+  COLLABORATION_EFFICIENCY
+  ACCESSIBILITY_COMPLIANCE
+  CONSISTENCY
+  COMPLETENESS
+}
+
+enum TransformationType {
+  INSERT_TRANSFORM
+  DELETE_TRANSFORM
+  REPLACE_TRANSFORM
+  MOVE_TRANSFORM
+  FORMAT_TRANSFORM
+  SPLIT_TRANSFORM
+  MERGE_TRANSFORM
+}
+
+enum OperationConflictType {
+  POSITION_CONFLICT
+  CONTENT_CONFLICT
+  FORMAT_CONFLICT
+  DEPENDENCY_CONFLICT
+  TIMING_CONFLICT
+}
+
+enum IntegrationType {
+  PAINTBOX
+  BRAND_PORTAL
+  SLACK
+  MICROSOFT_TEAMS
+  GOOGLE_WORKSPACE
+  GITHUB
+  JIRA
+  TRELLO
+}
+
+enum SystemType {
+  API
+  DATABASE
+  MESSAGE_QUEUE
+  FILE_STORAGE
+  AI_SERVICE
+  WEBHOOK_ENDPOINT
+}
+
+enum ConnectionStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+  MAINTENANCE
+  UNKNOWN
+}
+
+enum AIFeature {
+  AUTO_SUGGESTIONS
+  GRAMMAR_CHECK
+  STYLE_IMPROVEMENT
+  CONFLICT_PREDICTION
+  CONTENT_GENERATION
+  SUMMARIZATION
+  TRANSLATION
+  SENTIMENT_ANALYSIS
+}
+
+# =============================================================================
+# COMPLEX TYPES FOR ADVANCED FEATURES
+# =============================================================================
+
+type CustomPrompt {
+  id: UUID!
+  name: NonEmptyString!
+  prompt: String!
+  type: PromptType!
+  variables: [PromptVariable!]!
+  isActive: Boolean!
+  createdBy: User!
+  createdAt: DateTime!
+}
+
+type PromptVariable {
+  name: NonEmptyString!
+  type: VariableType!
+  defaultValue: String
+  required: Boolean!
+  description: String
+}
+
+type RolePermissionSet {
+  role: ProjectRole!
+  permissions: [ProjectPermission!]!
+  inherited: Boolean!
+  customPermissions: [CustomPermission!]!
+}
+
+type CustomPermission {
+  name: NonEmptyString!
+  description: String!
+  resource: String!
+  actions: [String!]!
+}
+
+type WebhookConfig {
+  id: UUID!
+  name: NonEmptyString!
+  url: URL!
+  events: [WebhookEvent!]!
+  secret: String @auth(requires: ADMIN)
+  isActive: Boolean!
+  retryAttempts: NonNegativeInt!
+  timeout: Duration!
+}
+
+type ExternalAPIConfig {
+  id: UUID!
+  name: NonEmptyString!
+  baseUrl: URL!
+  apiKey: String @auth(requires: ADMIN)
+  rateLimit: RateLimit
+  isActive: Boolean!
+}
+
+type RateLimit {
+  requestsPerSecond: NonNegativeInt!
+  requestsPerMinute: NonNegativeInt!
+  requestsPerHour: NonNegativeInt!
+  burstLimit: NonNegativeInt!
+}
+
+type InsightVisualization {
+  type: VisualizationType!
+  data: JSON!
+  config: VisualizationConfig!
+}
+
+type VisualizationConfig {
+  width: NonNegativeInt
+  height: NonNegativeInt
+  colors: [HexColorCode!]
+  interactive: Boolean!
+  exportable: Boolean!
+}
+
+enum PromptType {
+  CONTENT_GENERATION
+  GRAMMAR_CHECK
+  STYLE_IMPROVEMENT
+  SUMMARIZATION
+  TRANSLATION
+  ANALYSIS
+  CUSTOM
+}
+
+enum VariableType {
+  STRING
+  NUMBER
+  BOOLEAN
+  DATE
+  JSON
+  USER_ID
+  DOCUMENT_ID
+}
+
+enum WebhookEvent {
+  DOCUMENT_CREATED
+  DOCUMENT_UPDATED
+  DOCUMENT_DELETED
+  COMMENT_ADDED
+  USER_JOINED
+  USER_LEFT
+  CONFLICT_DETECTED
+  AI_SUGGESTION_GENERATED
+  PROJECT_STATUS_CHANGED
+}
+
+enum VisualizationType {
+  BAR_CHART
+  LINE_CHART
+  PIE_CHART
+  SCATTER_PLOT
+  HEAT_MAP
+  NETWORK_GRAPH
+  TIMELINE
+  GAUGE
+  TABLE
+}

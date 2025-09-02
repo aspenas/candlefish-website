@@ -1,59 +1,88 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { ApolloProvider } from '@apollo/client';
-import { Toaster } from 'react-hot-toast';
-import { apolloClient } from '@/lib/apollo-client';
-import { CollaborativeEditor } from '@/components/editor/CollaborativeEditor';
-import { CollaborationProvider } from '@/components/providers/CollaborationProvider';
-import { DocumentProvider } from '@/components/providers/DocumentProvider';
-import { EditorLayout } from '@/components/layout/EditorLayout';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { CollaborationLayout } from '@/components/layout/CollaborationLayout';
+import { DocumentLoading, CollaborationLoading } from '@/components/common/LoadingStates';
+import { useCollaborationStore } from '@/stores/collaboration-store';
+import ErrorBoundary from '@/components/common/ErrorBoundary';
 
 export default function HomePage() {
-  const [documentId, setDocumentId] = useState<string>('');
-  const [isClient, setIsClient] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [isLoading, setIsLoading] = useState(true);
+  const [documentId, setDocumentId] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(null);
+
+  const { setCurrentUser } = useCollaborationStore();
 
   useEffect(() => {
-    setIsClient(true);
+    // Initialize demo user
+    const demoUser = {
+      id: 'demo-user-1',
+      name: 'Demo User',
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face&auto=format',
+      color: '#3B82F6',
+      status: 'active' as const,
+      cursor: undefined,
+      selection: undefined,
+      isTyping: false,
+      currentAction: undefined,
+      lastSeen: new Date(),
+    };
 
-    // Get document ID from URL params or create new document
-    const urlParams = new URLSearchParams(window.location.search);
-    const docId = urlParams.get('document') || 'demo-document-1';
-    setDocumentId(docId);
-  }, []);
+    setCurrentUser(demoUser);
 
-  if (!isClient || !documentId) {
+    // Get project and document from URL params
+    const urlProjectId = searchParams.get('project') || 'demo-project-1';
+    const urlDocumentId = searchParams.get('document');
+
+    setProjectId(urlProjectId);
+    setDocumentId(urlDocumentId);
+
+    // Simulate loading
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+  }, [searchParams, setCurrentUser]);
+
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="h-screen flex items-center justify-center">
+        <div className="space-y-6">
+          <DocumentLoading message="Initializing collaborative editor..." />
+          <CollaborationLoading />
+        </div>
+      </div>
+    );
+  }
+
+  if (!projectId) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <h1 className="text-2xl font-bold">Welcome to Collaboration Editor</h1>
+          <p className="text-muted-foreground">
+            Please specify a project ID to get started.
+          </p>
+          <button
+            onClick={() => router.push('/?project=demo-project-1')}
+            className="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90"
+          >
+            Load Demo Project
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <ApolloProvider client={apolloClient}>
-      <DocumentProvider documentId={documentId}>
-        <CollaborationProvider documentId={documentId}>
-          <EditorLayout>
-            <CollaborativeEditor
-              documentId={documentId}
-              placeholder="Start writing your collaborative document..."
-              className="h-full"
-            />
-          </EditorLayout>
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: 'hsl(var(--card))',
-                color: 'hsl(var(--card-foreground))',
-                border: '1px solid hsl(var(--border))',
-              },
-            }}
-          />
-        </CollaborationProvider>
-      </DocumentProvider>
-    </ApolloProvider>
+    <ErrorBoundary>
+      <CollaborationLayout
+        projectId={projectId}
+        documentId={documentId || undefined}
+        className="h-screen"
+      />
+    </ErrorBoundary>
   );
 }
