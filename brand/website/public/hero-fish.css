@@ -1,0 +1,102 @@
+/* Hero Fish Animation - Canvas Styles */
+
+[data-cf-fish-host] {
+  position: relative;
+  width: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  contain: paint layout;
+}
+
+#hero-fish-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 1;
+  will-change: transform;
+  image-rendering: optimizeQuality;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Mobile dimensions */
+@media (max-width: 768px) {
+  [data-cf-fish-host] {
+    height: 200px;
+    min-height: 180px;
+    max-height: 220px;
+  }
+}
+
+/* Desktop dimensions */
+@media (min-width: 769px) {
+  [data-cf-fish-host] {
+    height: 290px;
+    min-height: 260px;
+    max-height: 320px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  #hero-fish-canvas {
+    animation-duration: 0s !important;
+  }
+}
+
+/* Ensure text has higher stacking context */
+.hero-text-container,
+[data-hero-text] {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+}
+
+/* Loading state */
+[data-cf-fish-host].loading::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(255, 179, 71, 0.05) 50%,
+    transparent 100%
+  );
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Fallback state */
+[data-cf-fish-host].fallback {
+  background-image: url('/img/cf-fish-fallback.svg');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+[data-cf-fish-host].fallback #hero-fish-canvas {
+  display: none;
+}
+
+/* Performance hints */
+@supports (image-rendering: pixelated) {
+  #hero-fish-canvas.low-quality {
+    image-rendering: pixelated;
+  }
+}
+
+/* Hide canvas when not visible */
+[data-cf-fish-host]:not(.visible) #hero-fish-canvas {
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+[data-cf-fish-host].visible #hero-fish-canvas {
+  opacity: 1;
+  transition: opacity 0.5s ease-in-out;
+}

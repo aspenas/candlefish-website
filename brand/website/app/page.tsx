@@ -6,13 +6,11 @@ import HeaderText from '../components/HeaderText'
 import SystemActivity from '../components/SystemActivity'
 import SystemArchitecture from '../components/SystemArchitecture'
 import { NewsletterForm } from '../components/forms/NewsletterForm'
+import dynamic from 'next/dynamic'
 
-// Lazy load visualizations for better initial performance with error boundary
-const OperationalCraft = lazy(() =>
-  import('../components/visuals/OperationalCraft').catch(() => ({
-    default: () => <div className="text-[#415A77] text-xs">Visualization unavailable</div>
-  }))
-)
+
+// Import CandleFish component
+import CandleFish from '../web/aquarium/react/CandleFish'
 
 export default function OperationalHomepage() {
   // Force rebuild after netlify.toml configuration fix
@@ -28,7 +26,7 @@ export default function OperationalHomepage() {
       <SystemActivity />
 
       {/* Hero Section */}
-      <section className="min-h-screen relative overflow-hidden">
+      <section className="relative overflow-hidden pb-20">
         {/* Background Gradient */}
         <div 
           className="absolute inset-0"
@@ -70,61 +68,16 @@ export default function OperationalHomepage() {
           </div>
         </div>
 
-        {/* Operational Craft Visualization - Forward-looking design */}
-        <div className="absolute bottom-8 right-8 w-[400px] h-[200px] hidden lg:block">
-          <div className="bg-[#1B263B]/30 backdrop-blur-sm border border-[#415A77]/20 overflow-hidden">
-            {isClient && (
-              <Suspense fallback={
-                <div className="w-full h-full flex items-center justify-center">
-                  <div className="text-[#415A77] text-xs font-mono">INITIALIZING...</div>
-                </div>
-              }>
-                <OperationalCraft />
-              </Suspense>
-            )}
-          </div>
-        </div>
       </section>
 
-      {/* Operational Matrix Section */}
-      <section className="py-28 relative">
-        <div className="max-w-7xl mx-auto px-6">
-          <h2 className="text-4xl font-light text-[#F8F8F2] mb-16">Operational Matrix</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="card-operational">
-              <div className="text-[#3FD3C6] text-xs uppercase tracking-wider mb-4">
-                Active Systems
-              </div>
-              <div className="text-5xl font-light text-[#F8F8F2] mb-2">3</div>
-              <div className="text-[#415A77] text-sm">
-                Engagements in-build now
-              </div>
-              <div className="text-[#415A77] text-xs mt-1">
-                Crown Trophy · Paintbox · PromoterOS
-              </div>
-            </div>
-            <div className="card-operational">
-              <div className="text-[#3FD3C6] text-xs uppercase tracking-wider mb-4">
-                Queue Length
-              </div>
-              <div className="text-5xl font-light text-[#F8F8F2] mb-2">7</div>
-              <div className="text-[#415A77] text-sm">
-                Qualified orgs awaiting consideration
-              </div>
-            </div>
-            <div className="card-operational">
-              <div className="text-[#3FD3C6] text-xs uppercase tracking-wider mb-4">
-                Next Window
-              </div>
-              <div className="text-5xl font-light text-[#F8F8F2] mb-2">Q4</div>
-              <div className="text-[#415A77] text-sm">
-                Period when new builds can start
-              </div>
-              <div className="text-[#415A77] text-xs mt-1">
-                At Capacity Until December 2025
-              </div>
-            </div>
-          </div>
+      {/* Bioluminescent Candlefish Animation */}
+      <section className="relative" data-widget="operational-matrix">
+        <div data-cf-fish-host className="loading">
+          <canvas 
+            id="hero-fish-canvas" 
+            aria-label="Decorative animation: Candlefish glyph, idle swim." 
+            role="img"
+          />
         </div>
       </section>
 
