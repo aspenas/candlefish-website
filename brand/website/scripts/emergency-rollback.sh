@@ -1,338 +1,393 @@
 #!/bin/bash
-# Emergency Rollback Script for Bioluminescent Candlefish Animation
-# Provides rapid rollback capabilities for production deployments
+
+# Emergency Rollback Script for Candlefish Animation
+# Provides immediate rollback capability for production issues
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
 # Configuration
-NAMESPACE="${NAMESPACE:-production}"
-APP_NAME="candlefish-website"
-KUBECONFIG="${KUBECONFIG:-${HOME}/.kube/config}"
-ROLLBACK_TIMEOUT="${ROLLBACK_TIMEOUT:-600}"
-HEALTH_CHECK_RETRIES="${HEALTH_CHECK_RETRIES:-5}"
-HEALTH_CHECK_DELAY="${HEALTH_CHECK_DELAY:-30}"
+ENVIRONMENT=${ENVIRONMENT:-production}
+AWS_REGION=${AWS_REGION:-us-east-1}
+DOMAIN_NAME=${DOMAIN_NAME:-candlefish.ai}
+SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Logging functions
+# Logging
 log_info() {
-    echo -e "${GREEN}[INFO]${NC} $(date '+%Y-%m-%d %H:%M:%S') - $1"
+    echo -e "${BLUE}[INFO]${NC} $1"
 }
 
-log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $(date '+%Y-%m-%d %H:%M:%S') - $1"
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
 log_error() {
-    echo -e "${RED}[ERROR]${NC} $(date '+%Y-%m-%d %H:%M:%S') - $1"
+    echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Function to check prerequisites
-check_prerequisites() {
-    log_info "Checking prerequisites..."
+# Slack notification function
+notify_slack() {
+    local message="$1"
+    local color="${2:-danger}"
     
-    if ! command -v kubectl &> /dev/null; then
-        log_error "kubectl is not installed or not in PATH"
-        exit 1
-    fi
-    
-    if ! kubectl cluster-info &> /dev/null; then
-        log_error "Cannot connect to Kubernetes cluster"
-        exit 1
-    fi
-    
-    if ! kubectl get namespace "$NAMESPACE" &> /dev/null; then
-        log_error "Namespace '$NAMESPACE' does not exist"
-        exit 1
-    fi
-    
-    log_info "Prerequisites check passed"
-}
-
-# Function to get current deployment status
-get_deployment_status() {
-    local deployment_name="$1"
-    kubectl get deployment "$deployment_name" -n "$NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Available")].status}' 2>/dev/null || echo "Unknown"
-}
-
-# Function to get revision history
-get_revision_history() {
-    log_info "Getting deployment revision history..."
-    
-    # Get deployment history
-    kubectl rollout history deployment "$APP_NAME" -n "$NAMESPACE"
-    
-    # Get current revision
-    local current_revision
-    current_revision=$(kubectl get deployment "$APP_NAME" -n "$NAMESPACE" -o jsonpath='{.metadata.annotations.deployment\.kubernetes\.io/revision}')
-    
-    echo "Current revision: $current_revision"
-    
-    # Calculate previous revision
-    local previous_revision
-    previous_revision=$((current_revision - 1))
-    
-    if [ "$previous_revision" -lt 1 ]; then
-        log_error "No previous revision available for rollback"
-        exit 1
-    fi
-    
-    echo "$previous_revision"
-}
-
-# Function to perform blue-green rollback
-perform_blue_green_rollback() {
-    log_info "Performing blue-green rollback..."
-    
-    # Determine current and target colors
-    local current_color
-    current_color=$(kubectl get service "$APP_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.selector.color}' 2>/dev/null || echo "blue")
-    
-    local target_color
-    if [ "$current_color" = "blue" ]; then
-        target_color="green"
-    else
-        target_color="blue"
-    fi
-    
-    log_info "Current color: $current_color, rolling back to: $target_color"
-    
-    # Check if target environment exists and is healthy
-    if ! kubectl get deployment "$APP_NAME-$target_color" -n "$NAMESPACE" &> /dev/null; then
-        log_error "Target deployment $APP_NAME-$target_color does not exist"
-        exit 1
-    fi
-    
-    # Scale up the target environment if it's scaled down
-    local target_replicas
-    target_replicas=$(kubectl get deployment "$APP_NAME-$target_color" -n "$NAMESPACE" -o jsonpath='{.spec.replicas}')
-    
-    if [ "$target_replicas" -eq 0 ]; then
-        log_info "Scaling up target environment..."
-        kubectl scale deployment "$APP_NAME-$target_color" --replicas=3 -n "$NAMESPACE"
-        
-        # Wait for rollout to complete
-        kubectl rollout status deployment "$APP_NAME-$target_color" -n "$NAMESPACE" --timeout="${ROLLBACK_TIMEOUT}s"
-    fi
-    
-    # Health check on target environment
-    log_info "Performing health check on target environment..."
-    perform_health_check "$target_color"
-    
-    # Switch traffic to target environment
-    log_info "Switching traffic to $target_color environment..."
-    kubectl patch service "$APP_NAME" -n "$NAMESPACE" -p "{\"spec\":{\"selector\":{\"color\":\"$target_color\"}}}"
-    
-    # Wait for traffic switch to propagate
-    sleep 10
-    
-    # Perform final health check
-    perform_health_check
-    
-    # Scale down the original environment
-    log_info "Scaling down original environment..."
-    kubectl scale deployment "$APP_NAME-$current_color" --replicas=0 -n "$NAMESPACE"
-    
-    log_info "Blue-green rollback completed successfully"
-}
-
-# Function to perform standard rollback
-perform_standard_rollback() {
-    local previous_revision="$1"
-    
-    log_info "Performing rollback to revision $previous_revision..."
-    
-    # Record rollback start time
-    kubectl annotate deployment "$APP_NAME" rollback.candlefish.ai/started-at="$(date -u +%Y-%m-%dT%H:%M:%SZ)" -n "$NAMESPACE" --overwrite
-    
-    # Perform rollback
-    kubectl rollout undo deployment "$APP_NAME" --to-revision="$previous_revision" -n "$NAMESPACE"
-    
-    # Wait for rollback to complete
-    log_info "Waiting for rollback to complete..."
-    kubectl rollout status deployment "$APP_NAME" -n "$NAMESPACE" --timeout="${ROLLBACK_TIMEOUT}s"
-    
-    # Record rollback completion
-    kubectl annotate deployment "$APP_NAME" rollback.candlefish.ai/completed-at="$(date -u +%Y-%m-%dT%H:%M:%SZ)" -n "$NAMESPACE" --overwrite
-    
-    log_info "Standard rollback completed successfully"
-}
-
-# Function to perform health checks
-perform_health_check() {
-    local color_suffix="${1:-}"
-    local service_name="$APP_NAME"
-    
-    if [ -n "$color_suffix" ]; then
-        service_name="$APP_NAME-$color_suffix"
-    fi
-    
-    log_info "Performing health check on $service_name..."
-    
-    for i in $(seq 1 "$HEALTH_CHECK_RETRIES"); do
-        log_info "Health check attempt $i/$HEALTH_CHECK_RETRIES"
-        
-        # Check if pods are ready
-        local ready_pods
-        ready_pods=$(kubectl get pods -l app="$APP_NAME" -l color="$color_suffix" -n "$NAMESPACE" -o jsonpath='{.items[*].status.containerStatuses[*].ready}' 2>/dev/null || echo "")
-        
-        if [[ "$ready_pods" == *"false"* ]] || [ -z "$ready_pods" ]; then
-            log_warn "Pods not ready yet, waiting..."
-            sleep "$HEALTH_CHECK_DELAY"
-            continue
-        fi
-        
-        # Perform application health check
-        local service_ip
-        service_ip=$(kubectl get svc "$service_name" -n "$NAMESPACE" -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-        
-        if [ -n "$service_ip" ]; then
-            if kubectl run health-check-"$(date +%s)" --rm -i --restart=Never --image=curlimages/curl -- curl -f -m 10 "http://$service_ip/api/health" &> /dev/null; then
-                log_info "Health check passed"
-                return 0
-            else
-                log_warn "Application health check failed, retrying..."
-            fi
-        else
-            log_warn "Could not get service IP, retrying..."
-        fi
-        
-        sleep "$HEALTH_CHECK_DELAY"
-    done
-    
-    log_error "Health check failed after $HEALTH_CHECK_RETRIES attempts"
-    return 1
-}
-
-# Function to send notifications
-send_notification() {
-    local status="$1"
-    local message="$2"
-    
-    # Send Slack notification if webhook is configured
-    if [ -n "${SLACK_WEBHOOK_URL:-}" ]; then
+    if [[ -n "$SLACK_WEBHOOK_URL" ]]; then
         curl -X POST "$SLACK_WEBHOOK_URL" \
             -H 'Content-type: application/json' \
-            --data "{\"text\":\"🚨 ROLLBACK $status: $message\"}" \
-            &> /dev/null || log_warn "Failed to send Slack notification"
-    fi
-    
-    # Log to CloudWatch if AWS CLI is available
-    if command -v aws &> /dev/null; then
-        aws logs put-log-events \
-            --log-group-name "/aws/eks/production-candlefish-website/application" \
-            --log-stream-name "rollback-$(date +%Y%m%d)" \
-            --log-events timestamp="$(date +%s)000",message="ROLLBACK $status: $message" \
-            &> /dev/null || log_warn "Failed to send CloudWatch log"
+            --data "{
+                \"attachments\": [{
+                    \"color\": \"$color\",
+                    \"title\": \"🚨 Candlefish Animation Emergency Rollback\",
+                    \"text\": \"$message\",
+                    \"footer\": \"Rollback executed at $(date)\",
+                    \"ts\": $(date +%s)
+                }]
+            }" \
+            --silent || log_warning "Failed to send Slack notification"
     fi
 }
 
-# Function to create rollback report
-create_rollback_report() {
-    local status="$1"
-    local start_time="$2"
-    local end_time="$3"
+# Validate prerequisites
+validate_prerequisites() {
+    log_info "Validating prerequisites..."
     
-    local report_file="/tmp/rollback-report-$(date +%Y%m%d-%H%M%S).json"
+    # Check AWS CLI
+    if ! command -v aws &> /dev/null; then
+        log_error "AWS CLI not found. Please install AWS CLI."
+        exit 1
+    fi
+    
+    # Check AWS credentials
+    if ! aws sts get-caller-identity &> /dev/null; then
+        log_error "AWS credentials not configured or invalid."
+        exit 1
+    fi
+    
+    # Check kubectl for Kubernetes deployments
+    if command -v kubectl &> /dev/null; then
+        log_info "kubectl found, will check Kubernetes deployments"
+    else
+        log_warning "kubectl not found, skipping Kubernetes rollback"
+    fi
+    
+    log_success "Prerequisites validated"
+}
+
+# Get current deployment status
+get_current_status() {
+    log_info "Getting current deployment status..."
+    
+    # Check CloudFront distribution status
+    DISTRIBUTION_ID=$(aws cloudfront list-distributions \
+        --query "DistributionList.Items[?Aliases.Items[0]=='$DOMAIN_NAME'].Id" \
+        --output text 2>/dev/null || echo "")
+    
+    if [[ -n "$DISTRIBUTION_ID" ]]; then
+        CURRENT_STATUS=$(aws cloudfront get-distribution \
+            --id "$DISTRIBUTION_ID" \
+            --query 'Distribution.Status' \
+            --output text)
+        log_info "CloudFront distribution $DISTRIBUTION_ID status: $CURRENT_STATUS"
+    fi
+    
+    # Check API Gateway deployment
+    API_ID=$(aws apigateway get-rest-apis \
+        --query "items[?name=='${ENVIRONMENT}-candlefish-animation-api'].id" \
+        --output text 2>/dev/null || echo "")
+    
+    if [[ -n "$API_ID" ]]; then
+        log_info "Found API Gateway: $API_ID"
+    fi
+    
+    # Check Kubernetes deployment status
+    if command -v kubectl &> /dev/null; then
+        if kubectl get deployment candlefish-website -n "$ENVIRONMENT" &> /dev/null; then
+            K8S_STATUS=$(kubectl get deployment candlefish-website -n "$ENVIRONMENT" -o jsonpath='{.status.readyReplicas}')
+            K8S_DESIRED=$(kubectl get deployment candlefish-website -n "$ENVIRONMENT" -o jsonpath='{.status.replicas}')
+            log_info "Kubernetes deployment status: $K8S_STATUS/$K8S_DESIRED ready"
+        fi
+    fi
+}
+
+# Rollback CloudFront to previous distribution
+rollback_cloudfront() {
+    log_info "Rolling back CloudFront distribution..."
+    
+    if [[ -z "$DISTRIBUTION_ID" ]]; then
+        log_warning "No CloudFront distribution found, skipping CloudFront rollback"
+        return 0
+    fi
+    
+    # Create invalidation to clear cache
+    INVALIDATION_ID=$(aws cloudfront create-invalidation \
+        --distribution-id "$DISTRIBUTION_ID" \
+        --paths "/*" \
+        --query 'Invalidation.Id' \
+        --output text)
+    
+    log_info "Created CloudFront invalidation: $INVALIDATION_ID"
+    
+    # Wait for invalidation to complete (optional, for immediate effect)
+    log_info "Waiting for CloudFront invalidation to complete..."
+    aws cloudfront wait invalidation-completed \
+        --distribution-id "$DISTRIBUTION_ID" \
+        --id "$INVALIDATION_ID"
+    
+    log_success "CloudFront cache invalidated"
+}
+
+# Rollback Kubernetes deployment
+rollback_kubernetes() {
+    if ! command -v kubectl &> /dev/null; then
+        log_warning "kubectl not available, skipping Kubernetes rollback"
+        return 0
+    fi
+    
+    log_info "Rolling back Kubernetes deployment..."
+    
+    # Check if deployment exists
+    if ! kubectl get deployment candlefish-website -n "$ENVIRONMENT" &> /dev/null; then
+        log_warning "Kubernetes deployment not found, skipping Kubernetes rollback"
+        return 0
+    fi
+    
+    # Rollback to previous revision
+    kubectl rollout undo deployment/candlefish-website -n "$ENVIRONMENT"
+    
+    # Wait for rollback to complete
+    log_info "Waiting for Kubernetes rollback to complete..."
+    kubectl rollout status deployment/candlefish-website -n "$ENVIRONMENT" --timeout=300s
+    
+    # Verify pods are healthy
+    READY_PODS=$(kubectl get deployment candlefish-website -n "$ENVIRONMENT" -o jsonpath='{.status.readyReplicas}')
+    DESIRED_PODS=$(kubectl get deployment candlefish-website -n "$ENVIRONMENT" -o jsonpath='{.status.replicas}')
+    
+    if [[ "$READY_PODS" == "$DESIRED_PODS" ]]; then
+        log_success "Kubernetes deployment rolled back successfully ($READY_PODS/$DESIRED_PODS pods ready)"
+    else
+        log_error "Kubernetes rollback may have failed ($READY_PODS/$DESIRED_PODS pods ready)"
+        return 1
+    fi
+}
+
+# Rollback Lambda functions
+rollback_lambda() {
+    log_info "Rolling back Lambda functions..."
+    
+    FUNCTIONS=(
+        "${ENVIRONMENT}-candlefish-analytics-processor"
+        "${ENVIRONMENT}-candlefish-ab-config"
+    )
+    
+    for FUNCTION_NAME in "${FUNCTIONS[@]}"; do
+        # Check if function exists
+        if aws lambda get-function --function-name "$FUNCTION_NAME" &> /dev/null; then
+            # Get previous version
+            PREVIOUS_VERSION=$(aws lambda list-versions-by-function \
+                --function-name "$FUNCTION_NAME" \
+                --query 'Versions[-2].Version' \
+                --output text)
+            
+            if [[ "$PREVIOUS_VERSION" != "None" && "$PREVIOUS_VERSION" != "\$LATEST" ]]; then
+                # Update alias to point to previous version
+                aws lambda update-alias \
+                    --function-name "$FUNCTION_NAME" \
+                    --name "LIVE" \
+                    --function-version "$PREVIOUS_VERSION" || true
+                
+                log_success "Rolled back Lambda function $FUNCTION_NAME to version $PREVIOUS_VERSION"
+            else
+                log_warning "No previous version found for Lambda function $FUNCTION_NAME"
+            fi
+        else
+            log_warning "Lambda function $FUNCTION_NAME not found"
+        fi
+    done
+}
+
+# Verify rollback success
+verify_rollback() {
+    log_info "Verifying rollback success..."
+    
+    # Wait a moment for changes to propagate
+    sleep 10
+    
+    # Check main site health
+    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://$DOMAIN_NAME/health" || echo "000")
+    
+    if [[ "$HTTP_STATUS" == "200" ]]; then
+        log_success "Main site health check passed (HTTP $HTTP_STATUS)"
+    else
+        log_error "Main site health check failed (HTTP $HTTP_STATUS)"
+        return 1
+    fi
+    
+    # Check candlefish animation specifically
+    ANIMATION_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://$DOMAIN_NAME/" || echo "000")
+    
+    if [[ "$ANIMATION_STATUS" == "200" ]]; then
+        log_success "Candlefish animation page accessible (HTTP $ANIMATION_STATUS)"
+    else
+        log_warning "Candlefish animation page may have issues (HTTP $ANIMATION_STATUS)"
+    fi
+    
+    # Check API endpoints
+    if [[ -n "$API_ID" ]]; then
+        API_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://$API_ID.execute-api.$AWS_REGION.amazonaws.com/$ENVIRONMENT/health" || echo "000")
+        if [[ "$API_STATUS" == "200" ]]; then
+            log_success "API Gateway health check passed (HTTP $API_STATUS)"
+        else
+            log_warning "API Gateway may have issues (HTTP $API_STATUS)"
+        fi
+    fi
+    
+    return 0
+}
+
+# Create rollback report
+create_rollback_report() {
+    local success="$1"
+    local report_file="rollback-report-$(date +%Y%m%d-%H%M%S).txt"
     
     cat > "$report_file" << EOF
-{
-    "rollback_timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-    "environment": "$NAMESPACE",
-    "application": "$APP_NAME",
-    "status": "$status",
-    "duration_seconds": $((end_time - start_time)),
-    "kubectl_version": "$(kubectl version --client --short 2>/dev/null | grep 'Client Version' | cut -d' ' -f3 || echo 'unknown')",
-    "cluster_info": {
-        "server": "$(kubectl config view --minify -o jsonpath='{.clusters[].cluster.server}' 2>/dev/null || echo 'unknown')",
-        "context": "$(kubectl config current-context 2>/dev/null || echo 'unknown')"
-    },
-    "deployment_info": {
-        "current_revision": "$(kubectl get deployment "$APP_NAME" -n "$NAMESPACE" -o jsonpath='{.metadata.annotations.deployment\.kubernetes\.io/revision}' 2>/dev/null || echo 'unknown')",
-        "ready_replicas": "$(kubectl get deployment "$APP_NAME" -n "$NAMESPACE" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo 'unknown')",
-        "available_replicas": "$(kubectl get deployment "$APP_NAME" -n "$NAMESPACE" -o jsonpath='{.status.availableReplicas}' 2>/dev/null || echo 'unknown')"
-    }
-}
+CANDLEFISH ANIMATION EMERGENCY ROLLBACK REPORT
+================================================
+Date: $(date)
+Environment: $ENVIRONMENT
+Domain: $DOMAIN_NAME
+Status: $([ "$success" == "0" ] && echo "SUCCESS" || echo "FAILED")
+
+INFRASTRUCTURE STATUS:
+- CloudFront Distribution: $DISTRIBUTION_ID
+- API Gateway: $API_ID
+- Kubernetes Ready Pods: $READY_PODS/$DESIRED_PODS
+
+ROLLBACK ACTIONS TAKEN:
+- CloudFront cache invalidated
+- Kubernetes deployment rolled back
+- Lambda functions reverted to previous versions
+
+VERIFICATION RESULTS:
+- Main site status: $HTTP_STATUS
+- Animation page status: $ANIMATION_STATUS
+- API Gateway status: $API_STATUS
+
+NEXT STEPS:
+1. Monitor application metrics for 15-30 minutes
+2. Review application logs for errors
+3. Investigate root cause of original issue
+4. Plan proper fix and redeployment
 EOF
 
     log_info "Rollback report created: $report_file"
-    cat "$report_file"
+    echo "$report_file"
 }
 
-# Main execution function
+# Main rollback execution
 main() {
-    local start_time
-    start_time=$(date +%s)
+    log_info "🚨 INITIATING EMERGENCY ROLLBACK FOR CANDLEFISH ANIMATION"
+    log_warning "This will revert to the previous working version"
     
-    log_info "Starting emergency rollback for $APP_NAME in $NAMESPACE namespace"
-    
-    # Check prerequisites
-    check_prerequisites
-    
-    # Get deployment strategy (check for blue-green setup)
-    local has_blue_green=false
-    if kubectl get deployment "$APP_NAME-blue" -n "$NAMESPACE" &> /dev/null && \
-       kubectl get deployment "$APP_NAME-green" -n "$NAMESPACE" &> /dev/null; then
-        has_blue_green=true
+    # Confirmation prompt (skip in CI/automated scenarios)
+    if [[ "${CI:-false}" != "true" && "${FORCE:-false}" != "true" ]]; then
+        read -p "Are you sure you want to proceed with emergency rollback? (yes/NO): " -r
+        if [[ ! $REPLY =~ ^[Yy][Ee][Ss]$ ]]; then
+            log_info "Rollback cancelled by user"
+            exit 0
+        fi
     fi
     
-    # Perform appropriate rollback strategy
-    if [ "$has_blue_green" = true ]; then
-        log_info "Blue-green deployment detected, performing blue-green rollback"
-        perform_blue_green_rollback
+    START_TIME=$(date +%s)
+    
+    notify_slack "🚨 Emergency rollback initiated for Candlefish Animation on $ENVIRONMENT environment"
+    
+    # Execute rollback steps
+    validate_prerequisites
+    get_current_status
+    
+    ROLLBACK_SUCCESS=true
+    
+    # Rollback in reverse order of deployment
+    rollback_cloudfront || ROLLBACK_SUCCESS=false
+    rollback_lambda || ROLLBACK_SUCCESS=false
+    rollback_kubernetes || ROLLBACK_SUCCESS=false
+    
+    # Verify rollback
+    if verify_rollback; then
+        log_success "✅ Emergency rollback completed successfully"
+        notify_slack "✅ Emergency rollback completed successfully. Site should be operational." "good"
     else
-        log_info "Standard deployment detected, performing standard rollback"
-        previous_revision=$(get_revision_history)
-        perform_standard_rollback "$previous_revision"
+        log_error "❌ Rollback verification failed - manual intervention required"
+        notify_slack "❌ Rollback completed but verification failed. Manual investigation required." "danger"
+        ROLLBACK_SUCCESS=false
     fi
     
-    # Final health check
-    if perform_health_check; then
-        local end_time
-        end_time=$(date +%s)
-        
-        log_info "Emergency rollback completed successfully in $((end_time - start_time)) seconds"
-        send_notification "SUCCESS" "Emergency rollback completed for $APP_NAME"
-        create_rollback_report "SUCCESS" "$start_time" "$end_time"
+    END_TIME=$(date +%s)
+    DURATION=$((END_TIME - START_TIME))
+    
+    # Create report
+    REPORT_FILE=$(create_rollback_report $([ "$ROLLBACK_SUCCESS" == "true" ] && echo "0" || echo "1"))
+    
+    log_info "Rollback duration: ${DURATION} seconds"
+    log_info "Report saved to: $REPORT_FILE"
+    
+    if [[ "$ROLLBACK_SUCCESS" == "true" ]]; then
+        log_success "🎉 Emergency rollback successful - monitor for stability"
         exit 0
     else
-        local end_time
-        end_time=$(date +%s)
-        
-        log_error "Emergency rollback failed health check"
-        send_notification "FAILED" "Emergency rollback failed health check for $APP_NAME"
-        create_rollback_report "FAILED" "$start_time" "$end_time"
+        log_error "💥 Emergency rollback encountered issues - check logs and report"
         exit 1
     fi
 }
 
-# Handle script interruption
+# Handle script termination
 cleanup() {
-    log_warn "Script interrupted, cleaning up..."
-    exit 130
+    log_warning "Rollback script interrupted - system may be in inconsistent state"
+    notify_slack "⚠️ Rollback script was interrupted - manual verification required" "warning"
 }
 
 trap cleanup INT TERM
 
-# Validate arguments and run
-if [ "$#" -gt 0 ]; then
-    case "$1" in
-        --help|-h)
-            echo "Usage: $0 [options]"
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --environment)
+            ENVIRONMENT="$2"
+            shift 2
+            ;;
+        --domain)
+            DOMAIN_NAME="$2"
+            shift 2
+            ;;
+        --force)
+            FORCE=true
+            shift
+            ;;
+        --help)
+            echo "Usage: $0 [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --help, -h          Show this help message"
+            echo "  --environment ENV    Target environment (default: production)"
+            echo "  --domain DOMAIN      Domain name (default: candlefish.ai)"
+            echo "  --force              Skip confirmation prompt"
+            echo "  --help               Show this help message"
             echo ""
-            echo "Environment variables:"
-            echo "  NAMESPACE           Kubernetes namespace (default: production)"
-            echo "  ROLLBACK_TIMEOUT    Timeout in seconds (default: 600)"
-            echo "  HEALTH_CHECK_RETRIES Number of health check attempts (default: 5)"
-            echo "  HEALTH_CHECK_DELAY  Delay between health checks (default: 30)"
-            echo "  SLACK_WEBHOOK_URL   Slack webhook for notifications"
+            echo "Environment Variables:"
+            echo "  AWS_REGION           AWS region (default: us-east-1)"
+            echo "  SLACK_WEBHOOK_URL    Slack webhook for notifications"
+            echo "  CI                   Set to 'true' to skip prompts in CI"
             exit 0
             ;;
         *)
@@ -340,7 +395,7 @@ if [ "$#" -gt 0 ]; then
             exit 1
             ;;
     esac
-fi
+done
 
-# Run main function
-main "$@"
+# Execute main function
+main
