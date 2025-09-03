@@ -9,8 +9,14 @@ import { NewsletterForm } from '../components/forms/NewsletterForm'
 import dynamic from 'next/dynamic'
 
 
-// Import CandleFish component
+// Import animation components
 import CandleFish from '../web/aquarium/react/CandleFish'
+const HeroFish = dynamic(() => import('../components/HeroFish'), {
+  ssr: false,
+  loading: () => (
+    <div style={{ height: 'clamp(180px, 25vh, 320px)', background: 'transparent' }} />
+  )
+})
 
 export default function OperationalHomepage() {
   // Force rebuild after netlify.toml configuration fix
@@ -72,13 +78,7 @@ export default function OperationalHomepage() {
 
       {/* Bioluminescent Candlefish Animation */}
       <section className="relative" data-widget="operational-matrix">
-        <div data-cf-fish-host className="loading">
-          <canvas 
-            id="hero-fish-canvas" 
-            aria-label="Decorative animation: Candlefish glyph, idle swim." 
-            role="img"
-          />
-        </div>
+        {isClient && <HeroFish />}
       </section>
 
       {/* Philosophy Section */}

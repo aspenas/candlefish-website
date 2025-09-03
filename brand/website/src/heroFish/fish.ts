@@ -6,9 +6,9 @@
 
 'use strict';
 
-import type { Vec2, FishState, FishConfig, Bounds } from './types.js';
-import { Vec2Math, MathUtils, BoundsUtils } from './types.js';
-import { SimplexNoise2D } from './noise.js';
+import type { Vec2, FishState, FishConfig, Bounds } from './types';
+import { Vec2Math, MathUtils, BoundsUtils } from './types';
+import { SimplexNoise2D } from './noise';
 
 /**
  * Configuration constants for fish behavior

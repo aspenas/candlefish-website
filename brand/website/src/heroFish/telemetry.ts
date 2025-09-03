@@ -6,7 +6,7 @@
 
 'use strict';
 
-import type { PerformanceMetrics, QualityTier } from './types.js';
+import type { PerformanceMetrics, QualityTier } from './types';
 
 /**
  * Performance monitoring configuration
