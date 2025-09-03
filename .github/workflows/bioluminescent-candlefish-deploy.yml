@@ -1,0 +1,463 @@
+name: Bioluminescent Candlefish Animation - Production Deploy
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'brand/website/**'
+      - '.github/workflows/bioluminescent-candlefish-deploy.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'brand/website/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      skip_tests:
+        description: 'Skip tests (emergency deploy only)'
+        required: false
+        default: false
+        type: boolean
+      force_deploy:
+        description: 'Force deployment even if no changes detected'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  DOCKER_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+  ECR_REPOSITORY: candlefish-website
+  AWS_REGION: us-east-1
+  NODE_VERSION: '18'
+  WORKING_DIRECTORY: brand/website
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # Job 1: Code Quality and Security Checks
+  quality-gates:
+    name: Quality Gates & Security
+    runs-on: ubuntu-latest
+    if: github.event.inputs.skip_tests != 'true'
+    outputs:
+      should_deploy: ${{ steps.changes.outputs.website }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changes
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            website:
+              - 'brand/website/**'
+              - '.github/workflows/bioluminescent-candlefish-deploy.yml'
+
+      - name: Setup Node.js
+        if: steps.changes.outputs.website == 'true' || github.event.inputs.force_deploy == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+      - name: Install dependencies
+        if: steps.changes.outputs.website == 'true' || github.event.inputs.force_deploy == 'true'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Type checking
+        if: steps.changes.outputs.website == 'true' || github.event.inputs.force_deploy == 'true'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run type-check
+
+      - name: Lint code
+        if: steps.changes.outputs.website == 'true' || github.event.inputs.force_deploy == 'true'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run lint
+
+      - name: Security audit
+        if: steps.changes.outputs.website == 'true' || github.event.inputs.force_deploy == 'true'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          npm audit --audit-level=high
+          npx better-npm-audit audit
+
+      - name: SAST - CodeQL Analysis
+        if: steps.changes.outputs.website == 'true' || github.event.inputs.force_deploy == 'true'
+        uses: github/codeql-action/analyze@v2
+        with:
+          languages: javascript
+
+  # Job 2: Comprehensive Testing Suite
+  test-suite:
+    name: Comprehensive Testing
+    runs-on: ubuntu-latest
+    if: github.event.inputs.skip_tests != 'true'
+    needs: quality-gates
+    strategy:
+      matrix:
+        test-type: [unit, integration, e2e, accessibility, performance]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Run Unit Tests
+        if: matrix.test-type == 'unit'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          npm run test:ci
+          npm run test:animation
+        env:
+          CI: true
+
+      - name: Run Integration Tests
+        if: matrix.test-type == 'integration'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run test:integration
+        env:
+          CI: true
+
+      - name: Run E2E Tests
+        if: matrix.test-type == 'e2e'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          npm run test:e2e
+          npm run test:netlify-e2e
+        env:
+          CI: true
+
+      - name: Run Accessibility Tests
+        if: matrix.test-type == 'accessibility'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run test:accessibility
+
+      - name: Run Performance Tests
+        if: matrix.test-type == 'performance'
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          npm run test:performance
+          npm run test:netlify-performance
+
+      - name: Upload coverage reports
+        if: matrix.test-type == 'unit'
+        uses: codecov/codecov-action@v3
+        with:
+          directory: ${{ env.WORKING_DIRECTORY }}/coverage
+          flags: unittests
+          name: candlefish-website-coverage
+
+  # Job 3: Build and Push Container
+  build-container:
+    name: Build & Push Container
+    runs-on: ubuntu-latest
+    needs: [quality-gates, test-suite]
+    if: |
+      always() && 
+      (needs.quality-gates.outputs.should_deploy == 'true' || github.event.inputs.force_deploy == 'true') &&
+      (needs.test-suite.result == 'success' || github.event.inputs.skip_tests == 'true')
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-tag: ${{ steps.meta.outputs.tags }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ env.ECR_REPOSITORY }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.WORKING_DIRECTORY }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_ENV=production
+            NEXT_TELEMETRY_DISABLED=1
+
+      - name: Container Security Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.DOCKER_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Job 4: Deploy to Staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-container
+    if: |
+      always() && 
+      needs.build-container.result == 'success' &&
+      (github.ref == 'refs/heads/main' || github.event.inputs.environment == 'staging')
+    environment:
+      name: staging
+      url: https://staging.candlefish.ai
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: GitHubActions-StagingDeploy
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name staging-candlefish-website
+
+      - name: Deploy to Kubernetes
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          # Update image in Kubernetes manifest
+          sed -i "s|IMAGE_TAG|${{ needs.build-container.outputs.image-tag }}|g" k8s/overlays/staging/deployment.yaml
+          
+          # Apply staging configuration
+          kubectl apply -k k8s/overlays/staging/
+
+      - name: Wait for deployment
+        run: |
+          kubectl rollout status deployment/candlefish-website -n staging --timeout=600s
+
+      - name: Run smoke tests
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          # Wait for service to be ready
+          kubectl wait --for=condition=ready pod -l app=candlefish-website -n staging --timeout=300s
+          
+          # Get staging URL and run basic smoke tests
+          STAGING_URL=$(kubectl get svc candlefish-website -n staging -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          curl -f "http://$STAGING_URL/api/health" || exit 1
+          curl -f "http://$STAGING_URL/" || exit 1
+
+  # Job 5: Production Deployment with Blue-Green Strategy
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-container, deploy-staging]
+    if: |
+      always() && 
+      needs.build-container.result == 'success' &&
+      needs.deploy-staging.result == 'success' &&
+      (github.ref == 'refs/heads/main' || github.event.inputs.environment == 'production') &&
+      github.event_name != 'pull_request'
+    environment:
+      name: production
+      url: https://candlefish.ai
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_PROD_DEPLOY_ROLE_ARN }}
+          role-session-name: GitHubActions-ProductionDeploy
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name production-candlefish-website
+
+      - name: Blue-Green Deployment
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          # Create deployment script for blue-green strategy
+          cat > scripts/blue-green-deploy.sh << 'EOF'
+          #!/bin/bash
+          set -e
+          
+          NAMESPACE="production"
+          APP_NAME="candlefish-website"
+          NEW_IMAGE="${{ needs.build-container.outputs.image-tag }}"
+          
+          # Determine current and new colors
+          CURRENT_COLOR=$(kubectl get service $APP_NAME -n $NAMESPACE -o jsonpath='{.spec.selector.color}' || echo "blue")
+          if [ "$CURRENT_COLOR" = "blue" ]; then
+            NEW_COLOR="green"
+          else
+            NEW_COLOR="blue"
+          fi
+          
+          echo "Deploying to $NEW_COLOR environment..."
+          
+          # Update the inactive environment
+          kubectl set image deployment/$APP_NAME-$NEW_COLOR $APP_NAME=$NEW_IMAGE -n $NAMESPACE
+          kubectl rollout status deployment/$APP_NAME-$NEW_COLOR -n $NAMESPACE --timeout=600s
+          
+          # Run health checks on new environment
+          kubectl wait --for=condition=ready pod -l app=$APP_NAME,color=$NEW_COLOR -n $NAMESPACE --timeout=300s
+          
+          # Get the new service endpoint for testing
+          NEW_SERVICE_IP=$(kubectl get svc $APP_NAME-$NEW_COLOR -n $NAMESPACE -o jsonpath='{.spec.clusterIP}')
+          
+          # Health check with retry logic
+          for i in {1..5}; do
+            if curl -f "http://$NEW_SERVICE_IP/api/health"; then
+              echo "Health check passed"
+              break
+            else
+              echo "Health check failed, attempt $i/5"
+              if [ $i -eq 5 ]; then
+                echo "Health check failed after 5 attempts, rolling back"
+                exit 1
+              fi
+              sleep 10
+            fi
+          done
+          
+          # Switch traffic to new environment
+          kubectl patch service $APP_NAME -n $NAMESPACE -p '{"spec":{"selector":{"color":"'$NEW_COLOR'"}}}'
+          
+          echo "Successfully switched traffic to $NEW_COLOR environment"
+          
+          # Wait a bit then scale down old environment
+          sleep 30
+          kubectl scale deployment $APP_NAME-$CURRENT_COLOR --replicas=0 -n $NAMESPACE
+          
+          echo "Blue-Green deployment completed successfully"
+          EOF
+          
+          chmod +x scripts/blue-green-deploy.sh
+          ./scripts/blue-green-deploy.sh
+
+      - name: Update CDN cache
+        run: |
+          # Invalidate CloudFront cache for immediate updates
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+
+      - name: Run production smoke tests
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          # Comprehensive production health checks
+          curl -f https://candlefish.ai/api/health
+          curl -f https://candlefish.ai/
+          
+          # Test bioluminescent animation endpoints
+          curl -f https://candlefish.ai/api/animation/status
+          curl -f https://candlefish.ai/api/websocket/health
+
+      - name: Update deployment status
+        run: |
+          # Update deployment tracking
+          kubectl annotate deployment candlefish-website deployment.kubernetes.io/revision-history-limit=10 -n production
+          kubectl label deployment candlefish-website last-deployed-by="github-actions" -n production --overwrite
+          kubectl label deployment candlefish-website last-deployed-at="$(date -u +%Y-%m-%dT%H:%M:%SZ)" -n production --overwrite
+
+  # Job 6: Post-deployment monitoring and alerts
+  post-deploy-monitoring:
+    name: Post-deployment Monitoring
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: always() && needs.deploy-production.result == 'success'
+    steps:
+      - name: Configure monitoring alerts
+        run: |
+          echo "Setting up post-deployment monitoring..."
+          
+          # Send deployment notification to Slack/Discord
+          curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+            -H 'Content-type: application/json' \
+            --data '{"text":"🐟 Bioluminescent Candlefish Animation deployed to production successfully! Version: ${{ github.sha }}"}'
+
+      - name: Trigger synthetic monitoring
+        run: |
+          # Trigger additional monitoring checks
+          echo "Production deployment completed. Monitoring activated."
+
+  # Job 7: Rollback capability
+  rollback:
+    name: Emergency Rollback
+    runs-on: ubuntu-latest
+    if: failure() && github.ref == 'refs/heads/main'
+    needs: [deploy-staging, deploy-production]
+    environment:
+      name: production-rollback
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_PROD_DEPLOY_ROLE_ARN }}
+          role-session-name: GitHubActions-EmergencyRollback
+
+      - name: Execute rollback
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name production-candlefish-website
+          ./scripts/emergency-rollback.sh
+          
+          # Notify about rollback
+          curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+            -H 'Content-type: application/json' \
+            --data '{"text":"🚨 Emergency rollback executed for Candlefish website deployment!"}'

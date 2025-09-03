@@ -33,12 +33,14 @@ export class CandlefishEngine {
   
   private readonly GLOW_COLOR = '#FFB347'
   private readonly BACKGROUND_COLOR = '#3A3A60'
-  private readonly MAX_SPEED = 2.5
+  private readonly MAX_SPEED = 3.5
   private readonly IDLE_SPEED = 0.8
-  private readonly DART_SPEED = 5
+  private readonly DART_SPEED = 6
   private readonly TRAIL_LENGTH = 30
-  private readonly CURIOSITY_RADIUS = 150
-  private readonly VERTICAL_VARIANCE = 0.15
+  private readonly CURIOSITY_RADIUS = 200
+  private readonly VERTICAL_VARIANCE = 0.25
+  private readonly ATTRACTION_STRENGTH = 1.2
+  private readonly FOOD_EXCITEMENT_RADIUS = 100
   
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -47,7 +49,7 @@ export class CandlefishEngine {
     this.ctx = ctx
     
     this.fish = {
-      position: { x: canvas.width * 0.5, y: canvas.height * 0.5 },
+      position: { x: canvas.width * 0.3, y: canvas.height * 0.5 },
       velocity: { x: this.IDLE_SPEED, y: 0 },
       targetVelocity: { x: this.IDLE_SPEED, y: 0 },
       angle: 0,
@@ -78,19 +80,24 @@ export class CandlefishEngine {
     
     this.canvas.addEventListener('click', (e) => {
       const rect = this.canvas.getBoundingClientRect()
-      this.addRipple({
+      const clickPos = {
         x: e.clientX - rect.left,
         y: e.clientY - rect.top
-      })
+      }
+      this.addRipple(clickPos)
+      // Make fish immediately dart toward the click (food!)
+      this.triggerFoodResponse(clickPos)
     })
     
     this.canvas.addEventListener('touchstart', (e) => {
       const rect = this.canvas.getBoundingClientRect()
       const touch = e.touches[0]
-      this.addRipple({
+      const touchPos = {
         x: touch.clientX - rect.left,
         y: touch.clientY - rect.top
-      })
+      }
+      this.addRipple(touchPos)
+      this.triggerFoodResponse(touchPos)
     })
     
     document.addEventListener('visibilitychange', () => {
@@ -121,6 +128,26 @@ export class CandlefishEngine {
     }
   }
   
+  private triggerFoodResponse(foodPosition: Point): void {
+    // Calculate direction to food
+    const dx = foodPosition.x - this.fish.position.x
+    const dy = foodPosition.y - this.fish.position.y
+    const distance = Math.sqrt(dx * dx + dy * dy)
+    
+    if (distance > 5) {
+      // Immediate strong attraction to "food"
+      const speed = Math.min(this.DART_SPEED, distance * 0.1)
+      this.fish.targetVelocity.x = (dx / distance) * speed
+      this.fish.targetVelocity.y = (dy / distance) * speed
+      
+      // Reset dart cooldown to allow immediate response
+      this.fish.dartCooldown = 30
+      
+      // Increase glow for excitement
+      this.fish.glowIntensity = Math.min(1.0, this.fish.glowIntensity + 0.3)
+    }
+  }
+  
   private updateFish(deltaTime: number): void {
     if (this.reducedMotion) return
     
@@ -130,30 +157,54 @@ export class CandlefishEngine {
       this.fish.dartCooldown -= dt
     }
     
-    if (this.fish.dartCooldown <= 0 && Math.random() < 0.003) {
+    // Check cursor attraction first (highest priority)
+    if (this.cursorPosition) {
+      const dx = this.cursorPosition.x - this.fish.position.x
+      const dy = this.cursorPosition.y - this.fish.position.y
+      const distance = Math.sqrt(dx * dx + dy * dy)
+      
+      if (distance < this.CURIOSITY_RADIUS && distance > 15) {
+        // Stronger, more immediate attraction to cursor
+        const attraction = Math.pow(1 - distance / this.CURIOSITY_RADIUS, 1.5) * this.ATTRACTION_STRENGTH
+        
+        // If very close, get excited (like seeing food!)
+        if (distance < this.FOOD_EXCITEMENT_RADIUS) {
+          const excitementBoost = (1 - distance / this.FOOD_EXCITEMENT_RADIUS) * 2
+          this.fish.targetVelocity.x = (dx / distance) * (attraction + excitementBoost)
+          this.fish.targetVelocity.y = (dy / distance) * (attraction + excitementBoost)
+          this.fish.glowIntensity = Math.min(1.0, 0.8 + (1 - distance / this.FOOD_EXCITEMENT_RADIUS) * 0.2)
+        } else {
+          // Curious approach from further away
+          this.fish.targetVelocity.x = this.IDLE_SPEED + (dx / distance) * attraction * 2
+          this.fish.targetVelocity.y = (dy / distance) * attraction * 2
+        }
+      } else if (distance <= 15) {
+        // When very close to cursor, circle around it playfully
+        const circleAngle = Date.now() * 0.003
+        this.fish.targetVelocity.x = Math.cos(circleAngle) * this.IDLE_SPEED * 1.5
+        this.fish.targetVelocity.y = Math.sin(circleAngle) * this.IDLE_SPEED * 1.5
+      } else {
+        // Default idle behavior when cursor is far
+        const baseSpeed = this.IDLE_SPEED + Math.sin(Date.now() * 0.001) * 0.2
+        this.fish.targetVelocity.x = baseSpeed * (1 + Math.sin(Date.now() * 0.0005) * 0.3)
+        this.fish.targetVelocity.y = Math.sin(Date.now() * 0.0008) * 0.5
+      }
+    } else if (this.fish.dartCooldown <= 0 && Math.random() < 0.003) {
+      // Random dart when no cursor present
       this.fish.targetVelocity.x = (Math.random() - 0.5) * this.DART_SPEED
       this.fish.targetVelocity.y = (Math.random() - 0.5) * this.DART_SPEED * 0.3
       this.fish.dartCooldown = 120
     } else if (this.fish.dartCooldown <= 0) {
+      // Default idle swimming
       const baseSpeed = this.IDLE_SPEED + Math.sin(Date.now() * 0.001) * 0.2
       this.fish.targetVelocity.x = baseSpeed * (1 + Math.sin(Date.now() * 0.0005) * 0.3)
       this.fish.targetVelocity.y = Math.sin(Date.now() * 0.0008) * 0.5
-      
-      if (this.cursorPosition) {
-        const dx = this.cursorPosition.x - this.fish.position.x
-        const dy = this.cursorPosition.y - this.fish.position.y
-        const distance = Math.sqrt(dx * dx + dy * dy)
-        
-        if (distance < this.CURIOSITY_RADIUS && distance > 20) {
-          const attraction = (1 - distance / this.CURIOSITY_RADIUS) * 0.3
-          this.fish.targetVelocity.x += (dx / distance) * attraction
-          this.fish.targetVelocity.y += (dy / distance) * attraction
-        }
-      }
     }
     
-    this.fish.velocity.x += (this.fish.targetVelocity.x - this.fish.velocity.x) * 0.1 * dt
-    this.fish.velocity.y += (this.fish.targetVelocity.y - this.fish.velocity.y) * 0.1 * dt
+    // Smoother, more responsive velocity changes
+    const responsiveness = this.cursorPosition ? 0.15 : 0.1
+    this.fish.velocity.x += (this.fish.targetVelocity.x - this.fish.velocity.x) * responsiveness * dt
+    this.fish.velocity.y += (this.fish.targetVelocity.y - this.fish.velocity.y) * responsiveness * dt
     
     const speed = Math.sqrt(this.fish.velocity.x ** 2 + this.fish.velocity.y ** 2)
     if (speed > this.MAX_SPEED) {
@@ -165,21 +216,31 @@ export class CandlefishEngine {
     this.fish.position.y += this.fish.velocity.y * dt
     
     const bounds = this.canvas.getBoundingClientRect()
-    const margin = 30
+    const margin = 40
     
-    if (this.fish.position.x < margin || this.fish.position.x > bounds.width - margin) {
-      this.fish.velocity.x *= -0.8
-      this.fish.targetVelocity.x *= -0.8
-      this.fish.position.x = Math.max(margin, Math.min(bounds.width - margin, this.fish.position.x))
+    // Bounce off horizontal walls with better physics
+    if (this.fish.position.x < margin) {
+      this.fish.velocity.x = Math.abs(this.fish.velocity.x) * 0.9
+      this.fish.targetVelocity.x = Math.abs(this.fish.targetVelocity.x)
+      this.fish.position.x = margin
+    } else if (this.fish.position.x > bounds.width - margin) {
+      this.fish.velocity.x = -Math.abs(this.fish.velocity.x) * 0.9
+      this.fish.targetVelocity.x = -Math.abs(this.fish.targetVelocity.x)
+      this.fish.position.x = bounds.width - margin
     }
     
-    const verticalLimit = bounds.height * this.VERTICAL_VARIANCE
-    const centerY = bounds.height * 0.5
+    // More freedom vertically but still bounded
+    const topMargin = 30
+    const bottomMargin = 30
     
-    if (Math.abs(this.fish.position.y - centerY) > verticalLimit) {
-      this.fish.velocity.y *= -0.8
-      this.fish.targetVelocity.y *= -0.8
-      this.fish.position.y = centerY + Math.sign(this.fish.position.y - centerY) * verticalLimit
+    if (this.fish.position.y < topMargin) {
+      this.fish.velocity.y = Math.abs(this.fish.velocity.y) * 0.9
+      this.fish.targetVelocity.y = Math.abs(this.fish.targetVelocity.y)
+      this.fish.position.y = topMargin
+    } else if (this.fish.position.y > bounds.height - bottomMargin) {
+      this.fish.velocity.y = -Math.abs(this.fish.velocity.y) * 0.9
+      this.fish.targetVelocity.y = -Math.abs(this.fish.targetVelocity.y)
+      this.fish.position.y = bounds.height - bottomMargin
     }
     
     this.fish.angle = Math.atan2(this.fish.velocity.y, this.fish.velocity.x)
