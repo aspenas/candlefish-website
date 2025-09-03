@@ -37,6 +37,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="stylesheet" href="/hero-fish.css" />
+      </head>
       <body>
         <SkipNavigation />
         <Navigation />
@@ -45,6 +48,7 @@ export default function RootLayout({
         </main>
         <Footer />
         <ToastProvider />
+        <script src="/src/entries/hero-fish.js" defer />
       </body>
     </html>
   )

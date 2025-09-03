@@ -72,14 +72,13 @@ export default function OperationalHomepage() {
 
       {/* Bioluminescent Candlefish Animation */}
       <section className="relative" data-widget="operational-matrix">
-        {isClient && (
-          <CandleFish 
-            height={240}
-            className="candlefish-aquarium"
-            aria-label="Bioluminescent candlefish swimming in deep water"
-            disabled={process.env.NEXT_PUBLIC_FISH_ANIM === '0'}
+        <div data-cf-fish-host className="loading">
+          <canvas 
+            id="hero-fish-canvas" 
+            aria-label="Decorative animation: Candlefish glyph, idle swim." 
+            role="img"
           />
-        )}
+        </div>
       </section>
 
       {/* Philosophy Section */}
