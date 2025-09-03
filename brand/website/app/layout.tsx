@@ -48,7 +48,6 @@ export default function RootLayout({
         </main>
         <Footer />
         <ToastProvider />
-        <script src="/src/entries/hero-fish.js" defer />
       </body>
     </html>
   )
