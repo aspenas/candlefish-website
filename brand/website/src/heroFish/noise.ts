@@ -6,8 +6,8 @@
 
 'use strict';
 
-import type { Vec2 } from './types.js';
-import { Vec2Math } from './types.js';
+import type { Vec2 } from './types';
+import { Vec2Math } from './types';
 
 /**
  * Simplex noise gradient vectors (pre-computed for performance)

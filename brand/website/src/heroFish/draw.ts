@@ -6,10 +6,10 @@
 
 'use strict';
 
-import type { Vec2, Bounds, QualityTier } from './types.js';
-import { Vec2Math, MathUtils, BRAND_COLORS } from './types.js';
-import type { Fish } from './fish.js';
-import { getGlobalTelemetry } from './telemetry.js';
+import type { Vec2, Bounds, QualityTier } from './types';
+import { Vec2Math, MathUtils, BRAND_COLORS } from './types';
+import type { Fish } from './fish';
+import { getGlobalTelemetry } from './telemetry';
 
 /**
  * Rendering configuration

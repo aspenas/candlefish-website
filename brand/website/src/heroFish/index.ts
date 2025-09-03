@@ -16,12 +16,12 @@
 
 'use strict';
 
-import type { Vec2, FishConfig, Bounds, PerformanceMetrics, QualityTier } from './types.js';
-import { Vec2Math, BoundsUtils, BRAND_COLORS } from './types.js';
-import { Fish } from './fish.js';
-import { FishRenderer } from './draw.js';
-import { PerformanceTelemetry, getGlobalTelemetry } from './telemetry.js';
-import { setGlobalNoise } from './noise.js';
+import type { Vec2, FishConfig, Bounds, PerformanceMetrics, QualityTier } from './types';
+import { Vec2Math, BoundsUtils, BRAND_COLORS } from './types';
+import { Fish } from './fish';
+import { FishRenderer } from './draw';
+import { PerformanceTelemetry, getGlobalTelemetry } from './telemetry';
+import { setGlobalNoise } from './noise';
 
 /**
  * Configuration for the fish animation system
@@ -566,14 +566,14 @@ export type {
   PerformanceMetrics, 
   QualityTier,
   FishState
-} from './types.js';
+} from './types';
 
 export { 
   Vec2Math, 
   MathUtils, 
   BoundsUtils, 
   BRAND_COLORS 
-} from './types.js';
+} from './types';
 
 export { 
   SimplexNoise2D,
@@ -583,7 +583,7 @@ export {
   fractalNoise,
   vectorField,
   curlNoise
-} from './noise.js';
+} from './noise';
 
 export {
   PerformanceTelemetry,
@@ -593,7 +593,7 @@ export {
   getMetrics,
   getCurrentQualityTier,
   isReducedMotion
-} from './telemetry.js';
+} from './telemetry';
 
 /**
  * Convenience function to create and initialize HeroFish
