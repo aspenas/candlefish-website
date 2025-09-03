@@ -1,53 +1,98 @@
-# Dependencies
+# Dockerignore for Candlefish Website
+# Optimized for bioluminescent candlefish animation deployment
+
+# Version control
+.git
+.gitignore
+.gitattributes
+.github
+
+# Dependencies that will be installed in container
 node_modules
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Next.js build output
-.next/
+# Development and build artifacts
+.next/cache
+.next/trace
+.cache
+dist/
+build/
+out/
 
-# Testing
-coverage
-.nyc_output
-
-# Environment files
-.env*
-!.env.example
-
-# Development files
-.git
-.gitignore
-README.md
-Dockerfile
-.dockerignore
-
-# IDE files
+# Development tools
 .vscode
 .idea
 *.swp
 *.swo
+*~
+
+# Testing
+coverage/
+.nyc_output
+junit.xml
+test-results/
+playwright-report/
+__tests__/coverage
+cypress/videos
+cypress/screenshots
+
+# Environment files (use secrets management instead)
+.env
+.env.*
+!.env.example
 
 # OS files
 .DS_Store
 Thumbs.db
-
-# Logs
-logs
+*.tmp
 *.log
 
-# Cache directories
-.cache
-.parcel-cache
+# Documentation (not needed in production)
+*.md
+!README.md
+docs/
+documentation/
+
+# Backup files
+*.backup
+*.bak
+*.orig
 
 # Temporary files
-.tmp
+tmp/
+temp/
+.tmp/
 .temp
 
-# Cypress
-cypress/videos
-cypress/screenshots
+# Performance testing
+k6-results/
 
-# Playwright
-test-results
-playwright-report
+# Mock data (will be generated at runtime)
+mocks/generated/
+
+# Build analysis
+.bundle-analyzer/
+bundle-report.html
+
+# Terraform (not needed in app container)
+terraform/
+*.tfstate*
+*.tfvars
+
+# Kubernetes manifests (deployed separately)
+k8s/
+
+# Scripts not needed in production container
+scripts/deploy*.sh
+scripts/build*.sh
+scripts/test*.sh
+
+# CI/CD configuration
+.gitlab-ci.yml
+docker-compose*.yml
+
+# Security scanning results
+trivy-results.json
+security-audit.json
