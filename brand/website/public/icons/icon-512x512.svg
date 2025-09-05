@@ -1,0 +1,58 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="fishGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06b6d4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0891b2;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="10.24" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <radialGradient id="bgGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#1f2937;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#111827;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="512" height="512" fill="url(#bgGradient)"/>
+  
+  <!-- Candlefish shape -->
+  <g transform="translate(256, 256)">
+    <!-- Body -->
+    <ellipse cx="0" cy="0" rx="143.35999999999999" ry="81.92000000000002" 
+             fill="url(#fishGradient)" filter="url(#glow)"
+             transform="rotate(-15)" />
+    
+    <!-- Tail -->
+    <path d="M 102.4 20.480000000000004 
+             Q 163.84000000000003 -40.96000000000001 184.32000000000002 -20.480000000000004
+             L 184.32000000000002 20.480000000000004
+             Q 163.84000000000003 40.96000000000001 102.4 20.480000000000004"
+          fill="url(#fishGradient)" filter="url(#glow)" />
+    
+    <!-- Dorsal fin -->
+    <path d="M -40.96000000000001 -61.44
+             Q 0 -102.4 40.96000000000001 -61.44
+             L 20.480000000000004 -40.96000000000001
+             Q 0 -61.44 -20.480000000000004 -40.96000000000001"
+          fill="url(#fishGradient)" filter="url(#glow)" opacity="0.8" />
+    
+    <!-- Eye -->
+    <circle cx="-61.44" cy="-8.192" r="12.288" 
+            fill="#111827" />
+    <circle cx="-61.44" cy="-8.192" r="6.144" 
+            fill="#06b6d4" opacity="0.9" />
+    
+    <!-- Bioluminescent spots -->
+    <circle cx="-20.480000000000004" cy="20.480000000000004" r="6.144" 
+            fill="#06b6d4" opacity="0.6" filter="url(#glow)" />
+    <circle cx="20.480000000000004" cy="12.288" r="4.096" 
+            fill="#06b6d4" opacity="0.5" filter="url(#glow)" />
+    <circle cx="61.44" cy="0" r="4.9152000000000005" 
+            fill="#06b6d4" opacity="0.7" filter="url(#glow)" />
+  </g>
+</svg>

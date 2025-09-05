@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hero Fish Production Error Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #0d1b2a;
+            color: #f8f8f2;
+            margin: 20px;
+        }
+        .error-log {
+            background: #1b263b;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #e74c3c;
+        }
+        .success-log {
+            background: #1b263b;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #2ecc71;
+        }
+        #fish-container {
+            height: 300px;
+            background: #1b263b;
+            margin: 20px 0;
+            border: 1px solid #415a77;
+        }
+        .console-output {
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            height: 200px;
+            overflow-y: scroll;
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>Hero Fish Production Error Test</h1>
+    
+    <div id="fish-container"></div>
+    
+    <div id="error-display"></div>
+    
+    <div class="console-output" id="console-log">
+        <div>Console Output:</div>
+    </div>
+    
+    <button onclick="testHeroFish()">Load Hero Fish Animation</button>
+    <button onclick="clearLogs()">Clear Logs</button>
+
+    <script>
+        const errorDisplay = document.getElementById('error-display');
+        const consoleLog = document.getElementById('console-log');
+        
+        // Override console methods to capture output
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        const originalConsoleWarn = console.warn;
+        
+        function logToDisplay(type, ...args) {
+            const timestamp = new Date().toLocaleTimeString();
+            const message = args.join(' ');
+            const div = document.createElement('div');
+            div.textContent = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            consoleLog.appendChild(div);
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            logToDisplay('log', ...args);
+        };
+        
+        console.error = function(...args) {
+            originalConsoleError.apply(console, args);
+            logToDisplay('error', ...args);
+            showError('Console Error: ' + args.join(' '));
+        };
+        
+        console.warn = function(...args) {
+            originalConsoleWarn.apply(console, args);
+            logToDisplay('warn', ...args);
+        };
+        
+        // Global error handler
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            showError(`JavaScript Error: ${msg} at ${url}:${lineNo}:${columnNo}`);
+            if (error && error.stack) {
+                showError(`Stack trace: ${error.stack}`);
+            }
+            return false;
+        };
+        
+        // Promise rejection handler
+        window.addEventListener('unhandledrejection', function(event) {
+            showError(`Unhandled Promise Rejection: ${event.reason}`);
+            if (event.reason && event.reason.stack) {
+                showError(`Stack trace: ${event.reason.stack}`);
+            }
+        });
+        
+        function showError(message) {
+            const div = document.createElement('div');
+            div.className = 'error-log';
+            div.textContent = message;
+            errorDisplay.appendChild(div);
+        }
+        
+        function showSuccess(message) {
+            const div = document.createElement('div');
+            div.className = 'success-log';
+            div.textContent = message;
+            errorDisplay.appendChild(div);
+        }
+        
+        function clearLogs() {
+            errorDisplay.innerHTML = '';
+            consoleLog.innerHTML = '<div>Console Output:</div>';
+        }
+        
+        async function testHeroFish() {
+            try {
+                console.log('Starting Hero Fish test...');
+                
+                // Create canvas element
+                const container = document.getElementById('fish-container');
+                container.innerHTML = '';
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = container.offsetWidth;
+                canvas.height = container.offsetHeight;
+                container.appendChild(canvas);
+                
+                console.log('Canvas created, attempting to load hero fish module...');
+                
+                // Test import path resolution
+                console.log('Testing import path resolution...');
+                
+                // Simulate the exact import from the React component
+                const modulePromise = import('/src/heroFish/index.js');
+                console.log('Import promise created...');
+                
+                const module = await modulePromise;
+                console.log('Module loaded successfully:', Object.keys(module));
+                
+                if (module.createHeroFish) {
+                    console.log('createHeroFish function found, attempting to create fish...');
+                    
+                    const fish = await module.createHeroFish(canvas, {
+                        bounds: { x: 0, y: 0, width: canvas.width, height: canvas.height },
+                        enableBloom: true,
+                        respectReducedMotion: true,
+                        targetFPS: 60
+                    });
+                    
+                    console.log('Fish created successfully, starting animation...');
+                    fish.start();
+                    
+                    showSuccess('Hero Fish loaded and started successfully!');
+                } else {
+                    throw new Error('createHeroFish function not found in module');
+                }
+                
+            } catch (error) {
+                console.error('Hero Fish test failed:', error);
+                showError(`Hero Fish test failed: ${error.message}`);
+                if (error.stack) {
+                    console.error('Stack trace:', error.stack);
+                }
+            }
+        }
+        
+        console.log('Test page loaded, ready to test Hero Fish');
+    </script>
+</body>
+</html>

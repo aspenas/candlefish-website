@@ -13,8 +13,21 @@ const { Resend } = require('resend');
 const fs = require('fs').promises;
 const path = require('path');
 
-// Load workshop notes
-const { workshopNotes } = require('../content/workshop-notes');
+// Load workshop notes (hardcoded for now since this is a CommonJS script)
+const workshopNotes = [
+  {
+    id: 'asymmetric-information-advantage',
+    date: '2025.09.05',
+    category: 'philosophical',
+    title: 'The Asymmetric Information Advantage',
+    excerpt: 'Our asymmetric information advantage doesn\'t come from secrecy. It comes from depth. From living through 62% OCR accuracy failures and discovering operational truths through experience.',
+    readTime: '18 min read',
+    tags: ['operational-philosophy', 'information-asymmetry', 'competitive-advantage', 'performance-art', 'craft-engineering'],
+    content: `# The Asymmetric Information Advantage
+
+Our asymmetric information advantage doesn't come from secrecy. It comes from depth...`
+  }
+];
 
 async function prepareEmailContent(note) {
   // Read template

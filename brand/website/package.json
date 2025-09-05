@@ -133,6 +133,7 @@
     "playwright": "^1.54.2",
     "puppeteer": "^21.0.0",
     "raw-loader": "^4.0.2",
+    "sharp": "^0.34.3",
     "terser-webpack-plugin": "^5.3.9",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.2",

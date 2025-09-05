@@ -45,6 +45,8 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="stylesheet" href="/hero-fish.css" />
+        {/* PWA manifest */}
+        <link rel="manifest" href="/manifest.json" />
         {/* iOS-specific meta tags for better compatibility */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -53,6 +55,8 @@ export default function RootLayout({
         {/* Preconnect to improve performance */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* Service Worker Registration */}
+        <script defer src="/sw-register.js"></script>
       </head>
       <body className="ios-optimized">
         <SkipNavigation />

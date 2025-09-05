@@ -1,0 +1,58 @@
+<svg width="384" height="384" viewBox="0 0 384 384" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="fishGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06b6d4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0891b2;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="7.68" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <radialGradient id="bgGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#1f2937;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#111827;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="384" height="384" fill="url(#bgGradient)"/>
+  
+  <!-- Candlefish shape -->
+  <g transform="translate(192, 192)">
+    <!-- Body -->
+    <ellipse cx="0" cy="0" rx="107.52" ry="61.44" 
+             fill="url(#fishGradient)" filter="url(#glow)"
+             transform="rotate(-15)" />
+    
+    <!-- Tail -->
+    <path d="M 76.8 15.36 
+             Q 122.88 -30.72 138.24 -15.36
+             L 138.24 15.36
+             Q 122.88 30.72 76.8 15.36"
+          fill="url(#fishGradient)" filter="url(#glow)" />
+    
+    <!-- Dorsal fin -->
+    <path d="M -30.72 -46.08
+             Q 0 -76.8 30.72 -46.08
+             L 15.36 -30.72
+             Q 0 -46.08 -15.36 -30.72"
+          fill="url(#fishGradient)" filter="url(#glow)" opacity="0.8" />
+    
+    <!-- Eye -->
+    <circle cx="-46.08" cy="-6.144" r="9.216" 
+            fill="#111827" />
+    <circle cx="-46.08" cy="-6.144" r="4.608" 
+            fill="#06b6d4" opacity="0.9" />
+    
+    <!-- Bioluminescent spots -->
+    <circle cx="-15.36" cy="15.36" r="4.608" 
+            fill="#06b6d4" opacity="0.6" filter="url(#glow)" />
+    <circle cx="15.36" cy="9.216" r="3.072" 
+            fill="#06b6d4" opacity="0.5" filter="url(#glow)" />
+    <circle cx="46.08" cy="0" r="3.6864" 
+            fill="#06b6d4" opacity="0.7" filter="url(#glow)" />
+  </g>
+</svg>

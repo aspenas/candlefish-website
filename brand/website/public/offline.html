@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Candlefish - Offline</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(to bottom, #111827, #1f2937);
+      color: #f3f4f6;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      text-align: center;
+      max-width: 600px;
+    }
+    
+    .icon {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 30px;
+      position: relative;
+      animation: float 3s ease-in-out infinite;
+    }
+    
+    .fish {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #06b6d4, #0891b2);
+      border-radius: 50% 0;
+      transform: rotate(45deg);
+      position: relative;
+      box-shadow: 0 0 40px rgba(6, 182, 212, 0.3);
+    }
+    
+    .fish::after {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: #111827;
+      border-radius: 50%;
+      top: 30%;
+      left: 30%;
+      transform: rotate(-45deg);
+    }
+    
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 200;
+      margin-bottom: 20px;
+      letter-spacing: -0.02em;
+    }
+    
+    p {
+      font-size: 1.125rem;
+      color: #9ca3af;
+      margin-bottom: 30px;
+      line-height: 1.6;
+    }
+    
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 24px;
+      background: rgba(6, 182, 212, 0.1);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      border-radius: 100px;
+      color: #06b6d4;
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .pulse {
+      width: 8px;
+      height: 8px;
+      background: #06b6d4;
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    
+    .actions {
+      margin-top: 40px;
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+    }
+    
+    button {
+      padding: 12px 24px;
+      background: transparent;
+      color: #f3f4f6;
+      border: 1px solid rgba(243, 244, 246, 0.2);
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    button:hover {
+      background: rgba(243, 244, 246, 0.05);
+      border-color: rgba(243, 244, 246, 0.3);
+    }
+    
+    button.primary {
+      background: #06b6d4;
+      border-color: #06b6d4;
+      color: #111827;
+    }
+    
+    button.primary:hover {
+      background: #0891b2;
+      border-color: #0891b2;
+    }
+    
+    @keyframes float {
+      0%, 100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(-20px);
+      }
+    }
+    
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.3;
+      }
+    }
+    
+    .cache-info {
+      margin-top: 40px;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .cache-info h3 {
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #6b7280;
+      margin-bottom: 12px;
+    }
+    
+    .cache-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+    
+    .cache-item {
+      padding: 4px 12px;
+      background: rgba(6, 182, 212, 0.1);
+      border-radius: 100px;
+      font-size: 0.75rem;
+      color: #06b6d4;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">
+      <div class="fish"></div>
+    </div>
+    
+    <h1>Currently Offline</h1>
+    
+    <p>
+      The Candlefish swims in digital waters. 
+      Your connection has momentarily surfaced.
+    </p>
+    
+    <div class="status">
+      <div class="pulse"></div>
+      <span>Offline Mode Active</span>
+    </div>
+    
+    <div class="actions">
+      <button onclick="retry()">Try Again</button>
+      <button class="primary" onclick="goBack()">Go Back</button>
+    </div>
+    
+    <div class="cache-info">
+      <h3>Cached Pages Available</h3>
+      <div class="cache-list">
+        <div class="cache-item">Home</div>
+        <div class="cache-item">Atelier</div>
+        <div class="cache-item">Monitoring</div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Check connection status periodically
+    let onlineCheckInterval;
+    
+    function startOnlineCheck() {
+      onlineCheckInterval = setInterval(() => {
+        fetch('/', { method: 'HEAD' })
+          .then(() => {
+            // Connection restored
+            window.location.reload();
+          })
+          .catch(() => {
+            // Still offline
+          });
+      }, 5000);
+    }
+    
+    function retry() {
+      window.location.reload();
+    }
+    
+    function goBack() {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = '/';
+      }
+    }
+    
+    // Start checking for connection
+    startOnlineCheck();
+    
+    // Clean up on page unload
+    window.addEventListener('beforeunload', () => {
+      if (onlineCheckInterval) {
+        clearInterval(onlineCheckInterval);
+      }
+    });
+    
+    // Listen for online event
+    window.addEventListener('online', () => {
+      window.location.reload();
+    });
+  </script>
+</body>
+</html>
