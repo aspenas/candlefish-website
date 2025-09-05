@@ -185,3 +185,188 @@ variable "enable_compression" {
   type        = bool
   default     = true
 }
+# WAF Configuration
+variable "enable_bot_control" {
+  description = "Enable AWS Managed Bot Control ruleset (additional charges apply)"
+  type        = bool
+  default     = false
+}
+
+variable "blocked_countries" {
+  description = "List of country codes to block"
+  type        = list(string)
+  default     = []
+}
+
+variable "allowed_ips" {
+  description = "List of IP addresses to always allow"
+  type        = list(string)
+  default     = []
+}
+
+variable "blocked_ips" {
+  description = "List of IP addresses to block"
+  type        = list(string)
+  default     = []
+}
+
+# Route 53 Configuration
+variable "stable_weight" {
+  description = "Weight for stable deployment in canary routing"
+  type        = number
+  default     = 90
+}
+
+variable "canary_weight" {
+  description = "Weight for canary deployment in canary routing"
+  type        = number
+  default     = 10
+}
+
+variable "domain_verification" {
+  description = "Domain verification TXT record value"
+  type        = string
+  default     = ""
+}
+
+# API Gateway Configuration
+variable "api_gateway_us_ip" {
+  description = "IP address for US API Gateway endpoint"
+  type        = string
+  default     = ""
+}
+
+variable "api_gateway_eu_ip" {
+  description = "IP address for EU API Gateway endpoint"
+  type        = string
+  default     = ""
+}
+
+variable "api_gateway_ap_ip" {
+  description = "IP address for Asia-Pacific API Gateway endpoint"
+  type        = string
+  default     = ""
+}
+
+# WebSocket Configuration
+variable "websocket_us_east_ip" {
+  description = "IP address for US East WebSocket endpoint"
+  type        = string
+  default     = ""
+}
+
+variable "websocket_us_west_ip" {
+  description = "IP address for US West WebSocket endpoint"
+  type        = string
+  default     = ""
+}
+
+variable "websocket_eu_ip" {
+  description = "IP address for EU WebSocket endpoint"
+  type        = string
+  default     = ""
+}
+
+# CloudFront Configuration
+variable "origin_verify_header" {
+  description = "Secret header for origin verification"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "cdn_secret" {
+  description = "Secret for CDN authentication"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# S3 Configuration
+variable "enable_s3_transfer_acceleration" {
+  description = "Enable S3 Transfer Acceleration for faster uploads"
+  type        = bool
+  default     = true
+}
+
+variable "enable_intelligent_tiering" {
+  description = "Enable S3 Intelligent-Tiering for cost optimization"
+  type        = bool
+  default     = true
+}
+
+variable "enable_cross_region_replication" {
+  description = "Enable cross-region replication for disaster recovery"
+  type        = bool
+  default     = false
+}
+
+# Lambda Configuration
+variable "lambda_memory_size" {
+  description = "Memory size for Lambda functions in MB"
+  type        = number
+  default     = 512
+}
+
+variable "lambda_timeout" {
+  description = "Lambda function timeout in seconds"
+  type        = number
+  default     = 30
+}
+
+variable "reserved_concurrent_executions" {
+  description = "Reserved concurrent executions for Lambda functions"
+  type        = number
+  default     = 100
+}
+
+# Monitoring and Alerting
+variable "sns_topic_arn" {
+  description = "SNS topic ARN for alerts"
+  type        = string
+  default     = ""
+}
+
+variable "enable_xray_tracing" {
+  description = "Enable AWS X-Ray tracing"
+  type        = bool
+  default     = true
+}
+
+# Performance Targets
+variable "target_latency_ms" {
+  description = "Target latency in milliseconds"
+  type        = number
+  default     = 100
+}
+
+variable "target_concurrent_users" {
+  description = "Target number of concurrent users"
+  type        = number
+  default     = 1000
+}
+
+variable "target_fps" {
+  description = "Target frames per second for WebGL"
+  type        = number
+  default     = 60
+}
+
+# Cost Optimization Flags
+variable "use_spot_instances" {
+  description = "Use spot instances for non-critical workloads"
+  type        = bool
+  default     = false
+}
+
+variable "enable_auto_scaling" {
+  description = "Enable auto-scaling for compute resources"
+  type        = bool
+  default     = true
+}
+
+variable "enable_scheduled_scaling" {
+  description = "Enable scheduled scaling for predictable traffic patterns"
+  type        = bool
+  default     = false
+}

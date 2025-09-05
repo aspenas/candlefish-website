@@ -1,307 +1,125 @@
 #!/bin/bash
 
 # GitHub Secrets Setup Script
-# This script helps configure all required GitHub secrets for the workflow automation
+# Operational Design Atelier: Establishing trust through proper credentials
 
-set -euo pipefail
+set -e
 
-# Color codes for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+echo "🔐 GitHub Secrets Configuration"
+echo "================================"
+echo ""
+echo "This script will help you set up the required GitHub secrets"
+echo "for the Candlefish AI deployment pipeline."
+echo ""
 
-# Function to print colored output
-print_status() {
-    local color=$1
-    local message=$2
-    echo -e "${color}${message}${NC}"
-}
+# Check if gh CLI is authenticated
+if ! gh auth status &>/dev/null; then
+    echo "❌ GitHub CLI is not authenticated"
+    echo "Please run: gh auth login"
+    exit 1
+fi
 
-# Function to check if gh CLI is installed
-check_gh_cli() {
-    if ! command -v gh &> /dev/null; then
-        print_status "$RED" "❌ GitHub CLI (gh) is not installed"
-        echo "Please install it from: https://cli.github.com/"
-        exit 1
-    fi
-    print_status "$GREEN" "✅ GitHub CLI is installed"
-}
+REPO="aspenas/candlefish-website"
+echo "Repository: $REPO"
+echo ""
 
-# Function to check if logged in to GitHub
-check_gh_auth() {
-    if ! gh auth status &> /dev/null; then
-        print_status "$YELLOW" "⚠️  Not logged in to GitHub"
-        echo "Please run: gh auth login"
-        exit 1
-    fi
-    print_status "$GREEN" "✅ Authenticated with GitHub"
-}
-
-# Function to get AWS credentials from AWS Secrets Manager
-get_aws_secret() {
-    local secret_name=$1
-    aws secretsmanager get-secret-value \
-        --secret-id "$secret_name" \
-        --query 'SecretString' \
-        --output text 2>/dev/null || echo ""
-}
-
-# Function to set GitHub secret
-set_github_secret() {
-    local secret_name=$1
-    local secret_value=$2
-    local repo=${3:-"candlefish-ai/candlefish-ai"}
+# Function to set a secret
+set_secret() {
+    local name=$1
+    local prompt=$2
+    local value=$3
     
-    if [ -z "$secret_value" ]; then
-        print_status "$YELLOW" "⚠️  Skipping $secret_name (no value provided)"
-        return
-    fi
-    
-    echo "$secret_value" | gh secret set "$secret_name" --repo "$repo"
-    print_status "$GREEN" "✅ Set secret: $secret_name"
-}
-
-# Main setup function
-setup_secrets() {
-    print_status "$BLUE" "🔧 Setting up GitHub Secrets for Workflow Automation"
-    echo ""
-    
-    # Check prerequisites
-    check_gh_cli
-    check_gh_auth
-    
-    # Get repository
-    REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo "candlefish-ai/candlefish-ai")
-    print_status "$BLUE" "📦 Repository: $REPO"
-    echo ""
-    
-    # AWS Credentials
-    print_status "$YELLOW" "Setting up AWS credentials..."
-    
-    # Try to get from AWS Secrets Manager first
-    AWS_CREDS=$(get_aws_secret "github/aws-credentials")
-    if [ -n "$AWS_CREDS" ]; then
-        AWS_ACCESS_KEY=$(echo "$AWS_CREDS" | jq -r '.access_key_id')
-        AWS_SECRET_KEY=$(echo "$AWS_CREDS" | jq -r '.secret_access_key')
-        AWS_ROLE_ARN=$(echo "$AWS_CREDS" | jq -r '.role_arn')
-        AWS_PROD_ROLE_ARN=$(echo "$AWS_CREDS" | jq -r '.prod_role_arn')
-    else
-        # Prompt for AWS credentials
-        read -p "Enter AWS Access Key ID: " AWS_ACCESS_KEY
-        read -sp "Enter AWS Secret Access Key: " AWS_SECRET_KEY
+    if [ -z "$value" ]; then
+        echo "Enter value for $name:"
+        echo "  $prompt"
+        read -s value
         echo ""
-        read -p "Enter AWS Role ARN: " AWS_ROLE_ARN
-        read -p "Enter AWS Production Role ARN: " AWS_PROD_ROLE_ARN
     fi
     
-    set_github_secret "AWS_ACCESS_KEY_ID" "$AWS_ACCESS_KEY" "$REPO"
-    set_github_secret "AWS_SECRET_ACCESS_KEY" "$AWS_SECRET_KEY" "$REPO"
-    set_github_secret "AWS_ROLE_ARN" "$AWS_ROLE_ARN" "$REPO"
-    set_github_secret "AWS_PROD_ROLE_ARN" "$AWS_PROD_ROLE_ARN" "$REPO"
-    
-    # Docker Hub credentials
-    print_status "$YELLOW" "Setting up Docker Hub credentials..."
-    DOCKER_CREDS=$(get_aws_secret "docker/credentials")
-    if [ -n "$DOCKER_CREDS" ]; then
-        DOCKER_USERNAME=$(echo "$DOCKER_CREDS" | jq -r '.username')
-        DOCKER_PASSWORD=$(echo "$DOCKER_CREDS" | jq -r '.password')
+    if [ -n "$value" ]; then
+        echo "$value" | gh secret set "$name" --repo "$REPO"
+        echo "✅ Set $name"
     else
-        read -p "Enter Docker Hub username (or press Enter to skip): " DOCKER_USERNAME
-        if [ -n "$DOCKER_USERNAME" ]; then
-            read -sp "Enter Docker Hub password: " DOCKER_PASSWORD
-            echo ""
+        echo "⚠️  Skipped $name (no value provided)"
+    fi
+}
+
+echo "Setting up required secrets..."
+echo ""
+
+# 1. Netlify Secrets
+echo "1. Netlify Configuration"
+echo "------------------------"
+echo "You can find these in your Netlify account:"
+echo "  - Go to: https://app.netlify.com/user/applications"
+echo "  - Create a new personal access token"
+echo "  - Site ID is in site settings"
+echo ""
+
+# Get Netlify auth token from environment or prompt
+if [ -n "$NETLIFY_AUTH_TOKEN" ]; then
+    echo "Using NETLIFY_AUTH_TOKEN from environment"
+    set_secret "NETLIFY_AUTH_TOKEN" "" "$NETLIFY_AUTH_TOKEN"
+else
+    set_secret "NETLIFY_AUTH_TOKEN" "Personal access token from Netlify" ""
+fi
+
+# Get site ID - try to detect from netlify CLI first
+if command -v netlify &>/dev/null && netlify status &>/dev/null; then
+    DETECTED_SITE_ID=$(netlify status --json 2>/dev/null | grep -o '"id":"[^"]*"' | cut -d'"' -f4 || echo "")
+    if [ -n "$DETECTED_SITE_ID" ]; then
+        echo "Detected Netlify Site ID: $DETECTED_SITE_ID"
+        read -p "Use this Site ID? (Y/n): " use_detected
+        if [[ "$use_detected" != "n" && "$use_detected" != "N" ]]; then
+            set_secret "NETLIFY_SITE_ID" "" "$DETECTED_SITE_ID"
+        else
+            set_secret "NETLIFY_SITE_ID" "Site ID from Netlify site settings" ""
         fi
-    fi
-    
-    set_github_secret "DOCKER_USERNAME" "$DOCKER_USERNAME" "$REPO"
-    set_github_secret "DOCKER_PASSWORD" "$DOCKER_PASSWORD" "$REPO"
-    
-    # NPM Token
-    print_status "$YELLOW" "Setting up NPM token..."
-    NPM_TOKEN=$(get_aws_secret "npm/token")
-    if [ -z "$NPM_TOKEN" ]; then
-        read -p "Enter NPM token (or press Enter to skip): " NPM_TOKEN
-    fi
-    set_github_secret "NPM_TOKEN" "$NPM_TOKEN" "$REPO"
-    
-    # Semantic Release Token
-    print_status "$YELLOW" "Setting up Semantic Release token..."
-    print_status "$BLUE" "Creating a GitHub Personal Access Token with 'repo' scope..."
-    echo "Visit: https://github.com/settings/tokens/new?scopes=repo"
-    read -sp "Enter GitHub Personal Access Token for Semantic Release: " SEMANTIC_RELEASE_TOKEN
-    echo ""
-    set_github_secret "SEMANTIC_RELEASE_TOKEN" "$SEMANTIC_RELEASE_TOKEN" "$REPO"
-    
-    # Monitoring tokens
-    print_status "$YELLOW" "Setting up monitoring tokens..."
-    
-    # Slack Webhook
-    SLACK_WEBHOOK=$(get_aws_secret "slack/webhook-url")
-    if [ -z "$SLACK_WEBHOOK" ]; then
-        read -p "Enter Slack Webhook URL (or press Enter to skip): " SLACK_WEBHOOK
-    fi
-    set_github_secret "SLACK_WEBHOOK" "$SLACK_WEBHOOK" "$REPO"
-    
-    # Datadog
-    DATADOG_CREDS=$(get_aws_secret "datadog/credentials")
-    if [ -n "$DATADOG_CREDS" ]; then
-        DATADOG_API_KEY=$(echo "$DATADOG_CREDS" | jq -r '.api_key')
-        DATADOG_APP_KEY=$(echo "$DATADOG_CREDS" | jq -r '.app_key')
     else
-        read -p "Enter Datadog API Key (or press Enter to skip): " DATADOG_API_KEY
-        read -p "Enter Datadog App Key (or press Enter to skip): " DATADOG_APP_KEY
+        set_secret "NETLIFY_SITE_ID" "Site ID from Netlify site settings" "${NETLIFY_SITE_ID:-}"
     fi
-    set_github_secret "DATADOG_API_KEY" "$DATADOG_API_KEY" "$REPO"
-    set_github_secret "DATADOG_APP_KEY" "$DATADOG_APP_KEY" "$REPO"
-    
-    # Security scanning tokens
-    print_status "$YELLOW" "Setting up security scanning tokens..."
-    
-    # Snyk
-    SNYK_TOKEN=$(get_aws_secret "snyk/token")
-    if [ -z "$SNYK_TOKEN" ]; then
-        echo "Get your Snyk token from: https://app.snyk.io/account"
-        read -p "Enter Snyk token (or press Enter to skip): " SNYK_TOKEN
-    fi
-    set_github_secret "SNYK_TOKEN" "$SNYK_TOKEN" "$REPO"
-    
-    # SonarCloud
-    SONAR_TOKEN=$(get_aws_secret "sonarcloud/token")
-    if [ -z "$SONAR_TOKEN" ]; then
-        echo "Get your SonarCloud token from: https://sonarcloud.io/account/security"
-        read -p "Enter SonarCloud token (or press Enter to skip): " SONAR_TOKEN
-    fi
-    set_github_secret "SONAR_TOKEN" "$SONAR_TOKEN" "$REPO"
-    
-    # Codecov
-    CODECOV_TOKEN=$(get_aws_secret "codecov/token")
-    if [ -z "$CODECOV_TOKEN" ]; then
-        read -p "Enter Codecov token (or press Enter to skip): " CODECOV_TOKEN
-    fi
-    set_github_secret "CODECOV_TOKEN" "$CODECOV_TOKEN" "$REPO"
-    
-    # Infrastructure secrets
-    print_status "$YELLOW" "Setting up infrastructure secrets..."
-    
-    # Terraform State Bucket
-    read -p "Enter Terraform state bucket name: " TF_STATE_BUCKET
-    set_github_secret "TF_STATE_BUCKET" "$TF_STATE_BUCKET" "$REPO"
-    
-    # CloudFront Distribution ID
-    read -p "Enter CloudFront Distribution ID (or press Enter to skip): " CLOUDFRONT_DISTRIBUTION_ID
-    set_github_secret "CLOUDFRONT_DISTRIBUTION_ID" "$CLOUDFRONT_DISTRIBUTION_ID" "$REPO"
-    
-    # Grafana Admin Password
-    GRAFANA_PASSWORD=$(openssl rand -base64 32)
-    print_status "$BLUE" "Generated Grafana admin password: $GRAFANA_PASSWORD"
-    set_github_secret "GRAFANA_ADMIN_PASSWORD" "$GRAFANA_PASSWORD" "$REPO"
-    
-    # Test secrets
-    print_status "$YELLOW" "Setting up test environment secrets..."
-    
-    # Test Database URL
-    read -p "Enter test database URL (or press Enter to skip): " TEST_DATABASE_URL
-    set_github_secret "TEST_DATABASE_URL" "$TEST_DATABASE_URL" "$REPO"
-    
-    # Test API Key
-    TEST_API_KEY=$(openssl rand -hex 32)
-    print_status "$BLUE" "Generated test API key: $TEST_API_KEY"
-    set_github_secret "TEST_API_KEY" "$TEST_API_KEY" "$REPO"
-    
-    # Cypress Dashboard
-    read -p "Enter Cypress Record Key (or press Enter to skip): " CYPRESS_RECORD_KEY
-    set_github_secret "CYPRESS_RECORD_KEY" "$CYPRESS_RECORD_KEY" "$REPO"
-    
-    echo ""
-    print_status "$GREEN" "✅ GitHub Secrets setup complete!"
-    echo ""
-    print_status "$BLUE" "📋 Summary of configured secrets:"
-    gh secret list --repo "$REPO"
-}
+else
+    set_secret "NETLIFY_SITE_ID" "Site ID from Netlify site settings" "${NETLIFY_SITE_ID:-}"
+fi
 
-# Show usage
-show_usage() {
-    echo "Usage: $0 [command]"
-    echo ""
-    echo "Commands:"
-    echo "  setup    - Set up all GitHub secrets"
-    echo "  list     - List current secrets"
-    echo "  verify   - Verify required secrets are set"
-    echo "  help     - Show this help message"
-}
+echo ""
 
-# Verify secrets are set
-verify_secrets() {
-    print_status "$BLUE" "🔍 Verifying GitHub Secrets..."
-    
-    REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo "candlefish-ai/candlefish-ai")
-    
-    # List of required secrets
-    REQUIRED_SECRETS=(
-        "AWS_ACCESS_KEY_ID"
-        "AWS_SECRET_ACCESS_KEY"
-        "AWS_ROLE_ARN"
-        "SEMANTIC_RELEASE_TOKEN"
-    )
-    
-    # List of optional but recommended secrets
-    OPTIONAL_SECRETS=(
-        "AWS_PROD_ROLE_ARN"
-        "DOCKER_USERNAME"
-        "DOCKER_PASSWORD"
-        "NPM_TOKEN"
-        "SLACK_WEBHOOK"
-        "SNYK_TOKEN"
-        "SONAR_TOKEN"
-        "CODECOV_TOKEN"
-        "DATADOG_API_KEY"
-        "GRAFANA_ADMIN_PASSWORD"
-    )
-    
-    # Get list of existing secrets
-    EXISTING_SECRETS=$(gh secret list --repo "$REPO" --json name -q '.[].name' 2>/dev/null || echo "")
-    
-    echo ""
-    print_status "$YELLOW" "Required secrets:"
-    for secret in "${REQUIRED_SECRETS[@]}"; do
-        if echo "$EXISTING_SECRETS" | grep -q "^$secret$"; then
-            print_status "$GREEN" "  ✅ $secret"
+# 2. AWS Secrets (optional but recommended)
+echo "2. AWS Configuration (Optional)"
+echo "-------------------------------"
+echo "For AWS deployments, you'll need:"
+echo "  - AWS Account ID (12-digit number)"
+echo "  - IAM role ARN for GitHub Actions"
+echo ""
+
+read -p "Configure AWS secrets? (y/N): " configure_aws
+if [[ "$configure_aws" == "y" || "$configure_aws" == "Y" ]]; then
+    # Try to get AWS account ID from current credentials
+    if aws sts get-caller-identity &>/dev/null; then
+        DETECTED_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+        echo "Detected AWS Account: $DETECTED_ACCOUNT"
+        read -p "Use this Account ID? (Y/n): " use_detected
+        if [[ "$use_detected" != "n" && "$use_detected" != "N" ]]; then
+            set_secret "AWS_ACCOUNT_ID" "" "$DETECTED_ACCOUNT"
         else
-            print_status "$RED" "  ❌ $secret (MISSING)"
+            set_secret "AWS_ACCOUNT_ID" "12-digit AWS Account ID" ""
         fi
-    done
+    else
+        set_secret "AWS_ACCOUNT_ID" "12-digit AWS Account ID" ""
+    fi
     
-    echo ""
-    print_status "$YELLOW" "Optional secrets:"
-    for secret in "${OPTIONAL_SECRETS[@]}"; do
-        if echo "$EXISTING_SECRETS" | grep -q "^$secret$"; then
-            print_status "$GREEN" "  ✅ $secret"
-        else
-            print_status "$YELLOW" "  ⚠️  $secret (not set)"
-        fi
-    done
-}
+    set_secret "AWS_REGION" "AWS Region (e.g., us-east-1)" "${AWS_REGION:-us-east-1}"
+fi
 
-# Main script
-case "${1:-help}" in
-    setup)
-        setup_secrets
-        ;;
-    list)
-        REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo "candlefish-ai/candlefish-ai")
-        gh secret list --repo "$REPO"
-        ;;
-    verify)
-        verify_secrets
-        ;;
-    help|--help|-h)
-        show_usage
-        ;;
-    *)
-        print_status "$RED" "Unknown command: $1"
-        show_usage
-        exit 1
-        ;;
-esac
+echo ""
+echo "================================"
+echo "✅ GitHub Secrets Configuration Complete!"
+echo ""
+echo "Configured secrets for: $REPO"
+echo ""
+echo "To verify, run:"
+echo "  gh secret list --repo $REPO"
+echo ""
+echo "To trigger a deployment, run:"
+echo "  gh workflow run deploy-netlify-simple.yml --ref main -f environment=production"
+echo ""

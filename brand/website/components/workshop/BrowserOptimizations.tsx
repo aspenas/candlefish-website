@@ -84,6 +84,9 @@ export function BrowserOptimizations() {
           background: rgba(27, 38, 59, ${isIOS ? '0.85' : '0.9'}) !important;
           /* Optimize rendering */
           will-change: auto;
+          /* Ensure cards don't overflow in landscape */
+          max-width: 100%;
+          overflow: hidden;
         }
         .workshop-background {
           /* Fixed backgrounds cause issues on mobile */
@@ -99,12 +102,33 @@ export function BrowserOptimizations() {
           -webkit-backdrop-filter: blur(${isIOS ? '6px' : '8px'}) !important;
           /* Ensure proper stacking */
           z-index: 1000;
+          /* Fix landscape navigation */
+          width: 100%;
+          max-width: 100vw;
+          left: 0;
+          right: 0;
         }
         .workshop-nav-content {
           /* Ensure proper mobile navigation alignment */
           align-items: center !important;
           justify-content: space-between !important;
           min-height: var(--workshop-nav-height) !important;
+          /* Prevent overflow in landscape */
+          max-width: 100%;
+          overflow: hidden;
+        }
+        .workshop-container {
+          /* Ensure container doesn't overflow in landscape */
+          width: 100%;
+          max-width: 100vw;
+          min-width: 0;
+          overflow-x: hidden;
+        }
+        .workshop-grid {
+          /* Ensure grid content fits within viewport */
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
         }
         /* Touch optimization */
         .workshop-card, .workshop-button, button, a {
@@ -118,6 +142,30 @@ export function BrowserOptimizations() {
         .workshop-nav, .workshop-status, .workshop-metric {
           -webkit-user-select: none;
           user-select: none;
+        }
+        /* Landscape orientation specific fixes */
+        @media screen and (orientation: landscape) and (max-height: 500px) {
+          .workshop-nav {
+            height: 36px !important;
+            min-height: 36px !important;
+          }
+          .workshop-nav-content {
+            padding: 4px 16px !important;
+            min-height: 32px !important;
+          }
+          .workshop-nav-content h1 {
+            font-size: 12px !important;
+            line-height: 1.2 !important;
+          }
+          .workshop-metrics {
+            display: none !important;
+          }
+          .workshop-grid {
+            padding-top: 84px !important; /* 44px main + 36px workshop + 4px buffer */
+          }
+          .workshop-card {
+            padding: 16px !important;
+          }
         }
       `
       document.head.appendChild(style)

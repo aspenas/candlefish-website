@@ -1,0 +1,620 @@
+name: 'Performance Test - Load Performance'
+
+on:
+  schedule:
+    # Run performance tests nightly at 01:00 UTC
+    - cron: '0 1 * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'public/**'
+      - 'styles/**'
+      - 'package.json'
+      - 'next.config.js'
+  workflow_dispatch:
+    inputs:
+      test_environment:
+        description: 'Environment to test'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      test_duration:
+        description: 'Test duration in minutes'
+        required: true
+        default: '10'
+        type: string
+      concurrent_users:
+        description: 'Number of concurrent users'
+        required: true
+        default: '100'
+        type: string
+      test_scenarios:
+        description: 'Test scenarios to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - basic
+          - load
+          - stress
+          - spike
+
+env:
+  PERFORMANCE_THRESHOLD_P95: 2000 # 2 seconds
+  PERFORMANCE_THRESHOLD_P99: 5000 # 5 seconds
+  ERROR_RATE_THRESHOLD: 1 # 1%
+  THROUGHPUT_THRESHOLD: 100 # requests per second
+
+jobs:
+  # Setup performance testing environment
+  performance-setup:
+    name: 'Performance Test Orchestration'
+    runs-on: ubuntu-latest
+    outputs:
+      target_environment: ${{ steps.config.outputs.target_environment }}
+      target_url: ${{ steps.config.outputs.target_url }}
+      test_duration: ${{ steps.config.outputs.test_duration }}
+      concurrent_users: ${{ steps.config.outputs.concurrent_users }}
+      test_scenarios: ${{ steps.config.outputs.test_scenarios }}
+      baseline_exists: ${{ steps.baseline.outputs.exists }}
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure test parameters
+        id: config
+        run: |
+          # Determine target environment
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TARGET_ENV="${{ github.event.inputs.test_environment }}"
+            DURATION="${{ github.event.inputs.test_duration }}"
+            USERS="${{ github.event.inputs.concurrent_users }}"
+            SCENARIOS="${{ github.event.inputs.test_scenarios }}"
+          elif [[ "${{ github.event_name }}" == "schedule" ]]; then
+            TARGET_ENV="production"
+            DURATION="30"
+            USERS="200"
+            SCENARIOS="all"
+          else
+            TARGET_ENV="staging"
+            DURATION="5"
+            USERS="50"
+            SCENARIOS="basic"
+          fi
+          
+          # Set target URL based on environment
+          case "$TARGET_ENV" in
+            production)
+              TARGET_URL="https://candlefish.ai"
+              ;;
+            staging)
+              TARGET_URL="https://staging.candlefish.ai"
+              ;;
+          esac
+          
+          echo "target_environment=$TARGET_ENV" >> $GITHUB_OUTPUT
+          echo "target_url=$TARGET_URL" >> $GITHUB_OUTPUT
+          echo "test_duration=$DURATION" >> $GITHUB_OUTPUT
+          echo "concurrent_users=$USERS" >> $GITHUB_OUTPUT
+          echo "test_scenarios=$SCENARIOS" >> $GITHUB_OUTPUT
+
+      - name: Check for baseline performance data
+        id: baseline
+        run: |
+          # Check if we have baseline performance data
+          if [[ -f ".github/performance/baseline-${{ steps.config.outputs.target_environment }}.json" ]]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+  # Lighthouse performance audit
+  lighthouse-audit:
+    name: 'Lighthouse Performance Audit'
+    runs-on: ubuntu-latest
+    needs: performance-setup
+    
+    strategy:
+      matrix:
+        page: ["/", "/workshop", "/atelier", "/health"]
+        device: [desktop, mobile]
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Lighthouse audit
+        uses: treosh/lighthouse-ci-action@v10
+        id: lighthouse
+        with:
+          urls: ${{ needs.performance-setup.outputs.target_url }}${{ matrix.page }}
+          configPath: .github/lighthouse/lighthouse-${{ matrix.device }}.js
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+      - name: Save Lighthouse results
+        run: |
+          mkdir -p performance-results/lighthouse
+          echo '${{ steps.lighthouse.outputs.resultsPath }}' > performance-results/lighthouse/${{ matrix.device }}-${{ matrix.page }}-results.json
+
+      - name: Check performance thresholds
+        run: |
+          # Extract key metrics from Lighthouse results
+          LIGHTHOUSE_FILE=$(find . -name "lhr-*.json" | head -1)
+          
+          if [[ -f "$LIGHTHOUSE_FILE" ]]; then
+            PERFORMANCE_SCORE=$(jq '.categories.performance.score * 100' "$LIGHTHOUSE_FILE")
+            FCP=$(jq '.audits["first-contentful-paint"].numericValue' "$LIGHTHOUSE_FILE")
+            LCP=$(jq '.audits["largest-contentful-paint"].numericValue' "$LIGHTHOUSE_FILE")
+            CLS=$(jq '.audits["cumulative-layout-shift"].numericValue' "$LIGHTHOUSE_FILE")
+            
+            echo "Page: ${{ matrix.page }} (${{ matrix.device }})"
+            echo "Performance Score: $PERFORMANCE_SCORE"
+            echo "First Contentful Paint: ${FCP}ms"
+            echo "Largest Contentful Paint: ${LCP}ms"
+            echo "Cumulative Layout Shift: $CLS"
+            
+            # Check thresholds
+            if (( $(echo "$PERFORMANCE_SCORE < 80" | bc -l) )); then
+              echo "::warning::Performance score below threshold: $PERFORMANCE_SCORE < 80"
+            fi
+            
+            if (( $(echo "$LCP > 2500" | bc -l) )); then
+              echo "::warning::LCP above threshold: ${LCP}ms > 2500ms"
+            fi
+          fi
+
+      - name: Upload Lighthouse artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-${{ matrix.device }}-${{ matrix.page }}
+          path: |
+            performance-results/
+            .lighthouseci/
+
+  # K6 load testing
+  k6-load-test:
+    name: 'K6 Load Testing'
+    runs-on: ubuntu-latest
+    needs: performance-setup
+    
+    strategy:
+      matrix:
+        scenario: [basic, load, stress, spike]
+        include:
+          - scenario: basic
+            users: 10
+            duration: 2m
+          - scenario: load
+            users: 50
+            duration: 5m
+          - scenario: stress
+            users: 200
+            duration: 10m
+          - scenario: spike
+            users: 500
+            duration: 30s
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup K6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Create K6 test script
+        env:
+          TARGET_URL: ${{ needs.performance-setup.outputs.target_url }}
+          USERS: ${{ matrix.users }}
+          DURATION: ${{ matrix.duration }}
+        run: |
+          cat > k6-${{ matrix.scenario }}.js << 'EOF'
+          import http from 'k6/http';
+          import { check, sleep } from 'k6';
+          import { Rate, Trend } from 'k6/metrics';
+          
+          const errorRate = new Rate('errors');
+          const responseTime = new Trend('response_time');
+          
+          export const options = {
+            stages: [
+              { duration: '1m', target: ${{ matrix.users }} },
+              { duration: '${{ matrix.duration }}', target: ${{ matrix.users }} },
+              { duration: '1m', target: 0 }
+            ],
+            thresholds: {
+              http_req_duration: ['p(95)<2000', 'p(99)<5000'],
+              http_req_failed: ['rate<0.01'],
+              errors: ['rate<0.01']
+            }
+          };
+          
+          const baseUrl = '${{ env.TARGET_URL }}';
+          
+          const scenarios = {
+            homepage: () => http.get(`${baseUrl}/`),
+            workshop: () => http.get(`${baseUrl}/workshop`),
+            atelier: () => http.get(`${baseUrl}/atelier`),
+            health: () => http.get(`${baseUrl}/health`),
+            api: () => http.get(`${baseUrl}/api/health`)
+          };
+          
+          export default function () {
+            const scenarioKeys = Object.keys(scenarios);
+            const randomScenario = scenarioKeys[Math.floor(Math.random() * scenarioKeys.length)];
+            
+            const response = scenarios[randomScenario]();
+            
+            const success = check(response, {
+              'status is 200': (r) => r.status === 200,
+              'response time < 2s': (r) => r.timings.duration < 2000,
+              'response time < 5s': (r) => r.timings.duration < 5000,
+            });
+            
+            errorRate.add(!success);
+            responseTime.add(response.timings.duration);
+            
+            sleep(Math.random() * 3 + 1); // 1-4 second think time
+          }
+          EOF
+
+      - name: Run K6 load test
+        if: needs.performance-setup.outputs.test_scenarios == 'all' || needs.performance-setup.outputs.test_scenarios == matrix.scenario
+        run: |
+          mkdir -p performance-results/k6
+          
+          k6 run \
+            --out json=performance-results/k6/${{ matrix.scenario }}-results.json \
+            --summary-export=performance-results/k6/${{ matrix.scenario }}-summary.json \
+            k6-${{ matrix.scenario }}.js
+
+      - name: Analyze K6 results
+        if: always()
+        run: |
+          if [[ -f "performance-results/k6/${{ matrix.scenario }}-summary.json" ]]; then
+            # Extract key metrics
+            P95=$(jq '.metrics.http_req_duration.values.p\(95\)' performance-results/k6/${{ matrix.scenario }}-summary.json)
+            P99=$(jq '.metrics.http_req_duration.values.p\(99\)' performance-results/k6/${{ matrix.scenario }}-summary.json)
+            ERROR_RATE=$(jq '.metrics.http_req_failed.values.rate * 100' performance-results/k6/${{ matrix.scenario }}-summary.json)
+            RPS=$(jq '.metrics.http_reqs.values.rate' performance-results/k6/${{ matrix.scenario }}-summary.json)
+            
+            echo "### K6 ${{ matrix.scenario }} Results"
+            echo "P95 Response Time: ${P95}ms"
+            echo "P99 Response Time: ${P99}ms"
+            echo "Error Rate: ${ERROR_RATE}%"
+            echo "Requests per Second: $RPS"
+            
+            # Check thresholds
+            if (( $(echo "$P95 > ${{ env.PERFORMANCE_THRESHOLD_P95 }}" | bc -l) )); then
+              echo "::error::P95 response time exceeds threshold: ${P95}ms > ${{ env.PERFORMANCE_THRESHOLD_P95 }}ms"
+            fi
+            
+            if (( $(echo "$ERROR_RATE > ${{ env.ERROR_RATE_THRESHOLD }}" | bc -l) )); then
+              echo "::error::Error rate exceeds threshold: ${ERROR_RATE}% > ${{ env.ERROR_RATE_THRESHOLD }}%"
+            fi
+          fi
+
+      - name: Upload K6 results
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-${{ matrix.scenario }}-results
+          path: performance-results/k6/
+
+  # Browser-based performance testing
+  playwright-performance:
+    name: 'Playwright Performance Testing'
+    runs-on: ubuntu-latest
+    needs: performance-setup
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run Playwright performance tests
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ needs.performance-setup.outputs.target_url }}
+        run: |
+          mkdir -p performance-results/playwright
+          
+          npx playwright test \
+            --config=playwright.performance.config.ts \
+            --reporter=json:performance-results/playwright/results.json
+
+      - name: Generate performance report
+        run: |
+          # Create a performance summary from Playwright results
+          if [[ -f "performance-results/playwright/results.json" ]]; then
+            node -e "
+              const results = require('./performance-results/playwright/results.json');
+              const summary = {
+                totalTests: results.suites.reduce((acc, suite) => acc + suite.specs.length, 0),
+                passedTests: results.suites.reduce((acc, suite) => 
+                  acc + suite.specs.filter(spec => spec.tests.some(test => test.status === 'passed')).length, 0),
+                averageLoadTime: 'calculated from test results',
+                timestamp: new Date().toISOString()
+              };
+              require('fs').writeFileSync('performance-results/playwright/summary.json', JSON.stringify(summary, null, 2));
+            "
+          fi
+
+      - name: Upload Playwright results
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-performance-results
+          path: |
+            performance-results/playwright/
+            test-results/
+
+  # Performance regression detection
+  regression-analysis:
+    name: 'Performance Regression Analysis'
+    runs-on: ubuntu-latest
+    needs: [performance-setup, lighthouse-audit, k6-load-test, playwright-performance]
+    if: always()
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all performance results
+        uses: actions/download-artifact@v4
+        with:
+          path: all-performance-results
+
+      - name: Setup Python for analysis
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install analysis dependencies
+        run: |
+          pip install pandas numpy matplotlib seaborn jinja2
+
+      - name: Analyze performance trends
+        run: |
+          cat > analyze_performance.py << 'EOF'
+          import json
+          import pandas as pd
+          import numpy as np
+          from datetime import datetime
+          import os
+          
+          def analyze_k6_results():
+              results = {}
+              k6_dir = "all-performance-results"
+              
+              for root, dirs, files in os.walk(k6_dir):
+                  for file in files:
+                      if file.endswith("-summary.json"):
+                          scenario = file.replace("-summary.json", "")
+                          filepath = os.path.join(root, file)
+                          
+                          try:
+                              with open(filepath, 'r') as f:
+                                  data = json.load(f)
+                              
+                              results[scenario] = {
+                                  'p95': data['metrics']['http_req_duration']['values']['p(95)'],
+                                  'p99': data['metrics']['http_req_duration']['values']['p(99)'],
+                                  'error_rate': data['metrics']['http_req_failed']['values']['rate'] * 100,
+                                  'rps': data['metrics']['http_reqs']['values']['rate']
+                              }
+                          except Exception as e:
+                              print(f"Error processing {filepath}: {e}")
+              
+              return results
+          
+          def generate_report(k6_results):
+              report = {
+                  'timestamp': datetime.utcnow().isoformat(),
+                  'environment': '${{ needs.performance-setup.outputs.target_environment }}',
+                  'results': k6_results,
+                  'thresholds': {
+                      'p95_threshold': ${{ env.PERFORMANCE_THRESHOLD_P95 }},
+                      'p99_threshold': ${{ env.PERFORMANCE_THRESHOLD_P99 }},
+                      'error_rate_threshold': ${{ env.ERROR_RATE_THRESHOLD }}
+                  },
+                  'summary': {
+                      'total_scenarios': len(k6_results),
+                      'failing_scenarios': len([s for s, r in k6_results.items() 
+                                              if r['p95'] > ${{ env.PERFORMANCE_THRESHOLD_P95 }} or 
+                                                 r['error_rate'] > ${{ env.ERROR_RATE_THRESHOLD }}])
+                  }
+              }
+              
+              return report
+          
+          # Generate performance report
+          k6_results = analyze_k6_results()
+          report = generate_report(k6_results)
+          
+          os.makedirs('performance-report', exist_ok=True)
+          with open('performance-report/analysis.json', 'w') as f:
+              json.dump(report, f, indent=2)
+          
+          print("Performance analysis complete")
+          print(f"Total scenarios tested: {report['summary']['total_scenarios']}")
+          print(f"Failing scenarios: {report['summary']['failing_scenarios']}")
+          EOF
+          
+          python analyze_performance.py
+
+      - name: Compare with baseline
+        if: needs.performance-setup.outputs.baseline_exists == 'true'
+        run: |
+          # Compare current results with baseline
+          echo "Comparing with baseline performance data..."
+          
+          if [[ -f ".github/performance/baseline-${{ needs.performance-setup.outputs.target_environment }}.json" ]]; then
+            # Simple comparison logic
+            echo "Baseline comparison would be implemented here"
+          fi
+
+      - name: Generate performance dashboard
+        run: |
+          mkdir -p performance-dashboard
+          
+          cat > performance-dashboard/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>Candlefish Performance Dashboard</title>
+              <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+              <style>
+                  body { font-family: Arial, sans-serif; margin: 20px; }
+                  .metric { display: inline-block; margin: 10px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+                  .good { border-color: green; }
+                  .warning { border-color: orange; }
+                  .error { border-color: red; }
+                  canvas { max-width: 800px; margin: 20px 0; }
+              </style>
+          </head>
+          <body>
+              <h1>🎭 Candlefish Performance Dashboard</h1>
+              <div id="metrics"></div>
+              <canvas id="performanceChart"></canvas>
+              
+              <script>
+                  // Load and display performance data
+                  fetch('./analysis.json')
+                      .then(response => response.json())
+                      .then(data => {
+                          console.log('Performance data:', data);
+                          // Dashboard implementation would go here
+                      });
+              </script>
+          </body>
+          </html>
+          EOF
+
+      - name: Upload performance analysis
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-analysis
+          path: |
+            performance-report/
+            performance-dashboard/
+
+  # Performance notification and alerting
+  performance-notification:
+    name: 'Performance Alert System'
+    runs-on: ubuntu-latest
+    needs: [performance-setup, regression-analysis]
+    if: always()
+    
+    steps:
+      - name: Download performance analysis
+        uses: actions/download-artifact@v4
+        with:
+          name: performance-analysis
+          path: performance-results
+
+      - name: Evaluate performance status
+        id: status
+        run: |
+          if [[ -f "performance-results/performance-report/analysis.json" ]]; then
+            FAILING_SCENARIOS=$(jq '.summary.failing_scenarios' performance-results/performance-report/analysis.json)
+            TOTAL_SCENARIOS=$(jq '.summary.total_scenarios' performance-results/performance-report/analysis.json)
+            
+            if [[ "$FAILING_SCENARIOS" -gt 0 ]]; then
+              echo "status=degraded" >> $GITHUB_OUTPUT
+              echo "color=warning" >> $GITHUB_OUTPUT
+              echo "emoji=⚠️" >> $GITHUB_OUTPUT
+            else
+              echo "status=healthy" >> $GITHUB_OUTPUT
+              echo "color=good" >> $GITHUB_OUTPUT
+              echo "emoji=✅" >> $GITHUB_OUTPUT
+            fi
+            
+            echo "failing_scenarios=$FAILING_SCENARIOS" >> $GITHUB_OUTPUT
+            echo "total_scenarios=$TOTAL_SCENARIOS" >> $GITHUB_OUTPUT
+          else
+            echo "status=unknown" >> $GITHUB_OUTPUT
+            echo "color=danger" >> $GITHUB_OUTPUT
+            echo "emoji=❓" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send performance notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              attachments: [{
+                color: '${{ steps.status.outputs.color }}',
+                title: '${{ steps.status.outputs.emoji }} Performance Test Results',
+                fields: [
+                  {
+                    title: 'Environment',
+                    value: '${{ needs.performance-setup.outputs.target_environment }}',
+                    short: true
+                  },
+                  {
+                    title: 'Status',
+                    value: '${{ steps.status.outputs.status }}',
+                    short: true
+                  },
+                  {
+                    title: 'Scenarios',
+                    value: '${{ steps.status.outputs.failing_scenarios }}/${{ steps.status.outputs.total_scenarios }} failing',
+                    short: true
+                  },
+                  {
+                    title: 'Target URL',
+                    value: '${{ needs.performance-setup.outputs.target_url }}',
+                    short: true
+                  }
+                ],
+                actions: [{
+                  type: 'button',
+                  text: 'View Results',
+                  url: 'https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+                }],
+                footer: 'Candlefish Performance Pipeline'
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: always()
+
+      - name: Update performance baseline
+        if: steps.status.outputs.status == 'healthy' && needs.performance-setup.outputs.target_environment == 'production'
+        run: |
+          # Update baseline performance data for future comparisons
+          mkdir -p .github/performance
+          cp performance-results/performance-report/analysis.json .github/performance/baseline-production.json
+          echo "Updated performance baseline"

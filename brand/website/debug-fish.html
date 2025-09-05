@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hero Fish Debug</title>
+    <link rel="stylesheet" href="/hero-fish.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #0D1B2A;
+            color: white;
+            font-family: monospace;
+        }
+        #debug-info {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 4px;
+            z-index: 1000;
+            font-size: 12px;
+            white-space: pre-line;
+        }
+        #fish-container {
+            width: 800px;
+            height: 400px;
+            border: 1px solid #415A77;
+            margin: 20px auto;
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <div id="debug-info">Loading debug info...</div>
+    
+    <h1>Hero Fish Animation Debug</h1>
+    
+    <div id="fish-container" data-cf-fish-host>
+        <canvas 
+            id="hero-fish-canvas" 
+            width="800" 
+            height="400"
+            style="position: absolute; inset: 0; width: 100%; height: 100%;"
+        ></canvas>
+    </div>
+
+    <script type="module">
+        const debugInfo = document.getElementById('debug-info');
+        
+        function updateDebug(info) {
+            debugInfo.textContent = info;
+        }
+        
+        updateDebug('Starting debug...');
+        
+        try {
+            updateDebug('Attempting to import createHeroFish...');
+            
+            // Import the fish animation system
+            const { createHeroFish } = await import('./src/heroFish/index.js');
+            
+            updateDebug('createHeroFish imported successfully');
+            
+            const canvas = document.getElementById('hero-fish-canvas');
+            if (!canvas) {
+                updateDebug('ERROR: Canvas element not found');
+                throw new Error('Canvas not found');
+            }
+            
+            updateDebug('Canvas element found: ' + canvas.tagName);
+            
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                updateDebug('ERROR: Could not get 2D context');
+                throw new Error('Could not get 2D context');
+            }
+            
+            updateDebug('2D context acquired');
+            
+            // Create the fish animation
+            const fish = await createHeroFish(canvas, {
+                bounds: { x: 0, y: 0, width: 800, height: 400 },
+                enableBloom: true,
+                respectReducedMotion: false,
+                targetFPS: 60
+            });
+            
+            updateDebug('Fish animation created successfully');
+            
+            // Start the animation
+            fish.start();
+            
+            updateDebug('Fish animation started\nStatus: ' + (fish.running ? 'Running' : 'Not running'));
+            
+            // Update debug info periodically
+            setInterval(() => {
+                if (fish.initialized) {
+                    const status = fish.getStatus ? fish.getStatus() : null;
+                    const debugText = `Fish Status:
+Running: ${fish.running}
+Initialized: ${fish.initialized}
+${status ? `
+State: ${status.fishState}
+Position: ${Math.round(status.position.x)}, ${Math.round(status.position.y)}
+FPS: ${status.performance.fps}
+Quality: ${status.qualityTier}` : ''}`;
+                    updateDebug(debugText);
+                }
+            }, 1000);
+            
+        } catch (error) {
+            updateDebug('ERROR: ' + error.message + '\nStack: ' + error.stack);
+            console.error('Fish animation error:', error);
+        }
+    </script>
+</body>
+</html>

@@ -141,6 +141,36 @@ async function main() {
   console.log('=== Candlefish Mock Data Refresh ===');
   console.log(`API Base: ${API_BASE}`);
   console.log(`Mock Directory: ${MOCK_DIR}`);
+  
+  // Skip actual refresh in CI environments if SKIP_MOCK_REFRESH is set
+  if (process.env.SKIP_MOCK_REFRESH === 'true') {
+    console.log('⚠️  Skipping mock refresh due to SKIP_MOCK_REFRESH=true');
+    console.log('✓ Ensuring default mock files exist...');
+    
+    // Just ensure all mock files exist with defaults
+    for (const endpoint of endpoints) {
+      const filePath = path.join(MOCK_DIR, endpoint.file);
+      if (!fs.existsSync(filePath)) {
+        let defaultData = {};
+        switch (endpoint.name) {
+          case 'workshop':
+            defaultData = { projects: [] };
+            break;
+          case 'systemActivity':
+            defaultData = { capacity: 0.85, activity: [] };
+            break;
+          case 'franchises':
+            defaultData = { franchises: [], links: [], status: 'ACTIVE' };
+            break;
+        }
+        fs.writeFileSync(filePath, JSON.stringify(defaultData, null, 2));
+        console.log(`✓ Created default mock for ${endpoint.name}`);
+      }
+    }
+    console.log('=== Mock refresh completed (CI mode) ===');
+    return;
+  }
+  
   console.log('');
 
   const results = await Promise.all(endpoints.map(refreshMock));

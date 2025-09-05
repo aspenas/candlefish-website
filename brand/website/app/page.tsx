@@ -14,7 +14,25 @@ import CandleFish from '../web/aquarium/react/CandleFish'
 const HeroFish = dynamic(() => import('../components/HeroFish'), {
   ssr: false,
   loading: () => (
-    <div style={{ height: 'clamp(180px, 25vh, 320px)', background: 'transparent' }} />
+    <div 
+      style={{ 
+        height: 'clamp(180px, 25vh, 320px)', 
+        background: 'transparent',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }} 
+    >
+      <div style={{ 
+        width: '60px', 
+        height: '60px', 
+        opacity: 0.3,
+        backgroundImage: 'url("/img/cf-fish-fallback.svg")',
+        backgroundSize: 'contain',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center'
+      }} />
+    </div>
   )
 })
 

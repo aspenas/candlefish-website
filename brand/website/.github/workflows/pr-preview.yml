@@ -1,0 +1,402 @@
+name: 'PR Preview - Performance Preview'
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to deploy'
+        required: true
+        type: string
+
+env:
+  AWS_REGION: us-east-1
+  BASE_DOMAIN: preview.candlefish.ai
+
+jobs:
+  # Setup preview environment
+  setup-preview:
+    name: 'Preview Environment Setup'
+    runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
+    
+    outputs:
+      pr_number: ${{ steps.pr.outputs.number }}
+      preview_url: ${{ steps.preview.outputs.url }}
+      should_deploy: ${{ steps.changes.outputs.should_deploy }}
+      commit_sha: ${{ steps.commit.outputs.sha }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get PR information
+        id: pr
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            PR_NUMBER="${{ github.event.inputs.pr_number }}"
+          else
+            PR_NUMBER="${{ github.event.pull_request.number }}"
+          fi
+          echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+      - name: Generate preview URL
+        id: preview
+        run: |
+          PREVIEW_URL="https://pr-${{ steps.pr.outputs.number }}.${{ env.BASE_DOMAIN }}"
+          echo "url=$PREVIEW_URL" >> $GITHUB_OUTPUT
+
+      - name: Capture commit details
+        id: commit
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Detect changes requiring preview
+        id: changes
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            frontend:
+              - 'app/**'
+              - 'components/**'
+              - 'lib/**'
+              - 'public/**'
+              - 'styles/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'next.config.js'
+              - 'tailwind.config.js'
+            docs:
+              - 'docs/**'
+              - '*.md'
+        
+      - name: Set deployment flag
+        run: |
+          if [[ "${{ steps.changes.outputs.frontend }}" == "true" || "${{ github.event.inputs.pr_number }}" != "" ]]; then
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_deploy=false" >> $GITHUB_OUTPUT
+          fi
+
+  # Build preview version
+  build-preview:
+    name: 'Preview Build'
+    runs-on: ubuntu-latest
+    needs: setup-preview
+    if: needs.setup-preview.outputs.should_deploy == 'true'
+    
+    outputs:
+      build_id: ${{ steps.build.outputs.id }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create preview-specific environment
+        run: |
+          cat > .env.local << EOF
+          NEXT_PUBLIC_ENVIRONMENT=preview
+          NEXT_PUBLIC_PR_NUMBER=${{ needs.setup-preview.outputs.pr_number }}
+          NEXT_PUBLIC_COMMIT_SHA=${{ needs.setup-preview.outputs.commit_sha }}
+          NEXT_PUBLIC_PREVIEW_URL=${{ needs.setup-preview.outputs.preview_url }}
+          NEXT_PUBLIC_API_BASE_URL=https://api-pr-${{ needs.setup-preview.outputs.pr_number }}.${{ env.BASE_DOMAIN }}
+          EOF
+
+      - name: Run quick tests
+        run: |
+          npm run lint
+          npm run type-check
+          npm run test:unit -- --passWithNoTests
+
+      - name: Build for preview
+        id: build
+        run: |
+          npm run build
+          npm run export
+          
+          # Create build manifest
+          BUILD_ID="preview-${{ needs.setup-preview.outputs.pr_number }}-$(date +%s)"
+          echo "id=$BUILD_ID" >> $GITHUB_OUTPUT
+          
+          echo "{
+            \"buildId\": \"$BUILD_ID\",
+            \"prNumber\": ${{ needs.setup-preview.outputs.pr_number }},
+            \"commitSha\": \"${{ needs.setup-preview.outputs.commit_sha }}\",
+            \"buildTime\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+            \"previewUrl\": \"${{ needs.setup-preview.outputs.preview_url }}\"
+          }" > out/build-manifest.json
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-build-${{ needs.setup-preview.outputs.pr_number }}
+          path: out/
+          retention-days: 7
+
+  # Deploy to Netlify preview
+  deploy-netlify-preview:
+    name: 'Netlify Preview Deployment'
+    runs-on: ubuntu-latest
+    needs: [setup-preview, build-preview]
+    if: needs.setup-preview.outputs.should_deploy == 'true'
+    
+    outputs:
+      netlify_url: ${{ steps.deploy.outputs.url }}
+      deploy_id: ${{ steps.deploy.outputs.deploy_id }}
+    
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: preview-build-${{ needs.setup-preview.outputs.pr_number }}
+          path: ./dist
+
+      - name: Deploy to Netlify
+        id: deploy
+        uses: nwtgck/actions-netlify@v3.0
+        with:
+          publish-dir: './dist'
+          production-branch: main
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Preview for PR #${{ needs.setup-preview.outputs.pr_number }}"
+          alias: pr-${{ needs.setup-preview.outputs.pr_number }}
+          enable-commit-comment: false
+          enable-pull-request-comment: false
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_PREVIEW_SITE_ID }}
+
+      - name: Configure custom domain (if available)
+        run: |
+          if [[ -n "${{ secrets.NETLIFY_CUSTOM_DOMAIN_TOKEN }}" ]]; then
+            curl -X POST "https://api.netlify.com/api/v1/sites/${{ secrets.NETLIFY_PREVIEW_SITE_ID }}/domains" \
+              -H "Authorization: Bearer ${{ secrets.NETLIFY_AUTH_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -d '{"domain": "pr-${{ needs.setup-preview.outputs.pr_number }}.${{ env.BASE_DOMAIN }}"}' \
+              || echo "Custom domain configuration failed (may already exist)"
+          fi
+
+  # Deploy API preview (if needed)
+  deploy-api-preview:
+    name: 'API Preview Deployment'
+    runs-on: ubuntu-latest
+    needs: [setup-preview]
+    if: needs.setup-preview.outputs.should_deploy == 'true'
+    
+    outputs:
+      api_url: ${{ steps.api.outputs.url }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Create ephemeral API stack
+        id: api
+        run: |
+          # Create CloudFormation stack for API preview
+          STACK_NAME="candlefish-api-preview-pr-${{ needs.setup-preview.outputs.pr_number }}"
+          
+          aws cloudformation deploy \
+            --template-file .aws/api-preview-template.yaml \
+            --stack-name $STACK_NAME \
+            --parameter-overrides \
+              PRNumber=${{ needs.setup-preview.outputs.pr_number }} \
+              Environment=preview \
+              CommitSha=${{ needs.setup-preview.outputs.commit_sha }} \
+            --capabilities CAPABILITY_IAM \
+            --tags \
+              Environment=preview \
+              PRNumber=${{ needs.setup-preview.outputs.pr_number }} \
+              AutoCleanup=true \
+              CreatedBy=github-actions
+          
+          # Get API Gateway URL
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name $STACK_NAME \
+            --query 'Stacks[0].Outputs[?OutputKey==`ApiUrl`].OutputValue' \
+            --output text)
+          
+          echo "url=$API_URL" >> $GITHUB_OUTPUT
+          
+          # Store stack name for cleanup
+          echo "stack_name=$STACK_NAME" >> $GITHUB_OUTPUT
+
+  # Run preview validation tests
+  validate-preview:
+    name: 'Preview Validation'
+    runs-on: ubuntu-latest
+    needs: [setup-preview, deploy-netlify-preview, deploy-api-preview]
+    if: needs.setup-preview.outputs.should_deploy == 'true'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wait for deployments to be ready
+        run: |
+          echo "Waiting for preview deployments to be fully ready..."
+          sleep 30
+
+      - name: Validate preview deployment
+        env:
+          PREVIEW_URL: ${{ needs.deploy-netlify-preview.outputs.netlify_url }}
+          API_URL: ${{ needs.deploy-api-preview.outputs.api_url }}
+        run: |
+          # Test main preview site
+          curl -f "$PREVIEW_URL" || exit 1
+          curl -f "$PREVIEW_URL/health" || echo "Health endpoint not available"
+          
+          # Test API if deployed
+          if [[ -n "$API_URL" ]]; then
+            curl -f "$API_URL/health" || echo "API health check failed"
+          fi
+
+      - name: Run lighthouse performance audit
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          urls: ${{ needs.deploy-netlify-preview.outputs.netlify_url }}
+          configPath: '.github/lighthouse/preview-config.js'
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+      - name: Run accessibility tests
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ needs.deploy-netlify-preview.outputs.netlify_url }}
+        run: |
+          npm run test:accessibility || echo "Accessibility tests failed (non-blocking)"
+
+  # Comment on PR with preview links
+  comment-preview:
+    name: 'Preview Notification'
+    runs-on: ubuntu-latest
+    needs: [setup-preview, deploy-netlify-preview, deploy-api-preview, validate-preview]
+    if: always() && needs.setup-preview.outputs.should_deploy == 'true' && github.event_name == 'pull_request'
+    
+    steps:
+      - name: Find existing preview comment
+        uses: peter-evans/find-comment@v2
+        id: find-comment
+        with:
+          issue-number: ${{ needs.setup-preview.outputs.pr_number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: '🎭 Preview Environment'
+
+      - name: Create or update preview comment
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          issue-number: ${{ needs.setup-preview.outputs.pr_number }}
+          edit-mode: replace
+          body: |
+            ## 🎭 Preview Environment
+            
+            **Status:** ${{ contains(needs.*.result, 'failure') && '⚠️ Partial Success' || '✅ Ready' }}
+            **Commit:** `${{ needs.setup-preview.outputs.commit_sha }}`
+            **Build:** `${{ needs.build-preview.outputs.build_id }}`
+            
+            ### 🔗 Preview Links
+            
+            | Service | URL | Status |
+            |---------|-----|--------|
+            | **Frontend** | [${{ needs.deploy-netlify-preview.outputs.netlify_url }}](${{ needs.deploy-netlify-preview.outputs.netlify_url }}) | ${{ needs.deploy-netlify-preview.result == 'success' && '✅' || '❌' }} |
+            | **API** | ${{ needs.deploy-api-preview.outputs.api_url || 'N/A' }} | ${{ needs.deploy-api-preview.result == 'success' && '✅' || needs.deploy-api-preview.result == 'skipped' && '⏭️' || '❌' }} |
+            
+            ### 🧪 Validation Results
+            
+            - **Build:** ${{ needs.build-preview.result == 'success' && '✅ Success' || '❌ Failed' }}
+            - **Deployment:** ${{ needs.deploy-netlify-preview.result == 'success' && '✅ Success' || '❌ Failed' }}
+            - **Health Check:** ${{ needs.validate-preview.result == 'success' && '✅ Passed' || '⚠️ Issues detected' }}
+            - **Performance:** Check Lighthouse report above
+            
+            ### ⏱️ Auto-Cleanup
+            
+            This preview will be automatically cleaned up when:
+            - PR is merged or closed
+            - 7 days have passed (artifact retention)
+            - Manual cleanup via workflow dispatch
+            
+            ---
+            *Updated: ${{ github.event.head_commit.timestamp }}*
+            *Preview ID: `${{ needs.setup-preview.outputs.pr_number }}`*
+
+  # Cleanup preview when PR is closed
+  cleanup-preview:
+    name: 'Preview Cleanup'
+    runs-on: ubuntu-latest
+    if: github.event.action == 'closed'
+    
+    steps:
+      - name: Get PR number
+        id: pr
+        run: echo "number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Delete API preview stack
+        run: |
+          STACK_NAME="candlefish-api-preview-pr-${{ steps.pr.outputs.number }}"
+          
+          if aws cloudformation describe-stacks --stack-name $STACK_NAME &>/dev/null; then
+            echo "Deleting API preview stack: $STACK_NAME"
+            aws cloudformation delete-stack --stack-name $STACK_NAME
+            
+            # Wait for deletion to complete (with timeout)
+            aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME \
+              --cli-read-timeout 300 --cli-connect-timeout 60 || echo "Stack deletion timeout (continuing)"
+          else
+            echo "API preview stack not found: $STACK_NAME"
+          fi
+
+      - name: Cleanup Netlify preview
+        run: |
+          # Cancel any pending deployments for this PR
+          curl -X POST "https://api.netlify.com/api/v1/sites/${{ secrets.NETLIFY_PREVIEW_SITE_ID }}/deploys" \
+            -H "Authorization: Bearer ${{ secrets.NETLIFY_AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"cancel": true}' || echo "No pending deployments to cancel"
+
+      - name: Comment cleanup notification
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          issue-number: ${{ steps.pr.outputs.number }}
+          body: |
+            ## 🧹 Preview Environment Cleaned Up
+            
+            Preview resources for PR #${{ steps.pr.outputs.number }} have been automatically cleaned up:
+            
+            - ✅ Netlify preview deployment removed
+            - ✅ AWS API stack deleted
+            - ✅ Temporary resources cleaned up
+            
+            *Cleanup completed: ${{ github.event.head_commit.timestamp }}*

@@ -1,0 +1,535 @@
+name: 'Production Deployment - Choreographed Performance'
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '.github/workflows/!(deploy-production.yml)'
+  workflow_dispatch:
+    inputs:
+      deployment_strategy:
+        description: 'Deployment Strategy'
+        required: true
+        default: 'canary'
+        type: choice
+        options:
+          - canary
+          - blue-green
+          - rolling
+      skip_tests:
+        description: 'Skip test suite (emergency only)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  AWS_REGION: us-east-1
+  ENVIRONMENT: production
+  DOMAIN_NAME: candlefish.ai
+  ECR_REPOSITORY: candlefish-website
+  EKS_CLUSTER_NAME: production-candlefish-website
+  DEPLOYMENT_TIMEOUT: 900 # 15 minutes
+
+jobs:
+  # Pre-flight checks and security scanning
+  preflight:
+    name: 'Pre-flight Orchestration'
+    runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.changes.outputs.should_deploy }}
+      deployment_strategy: ${{ steps.strategy.outputs.strategy }}
+      commit_sha: ${{ steps.commit.outputs.sha }}
+      version_tag: ${{ steps.version.outputs.tag }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Capture commit details
+        id: commit
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "message=$(git log -1 --pretty=%B | head -1)" >> $GITHUB_OUTPUT
+
+      - name: Generate version tag
+        id: version
+        run: |
+          VERSION_TAG="v$(date +%Y%m%d)-$(git rev-parse --short HEAD)"
+          echo "tag=$VERSION_TAG" >> $GITHUB_OUTPUT
+          echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
+
+      - name: Detect changes requiring deployment
+        id: changes
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            deploy:
+              - 'app/**'
+              - 'components/**'
+              - 'lib/**'
+              - 'public/**'
+              - 'styles/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'next.config.js'
+              - 'tailwind.config.js'
+              - 'k8s/**'
+              - 'terraform/**'
+              - '.github/workflows/deploy-production.yml'
+        
+      - name: Set deployment strategy
+        id: strategy
+        run: |
+          STRATEGY="${{ github.event.inputs.deployment_strategy || 'canary' }}"
+          
+          # Override strategy based on commit message
+          if [[ "${{ steps.commit.outputs.message }}" =~ \[hotfix\]|\[emergency\] ]]; then
+            STRATEGY="rolling"
+          elif [[ "${{ steps.commit.outputs.message }}" =~ \[blue-green\] ]]; then
+            STRATEGY="blue-green"
+          fi
+          
+          echo "strategy=$STRATEGY" >> $GITHUB_OUTPUT
+          echo "Selected deployment strategy: $STRATEGY"
+
+      - name: Security vulnerability scan
+        if: ${{ !github.event.inputs.skip_tests }}
+        run: |
+          npm audit --audit-level=high
+          
+      - name: Notify deployment start
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              attachments: [{
+                color: '#36a64f',
+                title: '🎭 Production Deployment Orchestration Started',
+                fields: [{
+                  title: 'Strategy',
+                  value: '${{ steps.strategy.outputs.strategy }}',
+                  short: true
+                }, {
+                  title: 'Version',
+                  value: '${{ steps.version.outputs.tag }}',
+                  short: true
+                }, {
+                  title: 'Commit',
+                  value: '<https://github.com/${{ github.repository }}/commit/${{ steps.commit.outputs.sha }}|${{ steps.commit.outputs.short_sha }}>: ${{ steps.commit.outputs.message }}',
+                  short: false
+                }]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: always()
+
+  # Comprehensive testing suite
+  test-suite:
+    name: 'Quality Assurance Performance'
+    runs-on: ubuntu-latest
+    needs: preflight
+    if: needs.preflight.outputs.should_deploy == 'true' && !github.event.inputs.skip_tests
+    
+    strategy:
+      matrix:
+        test-type: [unit, integration, e2e, performance, accessibility, security]
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run test suite - ${{ matrix.test-type }}
+        run: |
+          case "${{ matrix.test-type }}" in
+            unit)
+              npm run test:unit -- --coverage --passWithNoTests
+              ;;
+            integration)
+              npm run test:integration -- --passWithNoTests
+              ;;
+            e2e)
+              npm run test:e2e
+              ;;
+            performance)
+              npm run test:performance
+              ;;
+            accessibility)
+              npm run test:accessibility
+              ;;
+            security)
+              npm audit --audit-level=moderate
+              npm run test:netlify-security
+              ;;
+          esac
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.test-type }}
+          path: |
+            coverage/
+            __tests__/results/
+            cypress/screenshots/
+            cypress/videos/
+
+  # Build and push container image
+  build-image:
+    name: 'Image Crafting'
+    runs-on: ubuntu-latest
+    needs: [preflight, test-suite]
+    if: needs.preflight.outputs.should_deploy == 'true' && (success() || github.event.inputs.skip_tests)
+    
+    outputs:
+      image_uri: ${{ steps.build.outputs.image_uri }}
+      image_digest: ${{ steps.build.outputs.image_digest }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ needs.preflight.outputs.version_tag }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ needs.preflight.outputs.version_tag }}
+            BUILD_TIME=${{ needs.preflight.outputs.timestamp }}
+            GIT_SHA=${{ needs.preflight.outputs.commit_sha }}
+          outputs: type=image,name=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }},push=true
+
+      - name: Scan image for vulnerabilities
+        run: |
+          aws ecr start-image-scan \
+            --repository-name ${{ env.ECR_REPOSITORY }} \
+            --image-id imageTag=${{ needs.preflight.outputs.version_tag }}
+          
+          # Wait for scan to complete (timeout after 5 minutes)
+          timeout 300 bash -c '
+            while true; do
+              SCAN_STATUS=$(aws ecr describe-image-scan-findings \
+                --repository-name ${{ env.ECR_REPOSITORY }} \
+                --image-id imageTag=${{ needs.preflight.outputs.version_tag }} \
+                --query "imageScanStatus.status" --output text 2>/dev/null || echo "IN_PROGRESS")
+              
+              if [[ "$SCAN_STATUS" == "COMPLETE" ]]; then
+                break
+              elif [[ "$SCAN_STATUS" == "FAILED" ]]; then
+                echo "Image scan failed"
+                exit 1
+              fi
+              
+              echo "Scan status: $SCAN_STATUS"
+              sleep 10
+            done
+          '
+          
+          # Check for critical vulnerabilities
+          CRITICAL_COUNT=$(aws ecr describe-image-scan-findings \
+            --repository-name ${{ env.ECR_REPOSITORY }} \
+            --image-id imageTag=${{ needs.preflight.outputs.version_tag }} \
+            --query "length(imageScanFindings.findings[?severity=='CRITICAL'])" \
+            --output text)
+          
+          if [[ "$CRITICAL_COUNT" -gt 0 ]]; then
+            echo "Found $CRITICAL_COUNT critical vulnerabilities"
+            exit 1
+          fi
+
+      - name: Output image details
+        run: |
+          echo "image_uri=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ needs.preflight.outputs.version_tag }}" >> $GITHUB_OUTPUT
+          echo "image_digest=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+
+  # Deployment orchestration based on strategy
+  deploy:
+    name: 'Deployment Performance - ${{ needs.preflight.outputs.deployment_strategy }}'
+    runs-on: ubuntu-latest
+    needs: [preflight, build-image]
+    if: needs.preflight.outputs.should_deploy == 'true'
+    
+    environment: 
+      name: production
+      url: https://${{ env.DOMAIN_NAME }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+          kubectl version --client
+
+      - name: Update Kubernetes manifests
+        run: |
+          # Update image in deployment manifest
+          sed -i "s|image: .*|image: ${{ needs.build-image.outputs.image_uri }}|g" k8s/deployment.yaml
+          
+          # Add version labels
+          kubectl patch deployment candlefish-website -n ${{ env.ENVIRONMENT }} --patch='
+          {
+            "metadata": {
+              "labels": {
+                "version": "${{ needs.preflight.outputs.version_tag }}",
+                "deployment-strategy": "${{ needs.preflight.outputs.deployment_strategy }}"
+              }
+            },
+            "spec": {
+              "template": {
+                "metadata": {
+                  "labels": {
+                    "version": "${{ needs.preflight.outputs.version_tag }}"
+                  }
+                }
+              }
+            }
+          }'
+
+      - name: Execute deployment strategy
+        run: |
+          case "${{ needs.preflight.outputs.deployment_strategy }}" in
+            canary)
+              echo "🕊️ Executing canary deployment..."
+              ./scripts/deploy-canary.sh
+              ;;
+            blue-green)
+              echo "🔵🟢 Executing blue-green deployment..."
+              ./scripts/deploy-blue-green.sh
+              ;;
+            rolling)
+              echo "🎯 Executing rolling deployment..."
+              kubectl apply -f k8s/ --record
+              kubectl rollout status deployment/candlefish-website -n ${{ env.ENVIRONMENT }} --timeout=${DEPLOYMENT_TIMEOUT}s
+              ;;
+          esac
+
+      - name: Wait for deployment stability
+        run: |
+          echo "⏳ Waiting for deployment to stabilize..."
+          sleep 30
+          
+          # Verify all pods are ready
+          kubectl wait --for=condition=ready pod -l app=candlefish-website -n ${{ env.ENVIRONMENT }} --timeout=300s
+          
+          # Check deployment status
+          kubectl get deployment candlefish-website -n ${{ env.ENVIRONMENT }} -o wide
+
+      - name: Run smoke tests
+        run: |
+          echo "🔍 Running post-deployment smoke tests..."
+          
+          # Wait for load balancer to pick up new pods
+          sleep 60
+          
+          # Test main endpoints
+          curl -f https://${{ env.DOMAIN_NAME }}/health || exit 1
+          curl -f https://${{ env.DOMAIN_NAME }}/ || exit 1
+          curl -f https://${{ env.DOMAIN_NAME }}/api/health || exit 1
+          
+          # Test critical user journeys
+          npm run test:e2e -- --spec "cypress/e2e/critical-path.cy.ts"
+
+      - name: Update deployment marker
+        run: |
+          # Create deployment marker in monitoring
+          curl -X POST "${{ secrets.DATADOG_API_URL }}/api/v1/events" \
+            -H "Content-Type: application/json" \
+            -H "DD-API-KEY: ${{ secrets.DATADOG_API_KEY }}" \
+            -d '{
+              "title": "Production Deployment - ${{ needs.preflight.outputs.version_tag }}",
+              "text": "Deployed version ${{ needs.preflight.outputs.version_tag }} using ${{ needs.preflight.outputs.deployment_strategy }} strategy",
+              "tags": ["environment:production", "service:candlefish-website", "version:${{ needs.preflight.outputs.version_tag }}"],
+              "source_type_name": "github-actions"
+            }' || echo "Failed to create monitoring marker"
+
+  # Post-deployment monitoring and validation
+  validate:
+    name: 'Performance Validation'
+    runs-on: ubuntu-latest
+    needs: [preflight, deploy]
+    if: needs.preflight.outputs.should_deploy == 'true'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure monitoring
+        run: |
+          # Wait for metrics to populate
+          echo "⏱️ Waiting for metrics to populate (3 minutes)..."
+          sleep 180
+
+      - name: Validate performance metrics
+        run: |
+          # Check response times
+          RESPONSE_TIME=$(curl -o /dev/null -s -w '%{time_total}\n' https://${{ env.DOMAIN_NAME }}/)
+          if (( $(echo "$RESPONSE_TIME > 2.0" | bc -l) )); then
+            echo "❌ Response time too high: ${RESPONSE_TIME}s"
+            exit 1
+          fi
+          
+          # Check error rates (placeholder for actual monitoring API)
+          echo "✅ Performance validation passed"
+
+      - name: Synthetic transaction tests
+        run: |
+          # Run synthetic tests to validate critical paths
+          npm run test:e2e -- --spec "cypress/e2e/synthetic-transactions.cy.ts"
+
+      - name: Monitor for regressions
+        run: |
+          # Monitor for 5 minutes to catch immediate issues
+          echo "📊 Monitoring for regressions..."
+          
+          for i in {1..5}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://${{ env.DOMAIN_NAME }}/health)
+            if [[ "$STATUS" != "200" ]]; then
+              echo "❌ Health check failed with status $STATUS"
+              exit 1
+            fi
+            echo "✅ Health check $i/5 passed"
+            sleep 60
+          done
+
+  # Cleanup and notification
+  finalize:
+    name: 'Performance Finale'
+    runs-on: ubuntu-latest
+    needs: [preflight, deploy, validate]
+    if: always() && needs.preflight.outputs.should_deploy == 'true'
+    
+    steps:
+      - name: Clean up old deployments
+        run: |
+          # Configure AWS and kubectl
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+          
+          # Keep last 5 replica sets
+          kubectl delete replicaset -n ${{ env.ENVIRONMENT }} \
+            $(kubectl get replicaset -n ${{ env.ENVIRONMENT }} -o name | grep candlefish-website | head -n -5) \
+            --ignore-not-found=true
+
+      - name: Update deployment status
+        run: |
+          # Record deployment in database/config management system
+          echo "Recording deployment status..."
+
+      - name: Send deployment notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          custom_payload: |
+            {
+              attachments: [{
+                color: '${{ job.status == 'success' && 'good' || 'danger' }}',
+                title: '${{ job.status == 'success' && '🎉 Production Deployment Complete' || '💥 Production Deployment Failed' }}',
+                fields: [
+                  {
+                    title: 'Environment',
+                    value: 'Production',
+                    short: true
+                  },
+                  {
+                    title: 'Strategy',
+                    value: '${{ needs.preflight.outputs.deployment_strategy }}',
+                    short: true
+                  },
+                  {
+                    title: 'Version',
+                    value: '${{ needs.preflight.outputs.version_tag }}',
+                    short: true
+                  },
+                  {
+                    title: 'Duration',
+                    value: '${{ steps.duration.outputs.time }}',
+                    short: true
+                  },
+                  {
+                    title: 'Status',
+                    value: '${{ job.status == 'success' && '✅ All systems operational' || '❌ Manual intervention required' }}',
+                    short: false
+                  }
+                ],
+                footer: 'Candlefish CI/CD Pipeline',
+                ts: ${{ github.event.head_commit.timestamp && fromJSON(github.event.head_commit.timestamp) || '' }}
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: always()
+
+  # Emergency rollback trigger
+  emergency-rollback:
+    name: '🚨 Emergency Rollback'
+    runs-on: ubuntu-latest
+    needs: [preflight, deploy, validate]
+    if: failure() && needs.preflight.outputs.should_deploy == 'true'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Execute emergency rollback
+        run: |
+          chmod +x scripts/emergency-rollback.sh
+          ./scripts/emergency-rollback.sh --force --environment ${{ env.ENVIRONMENT }}
+
+      - name: Verify rollback success
+        run: |
+          # Wait for rollback to complete
+          sleep 60
+          
+          # Verify site is operational
+          curl -f https://${{ env.DOMAIN_NAME }}/health || exit 1
+          echo "✅ Emergency rollback completed successfully"

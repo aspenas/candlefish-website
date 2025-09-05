@@ -39,7 +39,13 @@
     "test:netlify:ci": "node scripts/run-netlify-test-suite.js --verbose --continue-on-failure",
     "test:all": "node scripts/run-netlify-test-suite.js",
     "type-check": "tsc --noEmit",
-    "sitemap": "node scripts/generate-sitemap.mjs"
+    "sitemap": "node scripts/generate-sitemap.mjs",
+    "analyze": "ANALYZE=true npm run build",
+    "build:prod": "NODE_ENV=production npm run build",
+    "build:perf": "NODE_ENV=production ANALYZE=true npm run build",
+    "test:webgl": "node scripts/test-webgl-performance.js",
+    "perf:monitor": "node scripts/performance-monitor.js",
+    "lighthouse": "npx lighthouse http://localhost:3000 --output=html --output-path=./lighthouse-report.html"
   },
   "dependencies": {
     "@apollo/client": "^4.0.1",
@@ -66,6 +72,7 @@
     "next": "^14.2.32",
     "next-mdx-remote": "^4.4.1",
     "p5": "^1.11.9",
+    "pako": "^2.1.0",
     "postcss": "8.4.33",
     "postcss-import": "^16.1.1",
     "postcss-nesting": "^13.0.2",
@@ -85,6 +92,12 @@
     "tailwindcss": "3.4.1",
     "three": "^0.179.1",
     "uuid": "^11.1.0",
+    "workbox-precaching": "^7.0.0",
+    "workbox-routing": "^7.0.0",
+    "workbox-strategies": "^7.0.0",
+    "workbox-expiration": "^7.0.0",
+    "workbox-cacheable-response": "^7.0.0",
+    "workbox-background-sync": "^7.0.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
@@ -101,11 +114,14 @@
     "@types/react-dom": "18.2.18",
     "artillery": "^2.0.24",
     "axios-mock-adapter": "^2.1.0",
+    "compression-webpack-plugin": "^10.0.0",
     "critters": "^0.0.23",
+    "css-minimizer-webpack-plugin": "^5.0.1",
     "cypress": "^14.5.4",
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.32",
     "faker": "^6.6.6",
+    "glslify-loader": "^2.0.0",
     "jest": "^30.0.5",
     "jest-environment-jsdom": "^30.0.5",
     "k6": "^0.0.0",
@@ -113,10 +129,15 @@
     "msw": "^2.10.5",
     "node-fetch": "^2.7.0",
     "playwright": "^1.54.2",
+    "puppeteer": "^21.0.0",
     "raw-loader": "^4.0.2",
+    "terser-webpack-plugin": "^5.3.9",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.2",
-    "typescript": "5.3.3"
+    "typescript": "5.3.3",
+    "webpack-bundle-analyzer": "^4.10.1",
+    "worker-loader": "^3.0.8",
+    "workbox-webpack-plugin": "^7.0.0"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

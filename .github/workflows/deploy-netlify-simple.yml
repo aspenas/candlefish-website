@@ -30,6 +30,8 @@ jobs:
         with:
           fetch-depth: 1
           lfs: true
+          # Fix git permissions issues in CI
+          persist-credentials: false
           
       - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
@@ -41,11 +43,17 @@ jobs:
       - name: 📦 Install dependencies
         working-directory: brand/website
         run: |
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          
           if [ -f "package-lock.json" ]; then
             npm ci --legacy-peer-deps
           else
             npm install --legacy-peer-deps
           fi
+          
+          # Verify Next.js is installed
+          echo "Next.js version: $(npx next --version)"
           
       - name: 🧪 Run tests
         working-directory: brand/website
@@ -57,24 +65,48 @@ jobs:
         env:
           NODE_ENV: production
           SKIP_MOCK_REFRESH: true
+          STATIC_EXPORT: true
+          CI: true
         run: |
+          # Create mock directory and basic mock files for CI
+          mkdir -p mock
+          echo '{"projects":[]}' > mock/workshop.json
+          echo '{"capacity":0.85,"activity":[]}' > mock/systemActivity.json  
+          echo '{"franchises":[],"links":[],"status":"ACTIVE"}' > mock/franchises.json
+          
           # Ensure script is executable
           chmod +x scripts/static-export.sh
           
-          # Build static export for Netlify
-          npm run export || (echo "Export failed, trying direct build..." && next build)
+          # Build static export for Netlify (with fallback)
+          if npm run export; then
+            echo "✅ Static export successful"
+          else
+            echo "⚠️  Static export failed, trying alternative build..."
+            # Clear any partial build
+            rm -rf .next out
+            # Try direct build with static export config
+            STATIC_EXPORT=true npx next build
+          fi
           
       - name: 📊 Check build output
         working-directory: brand/website
         run: |
+          echo "Checking build output directories..."
+          echo "Current directory contents:"
+          ls -la
+          
           if [ -d "out" ]; then
-            echo "Static export found in 'out' directory"
+            echo "✅ Static export found in 'out' directory"
             ls -la out/
+            echo "Files count: $(find out -type f | wc -l)"
           elif [ -d ".next" ]; then
-            echo "Next.js build found in '.next' directory"
+            echo "✅ Next.js build found in '.next' directory"  
             ls -la .next/
           else
-            echo "Warning: No build output found"
+            echo "❌ Error: No build output found in 'out' or '.next' directories"
+            echo "Available directories:"
+            find . -maxdepth 2 -type d -name ".*" -o -name "*" | sort
+            exit 1
           fi
           
       - name: 🚀 Deploy to Netlify
@@ -83,21 +115,42 @@ jobs:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
         run: |
-          npm install -g netlify-cli
+          # Verify required secrets
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo "❌ Error: NETLIFY_AUTH_TOKEN secret not set"
+            exit 1
+          fi
+          
+          if [ -z "$NETLIFY_SITE_ID" ]; then
+            echo "❌ Error: NETLIFY_SITE_ID secret not set"  
+            exit 1
+          fi
+          
+          # Install Netlify CLI
+          npm install -g netlify-cli@latest
+          
+          # Verify CLI installation
+          netlify --version
           
           # Determine deployment directory
           if [ -d "out" ]; then
             DEPLOY_DIR="out"
-          else
+            echo "✅ Using static export directory: $DEPLOY_DIR"
+          elif [ -d ".next" ]; then
             DEPLOY_DIR=".next"
+            echo "✅ Using Next.js build directory: $DEPLOY_DIR"
+          else
+            echo "❌ Error: No valid deployment directory found"
+            exit 1
           fi
           
-          echo "Deploying from: $DEPLOY_DIR"
+          echo "📦 Deploying from: $DEPLOY_DIR"
+          echo "🌍 Environment: ${{ inputs.environment }}"
           
           if [ "${{ inputs.environment }}" = "production" ]; then
-            netlify deploy --prod --dir=$DEPLOY_DIR
+            netlify deploy --prod --dir=$DEPLOY_DIR --timeout=600
           else
-            netlify deploy --dir=$DEPLOY_DIR --alias=${{ inputs.environment }}
+            netlify deploy --dir=$DEPLOY_DIR --alias=${{ inputs.environment }} --timeout=600
           fi
           
       - name: ✅ Verify deployment

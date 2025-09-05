@@ -46,16 +46,37 @@
   status = 301
   force = true
 
-# Enable Netlify Functions (if needed in future)
+# Enable Netlify Functions and Edge Functions
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
+
+# Edge Functions Configuration
+[[edge_functions]]
+  path = "/*"
+  function = "ab-testing"
+
+[[edge_functions]]
+  path = "/api/*"  
+  function = "performance-monitor"
 
 # Deployment settings
 [deploy]
   # Skip builds if only documentation changes
   ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF . ':(exclude)*.md' ':(exclude)docs/'"
 
-# Build plugins - disabled for static export
-# [[plugins]]
-#   package = "@netlify/plugin-nextjs"
+# Build plugins
+[[plugins]]
+  package = "@netlify/plugin-lighthouse"
+  [plugins.inputs]
+    output_path = "lighthouse-results.json"
+
+[[plugins]]
+  package = "netlify-plugin-cache-nextjs"
+
+# Analytics and Monitoring
+[analytics]
+  enable = true
+  
+[analytics.rum]
+  enable = true

@@ -1,0 +1,596 @@
+name: 'Security Scan - Defense Performance'
+
+on:
+  schedule:
+    # Run security scans daily at 02:00 UTC
+    - cron: '0 2 * * *'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'package*.json'
+      - 'requirements*.txt'
+      - 'Dockerfile'
+      - '.github/workflows/security-scan.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'package*.json'
+      - 'requirements*.txt'
+      - 'Dockerfile'
+  workflow_dispatch:
+    inputs:
+      scan_depth:
+        description: 'Scan depth level'
+        required: true
+        default: 'standard'
+        type: choice
+        options:
+          - quick
+          - standard
+          - deep
+      force_all_scans:
+        description: 'Force all security scans (ignore cache)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  SECURITY_REPORT_PATH: security-reports
+  SARIF_PATH: sarif-results
+
+jobs:
+  # Security scan orchestration
+  security-setup:
+    name: 'Security Orchestration Setup'
+    runs-on: ubuntu-latest
+    outputs:
+      scan_level: ${{ steps.config.outputs.scan_level }}
+      should_scan_dependencies: ${{ steps.config.outputs.should_scan_dependencies }}
+      should_scan_code: ${{ steps.config.outputs.should_scan_code }}
+      should_scan_container: ${{ steps.config.outputs.should_scan_container }}
+      should_scan_secrets: ${{ steps.config.outputs.should_scan_secrets }}
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure security scan parameters
+        id: config
+        run: |
+          SCAN_LEVEL="${{ github.event.inputs.scan_depth || 'standard' }}"
+          
+          # Override scan level based on event type
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            SCAN_LEVEL="deep"
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            SCAN_LEVEL="quick"
+          fi
+          
+          echo "scan_level=$SCAN_LEVEL" >> $GITHUB_OUTPUT
+          
+          # Determine which scans to run
+          case "$SCAN_LEVEL" in
+            quick)
+              echo "should_scan_dependencies=true" >> $GITHUB_OUTPUT
+              echo "should_scan_code=false" >> $GITHUB_OUTPUT
+              echo "should_scan_container=false" >> $GITHUB_OUTPUT
+              echo "should_scan_secrets=true" >> $GITHUB_OUTPUT
+              ;;
+            standard)
+              echo "should_scan_dependencies=true" >> $GITHUB_OUTPUT
+              echo "should_scan_code=true" >> $GITHUB_OUTPUT
+              echo "should_scan_container=true" >> $GITHUB_OUTPUT
+              echo "should_scan_secrets=true" >> $GITHUB_OUTPUT
+              ;;
+            deep)
+              echo "should_scan_dependencies=true" >> $GITHUB_OUTPUT
+              echo "should_scan_code=true" >> $GITHUB_OUTPUT
+              echo "should_scan_container=true" >> $GITHUB_OUTPUT
+              echo "should_scan_secrets=true" >> $GITHUB_OUTPUT
+              ;;
+          esac
+          
+          echo "Configured security scan level: $SCAN_LEVEL"
+
+      - name: Create security report directory
+        run: |
+          mkdir -p ${{ env.SECURITY_REPORT_PATH }}
+          mkdir -p ${{ env.SARIF_PATH }}
+
+  # Dependency vulnerability scanning
+  dependency-scan:
+    name: 'Dependency Security Scan'
+    runs-on: ubuntu-latest
+    needs: security-setup
+    if: needs.security-setup.outputs.should_scan_dependencies == 'true'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        id: npm-audit
+        run: |
+          npm audit --json > ${{ env.SECURITY_REPORT_PATH }}/npm-audit.json || true
+          
+          # Check for high/critical vulnerabilities
+          HIGH_VULNS=$(npm audit --json | jq '.metadata.vulnerabilities.high // 0')
+          CRITICAL_VULNS=$(npm audit --json | jq '.metadata.vulnerabilities.critical // 0')
+          
+          echo "high_vulnerabilities=$HIGH_VULNS" >> $GITHUB_OUTPUT
+          echo "critical_vulnerabilities=$CRITICAL_VULNS" >> $GITHUB_OUTPUT
+          
+          if [[ "$HIGH_VULNS" -gt 0 ]] || [[ "$CRITICAL_VULNS" -gt 0 ]]; then
+            echo "::warning::Found $HIGH_VULNS high and $CRITICAL_VULNS critical vulnerabilities"
+          fi
+
+      - name: Run Snyk dependency scan
+        if: needs.security-setup.outputs.scan_level != 'quick'
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [[ -n "$SNYK_TOKEN" ]]; then
+            npx snyk test --json > ${{ env.SECURITY_REPORT_PATH }}/snyk-dependencies.json || true
+            npx snyk test --sarif > ${{ env.SARIF_PATH }}/snyk-dependencies.sarif || true
+          else
+            echo "Snyk token not available, skipping Snyk scan"
+          fi
+
+      - name: Check for known malicious packages
+        run: |
+          # Create a list of dependencies
+          npm list --json --depth=0 > ${{ env.SECURITY_REPORT_PATH }}/package-inventory.json
+          
+          # Basic check for suspicious patterns
+          npm list --parseable | grep -E "(bitcoin|crypto|miner|eval|exec)" > ${{ env.SECURITY_REPORT_PATH }}/suspicious-packages.txt || echo "No suspicious packages detected"
+
+      - name: Generate dependency security report
+        run: |
+          cat > ${{ env.SECURITY_REPORT_PATH }}/dependency-summary.md << EOF
+          # Dependency Security Report
+          
+          **Scan Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          **Scan Level:** ${{ needs.security-setup.outputs.scan_level }}
+          
+          ## npm audit Results
+          - High Vulnerabilities: ${{ steps.npm-audit.outputs.high_vulnerabilities }}
+          - Critical Vulnerabilities: ${{ steps.npm-audit.outputs.critical_vulnerabilities }}
+          
+          ## Recommendations
+          - Review high/critical vulnerabilities
+          - Run \`npm audit fix\` to apply automatic fixes
+          - Consider manual updates for remaining issues
+          EOF
+
+      - name: Upload dependency scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-scan-results
+          path: ${{ env.SECURITY_REPORT_PATH }}/
+
+  # Code security scanning with CodeQL
+  code-security-scan:
+    name: 'Code Security Analysis'
+    runs-on: ubuntu-latest
+    needs: security-setup
+    if: needs.security-setup.outputs.should_scan_code == 'true'
+    
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+          config-file: ./.github/codeql/codeql-config.yml
+
+      - name: Setup Node.js for CodeQL
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies for analysis
+        run: npm ci
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:javascript'
+
+      - name: Run ESLint security rules
+        run: |
+          npx eslint . --ext .js,.jsx,.ts,.tsx \
+            --config .eslintrc.security.json \
+            --format json \
+            --output-file ${{ env.SECURITY_REPORT_PATH }}/eslint-security.json || true
+
+      - name: Run Semgrep security scan
+        if: needs.security-setup.outputs.scan_level == 'deep'
+        run: |
+          pip install semgrep
+          
+          semgrep \
+            --config=auto \
+            --config=p/security-audit \
+            --config=p/nodejs \
+            --json \
+            --output=${{ env.SECURITY_REPORT_PATH }}/semgrep-results.json \
+            . || true
+            
+          semgrep \
+            --config=auto \
+            --sarif \
+            --output=${{ env.SARIF_PATH }}/semgrep-results.sarif \
+            . || true
+
+      - name: Upload SARIF results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: ${{ env.SARIF_PATH }}/
+
+      - name: Upload code scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-security-scan-results
+          path: ${{ env.SECURITY_REPORT_PATH }}/
+
+  # Container security scanning
+  container-security-scan:
+    name: 'Container Security Scan'
+    runs-on: ubuntu-latest
+    needs: security-setup
+    if: needs.security-setup.outputs.should_scan_container == 'true'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker image for scanning
+        run: |
+          docker build -t candlefish-website:security-scan .
+
+      - name: Run Trivy container scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'candlefish-website:security-scan'
+          format: 'sarif'
+          output: '${{ env.SARIF_PATH }}/trivy-container.sarif'
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'json'
+          output: '${{ env.SECURITY_REPORT_PATH }}/trivy-filesystem.json'
+
+      - name: Scan for hardcoded secrets in container
+        run: |
+          docker run --rm -v "$(pwd):/workspace" \
+            trufflesecurity/trufflehog:latest \
+            filesystem /workspace \
+            --json > ${{ env.SECURITY_REPORT_PATH }}/container-secrets.json || true
+
+      - name: Check Dockerfile best practices
+        run: |
+          docker run --rm -i hadolint/hadolint:latest \
+            hadolint --format json - < Dockerfile > ${{ env.SECURITY_REPORT_PATH }}/dockerfile-lint.json || true
+
+      - name: Generate container security report
+        run: |
+          # Count vulnerabilities from Trivy
+          CRITICAL_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' ${{ env.SECURITY_REPORT_PATH }}/trivy-filesystem.json || echo 0)
+          HIGH_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH")] | length' ${{ env.SECURITY_REPORT_PATH }}/trivy-filesystem.json || echo 0)
+          
+          cat > ${{ env.SECURITY_REPORT_PATH }}/container-summary.md << EOF
+          # Container Security Report
+          
+          **Scan Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          
+          ## Vulnerability Summary
+          - Critical: $CRITICAL_COUNT
+          - High: $HIGH_COUNT
+          
+          ## Scans Performed
+          - ✅ Trivy container image scan
+          - ✅ Trivy filesystem scan
+          - ✅ Dockerfile linting (Hadolint)
+          - ✅ Secret detection in container layers
+          
+          ## Recommendations
+          - Address critical and high vulnerabilities
+          - Review Dockerfile best practices
+          - Regularly update base images
+          EOF
+
+      - name: Upload container scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-security-scan-results
+          path: ${{ env.SECURITY_REPORT_PATH }}/
+
+  # Secret scanning
+  secret-scan:
+    name: 'Secret Detection Scan'
+    runs-on: ubuntu-latest
+    needs: security-setup
+    if: needs.security-setup.outputs.should_scan_secrets == 'true'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for comprehensive secret scanning
+
+      - name: Run TruffleHog secret scan
+        run: |
+          docker run --rm -v "$(pwd):/workspace" \
+            trufflesecurity/trufflehog:latest \
+            filesystem /workspace \
+            --json > ${{ env.SECURITY_REPORT_PATH }}/trufflehog-secrets.json || true
+
+      - name: Run GitLeaks secret scan
+        run: |
+          docker run --rm -v "$(pwd):/workspace" \
+            zricethezav/gitleaks:latest \
+            detect \
+            --source /workspace \
+            --format json \
+            --report-path /workspace/${{ env.SECURITY_REPORT_PATH }}/gitleaks-secrets.json || true
+
+      - name: Scan for common secret patterns
+        run: |
+          # Custom secret patterns
+          grep -r -n -E "(password|secret|key|token)\s*=\s*['\"][^'\"]{8,}" . \
+            --exclude-dir=node_modules \
+            --exclude-dir=.git \
+            --exclude="*.md" \
+            --exclude="security-scan.yml" \
+            > ${{ env.SECURITY_REPORT_PATH }}/custom-secret-patterns.txt || echo "No custom patterns found"
+
+      - name: Check for exposed environment files
+        run: |
+          find . -name "*.env*" -not -path "./node_modules/*" -not -name "*.example" -not -name "*.template" \
+            > ${{ env.SECURITY_REPORT_PATH }}/exposed-env-files.txt || echo "No exposed environment files"
+
+      - name: Generate secret scan report
+        run: |
+          TRUFFLEHOG_COUNT=$(jq '. | length' ${{ env.SECURITY_REPORT_PATH }}/trufflehog-secrets.json 2>/dev/null || echo 0)
+          GITLEAKS_COUNT=$(jq '. | length' ${{ env.SECURITY_REPORT_PATH }}/gitleaks-secrets.json 2>/dev/null || echo 0)
+          
+          cat > ${{ env.SECURITY_REPORT_PATH }}/secret-summary.md << EOF
+          # Secret Detection Report
+          
+          **Scan Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          
+          ## Detection Summary
+          - TruffleHog findings: $TRUFFLEHOG_COUNT
+          - GitLeaks findings: $GITLEAKS_COUNT
+          
+          ## Scans Performed
+          - ✅ TruffleHog comprehensive secret detection
+          - ✅ GitLeaks Git history scan
+          - ✅ Custom pattern matching
+          - ✅ Environment file exposure check
+          
+          ## Immediate Actions Required
+          - Review and validate all detected secrets
+          - Rotate any confirmed leaked credentials
+          - Remove secrets from Git history if found
+          - Implement proper secret management
+          EOF
+
+      - name: Upload secret scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: secret-scan-results
+          path: ${{ env.SECURITY_REPORT_PATH }}/
+
+  # Security report compilation and notification
+  security-report:
+    name: 'Security Report Compilation'
+    runs-on: ubuntu-latest
+    needs: [security-setup, dependency-scan, code-security-scan, container-security-scan, secret-scan]
+    if: always() && needs.security-setup.outputs.scan_level != 'none'
+    
+    steps:
+      - name: Download all scan results
+        uses: actions/download-artifact@v4
+        with:
+          path: all-security-results
+
+      - name: Compile comprehensive security report
+        run: |
+          mkdir -p final-security-report
+          
+          cat > final-security-report/security-report.md << EOF
+          # Comprehensive Security Report
+          
+          **Generated:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          **Repository:** ${{ github.repository }}
+          **Branch/PR:** ${{ github.ref_name }}
+          **Commit:** ${{ github.sha }}
+          **Scan Level:** ${{ needs.security-setup.outputs.scan_level }}
+          
+          ## Executive Summary
+          
+          This report contains the results of comprehensive security scanning including:
+          
+          EOF
+          
+          # Add individual reports if they exist
+          for dir in all-security-results/*/; do
+            if [[ -d "$dir" ]]; then
+              echo "### $(basename "$dir" | tr '-' ' ' | title)" >> final-security-report/security-report.md
+              if [[ -f "$dir"*-summary.md ]]; then
+                cat "$dir"*-summary.md >> final-security-report/security-report.md
+                echo "" >> final-security-report/security-report.md
+              fi
+            fi
+          done
+          
+          cat >> final-security-report/security-report.md << EOF
+          
+          ## Next Steps
+          
+          1. **Review Findings**: Examine all identified vulnerabilities and security issues
+          2. **Prioritize Fixes**: Address critical and high-severity issues first
+          3. **Update Dependencies**: Apply security patches and updates
+          4. **Rotate Secrets**: Change any exposed credentials
+          5. **Implement Monitoring**: Set up continuous security monitoring
+          
+          ## Security Contacts
+          
+          - Security Team: security@candlefish.ai
+          - DevOps Team: devops@candlefish.ai
+          - On-call Engineer: ${{ secrets.ONCALL_ENGINEER_CONTACT }}
+          
+          ---
+          *This report was automatically generated by the Candlefish Security Pipeline*
+          EOF
+
+      - name: Calculate security score
+        id: score
+        run: |
+          # Simple scoring algorithm based on findings
+          SCORE=100
+          
+          # Deduct points for various findings
+          if [[ -f "all-security-results/dependency-scan-results/npm-audit.json" ]]; then
+            HIGH_DEPS=$(jq '.metadata.vulnerabilities.high // 0' all-security-results/dependency-scan-results/npm-audit.json)
+            CRITICAL_DEPS=$(jq '.metadata.vulnerabilities.critical // 0' all-security-results/dependency-scan-results/npm-audit.json)
+            SCORE=$((SCORE - (HIGH_DEPS * 5) - (CRITICAL_DEPS * 10)))
+          fi
+          
+          # Ensure score doesn't go below 0
+          if [[ $SCORE -lt 0 ]]; then
+            SCORE=0
+          fi
+          
+          echo "security_score=$SCORE" >> $GITHUB_OUTPUT
+
+      - name: Determine security status
+        id: status
+        run: |
+          SCORE=${{ steps.score.outputs.security_score }}
+          
+          if [[ $SCORE -ge 90 ]]; then
+            STATUS="excellent"
+            COLOR="good"
+            EMOJI="🛡️"
+          elif [[ $SCORE -ge 75 ]]; then
+            STATUS="good"
+            COLOR="warning"
+            EMOJI="⚠️"
+          elif [[ $SCORE -ge 50 ]]; then
+            STATUS="needs-attention"
+            COLOR="warning"
+            EMOJI="🚨"
+          else
+            STATUS="critical"
+            COLOR="danger"
+            EMOJI="🔥"
+          fi
+          
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+          echo "color=$COLOR" >> $GITHUB_OUTPUT
+          echo "emoji=$EMOJI" >> $GITHUB_OUTPUT
+
+      - name: Upload final security report
+        uses: actions/upload-artifact@v4
+        with:
+          name: comprehensive-security-report
+          path: final-security-report/
+
+      - name: Send security notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              attachments: [{
+                color: '${{ steps.status.outputs.color }}',
+                title: '${{ steps.status.outputs.emoji }} Security Scan Complete',
+                fields: [
+                  {
+                    title: 'Repository',
+                    value: '${{ github.repository }}',
+                    short: true
+                  },
+                  {
+                    title: 'Security Score',
+                    value: '${{ steps.score.outputs.security_score }}/100',
+                    short: true
+                  },
+                  {
+                    title: 'Status',
+                    value: '${{ steps.status.outputs.status }}',
+                    short: true
+                  },
+                  {
+                    title: 'Scan Level',
+                    value: '${{ needs.security-setup.outputs.scan_level }}',
+                    short: true
+                  }
+                ],
+                footer: 'Candlefish Security Pipeline',
+                ts: ${{ github.event.head_commit.timestamp && fromJSON(github.event.head_commit.timestamp) || '' }}
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_SECURITY_WEBHOOK_URL }}
+        if: always()
+
+      - name: Create security issue for critical findings
+        if: steps.status.outputs.status == 'critical'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🔥 Critical Security Issues Detected',
+              body: `## Critical Security Alert
+              
+              The automated security scan has detected critical security issues that require immediate attention.
+              
+              **Security Score:** ${{ steps.score.outputs.security_score }}/100
+              **Scan Date:** ${new Date().toISOString()}
+              **Commit:** ${context.sha}
+              
+              ## Immediate Actions Required:
+              
+              1. Review the comprehensive security report
+              2. Address critical vulnerabilities
+              3. Rotate any exposed credentials
+              4. Update vulnerable dependencies
+              
+              ## Resources:
+              
+              - [Security Report Artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+              - [Security Playbook](https://docs.candlefish.ai/security/incident-response)
+              
+              **Priority:** 🔥 Critical
+              **Assigned:** @security-team`,
+              labels: ['security', 'critical', 'P0'],
+              assignees: ['security-team']
+            });
+            
+            console.log('Created security issue:', issue.data.number);

@@ -104,6 +104,22 @@ export function iOSCompatibility() {
       // iOS needs delay after orientation change
       setTimeout(() => {
         setIOSViewport()
+        
+        // Handle landscape-specific adjustments
+        const isLandscape = window.innerHeight < window.innerWidth
+        const isShortLandscape = isLandscape && window.innerHeight <= 500
+        
+        if (isShortLandscape) {
+          // Apply aggressive landscape optimizations
+          document.documentElement.classList.add('ios-landscape-short')
+          document.documentElement.style.setProperty('--landscape-nav-height', '36px')
+          document.documentElement.style.setProperty('--landscape-main-nav-height', '44px')
+        } else {
+          document.documentElement.classList.remove('ios-landscape-short')
+          document.documentElement.style.removeProperty('--landscape-nav-height')
+          document.documentElement.style.removeProperty('--landscape-main-nav-height')
+        }
+        
         // Force layout recalculation
         document.body.style.height = window.innerHeight + 'px'
         setTimeout(() => {
@@ -274,6 +290,123 @@ export function iOSCompatibility() {
           .workshop-animation {
             animation: none !important;
             transition: opacity 0.2s ease !important;
+          }
+        }
+        
+        /* iOS Landscape Orientation Optimizations */
+        @media screen and (orientation: landscape) and (max-height: 500px) {
+          /* Aggressive height reduction for iOS landscape */
+          .workshop-nav {
+            height: var(--landscape-nav-height, 36px) !important;
+            min-height: 36px !important;
+            backdrop-filter: blur(3px) !important;
+            -webkit-backdrop-filter: blur(3px) !important;
+          }
+          
+          .workshop-nav-content {
+            padding: 2px 16px !important;
+            min-height: 32px !important;
+            font-size: 11px !important;
+          }
+          
+          .workshop-nav-content h1 {
+            font-size: 11px !important;
+            line-height: 1.1 !important;
+            max-width: 160px !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+          }
+          
+          .workshop-metrics {
+            display: none !important;
+          }
+          
+          .workshop-status {
+            font-size: 9px !important;
+            padding: 1px 4px !important;
+          }
+          
+          /* Adjust grid for landscape */
+          .workshop-grid {
+            padding-top: calc(var(--landscape-main-nav-height, 44px) + var(--landscape-nav-height, 36px) + 4px) !important;
+            padding-left: max(12px, env(safe-area-inset-left) + 12px) !important;
+            padding-right: max(12px, env(safe-area-inset-right) + 12px) !important;
+            gap: 12px !important;
+          }
+          
+          /* Compact cards in landscape */
+          .workshop-card {
+            padding: 12px !important;
+            margin: 0 !important;
+            border-radius: 6px !important;
+          }
+          
+          /* Compact typography */
+          .workshop-text-hero {
+            font-size: clamp(1.25rem, 3vw, 2rem) !important;
+            margin-bottom: 8px !important;
+            line-height: 1.1 !important;
+          }
+          
+          .workshop-text-title {
+            font-size: clamp(1rem, 2vw, 1.25rem) !important;
+            margin-bottom: 6px !important;
+            line-height: 1.2 !important;
+          }
+          
+          .workshop-text-subtitle,
+          .workshop-text-body {
+            font-size: clamp(0.8rem, 1.4vw, 0.9rem) !important;
+            line-height: 1.3 !important;
+          }
+          
+          /* Hide unnecessary elements in landscape */
+          .workshop-metric,
+          .workshop-status[title] {
+            display: none !important;
+          }
+          
+          /* Optimize search and filter section */
+          .grid.grid-cols-1.md\\:grid-cols-3 {
+            grid-template-columns: 1fr !important;
+            gap: 8px !important;
+          }
+          
+          /* Compact buttons */
+          .workshop-button {
+            padding: 4px 8px !important;
+            font-size: 10px !important;
+            min-height: 32px !important;
+            min-width: 40px !important;
+          }
+          
+          /* Optimize input fields */
+          input[type="text"], input[type="search"] {
+            padding: 6px 8px !important;
+            font-size: 14px !important;
+            height: 32px !important;
+          }
+        }
+        
+        /* iPhone 8/SE landscape specific optimizations */
+        @media screen and (max-width: 667px) and (max-height: 375px) and (orientation: landscape) {
+          .workshop-container {
+            padding: 0 8px !important;
+          }
+          
+          .workshop-grid {
+            padding: calc(var(--landscape-main-nav-height, 44px) + var(--landscape-nav-height, 36px) + 2px) 8px 8px !important;
+            gap: 8px !important;
+          }
+          
+          .workshop-nav-content {
+            padding: 1px 8px !important;
+          }
+          
+          .workshop-nav-content h1 {
+            max-width: 120px !important;
+            font-size: 10px !important;
           }
         }
       `

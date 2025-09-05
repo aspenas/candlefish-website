@@ -29,7 +29,9 @@ export default function WorkshopNotes() {
     totalNotes: workshopNotes.length,
     activeCategories: 3,
     averageReadTime: '12 min',
-    lastUpdated: '2025.09.01',
+    lastUpdated: workshopNotes
+      .map(note => note.date)
+      .sort((a, b) => b.localeCompare(a))[0] || '2025.09.01',
     engagementLevel: 'high'
   })
   const observerRef = useRef<IntersectionObserver | null>(null)
@@ -207,6 +209,10 @@ export default function WorkshopNotes() {
       note.excerpt.toLowerCase().includes(searchTerm.toLowerCase()) ||
       note.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
     )
+    .sort((a, b) => {
+      // Sort by date in descending order (newest first)
+      return b.date.localeCompare(a.date)
+    })
 
   return (
     <div className="workshop-background workshop-container workshop-text-optimize">

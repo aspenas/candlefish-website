@@ -1,0 +1,263 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - navigation "Skip navigation links" [ref=e3]:
+    - list [ref=e4]:
+      - listitem [ref=e5]:
+        - link "Skip to main content" [ref=e6]:
+          - /url: "#main-content"
+      - listitem [ref=e7]:
+        - link "Skip to navigation" [ref=e8]:
+          - /url: "#navigation"
+      - listitem [ref=e9]:
+        - link "Skip to footer" [ref=e10]:
+          - /url: "#footer"
+  - navigation "Main navigation" [ref=e11]:
+    - generic [ref=e13]:
+      - link "candlefish.ai" [ref=e14]:
+        - /url: /
+        - text: candlefish
+        - generic [ref=e15]: .
+        - text: ai
+      - button "Open menu" [ref=e16] [cursor=pointer]:
+        - img [ref=e17] [cursor=pointer]
+  - main [ref=e19]:
+    - generic [ref=e20]:
+      - navigation [ref=e21]:
+        - generic [ref=e22]:
+          - generic [ref=e23]:
+            - heading "WORKSHOP // NOTES-ARCHIVE" [level=1] [ref=e24]
+            - generic [ref=e25]: System Operational
+          - generic [ref=e26]:
+            - generic [ref=e27]:
+              - generic [ref=e28]: Total Notes
+              - generic [ref=e29]: "8"
+            - generic [ref=e30]:
+              - generic [ref=e31]: Avg Read
+              - generic [ref=e32]: 12 min
+            - generic [ref=e33]:
+              - generic [ref=e34]: Last Update
+              - generic [ref=e35]: 2025.09.01
+            - generic [ref=e36]:
+              - generic [ref=e37]: Engagement
+              - generic [ref=e38]: high
+      - main [ref=e39]:
+        - generic [ref=e40]:
+          - heading "Workshop Notes" [level=1] [ref=e41]
+          - paragraph [ref=e42]: Technical explorations from operational work. Published when we find patterns worth documenting, not when the calendar says so.
+        - generic [ref=e44]:
+          - generic [ref=e45]:
+            - generic [ref=e46]: Category Filter
+            - generic [ref=e47]:
+              - button "all" [ref=e48] [cursor=pointer]
+              - button "technical" [ref=e49] [cursor=pointer]
+              - button "operational" [ref=e50] [cursor=pointer]
+              - button "philosophical" [ref=e51] [cursor=pointer]
+          - generic [ref=e52]:
+            - generic [ref=e53]: Search Notes
+            - textbox "Search Notes" [ref=e54]
+          - generic [ref=e55]:
+            - generic [ref=e56]: Results
+            - generic [ref=e57]: 8 notes
+        - generic [ref=e58]:
+          - article [ref=e59] [cursor=pointer]:
+            - generic [ref=e60] [cursor=pointer]:
+              - generic [ref=e61] [cursor=pointer]:
+                - time [ref=e62] [cursor=pointer]: 2025.09.01
+                - generic [ref=e63] [cursor=pointer]: philosophical
+                - generic [ref=e64] [cursor=pointer]: Live R&D Infrastructure
+              - generic [ref=e65] [cursor=pointer]: 16 min read
+            - heading "The Paradox of Enhancement" [level=2] [ref=e66] [cursor=pointer]
+            - paragraph [ref=e67] [cursor=pointer]: "Today's revelation arrived through rejection. While evaluating an \"enhanced\" prompt framework for Claude's 1M context window, I discovered something profound: the best enhancement is often knowing when not to enhance."
+            - generic [ref=e68] [cursor=pointer]:
+              - generic [ref=e69] [cursor=pointer]:
+                - button "Share The Paradox of Enhancement" [ref=e70] [cursor=pointer]:
+                  - img [ref=e71] [cursor=pointer]
+                  - text: Share
+                - generic [ref=e74] [cursor=pointer]:
+                  - code [ref=e75] [cursor=pointer]: </>
+                  - text: Code
+              - generic [ref=e76] [cursor=pointer]:
+                - button "#enhancement-paradox" [ref=e77] [cursor=pointer]
+                - button "#prompt-frameworks" [ref=e78] [cursor=pointer]
+                - button "#claude-1m-context" [ref=e79] [cursor=pointer]
+                - button "#live-r&d" [ref=e80] [cursor=pointer]
+                - generic [ref=e81] [cursor=pointer]: +4 more
+          - article [ref=e82] [cursor=pointer]:
+            - generic [ref=e83] [cursor=pointer]:
+              - generic [ref=e84] [cursor=pointer]:
+                - time [ref=e85] [cursor=pointer]: 2025.08.23
+                - generic [ref=e86] [cursor=pointer]: philosophical
+                - generic [ref=e87] [cursor=pointer]: Infrastructure Development
+              - generic [ref=e88] [cursor=pointer]: 12 min read
+            - heading "The Architecture of Inevitability" [level=2] [ref=e89] [cursor=pointer]
+            - paragraph [ref=e90] [cursor=pointer]: Robust operational systems don't emerge from planning but from the accumulation of responses to actual problems. The testing framework, deployment scripts, and monitoring weren't designed—they were inevitable.
+            - generic [ref=e91] [cursor=pointer]:
+              - generic [ref=e92] [cursor=pointer]:
+                - button "Share The Architecture of Inevitability" [ref=e93] [cursor=pointer]:
+                  - img [ref=e94] [cursor=pointer]
+                  - text: Share
+                - generic [ref=e97] [cursor=pointer]:
+                  - code [ref=e98] [cursor=pointer]: </>
+                  - text: Code
+              - generic [ref=e99] [cursor=pointer]:
+                - button "#architecture" [ref=e100] [cursor=pointer]
+                - button "#testing" [ref=e101] [cursor=pointer]
+                - button "#deployment" [ref=e102] [cursor=pointer]
+                - button "#monitoring" [ref=e103] [cursor=pointer]
+                - generic [ref=e104] [cursor=pointer]: +2 more
+          - article [ref=e105] [cursor=pointer]:
+            - generic [ref=e106] [cursor=pointer]:
+              - generic [ref=e107] [cursor=pointer]:
+                - time [ref=e108] [cursor=pointer]: 2025.08.23
+                - generic [ref=e109] [cursor=pointer]: philosophical
+                - generic [ref=e110] [cursor=pointer]: Pattern Study
+              - generic [ref=e111] [cursor=pointer]: 14 min read
+            - heading "Consciousness as Navigation System" [level=2] [ref=e112] [cursor=pointer]
+            - paragraph [ref=e113] [cursor=pointer]: When operations become conscious of their own patterns, they stop needing external navigation. A meditation on self-aware systems and the death of dashboards.
+            - generic [ref=e114] [cursor=pointer]:
+              - generic [ref=e115] [cursor=pointer]:
+                - button "Share Consciousness as Navigation System" [ref=e116] [cursor=pointer]:
+                  - img [ref=e117] [cursor=pointer]
+                  - text: Share
+                - generic [ref=e120] [cursor=pointer]:
+                  - code [ref=e121] [cursor=pointer]: </>
+                  - text: Code
+              - generic [ref=e122] [cursor=pointer]:
+                - button "#consciousness" [ref=e123] [cursor=pointer]
+                - button "#navigation" [ref=e124] [cursor=pointer]
+                - button "#self-awareness" [ref=e125] [cursor=pointer]
+                - button "#patterns" [ref=e126] [cursor=pointer]
+          - article [ref=e127] [cursor=pointer]:
+            - generic [ref=e128] [cursor=pointer]:
+              - generic [ref=e129] [cursor=pointer]:
+                - time [ref=e130] [cursor=pointer]: 2025.08.20
+                - generic [ref=e131] [cursor=pointer]: technical
+                - generic [ref=e132] [cursor=pointer]: Pattern Study
+              - generic [ref=e133] [cursor=pointer]: 12 min read
+            - heading "Treating Excel as a Source of Truth" [level=2] [ref=e134] [cursor=pointer]
+            - paragraph [ref=e135] [cursor=pointer]: Why fighting against Excel-based workflows is often the wrong approach. Observations on building systems that embrace spreadsheet reality rather than replacing it.
+            - generic [ref=e136] [cursor=pointer]:
+              - generic [ref=e137] [cursor=pointer]:
+                - button "Share Treating Excel as a Source of Truth" [ref=e138] [cursor=pointer]:
+                  - img [ref=e139] [cursor=pointer]
+                  - text: Share
+                - generic [ref=e142] [cursor=pointer]:
+                  - code [ref=e143] [cursor=pointer]: </>
+                  - text: Code
+              - generic [ref=e144] [cursor=pointer]:
+                - button "#excel" [ref=e145] [cursor=pointer]
+                - button "#data-patterns" [ref=e146] [cursor=pointer]
+                - button "#integration" [ref=e147] [cursor=pointer]
+          - article [ref=e148] [cursor=pointer]:
+            - generic [ref=e149] [cursor=pointer]:
+              - generic [ref=e150] [cursor=pointer]:
+                - time [ref=e151] [cursor=pointer]: 2025.08.18
+                - generic [ref=e152] [cursor=pointer]: operational
+                - generic [ref=e153] [cursor=pointer]: Pattern Study
+              - generic [ref=e154] [cursor=pointer]: 10 min read
+            - heading "Finding Hidden Queues in Operations" [level=2] [ref=e155] [cursor=pointer]
+            - paragraph [ref=e156] [cursor=pointer]: Every operation has queues, even if they don't call them that. How to identify and optimize the hidden waiting lines in any business.
+            - generic [ref=e157] [cursor=pointer]:
+              - generic [ref=e158] [cursor=pointer]:
+                - button "Share Finding Hidden Queues in Operations" [ref=e159] [cursor=pointer]:
+                  - img [ref=e160] [cursor=pointer]
+                  - text: Share
+                - generic [ref=e163] [cursor=pointer]:
+                  - code [ref=e164] [cursor=pointer]: </>
+                  - text: Code
+              - generic [ref=e165] [cursor=pointer]:
+                - button "#queue-theory" [ref=e166] [cursor=pointer]
+                - button "#operations" [ref=e167] [cursor=pointer]
+                - button "#patterns" [ref=e168] [cursor=pointer]
+          - article [ref=e169] [cursor=pointer]:
+            - generic [ref=e170] [cursor=pointer]:
+              - generic [ref=e171] [cursor=pointer]:
+                - time [ref=e172] [cursor=pointer]: 2025.08.15
+                - generic [ref=e173] [cursor=pointer]: philosophical
+                - generic [ref=e174] [cursor=pointer]: Pattern Study
+              - generic [ref=e175] [cursor=pointer]: 8 min read
+            - heading "Why Workflows Resist Standardization" [level=2] [ref=e176] [cursor=pointer]
+            - paragraph [ref=e177] [cursor=pointer]: The harder you try to standardize workflows, the more exceptions emerge. Here's why embracing variation often beats enforcing uniformity.
+            - generic [ref=e178] [cursor=pointer]:
+              - button "Share Why Workflows Resist Standardization" [ref=e180] [cursor=pointer]:
+                - img [ref=e181] [cursor=pointer]
+                - text: Share
+              - generic [ref=e184] [cursor=pointer]:
+                - button "#workflows" [ref=e185] [cursor=pointer]
+                - button "#standardization" [ref=e186] [cursor=pointer]
+                - button "#systems-thinking" [ref=e187] [cursor=pointer]
+          - article [ref=e188] [cursor=pointer]:
+            - generic [ref=e189] [cursor=pointer]:
+              - generic [ref=e190] [cursor=pointer]:
+                - time [ref=e191] [cursor=pointer]: 2025.08.12
+                - generic [ref=e192] [cursor=pointer]: technical
+                - generic [ref=e193] [cursor=pointer]: Pattern Study
+              - generic [ref=e194] [cursor=pointer]: 15 min read
+            - heading "Building Systems That Learn From Usage" [level=2] [ref=e195] [cursor=pointer]
+            - paragraph [ref=e196] [cursor=pointer]: How we build operational systems that improve themselves by observing how they're actually used, without explicit training.
+            - generic [ref=e197] [cursor=pointer]:
+              - generic [ref=e198] [cursor=pointer]:
+                - button "Share Building Systems That Learn From Usage" [ref=e199] [cursor=pointer]:
+                  - img [ref=e200] [cursor=pointer]
+                  - text: Share
+                - generic [ref=e203] [cursor=pointer]:
+                  - code [ref=e204] [cursor=pointer]: </>
+                  - text: Code
+                - generic [ref=e205] [cursor=pointer]:
+                  - img [ref=e206] [cursor=pointer]
+                  - text: Interactive
+              - generic [ref=e208] [cursor=pointer]:
+                - button "#machine-learning" [ref=e209] [cursor=pointer]
+                - button "#patterns" [ref=e210] [cursor=pointer]
+                - button "#adaptive-systems" [ref=e211] [cursor=pointer]
+          - article [ref=e212] [cursor=pointer]:
+            - generic [ref=e213] [cursor=pointer]:
+              - generic [ref=e214] [cursor=pointer]:
+                - time [ref=e215] [cursor=pointer]: 2025.08.26
+                - generic [ref=e216] [cursor=pointer]: philosophical
+                - generic [ref=e217] [cursor=pointer]: Pattern Study
+              - generic [ref=e218] [cursor=pointer]: 11 min read
+            - heading "The Hygiene Paradox" [level=2] [ref=e219] [cursor=pointer]
+            - paragraph [ref=e220] [cursor=pointer]: The most transformative work leaves no visible trace. We spent a month deleting code, removing secrets, adding friction. The codebase got smaller. The workflows got slower. Everything got better.
+            - generic [ref=e221] [cursor=pointer]:
+              - generic [ref=e222] [cursor=pointer]:
+                - button "Share The Hygiene Paradox" [ref=e223] [cursor=pointer]:
+                  - img [ref=e224] [cursor=pointer]
+                  - text: Share
+                - generic [ref=e227] [cursor=pointer]:
+                  - code [ref=e228] [cursor=pointer]: </>
+                  - text: Code
+              - generic [ref=e229] [cursor=pointer]:
+                - button "#operational-health" [ref=e230] [cursor=pointer]
+                - button "#security-evolution" [ref=e231] [cursor=pointer]
+                - button "#cultural-drift" [ref=e232] [cursor=pointer]
+                - button "#constraint-design" [ref=e233] [cursor=pointer]
+        - generic [ref=e234]:
+          - generic [ref=e235]: Publishing Philosophy
+          - paragraph [ref=e236]: We publish when we discover something worth sharing. No content calendar. No SEO games. Just operational patterns discovered through actual work.
+          - generic [ref=e237]:
+            - link "Subscribe for Updates →" [ref=e238] [cursor=pointer]:
+              - /url: /contact
+            - link "Explore Atelier →" [ref=e239] [cursor=pointer]:
+              - /url: /atelier
+  - contentinfo [ref=e240]:
+    - generic [ref=e241]:
+      - generic [ref=e242]:
+        - generic [ref=e243]:
+          - paragraph [ref=e244]: Operational Design Atelier
+          - paragraph [ref=e245]: Est. 2025 · Building systems that outlive their creators
+        - generic [ref=e246]:
+          - paragraph [ref=e247]: "Current Focus: Engraving Automation Platform"
+          - paragraph [ref=e248]: 4 organizations in queue · 3 slots Q1 2026
+      - generic [ref=e250]:
+        - paragraph [ref=e251]: © 2025 Candlefish. Operational systems for impossible problems.
+        - navigation [ref=e252]:
+          - link "Privacy" [ref=e253]:
+            - /url: /privacy/
+          - link "Terms" [ref=e254]:
+            - /url: /terms/
+          - link "Status" [ref=e255]:
+            - /url: /status/
+```
