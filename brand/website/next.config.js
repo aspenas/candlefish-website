@@ -2,7 +2,12 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    unoptimized: true,
+    formats: ['image/webp', 'image/avif'],
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days
   },
   // Conditionally enable static export based on environment
   ...(process.env.STATIC_EXPORT === 'true' && {
@@ -35,10 +40,35 @@ const nextConfig = {
 
     return config;
   },
-  // Performance optimizations for static export
+  // Performance optimizations
   experimental: {
     optimizeCss: true,
+    optimizePackageImports: ['@react-three/fiber', '@react-three/drei', 'three'],
+    turbo: {
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js',
+        },
+      },
+    },
   },
+  // Bundle analysis
+  ...(process.env.ANALYZE === 'true' && {
+    webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
+      if (!isServer && process.env.ANALYZE === 'true') {
+        const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer')
+        config.plugins.push(
+          new BundleAnalyzerPlugin({
+            analyzerMode: 'static',
+            reportFilename: '../bundle-analysis.html',
+            openAnalyzer: false,
+          })
+        )
+      }
+      return config
+    },
+  }),
   eslint: {
     ignoreDuringBuilds: true,
   },

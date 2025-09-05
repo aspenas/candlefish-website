@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline - Candlefish AI</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0D1B2A 0%, #1B263B 50%, #415A77 100%);
+      color: #E0E1DD;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .container {
+      text-align: center;
+      padding: 2rem;
+      max-width: 500px;
+    }
+    
+    .logo {
+      color: #3FD3C6;
+      font-size: 0.875rem;
+      font-weight: 300;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      margin-bottom: 2rem;
+    }
+    
+    h1 {
+      font-size: 2rem;
+      font-weight: 300;
+      margin: 0 0 1rem 0;
+      color: #F8F8F2;
+    }
+    
+    p {
+      font-size: 1.125rem;
+      line-height: 1.6;
+      color: #415A77;
+      margin: 0 0 2rem 0;
+    }
+    
+    .status {
+      background: rgba(63, 211, 198, 0.1);
+      border: 1px solid rgba(63, 211, 198, 0.3);
+      color: #3FD3C6;
+      padding: 0.75rem 1.5rem;
+      border-radius: 2px;
+      font-family: monospace;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      display: inline-block;
+      margin-bottom: 2rem;
+    }
+    
+    .retry-btn {
+      background: #3FD3C6;
+      color: #0D1B2A;
+      border: none;
+      padding: 0.75rem 2rem;
+      font-size: 0.875rem;
+      font-weight: 400;
+      cursor: pointer;
+      border-radius: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      transition: background-color 0.2s ease;
+    }
+    
+    .retry-btn:hover {
+      background: rgba(63, 211, 198, 0.9);
+    }
+    
+    .features {
+      margin-top: 3rem;
+      text-align: left;
+    }
+    
+    .features h2 {
+      font-size: 1rem;
+      color: #3FD3C6;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin: 0 0 1rem 0;
+      font-weight: 400;
+    }
+    
+    .features ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    
+    .features li {
+      color: #E0E1DD;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      margin: 0.5rem 0;
+      padding-left: 1rem;
+      position: relative;
+    }
+    
+    .features li::before {
+      content: "→";
+      color: #3FD3C6;
+      position: absolute;
+      left: 0;
+    }
+    
+    .connection-status {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      background: rgba(0, 0, 0, 0.8);
+      color: #3FD3C6;
+      padding: 0.5rem 1rem;
+      border-radius: 2px;
+      font-family: monospace;
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      border: 1px solid rgba(63, 211, 198, 0.3);
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+    
+    .pulse {
+      animation: pulse 2s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="connection-status" id="connectionStatus">
+    <span id="statusText">OFFLINE</span>
+  </div>
+  
+  <div class="container">
+    <div class="logo">Candlefish</div>
+    
+    <h1>Operational Systems Offline</h1>
+    
+    <p>The workshop's connection to the network has been interrupted. Our systems are designed to function in isolation when necessary.</p>
+    
+    <div class="status pulse" id="status">
+      Connection Lost — Standby Mode Active
+    </div>
+    
+    <button class="retry-btn" onclick="checkConnection()" id="retryBtn">
+      Reconnect to Workshop
+    </button>
+    
+    <div class="features">
+      <h2>Offline Capabilities</h2>
+      <ul>
+        <li>Core navigation and information remain accessible</li>
+        <li>Previously viewed content cached locally</li>
+        <li>System will auto-reconnect when network restored</li>
+        <li>WebGL animations simplified to preserve battery</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    let isOnline = false;
+    
+    function updateConnectionStatus() {
+      const statusElement = document.getElementById('statusText');
+      const statusDiv = document.getElementById('status');
+      const retryBtn = document.getElementById('retryBtn');
+      
+      if (navigator.onLine) {
+        statusElement.textContent = 'ONLINE';
+        statusDiv.textContent = 'Connection Restored — Returning to Workshop';
+        statusDiv.classList.remove('pulse');
+        retryBtn.textContent = 'Return to Workshop';
+        retryBtn.style.background = '#3FD3C6';
+        
+        if (!isOnline) {
+          isOnline = true;
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 2000);
+        }
+      } else {
+        statusElement.textContent = 'OFFLINE';
+        statusDiv.textContent = 'Connection Lost — Standby Mode Active';
+        statusDiv.classList.add('pulse');
+        retryBtn.textContent = 'Reconnect to Workshop';
+        retryBtn.style.background = '#415A77';
+        isOnline = false;
+      }
+    }
+    
+    function checkConnection() {
+      if (navigator.onLine) {
+        window.location.href = '/';
+      } else {
+        // Attempt to fetch a small resource to test actual connectivity
+        fetch('/', { 
+          method: 'HEAD', 
+          cache: 'no-cache',
+          mode: 'no-cors'
+        })
+        .then(() => {
+          window.location.href = '/';
+        })
+        .catch(() => {
+          // Connection still unavailable
+          const status = document.getElementById('status');
+          status.textContent = 'Connection Test Failed — Still Offline';
+          setTimeout(() => {
+            status.textContent = 'Connection Lost — Standby Mode Active';
+          }, 3000);
+        });
+      }
+    }
+    
+    // Monitor connection status
+    window.addEventListener('online', updateConnectionStatus);
+    window.addEventListener('offline', updateConnectionStatus);
+    
+    // Initial status check
+    updateConnectionStatus();
+    
+    // Periodic connection check
+    setInterval(updateConnectionStatus, 5000);
+  </script>
+</body>
+</html>

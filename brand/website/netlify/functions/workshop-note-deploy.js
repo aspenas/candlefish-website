@@ -133,17 +133,25 @@ async function getSubscribers(resend, audienceId) {
     
     if (error) {
       console.error('Failed to fetch subscribers:', error);
-      return [];
+      // Fallback to admin email
+      return ['patrick@candlefish.ai'];
     }
     
-    // Filter for subscribed contacts interested in workshop notes
-    return data.filter(contact => 
-      contact.subscribed && 
-      (!contact.tags || contact.tags.includes('workshop-notes'))
+    if (!data || data.length === 0) {
+      console.log('No subscribers found in audience');
+      return ['patrick@candlefish.ai'];
+    }
+    
+    // Filter for subscribed contacts
+    const subscribers = data.filter(contact => 
+      contact.subscribed !== false
     ).map(contact => contact.email);
+    
+    console.log(`Found ${subscribers.length} active subscribers`);
+    return subscribers.length > 0 ? subscribers : ['patrick@candlefish.ai'];
   } catch (error) {
     console.error('Failed to get subscribers:', error);
-    return [];
+    return ['patrick@candlefish.ai'];
   }
 }
 
@@ -230,7 +238,7 @@ exports.handler = async (event, context) => {
     // Get subscriber list
     const subscribers = audienceId ? 
       await getSubscribers(resend, audienceId) :
-      ['workshop@candlefish.ai']; // Fallback to admin email
+      ['patrick@candlefish.ai']; // Fallback to admin email
     
     if (subscribers.length === 0) {
       return {

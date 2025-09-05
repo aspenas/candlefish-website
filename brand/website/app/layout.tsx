@@ -4,6 +4,8 @@ import Navigation from '../components/navigation/OperationalNav'
 import Footer from '../components/navigation/OperationalFooter'
 import SkipNavigation from '../components/accessibility/SkipNavigation'
 import { ToastProvider } from '../components/ui/ToastProvider'
+import { ServiceWorkerRegister } from '../components/performance/ServiceWorkerRegister'
+import { WebVitalsMonitor, PerformanceAnalyzer } from '../components/performance/WebVitalsMonitor'
 
 export const metadata: Metadata = {
   title: 'Candlefish — Operational Design Atelier',
@@ -45,14 +47,30 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="stylesheet" href="/hero-fish.css" />
+        
+        {/* PWA Manifest */}
+        <link rel="manifest" href="/manifest.json" />
+        
         {/* iOS-specific meta tags for better compatibility */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Candlefish" />
+        <link rel="apple-touch-icon" href="/icon-180.png" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
+        
+        {/* PWA theme colors */}
+        <meta name="theme-color" content="#3FD3C6" />
+        <meta name="msapplication-TileColor" content="#0D1B2A" />
+        <meta name="msapplication-config" content="/browserconfig.xml" />
+        
         {/* Preconnect to improve performance */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        
+        {/* Prefetch critical resources */}
+        <link rel="prefetch" href="/sw.js" />
+        <link rel="prefetch" href="/offline.html" />
       </head>
       <body className="ios-optimized">
         <SkipNavigation />
@@ -62,6 +80,9 @@ export default function RootLayout({
         </main>
         <Footer />
         <ToastProvider />
+        <ServiceWorkerRegister />
+        <WebVitalsMonitor />
+        <PerformanceAnalyzer />
       </body>
     </html>
   )

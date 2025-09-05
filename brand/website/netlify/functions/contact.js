@@ -4,8 +4,8 @@ const { Resend } = require('resend');
 const rateLimitMap = new Map();
 
 // Allowed origins for CORS
-const ALLOWED_ORIGINS = undefined
-  ? undefined.split(',')
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
   : ['https://candlefish.ai', 'https://www.candlefish.ai', 'https://test.candlefish.ai'];
 
 // Rate limiting function
@@ -189,7 +189,7 @@ Submitted: ${new Date().toISOString()}
 
       } else {
         // Log request without sending email (for development)
-        if ('production' !== 'production') {
+        if (process.env.NODE_ENV !== 'production') {
           console.log('Email service not configured - request logged only');
           console.log('Contact form submission:', {
             timestamp: new Date().toISOString(),

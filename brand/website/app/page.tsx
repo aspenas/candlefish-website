@@ -1,17 +1,28 @@
 'use client'
 
-import React, { Suspense, lazy } from 'react'
+import React, { Suspense } from 'react'
 import Link from 'next/link'
 import HeaderText from '../components/HeaderText'
 import SystemActivity from '../components/SystemActivity'
-import SystemArchitecture from '../components/SystemArchitecture'
 import { NewsletterForm } from '../components/forms/NewsletterForm'
+import { 
+  LazySystemArchitecture, 
+  LazyWebEnhancedHeroFish, 
+  WithWebGLSupport 
+} from '../components/lazy/LazyThreeComponents'
+
+// Lazy load SimpleFishAnimation for better performance
 import dynamic from 'next/dynamic'
-
-
-// Import animation components
-import CandleFish from '../web/aquarium/react/CandleFish'
-import SimpleFishAnimation from '../components/SimpleFishAnimation'
+const SimpleFishAnimation = dynamic(
+  () => import('../components/SimpleFishAnimation'),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="relative bg-gradient-to-br from-[#0D1B2A] via-[#1B263B] to-[#415A77] animate-pulse" 
+           style={{ height: '200px' }} />
+    )
+  }
+)
 
 export default function OperationalHomepage() {
   return (
@@ -66,7 +77,20 @@ export default function OperationalHomepage() {
 
       {/* Bioluminescent Candlefish Animation */}
       <section className="relative" data-widget="operational-matrix">
-        <SimpleFishAnimation />
+        <WithWebGLSupport
+          fallback={
+            <div className="relative bg-gradient-to-br from-[#0D1B2A] via-[#1B263B] to-[#415A77]" 
+                 style={{ height: '200px' }}>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-[#415A77] font-mono text-xs">
+                  ANIMATION SIMPLIFIED FOR COMPATIBILITY
+                </div>
+              </div>
+            </div>
+          }
+        >
+          <SimpleFishAnimation />
+        </WithWebGLSupport>
       </section>
 
       {/* Philosophy Section */}
@@ -127,13 +151,7 @@ export default function OperationalHomepage() {
 
             {/* NANDA-style System Architecture Visualization */}
             <div className="relative h-[400px] bg-[#1B263B]/20 border border-[#415A77]/20 overflow-hidden">
-              <Suspense fallback={
-                <div className="w-full h-full flex items-center justify-center">
-                  <div className="text-[#415A77] text-xs font-mono animate-pulse">LOADING ARCHITECTURE...</div>
-                </div>
-              }>
-                <SystemArchitecture />
-              </Suspense>
+              <LazySystemArchitecture />
             </div>
           </div>
         </div>

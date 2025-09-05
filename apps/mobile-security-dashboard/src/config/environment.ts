@@ -1,6 +1,7 @@
 // Environment Configuration Manager for Mobile Security Dashboard
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import { mobileSecretsManager, type SecretsConfig } from '../services/mobile-secrets-manager';
 
 export type Environment = 'development' | 'staging' | 'production';
 
@@ -101,6 +102,8 @@ export interface AppConfig {
 class EnvironmentConfig {
   private static instance: EnvironmentConfig;
   private config: AppConfig;
+  private secretsConfig: SecretsConfig | null = null;
+  private isInitialized = false;
 
   private constructor() {
     this.config = this.loadConfig();
@@ -111,6 +114,37 @@ class EnvironmentConfig {
       EnvironmentConfig.instance = new EnvironmentConfig();
     }
     return EnvironmentConfig.instance;
+  }
+
+  /**
+   * Initialize environment config with secrets manager
+   * Must be called early in app lifecycle
+   */
+  async initialize(): Promise<void> {
+    if (this.isInitialized) {
+      return;
+    }
+
+    try {
+      console.log('Initializing Environment Config with Secrets Manager...');
+      
+      // Initialize secrets manager
+      await mobileSecretsManager.initialize();
+      
+      // Load secrets
+      this.secretsConfig = await mobileSecretsManager.getAllSecrets();
+      
+      // Reload config with secrets
+      this.config = this.loadConfig();
+      
+      this.isInitialized = true;
+      console.log('Environment Config initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize Environment Config:', error);
+      // Continue with fallback config (without secrets)
+      console.warn('Continuing with fallback configuration (secrets unavailable)');
+      this.isInitialized = true;
+    }
   }
 
   private loadConfig(): AppConfig {
@@ -127,34 +161,34 @@ class EnvironmentConfig {
       clientId: this.getEnvVar('EXPO_PUBLIC_CLIENT_ID'),
       oauthRedirectUrl: this.getEnvVar('EXPO_PUBLIC_OAUTH_REDIRECT_URL'),
 
-      // Firebase
+      // Firebase (with secrets fallback)
       firebase: {
-        apiKey: this.getEnvVar('EXPO_PUBLIC_FIREBASE_API_KEY'),
+        apiKey: this.secretsConfig?.firebase?.apiKey || this.getEnvVar('EXPO_PUBLIC_FIREBASE_API_KEY'),
         authDomain: this.getEnvVar('EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN'),
         projectId: this.getEnvVar('EXPO_PUBLIC_FIREBASE_PROJECT_ID'),
         storageBucket: this.getEnvVar('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET'),
-        messagingSenderId: this.getEnvVar('EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'),
-        appId: this.getEnvVar('EXPO_PUBLIC_FIREBASE_APP_ID'),
+        messagingSenderId: this.secretsConfig?.firebase?.messagingSenderId || this.getEnvVar('EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'),
+        appId: this.secretsConfig?.firebase?.appId || this.getEnvVar('EXPO_PUBLIC_FIREBASE_APP_ID'),
       },
 
-      // Push Notifications
+      // Push Notifications (with secrets fallback)
       notifications: {
-        fcmServerKey: this.getEnvVar('EXPO_PUBLIC_FCM_SERVER_KEY'),
-        apnsKeyId: this.getEnvVar('EXPO_PUBLIC_APNS_KEY_ID'),
-        apnsTeamId: this.getEnvVar('EXPO_PUBLIC_APNS_TEAM_ID'),
+        fcmServerKey: this.secretsConfig?.notifications?.fcmServerKey || this.getEnvVar('EXPO_PUBLIC_FCM_SERVER_KEY'),
+        apnsKeyId: this.secretsConfig?.notifications?.apnsKeyId || this.getEnvVar('EXPO_PUBLIC_APNS_KEY_ID'),
+        apnsTeamId: this.secretsConfig?.notifications?.apnsTeamId || this.getEnvVar('EXPO_PUBLIC_APNS_TEAM_ID'),
       },
 
-      // Error Reporting
+      // Error Reporting (with secrets fallback)
       sentry: {
-        dsn: this.getEnvVar('EXPO_PUBLIC_SENTRY_DSN'),
+        dsn: this.secretsConfig?.analytics?.sentryDsn || this.getEnvVar('EXPO_PUBLIC_SENTRY_DSN'),
         org: this.getEnvVar('EXPO_PUBLIC_SENTRY_ORG'),
         project: this.getEnvVar('EXPO_PUBLIC_SENTRY_PROJECT'),
       },
 
-      // Analytics
+      // Analytics (with secrets fallback)
       analytics: {
         endpoint: this.getEnvVar('EXPO_PUBLIC_ANALYTICS_ENDPOINT'),
-        mixpanelToken: this.getEnvVar('EXPO_PUBLIC_MIXPANEL_TOKEN'),
+        mixpanelToken: this.secretsConfig?.analytics?.mixpanelToken || this.getEnvVar('EXPO_PUBLIC_MIXPANEL_TOKEN'),
       },
 
       // Feature Flags
@@ -342,6 +376,35 @@ class EnvironmentConfig {
   // Update configuration (for runtime feature flag updates)
   updateFeatureFlag(feature: keyof AppConfig['features'], enabled: boolean): void {
     this.config.features[feature] = enabled;
+  }
+
+  // Refresh secrets from AWS Secrets Manager
+  async refreshSecrets(): Promise<void> {
+    try {
+      console.log('Refreshing secrets...');
+      await mobileSecretsManager.forceRefresh();
+      this.secretsConfig = await mobileSecretsManager.getAllSecrets();
+      this.config = this.loadConfig();
+      console.log('Secrets refreshed successfully');
+    } catch (error) {
+      console.error('Failed to refresh secrets:', error);
+      throw error;
+    }
+  }
+
+  // Get secrets diagnostics
+  async getSecretsDiagnostics() {
+    return await mobileSecretsManager.getDiagnostics();
+  }
+
+  // Check if secrets are available
+  hasSecrets(): boolean {
+    return !!this.secretsConfig;
+  }
+
+  // Check if environment config is initialized
+  isConfigInitialized(): boolean {
+    return this.isInitialized;
   }
 }
 

@@ -45,7 +45,10 @@
     "build:perf": "NODE_ENV=production ANALYZE=true npm run build",
     "test:webgl": "node scripts/test-webgl-performance.js",
     "perf:monitor": "node scripts/performance-monitor.js",
-    "lighthouse": "npx lighthouse http://localhost:3000 --output=html --output-path=./lighthouse-report.html"
+    "lighthouse": "npx lighthouse http://localhost:3000 --output=html --output-path=./lighthouse-report.html",
+    "perf:optimize": "node scripts/performance-optimization.js",
+    "perf:analyze": "npm run analyze && npm run lighthouse",
+    "perf:monitor": "npm run perf:optimize && npm run perf:analyze"
   },
   "dependencies": {
     "@apollo/client": "^4.0.1",
@@ -92,6 +95,7 @@
     "tailwindcss": "3.4.1",
     "three": "^0.179.1",
     "uuid": "^11.1.0",
+    "web-vitals": "^4.2.4",
     "workbox-background-sync": "^7.0.0",
     "workbox-cacheable-response": "^7.0.0",
     "workbox-expiration": "^7.0.0",

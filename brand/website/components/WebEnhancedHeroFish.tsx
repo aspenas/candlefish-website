@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo, memo } from 'react'
 import { createHeroFish, type HeroFish } from '../src/heroFish'
 import { WebFishController } from '../src/heroFish/webEnhanced'
 import type { Vec2, Bounds } from '../src/heroFish/types'
@@ -28,7 +28,7 @@ interface WebEnhancedHeroFishProps {
   onPerformanceChange?: (metrics: any) => void
 }
 
-export default function WebEnhancedHeroFish({
+const WebEnhancedHeroFish = memo<WebEnhancedHeroFishProps>(function WebEnhancedHeroFish({
   className = '',
   enableMouse = true,
   enableKeyboard = true,
@@ -54,10 +54,10 @@ export default function WebEnhancedHeroFish({
   const [performanceMetrics, setPerformanceMetrics] = useState<any>(null)
   const [webState, setWebState] = useState<any>(null)
 
-  // Detect reduced motion preference
-  const prefersReducedMotion = useCallback(() => {
-    return typeof window !== 'undefined' && 
-           window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  // Detect reduced motion preference - memoized for performance
+  const prefersReducedMotion = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }, [])
 
   // Handle resize events
@@ -86,6 +86,49 @@ export default function WebEnhancedHeroFish({
     }
   }, [isVisible])
 
+  // Memoize fish configuration for performance
+  const fishConfig = useMemo(() => ({
+    enableBloom: enableWebGL && !prefersReducedMotion,
+    respectReducedMotion: true,
+    targetFPS: prefersReducedMotion ? 30 : 60,
+    enableAdaptiveQuality: true,
+    useOffscreenCanvas: true,
+    enableTelemetry: process.env.NODE_ENV === 'development',
+    pixelRatio: Math.min((typeof window !== 'undefined' ? window.devicePixelRatio : 1) || 1, 2),
+    backgroundColor: '#0D1B2A'
+  }), [enableWebGL, prefersReducedMotion]);
+
+  // Memoize controller configurations for performance
+  const mouseConfig = useMemo(() => ({
+    enableMouseFollow: enableMouse,
+    enableMouseDart: enableMouse,
+    mouseRadius: 100,
+    followStrength: 0.4,
+    cursorHideTimeout: 2000
+  }), [enableMouse]);
+
+  const keyboardConfig = useMemo(() => ({
+    enableArrowKeys: enableKeyboard,
+    enableSpaceDart: enableKeyboard,
+    enableFullscreenKey: enableFullscreen,
+    keyForceStrength: 60
+  }), [enableKeyboard, enableFullscreen]);
+
+  const scrollConfig = useMemo(() => ({
+    enableScrollAnimation: enableScroll,
+    scrollInfluenceStrength: 0.3,
+    enableParallax: true
+  }), [enableScroll]);
+
+  const webglConfig = useMemo(() => ({
+    enableWebGL,
+    shaderQuality: 'high' as const,
+    enableBloom: true,
+    enableGlow: true,
+    bloomIntensity: 1.3,
+    glowRadius: 35
+  }), [enableWebGL]);
+
   // Initialize fish animation
   const initializeFish = useCallback(async () => {
     if (!canvasRef.current || !containerRef.current || fishRef.current) return
@@ -93,7 +136,6 @@ export default function WebEnhancedHeroFish({
     try {
       setIsLoading(true)
       const rect = containerRef.current.getBoundingClientRect()
-      const reducedMotion = prefersReducedMotion()
       
       // Determine bounds
       const fishBounds = bounds || {
@@ -106,14 +148,7 @@ export default function WebEnhancedHeroFish({
       // Create fish with web-optimized settings
       const fish = await createHeroFish(canvasRef.current, {
         bounds: fishBounds,
-        enableBloom: enableWebGL && !reducedMotion,
-        respectReducedMotion: true,
-        targetFPS: reducedMotion ? 30 : 60,
-        enableAdaptiveQuality: true,
-        useOffscreenCanvas: true,
-        enableTelemetry: process.env.NODE_ENV === 'development',
-        pixelRatio: Math.min(window.devicePixelRatio || 1, 2), // Cap for performance
-        backgroundColor: '#0D1B2A'
+        ...fishConfig
       })
 
       fishRef.current = fish
@@ -122,32 +157,10 @@ export default function WebEnhancedHeroFish({
       const webController = new WebFishController(
         fish as any, // Type assertion for Fish interface
         fishBounds,
-        {
-          enableMouseFollow: enableMouse,
-          enableMouseDart: enableMouse,
-          mouseRadius: 100,
-          followStrength: 0.4,
-          cursorHideTimeout: 2000
-        },
-        {
-          enableArrowKeys: enableKeyboard,
-          enableSpaceDart: enableKeyboard,
-          enableFullscreenKey: enableFullscreen,
-          keyForceStrength: 60
-        },
-        {
-          enableScrollAnimation: enableScroll,
-          scrollInfluenceStrength: 0.3,
-          enableParallax: true
-        },
-        {
-          enableWebGL,
-          shaderQuality: 'high',
-          enableBloom: true,
-          enableGlow: true,
-          bloomIntensity: 1.3,
-          glowRadius: 35
-        }
+        mouseConfig,
+        keyboardConfig,
+        scrollConfig,
+        webglConfig
       )
 
       webControllerRef.current = webController
@@ -232,7 +245,7 @@ export default function WebEnhancedHeroFish({
         onInteraction('error', { error: error.message })
       }
     }
-  }, [bounds, enableMouse, enableKeyboard, enableScroll, enableWebGL, enableFullscreen, onInteraction, onPerformanceChange])
+  }, [bounds, fishConfig, mouseConfig, keyboardConfig, scrollConfig, webglConfig, onInteraction, onPerformanceChange])
 
   // Cleanup function
   const cleanup = useCallback(() => {
@@ -586,4 +599,6 @@ export default function WebEnhancedHeroFish({
       `}</style>
     </div>
   )
-}
+});
+
+export default WebEnhancedHeroFish;

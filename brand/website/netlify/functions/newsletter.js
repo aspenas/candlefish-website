@@ -26,8 +26,8 @@ const { Resend } = require('resend');
 const rateLimitMap = new Map();
 
 // Allowed origins for CORS
-const ALLOWED_ORIGINS = undefined
-  ? undefined.split(',')
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
   : ['https://candlefish.ai', 'https://www.candlefish.ai', 'https://test.candlefish.ai'];
 
 // Rate limiting function (more restrictive for newsletter to prevent spam)
@@ -221,10 +221,10 @@ Next Steps:
     // Send emails
     try {
       // Only try to send email if RESEND_API_KEY is configured
-      if ('re_2FVsRwCV_4TbXMBxbL9Dw5BQ5EqSuu1rZ' &&
-          're_2FVsRwCV_4TbXMBxbL9Dw5BQ5EqSuu1rZ' !== 're_placeholder_key_change_this') {
+      const apiKey = process.env.RESEND_API_KEY;
+      if (apiKey && apiKey !== 're_placeholder_key_change_this') {
 
-        const resend = new Resend(process.env.RESEND_API_KEY);
+        const resend = new Resend(apiKey);
 
         // Send welcome email to subscriber
         const welcomeEmailResult = await resend.emails.send({
@@ -244,21 +244,39 @@ Next Steps:
           replyTo: normalizedEmail,
         });
 
-        // Optionally add to Resend audience (requires audience ID from environment)
-        if (undefined) {
+        // Add to Resend audience with double opt-in
+        if (process.env.RESEND_AUDIENCE_ID) {
           try {
-            await resend.audiences.add({
-              audienceId: undefined,
+            // Check if double opt-in was requested
+            const doubleOptIn = data.doubleOptIn === true;
+            
+            // Create contact in audience
+            const { data: contactData, error: contactError } = await resend.contacts.create({
+              audienceId: process.env.RESEND_AUDIENCE_ID,
               email: normalizedEmail,
-              firstName: firstName || null,
-              tags: [source, ...interests].filter(Boolean)
+              firstName: firstName || undefined,
+              unsubscribed: false,
             });
+            
+            if (contactError) {
+              if (contactError.message && contactError.message.includes('already exists')) {
+                console.log('Contact already exists in audience');
+              } else {
+                throw contactError;
+              }
+            } else {
+              console.log('Added contact to audience:', normalizedEmail);
+              
+              // Note: Double opt-in must be configured in Resend dashboard
+              // The confirmation email will be sent automatically by Resend
+              // if double opt-in is enabled for the audience
+            }
           } catch (audienceError) {
             // Log but don't fail the request if audience addition fails
             console.log('Audience addition failed:', {
               timestamp: new Date().toISOString(),
               email: normalizedEmail,
-              error: 'audience_addition_failed'
+              error: audienceError.message || 'audience_addition_failed'
             });
           }
         }
@@ -276,7 +294,7 @@ Next Steps:
 
       } else {
         // Log request without sending email (for development)
-        if (undefined !== 'production') {
+        if (process.env.NODE_ENV !== 'production') {
           console.log('Email service not configured - request logged only');
           console.log('Newsletter subscription:', {
             timestamp: new Date().toISOString(),
