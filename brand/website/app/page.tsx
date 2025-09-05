@@ -11,30 +11,7 @@ import dynamic from 'next/dynamic'
 
 // Import animation components
 import CandleFish from '../web/aquarium/react/CandleFish'
-const HeroFish = dynamic(() => import('../components/HeroFish'), {
-  ssr: false,
-  loading: () => (
-    <div 
-      style={{ 
-        height: 'clamp(180px, 25vh, 320px)', 
-        background: 'transparent',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }} 
-    >
-      <div style={{ 
-        width: '60px', 
-        height: '60px', 
-        opacity: 0.3,
-        backgroundImage: 'url("/img/cf-fish-fallback.svg")',
-        backgroundSize: 'contain',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center'
-      }} />
-    </div>
-  )
-})
+import SimpleFishAnimation from '../components/SimpleFishAnimation'
 
 export default function OperationalHomepage() {
   return (
@@ -89,7 +66,7 @@ export default function OperationalHomepage() {
 
       {/* Bioluminescent Candlefish Animation */}
       <section className="relative" data-widget="operational-matrix">
-        <HeroFish />
+        <SimpleFishAnimation />
       </section>
 
       {/* Philosophy Section */}
