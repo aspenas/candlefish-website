@@ -27,7 +27,12 @@ export const metadata: Metadata = {
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
   themeColor: '#0D1B2A',
+  // iOS-specific viewport optimizations
+  minimalUI: true,
 }
 
 export default function RootLayout({
@@ -39,8 +44,16 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="stylesheet" href="/hero-fish.css" />
+        {/* iOS-specific meta tags for better compatibility */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        {/* Preconnect to improve performance */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body>
+      <body className="ios-optimized">
         <SkipNavigation />
         <Navigation />
         <main id="main-content" className="relative" role="main">

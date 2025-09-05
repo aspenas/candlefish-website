@@ -1,0 +1,42 @@
+CANDLEFISH ANIMATION DEPLOYMENT VERIFICATION REPORT
+==================================================
+Date: Thu Sep  4 21:10:45 MDT 2025
+Environment: production
+Domain: candlefish.ai
+Success Rate: 37% (6/16 checks passed)
+Status: ⚠️ ISSUES DETECTED
+
+VERIFICATION RESULTS:
+✅ Main Domain Connectivity: https://candlefish.ai responds successfully
+✅ Health Endpoint: Health check returns positive status
+❌ Animation Script: candlefish.js not accessible (HTTP 404)
+❌ Animation Styles: candlefish.css not accessible (HTTP 404)
+✅ Fallback Animation: Static SVG fallback available
+❌ API Gateway: Could not find API Gateway for environment production
+❌ DynamoDB Table: production-candlefish-animation-analytics: Table not found or not accessible
+❌ DynamoDB Table: production-candlefish-memory: Table not found or not accessible
+❌ DynamoDB Table: production-candlefish-ab-testing: Table not found or not accessible
+❌ Lambda Function: production-candlefish-analytics-processor: Function not found
+❌ Lambda Function: production-candlefish-ab-config: Function not found
+❌ CloudFront Distribution: No CloudFront distribution found for candlefish.ai
+❌ SSL Certificate: Certificate expires in -20336 days
+⚠️ Animation Performance Test: Performance test could not complete
+✅ CloudWatch Alarms: No active alarms
+⚠️ SNS Alert Topic: No SNS alert topic found
+
+PERFORMANCE METRICS:
+
+
+SUMMARY:
+- Total Checks: 16
+- Passed: 6
+- Failed: 10
+- Success Rate: 37%
+
+RECOMMENDATIONS:
+⚠️ Address failed checks before promoting to full traffic
+
+NEXT STEPS:
+1. Monitor application metrics for next 15-30 minutes
+2. Review CloudWatch logs for any errors
+3. Fix issues and re-verify

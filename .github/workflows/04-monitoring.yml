@@ -1,0 +1,22 @@
+name: Monitoring & Observability
+# Health checks and monitoring
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'  # Every 15 minutes
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    name: Health Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check service health
+        run: |
+          services=(
+            "https://candlefish.ai"
+            "https://analytics.candlefish.ai/health"
+          )
+          for service in "${services[@]}"; do
+            curl -f "$service" || echo "Warning: $service is down"
+          done

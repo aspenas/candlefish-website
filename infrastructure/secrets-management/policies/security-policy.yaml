@@ -1,0 +1,392 @@
+# Candlefish AI Secrets Management Security Policy
+# Operational Design Atelier - Security as Aesthetic
+
+apiVersion: security.candlefish.ai/v1
+kind: SecurityPolicy
+metadata:
+  name: secrets-management-policy
+  namespace: candlefish-security
+  labels:
+    philosophy: operational-design-atelier
+    criticality: maximum
+spec:
+  # Zero-Trust Architecture
+  trust:
+    default: deny
+    principles:
+      - never_trust_always_verify
+      - assume_breach
+      - least_privilege
+      - defense_in_depth
+    
+  # Authentication Requirements
+  authentication:
+    methods:
+      - type: oidc
+        provider: cognito
+        required: true
+      - type: mfa
+        provider: duo
+        required_for:
+          - production_access
+          - secret_modification
+          - policy_changes
+      - type: hardware_token
+        provider: yubikey
+        required_for:
+          - break_glass_access
+          - root_operations
+    
+    session:
+      max_duration: 8h
+      idle_timeout: 30m
+      require_reauthentication_for:
+        - secret_deletion
+        - policy_modification
+        - audit_access
+  
+  # Authorization Matrix
+  authorization:
+    rbac:
+      roles:
+        - name: secrets-admin
+          permissions:
+            - secrets:*
+            - policies:*
+            - audit:read
+          conditions:
+            - mfa_verified: true
+            - ip_allowlist: ["10.0.0.0/8"]
+            
+        - name: developer
+          permissions:
+            - secrets:read
+            - secrets:list
+            - secrets:create:dev/*
+          conditions:
+            - environment: ["development", "staging"]
+            - time_window: "business_hours"
+            
+        - name: application
+          permissions:
+            - secrets:read:app/${service_name}/*
+          conditions:
+            - service_account: true
+            - mtls_verified: true
+            
+        - name: auditor
+          permissions:
+            - audit:read
+            - compliance:generate_report
+          conditions:
+            - read_only: true
+            
+    abac:
+      attributes:
+        - name: classification
+          values: [public, internal, confidential, restricted]
+        - name: owner
+          type: user_or_group
+        - name: expiry
+          type: timestamp
+        - name: purpose
+          values: [api, database, certificate, encryption]
+      
+      policies:
+        - name: data_classification_enforcement
+          rule: |
+            if resource.classification == "restricted" {
+              require user.clearance_level >= "secret"
+              require user.mfa_verified == true
+              require connection.encrypted == true
+            }
+            
+  # Encryption Standards
+  encryption:
+    at_rest:
+      algorithm: AES-256-GCM
+      key_derivation: PBKDF2
+      key_rotation_days: 90
+      providers:
+        - aws_kms
+        - hashicorp_vault
+        - cloudhsm
+        
+    in_transit:
+      minimum_tls_version: "1.3"
+      cipher_suites:
+        - TLS_AES_256_GCM_SHA384
+        - TLS_CHACHA20_POLY1305_SHA256
+      certificate_validation: required
+      mtls: 
+        required_for: ["production", "restricted_data"]
+        
+    in_use:
+      methods:
+        - secure_enclaves
+        - homomorphic_encryption
+        - confidential_computing
+      required_for: ["payment_data", "pii", "phi"]
+  
+  # Secret Lifecycle Management
+  lifecycle:
+    creation:
+      requirements:
+        - approval_required: true
+        - approvers_min: 2
+        - justification: required
+        - metadata:
+            - owner
+            - purpose
+            - classification
+            - expiry
+            
+    rotation:
+      automatic:
+        enabled: true
+        strategies:
+          api_keys:
+            frequency: 90d
+            method: blue_green
+          passwords:
+            frequency: 30d
+            method: rolling
+          certificates:
+            frequency: 30d
+            method: before_expiry
+          database_credentials:
+            frequency: 7d
+            method: dynamic_generation
+            
+      manual:
+        triggers:
+          - security_incident
+          - employee_termination
+          - vendor_change
+          - compliance_requirement
+          
+    deprecation:
+      grace_period: 7d
+      notifications:
+        - 7d_before
+        - 3d_before
+        - 1d_before
+        - on_deprecation
+      require_migration_plan: true
+      
+    destruction:
+      requirements:
+        - approval_required: true
+        - approvers_min: 3
+        - audit_log: immutable
+        - certificate_of_destruction: true
+      methods:
+        - cryptographic_shredding
+        - secure_deletion
+        - key_destruction
+  
+  # Audit and Compliance
+  audit:
+    logging:
+      enabled: true
+      verbosity: detailed
+      destinations:
+        - cloudwatch
+        - s3_bucket
+        - splunk
+      retention:
+        hot_storage: 90d
+        cold_storage: 7y
+      immutability: true
+      
+    events_captured:
+      - secret_access
+      - secret_modification
+      - policy_change
+      - authentication_attempt
+      - authorization_decision
+      - rotation_event
+      - destruction_event
+      
+    compliance:
+      frameworks:
+        - SOC2_Type_II
+        - ISO_27001
+        - GDPR
+        - HIPAA
+        - PCI_DSS
+      reporting:
+        frequency: monthly
+        format: [json, pdf, csv]
+        recipients: ["compliance@candlefish.ai"]
+        
+  # Monitoring and Alerting
+  monitoring:
+    metrics:
+      - name: secret_age
+        threshold: 90d
+        severity: warning
+      - name: failed_rotation
+        threshold: 3
+        severity: critical
+      - name: unauthorized_access
+        threshold: 5
+        severity: critical
+      - name: vault_seal_status
+        expected: unsealed
+        severity: critical
+      - name: certificate_expiry
+        threshold: 30d
+        severity: warning
+        
+    alerts:
+      channels:
+        - email:
+            to: ["security@candlefish.ai"]
+            priority: all
+        - slack:
+            webhook: "${SLACK_WEBHOOK}"
+            priority: [warning, critical]
+        - pagerduty:
+            integration_key: "${PAGERDUTY_KEY}"
+            priority: critical
+            
+    sla:
+      secret_retrieval_latency: 100ms
+      rotation_success_rate: 99.9%
+      availability: 99.99%
+      
+  # Break-Glass Procedures
+  break_glass:
+    activation:
+      requirements:
+        - dual_control: true
+        - video_recording: true
+        - executive_approval: true
+      authentication:
+        - hardware_token: required
+        - biometric: optional
+        - verbal_passphrase: required
+        
+    access:
+      duration: 4h
+      permissions: ["root"]
+      monitoring: enhanced
+      recording: all_actions
+      
+    post_access:
+      - immediate_notification: [ciso, cto, security_team]
+      - comprehensive_audit: true
+      - mandatory_rotation: all_accessed_secrets
+      - security_review: required
+      - report_generation: automatic
+      
+  # Network Security
+  network:
+    segmentation:
+      - vault_network: 10.100.0.0/16
+      - application_network: 10.200.0.0/16
+      - management_network: 10.10.0.0/16
+      
+    firewall_rules:
+      - name: vault_api
+        from: application_network
+        to: vault_network:8200
+        protocol: https
+      - name: vault_cluster
+        from: vault_network
+        to: vault_network:8201
+        protocol: tcp
+        
+    private_endpoints:
+      - aws_secrets_manager
+      - aws_kms
+      - github_api
+      
+  # Incident Response
+  incident_response:
+    playbooks:
+      - name: secret_exposure
+        steps:
+          1: identify_affected_secrets
+          2: immediate_rotation
+          3: audit_access_logs
+          4: notify_stakeholders
+          5: forensic_analysis
+          6: remediation
+          7: post_mortem
+          
+      - name: unauthorized_access
+        steps:
+          1: isolate_affected_systems
+          2: revoke_access
+          3: forensic_investigation
+          4: legal_notification
+          5: recovery
+          6: lessons_learned
+          
+    team:
+      - role: incident_commander
+        contact: security-oncall
+      - role: technical_lead
+        contact: platform-oncall
+      - role: communications
+        contact: security-comms
+        
+  # Developer Experience
+  developer_experience:
+    sdks:
+      - language: typescript
+        features: [type_safety, auto_refresh, mock_mode]
+      - language: python
+        features: [async_support, context_managers, testing_utils]
+      - language: go
+        features: [connection_pooling, retry_logic, observability]
+        
+    cli_tools:
+      - candlefish-secrets
+      - vault
+      - sealed-secrets
+      
+    documentation:
+      - getting_started_guide
+      - api_reference
+      - best_practices
+      - troubleshooting
+      
+    support:
+      slack_channel: "#secrets-help"
+      office_hours: "Tuesday 2-3pm EST"
+      wiki: "https://wiki.candlefish.ai/secrets"
+      
+  # Quantum Readiness
+  quantum_readiness:
+    timeline: 2025-2030
+    preparations:
+      - algorithm_inventory
+      - risk_assessment
+      - migration_planning
+    algorithms:
+      current:
+        - RSA-2048
+        - ECDSA-P256
+        - AES-256
+      future:
+        - CRYSTALS-Kyber
+        - CRYSTALS-Dilithium
+        - SPHINCS+
+        
+# Enforcement
+enforcement:
+  mode: enforcing  # enforcing | permissive | disabled
+  exceptions:
+    - name: legacy_system_integration
+      reason: "Legacy system requires TLS 1.2"
+      expiry: "2025-12-31"
+      approver: "security-team"
+      
+# Versioning
+version: 1.0.0
+last_updated: 2025-09-05
+next_review: 2025-10-05
+owner: platform-security-team

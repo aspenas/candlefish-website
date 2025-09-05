@@ -5,6 +5,7 @@ import { workshopNotes } from '@/content/workshop-notes'
 import { NoteViewer } from '@/components/notes/note-viewer'
 import { ShareModal } from '@/components/workshop/ShareModal'
 import { BrowserOptimizations, CriticalCSS, AccessibilityEnhancements } from '@/components/workshop/BrowserOptimizations'
+import { iOSCompatibility } from '@/components/mobile/iOSCompatibility'
 import '../../styles/workshop-notes-unified.css'
 
 interface LiveMetrics {
@@ -55,34 +56,72 @@ export default function WorkshopNotes() {
       { threshold: 0.1, rootMargin: '50px' }
     )
 
-    // Set workshop navigation height CSS custom property
+    // Enhanced navigation height calculation for iPhone compatibility
     const updateWorkshopNavHeight = () => {
       const workshopNav = document.querySelector('.workshop-nav') as HTMLElement
       const mainNav = document.querySelector('#navigation') as HTMLElement
-      if (workshopNav) {
-        const workshopHeight = workshopNav.offsetHeight
-        document.documentElement.style.setProperty('--workshop-nav-height', `${workshopHeight}px`)
-      }
-      if (mainNav) {
-        const mainHeight = mainNav.offsetHeight
-        document.documentElement.style.setProperty('--main-nav-height', `${mainHeight}px`)
-      }
-      // Update total height
-      const totalHeight = (workshopNav?.offsetHeight || 60) + (mainNav?.offsetHeight || 72)
+      
+      // Use fallback values if elements not ready
+      const workshopHeight = workshopNav?.offsetHeight || (window.innerWidth <= 480 ? 48 : window.innerWidth <= 768 ? 56 : 60)
+      const mainHeight = mainNav?.offsetHeight || (window.innerWidth <= 480 ? 58 : window.innerWidth <= 768 ? 64 : 72)
+      
+      document.documentElement.style.setProperty('--workshop-nav-height', `${workshopHeight}px`)
+      document.documentElement.style.setProperty('--main-nav-height', `${mainHeight}px`)
+      
+      // Calculate total height with iOS safe area consideration
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+      const safeAreaTop = isIOS ? Math.max(20, parseInt(getComputedStyle(document.documentElement).getPropertyValue('env(safe-area-inset-top)').replace('px', '')) || 0) : 0
+      const totalHeight = workshopHeight + mainHeight + safeAreaTop
+      
       document.documentElement.style.setProperty('--total-nav-height', `${totalHeight}px`)
     }
     
-    // Update on mount with multiple attempts to ensure nav is rendered
-    updateWorkshopNavHeight()
-    setTimeout(updateWorkshopNavHeight, 50)
-    setTimeout(updateWorkshopNavHeight, 150)
-    window.addEventListener('resize', updateWorkshopNavHeight)
+    // Robust navigation height update with iOS-specific timing
+    const scheduleNavUpdate = () => {
+      updateWorkshopNavHeight()
+      // iOS often needs additional delays for proper layout calculation
+      if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+        setTimeout(updateWorkshopNavHeight, 100)
+        setTimeout(updateWorkshopNavHeight, 300)
+      } else {
+        setTimeout(updateWorkshopNavHeight, 50)
+        setTimeout(updateWorkshopNavHeight, 150)
+      }
+    }
+    
+    scheduleNavUpdate()
+    
+    // Enhanced event listeners for iPhone
+    const handleResize = () => {
+      clearTimeout((window as any).navResizeTimeout)
+      ;(window as any).navResizeTimeout = setTimeout(updateWorkshopNavHeight, 100)
+    }
+    
+    const handleOrientationChange = () => {
+      // iOS orientation change needs special handling
+      setTimeout(updateWorkshopNavHeight, 200)
+    }
+    
+    window.addEventListener('resize', handleResize, { passive: true })
+    window.addEventListener('orientationchange', handleOrientationChange, { passive: true })
+    
+    // Also listen for DOM changes in case navigation renders late
+    const observer = new MutationObserver(() => {
+      if (document.querySelector('.workshop-nav') && document.querySelector('#navigation')) {
+        updateWorkshopNavHeight()
+      }
+    })
+    
+    observer.observe(document.body, { childList: true, subtree: true })
 
     return () => {
       if (observerRef.current) {
         observerRef.current.disconnect()
       }
-      window.removeEventListener('resize', updateWorkshopNavHeight)
+      observer.disconnect()
+      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('orientationchange', handleOrientationChange)
+      clearTimeout((window as any).navResizeTimeout)
     }
   }, [])
 
@@ -115,6 +154,7 @@ export default function WorkshopNotes() {
       <BrowserOptimizations />
       <CriticalCSS />
       <AccessibilityEnhancements />
+      <iOSCompatibility />
       
       {/* Operational Navigation */}
       <nav className="workshop-nav">

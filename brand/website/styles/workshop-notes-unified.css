@@ -23,6 +23,18 @@
   overflow-x: hidden;
   /* Prevent horizontal scroll issues */
   box-sizing: border-box;
+  /* iOS-specific optimizations */
+  -webkit-overflow-scrolling: touch;
+  overflow-scrolling: touch;
+}
+
+/* iOS-specific container fixes */
+@supports (-webkit-appearance: none) {
+  .workshop-container {
+    /* iOS viewport fix */
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
 }
 
 /* Optimized viewport scaling for mobile */
@@ -37,6 +49,32 @@
     overflow-wrap: break-word;
     word-wrap: break-word;
     hyphens: auto;
+  }
+  
+  /* Touch optimization for mobile */
+  .workshop-card,
+  .workshop-button,
+  button,
+  a,
+  [role="button"],
+  input[type="submit"],
+  input[type="button"] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(63, 211, 198, 0.2);
+    /* Minimum touch target size */
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Prevent text selection on UI elements */
+  .workshop-nav,
+  .workshop-status,
+  .workshop-metric,
+  .workshop-button {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
   }
 }
 
@@ -53,6 +91,39 @@
     /* Safari backdrop-filter fix */
     -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
+  }
+  
+  /* iOS Safari specific fixes */
+  input,
+  textarea,
+  select {
+    /* Prevent iOS zoom on input focus */
+    font-size: 16px !important;
+    /* Remove iOS default styling */
+    -webkit-appearance: none;
+    -webkit-border-radius: 0;
+    border-radius: 8px;
+  }
+  
+  /* Fix iOS scroll bounce */
+  body {
+    -webkit-overflow-scrolling: touch;
+    overflow-scrolling: touch;
+  }
+  
+  /* iOS safe area support */
+  @supports (padding: max(0px)) {
+    .workshop-nav {
+      padding-left: max(16px, env(safe-area-inset-left));
+      padding-right: max(16px, env(safe-area-inset-right));
+      padding-top: max(8px, env(safe-area-inset-top));
+    }
+    
+    .workshop-grid {
+      padding-left: max(24px, env(safe-area-inset-left) + 24px);
+      padding-right: max(24px, env(safe-area-inset-right) + 24px);
+      padding-bottom: max(32px, env(safe-area-inset-bottom) + 32px);
+    }
   }
 }
 
@@ -201,6 +272,15 @@
     /* Fixed backgrounds cause performance issues on mobile */
     background-attachment: scroll;
   }
+  
+  /* iOS-specific background optimizations */
+  @supports (-webkit-appearance: none) {
+    .workshop-background {
+      /* Better iOS performance */
+      will-change: auto;
+      transform: translateZ(0);
+    }
+  }
 }
 
 /* CARD SYSTEM - Glass morphism optimized */
@@ -214,6 +294,20 @@
   transform: translateZ(0);
   will-change: auto;
   transition: all var(--workshop-duration-normal) var(--workshop-easing);
+  /* Touch optimization */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* iOS-specific card optimizations */
+@supports (-webkit-appearance: none) {
+  .workshop-card {
+    /* Reduce backdrop-filter complexity on iOS for better performance */
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    /* Better iOS rendering */
+    -webkit-transform: translateZ(0);
+  }
 }
 
 .workshop-card:hover {
@@ -241,6 +335,22 @@
   transition: all var(--workshop-duration-normal) var(--workshop-easing);
   /* Crisp button rendering */
   transform: translateZ(0);
+  /* Touch optimization */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(63, 211, 198, 0.2);
+  /* Ensure minimum touch target */
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* iOS button optimizations */
+@supports (-webkit-appearance: none) {
+  .workshop-button {
+    -webkit-appearance: none;
+    -webkit-border-radius: 4px;
+    /* Better iOS focus handling */
+    -webkit-tap-highlight-color: rgba(63, 211, 198, 0.2);
+  }
 }
 
 .workshop-button:hover {
@@ -404,6 +514,15 @@
   /* Ensure navigation title wraps properly */
   .workshop-nav-content {
     padding: var(--workshop-space-1) var(--workshop-space-3);
+  }
+  
+  /* iPhone SE and similar small screens */
+  @supports (-webkit-appearance: none) {
+    .workshop-grid {
+      /* Account for iOS safe areas on small screens */
+      padding-top: calc(var(--total-nav-height) + max(8px, env(safe-area-inset-top)) + var(--workshop-space-2));
+      padding-bottom: max(16px, env(safe-area-inset-bottom) + 16px);
+    }
   }
 }
 

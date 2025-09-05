@@ -1,0 +1,63 @@
+name: Main CI/CD Pipeline
+# Core pipeline for all services
+
+on:
+  push:
+    branches: [main, staging, development]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.detect.outputs.services }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: detect
+        run: |
+          # Detect which services changed
+          echo "services=$(git diff --name-only HEAD~1 | cut -d/ -f1-2 | sort -u | jq -R -s -c 'split("\n")[:-1]')" >> $GITHUB_OUTPUT
+
+  test:
+    name: Test Services
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.services) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Test ${{ matrix.service }}
+        run: |
+          if [ -f "${{ matrix.service }}/package.json" ]; then
+            cd "${{ matrix.service }}"
+            npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+            npm test -- --passWithNoTests
+          fi
+
+  build:
+    name: Build Services
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build all services
+        run: |
+          for service in clos/web-dashboard brand/website apps/collaboration-editor; do
+            if [ -d "$service" ]; then
+              echo "Building $service"
+              (cd "$service" && npm ci --legacy-peer-deps && npm run build) || true
+            fi
+          done

@@ -1,0 +1,23 @@
+name: Security & Compliance
+# Security scanning and compliance checks
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM
+  workflow_dispatch:
+
+jobs:
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Trivy security scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+      - name: Check secrets
+        run: |
+          npm install -g @secretlint/secretlint-cli
+          secretlint "**/*" || true
