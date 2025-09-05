@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState, Suspense, lazy } from 'react'
+import React, { Suspense, lazy } from 'react'
 import Link from 'next/link'
 import HeaderText from '../components/HeaderText'
 import SystemActivity from '../components/SystemActivity'
@@ -19,13 +19,6 @@ const HeroFish = dynamic(() => import('../components/HeroFish'), {
 })
 
 export default function OperationalHomepage() {
-  // Force rebuild after netlify.toml configuration fix
-  const [isClient, setIsClient] = useState(false)
-
-  useEffect(() => {
-    setIsClient(true)
-  }, [])
-
   return (
     <main className="relative">
       {/* System Activity Bar */}
@@ -78,7 +71,7 @@ export default function OperationalHomepage() {
 
       {/* Bioluminescent Candlefish Animation */}
       <section className="relative" data-widget="operational-matrix">
-        {isClient && <HeroFish />}
+        <HeroFish />
       </section>
 
       {/* Philosophy Section */}
@@ -139,15 +132,13 @@ export default function OperationalHomepage() {
 
             {/* NANDA-style System Architecture Visualization */}
             <div className="relative h-[400px] bg-[#1B263B]/20 border border-[#415A77]/20 overflow-hidden">
-              {isClient && (
-                <Suspense fallback={
-                  <div className="w-full h-full flex items-center justify-center">
-                    <div className="text-[#415A77] text-xs font-mono animate-pulse">LOADING ARCHITECTURE...</div>
-                  </div>
-                }>
-                  <SystemArchitecture />
-                </Suspense>
-              )}
+              <Suspense fallback={
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="text-[#415A77] text-xs font-mono animate-pulse">LOADING ARCHITECTURE...</div>
+                </div>
+              }>
+                <SystemArchitecture />
+              </Suspense>
             </div>
           </div>
         </div>
