@@ -15,7 +15,7 @@ import SimpleFishAnimation from '../components/SimpleFishAnimation'
 
 export default function OperationalHomepage() {
   return (
-    <main className="relative">
+    <div className="relative">
       {/* System Activity Bar */}
       <SystemActivity />
 
@@ -198,6 +198,6 @@ export default function OperationalHomepage() {
           </div>
         </div>
       </section>
-    </main>
+    </div>
   )
 }
