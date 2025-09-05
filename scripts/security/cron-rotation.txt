@@ -1,0 +1,9 @@
+# Add this line to your crontab for monthly secret rotation
+# Run on the 1st of every month at 3 AM
+0 3 1 * * AWS_PROFILE=patrick-smith /usr/bin/python3 /Users/patricksmith/candlefish-ai/scripts/security/rotate-secrets.py --all >> /Users/patricksmith/candlefish-ai/logs/secret-rotation.log 2>&1
+
+# To install:
+# 1. Copy existing crontab: crontab -l > mycron
+# 2. Add the above line to mycron file
+# 3. Install new crontab: crontab mycron
+# 4. Verify: crontab -l
