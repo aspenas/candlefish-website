@@ -203,15 +203,16 @@ Submitted: ${new Date().toISOString()}
     // Send email notification to hello@candlefish.ai
     try {
       // Only try to send email if RESEND_API_KEY is configured
-      if ('re_2FVsRwCV_4TbXMBxbL9Dw5BQ5EqSuu1rZ' &&
-          're_2FVsRwCV_4TbXMBxbL9Dw5BQ5EqSuu1rZ' !== 're_placeholder_key_change_this') {
+      const apiKey = process.env.RESEND_API_KEY;
+      if (apiKey &&
+          apiKey !== 're_placeholder_key_change_this') {
 
         // Don't log API key information in production
-        if ('production' !== 'production') {
+        if (process.env.NODE_ENV !== 'production') {
           console.log('Attempting to send email with Resend API...');
         }
 
-        const resend = new Resend('re_2FVsRwCV_4TbXMBxbL9Dw5BQ5EqSuu1rZ');
+        const resend = new Resend(apiKey);
 
         const emailResult = await resend.emails.send({
           from: 'Candlefish <hello@candlefish.ai>',

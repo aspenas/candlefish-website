@@ -205,10 +205,11 @@ Reference Number: ${sessionId}
     // Send emails
     try {
       // Only try to send email if RESEND_API_KEY is configured
-      if ('re_2FVsRwCV_4TbXMBxbL9Dw5BQ5EqSuu1rZ' &&
-          're_2FVsRwCV_4TbXMBxbL9Dw5BQ5EqSuu1rZ' !== 're_placeholder_key_change_this') {
+      const apiKey = process.env.RESEND_API_KEY;
+      if (apiKey &&
+          apiKey !== 're_placeholder_key_change_this') {
 
-        const resend = new Resend('re_2FVsRwCV_4TbXMBxbL9Dw5BQ5EqSuu1rZ');
+        const resend = new Resend(apiKey);
 
         // Send admin notification
         const adminEmailResult = await resend.emails.send({

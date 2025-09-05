@@ -224,7 +224,7 @@ Next Steps:
       if ('re_2FVsRwCV_4TbXMBxbL9Dw5BQ5EqSuu1rZ' &&
           're_2FVsRwCV_4TbXMBxbL9Dw5BQ5EqSuu1rZ' !== 're_placeholder_key_change_this') {
 
-        const resend = new Resend('re_2FVsRwCV_4TbXMBxbL9Dw5BQ5EqSuu1rZ');
+        const resend = new Resend(process.env.RESEND_API_KEY);
 
         // Send welcome email to subscriber
         const welcomeEmailResult = await resend.emails.send({

@@ -350,10 +350,11 @@ Generated: ${new Date().toISOString()}
     // Send results via email if requested
     if (businessData.requestResults && businessData.contactEmail && businessData.contactName) {
       try {
-        if ('re_2FVsRwCV_4TbXMBxbL9Dw5BQ5EqSuu1rZ' &&
-            're_2FVsRwCV_4TbXMBxbL9Dw5BQ5EqSuu1rZ' !== 're_placeholder_key_change_this') {
+        const apiKey = process.env.RESEND_API_KEY;
+        if (apiKey &&
+            apiKey !== 're_placeholder_key_change_this') {
 
-          const resend = new Resend('re_2FVsRwCV_4TbXMBxbL9Dw5BQ5EqSuu1rZ');
+          const resend = new Resend(apiKey);
 
           // Send analysis results to user
           const userEmailResult = await resend.emails.send({
