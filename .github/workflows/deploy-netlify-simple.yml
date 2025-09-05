@@ -56,8 +56,10 @@ jobs:
         working-directory: brand/website
         env:
           NODE_ENV: production
+          SKIP_MOCK_REFRESH: true
         run: |
-          npm run build
+          # Build static export for Netlify
+          npm run export
           
       - name: 📊 Check build output
         working-directory: brand/website

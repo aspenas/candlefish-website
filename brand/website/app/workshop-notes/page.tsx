@@ -1,11 +1,13 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { workshopNotes } from '@/content/workshop-notes'
 import { NoteViewer } from '@/components/notes/note-viewer'
 import { ShareModal } from '@/components/workshop/ShareModal'
 import { BrowserOptimizations, CriticalCSS, AccessibilityEnhancements } from '@/components/workshop/BrowserOptimizations'
-import { iOSCompatibility } from '@/components/mobile/iOSCompatibility'
+import { iOSCompatibility, useIOSDevice } from '@/components/mobile/iOSCompatibility'
+import { useTouchOptimization } from '@/hooks/useTouchOptimization'
+import { MobilePerformanceOptimizer } from '@/utils/mobilePerformance'
 import '../../styles/workshop-notes-unified.css'
 
 interface LiveMetrics {
@@ -31,6 +33,16 @@ export default function WorkshopNotes() {
     engagementLevel: 'high'
   })
   const observerRef = useRef<IntersectionObserver | null>(null)
+  const performanceOptimizerRef = useRef<MobilePerformanceOptimizer | null>(null)
+  
+  // Enhanced device detection and touch optimization
+  const iosDevice = useIOSDevice()
+  const { createTouchHandler, triggerHapticFeedback } = useTouchOptimization({
+    preventScrollBounce: true,
+    optimizeForIOS: iosDevice.isIOS,
+    enableHapticFeedback: iosDevice.isIOS,
+    minimumTouchTarget: 44
+  })
 
   // Handle URL-based note selection
   useEffect(() => {
@@ -43,6 +55,33 @@ export default function WorkshopNotes() {
     }
   }, [])
 
+  // Initialize mobile performance optimizer
+  useEffect(() => {
+    if (typeof window !== 'undefined' && iosDevice.isIOS) {
+      performanceOptimizerRef.current = new MobilePerformanceOptimizer({
+        maxMemoryUsage: iosDevice.tier === 'low' ? 30 : iosDevice.tier === 'mid' ? 50 : 80,
+        targetFPS: iosDevice.tier === 'low' ? 30 : 60,
+        enableGPUOptimizations: true,
+        enableMemoryMonitoring: true,
+        adaptiveQuality: true
+      })
+      
+      // Listen for performance events
+      const handlePerformanceEvent = (e: CustomEvent) => {
+        if (e.detail.type === 'quality-reduced') {
+          console.log('Workshop notes quality adjusted:', e.detail.data)
+        }
+      }
+      
+      window.addEventListener('mobile-performance', handlePerformanceEvent)
+      
+      return () => {
+        window.removeEventListener('mobile-performance', handlePerformanceEvent)
+        performanceOptimizerRef.current?.cleanup()
+      }
+    }
+  }, [iosDevice.isIOS, iosDevice.tier])
+  
   // Set up intersection observer for lazy loading and workshop nav height
   useEffect(() => {
     observerRef.current = new IntersectionObserver(
@@ -50,10 +89,17 @@ export default function WorkshopNotes() {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             entry.target.classList.add('workshop-in-view')
+            // Reduce observer overhead on low-tier devices
+            if (iosDevice.tier === 'low') {
+              observerRef.current?.unobserve(entry.target)
+            }
           }
         })
       },
-      { threshold: 0.1, rootMargin: '50px' }
+      { 
+        threshold: iosDevice.tier === 'low' ? 0.01 : 0.1, 
+        rootMargin: iosDevice.tier === 'low' ? '100px' : '50px' 
+      }
     )
 
     // Enhanced navigation height calculation for iPhone compatibility
@@ -61,18 +107,32 @@ export default function WorkshopNotes() {
       const workshopNav = document.querySelector('.workshop-nav') as HTMLElement
       const mainNav = document.querySelector('#navigation') as HTMLElement
       
-      // Use fallback values if elements not ready
-      const workshopHeight = workshopNav?.offsetHeight || (window.innerWidth <= 480 ? 48 : window.innerWidth <= 768 ? 56 : 60)
-      const mainHeight = mainNav?.offsetHeight || (window.innerWidth <= 480 ? 58 : window.innerWidth <= 768 ? 64 : 72)
+      // Enhanced fallback values with device tier consideration
+      const defaultWorkshopHeight = window.innerWidth <= 480 ? 48 : window.innerWidth <= 768 ? 56 : 60
+      const defaultMainHeight = window.innerWidth <= 480 ? 58 : window.innerWidth <= 768 ? 64 : 72
+      
+      const workshopHeight = workshopNav?.offsetHeight || defaultWorkshopHeight
+      const mainHeight = mainNav?.offsetHeight || defaultMainHeight
       
       document.documentElement.style.setProperty('--workshop-nav-height', `${workshopHeight}px`)
       document.documentElement.style.setProperty('--main-nav-height', `${mainHeight}px`)
       
-      // Calculate total height with iOS safe area consideration
+      // Enhanced safe area calculation with proper fallbacks
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
-      const safeAreaTop = isIOS ? Math.max(20, parseInt(getComputedStyle(document.documentElement).getPropertyValue('env(safe-area-inset-top)').replace('px', '')) || 0) : 0
-      const totalHeight = workshopHeight + mainHeight + safeAreaTop
+      let safeAreaTop = 0
       
+      if (isIOS) {
+        try {
+          const envValue = getComputedStyle(document.documentElement).getPropertyValue('env(safe-area-inset-top)')
+          const parsedValue = parseInt(envValue.replace('px', '')) || 0
+          safeAreaTop = Math.max(20, parsedValue)
+        } catch (e) {
+          // Fallback for older iOS versions
+          safeAreaTop = iosDevice.hasNotch ? 44 : 20
+        }
+      }
+      
+      const totalHeight = workshopHeight + mainHeight + safeAreaTop
       document.documentElement.style.setProperty('--total-nav-height', `${totalHeight}px`)
     }
     
@@ -273,9 +333,14 @@ export default function WorkshopNotes() {
                   key={note.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05, duration: 0.4 }}
+                  transition={{ 
+                    delay: iosDevice.tier === 'low' ? Math.min(index * 0.02, 0.2) : index * 0.05, 
+                    duration: iosDevice.tier === 'low' ? 0.2 : 0.4 
+                  }}
                   className="workshop-card workshop-lazy-content group cursor-pointer p-6 hover:scale-[1.01] transition-transform duration-300"
                   onClick={() => {
+                    // Trigger haptic feedback on tap
+                    triggerHapticFeedback('light')
                     setSelectedNote(note.id)
                     // Update URL without causing a navigation
                     if (typeof window !== 'undefined') {
