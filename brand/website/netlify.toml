@@ -48,6 +48,19 @@
 
 # Enable Netlify Functions and Edge Functions
 [functions]
+
+# Deployment notifications webhook
+[[plugins]]
+  package = "@netlify/plugin-emails"
+
+# Deploy succeeded webhook for workshop notes
+[[deploy.succeeded]]
+  endpoint = "/.netlify/functions/workshop-note-deploy"
+  
+# Environment variables for workshop note emails  
+[build.environment.WORKSHOP_NOTES]
+  WORKSHOP_NOTE_FROM_EMAIL = "Candlefish Atelier <atelier@candlefish.ai>"
+  WORKSHOP_NOTE_REPLY_TO = "workshop@candlefish.ai"
   directory = "netlify/functions"
   node_bundler = "esbuild"
 

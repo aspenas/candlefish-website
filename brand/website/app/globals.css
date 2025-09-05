@@ -1,6 +1,9 @@
 /* Import Workshop Notes Unified System */
 @import '../styles/workshop-notes-unified.css';
 
+/* Import Navigation Z-Index Fixes */
+@import '../styles/navigation-fix.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
