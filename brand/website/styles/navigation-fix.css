@@ -1,0 +1,104 @@
+/* Navigation Z-Index Fix for Canvas Interaction */
+
+/* Fix navigation overlay blocking canvas */
+#navigation,
+.operational-nav,
+nav[role="navigation"] {
+  z-index: 10 !important; /* Reduced from potential 9999 */
+  position: relative;
+}
+
+/* Ensure canvas elements are interactive */
+canvas,
+.hero-fish-canvas,
+#hero-fish-canvas,
+[data-cf-fish-host] canvas {
+  z-index: 5 !important;
+  pointer-events: auto !important;
+  position: relative;
+}
+
+/* Fix for mobile menu overlay */
+.mobile-menu-overlay,
+.nav-menu-mobile {
+  z-index: 15 !important; /* Still above canvas but reasonable */
+}
+
+/* Ensure hero section content is properly layered */
+.hero-section,
+[data-widget="hero-section"] {
+  position: relative;
+  z-index: 1;
+}
+
+/* Text content should be above canvas */
+.hero-content,
+.hero-text,
+[data-hero-text] {
+  position: relative;
+  z-index: 6;
+  pointer-events: auto;
+}
+
+/* Fix for any modals or overlays */
+.modal,
+.overlay,
+.dialog {
+  z-index: 100; /* High but not extreme */
+}
+
+/* Dropdown menus */
+.dropdown,
+.nav-dropdown {
+  z-index: 20;
+}
+
+/* Tooltips */
+.tooltip,
+[role="tooltip"] {
+  z-index: 50;
+}
+
+/* Loading overlays */
+.loading-overlay {
+  z-index: 200;
+}
+
+/* Performance monitor overlay */
+.performance-overlay,
+.controls-overlay {
+  z-index: 30;
+  pointer-events: none; /* Allow click-through except for controls */
+}
+
+.performance-overlay button,
+.controls-overlay button,
+.performance-overlay .controls-panel {
+  pointer-events: auto;
+}
+
+/* Ensure proper stacking context */
+main {
+  position: relative;
+  z-index: 0;
+  isolation: isolate; /* Create new stacking context */
+}
+
+/* Fix for WebGL/Three.js canvases */
+.webgl,
+canvas[data-engine="three.js"] {
+  z-index: 5;
+  pointer-events: auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  /* Mobile-specific z-index adjustments */
+  .mobile-menu {
+    z-index: 25;
+  }
+  
+  canvas {
+    z-index: 3; /* Slightly lower on mobile for better touch handling */
+  }
+}

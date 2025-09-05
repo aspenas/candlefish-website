@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Hero Fish Animation</title>
+    <style>
+        body { margin: 0; padding: 20px; background: #0D1B2A; font-family: monospace; color: white; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .debug-panel { margin-bottom: 20px; padding: 20px; background: #1B263B; border: 1px solid #415A77; }
+        .fish-container { width: 100%; height: 400px; border: 1px solid #3FD3C6; background: linear-gradient(45deg, #0D1B2A, #1B263B); }
+        canvas { display: block; width: 100%; height: 100%; }
+        .error { color: #ff4444; }
+        .success { color: #3FD3C6; }
+        .warning { color: #ffa500; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="debug-panel">
+            <h1>Hero Fish Animation Debug</h1>
+            <div id="debug-log"></div>
+        </div>
+        
+        <div class="fish-container">
+            <canvas id="fish-canvas" width="1200" height="400"></canvas>
+        </div>
+        
+        <div class="debug-panel">
+            <h3>Console Output</h3>
+            <div id="console-output"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        const debugLog = document.getElementById('debug-log');
+        const consoleOutput = document.getElementById('console-output');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : '';
+            debugLog.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        // Override console methods to capture output
+        const originalConsole = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn
+        };
+
+        console.log = function(...args) {
+            consoleOutput.innerHTML += `<div>[LOG] ${args.join(' ')}</div>`;
+            originalConsole.log.apply(console, args);
+        };
+
+        console.error = function(...args) {
+            consoleOutput.innerHTML += `<div class="error">[ERROR] ${args.join(' ')}</div>`;
+            originalConsole.error.apply(console, args);
+        };
+
+        console.warn = function(...args) {
+            consoleOutput.innerHTML += `<div class="warning">[WARN] ${args.join(' ')}</div>`;
+            originalConsole.warn.apply(console, args);
+        };
+
+        async function testHeroFish() {
+            log('Starting Hero Fish debug test...');
+            
+            try {
+                const canvas = document.getElementById('fish-canvas');
+                if (!canvas) {
+                    throw new Error('Canvas element not found');
+                }
+                log('Canvas element found', 'success');
+
+                // Test if we can get canvas context
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    throw new Error('Cannot get 2D canvas context');
+                }
+                log('Canvas 2D context available', 'success');
+
+                // Test import of hero fish module
+                log('Attempting to import hero fish module...');
+                const { createHeroFish } = await import('./src/heroFish/index.js');
+                log('Hero fish module imported successfully', 'success');
+
+                // Test createHeroFish function
+                if (typeof createHeroFish !== 'function') {
+                    throw new Error('createHeroFish is not a function');
+                }
+                log('createHeroFish function is available', 'success');
+
+                // Set canvas dimensions
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = Math.floor(rect.width);
+                canvas.height = Math.floor(rect.height);
+                log(`Canvas dimensions set: ${canvas.width}x${canvas.height}`, 'success');
+
+                // Create fish animation
+                log('Creating hero fish animation...');
+                const heroFish = await createHeroFish(canvas, {
+                    bounds: { x: 0, y: 0, width: canvas.width, height: canvas.height },
+                    enableBloom: true,
+                    respectReducedMotion: false,
+                    targetFPS: 60
+                });
+                log('Hero fish animation created successfully', 'success');
+
+                // Start animation
+                log('Starting animation...');
+                heroFish.start();
+                log('Animation started successfully', 'success');
+
+                // Check animation status after 2 seconds
+                setTimeout(() => {
+                    try {
+                        const status = heroFish.getStatus();
+                        log(`Animation status: ${JSON.stringify(status, null, 2)}`, 'success');
+                        if (status.isRunning) {
+                            log('Animation is running successfully!', 'success');
+                        } else {
+                            log('Animation is not running', 'warning');
+                        }
+                    } catch (error) {
+                        log(`Error getting status: ${error.message}`, 'error');
+                    }
+                }, 2000);
+
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+                log(`Stack: ${error.stack}`, 'error');
+                
+                // Try fallback rendering
+                log('Attempting fallback rendering...', 'warning');
+                try {
+                    const canvas = document.getElementById('fish-canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Simple test drawing
+                    ctx.fillStyle = '#3FD3C6';
+                    ctx.fillRect(10, 10, 100, 50);
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.font = '16px monospace';
+                    ctx.fillText('FALLBACK: Canvas working', 20, 35);
+                    
+                    log('Fallback rendering successful - canvas is working', 'warning');
+                } catch (fallbackError) {
+                    log(`Fallback failed: ${fallbackError.message}`, 'error');
+                }
+            }
+        }
+
+        // Start test when page loads
+        window.addEventListener('load', testHeroFish);
+    </script>
+</body>
+</html>

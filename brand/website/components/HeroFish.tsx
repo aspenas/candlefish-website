@@ -15,7 +15,7 @@ export default function HeroFishAnimation() {
     async function loadAndInitFish() {
       try {
         // Dynamically import the fish system
-        const { createHeroFish } = await import('../src/heroFish')
+        const { createHeroFish } = await import('@/src/heroFish')
         
         if (!mounted || !canvasRef.current || !hostRef.current) return
         
