@@ -58,8 +58,11 @@ jobs:
           NODE_ENV: production
           SKIP_MOCK_REFRESH: true
         run: |
+          # Ensure script is executable
+          chmod +x scripts/static-export.sh
+          
           # Build static export for Netlify
-          npm run export
+          npm run export || (echo "Export failed, trying direct build..." && next build)
           
       - name: 📊 Check build output
         working-directory: brand/website
